@@ -124,7 +124,7 @@ impl PieceType {
 }
 
 /// 先後付きの駒。後手 = 駒種 + 16。5bit。
-#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Default, Debug)]
 pub struct Piece(pub u8);
 
 impl Piece {

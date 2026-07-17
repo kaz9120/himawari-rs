@@ -6,13 +6,17 @@
 pub mod attacks;
 pub mod bitboard;
 pub mod hand;
+pub mod movegen;
 pub mod moves;
 pub mod piece;
+pub mod position;
 pub mod types;
 pub mod zobrist;
 
 pub use bitboard::Bitboard;
 pub use hand::Hand;
+pub use movegen::{GenType, generate, generate_legal, perft, perft_slow};
 pub use moves::{Move, Move16, MoveList};
 pub use piece::{Piece, PieceType};
+pub use position::{DirtyPiece, Position, SFEN_STARTPOS, SfenError, StateInfo};
 pub use types::{Color, File, Rank, Square};
