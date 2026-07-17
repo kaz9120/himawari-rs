@@ -33,7 +33,7 @@
 | [0011](0011-slider-effect-gen.md) | 飛角香の利き生成方式 | P1 | accepted |
 | [0012](0012-move-encoding.md) | Moveエンコーディング | P1 | accepted |
 | [0013](0013-hand-packing.md) | Hand（手駒）のパック表現 | P1 | accepted |
-| [0014](0014-position-structure.md) | Position構造とdo/undo | P1 | proposed |
+| [0014](0014-position-structure.md) | Position構造とdo/undo | P1 | accepted |
 
 ## バックログ
 

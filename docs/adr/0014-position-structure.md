@@ -1,6 +1,6 @@
 # 0014: Position構造とdo/undo
 
-- Status: proposed
+- Status: accepted
 - Date: 2026-07-17
 - 関連ADR: [0002](0002-cargo-workspace.md), [0009](0009-piece-encoding.md), [0010](0010-bitboard-layout.md), [0012](0012-move-encoding.md), [0013](0013-hand-packing.md)
 
