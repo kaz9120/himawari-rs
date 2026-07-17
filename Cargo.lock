@@ -233,21 +233,21 @@ dependencies = [
 
 [[package]]
 name = "himawari-core"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "criterion",
 ]
 
 [[package]]
 name = "himawari-tools"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "himawari-core",
 ]
 
 [[package]]
 name = "himawari-usi"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "himawari-core",
 ]
