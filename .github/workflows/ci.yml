@@ -17,3 +17,5 @@ jobs:
       - run: cargo fmt --all --check
       - run: cargo clippy --all-targets -- -D warnings
       - run: cargo test --workspace
+      # perft既知値の照合（debugではignoreされる。ADR-0006/0018）
+      - run: cargo test --workspace --release
