@@ -1,6 +1,6 @@
 # 0016: 王手・pin・合法性判定
 
-- Status: proposed
+- Status: accepted
 - Date: 2026-07-17
 - 関連ADR: [0011](0011-slider-effect-gen.md), [0014](0014-position-structure.md)
 

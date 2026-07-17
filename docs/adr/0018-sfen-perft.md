@@ -1,6 +1,6 @@
 # 0018: SFEN入出力とperft基盤
 
-- Status: proposed
+- Status: accepted
 - Date: 2026-07-17
 - 関連ADR: [0006](0006-ci-test-bench.md), [0014](0014-position-structure.md), [0017](0017-movegen-classes.md)
 

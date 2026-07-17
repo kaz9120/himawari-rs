@@ -1,6 +1,6 @@
 # 0017: 指し手生成の分類と成り規約
 
-- Status: proposed
+- Status: accepted
 - Date: 2026-07-17
 - 関連ADR: [0012](0012-move-encoding.md), [0016](0016-legality-check.md)
 
