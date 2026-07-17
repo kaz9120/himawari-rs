@@ -33,6 +33,7 @@
 | [0011](0011-slider-effect-gen.md) | 飛角香の利き生成方式 | P1 | accepted |
 | [0012](0012-move-encoding.md) | Moveエンコーディング | P1 | accepted |
 | [0013](0013-hand-packing.md) | Hand（手駒）のパック表現 | P1 | accepted |
+| [0014](0014-position-structure.md) | Position構造とdo/undo | P1 | proposed |
 
 ## バックログ
 
@@ -42,7 +43,6 @@
 
 | 決定事項 | 主要論点 |
 |---|---|
-| Position構造とdo/undo | StateInfoスタック、NNUE差分計算（DirtyPiece）の要件を先読み |
 | Zobristハッシュ | board/hand分離、手番の扱い |
 | 王手・pin・合法性判定 | checkers/blockers差分、打ち歩詰め |
 | 指し手生成の分類と成り規約 | 段階区分、不成の扱い |
