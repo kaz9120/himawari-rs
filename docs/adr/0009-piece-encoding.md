@@ -1,6 +1,6 @@
 # 0009: Piece/PieceTypeエンコーディング
 
-- Status: proposed
+- Status: accepted
 - Date: 2026-07-17
 - 関連ADR: [0008](0008-square-coordinates.md)
 

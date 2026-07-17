@@ -28,7 +28,7 @@
 | [0006](0006-ci-test-bench.md) | CI・テスト・ベンチマーク戦略 | P0 | accepted |
 | [0007](0007-versioning.md) | エンジンのバージョニング戦略 | P0 | accepted |
 | [0008](0008-square-coordinates.md) | 座標系（Square/File/Rank） | P1 | accepted |
-| [0009](0009-piece-encoding.md) | Piece/PieceTypeエンコーディング | P1 | proposed |
+| [0009](0009-piece-encoding.md) | Piece/PieceTypeエンコーディング | P1 | accepted |
 
 ## バックログ
 
