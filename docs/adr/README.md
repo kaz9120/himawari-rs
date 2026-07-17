@@ -29,6 +29,7 @@
 | [0007](0007-versioning.md) | エンジンのバージョニング戦略 | P0 | accepted |
 | [0008](0008-square-coordinates.md) | 座標系（Square/File/Rank） | P1 | accepted |
 | [0009](0009-piece-encoding.md) | Piece/PieceTypeエンコーディング | P1 | accepted |
+| [0010](0010-bitboard-layout.md) | Bitboardレイアウト | P1 | proposed |
 
 ## バックログ
 
@@ -38,7 +39,6 @@
 
 | 決定事項 | 主要論点 |
 |---|---|
-| Bitboardレイアウト | u128 vs [u64;2]、Qugiyとの相性 |
 | 飛角香の利き生成方式 | magic vs PEXT vs Qugiy |
 | Moveエンコーディング | 16bit vs 32bit、Move16/Move32二本立て |
 | Hand（手駒）パック表現 | ビットフィールド、優等/劣等判定 |
