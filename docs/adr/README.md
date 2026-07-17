@@ -31,6 +31,8 @@
 | [0009](0009-piece-encoding.md) | Piece/PieceTypeエンコーディング | P1 | accepted |
 | [0010](0010-bitboard-layout.md) | Bitboardレイアウト | P1 | accepted |
 | [0011](0011-slider-effect-gen.md) | 飛角香の利き生成方式 | P1 | accepted |
+| [0012](0012-move-encoding.md) | Moveエンコーディング | P1 | proposed |
+| [0013](0013-hand-packing.md) | Hand（手駒）のパック表現 | P1 | proposed |
 
 ## バックログ
 
@@ -40,8 +42,6 @@
 
 | 決定事項 | 主要論点 |
 |---|---|
-| Moveエンコーディング | 16bit vs 32bit、Move16/Move32二本立て |
-| Hand（手駒）パック表現 | ビットフィールド、優等/劣等判定 |
 | Position構造とdo/undo | StateInfoスタック、NNUE差分計算（DirtyPiece）の要件を先読み |
 | Zobristハッシュ | board/hand分離、手番の扱い |
 | 王手・pin・合法性判定 | checkers/blockers差分、打ち歩詰め |
