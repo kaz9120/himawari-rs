@@ -7,3 +7,10 @@ license.workspace = true
 
 [lints]
 workspace = true
+
+[dev-dependencies]
+criterion = "0.8.2"
+
+[[bench]]
+name = "bb_layout"
+harness = false
