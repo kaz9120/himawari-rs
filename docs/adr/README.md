@@ -34,7 +34,7 @@
 | [0012](0012-move-encoding.md) | Moveエンコーディング | P1 | accepted |
 | [0013](0013-hand-packing.md) | Hand（手駒）のパック表現 | P1 | accepted |
 | [0014](0014-position-structure.md) | Position構造とdo/undo | P1 | accepted |
-| [0015](0015-zobrist-hash.md) | Zobristハッシュ設計 | P1 | proposed |
+| [0015](0015-zobrist-hash.md) | Zobristハッシュ設計 | P1 | accepted |
 
 ## バックログ
 

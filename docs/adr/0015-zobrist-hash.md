@@ -1,6 +1,6 @@
 # 0015: Zobristハッシュ設計
 
-- Status: proposed
+- Status: accepted
 - Date: 2026-07-17
 - 関連ADR: [0005](0005-static-tables.md), [0009](0009-piece-encoding.md), [0013](0013-hand-packing.md), [0014](0014-position-structure.md)
 
