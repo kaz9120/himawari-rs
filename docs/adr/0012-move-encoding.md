@@ -1,6 +1,6 @@
 # 0012: Moveエンコーディング
 
-- Status: proposed
+- Status: accepted
 - Date: 2026-07-17
 - 関連ADR: [0008](0008-square-coordinates.md), [0009](0009-piece-encoding.md)
 

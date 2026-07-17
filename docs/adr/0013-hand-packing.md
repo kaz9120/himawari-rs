@@ -1,6 +1,6 @@
 # 0013: Hand（手駒）のパック表現
 
-- Status: proposed
+- Status: accepted
 - Date: 2026-07-17
 - 関連ADR: [0009](0009-piece-encoding.md)
 
