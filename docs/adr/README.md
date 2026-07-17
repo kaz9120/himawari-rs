@@ -27,6 +27,8 @@
 | [0005](0005-static-tables.md) | 静的テーブル生成戦略 | P0 | accepted |
 | [0006](0006-ci-test-bench.md) | CI・テスト・ベンチマーク戦略 | P0 | accepted |
 | [0007](0007-versioning.md) | エンジンのバージョニング戦略 | P0 | accepted |
+| [0008](0008-square-coordinates.md) | 座標系（Square/File/Rank） | P1 | proposed |
+| [0009](0009-piece-encoding.md) | Piece/PieceTypeエンコーディング | P1 | proposed |
 
 ## バックログ
 
@@ -36,9 +38,7 @@
 
 | 決定事項 | 主要論点 |
 |---|---|
-| 座標系（Square/File/Rank） | 筋優先 vs 段優先、Inv/Mir、BonaPiece整合 |
 | Bitboardレイアウト | u128 vs [u64;2]、Qugiyとの相性 |
-| Piece/PieceTypeエンコーディング | 5bit構成、駒順とBonaPiece計算 |
 | 飛角香の利き生成方式 | magic vs PEXT vs Qugiy |
 | Moveエンコーディング | 16bit vs 32bit、Move16/Move32二本立て |
 | Hand（手駒）パック表現 | ビットフィールド、優等/劣等判定 |
