@@ -29,7 +29,7 @@
 | [0007](0007-versioning.md) | エンジンのバージョニング戦略 | P0 | accepted |
 | [0008](0008-square-coordinates.md) | 座標系（Square/File/Rank） | P1 | accepted |
 | [0009](0009-piece-encoding.md) | Piece/PieceTypeエンコーディング | P1 | accepted |
-| [0010](0010-bitboard-layout.md) | Bitboardレイアウト | P1 | proposed |
+| [0010](0010-bitboard-layout.md) | Bitboardレイアウト | P1 | accepted |
 
 ## バックログ
 

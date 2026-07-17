@@ -1,6 +1,6 @@
 # 0010: Bitboardレイアウト
 
-- Status: proposed
+- Status: accepted
 - Date: 2026-07-17
 - 関連ADR: [0003](0003-toolchain.md), [0008](0008-square-coordinates.md)
 
