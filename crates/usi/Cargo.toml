@@ -1,0 +1,16 @@
+[package]
+name = "himawari-usi"
+description = "USIプロトコル層とエンジン本体のバイナリ"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "himawari"
+path = "src/main.rs"
+
+[dependencies]
+himawari-core = { path = "../core" }
+
+[lints]
+workspace = true

@@ -1,0 +1,9 @@
+[package]
+name = "himawari-core"
+description = "盤面表現・指し手生成・SFEN入出力（探索非依存）"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[lints]
+workspace = true
