@@ -5,9 +5,14 @@
 
 pub mod attacks;
 pub mod bitboard;
+pub mod hand;
+pub mod moves;
 pub mod piece;
 pub mod types;
+pub mod zobrist;
 
 pub use bitboard::Bitboard;
+pub use hand::Hand;
+pub use moves::{Move, Move16, MoveList};
 pub use piece::{Piece, PieceType};
 pub use types::{Color, File, Rank, Square};
