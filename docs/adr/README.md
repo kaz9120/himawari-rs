@@ -30,7 +30,7 @@
 | [0008](0008-square-coordinates.md) | 座標系（Square/File/Rank） | P1 | accepted |
 | [0009](0009-piece-encoding.md) | Piece/PieceTypeエンコーディング | P1 | accepted |
 | [0010](0010-bitboard-layout.md) | Bitboardレイアウト | P1 | accepted |
-| [0011](0011-slider-effect-gen.md) | 飛角香の利き生成方式 | P1 | proposed |
+| [0011](0011-slider-effect-gen.md) | 飛角香の利き生成方式 | P1 | accepted |
 
 ## バックログ
 

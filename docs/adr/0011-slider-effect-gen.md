@@ -1,6 +1,6 @@
 # 0011: 飛角香の利き生成方式
 
-- Status: proposed
+- Status: accepted
 - Date: 2026-07-17
 - 関連ADR: [0005](0005-static-tables.md), [0008](0008-square-coordinates.md), [0010](0010-bitboard-layout.md)
 
