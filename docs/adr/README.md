@@ -26,6 +26,7 @@
 | [0004](0004-unsafe-policy.md) | unsafe方針 | P0 | accepted |
 | [0005](0005-static-tables.md) | 静的テーブル生成戦略 | P0 | accepted |
 | [0006](0006-ci-test-bench.md) | CI・テスト・ベンチマーク戦略 | P0 | accepted |
+| [0007](0007-versioning.md) | エンジンのバージョニング戦略 | P0 | proposed |
 
 ## バックログ
 
