@@ -2,5 +2,12 @@
 //!
 //! 探索・評価には依存しない。perft、学習器、対局マネージャは
 //! このクレートだけに依存して動作する（ADR-0002）。
-//!
-//! 型設計はP1のADR群で確定してから実装する。
+
+pub mod attacks;
+pub mod bitboard;
+pub mod piece;
+pub mod types;
+
+pub use bitboard::Bitboard;
+pub use piece::{Piece, PieceType};
+pub use types::{Color, File, Rank, Square};
