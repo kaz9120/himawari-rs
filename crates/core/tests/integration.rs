@@ -4,9 +4,18 @@
 //! ランダムプレイアウトで検証する。perftは公開値と照合する。
 
 use himawari_core::{
-    Color, GenType, Move, MoveList, Position, SFEN_STARTPOS, generate, generate_legal, perft,
-    perft_slow,
+    Color, GenType, Move, MoveList, Position, Repetition, SFEN_STARTPOS, generate, generate_legal,
+    perft, perft_slow,
 };
+
+fn apply(pos: &mut Position, moves: &[&str]) {
+    for s in moves {
+        let m = pos
+            .move_from_usi(s)
+            .unwrap_or_else(|| panic!("illegal: {s}"));
+        pos.do_move(m);
+    }
+}
 
 struct Rng(u64);
 
@@ -203,4 +212,60 @@ fn move_from_usi_roundtrip() {
     let m = pos.move_from_usi("7g7f").unwrap();
     assert_eq!(m.to_usi(), "7g7f");
     assert!(pos.move_from_usi("7g7e").is_none());
+}
+
+/// 飛車の往復による通常の千日手（ADR-0026）。
+#[test]
+fn repetition_draw() {
+    let mut pos = Position::from_sfen(SFEN_STARTPOS).unwrap();
+    assert_eq!(pos.repetition_state(), Repetition::None);
+    apply(&mut pos, &["2h3h", "8b7b", "3h2h", "7b8b"]);
+    assert_eq!(pos.repetition_state(), Repetition::Draw);
+}
+
+/// 連続王手の千日手。王手を掛け続けた側（先手）がLose。
+#[test]
+fn perpetual_check_is_loss_for_checker() {
+    let mut pos = Position::from_sfen("4k4/9/9/9/9/9/9/5R3/4K4 b - 1").unwrap();
+    apply(&mut pos, &["4h5h", "5a4a", "5h4h", "4a5a"]);
+    // ここで盤面はループ先頭と同一。先手の手はすべて王手だった
+    assert_eq!(pos.repetition_state(), Repetition::Lose);
+}
+
+/// SEE: 玉に守られた歩を香で取るのは損、守られていなければ得。
+#[test]
+fn see_defended_and_undefended() {
+    let pos = Position::from_sfen("9/4k4/4p4/9/4L4/9/9/9/K8 b - 1").unwrap();
+    let m = pos.move_from_usi("5e5c").unwrap();
+    assert!(!pos.see_ge(m, 0), "守られた歩を取るのは損のはず");
+    assert!(pos.see_ge(m, -300), "損は歩と香の差程度のはず");
+
+    let pos2 = Position::from_sfen("5k3/9/4p4/9/4L4/9/9/9/K8 b - 1").unwrap();
+    let m2 = pos2.move_from_usi("5e5c").unwrap();
+    assert!(pos2.see_ge(m2, 0), "守られていない歩は取り得のはず");
+}
+
+/// pseudo_legalとto_moveの整合: 全合法手は復元・検査を通過する。
+#[test]
+fn pseudo_legal_accepts_generated_moves() {
+    let mut pos = Position::from_sfen(SFEN_STARTPOS).unwrap();
+    let mut rng = Rng(0xABCD_EF01_2345_6789);
+    for _ in 0..120 {
+        let mut list = MoveList::default();
+        generate_legal(&pos, true, &mut list);
+        if list.is_empty() {
+            break;
+        }
+        for &m in &list {
+            assert!(
+                pos.pseudo_legal(m),
+                "合法手がpseudo_legalで弾かれた: {}",
+                m.to_usi()
+            );
+            let restored = pos.to_move(m.to_move16()).unwrap();
+            assert_eq!(restored, m, "Move16復元の不一致: {}", m.to_usi());
+        }
+        let idx = (rng.next() % list.len() as u64) as usize;
+        pos.do_move(list.as_slice()[idx]);
+    }
 }

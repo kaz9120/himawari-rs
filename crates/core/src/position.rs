@@ -60,6 +60,17 @@ pub struct StateInfo {
 #[derive(Debug, PartialEq, Eq)]
 pub struct SfenError(pub String);
 
+/// 千日手の分類（ADR-0026）。WinとLoseは連続王手の千日手。
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+pub enum Repetition {
+    None,
+    Draw,
+    Win,
+    Lose,
+    Superior,
+    Inferior,
+}
+
 #[derive(Clone)]
 pub struct Position {
     board: [Piece; 81],
@@ -705,6 +716,230 @@ impl Position {
             .iter()
             .copied()
             .find(|m| m.to_move16() == m16)
+    }
+
+    // ---- 千日手・優等局面（ADR-0026） ----
+
+    /// 現局面の千日手状態。StateInfoスタックを2plyごとに遡って判定する。
+    pub fn repetition_state(&self) -> Repetition {
+        let cur = self.states.len() - 1;
+        let st = &self.states[cur];
+        let us = self.side.index();
+        let them = 1 - us;
+        let limit = (st.plies_from_null as usize).min(cur);
+        let mut i = 4;
+        while i <= limit {
+            let prev = &self.states[cur - i];
+            if prev.board_key == st.board_key {
+                if prev.hand_key == st.hand_key {
+                    // 連続王手の千日手（相手優先で判定）
+                    if st.continuous_check[them] as usize * 2 >= i {
+                        return Repetition::Win;
+                    }
+                    if st.continuous_check[us] as usize * 2 >= i {
+                        return Repetition::Lose;
+                    }
+                    return Repetition::Draw;
+                }
+                let my_now = Hand((st.hand_key >> (32 * us)) as u32);
+                let my_then = Hand((prev.hand_key >> (32 * us)) as u32);
+                if my_now.is_superior_or_equal(my_then) {
+                    return Repetition::Superior;
+                }
+                if my_then.is_superior_or_equal(my_now) {
+                    return Repetition::Inferior;
+                }
+                // 交換が混在する場合は判定不能なので走査を続ける
+            }
+            i += 2;
+        }
+        Repetition::None
+    }
+
+    // ---- 擬似合法性（置換表由来の指し手の検査。ADR-0025） ----
+
+    /// mがこの局面の擬似合法手か（is_legalの前提を満たすか）を検査する。
+    pub fn pseudo_legal(&self, m: Move) -> bool {
+        if m.is_special() {
+            return false;
+        }
+        let us = self.side;
+        let to = m.to();
+        if to.is_none() || !m.piece_after().is_empty() && m.piece_after().color() != us {
+            return false;
+        }
+        if m.is_drop() {
+            let pt = m.drop_piece_type();
+            if pt.0 < 9 || !self.hands[us.index()].has(pt) || !self.piece_on(to).is_empty() {
+                return false;
+            }
+            let rel = to.rank().relative(us).0;
+            match pt {
+                PieceType::PAWN => {
+                    if rel == 0
+                        || !(self.pieces(us, PieceType::PAWN) & Bitboard::file(to.file()))
+                            .is_empty()
+                    {
+                        return false;
+                    }
+                }
+                PieceType::LANCE => {
+                    if rel == 0 {
+                        return false;
+                    }
+                }
+                PieceType::KNIGHT => {
+                    if rel <= 1 {
+                        return false;
+                    }
+                }
+                _ => {}
+            }
+            // 王手中の駒打ちは合い駒のみ
+            if self.in_check() {
+                let checkers = self.checkers();
+                if checkers.more_than_one()
+                    || !between(self.king_sq[us.index()], checkers.lsb()).test(to)
+                {
+                    return false;
+                }
+            }
+            true
+        } else {
+            let from = m.from_sq();
+            let pc = self.piece_on(from);
+            if pc != m.piece_before() || pc.is_empty() || pc.color() != us {
+                return false;
+            }
+            if self.color_bb(us).test(to) || !attacks(pc, from, self.occupied()).test(to) {
+                return false;
+            }
+            let pt = pc.piece_type();
+            let zone = Bitboard::promotion_zone(us);
+            let rel = to.rank().relative(us).0;
+            if m.is_promote() {
+                if !pt.can_promote() || !(zone.test(from) || zone.test(to)) {
+                    return false;
+                }
+            } else {
+                // 行き所のない駒になる不成は非合法
+                let ok = match pt {
+                    PieceType::PAWN | PieceType::LANCE => rel >= 1,
+                    PieceType::KNIGHT => rel >= 2,
+                    _ => true,
+                };
+                if !ok {
+                    return false;
+                }
+            }
+            // 王手中は玉移動か、単王手への合い駒・王手駒の捕獲のみ
+            if self.in_check() && pt != PieceType::KING {
+                let checkers = self.checkers();
+                if checkers.more_than_one() {
+                    return false;
+                }
+                let checker = checkers.lsb();
+                if to != checker && !between(self.king_sq[us.index()], checker).test(to) {
+                    return false;
+                }
+            }
+            true
+        }
+    }
+
+    // ---- SEE（静的交換評価。ADR-0025） ----
+
+    /// mの静的交換評価がthreshold以上か。成りは考慮しない簡略版。
+    /// Stockfishのsee_geと同じswap構造。
+    pub fn see_ge(&self, m: Move, threshold: i32) -> bool {
+        if m.is_drop() {
+            return 0 >= threshold;
+        }
+        let to = m.to();
+        let from = m.from_sq();
+        let mut swap = PIECE_VALUE[self.piece_on(to).piece_type().index()] - threshold;
+        if swap < 0 {
+            return false;
+        }
+        swap = PIECE_VALUE[self.piece_on(from).piece_type().index()] - swap;
+        if swap <= 0 {
+            return true;
+        }
+
+        let mut occ = self.occupied() ^ Bitboard::from_square(from);
+        let mut stm = self.side;
+        let mut res = true;
+        loop {
+            stm = stm.flip();
+            let stm_attackers = self.attackers_to(stm, to, occ) & occ;
+            if stm_attackers.is_empty() {
+                break;
+            }
+            res = !res;
+            // 最も安い攻撃駒を選ぶ
+            let mut best = Square::NONE;
+            let mut best_val = i32::MAX;
+            for sq in stm_attackers {
+                let v = PIECE_VALUE[self.piece_on(sq).piece_type().index()];
+                if v < best_val {
+                    best_val = v;
+                    best = sq;
+                }
+            }
+            if self.piece_on(best).piece_type() == PieceType::KING {
+                // 相手の攻撃が残っていれば玉では取れず、結果は直前のまま
+                let occ2 = occ ^ Bitboard::from_square(best);
+                if !(self.attackers_to(stm.flip(), to, occ2) & occ2).is_empty() {
+                    res = !res;
+                }
+                break;
+            }
+            swap = best_val - swap;
+            if swap < i32::from(res) {
+                break;
+            }
+            occ ^= Bitboard::from_square(best);
+        }
+        res
+    }
+
+    /// Move16を盤面情報で完全なMoveに復元する（ADR-0012）。
+    /// 置換表由来の任意ビット列に耐えるよう全フィールドを検証する。
+    /// 復元できても擬似合法とは限らない。pseudo_legalで別途検査する。
+    pub fn to_move(&self, m16: Move16) -> Option<Move> {
+        let bits = m16.0;
+        let to_i = (bits & 0x7F) as u8;
+        let from_i = ((bits >> 7) & 0x7F) as u8;
+        if to_i >= 81 {
+            return None;
+        }
+        let to = Square::from_index(to_i);
+        if bits & 0x8000 != 0 {
+            // 駒打ち。fromフィールドは駒種（9〜15）
+            if !(9..=15).contains(&from_i) {
+                return None;
+            }
+            Some(Move::new_drop(PieceType(from_i), to, self.side))
+        } else {
+            if from_i >= 81 || from_i == to_i {
+                return None;
+            }
+            let from = Square::from_index(from_i);
+            let pc = self.piece_on(from);
+            if pc.is_empty() {
+                return None;
+            }
+            let promote = bits & 0x4000 != 0;
+            let after = if promote {
+                if !pc.piece_type().can_promote() {
+                    return None;
+                }
+                pc.promote()
+            } else {
+                pc
+            };
+            Some(Move::new_move(from, to, promote, after))
+        }
     }
 }
 

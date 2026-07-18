@@ -18,5 +18,5 @@ pub use hand::Hand;
 pub use movegen::{GenType, generate, generate_legal, perft, perft_slow};
 pub use moves::{Move, Move16, MoveList};
 pub use piece::{Piece, PieceType};
-pub use position::{DirtyPiece, Position, SFEN_STARTPOS, SfenError, StateInfo};
+pub use position::{DirtyPiece, Position, Repetition, SFEN_STARTPOS, SfenError, StateInfo};
 pub use types::{Color, File, Rank, Square};
