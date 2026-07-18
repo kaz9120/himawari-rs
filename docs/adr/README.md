@@ -38,6 +38,9 @@
 | [0016](0016-legality-check.md) | 王手・pin・合法性判定 | P1 | accepted |
 | [0017](0017-movegen-classes.md) | 指し手生成の分類と成り規約 | P1 | accepted |
 | [0018](0018-sfen-perft.md) | SFEN入出力とperft基盤 | P1 | accepted |
+| [0019](0019-usi-architecture.md) | USI実装アーキテクチャ | P2 | proposed |
+| [0020](0020-search-threading.md) | 探索スレッドモデル | P2 | proposed |
+| [0021](0021-time-management.md) | 時間管理 | P2 | proposed |
 
 ## バックログ
 
@@ -51,13 +54,10 @@
 
 | 決定事項 | 主要論点 |
 |---|---|
-| USI実装アーキテクチャ | stdinスレッド、stop割り込み、setoption |
-| 探索スレッドモデル | 常駐プール、Lazy SMP前提の構造 |
 | ロックレス置換表 | AtomicU64×2 Relaxed、世代管理 |
 | 評価関数インターフェース | 駒割+PSQT、DirtyPiece契約の固定 |
 | 探索アルゴリズムv1 | alpha-beta+反復深化、静止探索 |
 | 指し手オーダリング | TT→captures→killer→history、将棋SEE |
-| 時間管理 | byoyomi/inc混在、2段階時間 |
 | 千日手まわり | 連続王手、優等/劣等局面 |
 
 ### P3: 探索強化 + 並列化 + ルール完全対応
