@@ -13,9 +13,16 @@ use crate::movepick::{CounterMoves, History, MovePicker};
 use crate::timeman::{Limits, TimeManager};
 use crate::tt::{Bound, Tt};
 use crate::value::{
-    MAX_PLY, VALUE_DRAW, VALUE_INFINITE, VALUE_SUPERIOR, VALUE_ZERO, Value, mate_in, mated_in,
-    value_from_tt, value_to_tt,
+    MAX_PLY, VALUE_DRAW, VALUE_INFINITE, VALUE_MATE_IN_MAX_PLY, VALUE_NONE, VALUE_SUPERIOR,
+    VALUE_ZERO, Value, mate_in, mated_in, value_from_tt, value_to_tt,
 };
+
+// ---- 探索定数（ADR-0028。調整は1調整=1SPRT） ----
+
+/// NMPの最小深さ。
+const NMP_MIN_DEPTH: u32 = 3;
+/// NMPのリダクション: 3 + depth / 4。
+const NMP_BASE_REDUCTION: u32 = 3;
 
 /// スレッド間の共有状態（ADR-0020）。
 pub struct Shared {
@@ -271,8 +278,9 @@ impl Worker {
 
         // 置換表（ADR-0022, 0024）
         let key = self.pos.key();
+        let tt_hit = self.shared.tt.probe(key);
         let mut tt_move = Move::NONE;
-        if let Some(data) = self.shared.tt.probe(key) {
+        if let Some(data) = &tt_hit {
             if let Some(m) = self.pos.to_move(data.mv)
                 && self.pos.pseudo_legal(m)
             {
@@ -294,6 +302,49 @@ impl Worker {
 
         if depth == 0 {
             return self.qsearch(alpha, beta, ply);
+        }
+
+        // 静的評価（ADR-0028）。王手中はVALUE_NONE。TTのevalを再利用する
+        let in_check = self.pos.in_check();
+        let static_eval = if in_check {
+            VALUE_NONE
+        } else {
+            match &tt_hit {
+                Some(d) if Value::from(d.eval) != VALUE_NONE => Value::from(d.eval),
+                _ => self.evaluator.evaluate(&self.pos),
+            }
+        };
+
+        // NMP（ADR-0028）。手番を渡して浅く探索し、それでもβ以上なら刈る
+        if !is_pv
+            && !in_check
+            && prev != Move::NULL
+            && depth >= NMP_MIN_DEPTH
+            && static_eval >= beta
+            && beta.abs() < VALUE_MATE_IN_MAX_PLY
+        {
+            let r = NMP_BASE_REDUCTION + depth / 4;
+            let mut null_pv = Vec::new();
+            self.pos.do_null_move();
+            self.evaluator.push(&self.pos);
+            let v = -self.search(
+                -beta,
+                -beta + 1,
+                depth.saturating_sub(r),
+                ply + 1,
+                Move::NULL,
+                &mut null_pv,
+                false,
+            );
+            self.evaluator.pop();
+            self.pos.undo_null_move();
+            if self.stopped() {
+                return VALUE_ZERO;
+            }
+            if v >= beta {
+                // パス由来の詰みスコアは信用せずβに丸める
+                return if v >= VALUE_MATE_IN_MAX_PLY { beta } else { v };
+            }
         }
 
         let mut picker = MovePicker::new(
@@ -383,7 +434,7 @@ impl Worker {
             key,
             best_move.to_move16(),
             value_to_tt(best, ply),
-            0,
+            static_eval as i16,
             depth.min(255) as u8,
             bound,
             is_pv,
