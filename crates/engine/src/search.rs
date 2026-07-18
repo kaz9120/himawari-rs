@@ -13,8 +13,8 @@ use crate::movepick::{CounterMoves, History, MovePicker};
 use crate::timeman::{Limits, TimeManager};
 use crate::tt::{Bound, Tt};
 use crate::value::{
-    MAX_PLY, VALUE_DRAW, VALUE_INFINITE, VALUE_MATE_IN_MAX_PLY, VALUE_NONE, VALUE_SUPERIOR,
-    VALUE_ZERO, Value, mate_in, mated_in, value_from_tt, value_to_tt,
+    MAX_PLY, VALUE_DRAW, VALUE_INFINITE, VALUE_MATE_IN_MAX_PLY, VALUE_MATED_IN_MAX_PLY, VALUE_NONE,
+    VALUE_SUPERIOR, VALUE_ZERO, Value, mate_in, mated_in, value_from_tt, value_to_tt,
 };
 
 // ---- 探索定数（ADR-0028。調整は1調整=1SPRT） ----
@@ -33,6 +33,14 @@ const RFP_MARGIN: Value = 120;
 const FUTILITY_MAX_DEPTH: u32 = 6;
 const FUTILITY_BASE: Value = 200;
 const FUTILITY_MARGIN: Value = 120;
+/// move count pruningの最大深さ。
+const LMP_MAX_DEPTH: u32 = 8;
+
+/// この手数を超えた静かな手を捨てる（ADR-0028）。
+fn lmp_limit(depth: u32, improving: bool) -> u32 {
+    let base = 3 + depth * depth;
+    if improving { base } else { base / 2 }
+}
 
 /// LMRのリダクション表。r = 0.5 + ln(depth)・ln(count) / 2.25。
 static LMR_TABLE: std::sync::OnceLock<[[u8; 64]; 64]> = std::sync::OnceLock::new();
@@ -87,6 +95,8 @@ pub struct Worker {
     pub evaluator: Evaluator,
     pub history: History,
     pub counters: CounterMoves,
+    /// plyごとの静的評価（improving判定用。王手中はVALUE_NONE）。
+    eval_stack: Vec<Value>,
     killers: Vec<[Move; 2]>,
     nodes: u64,
     shared: Arc<Shared>,
@@ -113,6 +123,7 @@ impl Worker {
             evaluator,
             history,
             counters,
+            eval_stack: vec![VALUE_NONE; MAX_PLY + 2],
             killers: vec![[Move::NONE; 2]; MAX_PLY + 2],
             nodes: 0,
             shared,
@@ -341,6 +352,13 @@ impl Worker {
             }
         };
 
+        self.eval_stack[ply] = static_eval;
+        // 2手前より静的評価が改善しているか（枝刈りの強弱に使う）
+        let improving = !in_check
+            && ply >= 2
+            && self.eval_stack[ply - 2] != VALUE_NONE
+            && static_eval > self.eval_stack[ply - 2];
+
         // reverse futility（ADR-0028）: 静的評価がβを大きく超えるなら刈る
         if !is_pv
             && !in_check
@@ -402,6 +420,19 @@ impl Worker {
             count += 1;
             let is_capture = !m.is_drop() && !self.pos.piece_on(m.to()).is_empty();
             let gives_check = self.pos.gives_check(m);
+
+            // move count pruning（ADR-0028）: 浅い深さで手数を使い切ったら
+            // 残りの静かな手を捨てる。詰まされ筋では無効
+            if !is_pv
+                && !in_check
+                && !is_capture
+                && !gives_check
+                && depth <= LMP_MAX_DEPTH
+                && best > VALUE_MATED_IN_MAX_PLY
+                && count > lmp_limit(depth, improving)
+            {
+                continue;
+            }
 
             // futility（ADR-0028）: 評価がalphaに遠く及ばない浅い静かな手を
             // 飛ばす。最初の手は必ず読む（countは既に加算済み）
