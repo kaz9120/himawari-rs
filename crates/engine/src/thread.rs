@@ -107,7 +107,6 @@ impl ThreadPool {
                         shared2.tt.new_search();
                     }
                     Job::Search(j) => {
-                        *ctl2.idle.lock().expect("idle lock") = false;
                         let tm = TimeManager::new(
                             &j.limits,
                             j.pos.side_to_move(),
@@ -162,6 +161,9 @@ impl ThreadPool {
 
     pub fn go(&self, pos: Position, limits: Limits, opts: EngineOptions) {
         self.wait_idle();
+        // idleはgo側で同期的に下ろす。workerが起きる前にquit/stopが来ても
+        // 探索ジョブが破棄されない（bestmoveを必ず返す）
+        *self.ctl.idle.lock().expect("idle lock") = false;
         self.shared.stop.store(false, Ordering::Relaxed);
         let mut guard = self.ctl.job.lock().expect("job lock");
         *guard = Some(Job::Search(Box::new(SearchJob { pos, limits, opts })));
