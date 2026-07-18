@@ -104,7 +104,7 @@ impl ThreadPool {
                     Job::NewGame => {
                         history.clear();
                         counters.clear();
-                        shared2.tt.new_search();
+                        shared2.tt.clear();
                     }
                     Job::Search(j) => {
                         let tm = TimeManager::new(

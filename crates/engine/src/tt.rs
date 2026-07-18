@@ -100,6 +100,17 @@ impl Tt {
         self.generation.fetch_add(1, Ordering::Relaxed);
     }
 
+    /// 全エントリの消去（usinewgameで呼ぶ）。対局間の独立性を保つ。
+    pub fn clear(&self) {
+        for cluster in &self.clusters {
+            for e in &cluster.0 {
+                e.word0.store(0, Ordering::Relaxed);
+                e.word1.store(0, Ordering::Relaxed);
+            }
+        }
+        self.generation.store(0, Ordering::Relaxed);
+    }
+
     #[inline]
     fn generation(&self) -> u8 {
         self.generation.load(Ordering::Relaxed) & 31
