@@ -257,6 +257,7 @@ name = "himawari-usi"
 version = "0.2.0"
 dependencies = [
  "himawari-core",
+ "himawari-engine",
 ]
 
 [[package]]
