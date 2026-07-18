@@ -46,6 +46,7 @@
 | [0024](0024-search-v1.md) | 探索アルゴリズムv1 | P2 | accepted |
 | [0025](0025-move-ordering.md) | 指し手オーダリング | P2 | accepted |
 | [0026](0026-repetition.md) | 千日手まわり | P2 | accepted |
+| [0027](0027-sprt-framework.md) | 強さ検証基盤（SPRT） | P3 | proposed |
 
 ## バックログ
 
@@ -63,7 +64,6 @@
 
 | 決定事項 | 主要論点 |
 |---|---|
-| 強さ検証基盤（SPRT） | 対局マネージャ、SPRTパラメータ |
 | Lazy SMP設計 | 共有物の範囲、最終手の選び方 |
 | 枝刈り・延長パッケージ | NMP/LMR/singular、1機能=1SPRT規約 |
 | 詰み探索 | mate1ply、df-pnは後回し |
