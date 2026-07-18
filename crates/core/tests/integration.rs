@@ -232,6 +232,35 @@ fn perpetual_check_is_loss_for_checker() {
     assert_eq!(pos.repetition_state(), Repetition::Lose);
 }
 
+/// null moveの往復一致と、手番だけ違う局面のキー相違（ADR-0028）。
+#[test]
+fn null_move_roundtrip() {
+    let mut pos = Position::from_sfen(SFEN_STARTPOS).unwrap();
+    let key = pos.key();
+    let sfen = pos.to_sfen();
+    pos.do_null_move();
+    assert_eq!(pos.side_to_move(), Color::White);
+    assert_ne!(pos.key(), key);
+    pos.undo_null_move();
+    assert_eq!(pos.side_to_move(), Color::Black);
+    assert_eq!(pos.key(), key);
+    assert_eq!(pos.to_sfen(), sfen);
+}
+
+/// 千日手の走査はnull moveを跨がない（ADR-0028）。
+#[test]
+fn repetition_scan_stops_at_null_move() {
+    let mut pos = Position::from_sfen(SFEN_STARTPOS).unwrap();
+    apply(&mut pos, &["2h3h", "8b7b", "3h2h", "7b8b"]);
+    assert_eq!(pos.repetition_state(), Repetition::Draw);
+    // ループをもう1周するが、途中にnull moveを挟む
+    apply(&mut pos, &["2h3h", "8b7b", "3h2h"]);
+    pos.do_null_move();
+    pos.do_null_move();
+    apply(&mut pos, &["7b8b"]);
+    assert_eq!(pos.repetition_state(), Repetition::None);
+}
+
 /// SEE: 玉に守られた歩を香で取るのは損、守られていなければ得。
 #[test]
 fn see_defended_and_undefended() {

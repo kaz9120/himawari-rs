@@ -440,6 +440,37 @@ impl Position {
         }
     }
 
+    /// パス（null move。ADR-0028のNMP用）。王手中は呼べない。
+    /// `plies_from_null = 0` により千日手走査はここで遮断される。
+    pub fn do_null_move(&mut self) {
+        debug_assert!(!self.in_check());
+        let prev = self.state();
+        let mut st = StateInfo {
+            captured: Piece::EMPTY,
+            board_key: prev.board_key ^ zobrist::SIDE,
+            hand_key: prev.hand_key,
+            checkers: Bitboard::EMPTY,
+            blockers_for_king: [Bitboard::EMPTY; 2],
+            pinners: [Bitboard::EMPTY; 2],
+            continuous_check: prev.continuous_check,
+            plies_from_null: 0,
+            material: prev.material,
+            dirty: DirtyPiece::default(),
+        };
+        // パスなので手番側は王手を掛けていない
+        st.continuous_check[self.side.index()] = 0;
+        self.side = self.side.flip();
+        self.game_ply += 1;
+        self.states.push(st);
+        self.update_check_info();
+    }
+
+    pub fn undo_null_move(&mut self) {
+        self.states.pop().expect("undo without do");
+        self.side = self.side.flip();
+        self.game_ply -= 1;
+    }
+
     // ---- SFEN（ADR-0018） ----
 
     pub fn from_sfen(sfen: &str) -> Result<Position, SfenError> {
