@@ -44,6 +44,8 @@
 | [0022](0022-transposition-table.md) | ロックレス置換表 | P2 | accepted |
 | [0023](0023-eval-interface.md) | 評価関数インターフェース | P2 | accepted |
 | [0024](0024-search-v1.md) | 探索アルゴリズムv1 | P2 | accepted |
+| [0025](0025-move-ordering.md) | 指し手オーダリング | P2 | proposed |
+| [0026](0026-repetition.md) | 千日手まわり | P2 | proposed |
 
 ## バックログ
 
@@ -55,10 +57,7 @@
 
 ### P2: USI + 探索v1
 
-| 決定事項 | 主要論点 |
-|---|---|
-| 指し手オーダリング | TT→captures→killer→history、将棋SEE |
-| 千日手まわり | 連続王手、優等/劣等局面 |
+（すべて起草済み）
 
 ### P3: 探索強化 + 並列化 + ルール完全対応
 
