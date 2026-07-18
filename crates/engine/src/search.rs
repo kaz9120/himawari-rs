@@ -26,6 +26,13 @@ const NMP_BASE_REDUCTION: u32 = 3;
 /// LMRの最小深さと最小手数（この手数以降の静かな手を浅く読む）。
 const LMR_MIN_DEPTH: u32 = 3;
 const LMR_MIN_COUNT: u32 = 3;
+/// reverse futilityの最大深さとdepthあたりのマージン。
+const RFP_MAX_DEPTH: u32 = 6;
+const RFP_MARGIN: Value = 120;
+/// 子ノードfutilityの最大深さとマージン（基本 + depth比例）。
+const FUTILITY_MAX_DEPTH: u32 = 6;
+const FUTILITY_BASE: Value = 200;
+const FUTILITY_MARGIN: Value = 120;
 
 /// LMRのリダクション表。r = 0.5 + ln(depth)・ln(count) / 2.25。
 static LMR_TABLE: std::sync::OnceLock<[[u8; 64]; 64]> = std::sync::OnceLock::new();
@@ -334,6 +341,16 @@ impl Worker {
             }
         };
 
+        // reverse futility（ADR-0028）: 静的評価がβを大きく超えるなら刈る
+        if !is_pv
+            && !in_check
+            && depth <= RFP_MAX_DEPTH
+            && beta.abs() < VALUE_MATE_IN_MAX_PLY
+            && static_eval - RFP_MARGIN * depth as Value >= beta
+        {
+            return static_eval;
+        }
+
         // NMP（ADR-0028）。手番を渡して浅く探索し、それでもβ以上なら刈る
         if !is_pv
             && !in_check
@@ -385,6 +402,20 @@ impl Worker {
             count += 1;
             let is_capture = !m.is_drop() && !self.pos.piece_on(m.to()).is_empty();
             let gives_check = self.pos.gives_check(m);
+
+            // futility（ADR-0028）: 評価がalphaに遠く及ばない浅い静かな手を
+            // 飛ばす。最初の手は必ず読む（countは既に加算済み）
+            if !in_check
+                && !is_capture
+                && !gives_check
+                && count > 1
+                && depth <= FUTILITY_MAX_DEPTH
+                && alpha.abs() < VALUE_MATE_IN_MAX_PLY
+                && static_eval + FUTILITY_BASE + FUTILITY_MARGIN * depth as Value <= alpha
+            {
+                continue;
+            }
+
             // 王手延長（ADR-0024の骨格。深さは減らさない）
             let new_depth = if gives_check { depth } else { depth - 1 };
 
