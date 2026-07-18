@@ -11,6 +11,11 @@ path = "src/bin/perft.rs"
 
 [dependencies]
 himawari-core = { path = "../core" }
+himawari-engine = { path = "../engine" }
 
 [lints]
 workspace = true
+
+[[bin]]
+name = "tsume"
+path = "src/bin/tsume.rs"
