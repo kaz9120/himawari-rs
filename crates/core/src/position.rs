@@ -774,26 +774,17 @@ impl Position {
                 return false;
             }
             let rel = to.rank().relative(us).0;
-            match pt {
+            let placement_ok = match pt {
                 PieceType::PAWN => {
-                    if rel == 0
-                        || !(self.pieces(us, PieceType::PAWN) & Bitboard::file(to.file()))
-                            .is_empty()
-                    {
-                        return false;
-                    }
+                    rel >= 1
+                        && (self.pieces(us, PieceType::PAWN) & Bitboard::file(to.file())).is_empty()
                 }
-                PieceType::LANCE => {
-                    if rel == 0 {
-                        return false;
-                    }
-                }
-                PieceType::KNIGHT => {
-                    if rel <= 1 {
-                        return false;
-                    }
-                }
-                _ => {}
+                PieceType::LANCE => rel >= 1,
+                PieceType::KNIGHT => rel >= 2,
+                _ => true,
+            };
+            if !placement_ok {
+                return false;
             }
             // 王手中の駒打ちは合い駒のみ
             if self.in_check() {
