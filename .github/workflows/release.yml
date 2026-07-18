@@ -1,7 +1,8 @@
 name: Release
 
 # タグpushでCPU別バイナリをビルドしてGitHub Releaseに添付する
-# （ADR-0003のtarget-feature固定ビルド、ADR-0007のビルド識別子）
+# （ADR-0003のtarget-feature固定ビルド、ADR-0007のビルド識別子）。
+# Release作成の競合を避けるため、ビルドはartifact経由で単一ジョブに集約する。
 on:
   push:
     tags: ["v*"]
@@ -12,6 +13,7 @@ permissions:
 jobs:
   build:
     strategy:
+      fail-fast: false
       matrix:
         include:
           - os: ubuntu-latest
@@ -48,6 +50,18 @@ jobs:
         run: |
           cp "target/release/${{ matrix.bin }}" .
           python3 -m zipfile -c "himawari-${{ github.ref_name }}-${{ matrix.name }}.zip" "${{ matrix.bin }}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.name }}
+          path: himawari-*.zip
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          merge-multiple: true
       - uses: softprops/action-gh-release@v2
         with:
           files: himawari-*.zip
