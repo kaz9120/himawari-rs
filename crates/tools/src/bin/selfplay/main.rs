@@ -25,7 +25,7 @@ use std::io::Write;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 
-use himawari_core::{Color, SFEN_STARTPOS};
+use himawari_core::{Color, Position, SFEN_STARTPOS};
 
 use engine::UsiEngine;
 use game::{GameConfig, GameRecord, TimeControl, play_game};
@@ -193,14 +193,20 @@ fn parse_args() -> Config {
         Some(path) => {
             let text = std::fs::read_to_string(path)
                 .unwrap_or_else(|e| usage_exit(&format!("開始局面集を読めません: {e}")));
+            // 行頭の「sfen 」は配布ファイルで一般的なので剥がして受け入れる
             let list: Vec<String> = text
                 .lines()
                 .map(str::trim)
                 .filter(|l| !l.is_empty() && !l.starts_with('#'))
-                .map(String::from)
+                .map(|l| l.strip_prefix("sfen ").unwrap_or(l).to_string())
                 .collect();
             if list.is_empty() {
                 usage_exit("開始局面集が空です");
+            }
+            for (i, sfen) in list.iter().enumerate() {
+                if Position::from_sfen(sfen).is_err() {
+                    usage_exit(&format!("開始局面集の{}行目が不正なSFEN: {sfen}", i + 1));
+                }
             }
             list
         }
