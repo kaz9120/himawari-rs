@@ -48,6 +48,10 @@
 | [0026](0026-repetition.md) | 千日手まわり | P2 | accepted |
 | [0027](0027-sprt-framework.md) | 強さ検証基盤（SPRT） | P3 | accepted |
 | [0028](0028-pruning-extensions.md) | 枝刈り・延長パッケージ | P3 | accepted |
+| [0029](0029-mate-search.md) | 詰み探索（mate1ply） | P3 | proposed |
+| [0030](0030-nyugyoku-declaration.md) | 入玉宣言勝ち | P3 | proposed |
+| [0031](0031-lazy-smp.md) | Lazy SMP | P3 | proposed |
+| [0032](0032-multipv-ponder.md) | MultiPV・ponder | P3 | proposed |
 
 ## バックログ
 
@@ -65,10 +69,7 @@
 
 | 決定事項 | 主要論点 |
 |---|---|
-| Lazy SMP設計 | 共有物の範囲、最終手の選び方 |
-| 詰み探索 | mate1ply、df-pnは後回し |
-| 入玉宣言勝ち | 27点法 vs 24点法 |
-| MultiPV・ponder | root moves管理、info出力 |
+| df-pn詰み探索 | 長手数詰み。mate1ply（ADR-0029）の後段。P3では任意 |
 
 ### P4: NNUE推論
 
