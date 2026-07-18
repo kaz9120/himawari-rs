@@ -1,6 +1,6 @@
 # 0020: 探索スレッドモデル
 
-- Status: proposed
+- Status: accepted
 - Date: 2026-07-18
 - 関連ADR: [0014](0014-position-structure.md), [0019](0019-usi-architecture.md)
 

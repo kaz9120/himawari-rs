@@ -38,9 +38,9 @@
 | [0016](0016-legality-check.md) | 王手・pin・合法性判定 | P1 | accepted |
 | [0017](0017-movegen-classes.md) | 指し手生成の分類と成り規約 | P1 | accepted |
 | [0018](0018-sfen-perft.md) | SFEN入出力とperft基盤 | P1 | accepted |
-| [0019](0019-usi-architecture.md) | USI実装アーキテクチャ | P2 | proposed |
-| [0020](0020-search-threading.md) | 探索スレッドモデル | P2 | proposed |
-| [0021](0021-time-management.md) | 時間管理 | P2 | proposed |
+| [0019](0019-usi-architecture.md) | USI実装アーキテクチャ | P2 | accepted |
+| [0020](0020-search-threading.md) | 探索スレッドモデル | P2 | accepted |
+| [0021](0021-time-management.md) | 時間管理 | P2 | accepted |
 
 ## バックログ
 

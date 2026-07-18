@@ -1,6 +1,6 @@
 # 0021: 時間管理
 
-- Status: proposed
+- Status: accepted
 - Date: 2026-07-18
 - 関連ADR: [0019](0019-usi-architecture.md), [0020](0020-search-threading.md)
 

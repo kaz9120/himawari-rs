@@ -1,6 +1,6 @@
 # 0019: USI実装アーキテクチャ
 
-- Status: proposed
+- Status: accepted
 - Date: 2026-07-18
 - 関連ADR: [0002](0002-cargo-workspace.md), [0018](0018-sfen-perft.md)
 
