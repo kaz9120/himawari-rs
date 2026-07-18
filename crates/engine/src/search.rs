@@ -23,6 +23,25 @@ use crate::value::{
 const NMP_MIN_DEPTH: u32 = 3;
 /// NMPのリダクション: 3 + depth / 4。
 const NMP_BASE_REDUCTION: u32 = 3;
+/// LMRの最小深さと最小手数（この手数以降の静かな手を浅く読む）。
+const LMR_MIN_DEPTH: u32 = 3;
+const LMR_MIN_COUNT: u32 = 3;
+
+/// LMRのリダクション表。r = 0.5 + ln(depth)・ln(count) / 2.25。
+static LMR_TABLE: std::sync::OnceLock<[[u8; 64]; 64]> = std::sync::OnceLock::new();
+
+fn lmr_reduction(depth: u32, count: u32) -> u32 {
+    let t = LMR_TABLE.get_or_init(|| {
+        let mut t = [[0u8; 64]; 64];
+        for (d, row) in t.iter_mut().enumerate().skip(1) {
+            for (c, r) in row.iter_mut().enumerate().skip(1) {
+                *r = (0.5 + (d as f64).ln() * (c as f64).ln() / 2.25) as u8;
+            }
+        }
+        t
+    });
+    u32::from(t[depth.min(63) as usize][count.min(63) as usize])
+}
 
 /// スレッド間の共有状態（ADR-0020）。
 pub struct Shared {
@@ -374,15 +393,33 @@ impl Worker {
             let value = if count == 1 {
                 -self.search(-beta, -alpha, new_depth, ply + 1, m, &mut child_pv, is_pv)
             } else {
-                let v = -self.search(
-                    -alpha - 1,
-                    -alpha,
-                    new_depth,
-                    ply + 1,
-                    m,
-                    &mut child_pv,
-                    false,
-                );
+                // LMR（ADR-0028）: 遅い静かな手は浅いnull windowで読み、
+                // alphaを超えたときだけ元の深さで読み直す
+                let mut d = new_depth;
+                if depth >= LMR_MIN_DEPTH
+                    && count >= LMR_MIN_COUNT
+                    && !is_capture
+                    && !gives_check
+                    && !in_check
+                {
+                    let mut r = lmr_reduction(depth, count);
+                    if is_pv {
+                        r = r.saturating_sub(1);
+                    }
+                    d = new_depth.saturating_sub(r).max(1);
+                }
+                let mut v = -self.search(-alpha - 1, -alpha, d, ply + 1, m, &mut child_pv, false);
+                if v > alpha && d < new_depth && !self.stopped() {
+                    v = -self.search(
+                        -alpha - 1,
+                        -alpha,
+                        new_depth,
+                        ply + 1,
+                        m,
+                        &mut child_pv,
+                        false,
+                    );
+                }
                 if v > alpha && is_pv && !self.stopped() {
                     -self.search(-beta, -alpha, new_depth, ply + 1, m, &mut child_pv, true)
                 } else {
