@@ -19,3 +19,7 @@ workspace = true
 [[bin]]
 name = "tsume"
 path = "src/bin/tsume.rs"
+
+[[bin]]
+name = "selfplay"
+path = "src/bin/selfplay/main.rs"
