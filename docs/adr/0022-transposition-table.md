@@ -1,6 +1,6 @@
 # 0022: ロックレス置換表
 
-- Status: proposed
+- Status: accepted
 - Date: 2026-07-18
 - 関連ADR: [0004](0004-unsafe-policy.md), [0015](0015-zobrist-hash.md), [0020](0020-search-threading.md)
 

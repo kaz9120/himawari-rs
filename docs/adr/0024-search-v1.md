@@ -1,6 +1,6 @@
 # 0024: 探索アルゴリズムv1
 
-- Status: proposed
+- Status: accepted
 - Date: 2026-07-18
 - 関連ADR: [0017](0017-movegen-classes.md), [0020](0020-search-threading.md), [0022](0022-transposition-table.md), [0023](0023-eval-interface.md)
 

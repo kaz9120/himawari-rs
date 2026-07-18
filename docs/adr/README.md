@@ -41,9 +41,9 @@
 | [0019](0019-usi-architecture.md) | USI実装アーキテクチャ | P2 | accepted |
 | [0020](0020-search-threading.md) | 探索スレッドモデル | P2 | accepted |
 | [0021](0021-time-management.md) | 時間管理 | P2 | accepted |
-| [0022](0022-transposition-table.md) | ロックレス置換表 | P2 | proposed |
-| [0023](0023-eval-interface.md) | 評価関数インターフェース | P2 | proposed |
-| [0024](0024-search-v1.md) | 探索アルゴリズムv1 | P2 | proposed |
+| [0022](0022-transposition-table.md) | ロックレス置換表 | P2 | accepted |
+| [0023](0023-eval-interface.md) | 評価関数インターフェース | P2 | accepted |
+| [0024](0024-search-v1.md) | 探索アルゴリズムv1 | P2 | accepted |
 
 ## バックログ
 

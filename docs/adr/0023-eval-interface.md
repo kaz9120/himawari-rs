@@ -1,6 +1,6 @@
 # 0023: 評価関数インターフェース
 
-- Status: proposed
+- Status: accepted
 - Date: 2026-07-18
 - 関連ADR: [0002](0002-cargo-workspace.md), [0014](0014-position-structure.md)
 
