@@ -1,0 +1,472 @@
+//! 探索v1（ADR-0024, 0026）。
+//!
+//! fail-softのalpha-beta＋反復深化＋aspiration window。
+//! PVは三角配列（Vecの連結）。詰みスコアはTT境界でply補正する。
+
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+
+use himawari_core::{Move, MoveList, Position, Repetition, generate_legal};
+
+use crate::eval::Evaluator;
+use crate::movepick::{CounterMoves, History, MovePicker};
+use crate::timeman::{Limits, TimeManager};
+use crate::tt::{Bound, Tt};
+use crate::value::{
+    MAX_PLY, VALUE_DRAW, VALUE_INFINITE, VALUE_SUPERIOR, VALUE_ZERO, Value, mate_in, mated_in,
+    value_from_tt, value_to_tt,
+};
+
+/// スレッド間の共有状態（ADR-0020）。
+pub struct Shared {
+    pub stop: AtomicBool,
+    pub nodes: AtomicU64,
+    pub tt: Tt,
+}
+
+impl Shared {
+    pub fn new(hash_mb: usize) -> Shared {
+        Shared {
+            stop: AtomicBool::new(false),
+            nodes: AtomicU64::new(0),
+            tt: Tt::new(hash_mb),
+        }
+    }
+}
+
+/// 反復深化1周分の報告。
+pub struct IterInfo {
+    pub depth: u32,
+    pub score: Value,
+    pub pv: Vec<Move>,
+    pub nodes: u64,
+    pub elapsed_ms: u64,
+    pub hashfull: usize,
+}
+
+pub struct SearchResult {
+    pub best: Move,
+    pub score: Value,
+}
+
+pub struct Worker {
+    pub pos: Position,
+    pub evaluator: Evaluator,
+    pub history: History,
+    pub counters: CounterMoves,
+    killers: Vec<[Move; 2]>,
+    nodes: u64,
+    shared: Arc<Shared>,
+    tm: TimeManager,
+    limits: Limits,
+    max_moves_to_draw: u16,
+    root_moves: Vec<Move>,
+}
+
+impl Worker {
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(
+        pos: Position,
+        shared: Arc<Shared>,
+        limits: Limits,
+        tm: TimeManager,
+        max_moves_to_draw: u16,
+        evaluator: Evaluator,
+        history: History,
+        counters: CounterMoves,
+    ) -> Worker {
+        Worker {
+            pos,
+            evaluator,
+            history,
+            counters,
+            killers: vec![[Move::NONE; 2]; MAX_PLY + 2],
+            nodes: 0,
+            shared,
+            tm,
+            limits,
+            max_moves_to_draw,
+            root_moves: Vec::new(),
+        }
+    }
+
+    #[inline]
+    fn stopped(&self) -> bool {
+        self.shared.stop.load(Ordering::Relaxed)
+    }
+
+    /// 定期的な時間・ノード制限の検査（メイン探索スレッドの責務。ADR-0020）。
+    #[inline]
+    fn check_limits(&self) {
+        if self.nodes.is_multiple_of(2048) {
+            if self.tm.over_maximum() {
+                self.shared.stop.store(true, Ordering::Relaxed);
+            }
+            if self.limits.nodes > 0 && self.nodes >= self.limits.nodes {
+                self.shared.stop.store(true, Ordering::Relaxed);
+            }
+        }
+    }
+
+    #[inline]
+    fn draw_value(&self) -> Value {
+        // 千日手PVへの固着を防ぐ±1の揺らぎ（ADR-0026）
+        VALUE_DRAW + 1 - (self.nodes & 2) as Value
+    }
+
+    /// 反復深化。各イテレーション完了時にon_iterを呼ぶ。
+    pub fn iterate(&mut self, on_iter: &mut dyn FnMut(IterInfo)) -> SearchResult {
+        self.shared.tt.new_search();
+        self.evaluator.new_search(&self.pos);
+        let mut list = MoveList::default();
+        generate_legal(&self.pos, false, &mut list);
+        self.root_moves = list.as_slice().to_vec();
+        if self.root_moves.is_empty() {
+            return SearchResult {
+                best: Move::RESIGN,
+                score: mated_in(0),
+            };
+        }
+        let mut best_move = self.root_moves[0];
+        let mut last_score = VALUE_ZERO;
+        let max_depth = if self.limits.depth > 0 {
+            self.limits.depth
+        } else {
+            (MAX_PLY - 1) as u32
+        };
+
+        for depth in 1..=max_depth {
+            let mut delta = 20;
+            let (mut alpha, mut beta) = if depth >= 5 {
+                (last_score - delta, last_score + delta)
+            } else {
+                (-VALUE_INFINITE, VALUE_INFINITE)
+            };
+            loop {
+                let (score, pv) = self.search_root(depth, alpha, beta);
+                if self.stopped() {
+                    break;
+                }
+                if score <= alpha {
+                    beta = (alpha + beta) / 2;
+                    alpha = (score - delta).max(-VALUE_INFINITE);
+                    delta += delta / 2;
+                } else if score >= beta {
+                    beta = (score + delta).min(VALUE_INFINITE);
+                    delta += delta / 2;
+                } else {
+                    last_score = score;
+                    if let Some(&m) = pv.first() {
+                        best_move = m;
+                        // 次イテレーションで最善手から探索する
+                        if let Some(i) = self.root_moves.iter().position(|&r| r == m) {
+                            self.root_moves.remove(i);
+                            self.root_moves.insert(0, m);
+                        }
+                    }
+                    on_iter(IterInfo {
+                        depth,
+                        score,
+                        pv,
+                        nodes: self.nodes,
+                        elapsed_ms: self.tm.elapsed().as_millis() as u64,
+                        hashfull: self.shared.tt.hashfull(),
+                    });
+                    break;
+                }
+            }
+            if self.stopped() || self.tm.over_optimum() {
+                break;
+            }
+            if self.limits.nodes > 0 && self.nodes >= self.limits.nodes {
+                break;
+            }
+        }
+        self.shared.nodes.fetch_add(self.nodes, Ordering::Relaxed);
+        SearchResult {
+            best: best_move,
+            score: last_score,
+        }
+    }
+
+    fn search_root(&mut self, depth: u32, mut alpha: Value, beta: Value) -> (Value, Vec<Move>) {
+        let mut best = -VALUE_INFINITE;
+        let mut best_pv: Vec<Move> = Vec::new();
+        let moves = self.root_moves.clone();
+        for (i, &m) in moves.iter().enumerate() {
+            self.pos.do_move(m);
+            self.evaluator.push(&self.pos);
+            let mut child_pv = Vec::new();
+            let value = if i == 0 {
+                -self.search(-beta, -alpha, depth - 1, 1, m, &mut child_pv, true)
+            } else {
+                let v = -self.search(-alpha - 1, -alpha, depth - 1, 1, m, &mut child_pv, false);
+                if v > alpha && !self.stopped() {
+                    -self.search(-beta, -alpha, depth - 1, 1, m, &mut child_pv, true)
+                } else {
+                    v
+                }
+            };
+            self.evaluator.pop();
+            self.pos.undo_move(m);
+            if self.stopped() {
+                return (best, best_pv);
+            }
+            if value > best {
+                best = value;
+                if value > alpha {
+                    alpha = value;
+                    best_pv.clear();
+                    best_pv.push(m);
+                    best_pv.extend_from_slice(&child_pv);
+                    if value >= beta {
+                        break;
+                    }
+                }
+            }
+        }
+        (best, best_pv)
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn search(
+        &mut self,
+        mut alpha: Value,
+        beta: Value,
+        depth: u32,
+        ply: usize,
+        prev: Move,
+        pv: &mut Vec<Move>,
+        is_pv: bool,
+    ) -> Value {
+        pv.clear();
+        if self.stopped() {
+            return VALUE_ZERO;
+        }
+        self.nodes += 1;
+        self.check_limits();
+        if ply >= MAX_PLY {
+            return self.evaluator.evaluate(&self.pos);
+        }
+
+        // 千日手・優等局面（ADR-0026）
+        match self.pos.repetition_state() {
+            Repetition::Draw => return self.draw_value(),
+            Repetition::Win => return mate_in(ply),
+            Repetition::Lose => return mated_in(ply),
+            Repetition::Superior => return VALUE_SUPERIOR,
+            Repetition::Inferior => return -VALUE_SUPERIOR,
+            Repetition::None => {}
+        }
+        if self.max_moves_to_draw > 0 && self.pos.game_ply() >= self.max_moves_to_draw {
+            return self.draw_value();
+        }
+
+        // mate distance pruning
+        alpha = alpha.max(mated_in(ply));
+        let beta = beta.min(mate_in(ply + 1));
+        if alpha >= beta {
+            return alpha;
+        }
+
+        // 置換表（ADR-0022, 0024）
+        let key = self.pos.key();
+        let mut tt_move = Move::NONE;
+        if let Some(data) = self.shared.tt.probe(key) {
+            if let Some(m) = self.pos.to_move(data.mv)
+                && self.pos.pseudo_legal(m)
+            {
+                tt_move = m;
+            }
+            if !is_pv && u32::from(data.depth) >= depth {
+                let v = value_from_tt(data.value, ply);
+                let usable = match data.bound {
+                    Bound::Exact => true,
+                    Bound::Lower => v >= beta,
+                    Bound::Upper => v <= alpha,
+                    Bound::None => false,
+                };
+                if usable {
+                    return v;
+                }
+            }
+        }
+
+        if depth == 0 {
+            return self.qsearch(alpha, beta, ply);
+        }
+
+        let mut picker = MovePicker::new(
+            &self.pos,
+            tt_move,
+            self.killers[ply],
+            self.counters.get(prev),
+        );
+        let mut best = -VALUE_INFINITE;
+        let mut best_move = Move::NONE;
+        let mut count = 0u32;
+        let mut tried_quiets: Vec<Move> = Vec::new();
+        let mut child_pv = Vec::new();
+
+        while let Some(m) = picker.next(&self.pos, &self.history) {
+            if !self.pos.is_legal(m) {
+                continue;
+            }
+            count += 1;
+            let is_capture = !m.is_drop() && !self.pos.piece_on(m.to()).is_empty();
+            let gives_check = self.pos.gives_check(m);
+            // 王手延長（ADR-0024の骨格。深さは減らさない）
+            let new_depth = if gives_check { depth } else { depth - 1 };
+
+            self.pos.do_move(m);
+            self.evaluator.push(&self.pos);
+            let value = if count == 1 {
+                -self.search(-beta, -alpha, new_depth, ply + 1, m, &mut child_pv, is_pv)
+            } else {
+                let v = -self.search(
+                    -alpha - 1,
+                    -alpha,
+                    new_depth,
+                    ply + 1,
+                    m,
+                    &mut child_pv,
+                    false,
+                );
+                if v > alpha && is_pv && !self.stopped() {
+                    -self.search(-beta, -alpha, new_depth, ply + 1, m, &mut child_pv, true)
+                } else {
+                    v
+                }
+            };
+            self.evaluator.pop();
+            self.pos.undo_move(m);
+            if self.stopped() {
+                return VALUE_ZERO;
+            }
+
+            if !is_capture {
+                tried_quiets.push(m);
+            }
+            if value > best {
+                best = value;
+                if value > alpha {
+                    best_move = m;
+                    if is_pv {
+                        pv.clear();
+                        pv.push(m);
+                        pv.extend_from_slice(&child_pv);
+                    }
+                    if value >= beta {
+                        if !is_capture {
+                            self.update_quiet_stats(m, prev, ply, depth, &tried_quiets);
+                        }
+                        break;
+                    }
+                    alpha = value;
+                }
+            }
+        }
+
+        if count == 0 {
+            // 合法手なし = 詰み（将棋はステイルメイトも負け）
+            return mated_in(ply);
+        }
+
+        let bound = if best >= beta {
+            Bound::Lower
+        } else if is_pv && best_move != Move::NONE {
+            Bound::Exact
+        } else {
+            Bound::Upper
+        };
+        self.shared.tt.store(
+            key,
+            best_move.to_move16(),
+            value_to_tt(best, ply),
+            0,
+            depth.min(255) as u8,
+            bound,
+            is_pv,
+        );
+        best
+    }
+
+    fn qsearch(&mut self, mut alpha: Value, beta: Value, ply: usize) -> Value {
+        if self.stopped() {
+            return VALUE_ZERO;
+        }
+        self.nodes += 1;
+        self.check_limits();
+        if ply >= MAX_PLY {
+            return self.evaluator.evaluate(&self.pos);
+        }
+        match self.pos.repetition_state() {
+            Repetition::Draw => return self.draw_value(),
+            Repetition::Win => return mate_in(ply),
+            Repetition::Lose => return mated_in(ply),
+            Repetition::Superior => return VALUE_SUPERIOR,
+            Repetition::Inferior => return -VALUE_SUPERIOR,
+            Repetition::None => {}
+        }
+
+        let in_check = self.pos.in_check();
+        let mut best = -VALUE_INFINITE;
+        if !in_check {
+            // stand pat（ADR-0024）
+            let stand = self.evaluator.evaluate(&self.pos);
+            if stand >= beta {
+                return stand;
+            }
+            if stand > alpha {
+                alpha = stand;
+            }
+            best = stand;
+        }
+
+        let mut picker = MovePicker::new_qsearch(&self.pos);
+        let mut count = 0u32;
+        while let Some(m) = picker.next(&self.pos, &self.history) {
+            if !self.pos.is_legal(m) {
+                continue;
+            }
+            count += 1;
+            self.pos.do_move(m);
+            self.evaluator.push(&self.pos);
+            let value = -self.qsearch(-beta, -alpha, ply + 1);
+            self.evaluator.pop();
+            self.pos.undo_move(m);
+            if self.stopped() {
+                return VALUE_ZERO;
+            }
+            if value > best {
+                best = value;
+                if value > alpha {
+                    alpha = value;
+                    if value >= beta {
+                        break;
+                    }
+                }
+            }
+        }
+        if in_check && count == 0 {
+            return mated_in(ply);
+        }
+        best
+    }
+
+    fn update_quiet_stats(&mut self, m: Move, prev: Move, ply: usize, depth: u32, tried: &[Move]) {
+        let k = &mut self.killers[ply];
+        if k[0] != m {
+            k[1] = k[0];
+            k[0] = m;
+        }
+        self.counters.update(prev, m);
+        let bonus = (depth * depth + 2 * depth) as i32;
+        self.history.update(m, bonus);
+        for &q in tried {
+            if q != m {
+                self.history.update(q, -bonus);
+            }
+        }
+    }
+}

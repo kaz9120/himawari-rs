@@ -18,6 +18,12 @@ const PIECE_VALUE: [i32; 16] = [
     0, 0, 540, 540, 540, 540, 945, 1395, 15000, 540, 90, 315, 405, 495, 855, 990,
 ];
 
+/// 駒種の材料価値（評価・オーダリングで共用）。
+#[inline]
+pub const fn piece_value(pt: PieceType) -> i32 {
+    PIECE_VALUE[pt.index()]
+}
+
 /// NNUE差分の材料（ADR-0014）。1手で変化する駒は最大2。
 #[derive(Copy, Clone, Debug)]
 pub struct DirtyPiece {

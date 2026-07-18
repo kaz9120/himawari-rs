@@ -1,0 +1,12 @@
+[package]
+name = "himawari-engine"
+description = "探索・置換表・評価・時間管理"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+himawari-core = { path = "../core" }
+
+[lints]
+workspace = true

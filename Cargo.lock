@@ -239,6 +239,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "himawari-engine"
+version = "0.2.0"
+dependencies = [
+ "himawari-core",
+]
+
+[[package]]
 name = "himawari-tools"
 version = "0.2.0"
 dependencies = [
