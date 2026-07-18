@@ -1,6 +1,6 @@
 # 0026: 千日手まわり
 
-- Status: proposed
+- Status: accepted
 - Date: 2026-07-18
 - 関連ADR: [0013](0013-hand-packing.md), [0014](0014-position-structure.md), [0015](0015-zobrist-hash.md), [0024](0024-search-v1.md)
 

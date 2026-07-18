@@ -1,6 +1,6 @@
 # 0025: 指し手オーダリング
 
-- Status: proposed
+- Status: accepted
 - Date: 2026-07-18
 - 関連ADR: [0012](0012-move-encoding.md), [0017](0017-movegen-classes.md), [0024](0024-search-v1.md)
 
