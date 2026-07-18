@@ -1,6 +1,6 @@
 # 0028: 枝刈り・延長パッケージ
 
-- Status: proposed
+- Status: accepted
 - Date: 2026-07-18
 - 関連ADR: [0024](0024-search-v1.md), [0025](0025-move-ordering.md), [0027](0027-sprt-framework.md)
 
@@ -28,7 +28,9 @@ mate distance pruningしかない。現在の弱さは探索能力の問題で�
 - 既定条件: `selfplay --openings openings/start_sfens_ply24.txt
   --tc 10+0.1 --concurrency 6`、elo0=0、elo1=5、α=β=0.05
 - 強化変更はelo0=0/elo1=5。簡素化・等価リファクタの非劣性確認は
-  elo0=−5/elo1=0で「H0採択=取り込み可」と読み替える
+  elo0=−5/elo1=0で行い、H1採択（elo≒0以上の証拠）で取り込み可
+- 単体では強さに現れない配管（評価値の受け渡し等の基盤）は、
+  それを使う最初の機能と合わせて1つのSPRTで検証してよい
 - 結果（対局数、W-D-L、Elo±CI、LLR）をコミットメッセージに記録する
 - H0になった強化は取り込まない。パラメータを変えた再挑戦は可
 - nodesモードは再現・デバッグ用。ゲートは必ず時間制で行う

@@ -47,7 +47,7 @@
 | [0025](0025-move-ordering.md) | 指し手オーダリング | P2 | accepted |
 | [0026](0026-repetition.md) | 千日手まわり | P2 | accepted |
 | [0027](0027-sprt-framework.md) | 強さ検証基盤（SPRT） | P3 | accepted |
-| [0028](0028-pruning-extensions.md) | 枝刈り・延長パッケージ | P3 | proposed |
+| [0028](0028-pruning-extensions.md) | 枝刈り・延長パッケージ | P3 | accepted |
 
 ## バックログ
 
