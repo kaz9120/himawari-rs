@@ -1,0 +1,53 @@
+name: Release
+
+# タグpushでCPU別バイナリをビルドしてGitHub Releaseに添付する
+# （ADR-0003のtarget-feature固定ビルド、ADR-0007のビルド識別子）
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            name: linux-x64-avx2
+            rustflags: "-C target-cpu=x86-64-v3"
+            bin: himawari
+          - os: ubuntu-latest
+            name: linux-x64-sse42
+            rustflags: "-C target-cpu=x86-64-v2"
+            bin: himawari
+          - os: windows-latest
+            name: windows-x64-avx2
+            rustflags: "-C target-cpu=x86-64-v3"
+            bin: himawari.exe
+          - os: windows-latest
+            name: windows-x64-sse42
+            rustflags: "-C target-cpu=x86-64-v2"
+            bin: himawari.exe
+          - os: macos-14
+            name: macos-arm64
+            rustflags: ""
+            bin: himawari
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build
+        shell: bash
+        run: |
+          export RUSTFLAGS="${{ matrix.rustflags }}"
+          export HIMAWARI_BUILD_ID="${GITHUB_SHA::7}"
+          cargo build --release -p himawari-usi
+      - name: Package
+        shell: bash
+        run: |
+          cp "target/release/${{ matrix.bin }}" .
+          python3 -m zipfile -c "himawari-${{ github.ref_name }}-${{ matrix.name }}.zip" "${{ matrix.bin }}"
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: himawari-*.zip
