@@ -1,6 +1,6 @@
 # 0027: 強さ検証基盤（SPRT）
 
-- Status: proposed
+- Status: accepted
 - Date: 2026-07-18
 - 関連ADR: [0006](0006-ci-test-bench.md), [0019](0019-usi-architecture.md), [0021](0021-time-management.md), [0026](0026-repetition.md)
 

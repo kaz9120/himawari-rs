@@ -46,7 +46,7 @@
 | [0024](0024-search-v1.md) | 探索アルゴリズムv1 | P2 | accepted |
 | [0025](0025-move-ordering.md) | 指し手オーダリング | P2 | accepted |
 | [0026](0026-repetition.md) | 千日手まわり | P2 | accepted |
-| [0027](0027-sprt-framework.md) | 強さ検証基盤（SPRT） | P3 | proposed |
+| [0027](0027-sprt-framework.md) | 強さ検証基盤（SPRT） | P3 | accepted |
 
 ## バックログ
 
