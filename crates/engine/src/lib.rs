@@ -4,6 +4,7 @@ pub mod eval;
 pub mod mate;
 pub mod movepick;
 pub mod nnue;
+pub mod nnue_acc;
 pub mod search;
 pub mod thread;
 pub mod timeman;

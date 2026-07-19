@@ -159,7 +159,12 @@ pub fn evaluate_scalar(net: &NnueNetwork, pos: &Position) -> Value {
         }
     }
 
-    // 利き塔（毎回全計算）
+    effect_tower(net, pos, &mut concat);
+    forward_hidden(net, &concat)
+}
+
+/// 利き塔を全計算してconcatの末尾に書く（ADR-0034）。
+pub(crate) fn effect_tower(net: &NnueNetwork, pos: &Position, concat: &mut [u8; CONCAT]) {
     let mut ef = Vec::with_capacity(50);
     effect_active(pos, &mut ef);
     let mut acc = [0i32; EFFECT_OUT];
@@ -175,8 +180,10 @@ pub fn evaluate_scalar(net: &NnueNetwork, pos: &Position) -> Value {
     for (o, &a) in acc.iter().enumerate() {
         concat[FT_OUT * 2 + o] = clip(a);
     }
+}
 
-    // 隠れ層（i8×u8の積和、ADR-0036）
+/// 連結ベクトルから評価値まで（隠れ層はi8×u8の積和、ADR-0036）。
+pub(crate) fn forward_hidden(net: &NnueNetwork, concat: &[u8; CONCAT]) -> Value {
     let mut h2 = [0u8; HIDDEN];
     for (o, h) in h2.iter_mut().enumerate() {
         let mut sum = net.b2[o];
