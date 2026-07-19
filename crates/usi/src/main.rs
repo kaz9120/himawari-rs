@@ -143,7 +143,11 @@ fn set_option(opts: &mut EngineOptions, tokens: &[&str]) {
             opts.ponder = value == "true";
         }
         "EvalFile" => {
-            opts.eval_file = if value == "<empty>" { String::new() } else { value };
+            opts.eval_file = if value == "<empty>" {
+                String::new()
+            } else {
+                value
+            };
         }
         _ => {}
     }

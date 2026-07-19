@@ -274,7 +274,13 @@ fn candidate_score(rec: &GameRecord, candidate_color: Color) -> f64 {
     }
 }
 
-fn jsonl_line(pair: u64, game: u8, opening: &str, candidate_color: Color, rec: &GameRecord) -> String {
+fn jsonl_line(
+    pair: u64,
+    game: u8,
+    opening: &str,
+    candidate_color: Color,
+    rec: &GameRecord,
+) -> String {
     let winner = match rec.winner {
         Some(Color::Black) => "b",
         Some(Color::White) => "w",

@@ -113,7 +113,7 @@ mod tests {
 
     /// SIMDの部品がスカラー等価であること（境界値・ラップ動作を含む）。
     #[test]
-    fn primitives_match_scalar()  {
+    fn primitives_match_scalar() {
         let net = NnueNetwork::random(5);
         // ft_add/sub: ラップ動作の一致
         let mut a = [i16::MAX - 3; FT_OUT];

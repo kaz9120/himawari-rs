@@ -79,14 +79,16 @@ pub fn save(net: &NnueNetwork, lineage: &str, w: &mut impl Write) -> std::io::Re
 
 fn read_u32(r: &mut impl Read) -> Result<u32, String> {
     let mut b = [0u8; 4];
-    r.read_exact(&mut b).map_err(|e| format!("読み込み失敗: {e}"))?;
+    r.read_exact(&mut b)
+        .map_err(|e| format!("読み込み失敗: {e}"))?;
     Ok(u32::from_le_bytes(b))
 }
 
 /// 読み込む。戻り値は (ネットワーク, 学習来歴)。
 pub fn load(r: &mut impl Read) -> Result<(NnueNetwork, String), String> {
     let mut magic = [0u8; 8];
-    r.read_exact(&mut magic).map_err(|e| format!("読み込み失敗: {e}"))?;
+    r.read_exact(&mut magic)
+        .map_err(|e| format!("読み込み失敗: {e}"))?;
     if &magic != MAGIC {
         return Err("マジックが不一致（Himawari NNUE形式ではない）".to_string());
     }
@@ -118,14 +120,17 @@ pub fn load(r: &mut impl Read) -> Result<(NnueNetwork, String), String> {
         return Err("学習来歴が長すぎる".to_string());
     }
     let mut lb = vec![0u8; llen];
-    r.read_exact(&mut lb).map_err(|e| format!("読み込み失敗: {e}"))?;
+    r.read_exact(&mut lb)
+        .map_err(|e| format!("読み込み失敗: {e}"))?;
     let lineage = String::from_utf8(lb).map_err(|_| "学習来歴がUTF-8でない".to_string())?;
     let mut hash_b = [0u8; 8];
-    r.read_exact(&mut hash_b).map_err(|e| format!("読み込み失敗: {e}"))?;
+    r.read_exact(&mut hash_b)
+        .map_err(|e| format!("読み込み失敗: {e}"))?;
     let expect_hash = u64::from_le_bytes(hash_b);
 
     let mut body = Vec::new();
-    r.read_to_end(&mut body).map_err(|e| format!("読み込み失敗: {e}"))?;
+    r.read_to_end(&mut body)
+        .map_err(|e| format!("読み込み失敗: {e}"))?;
     if fnv1a(&body) != expect_hash {
         return Err("重みハッシュが不一致（ファイル破損）".to_string());
     }
@@ -173,7 +178,10 @@ pub fn load(r: &mut impl Read) -> Result<(NnueNetwork, String), String> {
             Ok(v)
         }
     }
-    let mut cur = Cursor { body: &body, off: 0 };
+    let mut cur = Cursor {
+        body: &body,
+        off: 0,
+    };
     let ft_b = cur.i16v(FT_OUT)?;
     let ft_w = cur.i16v(FT_IN * FT_OUT)?;
     let ef_b = cur.i16v(EFFECT_OUT)?;

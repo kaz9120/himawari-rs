@@ -156,8 +156,11 @@ mod tests {
     fn promoted_smalls_are_gold() {
         let sq = Square::new(File(0), Rank(0));
         let gold = board_bona_piece(Color::Black, Piece::new(Color::Black, PieceType::GOLD), sq);
-        let tokin =
-            board_bona_piece(Color::Black, Piece::new(Color::Black, PieceType::PRO_PAWN), sq);
+        let tokin = board_bona_piece(
+            Color::Black,
+            Piece::new(Color::Black, PieceType::PRO_PAWN),
+            sq,
+        );
         assert_eq!(gold, tokin);
     }
 
@@ -186,11 +189,7 @@ mod tests {
     #[test]
     fn halfkp_index_range() {
         // 最大値: 玉が81升目、BonaPieceがFE_END-1
-        let max = halfkp_index(
-            Color::Black,
-            Square::new(File(8), Rank(8)),
-            FE_END - 1,
-        );
+        let max = halfkp_index(Color::Black, Square::new(File(8), Rank(8)), FE_END - 1);
         assert_eq!(max, 80 * u32::from(FE_END) + u32::from(FE_END) - 1);
         assert!(max < 81 * u32::from(FE_END));
     }

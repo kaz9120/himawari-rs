@@ -51,7 +51,9 @@ impl NnueNetwork {
                 self.0 as i64
             }
             fn i16v(&mut self, n: usize, range: i64) -> Vec<i16> {
-                (0..n).map(|_| ((self.next() % range) - range / 2) as i16).collect()
+                (0..n)
+                    .map(|_| ((self.next() % range) - range / 2) as i16)
+                    .collect()
             }
             fn i8v(&mut self, n: usize) -> Vec<i8> {
                 (0..n).map(|_| (self.next() % 64 - 32) as i8).collect()
@@ -119,7 +121,11 @@ pub fn effect_active(pos: &Position, out: &mut Vec<u16>) {
                     continue;
                 }
                 let s_norm = Square::from_index((f * 9 + r) as u8);
-                let s = if stm == Color::Black { s_norm } else { s_norm.inv() };
+                let s = if stm == Color::Black {
+                    s_norm
+                } else {
+                    s_norm.inv()
+                };
                 let own = pos.attackers_to(stm, s, occ).count().min(3) as u16;
                 let opp = pos.attackers_to(stm.flip(), s, occ).count().min(3) as u16;
                 let cell = ((df + 2) * 5 + (dr + 2)) as u16;

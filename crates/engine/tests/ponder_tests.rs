@@ -104,7 +104,11 @@ fn mate_found_in_ponder_is_held_until_ponderhit() {
         depth: 5,
         ..Limits::default()
     };
-    pool.go_ponder(pos("4k4/9/4P4/9/9/9/9/9/4K4 b G 1"), limits, EngineOptions::default());
+    pool.go_ponder(
+        pos("4k4/9/4P4/9/9/9/9/9/4K4 b G 1"),
+        limits,
+        EngineOptions::default(),
+    );
     std::thread::sleep(Duration::from_millis(300));
     assert_eq!(
         bestmove_count(&lines),

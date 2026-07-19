@@ -176,13 +176,8 @@ fn spawn_worker(
                             depth: j.limits.depth,
                             ..Limits::default()
                         };
-                        let tm = TimeManager::new(
-                            &inf,
-                            j.pos.side_to_move(),
-                            j.pos.game_ply(),
-                            0,
-                            0,
-                        );
+                        let tm =
+                            TimeManager::new(&inf, j.pos.side_to_move(), j.pos.game_ply(), 0, 0);
                         (inf, tm)
                     };
                     let was_ponder = j.ponder;
@@ -249,11 +244,12 @@ fn spawn_worker(
                             true
                         };
                         if emit && let Some(out) = &on_line {
-                            let ponder_hint = if j.opts.ponder && result.ponder != himawari_core::Move::NONE {
-                                format!(" ponder {}", result.ponder.to_usi())
-                            } else {
-                                String::new()
-                            };
+                            let ponder_hint =
+                                if j.opts.ponder && result.ponder != himawari_core::Move::NONE {
+                                    format!(" ponder {}", result.ponder.to_usi())
+                                } else {
+                                    String::new()
+                                };
                             out(&format!("bestmove {}{}", result.best.to_usi(), ponder_hint));
                         }
                     }
@@ -296,7 +292,11 @@ impl ThreadPool {
                     Arc::clone(&ponder),
                     net_arc.clone(),
                     i == 0,
-                    if i == 0 { Some(Arc::clone(&on_line)) } else { None },
+                    if i == 0 {
+                        Some(Arc::clone(&on_line))
+                    } else {
+                        None
+                    },
                 )
             })
             .collect();
