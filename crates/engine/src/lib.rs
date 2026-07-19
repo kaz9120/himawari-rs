@@ -3,6 +3,7 @@
 pub mod eval;
 pub mod mate;
 pub mod movepick;
+pub mod nnue;
 pub mod search;
 pub mod thread;
 pub mod timeman;
