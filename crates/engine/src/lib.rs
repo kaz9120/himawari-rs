@@ -1,6 +1,7 @@
 //! 探索・置換表・評価・時間管理（P2のADR群に基づく）。
 
 pub mod eval;
+pub mod mate;
 pub mod movepick;
 pub mod search;
 pub mod thread;
