@@ -53,6 +53,10 @@
 | [0031](0031-lazy-smp.md) | Lazy SMP | P3 | accepted |
 | [0032](0032-multipv.md) | MultiPV | P3 | accepted |
 | [0033](0033-ponder.md) | ponder | P3 | accepted |
+| [0034](0034-nnue-architecture.md) | NNUE特徴量とネットワーク構成 | P4 | proposed |
+| [0035](0035-nnue-accumulator.md) | NNUE差分計算（accumulator） | P4 | proposed |
+| [0036](0036-nnue-quantization-simd.md) | NNUE量子化とSIMD実装 | P4 | proposed |
+| [0037](0037-nnue-file-format.md) | NNUE評価ファイルフォーマット | P4 | proposed |
 
 ## バックログ
 
@@ -75,14 +79,8 @@
 
 ### P4: NNUE推論
 
-| 決定事項 | 主要論点 |
-|---|---|
-| NNUE特徴量設計 | HalfKP vs HalfKA_v2、BonaPiece番号付け |
-| ネットワークアーキテクチャ | FT 256×2 vs 512×2、活性化関数 |
-| 差分計算（accumulator） | DirtyPiece、遡り差分、玉移動refresh |
-| 量子化スキーム | int16/int8、FV_SCALE |
-| SIMD実装と抽象化 | std::simd主体、スカラー基準実装 |
-| 評価ファイルフォーマット | やねうら王互換 vs 独自 |
+（すべて起草済み。0034〜0037はP3出口前の先行起草で、
+実装はP4入口から）
 
 ### P5: 学習パイプライン
 
