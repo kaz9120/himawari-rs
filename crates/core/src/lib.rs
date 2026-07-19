@@ -5,6 +5,7 @@
 
 pub mod attacks;
 pub mod bitboard;
+pub mod bonapiece;
 pub mod hand;
 pub mod movegen;
 pub mod moves;
