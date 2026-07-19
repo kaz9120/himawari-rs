@@ -1,4 +1,5 @@
 //! 探索・置換表・評価・時間管理（P2のADR群に基づく）。
+#![feature(portable_simd)]
 
 pub mod eval;
 pub mod mate;
@@ -6,6 +7,7 @@ pub mod movepick;
 pub mod nnue;
 pub mod nnue_acc;
 pub mod nnue_io;
+pub mod nnue_simd;
 pub mod search;
 pub mod thread;
 pub mod timeman;

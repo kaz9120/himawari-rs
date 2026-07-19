@@ -7,7 +7,8 @@
 
 use himawari_core::{Color, DirtyPiece, PieceType, Position, Square, bonapiece};
 
-use crate::nnue::{CONCAT, FT_OUT, NnueNetwork, effect_tower, forward_hidden, halfkp_active};
+use crate::nnue::{CONCAT, FT_OUT, NnueNetwork, effect_active, halfkp_active};
+use crate::nnue_simd;
 use crate::value::Value;
 
 /// 手駒の増減1件（キャプチャで増、駒打ちで減）。
@@ -85,12 +86,12 @@ impl NnueState {
         let mut concat = [0u8; CONCAT];
         for (half, c) in [(0usize, stm), (1, stm.flip())] {
             let acc = &top.acc[c.index()];
-            for (o, &a) in acc.iter().enumerate() {
-                concat[half * FT_OUT + o] = i32::from(a).clamp(0, 127) as u8;
-            }
+            nnue_simd::clip_to_u8(acc, &mut concat[half * FT_OUT..(half + 1) * FT_OUT]);
         }
-        effect_tower(net, pos, &mut concat);
-        forward_hidden(net, &concat)
+        let mut ef = Vec::with_capacity(50);
+        effect_active(pos, &mut ef);
+        nnue_simd::effect_tower(net, &ef, &mut concat);
+        nnue_simd::forward_hidden(net, &concat)
     }
 
     /// 視点cのaccumulatorを最上段に用意する。
@@ -143,9 +144,7 @@ impl NnueState {
         }
         for &f in &features {
             let base = f as usize * FT_OUT;
-            for (o, a) in acc.iter_mut().enumerate() {
-                *a = a.wrapping_add(net.ft_w[base + o]);
-            }
+            nnue_simd::ft_add(acc, &net.ft_w[base..base + FT_OUT]);
         }
         top.computed[c.index()] = true;
     }
@@ -191,13 +190,11 @@ fn apply_dirty(net: &NnueNetwork, c: Color, king: Square, e: &mut AccEntry) {
     let acc = &mut e.acc[c.index()];
     let mut sub_add = |bp: u16, add: bool| {
         let idx = bonapiece::halfkp_index(c, king, bp) as usize * FT_OUT;
-        for (o, a) in acc.iter_mut().enumerate() {
-            let w = net.ft_w[idx + o];
-            *a = if add {
-                a.wrapping_add(w)
-            } else {
-                a.wrapping_sub(w)
-            };
+        let w = &net.ft_w[idx..idx + FT_OUT];
+        if add {
+            nnue_simd::ft_add(acc, w);
+        } else {
+            nnue_simd::ft_sub(acc, w);
         }
     };
     for j in 0..e.dirty.count as usize {
