@@ -7,6 +7,7 @@ use std::io::Write;
 use std::sync::{Arc, mpsc};
 
 use himawari_core::{Position, SFEN_STARTPOS};
+use himawari_engine::nnue::NnueNetwork;
 use himawari_engine::{EngineOptions, Limits, ThreadPool};
 
 const ENGINE_NAME: &str = "Himawari";
@@ -36,6 +37,7 @@ fn print_options() {
     print_line("option name NetworkDelay2 type spin default 1120 min 0 max 10000");
     print_line("option name MaxMovesToDraw type spin default 0 min 0 max 100000");
     print_line("option name MultiPV type spin default 1 min 1 max 128");
+    print_line("option name EvalFile type string default <empty>");
 }
 
 fn parse_position(tokens: &[&str]) -> Option<Position> {
@@ -140,7 +142,35 @@ fn set_option(opts: &mut EngineOptions, tokens: &[&str]) {
         "USI_Ponder" => {
             opts.ponder = value == "true";
         }
+        "EvalFile" => {
+            opts.eval_file = if value == "<empty>" { String::new() } else { value };
+        }
         _ => {}
+    }
+}
+
+/// EvalFileを読み込む。失敗は起動エラー（ADR-0037: 駒割への
+/// フォールバックはしない。気づかず弱いまま対局する事故を防ぐ）。
+fn load_eval(path: &str) -> Option<(String, std::sync::Arc<NnueNetwork>)> {
+    if path.is_empty() {
+        return None;
+    }
+    let mut f = match std::fs::File::open(path) {
+        Ok(f) => f,
+        Err(e) => {
+            print_line(&format!("info string error: EvalFileを開けません: {e}"));
+            std::process::exit(1);
+        }
+    };
+    match himawari_engine::nnue_io::load(&mut f) {
+        Ok((net, lineage)) => {
+            print_line(&format!("info string EvalFile loaded: {path} ({lineage})"));
+            Some((path.to_string(), std::sync::Arc::new(net)))
+        }
+        Err(e) => {
+            print_line(&format!("info string error: EvalFile読み込み失敗: {e}"));
+            std::process::exit(1);
+        }
     }
 }
 
@@ -181,16 +211,21 @@ fn main() {
             }
             "setoption" => set_option(&mut opts, &tokens[1..]),
             "isready" => {
-                // 重い初期化（置換表確保・スレッド起動）はここで行う。
-                // Hash/Threadsが変わっていたらプールを作り直す
-                let params = Some((opts.hash_mb, opts.threads.max(1)));
-                if pool.as_ref().map(|p| (p.hash_mb, p.threads)) != params {
+                // 重い初期化（置換表確保・スレッド起動・評価関数読み込み）は
+                // ここで行う。Hash/Threads/EvalFileが変わったら作り直す
+                let params = Some((opts.hash_mb, opts.threads.max(1), opts.eval_file.clone()));
+                if pool
+                    .as_ref()
+                    .map(|p| (p.hash_mb, p.threads, p.eval_file.clone()))
+                    != params
+                {
                     if let Some(p) = pool.take() {
                         p.quit();
                     }
                     pool = Some(ThreadPool::new(
                         opts.hash_mb,
                         opts.threads,
+                        load_eval(&opts.eval_file),
                         Arc::new(print_line),
                     ));
                 }
@@ -212,6 +247,7 @@ fn main() {
                     pool = Some(ThreadPool::new(
                         opts.hash_mb,
                         opts.threads,
+                        load_eval(&opts.eval_file),
                         Arc::new(print_line),
                     ));
                 }

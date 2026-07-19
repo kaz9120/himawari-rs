@@ -17,6 +17,7 @@ fn make_pool() -> (ThreadPool, Lines) {
     let pool = ThreadPool::new(
         16,
         1,
+        None,
         Arc::new(move |s: &str| sink.lock().unwrap().push(s.to_string())),
     );
     (pool, lines)

@@ -125,3 +125,42 @@ fn multipv_lines_are_distinct_and_sorted() {
     assert!(lines[0].1 >= lines[1].1 && lines[1].1 >= lines[2].1);
     assert!(lines[0].2 != lines[1].2 && lines[1].2 != lines[2].2 && lines[0].2 != lines[2].2);
 }
+
+/// NNUE評価での探索が完走し合法手を返すこと（push/pop契約の
+/// 全経路ストレス。NMP・LMR・qsearchを含む）。
+#[test]
+fn nnue_search_returns_legal_moves() {
+    use himawari_engine::nnue::NnueNetwork;
+    let net = std::sync::Arc::new(NnueNetwork::random(11));
+    for sfen in [
+        SFEN_STARTPOS,
+        "1n1gk2nl/1r4g2/1sppppspp/L5p2/1p5P1/2P6/1PSPPPPSP/7R1/1N1GKG1NL w BLPbp 24",
+    ] {
+        let pos = Position::from_sfen(sfen).unwrap();
+        let shared = Arc::new(Shared::new(16));
+        let limits = Limits {
+            depth: 6,
+            ..Limits::default()
+        };
+        let tm = TimeManager::new(&limits, pos.side_to_move(), pos.game_ply(), 120, 1120);
+        let mut worker = Worker::new(
+            pos.clone(),
+            shared,
+            limits,
+            tm,
+            0,
+            1,
+            Evaluator::nnue(Arc::clone(&net)),
+            History::default(),
+            CounterMoves::default(),
+        );
+        let result = worker.iterate(&mut |_| {});
+        let mut legal = MoveList::default();
+        generate_legal(&pos, false, &mut legal);
+        assert!(
+            legal.as_slice().contains(&result.best),
+            "非合法手: {}",
+            result.best.to_usi()
+        );
+    }
+}

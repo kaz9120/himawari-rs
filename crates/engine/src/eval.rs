@@ -1,16 +1,28 @@
 //! 評価関数インターフェース（ADR-0023）。
 //!
-//! enumディスパッチ。P2は駒割＋tempoのMaterialのみ。
-//! push/popはdo_move/undo_moveと対で呼ぶ契約（NNUEの布石）。
+//! enumディスパッチ。駒割＋tempoのMaterialと、NNUE（2塔構成、
+//! ADR-0034）。push/popはdo_move/undo_moveと対で呼ぶ契約。
+
+use std::sync::Arc;
 
 use himawari_core::{Color, Position};
 
+use crate::nnue::NnueNetwork;
+use crate::nnue_acc::NnueState;
 use crate::value::Value;
 
 const TEMPO: Value = 20;
 
 pub enum Evaluator {
     Material(MaterialEval),
+    Nnue(NnueEval),
+}
+
+/// NNUE評価（ADR-0034〜0036）。ネットは全スレッド共有、
+/// accumulatorスタックはスレッドローカル。
+pub struct NnueEval {
+    net: Arc<NnueNetwork>,
+    state: NnueState,
 }
 
 #[derive(Default)]
@@ -23,15 +35,24 @@ impl Evaluator {
         Evaluator::Material(MaterialEval::default())
     }
 
+    pub fn nnue(net: Arc<NnueNetwork>) -> Evaluator {
+        Evaluator::Nnue(NnueEval {
+            net,
+            state: NnueState::new(),
+        })
+    }
+
     pub fn new_search(&mut self, _pos: &Position) {
         match self {
             Evaluator::Material(m) => m.depth = 0,
+            Evaluator::Nnue(n) => n.state.reset(),
         }
     }
 
-    pub fn push(&mut self, _pos: &Position) {
+    pub fn push(&mut self, pos: &Position) {
         match self {
             Evaluator::Material(m) => m.depth += 1,
+            Evaluator::Nnue(n) => n.state.push(pos),
         }
     }
 
@@ -41,6 +62,7 @@ impl Evaluator {
                 m.depth -= 1;
                 debug_assert!(m.depth >= 0, "push/popの対応が壊れている");
             }
+            Evaluator::Nnue(n) => n.state.pop(),
         }
     }
 
@@ -56,6 +78,7 @@ impl Evaluator {
                 };
                 v + TEMPO
             }
+            Evaluator::Nnue(n) => n.state.evaluate(&n.net, pos),
         }
     }
 }

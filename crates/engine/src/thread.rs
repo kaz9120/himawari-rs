@@ -14,6 +14,7 @@ use himawari_core::Position;
 
 use crate::eval::Evaluator;
 use crate::movepick::{CounterMoves, History};
+use crate::nnue::NnueNetwork;
 use crate::search::{Shared, Worker};
 use crate::timeman::{Limits, TimeManager};
 use crate::value::{VALUE_MATE, Value};
@@ -31,6 +32,7 @@ pub struct EngineOptions {
     pub max_moves_to_draw: u16,
     pub multi_pv: usize,
     pub ponder: bool,
+    pub eval_file: String,
 }
 
 impl Default for EngineOptions {
@@ -43,6 +45,7 @@ impl Default for EngineOptions {
             max_moves_to_draw: 0,
             multi_pv: 1,
             ponder: false,
+            eval_file: String::new(),
         }
     }
 }
@@ -103,6 +106,8 @@ pub struct ThreadPool {
     /// 生成時のパラメータ（isreadyでの再生成判定用）。
     pub hash_mb: usize,
     pub threads: usize,
+    /// 読み込み済みの評価関数の識別（EvalFileパス）。
+    pub eval_file: String,
 }
 
 /// USIのscore表記（cp / mate）を組み立てる。
@@ -119,6 +124,7 @@ fn format_score(v: Value) -> String {
 fn spawn_worker(
     shared: Arc<Shared>,
     ponder: Arc<PonderCtl>,
+    net: Option<Arc<NnueNetwork>>,
     is_main: bool,
     on_line: Option<OnLine>,
 ) -> WorkerThread {
@@ -180,6 +186,10 @@ fn spawn_worker(
                         (inf, tm)
                     };
                     let was_ponder = j.ponder;
+                    let evaluator = match &net {
+                        Some(n) => Evaluator::nnue(Arc::clone(n)),
+                        None => Evaluator::material(),
+                    };
                     let mut worker = Worker::new(
                         j.pos,
                         Arc::clone(&shared),
@@ -187,7 +197,7 @@ fn spawn_worker(
                         tm,
                         j.opts.max_moves_to_draw,
                         j.opts.multi_pv,
-                        Evaluator::material(),
+                        evaluator,
                         std::mem::take(&mut history),
                         std::mem::take(&mut counters),
                     );
@@ -262,18 +272,29 @@ fn spawn_worker(
 
 impl ThreadPool {
     /// on_lineはメインワーカーからのUSI出力行（info/bestmove）を受け取る。
-    pub fn new(hash_mb: usize, threads: usize, on_line: OnLine) -> ThreadPool {
+    /// netがSomeならNNUE評価、Noneなら駒割評価で探索する。
+    pub fn new(
+        hash_mb: usize,
+        threads: usize,
+        net: Option<(String, Arc<NnueNetwork>)>,
+        on_line: OnLine,
+    ) -> ThreadPool {
         let shared = Arc::new(Shared::new(hash_mb));
         let ponder = Arc::new(PonderCtl {
             state: Mutex::new(PonderState::None),
             cv: Condvar::new(),
         });
+        let (eval_file, net_arc) = match net {
+            Some((path, n)) => (path, Some(n)),
+            None => (String::new(), None),
+        };
         let n = threads.max(1);
         let workers = (0..n)
             .map(|i| {
                 spawn_worker(
                     Arc::clone(&shared),
                     Arc::clone(&ponder),
+                    net_arc.clone(),
                     i == 0,
                     if i == 0 { Some(Arc::clone(&on_line)) } else { None },
                 )
@@ -286,6 +307,7 @@ impl ThreadPool {
             pending: Mutex::new(None),
             hash_mb,
             threads: n,
+            eval_file,
         }
     }
 
