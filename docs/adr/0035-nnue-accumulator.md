@@ -6,6 +6,9 @@
 
 ## Context
 
+本ADRの対象は第1塔（KP系FT）のみ。利き塔（ADR-0034）は
+差分状態を持たず毎回全計算するため、accumulatorと無関係。
+
 NNUEの速度はFT出力（accumulator）の差分更新で決まる。
 1手で変わる特徴は高々数個なので、全計算（約1500特徴の和）を
 避けて加減算だけで更新する。coreのDirtyPiece（ADR-0014で
