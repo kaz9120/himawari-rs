@@ -162,6 +162,13 @@ impl Worker {
 
     /// 反復深化。各イテレーション完了時にon_iterを呼ぶ。
     pub fn iterate(&mut self, on_iter: &mut dyn FnMut(IterInfo)) -> SearchResult {
+        // 入玉宣言勝ち（ADR-0030）: 成立していれば探索せず宣言する
+        if self.pos.can_declare_win() {
+            return SearchResult {
+                best: Move::WIN,
+                score: mate_in(0),
+            };
+        }
         self.shared.tt.new_search();
         self.evaluator.new_search(&self.pos);
         let mut list = MoveList::default();
@@ -306,6 +313,10 @@ impl Worker {
         }
         if self.max_moves_to_draw > 0 && self.pos.game_ply() >= self.max_moves_to_draw {
             return self.draw_value();
+        }
+        // 入玉宣言勝ち（ADR-0030）。玉が敵陣外なら即falseで安い
+        if self.pos.can_declare_win() {
+            return mate_in(ply);
         }
 
         // mate distance pruning
@@ -567,6 +578,10 @@ impl Worker {
             Repetition::Superior => return VALUE_SUPERIOR,
             Repetition::Inferior => return -VALUE_SUPERIOR,
             Repetition::None => {}
+        }
+        // 入玉宣言勝ち（ADR-0030）
+        if self.pos.can_declare_win() {
+            return mate_in(ply);
         }
 
         let in_check = self.pos.in_check();
