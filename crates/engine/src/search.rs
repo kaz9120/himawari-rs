@@ -100,6 +100,8 @@ pub struct RootMove {
 pub struct SearchResult {
     pub best: Move,
     pub score: Value,
+    /// 相手の予測応手（PVの2手目。なければNONE。ADR-0033）。
+    pub ponder: Move,
 }
 
 pub struct Worker {
@@ -184,6 +186,7 @@ impl Worker {
             return SearchResult {
                 best: Move::WIN,
                 score: mate_in(0),
+                ponder: Move::NONE,
             };
         }
         self.shared.tt.new_search();
@@ -204,6 +207,7 @@ impl Worker {
             return SearchResult {
                 best: Move::RESIGN,
                 score: mated_in(0),
+                ponder: Move::NONE,
             };
         }
         let mut last_score = VALUE_ZERO;
@@ -282,6 +286,7 @@ impl Worker {
         SearchResult {
             best: self.root_moves[0].mv,
             score: last_score,
+            ponder: self.root_moves[0].pv.get(1).copied().unwrap_or(Move::NONE),
         }
     }
 

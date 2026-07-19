@@ -30,6 +30,7 @@ pub struct EngineOptions {
     pub network_delay2: u64,
     pub max_moves_to_draw: u16,
     pub multi_pv: usize,
+    pub ponder: bool,
 }
 
 impl Default for EngineOptions {
@@ -41,6 +42,7 @@ impl Default for EngineOptions {
             network_delay2: 1120,
             max_moves_to_draw: 0,
             multi_pv: 1,
+            ponder: false,
         }
     }
 }
@@ -49,6 +51,7 @@ struct SearchJob {
     pos: Position,
     limits: Limits,
     opts: EngineOptions,
+    ponder: bool,
 }
 
 enum Job {
@@ -64,6 +67,28 @@ struct Ctl {
     idle_cv: Condvar,
 }
 
+/// ponder中のbestmove保留状態（ADR-0033）。
+/// go ponder中は探索が終わってもbestmoveを出さず、ponderhit/stopの
+/// 解決を待つ（2手指し防御）。
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+enum PonderState {
+    /// ponderしていない（通常探索）。
+    None,
+    /// ponder探索中。
+    Searching,
+    /// ponder探索が自然終了し、bestmoveを保留して待機中。
+    FinishedHolding,
+    /// ponderhitで実時間探索へ切替（探索中なら無音キャンセル）。
+    Hit,
+    /// stopされた（bestmoveを出してよい）。
+    Stopped,
+}
+
+struct PonderCtl {
+    state: Mutex<PonderState>,
+    cv: Condvar,
+}
+
 struct WorkerThread {
     ctl: Arc<Ctl>,
     handle: Option<JoinHandle<()>>,
@@ -72,6 +97,9 @@ struct WorkerThread {
 pub struct ThreadPool {
     workers: Vec<WorkerThread>,
     shared: Arc<Shared>,
+    ponder: Arc<PonderCtl>,
+    /// ponderhit時に実時間で再起動するためのジョブ控え。
+    pending: Mutex<Option<SearchJob>>,
     /// 生成時のパラメータ（isreadyでの再生成判定用）。
     pub hash_mb: usize,
     pub threads: usize,
@@ -90,6 +118,7 @@ fn format_score(v: Value) -> String {
 
 fn spawn_worker(
     shared: Arc<Shared>,
+    ponder: Arc<PonderCtl>,
     is_main: bool,
     on_line: Option<OnLine>,
 ) -> WorkerThread {
@@ -123,8 +152,8 @@ fn spawn_worker(
                     counters.clear();
                 }
                 Job::Search(j) => {
-                    // ヘルパーは時間・ノード制限を持たずstopフラグで止まる
-                    let (limits, tm) = if is_main {
+                    // ヘルパーとponder探索は時間制限を持たずstopフラグで止まる
+                    let (limits, tm) = if is_main && !j.ponder {
                         let tm = TimeManager::new(
                             &j.limits,
                             j.pos.side_to_move(),
@@ -150,6 +179,7 @@ fn spawn_worker(
                         );
                         (inf, tm)
                     };
+                    let was_ponder = j.ponder;
                     let mut worker = Worker::new(
                         j.pos,
                         Arc::clone(&shared),
@@ -191,8 +221,30 @@ fn spawn_worker(
                     if is_main {
                         // メインの結論が出たらヘルパーも止める
                         shared.stop.store(true, Ordering::Relaxed);
-                        if let Some(out) = &on_line {
-                            out(&format!("bestmove {}", result.best.to_usi()));
+                        // ponder中はbestmoveを保留し、ponderhit/stopの解決を
+                        // 待つ（ADR-0033の2手指し防御）
+                        let emit = if was_ponder {
+                            let mut st = ponder.state.lock().expect("ponder lock");
+                            if *st == PonderState::Searching {
+                                *st = PonderState::FinishedHolding;
+                                ponder.cv.notify_all();
+                                while *st == PonderState::FinishedHolding {
+                                    st = ponder.cv.wait(st).expect("ponder wait");
+                                }
+                            }
+                            // Hit（無音キャンセル→実時間で再起動）ならbestmoveを
+                            // 出さない。Stoppedなら出す
+                            *st == PonderState::Stopped
+                        } else {
+                            true
+                        };
+                        if emit && let Some(out) = &on_line {
+                            let ponder_hint = if j.opts.ponder && result.ponder != himawari_core::Move::NONE {
+                                format!(" ponder {}", result.ponder.to_usi())
+                            } else {
+                                String::new()
+                            };
+                            out(&format!("bestmove {}{}", result.best.to_usi(), ponder_hint));
                         }
                     }
                     let mut idle = ctl2.idle.lock().expect("idle lock");
@@ -212,11 +264,16 @@ impl ThreadPool {
     /// on_lineはメインワーカーからのUSI出力行（info/bestmove）を受け取る。
     pub fn new(hash_mb: usize, threads: usize, on_line: OnLine) -> ThreadPool {
         let shared = Arc::new(Shared::new(hash_mb));
+        let ponder = Arc::new(PonderCtl {
+            state: Mutex::new(PonderState::None),
+            cv: Condvar::new(),
+        });
         let n = threads.max(1);
         let workers = (0..n)
             .map(|i| {
                 spawn_worker(
                     Arc::clone(&shared),
+                    Arc::clone(&ponder),
                     i == 0,
                     if i == 0 { Some(Arc::clone(&on_line)) } else { None },
                 )
@@ -225,13 +282,36 @@ impl ThreadPool {
         ThreadPool {
             workers,
             shared,
+            ponder,
+            pending: Mutex::new(None),
             hash_mb,
             threads: n,
         }
     }
 
     pub fn go(&self, pos: Position, limits: Limits, opts: EngineOptions) {
+        self.dispatch(pos, limits, opts, false);
+    }
+
+    /// go ponder（ADR-0033）。時間制限なしで探索し、bestmoveは
+    /// ponderhit/stopまで保留される。
+    pub fn go_ponder(&self, pos: Position, limits: Limits, opts: EngineOptions) {
+        *self.pending.lock().expect("pending lock") = Some(SearchJob {
+            pos: pos.clone(),
+            limits: limits.clone(),
+            opts: opts.clone(),
+            ponder: false,
+        });
+        self.dispatch(pos, limits, opts, true);
+    }
+
+    fn dispatch(&self, pos: Position, limits: Limits, opts: EngineOptions, ponder: bool) {
         self.wait_idle();
+        *self.ponder.state.lock().expect("ponder lock") = if ponder {
+            PonderState::Searching
+        } else {
+            PonderState::None
+        };
         self.shared.stop.store(false, Ordering::Relaxed);
         self.shared.nodes.store(0, Ordering::Relaxed);
         for w in &self.workers {
@@ -243,12 +323,50 @@ impl ThreadPool {
                 pos: pos.clone(),
                 limits: limits.clone(),
                 opts: opts.clone(),
+                ponder,
             })));
             w.ctl.cv.notify_all();
         }
     }
 
+    /// ponderhit（ADR-0033）。探索中なら無音キャンセルして実時間で
+    /// 再起動する（TTが木を即復元する）。保留中なら即bestmove。
+    pub fn ponderhit(&self) {
+        let relaunch = {
+            let mut st = self.ponder.state.lock().expect("ponder lock");
+            match *st {
+                PonderState::Searching => {
+                    *st = PonderState::Hit;
+                    self.shared.stop.store(true, Ordering::Relaxed);
+                    true
+                }
+                PonderState::FinishedHolding => {
+                    *st = PonderState::Stopped;
+                    self.ponder.cv.notify_all();
+                    false
+                }
+                _ => false,
+            }
+        };
+        if relaunch {
+            self.wait_idle();
+            if let Some(job) = self.pending.lock().expect("pending lock").take() {
+                self.dispatch(job.pos, job.limits, job.opts, false);
+            }
+        }
+    }
+
     pub fn stop(&self) {
+        {
+            let mut st = self.ponder.state.lock().expect("ponder lock");
+            match *st {
+                PonderState::Searching | PonderState::FinishedHolding => {
+                    *st = PonderState::Stopped;
+                    self.ponder.cv.notify_all();
+                }
+                _ => {}
+            }
+        }
         self.shared.stop.store(true, Ordering::Relaxed);
     }
 

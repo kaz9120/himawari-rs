@@ -83,8 +83,7 @@ fn parse_go(tokens: &[&str]) -> Limits {
                 continue;
             }
             "ponder" => {
-                // P2ではUSI_Ponder=false運用（ADR-0021）。infinite相当で扱う
-                limits.infinite = true;
+                // ponderフラグは呼び出し側がトークンで判定する（ADR-0033）
                 i += 1;
                 continue;
             }
@@ -137,6 +136,9 @@ fn set_option(opts: &mut EngineOptions, tokens: &[&str]) {
             if let Ok(v) = value.parse::<usize>() {
                 opts.multi_pv = v.max(1);
             }
+        }
+        "USI_Ponder" => {
+            opts.ponder = value == "true";
         }
         _ => {}
     }
@@ -205,6 +207,7 @@ fn main() {
             },
             "go" => {
                 let limits = parse_go(&tokens[1..]);
+                let is_ponder = tokens.contains(&"ponder");
                 if pool.is_none() {
                     pool = Some(ThreadPool::new(
                         opts.hash_mb,
@@ -213,7 +216,11 @@ fn main() {
                     ));
                 }
                 if let Some(p) = &pool {
-                    p.go(position.clone(), limits, opts.clone());
+                    if is_ponder {
+                        p.go_ponder(position.clone(), limits, opts.clone());
+                    } else {
+                        p.go(position.clone(), limits, opts.clone());
+                    }
                 }
             }
             "stop" | "gameover" => {
@@ -221,7 +228,11 @@ fn main() {
                     p.stop();
                 }
             }
-            "ponderhit" => {}
+            "ponderhit" => {
+                if let Some(p) = &pool {
+                    p.ponderhit();
+                }
+            }
             "quit" => break,
             _ => {}
         }
