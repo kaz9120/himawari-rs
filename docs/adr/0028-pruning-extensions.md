@@ -26,7 +26,10 @@ mate distance pruningしかない。現在の弱さは探索能力の問題で�
 
 - 1機能=1SPRT。合格（H1採択）した変更だけをmainに取り込む
 - 既定条件: `selfplay --openings openings/start_sfens_ply24.txt
-  --tc 10+0.1 --concurrency 6`、elo0=0、elo1=5、α=β=0.05
+  --tc 10+0.1 --concurrency 8 --adjudicate 2000,8`、
+  elo0=0、elo1=5、α=β=0.05。adjudicationは駒割評価の
+  消化試合（詰みまでの指し切り）を打ち切るための運用
+  （2026-07-19、項目7のゲートまでは並列6・adjudicationなし）
 - 強化変更はelo0=0/elo1=5。簡素化・等価リファクタの非劣性確認は
   elo0=−5/elo1=0で行い、H1採択（elo≒0以上の証拠）で取り込み可
 - 単体では強さに現れない配管（評価値の受け渡し等の基盤）は、
