@@ -43,6 +43,9 @@ struct Config {
     max_moves: usize,
     adjudicate: Option<(i32, u32)>,
     options: Vec<(String, String)>,
+    /// 候補側 / ベースライン側だけに適用するオプション。
+    copts: Vec<(String, String)>,
+    bopts: Vec<(String, String)>,
     out: String,
 }
 
@@ -87,6 +90,8 @@ fn parse_args() -> Config {
     let mut max_moves = 320usize;
     let mut adjudicate = None;
     let mut options: Vec<(String, String)> = Vec::new();
+    let mut copts: Vec<(String, String)> = Vec::new();
+    let mut bopts: Vec<(String, String)> = Vec::new();
     let mut out = "selfplay.jsonl".to_string();
 
     let mut i = 0;
@@ -170,12 +175,17 @@ fn parse_args() -> Config {
                 };
                 adjudicate = Some(pair);
             }
-            "--option" => {
+            "--option" | "--copt" | "--bopt" => {
                 let v = value(&args, i);
                 let Some((name, val)) = v.split_once('=') else {
-                    usage_exit(&format!("--option は Name=Value 形式: {v}"));
+                    usage_exit(&format!("{} は Name=Value 形式: {v}", args[i]));
                 };
-                options.push((name.to_string(), val.to_string()));
+                let entry = (name.to_string(), val.to_string());
+                match args[i].as_str() {
+                    "--copt" => copts.push(entry),
+                    "--bopt" => bopts.push(entry),
+                    _ => options.push(entry),
+                }
             }
             "--out" => out = value(&args, i),
             other => usage_exit(&format!("不明な引数: {other}")),
@@ -232,6 +242,8 @@ fn parse_args() -> Config {
         max_moves,
         adjudicate,
         options,
+        copts,
+        bopts,
         out,
     }
 }
@@ -292,13 +304,18 @@ fn worker(
     counter: &AtomicU64,
     agg: &Mutex<Aggregate>,
 ) -> Result<(), String> {
-    let mut engine_opts = vec![
+    let common = vec![
         ("USI_Hash".to_string(), cfg.hash_mb.to_string()),
         ("Threads".to_string(), "1".to_string()),
     ];
-    engine_opts.extend(cfg.options.iter().cloned());
-    let mut baseline = UsiEngine::launch(&cfg.baseline, &engine_opts)?;
-    let mut candidate = UsiEngine::launch(&cfg.candidate, &engine_opts)?;
+    let mut base_opts = common.clone();
+    base_opts.extend(cfg.options.iter().cloned());
+    base_opts.extend(cfg.bopts.iter().cloned());
+    let mut cand_opts = common;
+    cand_opts.extend(cfg.options.iter().cloned());
+    cand_opts.extend(cfg.copts.iter().cloned());
+    let mut baseline = UsiEngine::launch(&cfg.baseline, &base_opts)?;
+    let mut candidate = UsiEngine::launch(&cfg.candidate, &cand_opts)?;
     let game_cfg = GameConfig {
         tc: cfg.tc.to_time_control(),
         max_moves: cfg.max_moves,
