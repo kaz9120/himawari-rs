@@ -141,10 +141,13 @@ impl Worker {
         self.shared.stop.load(Ordering::Relaxed)
     }
 
-    /// 定期的な時間・ノード制限の検査（メイン探索スレッドの責務。ADR-0020）。
+    /// 定期的な時間・ノード制限の検査。時間制限を持つのはメイン
+    /// ワーカーだけ（ヘルパーはtmが無制限。ADR-0020, 0031）。
+    /// あわせてローカルのノード数を共有カウンタへ流し込む。
     #[inline]
     fn check_limits(&self) {
         if self.nodes.is_multiple_of(2048) {
+            self.shared.nodes.fetch_add(2048, Ordering::Relaxed);
             if self.tm.over_maximum() {
                 self.shared.stop.store(true, Ordering::Relaxed);
             }
@@ -221,7 +224,8 @@ impl Worker {
                         depth,
                         score,
                         pv,
-                        nodes: self.nodes,
+                        // 全ワーカー合算（単スレッドではローカル値と一致）
+                        nodes: self.shared.nodes.load(Ordering::Relaxed).max(self.nodes),
                         elapsed_ms: self.tm.elapsed().as_millis() as u64,
                         hashfull: self.shared.tt.hashfull(),
                     });
@@ -235,7 +239,10 @@ impl Worker {
                 break;
             }
         }
-        self.shared.nodes.fetch_add(self.nodes, Ordering::Relaxed);
+        // check_limitsで2048刻みに流し込んだ分を除いた端数を合算する
+        self.shared
+            .nodes
+            .fetch_add(self.nodes % 2048, Ordering::Relaxed);
         SearchResult {
             best: best_move,
             score: last_score,

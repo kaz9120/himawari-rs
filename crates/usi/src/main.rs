@@ -4,7 +4,7 @@
 //! 出力は行単位でロックしてflushする。
 
 use std::io::Write;
-use std::sync::mpsc;
+use std::sync::{Arc, mpsc};
 
 use himawari_core::{Position, SFEN_STARTPOS};
 use himawari_engine::{EngineOptions, Limits, ThreadPool};
@@ -173,9 +173,18 @@ fn main() {
             }
             "setoption" => set_option(&mut opts, &tokens[1..]),
             "isready" => {
-                // 重い初期化（置換表確保・スレッド起動）はここで行う
-                if pool.is_none() {
-                    pool = Some(ThreadPool::new(opts.hash_mb, Box::new(print_line)));
+                // 重い初期化（置換表確保・スレッド起動）はここで行う。
+                // Hash/Threadsが変わっていたらプールを作り直す
+                let params = Some((opts.hash_mb, opts.threads.max(1)));
+                if pool.as_ref().map(|p| (p.hash_mb, p.threads)) != params {
+                    if let Some(p) = pool.take() {
+                        p.quit();
+                    }
+                    pool = Some(ThreadPool::new(
+                        opts.hash_mb,
+                        opts.threads,
+                        Arc::new(print_line),
+                    ));
                 }
                 print_line("readyok");
             }
@@ -191,7 +200,11 @@ fn main() {
             "go" => {
                 let limits = parse_go(&tokens[1..]);
                 if pool.is_none() {
-                    pool = Some(ThreadPool::new(opts.hash_mb, Box::new(print_line)));
+                    pool = Some(ThreadPool::new(
+                        opts.hash_mb,
+                        opts.threads,
+                        Arc::new(print_line),
+                    ));
                 }
                 if let Some(p) = &pool {
                     p.go(position.clone(), limits, opts.clone());
