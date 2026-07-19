@@ -340,7 +340,7 @@ impl Worker {
         }
 
         if depth == 0 {
-            return self.qsearch(alpha, beta, ply);
+            return self.qsearch(alpha, beta, ply, 0);
         }
 
         // IIR（ADR-0028）: TTに手がないノードは良い順序を作れないので
@@ -551,7 +551,7 @@ impl Worker {
         best
     }
 
-    fn qsearch(&mut self, mut alpha: Value, beta: Value, ply: usize) -> Value {
+    fn qsearch(&mut self, mut alpha: Value, beta: Value, ply: usize, qdepth: i32) -> Value {
         if self.stopped() {
             return VALUE_ZERO;
         }
@@ -583,7 +583,8 @@ impl Worker {
             best = stand;
         }
 
-        let mut picker = MovePicker::new_qsearch(&self.pos);
+        // 入口plyだけ静かな王手も読む（ADR-0028の項目7）
+        let mut picker = MovePicker::new_qsearch(&self.pos, qdepth == 0);
         let mut count = 0u32;
         while let Some(m) = picker.next(&self.pos, &self.history) {
             if !self.pos.is_legal(m) {
@@ -592,7 +593,7 @@ impl Worker {
             count += 1;
             self.pos.do_move(m);
             self.evaluator.push(&self.pos);
-            let value = -self.qsearch(-beta, -alpha, ply + 1);
+            let value = -self.qsearch(-beta, -alpha, ply + 1, qdepth - 1);
             self.evaluator.pop();
             self.pos.undo_move(m);
             if self.stopped() {

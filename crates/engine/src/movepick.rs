@@ -85,6 +85,8 @@ enum Stage {
     Evasions,
     QCapturesInit,
     QCaptures,
+    QChecksInit,
+    QChecks,
     Done,
 }
 
@@ -108,6 +110,8 @@ pub struct MovePicker {
     bad_captures: Vec<Move>,
     yielded_quiet_stage: [Move; 3],
     qsearch: bool,
+    /// qsearchの入口plyだけ、取る手の後に静かな王手も返す（ADR-0028）。
+    with_checks: bool,
 }
 
 impl MovePicker {
@@ -128,10 +132,11 @@ impl MovePicker {
             bad_captures: Vec::new(),
             yielded_quiet_stage: [Move::NONE; 3],
             qsearch: false,
+            with_checks: false,
         }
     }
 
-    pub fn new_qsearch(pos: &Position) -> Self {
+    pub fn new_qsearch(pos: &Position, with_checks: bool) -> Self {
         let stage = if pos.in_check() {
             Stage::EvasionsInit
         } else {
@@ -146,6 +151,7 @@ impl MovePicker {
             bad_captures: Vec::new(),
             yielded_quiet_stage: [Move::NONE; 3],
             qsearch: true,
+            with_checks,
         }
     }
 
@@ -287,10 +293,34 @@ impl MovePicker {
                         }
                     }
                     None => {
-                        self.stage = Stage::Done;
-                        return None;
+                        if self.with_checks {
+                            self.stage = Stage::QChecksInit;
+                        } else {
+                            self.stage = Stage::Done;
+                            return None;
+                        }
                     }
                 },
+                Stage::QChecksInit => {
+                    let mut list = MoveList::default();
+                    generate(pos, GenType::Quiets, false, &mut list);
+                    for &m in &list {
+                        // 駒損しない静かな王手だけを読む（ADR-0028）
+                        if pos.gives_check(m) && pos.see_ge(m, 0) {
+                            self.scored.push((m, history.get(m)));
+                        }
+                    }
+                    self.stage = Stage::QChecks;
+                }
+                Stage::QChecks => {
+                    return match self.pick_best() {
+                        Some(m) => Some(m),
+                        None => {
+                            self.stage = Stage::Done;
+                            None
+                        }
+                    };
+                }
                 Stage::Done => return None,
             }
             if self.stage == Stage::Done && self.qsearch {
