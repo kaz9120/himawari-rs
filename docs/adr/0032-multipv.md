@@ -1,6 +1,6 @@
 # 0032: MultiPV
 
-- Status: proposed
+- Status: accepted
 - Date: 2026-07-19
 - 関連ADR: [0019](0019-usi-architecture.md), [0024](0024-search-v1.md)
 
