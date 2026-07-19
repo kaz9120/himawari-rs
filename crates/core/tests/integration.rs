@@ -261,6 +261,32 @@ fn repetition_scan_stops_at_null_move() {
     assert_eq!(pos.repetition_state(), Repetition::None);
 }
 
+/// 入玉宣言勝ち（27点法、ADR-0030）の境界条件。
+#[test]
+fn declaration_win_boundaries() {
+    // 先手: 敵陣に龍+と9枚（14点）+持駒RB4G（14点）= 28点、駒10枚
+    let valid = "K+R+P+P+P+P+P+P+P/7+P+P/9/9/9/9/9/9/4k4 b RB4G 1";
+    assert!(Position::from_sfen(valid).unwrap().can_declare_win());
+    // 27点しかない先手は不成立
+    let short = "K+R+P+P+P+P+P+P+P/7+P+P/9/9/9/9/9/9/4k4 b RB3G 1";
+    assert!(!Position::from_sfen(short).unwrap().can_declare_win());
+    // 後手は27点で成立
+    let white = "4K4/9/9/9/9/9/9/+p+p7/k+r+p+p+p+p+p+p+p w rb3g 1";
+    assert!(Position::from_sfen(white).unwrap().can_declare_win());
+    // 後手26点は不成立
+    let white_short = "4K4/9/9/9/9/9/9/+p+p7/k+r+p+p+p+p+p+p+p w rb2g 1";
+    assert!(!Position::from_sfen(white_short).unwrap().can_declare_win());
+    // 王手されていると不成立（9bの後手金が玉の背後に利く）
+    let in_check = "K+R+P+P+P+P+P+P+P/g6+P+P/9/9/9/9/9/9/4k4 b RB3GS 1";
+    assert!(!Position::from_sfen(in_check).unwrap().can_declare_win());
+    // 敵陣内の駒が9枚では不成立
+    let few = "K+R+P+P+P+P+P+P+P/8+P/9/9/9/9/9/9/4k4 b RB4G 1";
+    assert!(!Position::from_sfen(few).unwrap().can_declare_win());
+    // 玉が敵陣の外では不成立
+    let outside = "9/9/9/K+R+P+P+P+P+P+P+P/9/9/9/7+P+P/4k4 b RB4G 1";
+    assert!(!Position::from_sfen(outside).unwrap().can_declare_win());
+}
+
 /// SEE: 玉に守られた歩を香で取るのは損、守られていなければ得。
 #[test]
 fn see_defended_and_undefended() {

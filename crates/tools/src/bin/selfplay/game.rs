@@ -105,12 +105,12 @@ pub fn play_game(
             return Ok(GameRecord::end(Some(stm.flip()), "resign", moves));
         }
         if r.bestmove == "win" {
-            // 宣言勝ちは未対応（ADR-0027）。宣言側の負けとして記録する
-            return Ok(GameRecord::end(
-                Some(stm.flip()),
-                "declare_unsupported",
-                moves,
-            ));
+            // 宣言勝ち（ADR-0030）。27点法で検証し、不当な宣言は反則負け
+            return if pos.can_declare_win() {
+                Ok(GameRecord::end(Some(stm), "declaration", moves))
+            } else {
+                Ok(GameRecord::end(Some(stm.flip()), "declaration_invalid", moves))
+            };
         }
         let Some(m) = pos.move_from_usi(&r.bestmove) else {
             return Ok(GameRecord::end(Some(stm.flip()), "illegal", moves));

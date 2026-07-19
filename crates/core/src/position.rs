@@ -24,6 +24,14 @@ pub const fn piece_value(pt: PieceType) -> i32 {
     PIECE_VALUE[pt.index()]
 }
 
+/// 入玉宣言の点数（ADR-0030）。飛角系5点、玉以外の他駒1点。
+const fn declaration_points(pt: PieceType) -> u32 {
+    match pt {
+        PieceType::ROOK | PieceType::BISHOP | PieceType::DRAGON | PieceType::HORSE => 5,
+        _ => 1,
+    }
+}
+
 /// NNUE差分の材料（ADR-0014）。1手で変化する駒は最大2。
 #[derive(Copy, Clone, Debug)]
 pub struct DirtyPiece {
@@ -438,6 +446,37 @@ impl Position {
                 self.hands[us.index()].sub(st.captured.piece_type().unpromote());
             }
         }
+    }
+
+    /// 入玉宣言勝ち（27点法、ADR-0030）が成立するか。
+    /// 条件: 手番側の玉が敵陣三段目以内、王手されていない、
+    /// 敵陣内の玉以外の駒が10枚以上、点数（飛角馬龍5点・他1点、
+    /// 持ち駒含む）が先手28点以上・後手27点以上。
+    pub fn can_declare_win(&self) -> bool {
+        let us = self.side;
+        let zone = Bitboard::promotion_zone(us);
+        if !zone.test(self.king_sq[us.index()]) || self.in_check() {
+            return false;
+        }
+        let mut count = 0u32;
+        let mut points = 0u32;
+        for sq in self.by_color[us.index()] & zone {
+            let pt = self.board[sq.index()].piece_type();
+            if pt == PieceType::KING {
+                continue;
+            }
+            count += 1;
+            points += declaration_points(pt);
+        }
+        if count < 10 {
+            return false;
+        }
+        let hand = self.hands[us.index()];
+        for pt in PieceType::HAND_KINDS {
+            points += hand.count(pt) * declaration_points(pt);
+        }
+        let need = if us == Color::Black { 28 } else { 27 };
+        points >= need
     }
 
     /// パス（null move。ADR-0028のNMP用）。王手中は呼べない。
