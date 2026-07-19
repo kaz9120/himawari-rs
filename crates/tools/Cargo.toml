@@ -23,3 +23,7 @@ path = "src/bin/tsume.rs"
 [[bin]]
 name = "selfplay"
 path = "src/bin/selfplay/main.rs"
+
+[[bin]]
+name = "makenet"
+path = "src/bin/makenet.rs"
