@@ -49,9 +49,9 @@
 | [0027](0027-sprt-framework.md) | 強さ検証基盤（SPRT） | P3 | accepted |
 | [0028](0028-pruning-extensions.md) | 枝刈り・延長パッケージ | P3 | accepted |
 | [0029](0029-mate-search.md) | 詰み探索（mate1ply） | P3 | proposed |
-| [0030](0030-nyugyoku-declaration.md) | 入玉宣言勝ち | P3 | proposed |
-| [0031](0031-lazy-smp.md) | Lazy SMP | P3 | proposed |
-| [0032](0032-multipv-ponder.md) | MultiPV・ponder | P3 | proposed |
+| [0030](0030-nyugyoku-declaration.md) | 入玉宣言勝ち | P3 | accepted |
+| [0031](0031-lazy-smp.md) | Lazy SMP | P3 | accepted |
+| [0032](0032-multipv.md) | MultiPV | P3 | proposed |
 
 ## バックログ
 
@@ -69,6 +69,7 @@
 
 | 決定事項 | 主要論点 |
 |---|---|
+| ponder設計 | 相手番思考による実質持ち時間の拡大（棋力機能）。ponderhit後の追加探索量・時間配分、ponder中に詰みを見つけた場合の2手指し防止、stop/ponderhit競合の整理 |
 | df-pn詰み探索 | 長手数詰み。mate1ply（ADR-0029）の後段。P3では任意 |
 
 ### P4: NNUE推論
