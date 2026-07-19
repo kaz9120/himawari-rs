@@ -10,7 +10,12 @@
 //!            [--elo0 0] [--elo1 5] [--alpha 0.05] [--beta 0.05]
 //!            [--max-pairs N] [--max-moves 320]
 //!            [--adjudicate CP,PLIES] [--option Name=Value]...
-//!            [--out <path>]
+//!            [--copt Name=Value]... [--bopt Name=Value]...
+//!            [--ponder] [--out <path>]
+//!
+//! --copt/--boptは候補側/ベースライン側だけに適用するオプション
+//! （例: --copt Threads=4）。--ponderは候補側だけが相手番思考する
+//! 効果測定モード（ADR-0033）。
 //!
 //! openingsは1行1局面のSFEN。#始まりはコメント。省略時は平手初期局面
 //! のみ（決定的エンジン同士では毎ペア同一の進行になるため注意）。
