@@ -1,11 +1,15 @@
-//! 1局の実行と終局判定（ADR-0027）。
+//! 1局の実行と終局判定（ADR-0027, 0033）。
 //!
 //! 終局判定はマネージャ側で行う。合法手なし=詰み、同一局面4回=千日手
-//! （連続王手は反則）、手数上限=引き分け、resign=投了、非合法手=即負け。
-//! 時間切れはマネージャの計測で判定する。
+//! （連続王手は反則）、手数上限=引き分け、resign=投了、非合法手=即負け、
+//! 宣言勝ちは27点法で検証。時間切れはマネージャの計測で判定する。
+//!
+//! ponderモード（ADR-0033）: 指した側は予測手つきでgo ponderし、
+//! 相手の着手が予測と一致したらponderhit（消費時間はponderhitから
+//! 計測）、外れたらstopで破棄して通常のgoを送る。
 
 use std::collections::HashMap;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use himawari_core::{Color, MoveList, Position, Repetition, generate_legal};
 
@@ -41,11 +45,13 @@ impl GameRecord {
     }
 }
 
+/// ponderは色ごとの有効フラグ（[先手, 後手]。ADR-0033）。
 pub fn play_game(
     black: &mut UsiEngine,
     white: &mut UsiEngine,
     opening: &str,
     cfg: &GameConfig,
+    ponder: [bool; 2],
 ) -> Result<GameRecord, String> {
     black.new_game()?;
     white.new_game()?;
@@ -61,16 +67,19 @@ pub fn play_game(
     // スコア打ち切り用: 各エンジンの直近評価値（先手視点）と連続ply数
     let mut last_view: [Option<i32>; 2] = [None, None];
     let mut streak: [u32; 2] = [0, 0];
+    // ponder状態: 各色の予測手（USI表記）と直前の着手
+    let mut pondering: [Option<String>; 2] = [None, None];
+    let mut last_move: Option<String> = None;
 
-    loop {
+    let record = 'game: loop {
         if moves.len() >= cfg.max_moves {
-            return Ok(GameRecord::end(None, "maxmoves", moves));
+            break 'game GameRecord::end(None, "maxmoves", moves);
         }
         let mut list = MoveList::default();
         generate_legal(&pos, true, &mut list);
         let stm = pos.side_to_move();
         if list.is_empty() {
-            return Ok(GameRecord::end(Some(stm.flip()), "mate", moves));
+            break 'game GameRecord::end(Some(stm.flip()), "mate", moves);
         }
 
         let pos_cmd = if moves.is_empty() {
@@ -91,52 +100,67 @@ pub fn play_game(
             TimeControl::Nodes(n) => (format!("go nodes {n}"), Duration::from_secs(600)),
         };
         let engine: &mut UsiEngine = if stm == Color::Black { black } else { white };
-        let r = engine.think(&pos_cmd, &go_cmd, timeout)?;
+
+        let r = match pondering[stm.index()].take() {
+            Some(pred) if Some(&pred) == last_move.as_ref() => {
+                // 予測的中: ponderhitで実時間思考へ。消費はここから計測
+                engine.send("ponderhit")?;
+                engine.wait_bestmove(Instant::now(), timeout)?
+            }
+            Some(_) => {
+                // 予測外れ: 破棄してから通常のgo
+                engine.send("stop")?;
+                let _ = engine.wait_bestmove(Instant::now(), Duration::from_secs(10))?;
+                engine.think(&pos_cmd, &go_cmd, timeout)?
+            }
+            None => engine.think(&pos_cmd, &go_cmd, timeout)?,
+        };
 
         if let TimeControl::Fischer { inc_ms, .. } = cfg.tc {
             let c = &mut clock[stm.index()];
             *c -= r.elapsed_ms as i64;
             if *c < 0 {
-                return Ok(GameRecord::end(Some(stm.flip()), "timeloss", moves));
+                break 'game GameRecord::end(Some(stm.flip()), "timeloss", moves);
             }
             *c += inc_ms as i64;
         }
         if r.bestmove == "resign" {
-            return Ok(GameRecord::end(Some(stm.flip()), "resign", moves));
+            break 'game GameRecord::end(Some(stm.flip()), "resign", moves);
         }
         if r.bestmove == "win" {
             // 宣言勝ち（ADR-0030）。27点法で検証し、不当な宣言は反則負け
-            return if pos.can_declare_win() {
-                Ok(GameRecord::end(Some(stm), "declaration", moves))
+            break 'game if pos.can_declare_win() {
+                GameRecord::end(Some(stm), "declaration", moves)
             } else {
-                Ok(GameRecord::end(Some(stm.flip()), "declaration_invalid", moves))
+                GameRecord::end(Some(stm.flip()), "declaration_invalid", moves)
             };
         }
         let Some(m) = pos.move_from_usi(&r.bestmove) else {
-            return Ok(GameRecord::end(Some(stm.flip()), "illegal", moves));
+            break 'game GameRecord::end(Some(stm.flip()), "illegal", moves);
         };
         pos.do_move(m);
         moves.push(r.bestmove.clone());
+        last_move = Some(r.bestmove.clone());
 
         let c = counts.entry(pos.key()).or_insert(0);
         *c += 1;
         if *c >= 4 {
             match pos.repetition_state() {
-                Repetition::Draw => return Ok(GameRecord::end(None, "repetition", moves)),
+                Repetition::Draw => break 'game GameRecord::end(None, "repetition", moves),
                 // Win/Loseは手番側から見た連続王手の千日手の判定
                 Repetition::Win => {
-                    return Ok(GameRecord::end(
+                    break 'game GameRecord::end(
                         Some(pos.side_to_move()),
                         "repetition_foul",
                         moves,
-                    ));
+                    );
                 }
                 Repetition::Lose => {
-                    return Ok(GameRecord::end(
+                    break 'game GameRecord::end(
                         Some(pos.side_to_move().flip()),
                         "repetition_foul",
                         moves,
-                    ));
+                    );
                 }
                 _ => {}
             }
@@ -153,11 +177,38 @@ pub fn play_game(
                 _ => [0, 0],
             };
             if streak[0] >= need {
-                return Ok(GameRecord::end(Some(Color::Black), "adjudication", moves));
+                break 'game GameRecord::end(Some(Color::Black), "adjudication", moves);
             }
             if streak[1] >= need {
-                return Ok(GameRecord::end(Some(Color::White), "adjudication", moves));
+                break 'game GameRecord::end(Some(Color::White), "adjudication", moves);
             }
         }
+
+        // 指した側の相手番思考を開始する（ADR-0033）。予測手が
+        // 現局面で合法なときだけ。ここまでの終局判定を抜けた後に行う
+        if ponder[stm.index()]
+            && let TimeControl::Fischer { inc_ms, .. } = cfg.tc
+            && let Some(pred) = &r.ponder
+            && pos.move_from_usi(pred).is_some()
+        {
+            let ppos = format!("position sfen {opening} moves {} {pred}", moves.join(" "));
+            let pgo = format!(
+                "go ponder btime {} wtime {} binc {inc_ms} winc {inc_ms}",
+                clock[0].max(0),
+                clock[1].max(0)
+            );
+            engine.send(&ppos)?;
+            engine.send(&pgo)?;
+            pondering[stm.index()] = Some(pred.clone());
+        }
+    };
+
+    // ponder中のエンジンを止めて保留bestmoveを排水する
+    for (idx, eng) in [&mut *black, &mut *white].into_iter().enumerate() {
+        if pondering[idx].take().is_some() {
+            eng.send("stop")?;
+            let _ = eng.wait_bestmove(Instant::now(), Duration::from_secs(10))?;
+        }
     }
+    Ok(record)
 }

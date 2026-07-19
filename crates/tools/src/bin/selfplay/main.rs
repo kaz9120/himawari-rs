@@ -42,6 +42,7 @@ struct Config {
     max_pairs: u64,
     max_moves: usize,
     adjudicate: Option<(i32, u32)>,
+    ponder: bool,
     options: Vec<(String, String)>,
     /// 候補側 / ベースライン側だけに適用するオプション。
     copts: Vec<(String, String)>,
@@ -89,6 +90,7 @@ fn parse_args() -> Config {
     let mut max_pairs = 0u64;
     let mut max_moves = 320usize;
     let mut adjudicate = None;
+    let mut ponder = false;
     let mut options: Vec<(String, String)> = Vec::new();
     let mut copts: Vec<(String, String)> = Vec::new();
     let mut bopts: Vec<(String, String)> = Vec::new();
@@ -188,6 +190,11 @@ fn parse_args() -> Config {
                 }
             }
             "--out" => out = value(&args, i),
+            "--ponder" => {
+                ponder = true;
+                i += 1;
+                continue;
+            }
             other => usage_exit(&format!("不明な引数: {other}")),
         }
         i += 2;
@@ -241,6 +248,7 @@ fn parse_args() -> Config {
         max_pairs,
         max_moves,
         adjudicate,
+        ponder,
         options,
         copts,
         bopts,
@@ -308,12 +316,16 @@ fn worker(
         ("USI_Hash".to_string(), cfg.hash_mb.to_string()),
         ("Threads".to_string(), "1".to_string()),
     ];
+
     let mut base_opts = common.clone();
     base_opts.extend(cfg.options.iter().cloned());
     base_opts.extend(cfg.bopts.iter().cloned());
     let mut cand_opts = common;
     cand_opts.extend(cfg.options.iter().cloned());
     cand_opts.extend(cfg.copts.iter().cloned());
+    if cfg.ponder {
+        cand_opts.push(("USI_Ponder".to_string(), "true".to_string()));
+    }
     let mut baseline = UsiEngine::launch(&cfg.baseline, &base_opts)?;
     let mut candidate = UsiEngine::launch(&cfg.candidate, &cand_opts)?;
     let game_cfg = GameConfig {
@@ -332,8 +344,21 @@ fn worker(
         }
         let opening = &cfg.openings[(pair as usize) % cfg.openings.len()];
         // 候補が先手→後手の順で同一開始局面のペアを消化する
-        let g1 = play_game(&mut candidate, &mut baseline, opening, &game_cfg)?;
-        let g2 = play_game(&mut baseline, &mut candidate, opening, &game_cfg)?;
+        // ponderは候補側だけに適用する（効果測定モード。ADR-0033）
+        let g1 = play_game(
+            &mut candidate,
+            &mut baseline,
+            opening,
+            &game_cfg,
+            [cfg.ponder, false],
+        )?;
+        let g2 = play_game(
+            &mut baseline,
+            &mut candidate,
+            opening,
+            &game_cfg,
+            [false, cfg.ponder],
+        )?;
         let s1 = candidate_score(&g1, Color::Black);
         let s2 = candidate_score(&g2, Color::White);
         let bin = ((s1 + s2) * 2.0).round() as usize;

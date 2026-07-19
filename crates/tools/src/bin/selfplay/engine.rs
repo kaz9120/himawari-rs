@@ -17,6 +17,8 @@ pub struct UsiEngine {
 
 pub struct ThinkResult {
     pub bestmove: String,
+    /// bestmoveに付随する予測応手（ponderヒント。ADR-0033）。
+    pub ponder: Option<String>,
     /// 最後にinfoで報告された評価値（手番視点、mateは±30000近傍へ写像）。
     pub score_cp: Option<i32>,
     pub elapsed_ms: u64,
@@ -57,7 +59,7 @@ impl UsiEngine {
         Ok(eng)
     }
 
-    fn send(&mut self, cmd: &str) -> Result<(), String> {
+    pub fn send(&mut self, cmd: &str) -> Result<(), String> {
         writeln!(self.stdin, "{cmd}")
             .and_then(|_| self.stdin.flush())
             .map_err(|e| format!("{}: 送信失敗 ({e})", self.path))
@@ -99,6 +101,16 @@ impl UsiEngine {
         self.send(position_cmd)?;
         let start = Instant::now();
         self.send(go_cmd)?;
+        self.wait_bestmove(start, timeout)
+    }
+
+    /// bestmove行が来るまで待つ。経過時間はstart起点で測る
+    /// （ponderhit後の計測に使う。ADR-0033）。
+    pub fn wait_bestmove(
+        &mut self,
+        start: Instant,
+        timeout: Duration,
+    ) -> Result<ThinkResult, String> {
         let deadline = start + timeout;
         let mut score_cp = None;
         loop {
@@ -119,8 +131,14 @@ impl UsiEngine {
                     let mv = tokens
                         .get(1)
                         .ok_or_else(|| format!("{}: 不正なbestmove行: {line}", self.path))?;
+                    let ponder = if tokens.get(2) == Some(&"ponder") {
+                        tokens.get(3).map(|s| s.to_string())
+                    } else {
+                        None
+                    };
                     return Ok(ThinkResult {
                         bestmove: mv.to_string(),
+                        ponder,
                         score_cp,
                         elapsed_ms,
                     });
