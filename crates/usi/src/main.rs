@@ -35,6 +35,7 @@ fn print_options() {
     print_line("option name NetworkDelay type spin default 120 min 0 max 10000");
     print_line("option name NetworkDelay2 type spin default 1120 min 0 max 10000");
     print_line("option name MaxMovesToDraw type spin default 0 min 0 max 100000");
+    print_line("option name MultiPV type spin default 1 min 1 max 128");
 }
 
 fn parse_position(tokens: &[&str]) -> Option<Position> {
@@ -130,6 +131,11 @@ fn set_option(opts: &mut EngineOptions, tokens: &[&str]) {
         "MaxMovesToDraw" => {
             if let Ok(v) = value.parse() {
                 opts.max_moves_to_draw = v;
+            }
+        }
+        "MultiPV" => {
+            if let Ok(v) = value.parse::<usize>() {
+                opts.multi_pv = v.max(1);
             }
         }
         _ => {}

@@ -39,6 +39,7 @@ fn solve(sfen: &str, depth: u32, shared: &Arc<Shared>) -> Option<(u32, String)> 
         limits,
         tm,
         0,
+        1,
         Evaluator::material(),
         History::default(),
         CounterMoves::default(),

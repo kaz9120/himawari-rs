@@ -29,6 +29,7 @@ pub struct EngineOptions {
     pub network_delay: u64,
     pub network_delay2: u64,
     pub max_moves_to_draw: u16,
+    pub multi_pv: usize,
 }
 
 impl Default for EngineOptions {
@@ -39,6 +40,7 @@ impl Default for EngineOptions {
             network_delay: 120,
             network_delay2: 1120,
             max_moves_to_draw: 0,
+            multi_pv: 1,
         }
     }
 }
@@ -154,6 +156,7 @@ fn spawn_worker(
                         limits,
                         tm,
                         j.opts.max_moves_to_draw,
+                        j.opts.multi_pv,
                         Evaluator::material(),
                         std::mem::take(&mut history),
                         std::mem::take(&mut counters),
@@ -164,9 +167,16 @@ fn spawn_worker(
                         let nps = (info.nodes * 1000)
                             .checked_div(info.elapsed_ms)
                             .unwrap_or(0);
+                        // MultiPV>1のときだけmultipvを出す（現行互換）
+                        let mpv = if info.multipv > 0 {
+                            format!("multipv {} ", info.multipv)
+                        } else {
+                            String::new()
+                        };
                         out(&format!(
-                            "info depth {} score {} nodes {} nps {} time {} hashfull {} pv {}",
+                            "info depth {} {}score {} nodes {} nps {} time {} hashfull {} pv {}",
                             info.depth,
+                            mpv,
                             format_score(info.score),
                             info.nodes,
                             nps,

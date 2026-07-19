@@ -23,6 +23,7 @@ fn search_position(sfen: &str, depth: u32) -> (Move, Value) {
         limits,
         tm,
         0,
+        1,
         Evaluator::material(),
         History::default(),
         CounterMoves::default(),
@@ -71,6 +72,7 @@ fn selfplay_smoke() {
             limits,
             tm,
             256,
+            1,
             Evaluator::material(),
             History::default(),
             CounterMoves::default(),
@@ -87,4 +89,39 @@ fn selfplay_smoke() {
         );
         pos.do_move(result.best);
     }
+}
+
+/// MultiPV: ラインの初手が重複せず、スコアが降順であること（ADR-0032）。
+#[test]
+fn multipv_lines_are_distinct_and_sorted() {
+    let pos = Position::from_sfen(SFEN_STARTPOS).unwrap();
+    let shared = Arc::new(Shared::new(16));
+    let limits = Limits {
+        depth: 6,
+        ..Limits::default()
+    };
+    let tm = TimeManager::new(&limits, pos.side_to_move(), pos.game_ply(), 120, 1120);
+    let mut worker = Worker::new(
+        pos,
+        shared,
+        limits,
+        tm,
+        0,
+        3,
+        Evaluator::material(),
+        History::default(),
+        CounterMoves::default(),
+    );
+    let mut lines: Vec<(usize, Value, Move)> = Vec::new();
+    worker.iterate(&mut |info| {
+        if info.depth == 6 {
+            lines.push((info.multipv, info.score, info.pv[0]));
+        }
+    });
+    assert_eq!(lines.len(), 3, "深さ6で3ライン出力されること");
+    for (i, (k, _, _)) in lines.iter().enumerate() {
+        assert_eq!(*k, i + 1);
+    }
+    assert!(lines[0].1 >= lines[1].1 && lines[1].1 >= lines[2].1);
+    assert!(lines[0].2 != lines[1].2 && lines[1].2 != lines[2].2 && lines[0].2 != lines[2].2);
 }

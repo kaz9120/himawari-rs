@@ -77,14 +77,24 @@ impl Shared {
     }
 }
 
-/// 反復深化1周分の報告。
+/// 反復深化1周分の報告（MultiPVでは1ラインごとに1回）。
 pub struct IterInfo {
     pub depth: u32,
+    /// 1始まりのライン番号。MultiPV=1のときは0（info出力で省略）。
+    pub multipv: usize,
     pub score: Value,
     pub pv: Vec<Move>,
     pub nodes: u64,
     pub elapsed_ms: u64,
     pub hashfull: usize,
+}
+
+/// root手1つの探索状態（ADR-0032）。
+pub struct RootMove {
+    pub mv: Move,
+    pub score: Value,
+    pub prev_score: Value,
+    pub pv: Vec<Move>,
 }
 
 pub struct SearchResult {
@@ -105,7 +115,9 @@ pub struct Worker {
     tm: TimeManager,
     limits: Limits,
     max_moves_to_draw: u16,
-    root_moves: Vec<Move>,
+    /// 検討モードのライン数（ADR-0032）。対局時は1。
+    multi_pv: usize,
+    root_moves: Vec<RootMove>,
 }
 
 impl Worker {
@@ -116,6 +128,7 @@ impl Worker {
         limits: Limits,
         tm: TimeManager,
         max_moves_to_draw: u16,
+        multi_pv: usize,
         evaluator: Evaluator,
         history: History,
         counters: CounterMoves,
@@ -132,6 +145,7 @@ impl Worker {
             tm,
             limits,
             max_moves_to_draw,
+            multi_pv: multi_pv.max(1),
             root_moves: Vec::new(),
         }
     }
@@ -176,14 +190,22 @@ impl Worker {
         self.evaluator.new_search(&self.pos);
         let mut list = MoveList::default();
         generate_legal(&self.pos, false, &mut list);
-        self.root_moves = list.as_slice().to_vec();
+        self.root_moves = list
+            .as_slice()
+            .iter()
+            .map(|&mv| RootMove {
+                mv,
+                score: -VALUE_INFINITE,
+                prev_score: VALUE_ZERO,
+                pv: Vec::new(),
+            })
+            .collect();
         if self.root_moves.is_empty() {
             return SearchResult {
                 best: Move::RESIGN,
                 score: mated_in(0),
             };
         }
-        let mut best_move = self.root_moves[0];
         let mut last_score = VALUE_ZERO;
         let max_depth = if self.limits.depth > 0 {
             self.limits.depth
@@ -191,45 +213,59 @@ impl Worker {
             (MAX_PLY - 1) as u32
         };
 
-        for depth in 1..=max_depth {
-            let mut delta = 20;
-            let (mut alpha, mut beta) = if depth >= 5 {
-                (last_score - delta, last_score + delta)
-            } else {
-                (-VALUE_INFINITE, VALUE_INFINITE)
-            };
-            loop {
-                let (score, pv) = self.search_root(depth, alpha, beta);
-                if self.stopped() {
-                    break;
-                }
-                if score <= alpha {
-                    beta = (alpha + beta) / 2;
-                    alpha = (score - delta).max(-VALUE_INFINITE);
-                    delta += delta / 2;
-                } else if score >= beta {
-                    beta = (score + delta).min(VALUE_INFINITE);
-                    delta += delta / 2;
+        'deepening: for depth in 1..=max_depth {
+            for rm in &mut self.root_moves {
+                rm.prev_score = rm.score;
+            }
+            let lines = self.multi_pv.min(self.root_moves.len());
+            for pv_idx in 0..lines {
+                // ラインごとのaspiration。中心は前深さの自ラインのスコア
+                let center = if pv_idx == 0 {
+                    last_score
                 } else {
-                    last_score = score;
-                    if let Some(&m) = pv.first() {
-                        best_move = m;
-                        // 次イテレーションで最善手から探索する
-                        if let Some(i) = self.root_moves.iter().position(|&r| r == m) {
-                            self.root_moves.remove(i);
-                            self.root_moves.insert(0, m);
-                        }
+                    self.root_moves[pv_idx].prev_score
+                };
+                let mut delta = 20;
+                let (mut alpha, mut beta) = if depth >= 5 && center > -VALUE_INFINITE {
+                    (center - delta, center + delta)
+                } else {
+                    (-VALUE_INFINITE, VALUE_INFINITE)
+                };
+                loop {
+                    let (score, best_idx, pv) = self.search_root(depth, alpha, beta, pv_idx);
+                    if self.stopped() {
+                        break 'deepening;
                     }
-                    on_iter(IterInfo {
-                        depth,
-                        score,
-                        pv,
-                        // 全ワーカー合算（単スレッドではローカル値と一致）
-                        nodes: self.shared.nodes.load(Ordering::Relaxed).max(self.nodes),
-                        elapsed_ms: self.tm.elapsed().as_millis() as u64,
-                        hashfull: self.shared.tt.hashfull(),
-                    });
-                    break;
+                    if score <= alpha {
+                        beta = (alpha + beta) / 2;
+                        alpha = (score - delta).max(-VALUE_INFINITE);
+                        delta += delta / 2;
+                    } else if score >= beta {
+                        beta = (score + delta).min(VALUE_INFINITE);
+                        delta += delta / 2;
+                    } else {
+                        // 成功: 最善手をこのラインの先頭へ移して確定する
+                        if best_idx != pv_idx {
+                            let rm = self.root_moves.remove(best_idx);
+                            self.root_moves.insert(pv_idx, rm);
+                        }
+                        self.root_moves[pv_idx].score = score;
+                        self.root_moves[pv_idx].pv = pv.clone();
+                        if pv_idx == 0 {
+                            last_score = score;
+                        }
+                        on_iter(IterInfo {
+                            depth,
+                            multipv: if self.multi_pv > 1 { pv_idx + 1 } else { 0 },
+                            score,
+                            pv,
+                            // 全ワーカー合算（単スレッドではローカル値と一致）
+                            nodes: self.shared.nodes.load(Ordering::Relaxed).max(self.nodes),
+                            elapsed_ms: self.tm.elapsed().as_millis() as u64,
+                            hashfull: self.shared.tt.hashfull(),
+                        });
+                        break;
+                    }
                 }
             }
             if self.stopped() || self.tm.over_optimum() {
@@ -244,20 +280,30 @@ impl Worker {
             .nodes
             .fetch_add(self.nodes % 2048, Ordering::Relaxed);
         SearchResult {
-            best: best_move,
+            best: self.root_moves[0].mv,
             score: last_score,
         }
     }
 
-    fn search_root(&mut self, depth: u32, mut alpha: Value, beta: Value) -> (Value, Vec<Move>) {
+    /// root_moves[pv_idx..]を探索する（上位の確定済みラインは除外）。
+    /// 戻り値は (スコア, 最善手のroot_moves添字, PV)。
+    fn search_root(
+        &mut self,
+        depth: u32,
+        mut alpha: Value,
+        beta: Value,
+        pv_idx: usize,
+    ) -> (Value, usize, Vec<Move>) {
         let mut best = -VALUE_INFINITE;
+        let mut best_idx = pv_idx;
         let mut best_pv: Vec<Move> = Vec::new();
-        let moves = self.root_moves.clone();
-        for (i, &m) in moves.iter().enumerate() {
+        let moves: Vec<Move> = self.root_moves[pv_idx..].iter().map(|rm| rm.mv).collect();
+        for (j, &m) in moves.iter().enumerate() {
+            let i = pv_idx + j;
             self.pos.do_move(m);
             self.evaluator.push(&self.pos);
             let mut child_pv = Vec::new();
-            let value = if i == 0 {
+            let value = if j == 0 {
                 -self.search(-beta, -alpha, depth - 1, 1, m, &mut child_pv, true)
             } else {
                 let v = -self.search(-alpha - 1, -alpha, depth - 1, 1, m, &mut child_pv, false);
@@ -270,12 +316,14 @@ impl Worker {
             self.evaluator.pop();
             self.pos.undo_move(m);
             if self.stopped() {
-                return (best, best_pv);
+                return (best, best_idx, best_pv);
             }
             if value > best {
                 best = value;
                 if value > alpha {
                     alpha = value;
+                    best_idx = i;
+                    self.root_moves[i].score = value;
                     best_pv.clear();
                     best_pv.push(m);
                     best_pv.extend_from_slice(&child_pv);
@@ -285,7 +333,7 @@ impl Worker {
                 }
             }
         }
-        (best, best_pv)
+        (best, best_idx, best_pv)
     }
 
     #[allow(clippy::too_many_arguments)]
