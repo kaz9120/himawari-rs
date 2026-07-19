@@ -35,6 +35,8 @@ const FUTILITY_BASE: Value = 200;
 const FUTILITY_MARGIN: Value = 120;
 /// move count pruningの最大深さ。
 const LMP_MAX_DEPTH: u32 = 8;
+/// IIR: TTに手がないノードを1浅く読む最小深さ。
+const IIR_MIN_DEPTH: u32 = 4;
 
 /// この手数を超えた静かな手を捨てる（ADR-0028）。
 fn lmp_limit(depth: u32, improving: bool) -> u32 {
@@ -340,6 +342,14 @@ impl Worker {
         if depth == 0 {
             return self.qsearch(alpha, beta, ply);
         }
+
+        // IIR（ADR-0028）: TTに手がないノードは良い順序を作れないので
+        // 1浅く読み、再訪時にTT手付きで読み直す
+        let depth = if depth >= IIR_MIN_DEPTH && tt_move == Move::NONE {
+            depth - 1
+        } else {
+            depth
+        };
 
         // 静的評価（ADR-0028）。王手中はVALUE_NONE。TTのevalを再利用する
         let in_check = self.pos.in_check();
