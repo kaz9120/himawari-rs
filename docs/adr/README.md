@@ -52,7 +52,7 @@
 | [0030](0030-nyugyoku-declaration.md) | 入玉宣言勝ち | P3 | accepted |
 | [0031](0031-lazy-smp.md) | Lazy SMP | P3 | accepted |
 | [0032](0032-multipv.md) | MultiPV | P3 | accepted |
-| [0033](0033-ponder.md) | ponder | P3 | proposed |
+| [0033](0033-ponder.md) | ponder | P3 | accepted |
 
 ## バックログ
 
