@@ -53,10 +53,10 @@
 | [0031](0031-lazy-smp.md) | Lazy SMP | P3 | accepted |
 | [0032](0032-multipv.md) | MultiPV | P3 | accepted |
 | [0033](0033-ponder.md) | ponder | P3 | accepted |
-| [0034](0034-nnue-architecture.md) | NNUE特徴量とネットワーク構成 | P4 | proposed |
-| [0035](0035-nnue-accumulator.md) | NNUE差分計算（accumulator） | P4 | proposed |
-| [0036](0036-nnue-quantization-simd.md) | NNUE量子化とSIMD実装 | P4 | proposed |
-| [0037](0037-nnue-file-format.md) | NNUE評価ファイルフォーマット | P4 | proposed |
+| [0034](0034-nnue-architecture.md) | NNUE特徴量とネットワーク構成 | P4 | accepted |
+| [0035](0035-nnue-accumulator.md) | NNUE差分計算（accumulator） | P4 | accepted |
+| [0036](0036-nnue-quantization-simd.md) | NNUE量子化とSIMD実装 | P4 | accepted |
+| [0037](0037-nnue-file-format.md) | NNUE評価ファイルフォーマット | P4 | accepted |
 
 ## バックログ
 

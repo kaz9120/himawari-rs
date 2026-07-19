@@ -1,6 +1,6 @@
 # 0035: NNUE差分計算（accumulator）
 
-- Status: proposed
+- Status: accepted
 - Date: 2026-07-19
 - 関連ADR: [0014](0014-position-structure.md), [0023](0023-eval-interface.md), [0034](0034-nnue-architecture.md)
 

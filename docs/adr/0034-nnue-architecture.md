@@ -1,6 +1,6 @@
 # 0034: NNUE特徴量とネットワーク構成
 
-- Status: proposed
+- Status: accepted
 - Date: 2026-07-19
 - 関連ADR: [0023](0023-eval-interface.md), [0009](0009-piece-encoding.md), [0035](0035-nnue-accumulator.md), [0036](0036-nnue-quantization-simd.md)
 

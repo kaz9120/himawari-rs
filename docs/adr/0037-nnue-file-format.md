@@ -1,6 +1,6 @@
 # 0037: NNUE評価ファイルフォーマット
 
-- Status: proposed
+- Status: accepted
 - Date: 2026-07-19
 - 関連ADR: [0019](0019-usi-architecture.md), [0034](0034-nnue-architecture.md), [0036](0036-nnue-quantization-simd.md)
 

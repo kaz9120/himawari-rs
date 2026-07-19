@@ -1,6 +1,6 @@
 # 0036: NNUE量子化とSIMD実装
 
-- Status: proposed
+- Status: accepted
 - Date: 2026-07-19
 - 関連ADR: [0003](0003-toolchain.md), [0004](0004-unsafe-policy.md), [0034](0034-nnue-architecture.md), [0035](0035-nnue-accumulator.md)
 
