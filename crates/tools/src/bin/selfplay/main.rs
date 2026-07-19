@@ -240,6 +240,9 @@ struct Aggregate {
     pent: Pentanomial,
     /// 候補側から見た勝ち・引き分け・負け（局単位）。
     wdl: [u64; 3],
+    /// LLRが最初に閾値へ到達した時点の判定。SPRTは逐次検定なので、
+    /// 停止後に完走した飛行中ペアで判定を再計算してはならない。
+    decision: Option<Decision>,
     out: std::fs::File,
 }
 
@@ -343,7 +346,12 @@ fn worker(
         );
         match cfg.sprt.decision(llr) {
             Decision::Continue => {}
-            _ => stop.store(true, Ordering::Relaxed),
+            d => {
+                if a.decision.is_none() {
+                    a.decision = Some(d);
+                }
+                stop.store(true, Ordering::Relaxed);
+            }
         }
     }
     baseline.quit();
@@ -382,6 +390,7 @@ fn main() {
     let agg = Arc::new(Mutex::new(Aggregate {
         pent: Pentanomial::default(),
         wdl: [0; 3],
+        decision: None,
         out,
     }));
     let stop = Arc::new(AtomicBool::new(false));
@@ -413,7 +422,8 @@ fn main() {
     let a = agg.lock().expect("agg lock");
     let llr = cfg.sprt.llr(&a.pent);
     let (elo, lo, hi) = elo_estimate(&a.pent);
-    let decision = cfg.sprt.decision(llr);
+    // 閾値到達時点の判定を優先する（最終値は飛行中ペアで希釈されている）
+    let decision = a.decision.unwrap_or_else(|| cfg.sprt.decision(llr));
     let label = match decision {
         Decision::AcceptH1 => "H1採択（候補は有意に強い）",
         Decision::AcceptH0 => "H0採択（有意な改善なし）",

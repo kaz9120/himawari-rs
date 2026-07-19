@@ -47,7 +47,7 @@ pub struct Sprt {
     pub beta: f64,
 }
 
-#[derive(PartialEq, Eq, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Decision {
     AcceptH1,
     AcceptH0,
