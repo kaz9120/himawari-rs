@@ -13,9 +13,9 @@ GitHub Issuesは使わない。設計判断は [ADR索引](adr/README.md)、
   独自ファイル形式、Evaluator統合（EvalFile）、SIMD
   （SIMD=スカラー一致済み）、nn.bin互換ローダ
   （`makenet --import` で独自形式へ変換可）まで完了。
-  P4出口条件の検証は両方成立。
-  残: 公開評価関数との外部照合の実施（nn.bin入手待ち）、
-  利き塔コストの最適化、（P5へ続く）学習パイプライン
+  P4出口条件の検証は両方成立し、公開HalfKPネットとの外部照合も
+  121局面で完全一致。
+  残: 利き塔コストの最適化、（P5へ続く）学習パイプライン
 - P3の成果: 探索強化で累積+500 Elo相当、Lazy SMP（8スレで
   NPS 7.8倍）、宣言勝ち・MultiPV・ponderのルール完全対応
 - 持ち越し: x86_64でのperft・ベンチ再計測（環境入手待ち）、
@@ -38,10 +38,12 @@ P2出口 = 0.3.0（最初の対外リリース候補）、P5出口 = 1.0.0。
 
 ## 直近の残作業
 
-- [ ] nn.binでの外部照合の実施（HalfKP 256×2-32-32-1のnn.binを
-      `eval/` に配置後、`HIMAWARI_NN_BIN=eval/nn.bin cargo test -p
-      himawari-engine nn_bin_external_reference` を実行。参照値CSVは
-      `HIMAWARI_NN_REF` で追加）
+- [x] nn.binでの外部照合の実施（2026-07-20完了。公開HalfKPネット
+      256×2-32-32-1に対し、やねうら王V9.00Git（APPLEM1）の `e`
+      コマンドで生成した121局面の参照値とevaluate完全一致。
+      再実行は `HIMAWARI_NN_BIN=$PWD/eval/nn.bin
+      HIMAWARI_NN_REF=$PWD/eval/ref.csv cargo test -p himawari-engine
+      --lib nn_bin_external_reference`。局面集・参照値は `eval/ref.csv`）
 
 - [x] 互角局面集の入手（たややん互角局面集。`openings/` に配置、
       リポジトリには含めない。24手目版30,053局面・32手目版26,273局面）
