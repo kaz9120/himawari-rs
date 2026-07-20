@@ -50,9 +50,11 @@ ADRを起草してこの帳から消す（採番と経緯はADR側に書く）�
 | 案 | 狙い・メモ | 検証 |
 |---|---|---|
 | train/validの対局単位分割 | 局面単位シャッフルだと同一対局がtrain/valid両方に入り、validが過学習を検出できない（v2の-274 Elo崩壊で実証見込み）。validは別ファイル由来にする | loss+SPRT |
-| 過学習対策一式 | weight decay、lr減衰、early stop（本物のvalidで）。多エポック学習の前提 | loss+SPRT |
+| 過学習対策一式 | early stop（bestが更新されなくなったら打ち切り）。weight decayはSF/やねうら王とも不使用だが、要検証 | loss+SPRT |
+| データ量スケーリング実証 | 同一条件でデータ量だけ変え（15M/86M/全量）、best valid lossとEloの関係を取る。右肩下がりなら基盤は正しい | loss+SPRT |
+| valid lossカーブの可視化 | エポックごとのサマリ行（train/valid/lr/skip率）、TSV出力で外部プロットしやすく | 運用 |
 | 教師局面のqsearch静止化 | データセットREADMEも指摘。静止局面で学習し評価の整合を取る | loss+SPRT |
-| lrスケジュール | cosine/step decay + warmup。現状は固定lr | loss |
+| **lrスケジュール** | **cosine/step decay + warmup。固定lr=1e-3ではstep 3000がbestで以降は過学習。最優先** | **loss+SPRT** |
 | λのply依存化 | 序盤はresult重視、終盤はscore重視の混合比 | loss+SPRT |
 | 詰みスコアの扱い | ±30000近傍のclamp/除外/専用ターゲット。現状8.5%を素通し | loss+SPRT |
 | ミラーデータ拡張 | 左右反転で実質2倍。盤面対称性の担保にも | loss |
