@@ -130,6 +130,8 @@ fn main() {
     let mut trainer =
         ParallelTrainer::new(FloatNet::random(seed), lr, lambda, score_limit, threads);
     let mut step = 0u64;
+    let mut best_step = 0u64;
+    let mut best_valid = f32::MAX;
     let mut samples_done = 0u64;
     let mut skipped = 0u64;
     let mut loss_acc = 0.0f64;
@@ -166,7 +168,21 @@ fn main() {
             if let Some(v) = &valid
                 && step.is_multiple_of(valid_interval)
             {
-                eprintln!("  valid loss {:.5}", validate(&trainer.net, v));
+                let vl = validate(&trainer.net, v);
+                eprintln!("  valid loss {vl:.5}");
+                if vl < best_valid {
+                    best_valid = vl;
+                    best_step = step;
+                    let q = trainer.net.quantize();
+                    let best_path = format!("{out}.best");
+                    let lin = format!(
+                        "train-v2 data={data} n={} step={step} valid_loss={vl:.5} batch={batch} lr={lr} lambda={lambda} lr_gamma={lr_gamma} score_limit={score_limit} seed={seed}",
+                        records.len()
+                    );
+                    let mut f = std::fs::File::create(&best_path).unwrap();
+                    save(&q, &lin, &mut f).unwrap();
+                    eprintln!("  best checkpoint: {best_path} (step {step}, valid {vl:.5})");
+                }
             }
         }
         // エポック末: lr減衰
@@ -175,7 +191,8 @@ fn main() {
     }
 
     if let Some(v) = &valid {
-        eprintln!("最終valid loss {:.5}", validate(&trainer.net, v));
+        let vl = validate(&trainer.net, v);
+        eprintln!("最終valid loss {vl:.5} (best {best_valid:.5} at step {best_step})");
     }
     eprintln!(
         "学習完了: {step}ステップ {samples_done}局面 {:.1}秒 (デコードskip {skipped})",
