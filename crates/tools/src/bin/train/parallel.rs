@@ -111,6 +111,7 @@ impl ParallelTrainer {
         let lambda = self.lambda;
         let net = &self.net;
         let chunk = records.len().div_ceil(t).max(1);
+        let t1 = std::time::Instant::now();
         let workers: Vec<WorkerOut> = std::thread::scope(|s| {
             let handles: Vec<_> = records
                 .chunks(chunk)
@@ -133,7 +134,17 @@ impl ParallelTrainer {
                 .map(|h| h.join().expect("学習ワーカスレッド"))
                 .collect()
         });
-        self.apply(workers)
+        let p1 = t1.elapsed();
+        let t2 = std::time::Instant::now();
+        let r = self.apply(workers);
+        if std::env::var("TRAIN_PHASE_TIMING").is_ok() {
+            eprintln!(
+                "  phase1 {:.1}ms phase2 {:.1}ms",
+                p1.as_secs_f64() * 1e3,
+                t2.elapsed().as_secs_f64() * 1e3
+            );
+        }
+        r
     }
 
     /// 展開済みサンプル列を1バッチとして学習する（テスト用）。
