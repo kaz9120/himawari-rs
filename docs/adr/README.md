@@ -59,6 +59,10 @@
 | [0037](0037-nnue-file-format.md) | NNUE評価ファイルフォーマット | P4 | accepted |
 | [0038](0038-training-data-format.md) | 教師データフォーマット（PackedSfenValue互換） | P5 | accepted |
 | [0039](0039-trainer-v1.md) | 学習器v1（教師あり） | P5 | accepted |
+| [0040](0040-training-infra-v2.md) | 学習器v2（PyTorch移行） | P6 | accepted |
+| [0041](0041-checkpoint-format.md) | 学習チェックポイント形式 | P6 | rejected |
+| [0042](0042-training-log-registry.md) | 学習ログと実験レジストリ | P6 | rejected |
+| [0043](0043-pyo3-bridge.md) | PyO3ブリッジ（Rust-Python連携） | P6 | accepted |
 
 ## バックログ
 
@@ -88,11 +92,7 @@
 
 ### P6: 学習基盤の完成
 
-| 決定事項 | 主要論点 |
-|---|---|
-| lr schedule | warmup + cosine decayの具体パラメータ。固定lr=1e-3ではstep 3000で過学習開始 |
-| チェックポイント形式 | f32重み + Adam状態の保存・復元。継続学習と自己対局RL世代ループの前提 |
-| 実験管理 | 各学習実行のハイパラ・データ・結果の記録と比較方法 |
+（ADR-0040で起草済み。early stopping・実験レジストリも同ADR内）
 
 ### P7: ネットワーク構造の探索・決定
 
