@@ -6,6 +6,7 @@ pub mod mate;
 pub mod movepick;
 pub mod nnue;
 pub mod nnue_acc;
+pub mod nnue_compat;
 pub mod nnue_io;
 pub mod nnue_simd;
 pub mod search;
