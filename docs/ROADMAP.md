@@ -40,11 +40,9 @@ P6で「データを増やせば単調に強くなる学習基盤」を整え、
 モデル構造だけにする。
 
 やること:
-- lr schedule（warmup + cosine decay）の実装と検証
-- チェックポイントからの継続学習（f32重み + Adam状態の保存・復元）
-- 学習ログの整備（TSVサマリ行: step, epoch, train_loss, valid_loss,
-  lr, skip率。外部プロットで判断できる形に）
-- 実験レジストリ（各学習実行のハイパラ・データ・結果を1行で比較）
+- ~~PyTorch学習器の実装（ADR-0040。モデル定義・学習ループ・量子化書き出し）~~
+- ~~PyO3ブリッジの実装（ADR-0043。特徴抽出・.hmwrI/OをRustから共有）~~
+- ~~lr schedule（warmup + cosine decay）・チェックポイント・TensorBoardログ・early stopping~~
 - データ量スケーリング実験（15M / 86M / 全量。best valid lossと
   Eloが右肩下がりなら基盤は正しい）
 - ハイパラの確定（lr schedule、lambda、batch size、optimizer）
@@ -94,7 +92,8 @@ df-pn（任意）、mate1plyの探索組み込み（テーブル駆動の高速�
 
 ## 直近の残作業
 
-（P6着手時に記載する。現時点では残作業なし）
+- データ量スケーリング実験（追加データDLが必要）
+- ハイパラ確定（lr schedule、lambda、batch）
 
 ## 実測の記録
 

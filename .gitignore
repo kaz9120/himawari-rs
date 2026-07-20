@@ -29,3 +29,11 @@ target
 *.jsonl
 # 教師データ（ADR-0038。リポジトリには含めない）
 /data/
+# Python
+__pycache__/
+*.pyc
+.venv/
+# TensorBoard
+training/runs/
+# 学習チェックポイント
+training/checkpoints/
