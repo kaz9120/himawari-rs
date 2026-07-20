@@ -245,6 +245,45 @@ pub fn aligned(a: Square, b: Square, c: Square) -> bool {
     line(a, c).test(b)
 }
 
+/// 各マスのチェビシェフ距離radius以内の近傍（盤内クリップ、自身を含む）。
+const fn neighbor_table(radius: i32) -> [u128; 81] {
+    let mut t = [0u128; 81];
+    let mut i = 0usize;
+    while i < 81 {
+        let (f, r) = ((i / 9) as i32, (i % 9) as i32);
+        let mut df = -radius;
+        while df <= radius {
+            let mut dr = -radius;
+            while dr <= radius {
+                let (nf, nr) = (f + df, r + dr);
+                if 0 <= nf && nf < 9 && 0 <= nr && nr < 9 {
+                    t[i] |= 1u128 << (nf * 9 + nr);
+                }
+                dr += 1;
+            }
+            df += 1;
+        }
+        i += 1;
+    }
+    t
+}
+
+static NEIGHBOR5X5: [u128; 81] = neighbor_table(2);
+static NEIGHBOR9X9: [u128; 81] = neighbor_table(4);
+
+/// sqの5×5近傍マスク（盤内クリップ、sq自身を含む）。NNUE利き塔の対象領域。
+#[inline]
+pub fn neighbor5x5(sq: Square) -> Bitboard {
+    Bitboard(NEIGHBOR5X5[sq.index()])
+}
+
+/// sqの9×9近傍マスク（盤内クリップ、sq自身を含む）。近接駒の利きが
+/// 5×5領域に届き得る駒位置の上界（近接駒の利き距離は最大2）。
+#[inline]
+pub fn neighbor9x9(sq: Square) -> Bitboard {
+    Bitboard(NEIGHBOR9X9[sq.index()])
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
