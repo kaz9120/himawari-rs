@@ -127,24 +127,24 @@ impl FloatNet {
         }
 
         let mut z2 = [0f32; HIDDEN];
-        for o in 0..HIDDEN {
+        for (o, z) in z2.iter_mut().enumerate() {
             let row = &self.w2[o * CONCAT..(o + 1) * CONCAT];
             let mut sum = self.b2[o];
             for (w, xv) in row.iter().zip(x.iter()) {
                 sum += w * xv;
             }
-            z2[o] = sum;
+            *z = sum;
         }
         let h2 = z2.map(|v| v.clamp(0.0, 1.0));
 
         let mut z3 = [0f32; HIDDEN];
-        for o in 0..HIDDEN {
+        for (o, z) in z3.iter_mut().enumerate() {
             let row = &self.w3[o * HIDDEN..(o + 1) * HIDDEN];
             let mut sum = self.b3[o];
             for (w, xv) in row.iter().zip(h2.iter()) {
                 sum += w * xv;
             }
-            z3[o] = sum;
+            *z = sum;
         }
         let h3 = z3.map(|v| v.clamp(0.0, 1.0));
 
@@ -175,34 +175,34 @@ impl FloatNet {
 
         g.b4 += gv;
         let mut gh3 = [0f32; HIDDEN];
-        for o in 0..HIDDEN {
+        for (o, gh) in gh3.iter_mut().enumerate() {
             g.w4[o] += gv * act.h3[o];
-            gh3[o] = gv * self.w4[o];
+            *gh = gv * self.w4[o];
         }
         let mut gz3 = [0f32; HIDDEN];
-        for o in 0..HIDDEN {
-            gz3[o] = if 0.0 < act.z3[o] && act.z3[o] < 1.0 {
+        for (o, gz) in gz3.iter_mut().enumerate() {
+            *gz = if 0.0 < act.z3[o] && act.z3[o] < 1.0 {
                 gh3[o]
             } else {
                 0.0
             };
-            g.b3[o] += gz3[o];
+            g.b3[o] += *gz;
         }
         let mut gh2 = [0f32; HIDDEN];
-        for o in 0..HIDDEN {
-            if gz3[o] == 0.0 {
+        for (o, &gz) in gz3.iter().enumerate() {
+            if gz == 0.0 {
                 continue;
             }
             let row = &mut g.w3[o * HIDDEN..(o + 1) * HIDDEN];
             for i in 0..HIDDEN {
-                row[i] += gz3[o] * act.h2[i];
-                gh2[i] += gz3[o] * self.w3[o * HIDDEN + i];
+                row[i] += gz * act.h2[i];
+                gh2[i] += gz * self.w3[o * HIDDEN + i];
             }
         }
         let mut gx = [0f32; CONCAT];
-        for o in 0..HIDDEN {
+        for (o, &gh) in gh2.iter().enumerate() {
             let gz2 = if 0.0 < act.z2[o] && act.z2[o] < 1.0 {
-                gh2[o]
+                gh
             } else {
                 0.0
             };
