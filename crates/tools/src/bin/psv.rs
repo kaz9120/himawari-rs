@@ -101,8 +101,15 @@ fn stats(input: &str, limit: Option<u64>) {
     );
     println!("gamePly最大: {ply_max}");
     let labels = [
-        "0-99", "100-299", "300-599", "600-999", "1000-1999", "2000-2999", "3000-9999",
-        "10000-29999", "30000-",
+        "0-99",
+        "100-299",
+        "300-599",
+        "600-999",
+        "1000-1999",
+        "2000-2999",
+        "3000-9999",
+        "10000-29999",
+        "30000-",
     ];
     for (l, c) in labels.iter().zip(hist.iter()) {
         println!("|score| {l:>11}: {c}");
@@ -138,7 +145,8 @@ fn head(input: &str, output: &str, count: u64, skip: u64) {
     let mut buf = [0u8; PSV_BYTES];
     let mut n = 0u64;
     while n < count && r.read_exact(&mut buf).is_ok() {
-        w.write_all(&buf).unwrap_or_else(|e| die(&format!("書き込み失敗: {e}")));
+        w.write_all(&buf)
+            .unwrap_or_else(|e| die(&format!("書き込み失敗: {e}")));
         n += 1;
     }
     w.flush().unwrap();

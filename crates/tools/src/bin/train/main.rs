@@ -62,11 +62,10 @@ fn load_samples(path: &str, lambda: f32) -> Vec<Sample> {
         .read_to_end(&mut bytes)
         .unwrap_or_else(|e| die(&format!("読み込み失敗: {e}")));
     bytes
-        .chunks_exact(PSV_BYTES)
-        .filter_map(|c| {
-            let rec = PackedSfenValue::from_bytes(c.try_into().unwrap());
-            to_sample(&rec, lambda)
-        })
+        .as_chunks::<PSV_BYTES>()
+        .0
+        .iter()
+        .filter_map(|c| to_sample(&PackedSfenValue::from_bytes(c), lambda))
         .collect()
 }
 
@@ -118,8 +117,8 @@ fn main() {
         let mut skipped = 0u64;
         for _ in 0..epochs {
             let mut buf = Vec::with_capacity(batch);
-            for c in train_bytes.chunks_exact(PSV_BYTES) {
-                let rec = PackedSfenValue::from_bytes(c.try_into().unwrap());
+            for c in train_bytes.as_chunks::<PSV_BYTES>().0 {
+                let rec = PackedSfenValue::from_bytes(c);
                 match to_sample(&rec, decode_lambda) {
                     Some(s) => buf.push(s),
                     None => skipped += 1,
