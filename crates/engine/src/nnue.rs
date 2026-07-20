@@ -5,7 +5,7 @@
 //! 本モジュールはスカラー基準実装（正解器）。accumulator差分と
 //! SIMDはこの実装との完全一致を要求する形で後から積む。
 
-use himawari_core::{Color, PieceType, Position, Square, bonapiece};
+use himawari_core::{Color, PieceType, Position, Square, attacks, bonapiece};
 
 use crate::value::Value;
 
@@ -105,12 +105,39 @@ pub fn halfkp_active(pos: &Position, c: Color, out: &mut Vec<u32>) {
 /// 玉近傍利き特徴（ADR-0034）: 手番視点で、自玉・敵玉の周囲5×5の
 /// 各マスに (自利き数0..3, 敵利き数0..3) の16クラスone-hot。
 /// インデックス = 玉スロット(0=自玉,1=敵玉)×400 + マス番号×16 + クラス。
+///
+/// 利き数は、マスごとにattackers_toを引くのではなく、盤上の駒ごとに
+/// 利きを1回求めて近傍領域と交差し、マス別に積み上げる（駒数×利き
+/// ルックアップ1回で済み、evaluateごとの全計算コストの主因を削る）。
 pub fn effect_active(pos: &Position, out: &mut Vec<u16>) {
     out.clear();
     let stm = pos.side_to_move();
     let occ = pos.occupied();
-    for (slot, king_owner) in [(0u16, stm), (1u16, stm.flip())] {
-        let k = pos.king(king_owner);
+    let k_own = pos.king(stm);
+    let k_opp = pos.king(stm.flip());
+    let region = attacks::neighbor5x5(k_own) | attacks::neighbor5x5(k_opp);
+    // 近接駒の利き距離は最大2なので、領域から遠い近接駒は除外できる。
+    // 遠距離駒（香角飛馬龍）はどこからでも届き得るため常に計算する
+    let near = attacks::neighbor9x9(k_own) | attacks::neighbor9x9(k_opp);
+
+    let mut cnt = [[0u8; 81]; 2];
+    for c in [Color::Black, Color::White] {
+        let sliders = pos.pieces(c, PieceType::LANCE)
+            | pos.pieces(c, PieceType::BISHOP)
+            | pos.pieces(c, PieceType::ROOK)
+            | pos.pieces(c, PieceType::HORSE)
+            | pos.pieces(c, PieceType::DRAGON);
+        let mut pieces = pos.color_bb(c) & (near | sliders);
+        while !pieces.is_empty() {
+            let sq = pieces.pop_lsb();
+            let mut a = attacks::attacks(pos.piece_on(sq), sq, occ) & region;
+            while !a.is_empty() {
+                cnt[c.index()][a.pop_lsb().index()] += 1;
+            }
+        }
+    }
+
+    for (slot, k) in [(0u16, k_own), (1u16, k_opp)] {
         // 手番視点の盤に正規化してから近傍を走査する
         let k_norm = if stm == Color::Black { k } else { k.inv() };
         let (kf, kr) = (k_norm.file().0 as i32, k_norm.rank().0 as i32);
@@ -126,8 +153,8 @@ pub fn effect_active(pos: &Position, out: &mut Vec<u16>) {
                 } else {
                     s_norm.inv()
                 };
-                let own = pos.attackers_to(stm, s, occ).count().min(3) as u16;
-                let opp = pos.attackers_to(stm.flip(), s, occ).count().min(3) as u16;
+                let own = u16::from(cnt[stm.index()][s.index()].min(3));
+                let opp = u16::from(cnt[stm.flip().index()][s.index()].min(3));
                 let cell = ((df + 2) * 5 + (dr + 2)) as u16;
                 out.push(slot * 400 + cell * 16 + own * 4 + opp);
             }
@@ -298,6 +325,59 @@ mod tests {
                         pos.to_sfen()
                     );
                 }
+                let m = list.as_slice()[(rng.next() % list.len() as u64) as usize];
+                pos.do_move(m);
+            }
+        }
+    }
+
+    /// 旧実装（マスごとにattackers_toを引く）。駒ごと積み上げ実装の
+    /// 正解基準として残す。
+    fn effect_active_ref(pos: &Position, out: &mut Vec<u16>) {
+        out.clear();
+        let stm = pos.side_to_move();
+        let occ = pos.occupied();
+        for (slot, king_owner) in [(0u16, stm), (1u16, stm.flip())] {
+            let k = pos.king(king_owner);
+            let k_norm = if stm == Color::Black { k } else { k.inv() };
+            let (kf, kr) = (k_norm.file().0 as i32, k_norm.rank().0 as i32);
+            for df in -2..=2i32 {
+                for dr in -2..=2i32 {
+                    let (f, r) = (kf + df, kr + dr);
+                    if !(0..9).contains(&f) || !(0..9).contains(&r) {
+                        continue;
+                    }
+                    let s_norm = Square::from_index((f * 9 + r) as u8);
+                    let s = if stm == Color::Black {
+                        s_norm
+                    } else {
+                        s_norm.inv()
+                    };
+                    let own = pos.attackers_to(stm, s, occ).count().min(3) as u16;
+                    let opp = pos.attackers_to(stm.flip(), s, occ).count().min(3) as u16;
+                    let cell = ((df + 2) * 5 + (dr + 2)) as u16;
+                    out.push(slot * 400 + cell * 16 + own * 4 + opp);
+                }
+            }
+        }
+    }
+
+    /// 駒ごと積み上げの利き特徴が旧実装と完全一致する（順序も含む）。
+    #[test]
+    fn effect_active_matches_reference() {
+        let (mut fast, mut refr) = (Vec::new(), Vec::new());
+        for seed in 1..=16u64 {
+            let mut rng = Rng(seed.wrapping_mul(0x9E37_79B9_7F4A_7C15));
+            let mut pos = Position::from_sfen(SFEN_STARTPOS).unwrap();
+            for _ in 0..80 {
+                let mut list = MoveList::default();
+                generate_legal(&pos, true, &mut list);
+                if list.is_empty() {
+                    break;
+                }
+                effect_active(&pos, &mut fast);
+                effect_active_ref(&pos, &mut refr);
+                assert_eq!(fast, refr, "利き特徴が旧実装と不一致: {}", pos.to_sfen());
                 let m = list.as_slice()[(rng.next() % list.len() as u64) as usize];
                 pos.do_move(m);
             }
