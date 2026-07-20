@@ -5,7 +5,7 @@
 //! 量子化スケールはFT系=127、隠れ層の重み=64・バイアス=64×127、
 //! 出力層はシグモイドスケール600とFV_SCALE=16から導出する。
 
-use himawari_engine::nnue::{CONCAT, EFFECT_IN, EFFECT_OUT, FT_IN, FT_OUT, HIDDEN, NnueNetwork};
+use himawari_engine::nnue::{CONCAT, FT_IN, FT_OUT, HIDDEN, NnueNetwork};
 
 /// 勝率変換のシグモイドスケール（cp）。
 pub const SIGMOID_SCALE: f32 = 600.0;
@@ -23,7 +23,6 @@ const OUT_W_LIMIT: f32 = 127.0 / OUT_W_SCALE;
 /// 教師1局面。特徴は抽出済み（手番視点が先）。
 pub struct Sample {
     pub feats: [Vec<u32>; 2],
-    pub efeats: Vec<u16>,
     /// 勝率ターゲット（scoreとresultのλ混合）。
     pub target: f32,
 }
@@ -32,8 +31,6 @@ pub struct Sample {
 pub struct FloatNet {
     pub ft_w: Vec<f32>,
     pub ft_b: Vec<f32>,
-    pub ef_w: Vec<f32>,
-    pub ef_b: Vec<f32>,
     pub w2: Vec<f32>,
     pub b2: Vec<f32>,
     pub w3: Vec<f32>,
@@ -42,11 +39,10 @@ pub struct FloatNet {
     pub b4: f32,
 }
 
-/// 密パラメータ（FT・利き塔の重み行列以外）の勾配。
+/// 密パラメータ（FT重み行列以外）の勾配。
 /// スレッドごとに持ち、バッチ末尾で合算する。
 pub struct DenseGrads {
     pub ft_b: Vec<f32>,
-    pub ef_b: Vec<f32>,
     pub w2: Vec<f32>,
     pub b2: Vec<f32>,
     pub w3: Vec<f32>,
@@ -59,7 +55,6 @@ impl DenseGrads {
     pub fn new() -> DenseGrads {
         DenseGrads {
             ft_b: vec![0.0; FT_OUT],
-            ef_b: vec![0.0; EFFECT_OUT],
             w2: vec![0.0; HIDDEN * CONCAT],
             b2: vec![0.0; HIDDEN],
             w3: vec![0.0; HIDDEN * HIDDEN],
@@ -71,7 +66,6 @@ impl DenseGrads {
 
     pub fn clear(&mut self) {
         self.ft_b.fill(0.0);
-        self.ef_b.fill(0.0);
         self.w2.fill(0.0);
         self.b2.fill(0.0);
         self.w3.fill(0.0);
@@ -81,9 +75,8 @@ impl DenseGrads {
     }
 
     pub fn add(&mut self, other: &DenseGrads) {
-        let pairs: [(&mut Vec<f32>, &Vec<f32>); 7] = [
+        let pairs: [(&mut Vec<f32>, &Vec<f32>); 6] = [
             (&mut self.ft_b, &other.ft_b),
-            (&mut self.ef_b, &other.ef_b),
             (&mut self.w2, &other.w2),
             (&mut self.b2, &other.b2),
             (&mut self.w3, &other.w3),
@@ -99,26 +92,22 @@ impl DenseGrads {
     }
 }
 
-/// 逆伝播のFT・利き塔向け出力。gz1/gzeは活性クリップ通過後の
+/// 逆伝播のFT向け出力。gz1は活性クリップ通過後の
 /// 事前活性勾配で、そのサンプルの全活性特徴行に共通に加算される。
 pub struct BackOut {
     pub loss: f32,
     pub gz1: [[f32; FT_OUT]; 2],
     pub gz1_any: [bool; 2],
-    pub gze: [f32; EFFECT_OUT],
-    pub gze_any: bool,
 }
 
 /// 単スレッド用の勾配バッファ（テスト・勾配検証の基準実装）。
-/// FT・利き塔はtouched行のみ意味を持つ。
+/// FTはtouched行のみ意味を持つ。
 #[cfg(test)]
 pub struct Grads {
     pub dense: DenseGrads,
     pub ft_w: Vec<f32>,
-    pub ef_w: Vec<f32>,
-    /// このバッチで触れたFT行・利き塔行（重複あり。step時にdedup）。
+    /// このバッチで触れたFT行（重複あり。step時にdedup）。
     pub touched_ft: Vec<u32>,
-    pub touched_ef: Vec<u16>,
 }
 
 struct Rng(u64);
@@ -145,8 +134,6 @@ impl FloatNet {
         FloatNet {
             ft_w: vf(FT_IN * FT_OUT, 0.05),
             ft_b: vec![0.5; FT_OUT],
-            ef_w: vf(EFFECT_IN * EFFECT_OUT, 0.05),
-            ef_b: vec![0.5; EFFECT_OUT],
             w2: vf(HIDDEN * CONCAT, 0.1),
             b2: vec![0.0; HIDDEN],
             w3: vf(HIDDEN * HIDDEN, 0.3),
@@ -169,23 +156,12 @@ impl FloatNet {
                 }
             }
         }
-        let mut ze = [0f32; EFFECT_OUT];
-        ze.copy_from_slice(&self.ef_b);
-        for &f in &s.efeats {
-            let row = &self.ef_w[f as usize * EFFECT_OUT..(f as usize + 1) * EFFECT_OUT];
-            for (o, w) in ze.iter_mut().zip(row) {
-                *o += w;
-            }
-        }
 
         let mut x = [0f32; CONCAT];
         for half in 0..2 {
             for o in 0..FT_OUT {
                 x[half * FT_OUT + o] = z1[half][o].clamp(0.0, 1.0);
             }
-        }
-        for o in 0..EFFECT_OUT {
-            x[FT_OUT * 2 + o] = ze[o].clamp(0.0, 1.0);
         }
 
         let mut z2 = [0f32; HIDDEN];
@@ -217,7 +193,6 @@ impl FloatNet {
 
         Activations {
             z1,
-            ze,
             x,
             z2,
             h2,
@@ -285,8 +260,6 @@ impl FloatNet {
             loss,
             gz1: [[0.0; FT_OUT]; 2],
             gz1_any: [false, false],
-            gze: [0.0; EFFECT_OUT],
-            gze_any: false,
         };
         for half in 0..2 {
             let gz1 = &mut out.gz1[half];
@@ -305,27 +278,11 @@ impl FloatNet {
                 }
             }
         }
-        {
-            let mut any = false;
-            for o in 0..EFFECT_OUT {
-                let z = act.ze[o];
-                if 0.0 < z && z < 1.0 {
-                    out.gze[o] = gx[FT_OUT * 2 + o];
-                    any |= out.gze[o] != 0.0;
-                }
-            }
-            out.gze_any = any;
-            if any {
-                for (o, gb) in g.ef_b.iter_mut().enumerate() {
-                    *gb += out.gze[o];
-                }
-            }
-        }
         out
     }
 
     /// 1サンプルの逆伝播（単スレッド基準実装）。損失を返し、
-    /// FT・利き塔のscatterも含む全勾配をgに加算する。
+    /// FTのscatterも含む全勾配をgに加算する。
     #[cfg(test)]
     pub fn backward(&self, s: &Sample, act: &Activations, g: &mut Grads) -> f32 {
         let out = self.backward_dense(s, act, &mut g.dense);
@@ -339,15 +296,6 @@ impl FloatNet {
                     *gw += out.gz1[half][o];
                 }
                 g.touched_ft.push(f);
-            }
-        }
-        if out.gze_any {
-            for &f in &s.efeats {
-                let row = &mut g.ef_w[f as usize * EFFECT_OUT..(f as usize + 1) * EFFECT_OUT];
-                for (o, gw) in row.iter_mut().enumerate() {
-                    *gw += out.gze[o];
-                }
-                g.touched_ef.push(f);
             }
         }
         out.loss
@@ -370,8 +318,6 @@ impl FloatNet {
         NnueNetwork {
             ft_w: q16(&self.ft_w, 127.0),
             ft_b: q16(&self.ft_b, 127.0),
-            ef_w: q16(&self.ef_w, 127.0),
-            ef_b: q16(&self.ef_b, 127.0),
             w2: q8(&self.w2, 64.0),
             b2: q32(&self.b2, 64.0 * 127.0),
             w3: q8(&self.w3, 64.0),
@@ -398,7 +344,6 @@ impl FloatNet {
 /// 順伝播の中間活性。
 pub struct Activations {
     pub z1: [[f32; FT_OUT]; 2],
-    pub ze: [f32; EFFECT_OUT],
     pub x: [f32; CONCAT],
     pub z2: [f32; HIDDEN],
     pub h2: [f32; HIDDEN],
@@ -424,9 +369,7 @@ impl Grads {
         Grads {
             dense: DenseGrads::new(),
             ft_w: vec![0.0; FT_IN * FT_OUT],
-            ef_w: vec![0.0; EFFECT_IN * EFFECT_OUT],
             touched_ft: Vec::new(),
-            touched_ef: Vec::new(),
         }
     }
 
@@ -437,18 +380,12 @@ impl Grads {
         for &f in &self.touched_ft {
             self.ft_w[f as usize * FT_OUT..(f as usize + 1) * FT_OUT].fill(0.0);
         }
-        self.touched_ef.sort_unstable();
-        self.touched_ef.dedup();
-        for &f in &self.touched_ef {
-            self.ef_w[f as usize * EFFECT_OUT..(f as usize + 1) * EFFECT_OUT].fill(0.0);
-        }
         self.touched_ft.clear();
-        self.touched_ef.clear();
         self.dense.clear();
     }
 }
 
-/// Adam。FT・利き塔の行はtouchedのみ更新する（lazy）。
+/// Adam。FTの行はtouchedのみ更新する（lazy）。
 pub struct Adam {
     lr: f32,
     beta1: f32,
@@ -464,8 +401,6 @@ impl Adam {
         let zero = || FloatNet {
             ft_w: vec![0.0; FT_IN * FT_OUT],
             ft_b: vec![0.0; FT_OUT],
-            ef_w: vec![0.0; EFFECT_IN * EFFECT_OUT],
-            ef_b: vec![0.0; EFFECT_OUT],
             w2: vec![0.0; HIDDEN * CONCAT],
             b2: vec![0.0; HIDDEN],
             w3: vec![0.0; HIDDEN * HIDDEN],
@@ -534,11 +469,6 @@ impl Adam {
         (&mut self.m.ft_w, &mut self.v.ft_w)
     }
 
-    /// 利き塔重みのAdamモーメント (m, v)。
-    pub fn ef_moments_mut(&mut self) -> (&mut [f32], &mut [f32]) {
-        (&mut self.m.ef_w, &mut self.v.ef_w)
-    }
-
     /// 1行ぶんのAdam更新（並列経路の領域スレッドから呼ぶ）。
     #[allow(clippy::too_many_arguments)]
     pub fn step_row(
@@ -561,7 +491,7 @@ impl Adam {
         let (bc1, bc2) = self.begin_step();
         let (lr, b1, b2e, eps) = (self.lr, self.beta1, self.beta2, self.eps);
 
-        // touchedのFT・利き塔行（clear()でdedup済みの想定はしない）
+        // touchedのFT行（clear()でdedup済みの想定はしない）
         let mut rows: Vec<u32> = g.touched_ft.clone();
         rows.sort_unstable();
         rows.dedup();
@@ -578,25 +508,6 @@ impl Adam {
                 &g.ft_w[r.clone()],
                 &mut self.m.ft_w[r.clone()],
                 &mut self.v.ft_w[r],
-                scale,
-            );
-        }
-        let mut erows: Vec<u16> = g.touched_ef.clone();
-        erows.sort_unstable();
-        erows.dedup();
-        for &f in &erows {
-            let r = f as usize * EFFECT_OUT..(f as usize + 1) * EFFECT_OUT;
-            Self::step_slice(
-                lr,
-                b1,
-                b2e,
-                eps,
-                bc1,
-                bc2,
-                &mut net.ef_w[r.clone()],
-                &g.ef_w[r.clone()],
-                &mut self.m.ef_w[r.clone()],
-                &mut self.v.ef_w[r],
                 scale,
             );
         }
@@ -631,7 +542,6 @@ impl Adam {
             };
         }
         dense!(ft_b);
-        dense!(ef_b);
         dense!(w2);
         dense!(b2);
         dense!(w3);
@@ -658,13 +568,8 @@ mod tests {
                 half.push((r.next() % FT_IN as u64) as u32);
             }
         }
-        let mut efeats = Vec::new();
-        for _ in 0..30 {
-            efeats.push((r.next() % EFFECT_IN as u64) as u16);
-        }
         Sample {
             feats,
-            efeats,
             target: (r.next() % 1000) as f32 / 1000.0,
         }
     }
@@ -687,13 +592,11 @@ mod tests {
                 .sum()
         };
 
-        // 代表パラメータ: 触れたFT行・利き塔行・各密パラメータ
+        // 代表パラメータ: 触れたFT行・各密パラメータ
         let f0 = samples[0].feats[0][0] as usize * FT_OUT + 3;
-        let e0 = samples[0].efeats[0] as usize * EFFECT_OUT + 5;
         let checks: Vec<(f32, *mut f32)> = vec![
             (g.ft_w[f0], &mut net.ft_w[f0]),
             (g.dense.ft_b[3], &mut net.ft_b[3]),
-            (g.ef_w[e0], &mut net.ef_w[e0]),
             (g.dense.w2[100], &mut net.w2[100]),
             (g.dense.b2[0], &mut net.b2[0]),
             (g.dense.w3[50], &mut net.w3[50]),
@@ -752,7 +655,7 @@ mod tests {
     #[test]
     fn quantized_matches_float() {
         use himawari_core::{Position, SFEN_STARTPOS};
-        use himawari_engine::nnue::{effect_active, evaluate_scalar, halfkp_active};
+        use himawari_engine::nnue::{evaluate_scalar, halfkp_active};
 
         let net = FloatNet::random(13);
         let q = net.quantize();
@@ -761,13 +664,7 @@ mod tests {
         let mut feats = [Vec::new(), Vec::new()];
         halfkp_active(&pos, stm, &mut feats[0]);
         halfkp_active(&pos, stm.flip(), &mut feats[1]);
-        let mut efeats = Vec::new();
-        effect_active(&pos, &mut efeats);
-        let s = Sample {
-            feats,
-            efeats,
-            target: 0.5,
-        };
+        let s = Sample { feats, target: 0.5 };
         let float_cp = f64::from(net.forward(&s).v) * f64::from(SIGMOID_SCALE);
         let int_cp = f64::from(evaluate_scalar(&q, &pos));
         assert!(

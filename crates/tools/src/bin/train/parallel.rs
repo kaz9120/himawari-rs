@@ -8,7 +8,7 @@
 //! 不要で、巨大な勾配バッファのゼロクリアも発生しない。
 
 use himawari_core::packed_sfen::{PSV_BYTES, PackedSfenValue};
-use himawari_engine::nnue::{EFFECT_IN, EFFECT_OUT, FT_IN, FT_OUT};
+use himawari_engine::nnue::{FT_IN, FT_OUT};
 
 use crate::model::{Adam, DenseGrads, FloatNet, Sample};
 use crate::to_sample;
@@ -20,8 +20,6 @@ struct WorkerOut {
     gz1s: Vec<[f32; FT_OUT]>,
     /// (FT行, gz1sインデックス)。
     ft_refs: Vec<(u32, u32)>,
-    gzes: Vec<[f32; EFFECT_OUT]>,
-    ef_refs: Vec<(u16, u32)>,
     loss: f64,
     n: usize,
     skipped: u64,
@@ -33,8 +31,6 @@ impl WorkerOut {
             dense: DenseGrads::new(),
             gz1s: Vec::new(),
             ft_refs: Vec::new(),
-            gzes: Vec::new(),
-            ef_refs: Vec::new(),
             loss: 0.0,
             n: 0,
             skipped: 0,
@@ -55,13 +51,6 @@ fn accumulate(net: &FloatNet, s: &Sample, out: &mut WorkerOut) {
             for &f in &s.feats[half] {
                 out.ft_refs.push((f, gi));
             }
-        }
-    }
-    if b.gze_any {
-        let gi = out.gzes.len() as u32;
-        out.gzes.push(b.gze);
-        for &f in &s.efeats {
-            out.ef_refs.push((f, gi));
         }
     }
 }
@@ -86,7 +75,6 @@ pub struct ParallelTrainer {
     score_limit: i16,
     /// FT領域ごとの勾配スラブ（touched行だけ書き、更新後にゼロへ戻す）。
     slabs: Vec<Vec<f32>>,
-    eslab: Vec<f32>,
     dsum: DenseGrads,
 }
 
@@ -107,7 +95,6 @@ impl ParallelTrainer {
             lambda,
             score_limit,
             slabs: (0..threads).map(|_| vec![0.0; rows_per * FT_OUT]).collect(),
-            eslab: vec![0.0; EFFECT_IN * EFFECT_OUT],
             dsum: DenseGrads::new(),
         }
     }
@@ -256,35 +243,6 @@ impl ParallelTrainer {
             }
         });
 
-        // 利き塔行: 行数が少ないので単スレッドで同じ方式
-        let (m_ef, v_ef) = self.adam.ef_moments_mut();
-        let mut touched: Vec<u16> = Vec::new();
-        for w in &workers {
-            for &(row, gi) in &w.ef_refs {
-                let rel = row as usize;
-                let dst = &mut self.eslab[rel * EFFECT_OUT..(rel + 1) * EFFECT_OUT];
-                for (d, g) in dst.iter_mut().zip(&w.gzes[gi as usize]) {
-                    *d += g;
-                }
-                touched.push(row);
-            }
-        }
-        touched.sort_unstable();
-        touched.dedup();
-        for &rel in &touched {
-            let r = rel as usize * EFFECT_OUT..(rel as usize + 1) * EFFECT_OUT;
-            Adam::step_row(
-                hyper,
-                (bc1, bc2),
-                &mut self.net.ef_w[r.clone()],
-                &self.eslab[r.clone()],
-                &mut m_ef[r.clone()],
-                &mut v_ef[r.clone()],
-                scale,
-            );
-            self.eslab[r].fill(0.0);
-        }
-
         (loss, n, skipped)
     }
 
@@ -341,13 +299,8 @@ mod tests {
                 half.push((r.next() % FT_IN as u64) as u32);
             }
         }
-        let mut efeats = Vec::new();
-        for _ in 0..30 {
-            efeats.push((r.next() % EFFECT_IN as u64) as u16);
-        }
         Sample {
             feats,
-            efeats,
             target: (r.next() % 1000) as f32 / 1000.0,
         }
     }
@@ -386,7 +339,6 @@ mod tests {
                 .fold(0.0, f32::max)
         };
         assert!(max_diff(&net_s.ft_w, &par.net.ft_w) < 1e-4);
-        assert!(max_diff(&net_s.ef_w, &par.net.ef_w) < 1e-4);
         assert!(max_diff(&net_s.w2, &par.net.w2) < 1e-4);
         assert!(max_diff(&net_s.w4, &par.net.w4) < 1e-4);
         assert!((net_s.b4 - par.net.b4).abs() < 1e-4);

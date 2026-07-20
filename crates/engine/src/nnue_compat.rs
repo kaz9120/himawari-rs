@@ -14,14 +14,11 @@
 
 use std::io::Read;
 
-use crate::nnue::{CONCAT, EFFECT_IN, EFFECT_OUT, FT_IN, FT_OUT, HIDDEN, NnueNetwork};
+use crate::nnue::{CONCAT, FT_IN, FT_OUT, HIDDEN, NnueNetwork};
 use crate::nnue_io::Cursor;
 
 /// 標準NNUEのフォーマットバージョン（Stockfish系・やねうら王共通）。
 const NN_BIN_VERSION: u32 = 0x7AF3_2F16;
-/// 互換ネットの隠れ層入力次元（FT両視点のみ。利き塔なし）。
-const HALFKP_CONCAT: usize = FT_OUT * 2;
-
 /// nn.binを読み込む。戻り値は (ネットワーク, アーキテクチャ文字列)。
 /// ハッシュ値は検証しない（構成の不一致は次元とバイト数の照合で
 /// 検出し、重みの正しさは外部のevaluate値照合で確認する）。
@@ -54,27 +51,17 @@ pub fn load_nn_bin(r: &mut impl Read) -> Result<(NnueNetwork, String), String> {
 
     let _net_hash = cur.u32()?;
     let b2 = cur.i32v(HIDDEN)?;
-    let w2_halfkp = cur.i8v(HIDDEN * HALFKP_CONCAT)?;
+    let w2 = cur.i8v(HIDDEN * CONCAT)?;
     let b3 = cur.i32v(HIDDEN)?;
     let w3 = cur.i8v(HIDDEN * HIDDEN)?;
     let b4 = cur.i32v(1)?[0];
     let w4 = cur.i8v(HIDDEN)?;
     cur.expect_end()?;
 
-    // 隠れ1の重みを、利き塔の列（末尾EFFECT_OUT列）をゼロにして広げる。
-    // 利き塔の重み・バイアスもゼロなので、利き塔の寄与は完全に消える
-    let mut w2 = vec![0i8; HIDDEN * CONCAT];
-    for o in 0..HIDDEN {
-        w2[o * CONCAT..o * CONCAT + HALFKP_CONCAT]
-            .copy_from_slice(&w2_halfkp[o * HALFKP_CONCAT..(o + 1) * HALFKP_CONCAT]);
-    }
-
     Ok((
         NnueNetwork {
             ft_w,
             ft_b,
-            ef_w: vec![0; EFFECT_IN * EFFECT_OUT],
-            ef_b: vec![0; EFFECT_OUT],
             w2,
             b2,
             w3,
@@ -92,7 +79,7 @@ mod tests {
     use crate::nnue::evaluate_scalar;
     use himawari_core::{MoveList, Position, SFEN_STARTPOS, generate_legal};
 
-    /// 利き塔ゼロのネットをnn.bin形式に書き出す（テスト専用の逆関数）。
+    /// ネットをnn.bin形式に書き出す（テスト専用の逆関数）。
     fn to_nn_bin(net: &NnueNetwork, arch: &str) -> Vec<u8> {
         let mut v = Vec::new();
         v.extend(NN_BIN_VERSION.to_le_bytes());
@@ -110,10 +97,8 @@ mod tests {
         for &x in &net.b2 {
             v.extend(x.to_le_bytes());
         }
-        for o in 0..HIDDEN {
-            for i in 0..HALFKP_CONCAT {
-                v.push(net.w2[o * CONCAT + i] as u8);
-            }
+        for &x in &net.w2 {
+            v.push(x as u8);
         }
         for &x in &net.b3 {
             v.extend(x.to_le_bytes());
@@ -128,20 +113,10 @@ mod tests {
         v
     }
 
-    /// 乱数ネットの利き塔部分をゼロにする（互換ネット相当にする）。
-    fn zero_effect_tower(net: &mut NnueNetwork) {
-        net.ef_w.fill(0);
-        net.ef_b.fill(0);
-        for o in 0..HIDDEN {
-            net.w2[o * CONCAT + HALFKP_CONCAT..(o + 1) * CONCAT].fill(0);
-        }
-    }
-
     /// 書き出し→読み込みで全重みと評価値が一致する（レイアウト検証）。
     #[test]
     fn nn_bin_roundtrip() {
-        let mut net = NnueNetwork::random(2026);
-        zero_effect_tower(&mut net);
+        let net = NnueNetwork::random(2026);
         let buf = to_nn_bin(&net, "Features=HalfKP(Friend)[125388->256x2]");
         let (loaded, arch) = load_nn_bin(&mut buf.as_slice()).unwrap();
         assert!(arch.contains("HalfKP"));
@@ -153,7 +128,6 @@ mod tests {
         assert_eq!(net.b3, loaded.b3);
         assert_eq!(net.w4, loaded.w4);
         assert_eq!(net.b4, loaded.b4);
-        assert_eq!(loaded.ef_w, vec![0; EFFECT_IN * EFFECT_OUT]);
 
         let mut pos = Position::from_sfen(SFEN_STARTPOS).unwrap();
         for _ in 0..10 {
@@ -167,15 +141,15 @@ mod tests {
     /// 壊れた入力をエラーにする。
     #[test]
     fn nn_bin_rejects_bad_input() {
-        let mut net = NnueNetwork::random(3);
-        zero_effect_tower(&mut net);
+        let net = NnueNetwork::random(3);
         let buf = to_nn_bin(&net, "Features=HalfKP(Friend)[125388->256x2]");
         // バージョン不一致
         let mut bad = buf.clone();
         bad[0] ^= 0xFF;
         assert!(load_nn_bin(&mut bad.as_slice()).is_err());
         // HalfKPでないアーキテクチャ
-        let bad = to_nn_bin(&net, "Features=K-P[...]");
+        let net2 = NnueNetwork::random(3);
+        let bad = to_nn_bin(&net2, "Features=K-P[...]");
         assert!(load_nn_bin(&mut bad.as_slice()).is_err());
         // 末尾切り捨て・余分バイト
         assert!(load_nn_bin(&mut &buf[..buf.len() - 1]).is_err());

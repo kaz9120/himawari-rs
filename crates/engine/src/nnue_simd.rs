@@ -8,7 +8,7 @@ use std::simd::Simd;
 use std::simd::cmp::SimdOrd;
 use std::simd::num::{SimdInt, SimdUint};
 
-use crate::nnue::{CONCAT, EFFECT_OUT, FT_OUT, HIDDEN, NnueNetwork};
+use crate::nnue::{CONCAT, FT_OUT, HIDDEN, NnueNetwork};
 use crate::value::Value;
 
 const I16_LANES: usize = 16;
@@ -70,23 +70,6 @@ fn dot(w: &[i8], x: &[u8]) -> i32 {
 #[inline]
 fn clip(v: i32) -> u8 {
     v.clamp(0, 127) as u8
-}
-
-/// 利き塔の全計算。幅32と小さいためスカラーで足す（SIMD化は
-/// 計測で必要になってから）。activeは特徴インデックス列。
-pub fn effect_tower(net: &NnueNetwork, active: &[u16], concat: &mut [u8; CONCAT]) {
-    let mut acc = [0i16; EFFECT_OUT];
-    acc.copy_from_slice(&net.ef_b);
-    for &f in active {
-        let base = f as usize * EFFECT_OUT;
-        let w = &net.ef_w[base..base + EFFECT_OUT];
-        for (a, &wv) in acc.iter_mut().zip(w) {
-            *a = a.wrapping_add(wv);
-        }
-    }
-    for (o, &a) in acc.iter().enumerate() {
-        concat[FT_OUT * 2 + o] = clip(i32::from(a));
-    }
 }
 
 /// 連結ベクトルから評価値まで（SIMD版）。

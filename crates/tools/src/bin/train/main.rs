@@ -16,7 +16,7 @@ mod parallel;
 use std::io::Read;
 
 use himawari_core::packed_sfen::{PSV_BYTES, PackedSfenValue, unpack};
-use himawari_engine::nnue::{effect_active, halfkp_active};
+use himawari_engine::nnue::halfkp_active;
 use himawari_engine::nnue_io::save;
 
 use model::{FloatNet, SIGMOID_SCALE, Sample, bce, sigmoid};
@@ -50,13 +50,10 @@ pub(crate) fn to_sample(rec: &PackedSfenValue, lambda: f32, score_limit: i16) ->
     let mut feats = [Vec::new(), Vec::new()];
     halfkp_active(&pos, stm, &mut feats[0]);
     halfkp_active(&pos, stm.flip(), &mut feats[1]);
-    let mut efeats = Vec::new();
-    effect_active(&pos, &mut efeats);
     let p_score = sigmoid(f32::from(rec.score) / SIGMOID_SCALE);
     let p_result = (f32::from(rec.game_result) + 1.0) / 2.0;
     Some(Sample {
         feats,
-        efeats,
         target: lambda * p_score + (1.0 - lambda) * p_result,
     })
 }

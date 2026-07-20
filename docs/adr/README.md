@@ -64,6 +64,7 @@
 | [0042](0042-training-log-registry.md) | 学習ログと実験レジストリ | P6 | rejected |
 | [0043](0043-pyo3-bridge.md) | PyO3ブリッジ（Rust-Python連携） | P6 | accepted |
 | [0044](0044-p7-feature-experiments.md) | P7特徴量実験（玉ライン特徴・利き塔有無の比較） | P7 | accepted |
+| [0045](0045-remove-effect-tower.md) | 利き塔の除去 | P7 | accepted |
 
 ## バックログ
 

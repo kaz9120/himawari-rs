@@ -7,7 +7,7 @@
 
 use himawari_core::{Color, DirtyPiece, PieceType, Position, Square, bonapiece};
 
-use crate::nnue::{CONCAT, FT_OUT, NnueNetwork, effect_active, halfkp_active};
+use crate::nnue::{CONCAT, FT_OUT, NnueNetwork, halfkp_active};
 use crate::nnue_simd;
 use crate::value::Value;
 
@@ -88,9 +88,6 @@ impl NnueState {
             let acc = &top.acc[c.index()];
             nnue_simd::clip_to_u8(acc, &mut concat[half * FT_OUT..(half + 1) * FT_OUT]);
         }
-        let mut ef = Vec::with_capacity(50);
-        effect_active(pos, &mut ef);
-        nnue_simd::effect_tower(net, &ef, &mut concat);
         nnue_simd::forward_hidden(net, &concat)
     }
 

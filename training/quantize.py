@@ -1,11 +1,11 @@
-"""Quantization and .hmwr file I/O via Rust PyO3 bridge (ADR-0043)."""
+"""Quantization and .hmwr file I/O via Rust PyO3 bridge (ADR-0043, ADR-0045)."""
 
 import torch
 
 import himawari
 from model import (
-    FT_IN, FT_OUT, EFFECT_IN, EFFECT_OUT, HIDDEN,
-    SIGMOID_SCALE, FV_SCALE, NnueModel, ARCH_HALFKP_EFFECT,
+    FT_IN, FT_OUT, HIDDEN, CONCAT,
+    SIGMOID_SCALE, FV_SCALE, NnueModel,
 )
 
 
@@ -14,8 +14,6 @@ def quantize(model: NnueModel) -> dict:
     with torch.no_grad():
         ft_w = model.ft.weight.detach().float()
         ft_b = model.ft_bias.detach().float()
-        ef_w = model.ef.weight.detach().float()
-        ef_b = model.ef_bias.detach().float()
         w2 = model.l2.weight.detach().float()
         b2 = model.l2.bias.detach().float()
         w3 = model.l3.weight.detach().float()
@@ -28,8 +26,6 @@ def quantize(model: NnueModel) -> dict:
     return {
         "ft_w": (ft_w * 127).round().clamp(-32768, 32767).to(torch.int16),
         "ft_b": (ft_b * 127).round().clamp(-32768, 32767).to(torch.int16),
-        "ef_w": (ef_w * 127).round().clamp(-32768, 32767).to(torch.int16),
-        "ef_b": (ef_b * 127).round().clamp(-32768, 32767).to(torch.int16),
         "w2": (w2 * 64).round().clamp(-128, 127).to(torch.int8),
         "b2": (b2 * 64 * 127).round().to(torch.int32),
         "w3": (w3 * 64).round().clamp(-128, 127).to(torch.int8),
@@ -46,8 +42,6 @@ def save_hmwr(model: NnueModel, lineage: str, path: str):
         path, lineage,
         q["ft_w"].flatten().tolist(),
         q["ft_b"].tolist(),
-        q["ef_w"].flatten().tolist(),
-        q["ef_b"].tolist(),
         q["w2"].flatten().tolist(),
         q["b2"].tolist(),
         q["w3"].flatten().tolist(),
@@ -64,9 +58,7 @@ def load_hmwr(path: str) -> tuple[dict, str]:
     return {
         "ft_w": torch.tensor(d["ft_w"], dtype=torch.int16).reshape(FT_IN, FT_OUT),
         "ft_b": torch.tensor(d["ft_b"], dtype=torch.int16),
-        "ef_w": torch.tensor(d["ef_w"], dtype=torch.int16).reshape(EFFECT_IN, EFFECT_OUT),
-        "ef_b": torch.tensor(d["ef_b"], dtype=torch.int16),
-        "w2": torch.tensor(d["w2"], dtype=torch.int8).reshape(HIDDEN, FT_OUT * 2 + EFFECT_OUT),
+        "w2": torch.tensor(d["w2"], dtype=torch.int8).reshape(HIDDEN, CONCAT),
         "b2": torch.tensor(d["b2"], dtype=torch.int32),
         "w3": torch.tensor(d["w3"], dtype=torch.int8).reshape(HIDDEN, HIDDEN),
         "b3": torch.tensor(d["b3"], dtype=torch.int32),

@@ -1,4 +1,4 @@
-"""NNUE trainer v2 (ADR-0040)."""
+"""NNUE trainer v2 (ADR-0040, ADR-0045)."""
 
 import argparse
 import csv
@@ -32,10 +32,10 @@ def validate(model, valid_loader, device):
         for batch in valid_loader:
             if batch is None:
                 continue
-            stm_i, stm_o, opp_i, opp_o, ef_i, ef_o, targets = [
+            stm_i, stm_o, opp_i, opp_o, targets = [
                 x.to(device) for x in batch
             ]
-            out = model(stm_i, stm_o, opp_i, opp_o, ef_i, ef_o)
+            out = model(stm_i, stm_o, opp_i, opp_o)
             loss = loss_fn(out, targets)
             total_loss += loss.item() * targets.size(0)
             total_n += targets.size(0)
@@ -66,16 +66,13 @@ def main():
     p.add_argument("--registry", help="Experiment registry TSV path")
     p.add_argument("--name", default="", help="Experiment name for registry")
     p.add_argument("--notes", default="", help="Notes for registry")
-    p.add_argument("--arch", default="halfkp_effect",
-                   choices=["halfkp_effect", "halfkp", "halfkp_kingline"],
-                   help="Network architecture (ADR-0044)")
     p.add_argument("--device", default="cpu")
     args = p.parse_args()
 
     device = torch.device(args.device)
-    print(f"Device: {device}, arch: {args.arch}", file=sys.stderr)
+    print(f"Device: {device}", file=sys.stderr)
 
-    train_ds = PsvDataset(args.data, lambda_=args.lambda_, score_limit=args.score_limit, arch=args.arch)
+    train_ds = PsvDataset(args.data, lambda_=args.lambda_, score_limit=args.score_limit)
     train_loader = DataLoader(
         train_ds, batch_size=args.batch, shuffle=True,
         num_workers=args.workers, collate_fn=collate_psv,
@@ -87,14 +84,14 @@ def main():
 
     valid_loader = None
     if args.valid:
-        valid_ds = PsvDataset(args.valid, lambda_=args.lambda_, score_limit=args.score_limit, arch=args.arch)
+        valid_ds = PsvDataset(args.valid, lambda_=args.lambda_, score_limit=args.score_limit)
         valid_loader = DataLoader(
             valid_ds, batch_size=args.batch, shuffle=False,
             num_workers=args.workers, collate_fn=collate_psv,
         )
         print(f"検証データ: {len(valid_ds)}局面", file=sys.stderr)
 
-    model = NnueModel(arch=args.arch).to(device)
+    model = NnueModel().to(device)
 
     dense_params = [
         model.ft_bias,
@@ -102,11 +99,7 @@ def main():
         model.l3.weight, model.l3.bias,
         model.l4.weight, model.l4.bias,
     ]
-    if model.ef_bias is not None:
-        dense_params.append(model.ef_bias)
     sparse_params = [model.ft.weight]
-    if model.ef is not None:
-        sparse_params.append(model.ef.weight)
     lr_fn = lambda step: lr_lambda(
         step, args.warmup_steps, total_steps, args.min_lr, args.peak_lr,
     )
@@ -167,14 +160,14 @@ def main():
             if batch is None:
                 continue
 
-            stm_i, stm_o, opp_i, opp_o, ef_i, ef_o, targets = [
+            stm_i, stm_o, opp_i, opp_o, targets = [
                 x.to(device) for x in batch
             ]
             n = targets.size(0)
 
             optimizer_dense.zero_grad()
             optimizer_sparse.zero_grad()
-            out = model(stm_i, stm_o, opp_i, opp_o, ef_i, ef_o)
+            out = model(stm_i, stm_o, opp_i, opp_o)
             loss = loss_fn(out, targets)
             loss.backward()
             optimizer_dense.step()
@@ -239,12 +232,9 @@ def main():
                         f"train-v2-pytorch data={args.data} n={data_n} "
                         f"step={step} valid_loss={vl:.5f} "
                         f"batch={args.batch} peak_lr={args.peak_lr} "
-                        f"lambda={args.lambda_} arch={args.arch}"
+                        f"lambda={args.lambda_}"
                     )
-                    if args.arch == "halfkp_effect":
-                        save_hmwr(model, lineage, best_path)
-                    else:
-                        torch.save(model.state_dict(), best_path)
+                    save_hmwr(model, lineage, best_path)
                     print(
                         f"  best checkpoint: {best_path} "
                         f"(step {step}, valid {vl:.5f})",
@@ -302,12 +292,9 @@ def main():
         f"epochs={args.epochs} batch={args.batch} "
         f"peak_lr={args.peak_lr} min_lr={args.min_lr} "
         f"warmup={args.warmup_steps} lambda={args.lambda_} "
-        f"arch={args.arch} steps={step}"
+        f"steps={step}"
     )
-    if args.arch == "halfkp_effect":
-        save_hmwr(model, lineage, args.out)
-    else:
-        torch.save(model.state_dict(), args.out)
+    save_hmwr(model, lineage, args.out)
     print(f"{args.out} を書き出しました", file=sys.stderr)
 
     if args.registry:

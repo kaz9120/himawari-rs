@@ -1,21 +1,17 @@
 //! NNUE推論の骨格（ADR-0034〜0036）。
 //!
-//! 2塔構成: HalfKPの差分FT（256×2視点）と、毎回全計算する
-//! 玉近傍利き塔（800→32）を連結し、32→32→1で評価値を出す。
+//! HalfKPの差分FT（256×2視点）を連結し、32→32→1で評価値を出す。
 //! 本モジュールはスカラー基準実装（正解器）。accumulator差分と
 //! SIMDはこの実装との完全一致を要求する形で後から積む。
 
-use himawari_core::{Color, PieceType, Position, Square, attacks, bonapiece};
+use himawari_core::{Color, PieceType, Position, Square, bonapiece};
 
 use crate::value::Value;
 
 /// FT出力次元（片視点）。
 pub const FT_OUT: usize = 256;
-/// 利き塔の入力・出力次元。
-pub const EFFECT_IN: usize = 800;
-pub const EFFECT_OUT: usize = 32;
-/// 隠れ層の入力次元（FT両視点 + 利き塔）。
-pub const CONCAT: usize = FT_OUT * 2 + EFFECT_OUT;
+/// 隠れ層の入力次元（FT両視点）。
+pub const CONCAT: usize = FT_OUT * 2;
 pub const HIDDEN: usize = 32;
 /// 評価値スケール（ADR-0036）。
 pub const FV_SCALE: i32 = 16;
@@ -27,9 +23,6 @@ pub struct NnueNetwork {
     /// FT重み。列優先: `ft_w[feature * FT_OUT + o]`。
     pub ft_w: Vec<i16>,
     pub ft_b: Vec<i16>,
-    /// 利き塔重み。列優先: `ef_w[feature * EFFECT_OUT + o]`。
-    pub ef_w: Vec<i16>,
-    pub ef_b: Vec<i16>,
     /// 隠れ層。行優先: `w2[row * CONCAT + i]`。
     pub w2: Vec<i8>,
     pub b2: Vec<i32>,
@@ -66,8 +59,6 @@ impl NnueNetwork {
         NnueNetwork {
             ft_w: r.i16v(FT_IN * FT_OUT, 32),
             ft_b: r.i16v(FT_OUT, 128),
-            ef_w: r.i16v(EFFECT_IN * EFFECT_OUT, 64),
-            ef_b: r.i16v(EFFECT_OUT, 128),
             w2: r.i8v(HIDDEN * CONCAT),
             b2: r.i32v(HIDDEN),
             w3: r.i8v(HIDDEN * HIDDEN),
@@ -97,66 +88,6 @@ pub fn halfkp_active(pos: &Position, c: Color, out: &mut Vec<u32>) {
             for i in 1..=hand.count(pt) {
                 let bp = bonapiece::hand_bona_piece(c, owner, pt, i);
                 out.push(bonapiece::halfkp_index(c, king, bp));
-            }
-        }
-    }
-}
-
-/// 玉近傍利き特徴（ADR-0034）: 手番視点で、自玉・敵玉の周囲5×5の
-/// 各マスに (自利き数0..3, 敵利き数0..3) の16クラスone-hot。
-/// インデックス = 玉スロット(0=自玉,1=敵玉)×400 + マス番号×16 + クラス。
-///
-/// 利き数は、マスごとにattackers_toを引くのではなく、盤上の駒ごとに
-/// 利きを1回求めて近傍領域と交差し、マス別に積み上げる（駒数×利き
-/// ルックアップ1回で済み、evaluateごとの全計算コストの主因を削る）。
-pub fn effect_active(pos: &Position, out: &mut Vec<u16>) {
-    out.clear();
-    let stm = pos.side_to_move();
-    let occ = pos.occupied();
-    let k_own = pos.king(stm);
-    let k_opp = pos.king(stm.flip());
-    let region = attacks::neighbor5x5(k_own) | attacks::neighbor5x5(k_opp);
-    // 近接駒の利き距離は最大2なので、領域から遠い近接駒は除外できる。
-    // 遠距離駒（香角飛馬龍）はどこからでも届き得るため常に計算する
-    let near = attacks::neighbor9x9(k_own) | attacks::neighbor9x9(k_opp);
-
-    let mut cnt = [[0u8; 81]; 2];
-    for c in [Color::Black, Color::White] {
-        let sliders = pos.pieces(c, PieceType::LANCE)
-            | pos.pieces(c, PieceType::BISHOP)
-            | pos.pieces(c, PieceType::ROOK)
-            | pos.pieces(c, PieceType::HORSE)
-            | pos.pieces(c, PieceType::DRAGON);
-        let mut pieces = pos.color_bb(c) & (near | sliders);
-        while !pieces.is_empty() {
-            let sq = pieces.pop_lsb();
-            let mut a = attacks::attacks(pos.piece_on(sq), sq, occ) & region;
-            while !a.is_empty() {
-                cnt[c.index()][a.pop_lsb().index()] += 1;
-            }
-        }
-    }
-
-    for (slot, k) in [(0u16, k_own), (1u16, k_opp)] {
-        // 手番視点の盤に正規化してから近傍を走査する
-        let k_norm = if stm == Color::Black { k } else { k.inv() };
-        let (kf, kr) = (k_norm.file().0 as i32, k_norm.rank().0 as i32);
-        for df in -2..=2i32 {
-            for dr in -2..=2i32 {
-                let (f, r) = (kf + df, kr + dr);
-                if !(0..9).contains(&f) || !(0..9).contains(&r) {
-                    continue;
-                }
-                let s_norm = Square::from_index((f * 9 + r) as u8);
-                let s = if stm == Color::Black {
-                    s_norm
-                } else {
-                    s_norm.inv()
-                };
-                let own = u16::from(cnt[stm.index()][s.index()].min(3));
-                let opp = u16::from(cnt[stm.flip().index()][s.index()].min(3));
-                let cell = ((df + 2) * 5 + (dr + 2)) as u16;
-                out.push(slot * 400 + cell * 16 + own * 4 + opp);
             }
         }
     }
@@ -192,27 +123,7 @@ pub fn evaluate_scalar(net: &NnueNetwork, pos: &Position) -> Value {
         }
     }
 
-    effect_tower(net, pos, &mut concat);
     forward_hidden(net, &concat)
-}
-
-/// 利き塔を全計算してconcatの末尾に書く（ADR-0034）。
-pub(crate) fn effect_tower(net: &NnueNetwork, pos: &Position, concat: &mut [u8; CONCAT]) {
-    let mut ef = Vec::with_capacity(50);
-    effect_active(pos, &mut ef);
-    let mut acc = [0i32; EFFECT_OUT];
-    for (o, a) in acc.iter_mut().enumerate() {
-        *a = i32::from(net.ef_b[o]);
-    }
-    for &f in &ef {
-        let base = f as usize * EFFECT_OUT;
-        for (o, a) in acc.iter_mut().enumerate() {
-            *a += i32::from(net.ef_w[base + o]);
-        }
-    }
-    for (o, &a) in acc.iter().enumerate() {
-        concat[FT_OUT * 2 + o] = clip(a);
-    }
 }
 
 /// 連結ベクトルから評価値まで（隠れ層はi8×u8の積和、ADR-0036）。
@@ -329,78 +240,6 @@ mod tests {
                 pos.do_move(m);
             }
         }
-    }
-
-    /// 旧実装（マスごとにattackers_toを引く）。駒ごと積み上げ実装の
-    /// 正解基準として残す。
-    fn effect_active_ref(pos: &Position, out: &mut Vec<u16>) {
-        out.clear();
-        let stm = pos.side_to_move();
-        let occ = pos.occupied();
-        for (slot, king_owner) in [(0u16, stm), (1u16, stm.flip())] {
-            let k = pos.king(king_owner);
-            let k_norm = if stm == Color::Black { k } else { k.inv() };
-            let (kf, kr) = (k_norm.file().0 as i32, k_norm.rank().0 as i32);
-            for df in -2..=2i32 {
-                for dr in -2..=2i32 {
-                    let (f, r) = (kf + df, kr + dr);
-                    if !(0..9).contains(&f) || !(0..9).contains(&r) {
-                        continue;
-                    }
-                    let s_norm = Square::from_index((f * 9 + r) as u8);
-                    let s = if stm == Color::Black {
-                        s_norm
-                    } else {
-                        s_norm.inv()
-                    };
-                    let own = pos.attackers_to(stm, s, occ).count().min(3) as u16;
-                    let opp = pos.attackers_to(stm.flip(), s, occ).count().min(3) as u16;
-                    let cell = ((df + 2) * 5 + (dr + 2)) as u16;
-                    out.push(slot * 400 + cell * 16 + own * 4 + opp);
-                }
-            }
-        }
-    }
-
-    /// 駒ごと積み上げの利き特徴が旧実装と完全一致する（順序も含む）。
-    #[test]
-    fn effect_active_matches_reference() {
-        let (mut fast, mut refr) = (Vec::new(), Vec::new());
-        for seed in 1..=16u64 {
-            let mut rng = Rng(seed.wrapping_mul(0x9E37_79B9_7F4A_7C15));
-            let mut pos = Position::from_sfen(SFEN_STARTPOS).unwrap();
-            for _ in 0..80 {
-                let mut list = MoveList::default();
-                generate_legal(&pos, true, &mut list);
-                if list.is_empty() {
-                    break;
-                }
-                effect_active(&pos, &mut fast);
-                effect_active_ref(&pos, &mut refr);
-                assert_eq!(fast, refr, "利き特徴が旧実装と不一致: {}", pos.to_sfen());
-                let m = list.as_slice()[(rng.next() % list.len() as u64) as usize];
-                pos.do_move(m);
-            }
-        }
-    }
-
-    /// 利き特徴のインデックスが範囲内で、マスごとに高々1つ立つこと。
-    #[test]
-    fn effect_features_are_valid() {
-        // 平手の玉は一段目・九段目にいるため5×5は5×3=15マスに切れる
-        let pos = Position::from_sfen(SFEN_STARTPOS).unwrap();
-        let mut ef = Vec::new();
-        effect_active(&pos, &mut ef);
-        assert_eq!(ef.len(), 30, "端の玉は片側15マス");
-        // 盤中央の玉なら両玉フルの50マス
-        let center = Position::from_sfen("9/9/9/4k4/9/4K4/9/9/9 b - 1").unwrap();
-        effect_active(&center, &mut ef);
-        assert_eq!(ef.len(), 50);
-        let mut cells: Vec<u16> = ef.iter().map(|f| f / 16).collect();
-        cells.sort_unstable();
-        cells.dedup();
-        assert_eq!(cells.len(), 50, "同一マスに複数クラスが立っている");
-        assert!(ef.iter().all(|&f| f < EFFECT_IN as u16));
     }
 
     /// HalfKP活性特徴数 = 盤上の玉以外の駒 + 持ち駒総数。

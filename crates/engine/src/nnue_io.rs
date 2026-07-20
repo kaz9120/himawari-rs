@@ -8,10 +8,10 @@
 
 use std::io::{Read, Write};
 
-use crate::nnue::{CONCAT, EFFECT_IN, EFFECT_OUT, FT_IN, FT_OUT, HIDDEN, NnueNetwork};
+use crate::nnue::{CONCAT, FT_IN, FT_OUT, HIDDEN, NnueNetwork};
 
 const MAGIC: &[u8; 8] = b"HMWRNNUE";
-const FORMAT_VERSION: u32 = 1;
+const FORMAT_VERSION: u32 = 2;
 
 /// FNV-1a 64bit。重み列の破損検出用。
 fn fnv1a(bytes: &[u8]) -> u64 {
@@ -29,12 +29,6 @@ fn weight_bytes(net: &NnueNetwork) -> Vec<u8> {
         v.extend_from_slice(&x.to_le_bytes());
     }
     for &x in &net.ft_w {
-        v.extend_from_slice(&x.to_le_bytes());
-    }
-    for &x in &net.ef_b {
-        v.extend_from_slice(&x.to_le_bytes());
-    }
-    for &x in &net.ef_w {
         v.extend_from_slice(&x.to_le_bytes());
     }
     for &x in &net.b2 {
@@ -61,13 +55,7 @@ pub fn save(net: &NnueNetwork, lineage: &str, w: &mut impl Write) -> std::io::Re
     let body = weight_bytes(net);
     w.write_all(MAGIC)?;
     w.write_all(&FORMAT_VERSION.to_le_bytes())?;
-    for dim in [
-        FT_IN as u32,
-        FT_OUT as u32,
-        EFFECT_IN as u32,
-        EFFECT_OUT as u32,
-        HIDDEN as u32,
-    ] {
+    for dim in [FT_IN as u32, FT_OUT as u32, HIDDEN as u32] {
         w.write_all(&dim.to_le_bytes())?;
     }
     let lb = lineage.as_bytes();
@@ -161,20 +149,8 @@ pub fn load(r: &mut impl Read) -> Result<(NnueNetwork, String), String> {
     if version != FORMAT_VERSION {
         return Err(format!("未対応のフォーマット版: {version}"));
     }
-    let dims = [
-        read_u32(r)?,
-        read_u32(r)?,
-        read_u32(r)?,
-        read_u32(r)?,
-        read_u32(r)?,
-    ];
-    let expect = [
-        FT_IN as u32,
-        FT_OUT as u32,
-        EFFECT_IN as u32,
-        EFFECT_OUT as u32,
-        HIDDEN as u32,
-    ];
+    let dims = [read_u32(r)?, read_u32(r)?, read_u32(r)?];
+    let expect = [FT_IN as u32, FT_OUT as u32, HIDDEN as u32];
     if dims != expect {
         return Err(format!(
             "アーキテクチャ不一致: ファイル{dims:?} 実装{expect:?}"
@@ -203,8 +179,6 @@ pub fn load(r: &mut impl Read) -> Result<(NnueNetwork, String), String> {
     let mut cur = Cursor::new(&body);
     let ft_b = cur.i16v(FT_OUT)?;
     let ft_w = cur.i16v(FT_IN * FT_OUT)?;
-    let ef_b = cur.i16v(EFFECT_OUT)?;
-    let ef_w = cur.i16v(EFFECT_IN * EFFECT_OUT)?;
     let b2 = cur.i32v(HIDDEN)?;
     let w2 = cur.i8v(HIDDEN * CONCAT)?;
     let b3 = cur.i32v(HIDDEN)?;
@@ -217,8 +191,6 @@ pub fn load(r: &mut impl Read) -> Result<(NnueNetwork, String), String> {
         NnueNetwork {
             ft_w,
             ft_b,
-            ef_w,
-            ef_b,
             w2,
             b2,
             w3,
