@@ -83,6 +83,7 @@ pub struct ParallelTrainer {
     adam: Adam,
     threads: usize,
     lambda: f32,
+    score_limit: i16,
     /// FT領域ごとの勾配スラブ（touched行だけ書き、更新後にゼロへ戻す）。
     slabs: Vec<Vec<f32>>,
     eslab: Vec<f32>,
@@ -90,7 +91,13 @@ pub struct ParallelTrainer {
 }
 
 impl ParallelTrainer {
-    pub fn new(net: FloatNet, lr: f32, lambda: f32, threads: usize) -> ParallelTrainer {
+    pub fn new(
+        net: FloatNet,
+        lr: f32,
+        lambda: f32,
+        score_limit: i16,
+        threads: usize,
+    ) -> ParallelTrainer {
         let threads = threads.max(1);
         let rows_per = FT_IN.div_ceil(threads);
         ParallelTrainer {
@@ -98,6 +105,7 @@ impl ParallelTrainer {
             adam: Adam::new(lr),
             threads,
             lambda,
+            score_limit,
             slabs: (0..threads).map(|_| vec![0.0; rows_per * FT_OUT]).collect(),
             eslab: vec![0.0; EFFECT_IN * EFFECT_OUT],
             dsum: DenseGrads::new(),
@@ -109,6 +117,7 @@ impl ParallelTrainer {
     pub fn train_batch(&mut self, records: &[[u8; PSV_BYTES]]) -> (f64, usize, u64) {
         let t = self.threads;
         let lambda = self.lambda;
+        let score_limit = self.score_limit;
         let net = &self.net;
         let chunk = records.len().div_ceil(t).max(1);
         let t1 = std::time::Instant::now();
@@ -120,7 +129,7 @@ impl ParallelTrainer {
                         let mut out = WorkerOut::new();
                         for raw in recs {
                             let rec = PackedSfenValue::from_bytes(raw);
-                            match to_sample(&rec, lambda) {
+                            match to_sample(&rec, lambda, score_limit) {
                                 Some(sample) => accumulate(net, &sample, &mut out),
                                 None => out.skipped += 1,
                             }
@@ -365,7 +374,7 @@ mod tests {
         }
 
         // 並列（3スレッド）
-        let mut par = ParallelTrainer::new(FloatNet::random(5), 1e-3, 0.7, 3);
+        let mut par = ParallelTrainer::new(FloatNet::random(5), 1e-3, 0.7, 0, 3);
         for batch in &batches {
             par.train_samples(batch);
         }

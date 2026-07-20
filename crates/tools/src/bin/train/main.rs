@@ -39,13 +39,10 @@ fn parse_or<T: std::str::FromStr>(v: Option<String>, default: T) -> T {
     v.and_then(|s| s.parse().ok()).unwrap_or(default)
 }
 
-/// 詰みスコアの閾値。|score|がこれ以上ならスキップする
-/// （やねうら王のeval_limit相当）。
-const SCORE_LIMIT: i16 = 10000;
-
-/// PSVレコードをSampleへ変換する。詰みスコア・デコード不能はNone。
-pub(crate) fn to_sample(rec: &PackedSfenValue, lambda: f32) -> Option<Sample> {
-    if rec.score.abs() >= SCORE_LIMIT {
+/// PSVレコードをSampleへ変換する。score_limitを超える局面と
+/// デコード不能はNone。score_limit=0でフィルタ無効。
+pub(crate) fn to_sample(rec: &PackedSfenValue, lambda: f32, score_limit: i16) -> Option<Sample> {
+    if score_limit > 0 && rec.score.abs() >= score_limit {
         return None;
     }
     let pos = unpack(&rec.sfen, rec.game_ply).ok()?;
@@ -64,7 +61,7 @@ pub(crate) fn to_sample(rec: &PackedSfenValue, lambda: f32) -> Option<Sample> {
     })
 }
 
-fn load_samples(path: &str, lambda: f32) -> Vec<Sample> {
+fn load_samples(path: &str, lambda: f32, score_limit: i16) -> Vec<Sample> {
     let mut bytes = Vec::new();
     std::fs::File::open(path)
         .unwrap_or_else(|e| die(&format!("開けません: {path}: {e}")))
@@ -74,7 +71,7 @@ fn load_samples(path: &str, lambda: f32) -> Vec<Sample> {
         .as_chunks::<PSV_BYTES>()
         .0
         .iter()
-        .filter_map(|c| to_sample(&PackedSfenValue::from_bytes(c), lambda))
+        .filter_map(|c| to_sample(&PackedSfenValue::from_bytes(c), lambda, score_limit))
         .collect()
 }
 
@@ -94,8 +91,9 @@ fn main() {
     let valid_path = arg_value(&args, "--valid");
     let batch: usize = parse_or(arg_value(&args, "--batch"), 16384);
     let lr: f32 = parse_or(arg_value(&args, "--lr"), 1e-3);
-    let lambda: f32 = parse_or(arg_value(&args, "--lambda"), 0.33);
-    let lr_gamma: f32 = parse_or(arg_value(&args, "--lr-gamma"), 0.992);
+    let lambda: f32 = parse_or(arg_value(&args, "--lambda"), 0.7);
+    let lr_gamma: f32 = parse_or(arg_value(&args, "--lr-gamma"), 1.0);
+    let score_limit: i16 = parse_or(arg_value(&args, "--score-limit"), 0);
     let epochs: u32 = parse_or(arg_value(&args, "--epochs"), 1);
     let seed: u64 = parse_or(arg_value(&args, "--seed"), 1);
     let default_threads = std::thread::available_parallelism()
@@ -118,16 +116,19 @@ fn main() {
         die("学習データが空です");
     }
     eprintln!(
-        "学習データ: {}局面 × {epochs}エポック, batch={batch}, lr={lr}, λ={lambda}, lr_gamma={lr_gamma}, threads={threads}",
+        "学習データ: {}局面 × {epochs}エポック, batch={batch}, lr={lr}, λ={lambda}, lr_gamma={lr_gamma}, score_limit={score_limit}, threads={threads}",
         records.len()
     );
 
-    let valid = valid_path.as_deref().map(|p| load_samples(p, lambda));
+    let valid = valid_path
+        .as_deref()
+        .map(|p| load_samples(p, lambda, score_limit));
     if let Some(v) = &valid {
         eprintln!("検証データ: {}局面", v.len());
     }
 
-    let mut trainer = ParallelTrainer::new(FloatNet::random(seed), lr, lambda, threads);
+    let mut trainer =
+        ParallelTrainer::new(FloatNet::random(seed), lr, lambda, score_limit, threads);
     let mut step = 0u64;
     let mut samples_done = 0u64;
     let mut skipped = 0u64;
@@ -183,9 +184,8 @@ fn main() {
 
     let q = trainer.net.quantize();
     let lineage = format!(
-        "train-v2 data={data} n={} epochs={epochs} batch={batch} lr={lr} lambda={lambda} lr_gamma={lr_gamma} score_limit={} seed={seed} steps={step}",
-        records.len(),
-        SCORE_LIMIT
+        "train-v2 data={data} n={} epochs={epochs} batch={batch} lr={lr} lambda={lambda} lr_gamma={lr_gamma} score_limit={score_limit} seed={seed} steps={step}",
+        records.len()
     );
     let mut f =
         std::fs::File::create(&out).unwrap_or_else(|e| die(&format!("作成できません: {e}")));
