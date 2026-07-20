@@ -278,6 +278,33 @@ impl ParallelTrainer {
 
         (loss, n, skipped)
     }
+
+    /// lrをgamma倍する（エポック末のStepLR）。
+    pub fn scale_lr(&mut self, gamma: f32) {
+        self.adam.scale_lr(gamma);
+    }
+
+    /// 現在のlr。
+    pub fn current_lr(&self) -> f32 {
+        self.adam.current_lr()
+    }
+
+    /// 学習中に一度も触れなかったFT行の重みをゼロにする。
+    /// observed[i]がfalseなら行iをゼロクリアし、全要素をfalseに戻す。
+    /// 呼び出し側がエポックごとにobservedを管理する。
+    pub fn clear_unobserved_ft(&mut self, observed: &mut [bool]) {
+        let mut cleared = 0usize;
+        for (i, obs) in observed.iter_mut().enumerate() {
+            if !*obs {
+                self.net.ft_w[i * FT_OUT..(i + 1) * FT_OUT].fill(0.0);
+                cleared += 1;
+            }
+            *obs = false;
+        }
+        if cleared > 0 {
+            eprintln!("  未観測FT行をゼロクリア: {cleared} / {}", observed.len());
+        }
+    }
 }
 
 #[cfg(test)]

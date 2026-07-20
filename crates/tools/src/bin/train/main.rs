@@ -39,8 +39,15 @@ fn parse_or<T: std::str::FromStr>(v: Option<String>, default: T) -> T {
     v.and_then(|s| s.parse().ok()).unwrap_or(default)
 }
 
-/// PSVレコードをSampleへ変換する。デコード不能はNone。
+/// 詰みスコアの閾値。|score|がこれ以上ならスキップする
+/// （やねうら王のeval_limit相当）。
+const SCORE_LIMIT: i16 = 10000;
+
+/// PSVレコードをSampleへ変換する。詰みスコア・デコード不能はNone。
 pub(crate) fn to_sample(rec: &PackedSfenValue, lambda: f32) -> Option<Sample> {
+    if rec.score.abs() >= SCORE_LIMIT {
+        return None;
+    }
     let pos = unpack(&rec.sfen, rec.game_ply).ok()?;
     let stm = pos.side_to_move();
     let mut feats = [Vec::new(), Vec::new()];
@@ -87,7 +94,8 @@ fn main() {
     let valid_path = arg_value(&args, "--valid");
     let batch: usize = parse_or(arg_value(&args, "--batch"), 16384);
     let lr: f32 = parse_or(arg_value(&args, "--lr"), 1e-3);
-    let lambda: f32 = parse_or(arg_value(&args, "--lambda"), 0.7);
+    let lambda: f32 = parse_or(arg_value(&args, "--lambda"), 0.33);
+    let lr_gamma: f32 = parse_or(arg_value(&args, "--lr-gamma"), 0.992);
     let epochs: u32 = parse_or(arg_value(&args, "--epochs"), 1);
     let seed: u64 = parse_or(arg_value(&args, "--seed"), 1);
     let default_threads = std::thread::available_parallelism()
@@ -110,7 +118,7 @@ fn main() {
         die("学習データが空です");
     }
     eprintln!(
-        "学習データ: {}局面 × {epochs}エポック, batch={batch}, lr={lr}, λ={lambda}, threads={threads}",
+        "学習データ: {}局面 × {epochs}エポック, batch={batch}, lr={lr}, λ={lambda}, lr_gamma={lr_gamma}, threads={threads}",
         records.len()
     );
 
@@ -129,7 +137,7 @@ fn main() {
     let mut t_log = std::time::Instant::now();
     let mut samples_log = 0u64;
 
-    for _ in 0..epochs {
+    for epoch in 0..epochs {
         for batch_records in records.chunks(batch) {
             let (lsum, n, skip) = trainer.train_batch(batch_records);
             skipped += skip;
@@ -160,6 +168,9 @@ fn main() {
                 eprintln!("  valid loss {:.5}", validate(&trainer.net, v));
             }
         }
+        // エポック末: lr減衰
+        trainer.scale_lr(lr_gamma);
+        eprintln!("epoch {} 完了 (lr={:.6})", epoch + 1, trainer.current_lr());
     }
 
     if let Some(v) = &valid {
@@ -172,8 +183,9 @@ fn main() {
 
     let q = trainer.net.quantize();
     let lineage = format!(
-        "train-v1 data={data} n={} epochs={epochs} batch={batch} lr={lr} lambda={lambda} seed={seed} steps={step}",
-        records.len()
+        "train-v2 data={data} n={} epochs={epochs} batch={batch} lr={lr} lambda={lambda} lr_gamma={lr_gamma} score_limit={} seed={seed} steps={step}",
+        records.len(),
+        SCORE_LIMIT
     );
     let mut f =
         std::fs::File::create(&out).unwrap_or_else(|e| die(&format!("作成できません: {e}")));

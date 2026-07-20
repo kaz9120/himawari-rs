@@ -519,6 +519,16 @@ impl Adam {
         (self.lr, self.beta1, self.beta2, self.eps)
     }
 
+    /// lrをgamma倍する（StepLR）。
+    pub fn scale_lr(&mut self, gamma: f32) {
+        self.lr *= gamma;
+    }
+
+    /// 現在のlr。
+    pub fn current_lr(&self) -> f32 {
+        self.lr
+    }
+
     /// FT重みのAdamモーメント (m, v)。並列経路で領域分割して使う。
     pub fn ft_moments_mut(&mut self) -> (&mut [f32], &mut [f32]) {
         (&mut self.m.ft_w, &mut self.v.ft_w)
