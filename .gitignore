@@ -27,3 +27,5 @@ target
 *.hmwr
 # selfplayの棋譜出力
 *.jsonl
+# 教師データ（ADR-0038。リポジトリには含めない）
+/data/
