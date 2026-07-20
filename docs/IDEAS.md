@@ -49,6 +49,8 @@ ADRを起草してこの帳から消す（採番と経緯はADR側に書く）�
 
 | 案 | 狙い・メモ | 検証 |
 |---|---|---|
+| train/validの対局単位分割 | 局面単位シャッフルだと同一対局がtrain/valid両方に入り、validが過学習を検出できない（v2の-274 Elo崩壊で実証見込み）。validは別ファイル由来にする | loss+SPRT |
+| 過学習対策一式 | weight decay、lr減衰、early stop（本物のvalidで）。多エポック学習の前提 | loss+SPRT |
 | 教師局面のqsearch静止化 | データセットREADMEも指摘。静止局面で学習し評価の整合を取る | loss+SPRT |
 | lrスケジュール | cosine/step decay + warmup。現状は固定lr | loss |
 | λのply依存化 | 序盤はresult重視、終盤はscore重視の混合比 | loss+SPRT |
