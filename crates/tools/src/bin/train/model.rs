@@ -42,11 +42,10 @@ pub struct FloatNet {
     pub b4: f32,
 }
 
-/// 勾配バッファ。FT・利き塔はtouched行のみ意味を持つ。
-pub struct Grads {
-    pub ft_w: Vec<f32>,
+/// 密パラメータ（FT・利き塔の重み行列以外）の勾配。
+/// スレッドごとに持ち、バッチ末尾で合算する。
+pub struct DenseGrads {
     pub ft_b: Vec<f32>,
-    pub ef_w: Vec<f32>,
     pub ef_b: Vec<f32>,
     pub w2: Vec<f32>,
     pub b2: Vec<f32>,
@@ -54,6 +53,69 @@ pub struct Grads {
     pub b3: Vec<f32>,
     pub w4: Vec<f32>,
     pub b4: f32,
+}
+
+impl DenseGrads {
+    pub fn new() -> DenseGrads {
+        DenseGrads {
+            ft_b: vec![0.0; FT_OUT],
+            ef_b: vec![0.0; EFFECT_OUT],
+            w2: vec![0.0; HIDDEN * CONCAT],
+            b2: vec![0.0; HIDDEN],
+            w3: vec![0.0; HIDDEN * HIDDEN],
+            b3: vec![0.0; HIDDEN],
+            w4: vec![0.0; HIDDEN],
+            b4: 0.0,
+        }
+    }
+
+    pub fn clear(&mut self) {
+        self.ft_b.fill(0.0);
+        self.ef_b.fill(0.0);
+        self.w2.fill(0.0);
+        self.b2.fill(0.0);
+        self.w3.fill(0.0);
+        self.b3.fill(0.0);
+        self.w4.fill(0.0);
+        self.b4 = 0.0;
+    }
+
+    pub fn add(&mut self, other: &DenseGrads) {
+        let pairs: [(&mut Vec<f32>, &Vec<f32>); 7] = [
+            (&mut self.ft_b, &other.ft_b),
+            (&mut self.ef_b, &other.ef_b),
+            (&mut self.w2, &other.w2),
+            (&mut self.b2, &other.b2),
+            (&mut self.w3, &other.w3),
+            (&mut self.b3, &other.b3),
+            (&mut self.w4, &other.w4),
+        ];
+        for (dst, src) in pairs {
+            for (d, s) in dst.iter_mut().zip(src.iter()) {
+                *d += s;
+            }
+        }
+        self.b4 += other.b4;
+    }
+}
+
+/// 逆伝播のFT・利き塔向け出力。gz1/gzeは活性クリップ通過後の
+/// 事前活性勾配で、そのサンプルの全活性特徴行に共通に加算される。
+pub struct BackOut {
+    pub loss: f32,
+    pub gz1: [[f32; FT_OUT]; 2],
+    pub gz1_any: [bool; 2],
+    pub gze: [f32; EFFECT_OUT],
+    pub gze_any: bool,
+}
+
+/// 単スレッド用の勾配バッファ（テスト・勾配検証の基準実装）。
+/// FT・利き塔はtouched行のみ意味を持つ。
+#[cfg(test)]
+pub struct Grads {
+    pub dense: DenseGrads,
+    pub ft_w: Vec<f32>,
+    pub ef_w: Vec<f32>,
     /// このバッチで触れたFT行・利き塔行（重複あり。step時にdedup）。
     pub touched_ft: Vec<u32>,
     pub touched_ef: Vec<u16>,
@@ -165,9 +227,10 @@ impl FloatNet {
         }
     }
 
-    /// 1サンプルの逆伝播。損失は BCE(sigmoid(v), target)。
-    /// 損失値を返し、勾配をgに加算する。
-    pub fn backward(&self, s: &Sample, act: &Activations, g: &mut Grads) -> f32 {
+    /// 1サンプルの逆伝播（密パラメータ分）。FT・利き塔の重み行列への
+    /// scatterは行わず、行共通の勾配ベクトルをBackOutで返す。
+    /// 並列学習では呼び出し側が行を担当領域ごとに積む。
+    pub fn backward_dense(&self, s: &Sample, act: &Activations, g: &mut DenseGrads) -> BackOut {
         let p = sigmoid(act.v);
         let t = s.target;
         let loss = bce(p, t);
@@ -218,8 +281,15 @@ impl FloatNet {
             }
         }
 
+        let mut out = BackOut {
+            loss,
+            gz1: [[0.0; FT_OUT]; 2],
+            gz1_any: [false, false],
+            gze: [0.0; EFFECT_OUT],
+            gze_any: false,
+        };
         for half in 0..2 {
-            let mut gz1 = [0f32; FT_OUT];
+            let gz1 = &mut out.gz1[half];
             let mut any = false;
             for o in 0..FT_OUT {
                 let z = act.z1[half][o];
@@ -228,44 +298,59 @@ impl FloatNet {
                     any |= gz1[o] != 0.0;
                 }
             }
-            if !any {
-                continue;
-            }
-            for (o, gb) in g.ft_b.iter_mut().enumerate() {
-                *gb += gz1[o];
-            }
-            for &f in &s.feats[half] {
-                let row = &mut g.ft_w[f as usize * FT_OUT..(f as usize + 1) * FT_OUT];
-                for (o, gw) in row.iter_mut().enumerate() {
-                    *gw += gz1[o];
+            out.gz1_any[half] = any;
+            if any {
+                for (o, gb) in g.ft_b.iter_mut().enumerate() {
+                    *gb += gz1[o];
                 }
-                g.touched_ft.push(f);
             }
         }
         {
-            let mut gze = [0f32; EFFECT_OUT];
             let mut any = false;
             for o in 0..EFFECT_OUT {
                 let z = act.ze[o];
                 if 0.0 < z && z < 1.0 {
-                    gze[o] = gx[FT_OUT * 2 + o];
-                    any |= gze[o] != 0.0;
+                    out.gze[o] = gx[FT_OUT * 2 + o];
+                    any |= out.gze[o] != 0.0;
                 }
             }
+            out.gze_any = any;
             if any {
                 for (o, gb) in g.ef_b.iter_mut().enumerate() {
-                    *gb += gze[o];
-                }
-                for &f in &s.efeats {
-                    let row = &mut g.ef_w[f as usize * EFFECT_OUT..(f as usize + 1) * EFFECT_OUT];
-                    for (o, gw) in row.iter_mut().enumerate() {
-                        *gw += gze[o];
-                    }
-                    g.touched_ef.push(f);
+                    *gb += out.gze[o];
                 }
             }
         }
-        loss
+        out
+    }
+
+    /// 1サンプルの逆伝播（単スレッド基準実装）。損失を返し、
+    /// FT・利き塔のscatterも含む全勾配をgに加算する。
+    #[cfg(test)]
+    pub fn backward(&self, s: &Sample, act: &Activations, g: &mut Grads) -> f32 {
+        let out = self.backward_dense(s, act, &mut g.dense);
+        for half in 0..2 {
+            if !out.gz1_any[half] {
+                continue;
+            }
+            for &f in &s.feats[half] {
+                let row = &mut g.ft_w[f as usize * FT_OUT..(f as usize + 1) * FT_OUT];
+                for (o, gw) in row.iter_mut().enumerate() {
+                    *gw += out.gz1[half][o];
+                }
+                g.touched_ft.push(f);
+            }
+        }
+        if out.gze_any {
+            for &f in &s.efeats {
+                let row = &mut g.ef_w[f as usize * EFFECT_OUT..(f as usize + 1) * EFFECT_OUT];
+                for (o, gw) in row.iter_mut().enumerate() {
+                    *gw += out.gze[o];
+                }
+                g.touched_ef.push(f);
+            }
+        }
+        out.loss
     }
 
     /// 量子化して推論用ネットワークに変換する（ADR-0036のスケール）。
@@ -333,19 +418,13 @@ pub fn bce(p: f32, t: f32) -> f32 {
     -(t * p.ln() + (1.0 - t) * (1.0 - p).ln())
 }
 
+#[cfg(test)]
 impl Grads {
     pub fn new() -> Grads {
         Grads {
+            dense: DenseGrads::new(),
             ft_w: vec![0.0; FT_IN * FT_OUT],
-            ft_b: vec![0.0; FT_OUT],
             ef_w: vec![0.0; EFFECT_IN * EFFECT_OUT],
-            ef_b: vec![0.0; EFFECT_OUT],
-            w2: vec![0.0; HIDDEN * CONCAT],
-            b2: vec![0.0; HIDDEN],
-            w3: vec![0.0; HIDDEN * HIDDEN],
-            b3: vec![0.0; HIDDEN],
-            w4: vec![0.0; HIDDEN],
-            b4: 0.0,
             touched_ft: Vec::new(),
             touched_ef: Vec::new(),
         }
@@ -365,14 +444,7 @@ impl Grads {
         }
         self.touched_ft.clear();
         self.touched_ef.clear();
-        self.ft_b.fill(0.0);
-        self.ef_b.fill(0.0);
-        self.w2.fill(0.0);
-        self.b2.fill(0.0);
-        self.w3.fill(0.0);
-        self.b3.fill(0.0);
-        self.w4.fill(0.0);
-        self.b4 = 0.0;
+        self.dense.clear();
     }
 }
 
@@ -436,11 +508,47 @@ impl Adam {
         }
     }
 
-    /// バッチ勾配で1ステップ更新する。scaleは1/バッチサイズ。
-    pub fn step(&mut self, net: &mut FloatNet, g: &Grads, scale: f32) {
+    /// ステップ番号を進め、バイアス補正係数(bc1, bc2)を返す。
+    pub fn begin_step(&mut self) -> (f32, f32) {
         self.t += 1;
-        let bc1 = 1.0 - self.beta1.powi(self.t);
-        let bc2 = 1.0 - self.beta2.powi(self.t);
+        (1.0 - self.beta1.powi(self.t), 1.0 - self.beta2.powi(self.t))
+    }
+
+    /// ハイパーパラメータ (lr, beta1, beta2, eps)。並列経路用。
+    pub fn hyper(&self) -> (f32, f32, f32, f32) {
+        (self.lr, self.beta1, self.beta2, self.eps)
+    }
+
+    /// FT重みのAdamモーメント (m, v)。並列経路で領域分割して使う。
+    pub fn ft_moments_mut(&mut self) -> (&mut [f32], &mut [f32]) {
+        (&mut self.m.ft_w, &mut self.v.ft_w)
+    }
+
+    /// 利き塔重みのAdamモーメント (m, v)。
+    pub fn ef_moments_mut(&mut self) -> (&mut [f32], &mut [f32]) {
+        (&mut self.m.ef_w, &mut self.v.ef_w)
+    }
+
+    /// 1行ぶんのAdam更新（並列経路の領域スレッドから呼ぶ）。
+    #[allow(clippy::too_many_arguments)]
+    pub fn step_row(
+        hyper: (f32, f32, f32, f32),
+        bc: (f32, f32),
+        w: &mut [f32],
+        g: &[f32],
+        m: &mut [f32],
+        v: &mut [f32],
+        scale: f32,
+    ) {
+        let (lr, b1, b2, eps) = hyper;
+        Self::step_slice(lr, b1, b2, eps, bc.0, bc.1, w, g, m, v, scale);
+    }
+
+    /// バッチ勾配で1ステップ更新する（単スレッド基準実装）。
+    /// scaleは1/バッチサイズ。
+    #[cfg(test)]
+    pub fn step(&mut self, net: &mut FloatNet, g: &Grads, scale: f32) {
+        let (bc1, bc2) = self.begin_step();
         let (lr, b1, b2e, eps) = (self.lr, self.beta1, self.beta2, self.eps);
 
         // touchedのFT・利き塔行（clear()でdedup済みの想定はしない）
@@ -482,6 +590,19 @@ impl Adam {
                 scale,
             );
         }
+        self.step_dense(net, &g.dense, scale, bc1, bc2);
+    }
+
+    /// 密パラメータのAdam更新とクリップ。並列経路からも使う。
+    pub(crate) fn step_dense(
+        &mut self,
+        net: &mut FloatNet,
+        g: &DenseGrads,
+        scale: f32,
+        bc1: f32,
+        bc2: f32,
+    ) {
+        let (lr, b1, b2e, eps) = (self.lr, self.beta1, self.beta2, self.eps);
         macro_rules! dense {
             ($f:ident) => {
                 Self::step_slice(
@@ -561,13 +682,13 @@ mod tests {
         let e0 = samples[0].efeats[0] as usize * EFFECT_OUT + 5;
         let checks: Vec<(f32, *mut f32)> = vec![
             (g.ft_w[f0], &mut net.ft_w[f0]),
-            (g.ft_b[3], &mut net.ft_b[3]),
+            (g.dense.ft_b[3], &mut net.ft_b[3]),
             (g.ef_w[e0], &mut net.ef_w[e0]),
-            (g.w2[100], &mut net.w2[100]),
-            (g.b2[0], &mut net.b2[0]),
-            (g.w3[50], &mut net.w3[50]),
-            (g.w4[7], &mut net.w4[7]),
-            (g.b4, &mut net.b4),
+            (g.dense.w2[100], &mut net.w2[100]),
+            (g.dense.b2[0], &mut net.b2[0]),
+            (g.dense.w3[50], &mut net.w3[50]),
+            (g.dense.w4[7], &mut net.w4[7]),
+            (g.dense.b4, &mut net.b4),
         ];
         for (analytic, ptr) in checks {
             let h = 3e-3f32;
