@@ -92,8 +92,9 @@ df-pn（任意）、mate1plyの探索組み込み（テーブル駆動の高速�
 
 ## 直近の残作業
 
-- データ量スケーリング実験（追加データDLが必要）
-- ハイパラ確定（lr schedule、lambda、batch）
+- 15M vs 86M SPRTの完走（86ペアでLLR +1.35、判定待ち）
+- 15M vs 駒割SPRTの完走（累計145ペアでLLR +1.25、判定待ち）
+- ハイパラ確定（epochs=1が最適か検証。lambda、batchは現行維持）
 
 ## 実測の記録
 
@@ -138,3 +139,19 @@ P5の学習実験記録:
 | hao_v4 | 86M | 8 | λ=0.33, score_limit=10000, lr_gamma=0.992 | -348.0（H0） | λ・score_limit変更が裏目 |
 | hao_v5 | 86M | 2 | λ=0.7, lr=1e-3固定 | +165.9（H1、9ペア） | P5出口（信頼区間は広い） |
 | hao_v6 best | 86M | 4（best=step 3000） | λ=0.7, lr=1e-3固定 | **+253.4（H1、106ペア）** | best checkpoint。P5出口の確定値 |
+
+P6のスケーリング実験記録（PyTorch学習器、warmup+cosine decay）:
+
+| ネット | データ | エポック | 条件 | best valid loss | best step | 備考 |
+|---|---|---|---|---|---|---|
+| scale_15M best | 15M | 4 | peak_lr=1e-3, warmup=100, cosine decay | 0.54743 | 800 | |
+| scale_86M best | 86M | 4 | 同上 | **0.52565** | 3000 | |
+
+P6のSPRT記録（条件は10+0.1秒、elo[0,5]、α=β=0.05）:
+
+| 対局 | 結果 | Elo | 局数 | 備考 |
+|---|---|---|---|---|
+| 86M best vs final | H0採択 | -279 [-756,-130] | 18（9ペア） | valid loss最良のbestが強い |
+| 86M best vs 駒割 | **H1採択** | **+218** [+82,+478] | 18（9ペア） | |
+| 15M best vs 駒割 | 進行中 | +100前後 | 290+（累計145ペア） | LLR +1.25 |
+| 86M best vs 15M best | 進行中 | **+150前後** | 194（97ペア） | LLR +1.38 |
