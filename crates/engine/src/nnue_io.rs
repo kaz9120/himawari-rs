@@ -84,6 +84,71 @@ fn read_u32(r: &mut impl Read) -> Result<u32, String> {
     Ok(u32::from_le_bytes(b))
 }
 
+/// リトルエンディアンのバイト列リーダ。独自形式と互換ローダ
+/// （nnue_compat）で共用する。
+pub(crate) struct Cursor<'a> {
+    body: &'a [u8],
+    off: usize,
+}
+
+impl<'a> Cursor<'a> {
+    pub(crate) fn new(body: &'a [u8]) -> Self {
+        Cursor { body, off: 0 }
+    }
+
+    fn take(&mut self, n: usize) -> Result<&'a [u8], String> {
+        let end = self
+            .off
+            .checked_add(n)
+            .filter(|&e| e <= self.body.len())
+            .ok_or_else(|| "重み列が短い".to_string())?;
+        let s = &self.body[self.off..end];
+        self.off = end;
+        Ok(s)
+    }
+
+    pub(crate) fn u32(&mut self) -> Result<u32, String> {
+        Ok(u32::from_le_bytes(self.take(4)?.try_into().unwrap()))
+    }
+
+    pub(crate) fn bytes(&mut self, n: usize) -> Result<&'a [u8], String> {
+        self.take(n)
+    }
+
+    pub(crate) fn i16v(&mut self, n: usize) -> Result<Vec<i16>, String> {
+        Ok(self
+            .take(n * 2)?
+            .as_chunks::<2>()
+            .0
+            .iter()
+            .map(|c| i16::from_le_bytes(*c))
+            .collect())
+    }
+
+    pub(crate) fn i32v(&mut self, n: usize) -> Result<Vec<i32>, String> {
+        Ok(self
+            .take(n * 4)?
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .map(|c| i32::from_le_bytes(*c))
+            .collect())
+    }
+
+    pub(crate) fn i8v(&mut self, n: usize) -> Result<Vec<i8>, String> {
+        Ok(self.take(n)?.iter().map(|&b| b as i8).collect())
+    }
+
+    /// すべて読み切ったことを確認する。余りは構成不一致の兆候。
+    pub(crate) fn expect_end(&self) -> Result<(), String> {
+        let rest = self.body.len() - self.off;
+        if rest != 0 {
+            return Err(format!("末尾に余分な{rest}バイトがある"));
+        }
+        Ok(())
+    }
+}
+
 /// 読み込む。戻り値は (ネットワーク, 学習来歴)。
 pub fn load(r: &mut impl Read) -> Result<(NnueNetwork, String), String> {
     let mut magic = [0u8; 8];
@@ -135,53 +200,7 @@ pub fn load(r: &mut impl Read) -> Result<(NnueNetwork, String), String> {
         return Err("重みハッシュが不一致（ファイル破損）".to_string());
     }
 
-    struct Cursor<'a> {
-        body: &'a [u8],
-        off: usize,
-    }
-    impl Cursor<'_> {
-        fn i16v(&mut self, n: usize) -> Result<Vec<i16>, String> {
-            let end = self.off + n * 2;
-            if end > self.body.len() {
-                return Err("重み列が短い".to_string());
-            }
-            let v = self.body[self.off..end]
-                .as_chunks::<2>()
-                .0
-                .iter()
-                .map(|c| i16::from_le_bytes(*c))
-                .collect();
-            self.off = end;
-            Ok(v)
-        }
-        fn i32v(&mut self, n: usize) -> Result<Vec<i32>, String> {
-            let end = self.off + n * 4;
-            if end > self.body.len() {
-                return Err("重み列が短い".to_string());
-            }
-            let v = self.body[self.off..end]
-                .as_chunks::<4>()
-                .0
-                .iter()
-                .map(|c| i32::from_le_bytes(*c))
-                .collect();
-            self.off = end;
-            Ok(v)
-        }
-        fn i8v(&mut self, n: usize) -> Result<Vec<i8>, String> {
-            let end = self.off + n;
-            if end > self.body.len() {
-                return Err("重み列が短い".to_string());
-            }
-            let v = self.body[self.off..end].iter().map(|&b| b as i8).collect();
-            self.off = end;
-            Ok(v)
-        }
-    }
-    let mut cur = Cursor {
-        body: &body,
-        off: 0,
-    };
+    let mut cur = Cursor::new(&body);
     let ft_b = cur.i16v(FT_OUT)?;
     let ft_w = cur.i16v(FT_IN * FT_OUT)?;
     let ef_b = cur.i16v(EFFECT_OUT)?;
@@ -191,12 +210,8 @@ pub fn load(r: &mut impl Read) -> Result<(NnueNetwork, String), String> {
     let b3 = cur.i32v(HIDDEN)?;
     let w3 = cur.i8v(HIDDEN * HIDDEN)?;
     let w4 = cur.i8v(HIDDEN)?;
-    let off = cur.off;
-    let end = off + 4;
-    if end != body.len() {
-        return Err(format!("重み列の長さが不正: {} (期待 {end})", body.len()));
-    }
-    let b4 = i32::from_le_bytes([body[off], body[off + 1], body[off + 2], body[off + 3]]);
+    let b4 = cur.i32v(1)?[0];
+    cur.expect_end()?;
 
     Ok((
         NnueNetwork {
