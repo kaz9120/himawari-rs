@@ -9,6 +9,7 @@ pub mod bonapiece;
 pub mod hand;
 pub mod movegen;
 pub mod moves;
+pub mod packed_sfen;
 pub mod piece;
 pub mod position;
 pub mod types;
