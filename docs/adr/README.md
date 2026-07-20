@@ -57,6 +57,8 @@
 | [0035](0035-nnue-accumulator.md) | NNUE差分計算（accumulator） | P4 | accepted |
 | [0036](0036-nnue-quantization-simd.md) | NNUE量子化とSIMD実装 | P4 | accepted |
 | [0037](0037-nnue-file-format.md) | NNUE評価ファイルフォーマット | P4 | accepted |
+| [0038](0038-training-data-format.md) | 教師データフォーマット（PackedSfenValue互換） | P5 | proposed |
+| [0039](0039-trainer-v1.md) | 学習器v1（教師あり） | P5 | proposed |
 
 ## バックログ
 
@@ -88,10 +90,9 @@
 
 | 決定事項 | 主要論点 |
 |---|---|
-| 学習戦略 | floodgate高レート棋譜での教師あり事前学習→自己対局RL。ゼロベースRLの対照実験。公開ネットのウォームスタート（ライセンス確認） |
+| 学習戦略の後段（RL・世代ループ） | v1の教師あり学習はADR-0039で決定済み。自己対局RL、gensfen自前生成、世代ループはv1の結果を見て起草 |
 | 出力ヘッド設計 | 評価値に加え進行度・安定度・WDLの多ヘッド化。進行度ラベルは棋譜の手数比で安価、安定度はラベル設計が研究要素。時間管理・aspiration幅・枝刈り強度への活用は探索側ADRで。補助ヘッドの正則化効果も検証 |
 | 利き特徴の変種探索 | 長い利きのみ・ピン・脱出路など全計算関数の差し替えでSPRT比較（ADR-0034の2塔構成が前提） |
-| 教師データフォーマット | PackedSfenValue互換 vs 独自 |
 | gensfen設計 | 開始局面多様化、勝敗ラベル |
 | 学習器アーキテクチャ | 自前Rust vs candle/burn vs nnue-pytorch方式 |
 | 損失関数設計 | elmo式混合、勝率変換スケール |
