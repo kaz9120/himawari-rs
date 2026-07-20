@@ -11,8 +11,10 @@ GitHub Issuesは使わない。設計判断は [ADR索引](adr/README.md)、
 - フェーズ: **P4（NNUE推論）実装中**。BonaPiece変換表、2塔の
   特徴抽出とスカラー推論、accumulator差分（差分=全計算一致済み）、
   独自ファイル形式、Evaluator統合（EvalFile）、SIMD
-  （SIMD=スカラー一致済み）まで完了。P4出口条件の検証は両方成立。
-  残: nn.bin互換ローダ（公開評価関数との外部照合）、
+  （SIMD=スカラー一致済み）、nn.bin互換ローダ
+  （`makenet --import` で独自形式へ変換可）まで完了。
+  P4出口条件の検証は両方成立。
+  残: 公開評価関数との外部照合の実施（nn.bin入手待ち）、
   利き塔コストの最適化、（P5へ続く）学習パイプライン
 - P3の成果: 探索強化で累積+500 Elo相当、Lazy SMP（8スレで
   NPS 7.8倍）、宣言勝ち・MultiPV・ponderのルール完全対応
@@ -35,6 +37,11 @@ GitHub Issuesは使わない。設計判断は [ADR索引](adr/README.md)、
 P2出口 = 0.3.0（最初の対外リリース候補）、P5出口 = 1.0.0。
 
 ## 直近の残作業
+
+- [ ] nn.binでの外部照合の実施（HalfKP 256×2-32-32-1のnn.binを
+      `eval/` に配置後、`HIMAWARI_NN_BIN=eval/nn.bin cargo test -p
+      himawari-engine nn_bin_external_reference` を実行。参照値CSVは
+      `HIMAWARI_NN_REF` で追加）
 
 - [x] 互角局面集の入手（たややん互角局面集。`openings/` に配置、
       リポジトリには含めない。24手目版30,053局面・32手目版26,273局面）
