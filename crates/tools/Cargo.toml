@@ -31,3 +31,7 @@ path = "src/bin/makenet.rs"
 [[bin]]
 name = "psv"
 path = "src/bin/psv.rs"
+
+[[bin]]
+name = "train"
+path = "src/bin/train/main.rs"
