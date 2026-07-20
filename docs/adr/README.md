@@ -57,8 +57,8 @@
 | [0035](0035-nnue-accumulator.md) | NNUE差分計算（accumulator） | P4 | accepted |
 | [0036](0036-nnue-quantization-simd.md) | NNUE量子化とSIMD実装 | P4 | accepted |
 | [0037](0037-nnue-file-format.md) | NNUE評価ファイルフォーマット | P4 | accepted |
-| [0038](0038-training-data-format.md) | 教師データフォーマット（PackedSfenValue互換） | P5 | proposed |
-| [0039](0039-trainer-v1.md) | 学習器v1（教師あり） | P5 | proposed |
+| [0038](0038-training-data-format.md) | 教師データフォーマット（PackedSfenValue互換） | P5 | accepted |
+| [0039](0039-trainer-v1.md) | 学習器v1（教師あり） | P5 | accepted |
 
 ## バックログ
 

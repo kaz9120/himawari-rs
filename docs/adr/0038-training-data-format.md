@@ -1,6 +1,6 @@
 # 0038: 教師データフォーマット（PackedSfenValue互換）
 
-- Status: proposed
+- Status: accepted（2026-07-20オーナー承認）
 - Date: 2026-07-20
 - 関連ADR: [0018](0018-sfen-perft.md), [0034](0034-nnue-architecture.md), [0037](0037-nnue-file-format.md)
 
