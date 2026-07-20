@@ -1,4 +1,4 @@
-"""PSV dataset reader via Rust PyO3 bridge (ADR-0043)."""
+"""PSV dataset reader via Rust PyO3 bridge (ADR-0043, ADR-0044)."""
 
 import numpy as np
 import torch
@@ -10,20 +10,23 @@ import himawari
 class PsvDataset(Dataset):
     """Memory-mapped PSV dataset with Rust feature extraction."""
 
-    def __init__(self, path, lambda_=0.7, score_limit=0):
+    def __init__(self, path, lambda_=0.7, score_limit=0, arch="halfkp_effect"):
         raw = np.fromfile(path, dtype=np.uint8)
         if raw.size % 40 != 0:
             raise ValueError(f"ファイルサイズが40の倍数でない: {raw.size}")
         self.data = raw.reshape(-1, 40)
         self.lambda_ = lambda_
         self.score_limit = score_limit
+        self.arch = arch
 
     def __len__(self):
         return len(self.data)
 
     def __getitem__(self, idx):
         record = bytes(self.data[idx])
-        result = himawari.extract_features(record, self.lambda_, self.score_limit)
+        result = himawari.extract_features_v2(
+            record, self.lambda_, self.score_limit, self.arch,
+        )
         if result is None:
             return None
         stm_feats, opp_feats, ef_feats, target = result

@@ -4,8 +4,8 @@ import torch
 
 import himawari
 from model import (
-    FT_IN, FT_OUT, EFFECT_IN, EFFECT_OUT, HIDDEN, CONCAT,
-    SIGMOID_SCALE, FV_SCALE, NnueModel,
+    FT_IN, FT_OUT, EFFECT_IN, EFFECT_OUT, HIDDEN,
+    SIGMOID_SCALE, FV_SCALE, NnueModel, ARCH_HALFKP_EFFECT,
 )
 
 
@@ -66,7 +66,7 @@ def load_hmwr(path: str) -> tuple[dict, str]:
         "ft_b": torch.tensor(d["ft_b"], dtype=torch.int16),
         "ef_w": torch.tensor(d["ef_w"], dtype=torch.int16).reshape(EFFECT_IN, EFFECT_OUT),
         "ef_b": torch.tensor(d["ef_b"], dtype=torch.int16),
-        "w2": torch.tensor(d["w2"], dtype=torch.int8).reshape(HIDDEN, CONCAT),
+        "w2": torch.tensor(d["w2"], dtype=torch.int8).reshape(HIDDEN, FT_OUT * 2 + EFFECT_OUT),
         "b2": torch.tensor(d["b2"], dtype=torch.int32),
         "w3": torch.tensor(d["w3"], dtype=torch.int8).reshape(HIDDEN, HIDDEN),
         "b3": torch.tensor(d["b3"], dtype=torch.int32),
