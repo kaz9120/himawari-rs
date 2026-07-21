@@ -67,7 +67,7 @@
 | [0045](0045-remove-effect-tower.md) | 利き塔の除去 | P7 | accepted |
 | [0046](0046-correction-history.md) | correction history（静的評価の履歴補正） | P8 | accepted |
 | [0047](0047-continuation-history.md) | continuation history（手系列条件の履歴） | P8 | accepted |
-| [0048](0048-capture-history.md) | capture history（取る手の履歴） | P8 | proposed |
+| [0048](0048-capture-history.md) | capture history（取る手の履歴） | P8 | accepted |
 
 ## バックログ
 

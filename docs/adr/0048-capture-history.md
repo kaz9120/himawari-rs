@@ -1,6 +1,6 @@
 # 0048: capture history（取る手の履歴）を導入する
 
-- Status: proposed
+- Status: accepted
 - Date: 2026-07-21
 - 関連ADR: [0025](0025-move-ordering.md), [0028](0028-pruning-extensions.md), [0047](0047-continuation-history.md)
 
