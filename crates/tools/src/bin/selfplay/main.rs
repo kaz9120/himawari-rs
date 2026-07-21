@@ -397,13 +397,17 @@ fn worker(
             p[3],
             p[4],
         );
-        match cfg.sprt.decision(llr) {
-            Decision::Continue => {}
-            d => {
-                if a.decision.is_none() {
-                    a.decision = Some(d);
+        // 極小サンプルではε正則化した分散が小さすぎてLLRが振り切れる
+        // ため、20ペア未満ではSPRT判定を保留する
+        if a.pent.total() >= 20 {
+            match cfg.sprt.decision(llr) {
+                Decision::Continue => {}
+                d => {
+                    if a.decision.is_none() {
+                        a.decision = Some(d);
+                    }
+                    stop.store(true, Ordering::Relaxed);
                 }
-                stop.store(true, Ordering::Relaxed);
             }
         }
     }
