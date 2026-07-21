@@ -1,6 +1,6 @@
 # 0050: singular extension（TT手の単独延長）に再挑戦する
 
-- Status: proposed
+- Status: accepted
 - Date: 2026-07-21
 - 関連ADR: [0028](0028-pruning-extensions.md), [0022](0022-transposition-table.md), [0046](0046-correction-history.md), [0047](0047-continuation-history.md)
 
