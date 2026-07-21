@@ -18,6 +18,8 @@ Rustで書くコンピュータ将棋エンジン（USIプロトコル対応）�
 | [docs/ROADMAP.md](docs/ROADMAP.md) | 現在地・フェーズ進捗・残作業（状況はここが正） |
 | [docs/adr/README.md](docs/adr/README.md) | 設計判断の索引と未起草バックログ（設計はここが正） |
 | docs/adr/NNNN-*.md | 個々の設計判断（ADR） |
+| [docs/IDEAS.md](docs/IDEAS.md) | 改善アイデア帳 |
+| [docs/DATASETS.md](docs/DATASETS.md) | 教師データの所在と前処理手順 |
 
 ## 開発プロセス
 
@@ -47,18 +49,46 @@ cargo test --workspace --release                         # perft既知値の照�
 
 ツールチェインは `rust-toolchain.toml` で固定している（nightly）。
 
+## 学習
+
+学習器はPyTorch（ADR-0040）。PSVデコードと特徴抽出はRustの
+PyO3拡張モジュール経由で呼ぶ（ADR-0043）。教師データの
+詳細は [docs/DATASETS.md](docs/DATASETS.md) を参照。
+
+```bash
+# 初回セットアップ
+pip install torch tensorboard maturin
+cd crates/py && maturin develop --release && cd ../..
+
+# 教師データの前処理
+cargo run --release --bin psv -- shuffle --in data/000.bin,data/001.bin,... --out data/train.psv
+cargo run --release --bin psv -- head --in data/023.bin --out data/valid.psv --count 200000
+
+# 学習（純粋HalfKP、warmup+cosine decay）
+cd training
+python3 train.py --data ../data/train.psv --valid ../data/valid.psv \
+  --out ../data/net.hmwr --epochs 1 --batch 16384 \
+  --peak-lr 1e-3 --warmup-steps 100 --lambda 0.7
+
+# 棋力検証（SPRT）
+cargo run --release --bin selfplay -- \
+  --baseline target/release/himawari \
+  --candidate target/release/himawari \
+  --copt "EvalFile=data/net.hmwr.best" \
+  --tc 10+0.1 --concurrency 8 \
+  --openings openings/start_sfens_ply24.txt
+```
+
 ## workspace構成
 
-| クレート | 内容 |
+| ディレクトリ | 内容 |
 |---|---|
 | `crates/core` | 盤面表現・指し手生成・SFEN入出力（探索非依存） |
-| `crates/engine` | 探索・置換表・評価・時間管理 |
+| `crates/engine` | 探索・置換表・NNUE評価・時間管理 |
 | `crates/usi` | USIプロトコル層 + エンジンバイナリ `himawari` |
-| `crates/tools` | 開発用ツール（perft・tsume・selfplay・makenet） |
-
-NNUE推論は現状engineクレート内にある。クレート分離
-（[ADR-0002](docs/adr/0002-cargo-workspace.md)の当初計画）の
-要否はP5前に判断する（ADR索引のバックログ参照）。
+| `crates/tools` | 開発用ツール（perft・tsume・selfplay・makenet・psv・train） |
+| `crates/py` | PyO3拡張モジュール（特徴抽出・.hmwr I/OをPythonに公開） |
+| `training/` | PyTorch学習器（モデル定義・データセット・学習ループ・量子化） |
 
 ## License
 
