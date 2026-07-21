@@ -9,8 +9,8 @@ ADRを起草してこの帳から消す（採番と経緯はADR側に書く）�
 
 | 案 | 狙い・メモ | 検証 |
 |---|---|---|
-| correction history | 静的評価とTT値の乖離を履歴で補正。近年のSF系で大きい | SPRT |
-| continuation history | 直前手系列条件の履歴（counter/follow-up）。オーダリング強化 | SPRT |
+| ~~correction history~~ | ~~ADR-0046で導入。+44.6 Elo（H1採択）~~ | ~~完了~~ |
+| ~~continuation history~~ | ~~ADR-0047起草済み。実装中~~ | ~~ADR化~~ |
 | capture history | 取る手の並べ替え精度向上 | SPRT |
 | singular extension再挑戦 | P3で-16。NNUEでTT質が上がった後に条件を変えて再検証 | SPRT |
 | ProbCut | 浅い探索で上限カット。NNUEの評価精度前提 | SPRT |
