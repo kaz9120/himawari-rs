@@ -9,7 +9,7 @@ use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use himawari_core::{Move, MoveList, Position, Repetition, generate_legal};
 
 use crate::eval::Evaluator;
-use crate::movepick::{CorrectionHistory, CounterMoves, History, MovePicker};
+use crate::movepick::{ContinuationHistory, CorrectionHistory, CounterMoves, History, MovePicker};
 use crate::timeman::{Limits, TimeManager};
 use crate::tt::{Bound, Tt};
 use crate::value::{
@@ -111,6 +111,11 @@ pub struct Worker {
     pub counters: CounterMoves,
     /// 静的評価のcorrection history（ADR-0046）。
     pub corr: CorrectionHistory,
+    /// continuation history（ADR-0047）。
+    pub cont: ContinuationHistory,
+    /// plyごとの指し手スタック（ADR-0047）。move_stack[ply]はその
+    /// plyで指した手（null moveはMove::NONE）。1手前・2手前の参照に使う。
+    move_stack: Vec<Move>,
     /// plyごとの静的評価（improving判定用。王手中はVALUE_NONE）。
     eval_stack: Vec<Value>,
     killers: Vec<[Move; 2]>,
@@ -137,6 +142,7 @@ impl Worker {
         history: History,
         counters: CounterMoves,
         corr: CorrectionHistory,
+        cont: ContinuationHistory,
     ) -> Worker {
         Worker {
             pos,
@@ -144,6 +150,8 @@ impl Worker {
             history,
             counters,
             corr,
+            cont,
+            move_stack: vec![Move::NONE; MAX_PLY + 2],
             eval_stack: vec![VALUE_NONE; MAX_PLY + 2],
             killers: vec![[Move::NONE; 2]; MAX_PLY + 2],
             nodes: 0,
@@ -318,6 +326,7 @@ impl Worker {
         let moves: Vec<Move> = self.root_moves[pv_idx..].iter().map(|rm| rm.mv).collect();
         for (j, &m) in moves.iter().enumerate() {
             let i = pv_idx + j;
+            self.move_stack[0] = m;
             self.pos.do_move(m);
             self.evaluator.push(&self.pos);
             let mut child_pv = Vec::new();
@@ -479,6 +488,7 @@ impl Worker {
         {
             let r = NMP_BASE_REDUCTION + depth / 4;
             let mut null_pv = Vec::new();
+            self.move_stack[ply] = Move::NONE;
             self.pos.do_null_move();
             self.evaluator.push(&self.pos);
             let v = -self.search(
@@ -507,6 +517,17 @@ impl Worker {
             self.killers[ply],
             self.counters.get(prev),
         );
+        // continuation history用の1手前・2手前（ADR-0047）。NONEはget側で0になる
+        let prev1 = if ply >= 1 {
+            self.move_stack[ply - 1]
+        } else {
+            Move::NONE
+        };
+        let prev2 = if ply >= 2 {
+            self.move_stack[ply - 2]
+        } else {
+            Move::NONE
+        };
         let mut best = -VALUE_INFINITE;
         let mut best_move = Move::NONE;
         let mut best_move_is_capture = false;
@@ -514,7 +535,7 @@ impl Worker {
         let mut tried_quiets: Vec<Move> = Vec::new();
         let mut child_pv = Vec::new();
 
-        while let Some(m) = picker.next(&self.pos, &self.history) {
+        while let Some(m) = picker.next(&self.pos, &self.history, &self.cont, prev1, prev2) {
             if !self.pos.is_legal(m) {
                 continue;
             }
@@ -551,6 +572,7 @@ impl Worker {
             // 王手延長（ADR-0024の骨格。深さは減らさない）
             let new_depth = if gives_check { depth } else { depth - 1 };
 
+            self.move_stack[ply] = m;
             self.pos.do_move(m);
             self.evaluator.push(&self.pos);
             let value = if count == 1 {
@@ -697,7 +719,10 @@ impl Worker {
         // 入口plyだけ静かな王手も読む（ADR-0028の項目7）
         let mut picker = MovePicker::new_qsearch(&self.pos, qdepth == 0);
         let mut count = 0u32;
-        while let Some(m) = picker.next(&self.pos, &self.history) {
+        // qsearchのオーダリングはcontを使わない（ADR-0047のスコープ外）
+        while let Some(m) =
+            picker.next(&self.pos, &self.history, &self.cont, Move::NONE, Move::NONE)
+        {
             if !self.pos.is_legal(m) {
                 continue;
             }
@@ -735,9 +760,24 @@ impl Worker {
         self.counters.update(prev, m);
         let bonus = (depth * depth + 2 * depth) as i32;
         self.history.update(m, bonus);
+        // continuation history: 1手前・2手前の文脈にbonus/malusを与える（ADR-0047）
+        let prev1 = if ply >= 1 {
+            self.move_stack[ply - 1]
+        } else {
+            Move::NONE
+        };
+        let prev2 = if ply >= 2 {
+            self.move_stack[ply - 2]
+        } else {
+            Move::NONE
+        };
+        self.cont.update(prev1, m, bonus);
+        self.cont.update(prev2, m, bonus);
         for &q in tried {
             if q != m {
                 self.history.update(q, -bonus);
+                self.cont.update(prev1, q, -bonus);
+                self.cont.update(prev2, q, -bonus);
             }
         }
     }

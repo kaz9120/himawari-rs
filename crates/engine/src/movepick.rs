@@ -107,6 +107,59 @@ impl CounterMoves {
     }
 }
 
+/// continuation history（ADR-0047）。
+/// 論理次元は[条件手 piece_after 32][条件手 to 81][応手 piece_after 32][応手 to 81]。
+/// 条件手が直前手（1手前）・2手前のとき、この応手が良かったかをスコアで持つ。
+/// 巨大ネスト配列のスタック経由初期化はオーバーフローの危険があるため、
+/// フラットなboxed sliceで確保し添字を計算する（約13.4MB）。
+pub struct ContinuationHistory {
+    table: Box<[i16]>,
+}
+
+const CONT_PIECE: usize = 32;
+const CONT_SQ: usize = 81;
+const CONT_LEN: usize = CONT_PIECE * CONT_SQ * CONT_PIECE * CONT_SQ;
+
+impl Default for ContinuationHistory {
+    fn default() -> Self {
+        ContinuationHistory {
+            table: vec![0i16; CONT_LEN].into_boxed_slice(),
+        }
+    }
+}
+
+impl ContinuationHistory {
+    #[inline]
+    fn index(prev: Move, m: Move) -> usize {
+        ((prev.piece_after().index() * CONT_SQ + prev.to().index()) * CONT_PIECE
+            + m.piece_after().index())
+            * CONT_SQ
+            + m.to().index()
+    }
+
+    #[inline]
+    pub fn get(&self, prev: Move, m: Move) -> i32 {
+        if prev == Move::NONE || prev.is_special() {
+            return 0;
+        }
+        i32::from(self.table[Self::index(prev, m)])
+    }
+
+    /// gravity方式の更新。main historyと同一（クランプ±4000、divisor 16384）。
+    pub fn update(&mut self, prev: Move, m: Move, bonus: i32) {
+        if prev == Move::NONE || prev.is_special() {
+            return;
+        }
+        let bonus = bonus.clamp(-4000, 4000);
+        let h = &mut self.table[Self::index(prev, m)];
+        *h += (bonus - i32::from(*h) * bonus.abs() / 16384) as i16;
+    }
+
+    pub fn clear(&mut self) {
+        self.table.iter_mut().for_each(|x| *x = 0);
+    }
+}
+
 #[derive(PartialEq, Eq)]
 enum Stage {
     TtMove,
@@ -209,7 +262,14 @@ impl MovePicker {
         m == self.tt_move || self.yielded_quiet_stage.contains(&m)
     }
 
-    pub fn next(&mut self, pos: &Position, history: &History) -> Option<Move> {
+    pub fn next(
+        &mut self,
+        pos: &Position,
+        history: &History,
+        cont: &ContinuationHistory,
+        prev1: Move,
+        prev2: Move,
+    ) -> Option<Move> {
         loop {
             match self.stage {
                 Stage::TtMove => {
@@ -272,7 +332,8 @@ impl MovePicker {
                     generate(pos, GenType::Quiets, false, &mut list);
                     for &m in &list {
                         if !self.already_yielded(m) {
-                            self.scored.push((m, history.get(m)));
+                            let score = history.get(m) + cont.get(prev1, m) + cont.get(prev2, m);
+                            self.scored.push((m, score));
                         }
                     }
                     self.stage = Stage::Quiets;

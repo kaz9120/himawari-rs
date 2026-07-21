@@ -13,7 +13,7 @@ use std::thread::JoinHandle;
 use himawari_core::Position;
 
 use crate::eval::Evaluator;
-use crate::movepick::{CorrectionHistory, CounterMoves, History};
+use crate::movepick::{ContinuationHistory, CorrectionHistory, CounterMoves, History};
 use crate::nnue::NnueNetwork;
 use crate::search::{Shared, Worker};
 use crate::timeman::{Limits, TimeManager};
@@ -140,6 +140,9 @@ fn spawn_worker(
         let mut history = History::default();
         let mut counters = CounterMoves::default();
         let mut corr = CorrectionHistory::default();
+        // 約13.4MB（ADR-0047）。mem::takeの往復でgoごとに空テーブルの
+        // 生成が入るが、ゼロ初期化は数msでtc 10+0.1でも無視できる
+        let mut cont = ContinuationHistory::default();
         loop {
             let job = {
                 let mut guard = ctl2.job.lock().expect("job lock");
@@ -158,6 +161,7 @@ fn spawn_worker(
                     history.clear();
                     counters.clear();
                     corr.clear();
+                    cont.clear();
                 }
                 Job::Search(j) => {
                     // ヘルパーとponder探索は時間制限を持たずstopフラグで止まる
@@ -198,6 +202,7 @@ fn spawn_worker(
                         std::mem::take(&mut history),
                         std::mem::take(&mut counters),
                         std::mem::take(&mut corr),
+                        std::mem::take(&mut cont),
                     );
                     let result = worker.iterate(&mut |info| {
                         let Some(out) = &on_line else { return };
@@ -227,6 +232,7 @@ fn spawn_worker(
                     history = std::mem::take(&mut worker.history);
                     counters = std::mem::take(&mut worker.counters);
                     corr = std::mem::take(&mut worker.corr);
+                    cont = std::mem::take(&mut worker.cont);
                     if is_main {
                         // メインの結論が出たらヘルパーも止める
                         shared.stop.store(true, Ordering::Relaxed);
