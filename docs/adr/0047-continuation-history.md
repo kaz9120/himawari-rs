@@ -1,6 +1,6 @@
 # 0047: continuation history（手系列条件の履歴）を導入する
 
-- Status: proposed
+- Status: accepted
 - Date: 2026-07-21
 - 関連ADR: [0025](0025-move-ordering.md), [0028](0028-pruning-extensions.md), [0046](0046-correction-history.md)
 
