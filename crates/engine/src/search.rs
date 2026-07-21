@@ -121,6 +121,9 @@ pub struct Worker {
     move_stack: Vec<Move>,
     /// plyごとの静的評価（improving判定用。王手中はVALUE_NONE）。
     eval_stack: Vec<Value>,
+    /// plyごとの除外手（singular extension用。ADR-0050）。検証探索中は
+    /// そのplyのexcluded_stackにTT手が入り、ムーブループで飛ばす。
+    excluded_stack: Vec<Move>,
     killers: Vec<[Move; 2]>,
     nodes: u64,
     shared: Arc<Shared>,
@@ -156,6 +159,7 @@ impl Worker {
             cont,
             move_stack: vec![Move::NONE; MAX_PLY + 2],
             eval_stack: vec![VALUE_NONE; MAX_PLY + 2],
+            excluded_stack: vec![Move::NONE; MAX_PLY + 2],
             killers: vec![[Move::NONE; 2]; MAX_PLY + 2],
             nodes: 0,
             shared,
@@ -424,26 +428,35 @@ impl Worker {
             return alpha;
         }
 
+        // 除外手（singular extension用。ADR-0050）。検証探索中はTT手が入る
+        let excluded = self.excluded_stack[ply];
+
         // 置換表（ADR-0022, 0024）
         let key = self.pos.key();
         let tt_hit = self.shared.tt.probe(key);
         let mut tt_move = Move::NONE;
+        let mut tt_value = VALUE_NONE;
+        let mut tt_depth = 0u32;
+        let mut tt_bound = Bound::None;
         if let Some(data) = &tt_hit {
             if let Some(m) = self.pos.to_move(data.mv)
                 && self.pos.pseudo_legal(m)
             {
                 tt_move = m;
             }
-            if !is_pv && u32::from(data.depth) >= depth {
-                let v = value_from_tt(data.value, ply);
-                let usable = match data.bound {
+            tt_value = value_from_tt(data.value, ply);
+            tt_depth = u32::from(data.depth);
+            tt_bound = data.bound;
+            // TTカット。除外手つき探索中はカットしない（probeは行い、eval再利用は可）
+            if excluded == Move::NONE && !is_pv && tt_depth >= depth {
+                let usable = match tt_bound {
                     Bound::Exact => true,
-                    Bound::Lower => v >= beta,
-                    Bound::Upper => v <= alpha,
+                    Bound::Lower => tt_value >= beta,
+                    Bound::Upper => tt_value <= alpha,
                     Bound::None => false,
                 };
                 if usable {
-                    return v;
+                    return tt_value;
                 }
             }
         }
@@ -485,8 +498,10 @@ impl Worker {
             && self.eval_stack[ply - 2] != VALUE_NONE
             && static_eval > self.eval_stack[ply - 2];
 
-        // reverse futility（ADR-0028）: 静的評価がβを大きく超えるなら刈る
-        if !is_pv
+        // reverse futility（ADR-0028）: 静的評価がβを大きく超えるなら刈る。
+        // 除外手つき探索中はスキップ（ADR-0050）
+        if excluded == Move::NONE
+            && !is_pv
             && !in_check
             && depth <= RFP_MAX_DEPTH
             && beta.abs() < VALUE_MATE_IN_MAX_PLY
@@ -495,8 +510,10 @@ impl Worker {
             return static_eval;
         }
 
-        // NMP（ADR-0028）。手番を渡して浅く探索し、それでもβ以上なら刈る
-        if !is_pv
+        // NMP（ADR-0028）。手番を渡して浅く探索し、それでもβ以上なら刈る。
+        // 除外手つき探索中はスキップ（ADR-0050）
+        if excluded == Move::NONE
+            && !is_pv
             && !in_check
             && prev != Move::NULL
             && depth >= NMP_MIN_DEPTH
@@ -528,6 +545,46 @@ impl Worker {
             }
         }
 
+        // singular extension（ADR-0050）。TT手を除外した検証探索がsingular_beta
+        // を下回れば、TT手だけが良い手と見て延長する。案A（単独延長のみ）
+        let mut singular = false;
+        if excluded == Move::NONE
+            && depth >= 7
+            && ply > 0
+            && tt_move != Move::NONE
+            && tt_bound != Bound::Upper
+            && tt_bound != Bound::None
+            && tt_depth >= depth.saturating_sub(3)
+            && tt_value.abs() < VALUE_MATE_IN_MAX_PLY
+            && self.pos.is_legal(tt_move)
+        {
+            let singular_beta = tt_value - 2 * depth as Value;
+            // 検証探索はkillers[ply]を書き換える（update_quiet_stats）。
+            // このノードのpickerが読む前に退避・復元する（ADR-0050の注意点）
+            let saved_killers = self.killers[ply];
+            self.excluded_stack[ply] = tt_move;
+            let mut verify_pv = Vec::new();
+            let v = self.search(
+                singular_beta - 1,
+                singular_beta,
+                depth / 2,
+                ply,
+                prev,
+                &mut verify_pv,
+                false,
+            );
+            self.excluded_stack[ply] = Move::NONE;
+            self.killers[ply] = saved_killers;
+            // 検証探索の再帰でeval_stack[ply]が同値で上書きされる。念のため戻す
+            self.eval_stack[ply] = static_eval;
+            if self.stopped() {
+                return VALUE_ZERO;
+            }
+            // TT手が唯一の合法手なら検証探索はmated値を返し、必ず
+            // singular=trueになる（唯一手の延長として意図どおり）
+            singular = v < singular_beta;
+        }
+
         let mut picker = MovePicker::new(
             &self.pos,
             tt_move,
@@ -553,6 +610,10 @@ impl Worker {
         let mut child_pv = Vec::new();
 
         while let Some(m) = picker.next(&self.pos, &self.history, &self.cont, prev1, prev2) {
+            // 除外手はスキップ（singular検証探索。ADR-0050）。通常はexcluded==NONE
+            if m == excluded {
+                continue;
+            }
             if !self.pos.is_legal(m) {
                 continue;
             }
@@ -586,8 +647,13 @@ impl Worker {
                 continue;
             }
 
-            // 王手延長（ADR-0024の骨格。深さは減らさない）
-            let new_depth = if gives_check { depth } else { depth - 1 };
+            // 王手延長（ADR-0024）とsingular延長（ADR-0050）。どちらもTT手/王手を
+            // +1する。両立時はmaxで重複させない（depthのまま、depth+1にしない）
+            let new_depth = if gives_check || (singular && m == tt_move) {
+                depth
+            } else {
+                depth - 1
+            };
 
             self.move_stack[ply] = m;
             self.pos.do_move(m);
@@ -663,35 +729,39 @@ impl Worker {
             return mated_in(ply);
         }
 
-        let bound = if best >= beta {
-            Bound::Lower
-        } else if is_pv && best_move != Move::NONE {
-            Bound::Exact
-        } else {
-            Bound::Upper
-        };
-        self.shared.tt.store(
-            key,
-            best_move.to_move16(),
-            value_to_tt(best, ply),
-            raw_eval as i16,
-            depth.min(255) as u8,
-            bound,
-            is_pv,
-        );
+        // 除外手つき探索中はTT store・correction history更新をしない（ADR-0050）。
+        // 検証専用の結果でこのキーの本体を汚さない
+        if excluded == Move::NONE {
+            let bound = if best >= beta {
+                Bound::Lower
+            } else if is_pv && best_move != Move::NONE {
+                Bound::Exact
+            } else {
+                Bound::Upper
+            };
+            self.shared.tt.store(
+                key,
+                best_move.to_move16(),
+                value_to_tt(best, ply),
+                raw_eval as i16,
+                depth.min(255) as u8,
+                bound,
+                is_pv,
+            );
 
-        // correction history更新（ADR-0046）。main searchのノード確定後のみ。
-        // 静かな結論で、boundと補正後静的評価が矛盾しないときだけ蓄積する
-        if !in_check
-            && best.abs() < VALUE_MATE_IN_MAX_PLY
-            && (best_move == Move::NONE || !best_move_is_capture)
-            && !(best >= beta && best <= static_eval)
-            && !(best_move == Move::NONE && best >= static_eval)
-        {
-            let diff = best - static_eval;
-            let bonus = (diff * depth as i32 / 8).clamp(-128, 128);
-            let stm = self.pos.side_to_move();
-            self.corr.update(stm, self.pos.pawn_key(), bonus);
+            // correction history更新（ADR-0046）。main searchのノード確定後のみ。
+            // 静かな結論で、boundと補正後静的評価が矛盾しないときだけ蓄積する
+            if !in_check
+                && best.abs() < VALUE_MATE_IN_MAX_PLY
+                && (best_move == Move::NONE || !best_move_is_capture)
+                && !(best >= beta && best <= static_eval)
+                && !(best_move == Move::NONE && best >= static_eval)
+            {
+                let diff = best - static_eval;
+                let bonus = (diff * depth as i32 / 8).clamp(-128, 128);
+                let stm = self.pos.side_to_move();
+                self.corr.update(stm, self.pos.pawn_key(), bonus);
+            }
         }
         best
     }
