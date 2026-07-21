@@ -1,6 +1,6 @@
 # 0049: eval hash（評価値キャッシュ）を導入する
 
-- Status: proposed
+- Status: accepted
 - Date: 2026-07-21
 - 関連ADR: [0022](0022-transposition-table.md), [0028](0028-pruning-extensions.md), [0046](0046-correction-history.md)
 

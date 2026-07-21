@@ -68,7 +68,7 @@
 | [0046](0046-correction-history.md) | correction history（静的評価の履歴補正） | P8 | accepted |
 | [0047](0047-continuation-history.md) | continuation history（手系列条件の履歴） | P8 | accepted |
 | [0048](0048-capture-history.md) | capture history（取る手の履歴） | P8 | rejected |
-| [0049](0049-eval-hash.md) | eval hash（評価値キャッシュ） | P8 | proposed |
+| [0049](0049-eval-hash.md) | eval hash（評価値キャッシュ） | P8 | accepted |
 
 ## バックログ
 
