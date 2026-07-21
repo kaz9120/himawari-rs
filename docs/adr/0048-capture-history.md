@@ -1,7 +1,13 @@
 # 0048: capture history（取る手の履歴）を導入する
 
-- Status: accepted
+- Status: rejected
 - Date: 2026-07-21
+
+2026-07-21追記: SPRT 872局（436ペア）で Elo -2.4 [-25.4,+20.6]、
+LLR -0.18。効果なしと判断し、オーナー決定で打ち切り・不採択。
+反証レビューが指摘した「履歴値域±16,384がMVV-LVAの駒得序列を
+跨ぐ」スケール不均衡が疑い先。スケール再設計での再挑戦は
+IDEAS.mdに残す。
 - 関連ADR: [0025](0025-move-ordering.md), [0028](0028-pruning-extensions.md), [0047](0047-continuation-history.md)
 
 ## Context

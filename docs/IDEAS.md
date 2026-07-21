@@ -11,7 +11,7 @@ ADRを起草してこの帳から消す（採番と経緯はADR側に書く）�
 |---|---|---|
 | ~~correction history~~ | ~~ADR-0046で導入。+44.6 Elo（H1採択）~~ | ~~完了~~ |
 | ~~continuation history~~ | ~~ADR-0047で導入。+20.7 Elo（H1採択）~~ | ~~完了~~ |
-| capture history | 取る手の並べ替え精度向上 | SPRT |
+| ~~capture history~~ | ~~ADR-0048で不採択（872局で-2.4、効果なし打ち切り）。MVV-LVAとのスケール再設計なら再挑戦可~~ | ~~不採択~~ |
 | singular extension再挑戦 | P3で-16。NNUEでTT質が上がった後に条件を変えて再検証 | SPRT |
 | ProbCut | 浅い探索で上限カット。NNUEの評価精度前提 | SPRT |
 | razoring | 浅い深さの絶望局面をqsearchへ落とす | SPRT |
