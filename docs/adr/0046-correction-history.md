@@ -1,6 +1,6 @@
 # 0046: correction history（静的評価の履歴補正）を導入する
 
-- Status: proposed
+- Status: accepted
 - Date: 2026-07-21
 - 関連ADR: [0024](0024-search-v1.md), [0027](0027-sprt-framework.md), [0028](0028-pruning-extensions.md)
 

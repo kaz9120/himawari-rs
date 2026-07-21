@@ -65,7 +65,7 @@
 | [0043](0043-pyo3-bridge.md) | PyO3ブリッジ（Rust-Python連携） | P6 | accepted |
 | [0044](0044-p7-feature-experiments.md) | P7特徴量実験（玉ライン特徴・利き塔有無の比較） | P7 | accepted |
 | [0045](0045-remove-effect-tower.md) | 利き塔の除去 | P7 | accepted |
-| [0046](0046-correction-history.md) | correction history（静的評価の履歴補正） | P8 | proposed |
+| [0046](0046-correction-history.md) | correction history（静的評価の履歴補正） | P8 | accepted |
 
 ## バックログ
 
