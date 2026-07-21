@@ -6,7 +6,7 @@
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 
-use himawari_core::{Move, MoveList, Position, Repetition, generate_legal};
+use himawari_core::{GenType, Move, MoveList, Position, Repetition, generate, generate_legal};
 
 use crate::eval::Evaluator;
 use crate::movepick::{ContinuationHistory, CorrectionHistory, CounterMoves, History, MovePicker};
@@ -542,6 +542,69 @@ impl Worker {
             if v >= beta {
                 // パス由来の詰みスコアは信用せずβに丸める
                 return if v >= VALUE_MATE_IN_MAX_PLY { beta } else { v };
+            }
+        }
+
+        // ProbCut（ADR-0051）。betaを大きく超えそうなノードでは、浅い確認探索で
+        // 「十分良い取る手が1つある」ことを示せれば高深度の全探索を省いてカットする。
+        // non-PV・非王手・除外手なし・depth>=5で発動。除外手つき探索中はスキップ。
+        const PROBCUT_MARGIN: Value = 200;
+        const PROBCUT_DEPTH_REDUCTION: u32 = 4;
+        const PROBCUT_MIN_DEPTH: u32 = 5;
+        let probcut_beta = beta + PROBCUT_MARGIN;
+        if excluded == Move::NONE
+            && !is_pv
+            && !in_check
+            && depth >= PROBCUT_MIN_DEPTH
+            && beta.abs() < VALUE_MATE_IN_MAX_PLY
+            // TTに深い情報があり矛盾する（probcut_beta未満と分かっている）ならスキップ
+            && !(tt_hit.is_some()
+                && tt_depth >= depth.saturating_sub(3)
+                && tt_value < probcut_beta)
+        {
+            let mut list = MoveList::default();
+            generate(&self.pos, GenType::Captures, false, &mut list);
+            for &m in &list {
+                // SEE>=0の取る手だけを確認対象にする
+                if !self.pos.see_ge(m, 0) || !self.pos.is_legal(m) {
+                    continue;
+                }
+                self.move_stack[ply] = m;
+                self.pos.do_move(m);
+                self.evaluator.push(&self.pos);
+                // まずqsearchで確認（窓は (-probcut_beta, -probcut_beta+1)）
+                let mut v = -self.qsearch(-probcut_beta, -probcut_beta + 1, ply + 1, 0);
+                // 通ったら同じ窓で通常探索 depth-4 を確認する
+                if v >= probcut_beta {
+                    let mut child_pv = Vec::new();
+                    v = -self.search(
+                        -probcut_beta,
+                        -probcut_beta + 1,
+                        depth - PROBCUT_DEPTH_REDUCTION,
+                        ply + 1,
+                        m,
+                        &mut child_pv,
+                        false,
+                    );
+                }
+                self.evaluator.pop();
+                self.pos.undo_move(m);
+                if self.stopped() {
+                    return VALUE_ZERO;
+                }
+                if v >= probcut_beta {
+                    // fail-soft。TTにlower bound・depth-3で保存してカットする
+                    self.shared.tt.store(
+                        key,
+                        m.to_move16(),
+                        value_to_tt(v, ply),
+                        raw_eval as i16,
+                        depth.saturating_sub(3).min(255) as u8,
+                        Bound::Lower,
+                        is_pv,
+                    );
+                    return v;
+                }
             }
         }
 
