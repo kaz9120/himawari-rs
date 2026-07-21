@@ -11,7 +11,7 @@ use himawari_core::{Move, MoveList, Position, Repetition, generate_legal};
 use crate::eval::Evaluator;
 use crate::movepick::{ContinuationHistory, CorrectionHistory, CounterMoves, History, MovePicker};
 use crate::timeman::{Limits, TimeManager};
-use crate::tt::{Bound, Tt};
+use crate::tt::{Bound, EvalHash, Tt};
 use crate::value::{
     MAX_PLY, VALUE_DRAW, VALUE_INFINITE, VALUE_MATE_IN_MAX_PLY, VALUE_MATED_IN_MAX_PLY, VALUE_NONE,
     VALUE_SUPERIOR, VALUE_ZERO, Value, mate_in, mated_in, value_from_tt, value_to_tt,
@@ -65,6 +65,8 @@ pub struct Shared {
     pub stop: AtomicBool,
     pub nodes: AtomicU64,
     pub tt: Tt,
+    /// 評価値キャッシュ（ADR-0049）。全スレッド共有、new_gameでクリア。
+    pub eval_hash: EvalHash,
 }
 
 impl Shared {
@@ -73,6 +75,7 @@ impl Shared {
             stop: AtomicBool::new(false),
             nodes: AtomicU64::new(0),
             tt: Tt::new(hash_mb),
+            eval_hash: EvalHash::new(),
         }
     }
 }
@@ -189,6 +192,19 @@ impl Worker {
     fn draw_value(&self) -> Value {
         // 千日手PVへの固着を防ぐ±1の揺らぎ（ADR-0026）
         VALUE_DRAW + 1 - (self.nodes & 2) as Value
+    }
+
+    /// 生の静的評価をeval hash経由で得る（ADR-0049）。ヒットなら
+    /// evaluate()の全計算を省き、ミスなら計算して格納する。詰み圏の値は
+    /// 入らない（evaluateの出力域のみ）。correction history補正は呼び側。
+    #[inline]
+    fn eval_cached(&mut self, key: u64) -> Value {
+        if let Some(v) = self.shared.eval_hash.probe(key) {
+            return v;
+        }
+        let v = self.evaluator.evaluate(&self.pos);
+        self.shared.eval_hash.store(key, v);
+        v
     }
 
     /// 生の静的評価にcorrection historyの補正を加える（ADR-0046）。
@@ -452,7 +468,8 @@ impl Worker {
         } else {
             match &tt_hit {
                 Some(d) if Value::from(d.eval) != VALUE_NONE => Value::from(d.eval),
-                _ => self.evaluator.evaluate(&self.pos),
+                // TTにevalがなければeval hash経由で計算する（ADR-0049）
+                _ => self.eval_cached(key),
             }
         };
         let static_eval = if in_check {
@@ -704,8 +721,9 @@ impl Worker {
         let in_check = self.pos.in_check();
         let mut best = -VALUE_INFINITE;
         if !in_check {
-            // stand pat（ADR-0024）。correction historyで補正する（ADR-0046）
-            let raw = self.evaluator.evaluate(&self.pos);
+            // stand pat（ADR-0024）。eval hash経由で生評価を得（ADR-0049）、
+            // correction historyで補正する（ADR-0046）
+            let raw = self.eval_cached(self.pos.key());
             let stand = self.to_corrected(raw);
             if stand >= beta {
                 return stand;
@@ -779,6 +797,75 @@ impl Worker {
                 self.cont.update(prev1, q, -bonus);
                 self.cont.update(prev2, q, -bonus);
             }
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::eval::Evaluator;
+    use himawari_core::Position;
+
+    /// eval hashあり/なしで探索した (総ノード数, 最善手) を返す。
+    fn search_nodes_best(sfen: &str, depth: u32, eval_hash: bool) -> (u64, Move) {
+        let pos = Position::from_sfen(sfen).unwrap();
+        let shared = Arc::new(Shared {
+            stop: AtomicBool::new(false),
+            nodes: AtomicU64::new(0),
+            tt: Tt::new(16),
+            eval_hash: if eval_hash {
+                EvalHash::new()
+            } else {
+                EvalHash::disabled()
+            },
+        });
+        let limits = Limits {
+            depth,
+            ..Limits::default()
+        };
+        let tm = TimeManager::new(&limits, pos.side_to_move(), pos.game_ply(), 120, 1120);
+        let mut worker = Worker::new(
+            pos,
+            shared,
+            limits,
+            tm,
+            0,
+            1,
+            Evaluator::material(),
+            History::default(),
+            CounterMoves::default(),
+            CorrectionHistory::default(),
+            ContinuationHistory::default(),
+        );
+        let result = worker.iterate(&mut |_| {});
+        (worker.nodes, result.best)
+    }
+
+    /// 機能検証（ADR-0049）: eval hashは探索を変えないはずである。
+    /// 偽ヒットを除けばノード数と最善手が有無で一致する。
+    #[test]
+    fn eval_hash_does_not_change_search() {
+        // 中盤・序盤の複数局面で照合する
+        for &(sfen, depth) in &[
+            (himawari_core::SFEN_STARTPOS, 7),
+            (
+                "1n1gk2nl/1r4g2/1sppppspp/L5p2/1p5P1/2P6/1PSPPPPSP/7R1/1N1GKG1NL w BLPbp 24",
+                6,
+            ),
+            ("4k4/9/9/5N3/9/9/9/9/4K4 b G 1", 5),
+        ] {
+            let (n_on, best_on) = search_nodes_best(sfen, depth, true);
+            let (n_off, best_off) = search_nodes_best(sfen, depth, false);
+            assert_eq!(
+                n_on, n_off,
+                "ノード数がeval hash有無で不一致: {sfen} (on={n_on}, off={n_off})"
+            );
+            assert_eq!(
+                best_on.to_usi(),
+                best_off.to_usi(),
+                "最善手がeval hash有無で不一致: {sfen}"
+            );
         }
     }
 }

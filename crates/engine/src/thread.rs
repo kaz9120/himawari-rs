@@ -407,6 +407,7 @@ impl ThreadPool {
     pub fn new_game(&self) {
         self.wait_idle();
         self.shared.tt.clear();
+        self.shared.eval_hash.clear();
         for w in &self.workers {
             let mut guard = w.ctl.job.lock().expect("job lock");
             *guard = Some(Job::NewGame);

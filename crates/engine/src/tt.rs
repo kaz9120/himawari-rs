@@ -8,6 +8,79 @@ use std::sync::atomic::{AtomicU8, AtomicU64, Ordering};
 
 use himawari_core::Move16;
 
+use crate::value::Value;
+
+/// eval hashのエントリ数（2^23 = 約840万、AtomicU64で64MB固定）。
+/// USIオプションは設けない（ADR-0049）。
+const EVAL_HASH_BITS: usize = 23;
+const EVAL_HASH_SIZE: usize = 1 << EVAL_HASH_BITS;
+
+/// 評価値キャッシュ（ADR-0049）。局面キー→生評価のロックレス共有表。
+///
+/// エントリは `(key上位32bit << 32) | (eval as u32)`。probeは上位32bit
+/// 一致で採用する。偽ヒット確率はprobeあたり2^-32で、NNUE評価の±1違い
+/// と同水準として無視する（やねうら王系と同じ割り切り）。
+/// 生値のみを持ち、correction history補正（ADR-0046）はキャッシュの外側。
+pub struct EvalHash {
+    table: Vec<AtomicU64>,
+}
+
+impl EvalHash {
+    pub fn new() -> EvalHash {
+        // vec![]はAtomicがCloneでないため使えない。1本ずつ確保する
+        EvalHash {
+            table: (0..EVAL_HASH_SIZE).map(|_| AtomicU64::new(0)).collect(),
+        }
+    }
+
+    /// 検証用の無効化インスタンス（ADR-0049の機能検証）。probeは常にミス、
+    /// storeは無視する。eval hash有無で探索が変わらないことの対照に使う。
+    #[cfg(test)]
+    pub fn disabled() -> EvalHash {
+        EvalHash { table: Vec::new() }
+    }
+
+    /// key下位23bitのスロットを引き、上位32bit一致なら下位32bitを評価値
+    /// （i32）として返す。0エントリは通常キー不一致で弾かれる。
+    #[inline]
+    pub fn probe(&self, key: u64) -> Option<Value> {
+        if self.table.is_empty() {
+            return None;
+        }
+        let slot = key as usize & (EVAL_HASH_SIZE - 1);
+        let entry = self.table[slot].load(Ordering::Relaxed);
+        if entry >> 32 == key >> 32 {
+            Some(entry as u32 as i32)
+        } else {
+            None
+        }
+    }
+
+    /// 生評価をkey下位23bitのスロットへ格納する（上書き）。
+    #[inline]
+    pub fn store(&self, key: u64, eval: Value) {
+        if self.table.is_empty() {
+            return;
+        }
+        let slot = key as usize & (EVAL_HASH_SIZE - 1);
+        let entry = (key >> 32) << 32 | u64::from(eval as u32);
+        self.table[slot].store(entry, Ordering::Relaxed);
+    }
+
+    /// 全エントリの消去（usinewgameで呼ぶ）。対局間の独立性を保つ。
+    pub fn clear(&self) {
+        for e in &self.table {
+            e.store(0, Ordering::Relaxed);
+        }
+    }
+}
+
+impl Default for EvalHash {
+    fn default() -> Self {
+        EvalHash::new()
+    }
+}
+
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 #[repr(u8)]
 pub enum Bound {
@@ -217,6 +290,39 @@ mod tests {
         let d = tt.probe(key).unwrap();
         assert_eq!(d.mv, Move16(2));
         assert_eq!(d.depth, 5);
+    }
+
+    #[test]
+    fn eval_hash_store_probe_roundtrip() {
+        let eh = EvalHash::new();
+        let key = 0xDEAD_BEEF_1234_5678u64;
+        assert!(eh.probe(key).is_none());
+        eh.store(key, -321);
+        assert_eq!(eh.probe(key), Some(-321));
+        // 正のスコアも往復する
+        eh.store(key, 456);
+        assert_eq!(eh.probe(key), Some(456));
+        // 上位32bitが異なるキーはミス（下位23bitは同一）
+        let other = key ^ (1u64 << 40);
+        assert!(eh.probe(other).is_none());
+    }
+
+    #[test]
+    fn eval_hash_clear_empties_table() {
+        let eh = EvalHash::new();
+        let key = 0x0102_0304_0506_0708u64;
+        eh.store(key, 100);
+        assert_eq!(eh.probe(key), Some(100));
+        eh.clear();
+        assert!(eh.probe(key).is_none());
+    }
+
+    #[test]
+    fn eval_hash_disabled_never_hits() {
+        let eh = EvalHash::disabled();
+        let key = 0xABCD_1234_5678_9ABCu64;
+        eh.store(key, 42);
+        assert!(eh.probe(key).is_none());
     }
 
     #[test]
