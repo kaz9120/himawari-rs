@@ -10,7 +10,9 @@
 - URL: https://huggingface.co/datasets/nodchip/shogi_hao_depth9
 - 形式: PackedSfenValue（40B/局面）
 - 生成: Haoエンジン、depth 9
-- 規模: 約10億局面（48ファイル、合計320GB）
+- 規模: start_time 3グループ × thread_index 000〜126の
+  計381ファイル。各約280〜350MB（約700〜850万局面）。
+  合計約115GB・約29億局面（2026-07-21にHF APIで実測）
 - ライセンス: MIT
 - 注意: 未シャッフル。qsearch PV葉への局面置換なし
 
@@ -42,9 +44,14 @@
 
 ### nodchip/shogi_hao_depth9（残りファイル）
 
-- thread_index 024〜047の24ファイル（合計約150GB、約3.7億局面）
-- 同一データセットの残り。取得コマンド:
-  `cd data && for i in $(seq -w 024 047); do curl -L -O "https://huggingface.co/datasets/nodchip/shogi_hao_depth9/resolve/main/kifu.tag%3Dtrain.depth%3D9.num_positions%3D1000000000.start_time%3D1695340981.thread_index%3D${i}.bin"; done`
+- start_time=1695340981の残り: thread_index 024〜126の
+  103ファイル（約31GB、約8億局面）。さらにstart_time=1695606850、
+  1695872823の2グループが各127ファイルある
+- 取得コマンド（zsh。`seq -w`は3桁ゼロ埋めにならないので
+  brace展開を使う）:
+  `cd data && for i in {024..047}; do curl -L -O "https://huggingface.co/datasets/nodchip/shogi_hao_depth9/resolve/main/kifu.tag%3Dtrain.depth%3D9.num_positions%3D1000000000.start_time%3D1695340981.thread_index%3D${i}.bin"; done`
+- 存在しないthread_indexを指定するとHFは15バイトの
+  「Entry not found」を返す。DL後にサイズを確認する
 
 ### nodchip/tanuki-.nnue-pytorch-2024-07-30.1
 
