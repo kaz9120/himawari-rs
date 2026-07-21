@@ -13,7 +13,7 @@ ADRを起草してこの帳から消す（採番と経緯はADR側に書く）�
 | ~~continuation history~~ | ~~ADR-0047で導入。+20.7 Elo（H1採択）~~ | ~~完了~~ |
 | ~~capture history~~ | ~~ADR-0048で不採択（872局で-2.4、効果なし打ち切り）。MVV-LVAとのスケール再設計なら再挑戦可~~ | ~~不採択~~ |
 | ~~singular extension再挑戦~~ | ~~ADR-0050で導入。+12.6 Elo（H1採択、P3の-16.0から反転）~~ | ~~完了~~ |
-| ProbCut | 浅い探索で上限カット。NNUEの評価精度前提 | SPRT |
+| ~~ProbCut~~ | ~~ADR-0051で導入。+44.2 Elo（H1採択）~~ | ~~完了~~ |
 | razoring | 浅い深さの絶望局面をqsearchへ落とす | SPRT |
 | NMPの動的深さ・検証探索 | evalマージン依存のR、zugzwang対策 | SPRT |
 | LMR式の再チューニング | log式係数、improving・cutnode・history条件 | SPRT |
