@@ -1,6 +1,6 @@
 # 0051: ProbCut（浅い探索による上限カット）を導入する
 
-- Status: proposed
+- Status: accepted
 - Date: 2026-07-21
 - 関連ADR: [0028](0028-pruning-extensions.md), [0049](0049-eval-hash.md), [0050](0050-singular-extension-retry.md)
 

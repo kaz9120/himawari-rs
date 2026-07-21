@@ -1,6 +1,6 @@
 # 0052: NMPの動的リダクションと検証探索を導入する
 
-- Status: proposed
+- Status: accepted
 - Date: 2026-07-21
 - 関連ADR: [0028](0028-pruning-extensions.md), [0050](0050-singular-extension-retry.md)
 
