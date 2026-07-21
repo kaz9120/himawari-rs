@@ -66,6 +66,7 @@
 | [0044](0044-p7-feature-experiments.md) | P7特徴量実験（玉ライン特徴・利き塔有無の比較） | P7 | accepted |
 | [0045](0045-remove-effect-tower.md) | 利き塔の除去 | P7 | accepted |
 | [0046](0046-correction-history.md) | correction history（静的評価の履歴補正） | P8 | accepted |
+| [0047](0047-continuation-history.md) | continuation history（手系列条件の履歴） | P8 | proposed |
 
 ## バックログ
 
