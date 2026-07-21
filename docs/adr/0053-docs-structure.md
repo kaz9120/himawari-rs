@@ -1,6 +1,6 @@
 # 0053: ドキュメントの役割分担とメンテナンスルールを定める
 
-- Status: proposed
+- Status: accepted
 - Date: 2026-07-21
 - 関連ADR: [0001](0001-adr-process.md), [0027](0027-sprt-framework.md), [0042](0042-training-log-registry.md)
 
@@ -46,6 +46,27 @@ ROADMAP.mdが「現在地」「フェーズ表」「フェーズ別のやるこ�
 | docs/adr/ | 決定 | 設計判断と経緯 | 決定・棄却のたび |
 | docs/IDEAS.md | 候補 | 1案1行の受け皿 | 追記・ADR化・棄却のたび |
 | docs/DATASETS.md | 資産 | データの所在と前処理 | 取得・生成のたび |
+| README.md | 入口 | 人間向けの概要・ビルド・学習・対局の手順、workspace構成 | 手順が変わったとき |
+| CLAUDE.md | 規約 | エージェント向けの作業規約（ゲート運用、コミット規律、配置ルールの要点）。詳細は各文書へリンク | 規約が変わったとき |
+
+### data/ の配置ルール
+
+data/は現在平置きで、生データ・加工済みデータ・ネットが
+混在している。次の配置に分ける（すべてgitignore対象のまま）。
+
+```
+data/
+  raw/<データセット名>/   DLした生データ（例: raw/hao_depth9/*.bin）
+  train/                  加工済みpsv（train_*.psv、valid_*.psv、bench*.psv）
+  nets/                   学習済みネット（<実験名>.hmwr[.best]）
+```
+
+- 学習チェックポイント（*.pt）はdata/に置かず、従来どおり
+  training/checkpoints/に置く
+- ネットのファイル名は実験名を含める（例: halfkp_180M.hmwr.best）。
+  hao_v1〜v6のような世代名だけの命名はしない
+- 物理的な移設は実行中のSPRT（EvalFileがdata/直下を参照）の
+  完了後に行い、DATASETS.md・README.mdのパスも同時に更新する
 
 運用ルール:
 - 同じ情報を2文書に書かない。参照はリンクで行う
