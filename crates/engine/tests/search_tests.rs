@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use himawari_core::{Move, MoveList, Position, SFEN_STARTPOS, generate_legal};
 use himawari_engine::eval::Evaluator;
-use himawari_engine::movepick::{CounterMoves, History};
+use himawari_engine::movepick::{CorrectionHistory, CounterMoves, History};
 use himawari_engine::search::{Shared, Worker};
 use himawari_engine::timeman::{Limits, TimeManager};
 use himawari_engine::value::{VALUE_MATE, Value};
@@ -27,6 +27,7 @@ fn search_position(sfen: &str, depth: u32) -> (Move, Value) {
         Evaluator::material(),
         History::default(),
         CounterMoves::default(),
+        CorrectionHistory::default(),
     );
     let result = worker.iterate(&mut |_| {});
     (result.best, result.score)
@@ -76,6 +77,7 @@ fn selfplay_smoke() {
             Evaluator::material(),
             History::default(),
             CounterMoves::default(),
+            CorrectionHistory::default(),
         );
         let result = worker.iterate(&mut |_| {});
         if result.best == Move::RESIGN {
@@ -111,6 +113,7 @@ fn multipv_lines_are_distinct_and_sorted() {
         Evaluator::material(),
         History::default(),
         CounterMoves::default(),
+        CorrectionHistory::default(),
     );
     let mut lines: Vec<(usize, Value, Move)> = Vec::new();
     worker.iterate(&mut |info| {
@@ -153,6 +156,7 @@ fn nnue_search_returns_legal_moves() {
             Evaluator::nnue(Arc::clone(&net)),
             History::default(),
             CounterMoves::default(),
+            CorrectionHistory::default(),
         );
         let result = worker.iterate(&mut |_| {});
         let mut legal = MoveList::default();

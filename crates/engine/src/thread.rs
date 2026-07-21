@@ -13,7 +13,7 @@ use std::thread::JoinHandle;
 use himawari_core::Position;
 
 use crate::eval::Evaluator;
-use crate::movepick::{CounterMoves, History};
+use crate::movepick::{CorrectionHistory, CounterMoves, History};
 use crate::nnue::NnueNetwork;
 use crate::search::{Shared, Worker};
 use crate::timeman::{Limits, TimeManager};
@@ -139,6 +139,7 @@ fn spawn_worker(
         // スレッドローカル状態（対局を通じて保持。ADR-0020）
         let mut history = History::default();
         let mut counters = CounterMoves::default();
+        let mut corr = CorrectionHistory::default();
         loop {
             let job = {
                 let mut guard = ctl2.job.lock().expect("job lock");
@@ -156,6 +157,7 @@ fn spawn_worker(
                 Job::NewGame => {
                     history.clear();
                     counters.clear();
+                    corr.clear();
                 }
                 Job::Search(j) => {
                     // ヘルパーとponder探索は時間制限を持たずstopフラグで止まる
@@ -195,6 +197,7 @@ fn spawn_worker(
                         evaluator,
                         std::mem::take(&mut history),
                         std::mem::take(&mut counters),
+                        std::mem::take(&mut corr),
                     );
                     let result = worker.iterate(&mut |info| {
                         let Some(out) = &on_line else { return };
@@ -223,6 +226,7 @@ fn spawn_worker(
                     // history類を回収して次のgoへ持ち越す
                     history = std::mem::take(&mut worker.history);
                     counters = std::mem::take(&mut worker.counters);
+                    corr = std::mem::take(&mut worker.corr);
                     if is_main {
                         // メインの結論が出たらヘルパーも止める
                         shared.stop.store(true, Ordering::Relaxed);

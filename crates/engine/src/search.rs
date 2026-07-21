@@ -9,7 +9,7 @@ use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use himawari_core::{Move, MoveList, Position, Repetition, generate_legal};
 
 use crate::eval::Evaluator;
-use crate::movepick::{CounterMoves, History, MovePicker};
+use crate::movepick::{CorrectionHistory, CounterMoves, History, MovePicker};
 use crate::timeman::{Limits, TimeManager};
 use crate::tt::{Bound, Tt};
 use crate::value::{
@@ -109,6 +109,8 @@ pub struct Worker {
     pub evaluator: Evaluator,
     pub history: History,
     pub counters: CounterMoves,
+    /// 静的評価のcorrection history（ADR-0046）。
+    pub corr: CorrectionHistory,
     /// plyごとの静的評価（improving判定用。王手中はVALUE_NONE）。
     eval_stack: Vec<Value>,
     killers: Vec<[Move; 2]>,
@@ -134,12 +136,14 @@ impl Worker {
         evaluator: Evaluator,
         history: History,
         counters: CounterMoves,
+        corr: CorrectionHistory,
     ) -> Worker {
         Worker {
             pos,
             evaluator,
             history,
             counters,
+            corr,
             eval_stack: vec![VALUE_NONE; MAX_PLY + 2],
             killers: vec![[Move::NONE; 2]; MAX_PLY + 2],
             nodes: 0,
@@ -177,6 +181,15 @@ impl Worker {
     fn draw_value(&self) -> Value {
         // 千日手PVへの固着を防ぐ±1の揺らぎ（ADR-0026）
         VALUE_DRAW + 1 - (self.nodes & 2) as Value
+    }
+
+    /// 生の静的評価にcorrection historyの補正を加える（ADR-0046）。
+    /// 補正後が詰み圏に入らないようクランプする。
+    #[inline]
+    fn to_corrected(&self, raw: Value) -> Value {
+        let stm = self.pos.side_to_move();
+        let corr = self.corr.get(stm, self.pos.pawn_key()) / 8;
+        (raw + corr).clamp(VALUE_MATED_IN_MAX_PLY + 1, VALUE_MATE_IN_MAX_PLY - 1)
     }
 
     /// 反復深化。各イテレーション完了時にon_iterを呼ぶ。
@@ -422,15 +435,21 @@ impl Worker {
             depth
         };
 
-        // 静的評価（ADR-0028）。王手中はVALUE_NONE。TTのevalを再利用する
+        // 静的評価（ADR-0028）。王手中はVALUE_NONE。TTのevalを再利用する。
+        // rawは補正前（TT保存用）、static_evalはcorrection history補正後（ADR-0046）。
         let in_check = self.pos.in_check();
-        let static_eval = if in_check {
+        let raw_eval = if in_check {
             VALUE_NONE
         } else {
             match &tt_hit {
                 Some(d) if Value::from(d.eval) != VALUE_NONE => Value::from(d.eval),
                 _ => self.evaluator.evaluate(&self.pos),
             }
+        };
+        let static_eval = if in_check {
+            VALUE_NONE
+        } else {
+            self.to_corrected(raw_eval)
         };
 
         self.eval_stack[ply] = static_eval;
@@ -490,6 +509,7 @@ impl Worker {
         );
         let mut best = -VALUE_INFINITE;
         let mut best_move = Move::NONE;
+        let mut best_move_is_capture = false;
         let mut count = 0u32;
         let mut tried_quiets: Vec<Move> = Vec::new();
         let mut child_pv = Vec::new();
@@ -582,6 +602,7 @@ impl Worker {
                 best = value;
                 if value > alpha {
                     best_move = m;
+                    best_move_is_capture = is_capture;
                     if is_pv {
                         pv.clear();
                         pv.push(m);
@@ -614,11 +635,25 @@ impl Worker {
             key,
             best_move.to_move16(),
             value_to_tt(best, ply),
-            static_eval as i16,
+            raw_eval as i16,
             depth.min(255) as u8,
             bound,
             is_pv,
         );
+
+        // correction history更新（ADR-0046）。main searchのノード確定後のみ。
+        // 静かな結論で、boundと補正後静的評価が矛盾しないときだけ蓄積する
+        if !in_check
+            && best.abs() < VALUE_MATE_IN_MAX_PLY
+            && (best_move == Move::NONE || !best_move_is_capture)
+            && !(best >= beta && best <= static_eval)
+            && !(best_move == Move::NONE && best >= static_eval)
+        {
+            let diff = best - static_eval;
+            let bonus = (diff * depth as i32 / 8).clamp(-128, 128);
+            let stm = self.pos.side_to_move();
+            self.corr.update(stm, self.pos.pawn_key(), bonus);
+        }
         best
     }
 
@@ -647,8 +682,9 @@ impl Worker {
         let in_check = self.pos.in_check();
         let mut best = -VALUE_INFINITE;
         if !in_check {
-            // stand pat（ADR-0024）
-            let stand = self.evaluator.evaluate(&self.pos);
+            // stand pat（ADR-0024）。correction historyで補正する（ADR-0046）
+            let raw = self.evaluator.evaluate(&self.pos);
+            let stand = self.to_corrected(raw);
             if stand >= beta {
                 return stand;
             }

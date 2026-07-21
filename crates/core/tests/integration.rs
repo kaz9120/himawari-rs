@@ -136,6 +136,17 @@ fn random_playout(seed: u64, plies: usize, all: bool) {
             fresh.state().material,
             "差分materialと全計算の不一致"
         );
+        // 歩構造キーの差分更新＝全計算の一致（ADR-0046）
+        assert_eq!(
+            pos.pawn_key(),
+            fresh.pawn_key(),
+            "差分pawn_keyと全計算の不一致"
+        );
+        assert_eq!(
+            pos.pawn_key(),
+            pos.compute_pawn_key(),
+            "pawn_keyの差分と全計算の不一致"
+        );
 
         // gives_checkの整合
         let idx = (rng.next() % list.len() as u64) as usize;

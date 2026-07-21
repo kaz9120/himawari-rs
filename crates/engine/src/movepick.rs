@@ -4,7 +4,7 @@
 //! Quietsの生成自体を省く。borrow衝突を避けるため、
 //! next()は毎回&Positionと&Historyを受け取る。
 
-use himawari_core::{GenType, Move, MoveList, Position, generate, piece_value};
+use himawari_core::{Color, GenType, Move, MoveList, Position, generate, piece_value};
 
 /// main history（[移動後の駒 32][移動先 81]。駒打ちも表現できる）。
 pub struct History {
@@ -34,6 +34,42 @@ impl History {
 
     pub fn clear(&mut self) {
         *self.table = [[0; 81]; 32];
+    }
+}
+
+/// 静的評価の系統誤差を補正する履歴（ADR-0046）。
+/// [手番][pawn_key下位14bit]に、探索値と静的評価の乖離を蓄積する。
+pub struct CorrectionHistory {
+    table: Box<[[i16; 16384]; 2]>,
+}
+
+impl Default for CorrectionHistory {
+    fn default() -> Self {
+        CorrectionHistory {
+            table: Box::new([[0; 16384]; 2]),
+        }
+    }
+}
+
+impl CorrectionHistory {
+    #[inline]
+    fn slot(pawn_key: u64) -> usize {
+        (pawn_key & 0x3FFF) as usize
+    }
+
+    #[inline]
+    pub fn get(&self, stm: Color, pawn_key: u64) -> i32 {
+        i32::from(self.table[stm.index()][Self::slot(pawn_key)])
+    }
+
+    /// gravity方式の更新（値域±1024）。bonusは呼び出し側で±128にクランプ済み。
+    pub fn update(&mut self, stm: Color, pawn_key: u64, bonus: i32) {
+        let e = &mut self.table[stm.index()][Self::slot(pawn_key)];
+        *e += (bonus - i32::from(*e) * bonus.abs() / 1024) as i16;
+    }
+
+    pub fn clear(&mut self) {
+        *self.table = [[0; 16384]; 2];
     }
 }
 

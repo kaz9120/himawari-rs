@@ -5,7 +5,7 @@
 //! bit 0 = 手番）。hand_keyはHandの生の値なので乱数は不要。
 
 use crate::piece::Piece;
-use crate::types::Square;
+use crate::types::{Color, Square};
 
 /// 手番のXOR値。
 pub const SIDE: u64 = 1;
@@ -44,6 +44,31 @@ static PSQ: [[u64; 81]; 32] = {
 #[inline]
 pub fn psq(pc: Piece, sq: Square) -> u64 {
     PSQ[pc.index()][sq.index()]
+}
+
+/// 歩構造キー用の持ち歩テーブル（ADR-0046）。[色][枚数 0..=18]。
+/// PSQと同じsplitmix64のconst fn生成に合わせる。
+static HAND_PAWN: [[u64; 19]; 2] = {
+    let mut t = [[0u64; 19]; 2];
+    let mut state = 20260721u64;
+    let mut c = 0;
+    while c < 2 {
+        let mut n = 0;
+        while n < 19 {
+            let (s, v) = splitmix64(state);
+            state = s;
+            t[c][n] = v;
+            n += 1;
+        }
+        c += 1;
+    }
+    t
+};
+
+/// 色cの持ち歩count枚に対応する歩構造キー成分（ADR-0046）。
+#[inline]
+pub fn hand_pawn(c: Color, count: u32) -> u64 {
+    HAND_PAWN[c.index()][count as usize]
 }
 
 #[cfg(test)]

@@ -62,6 +62,8 @@ pub struct StateInfo {
     pub captured: Piece,
     pub board_key: u64,
     pub hand_key: u64,
+    /// 歩構造キー（盤上の歩＋両者の持ち歩枚数。ADR-0046）。
+    pub pawn_key: u64,
     pub checkers: Bitboard,
     pub blockers_for_king: [Bitboard; 2],
     pub pinners: [Bitboard; 2],
@@ -173,6 +175,25 @@ impl Position {
     pub fn key(&self) -> u64 {
         let st = self.state();
         st.board_key ^ st.hand_key.wrapping_mul(zobrist::HAND_MIX)
+    }
+
+    /// 歩構造キー（ADR-0046）。correction historyのテーブル引きに使う。
+    #[inline]
+    pub fn pawn_key(&self) -> u64 {
+        self.state().pawn_key
+    }
+
+    /// 歩構造キーの全計算（盤上の歩＋両者の持ち歩枚数）。
+    /// と金など成歩は含めない。差分更新の検証にも使う。
+    pub fn compute_pawn_key(&self) -> u64 {
+        let mut key = 0u64;
+        for c in [Color::Black, Color::White] {
+            for sq in self.pieces(c, PieceType::PAWN) {
+                key ^= zobrist::psq(Piece::new(c, PieceType::PAWN), sq);
+            }
+            key ^= zobrist::hand_pawn(c, self.hands[c.index()].count(PieceType::PAWN));
+        }
+        key
     }
 
     // ---- 盤面操作（bitboard/board配列のみ。キーは呼び出し側で管理） ----
@@ -347,6 +368,7 @@ impl Position {
             captured: Piece::EMPTY,
             board_key: prev.board_key,
             hand_key: 0,
+            pawn_key: prev.pawn_key,
             checkers: Bitboard::EMPTY,
             blockers_for_king: [Bitboard::EMPTY; 2],
             pinners: [Bitboard::EMPTY; 2],
@@ -363,6 +385,12 @@ impl Position {
             self.hands[us.index()].sub(pt);
             self.put_piece(m.to(), pc);
             st.board_key ^= zobrist::psq(pc, m.to());
+            if pt == PieceType::PAWN {
+                // 持ち歩-1、盤上歩の追加
+                let new = self.hands[us.index()].count(PieceType::PAWN);
+                st.pawn_key ^= zobrist::hand_pawn(us, new + 1) ^ zobrist::hand_pawn(us, new);
+                st.pawn_key ^= zobrist::psq(pc, m.to());
+            }
             st.dirty.count = 1;
             st.dirty.piece_old[0] = Piece::EMPTY;
             st.dirty.piece_new[0] = pc;
@@ -379,6 +407,14 @@ impl Position {
                 let hand_kind = captured.piece_type().unpromote();
                 self.hands[us.index()].add(hand_kind);
                 st.board_key ^= zobrist::psq(captured, to);
+                // 盤上歩を取ったら除去。取った歩・と金は持ち歩+1
+                if captured.piece_type() == PieceType::PAWN {
+                    st.pawn_key ^= zobrist::psq(captured, to);
+                }
+                if hand_kind == PieceType::PAWN {
+                    let new = self.hands[us.index()].count(PieceType::PAWN);
+                    st.pawn_key ^= zobrist::hand_pawn(us, new - 1) ^ zobrist::hand_pawn(us, new);
+                }
                 st.material += sign
                     * (PIECE_VALUE[captured.piece_type().index()] + PIECE_VALUE[hand_kind.index()]);
                 st.captured = captured;
@@ -393,6 +429,13 @@ impl Position {
             let placed = m.piece_after();
             self.put_piece(to, placed);
             st.board_key ^= zobrist::psq(moved, from) ^ zobrist::psq(placed, to);
+            // 歩の移動: fromの歩を除去。成らなければtoへ追加（成ればと金は含めない）
+            if moved.piece_type() == PieceType::PAWN {
+                st.pawn_key ^= zobrist::psq(moved, from);
+                if placed.piece_type() == PieceType::PAWN {
+                    st.pawn_key ^= zobrist::psq(placed, to);
+                }
+            }
             if m.is_promote() {
                 st.material += sign
                     * (PIECE_VALUE[placed.piece_type().index()]
@@ -488,6 +531,7 @@ impl Position {
             captured: Piece::EMPTY,
             board_key: prev.board_key ^ zobrist::SIDE,
             hand_key: prev.hand_key,
+            pawn_key: prev.pawn_key,
             checkers: Bitboard::EMPTY,
             blockers_for_king: [Bitboard::EMPTY; 2],
             pinners: [Bitboard::EMPTY; 2],
@@ -650,9 +694,11 @@ impl Position {
                 material += sign * PIECE_VALUE[pt.index()] * pos.hands[c.index()].count(pt) as i32;
             }
         }
+        let pawn_key = pos.compute_pawn_key();
         pos.states.push(StateInfo {
             board_key,
             hand_key: u64::from(pos.hands[0].0) | (u64::from(pos.hands[1].0) << 32),
+            pawn_key,
             material,
             ..StateInfo::default()
         });
