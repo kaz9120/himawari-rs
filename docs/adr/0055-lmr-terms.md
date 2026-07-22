@@ -1,7 +1,13 @@
 # 0055: LMRに条件項（improving・history連動）を導入する
 
-- Status: accepted
+- Status: rejected
 - Date: 2026-07-22
+
+2026-07-23追記: SPRT 960局（480ペア）でElo -9.0 [-30.7,+12.5]、
+LLR -0.48。効果なし〜ややマイナスと判断し打ち切り・不採択。
+0054でqsearch TTが入った直後のベースは履歴の質が変わって
+いる可能性があり、improving項単体・history項単体の分解や
+しきい値の再設計は再挑戦の余地としてIDEAS.mdに残す。
 - 関連ADR: [0028](0028-pruning-extensions.md), [0046](0046-correction-history.md), [0047](0047-continuation-history.md)
 
 ## Context

@@ -16,7 +16,7 @@ ADRを起草してこの帳から消す（採番と経緯はADR側に書く）�
 | ~~ProbCut~~ | ~~ADR-0051で導入。+44.2 Elo（H1採択）~~ | ~~完了~~ |
 | razoring | 浅い深さの絶望局面をqsearchへ落とす | SPRT |
 | NMPの動的深さ・検証探索 | ADR-0052で導入試行。6264局で+7.8 [-0.7,+16.2]判定未了、保留（adr-0052-wipブランチ） | SPRT保留 |
-| LMR式の再チューニング | log式係数、improving・cutnode・history条件 | SPRT |
+| LMR式の再チューニング | ADR-0055のimproving+history項（等重み±1）は960局で-9.0の不採択。項の分解・cutnode項・しきい値再設計で再挑戦可 | SPRT |
 | SEE枝刈り再挑戦 | P3で中立。マージン再設計とNNUE後の再測定 | SPRT |
 | ~~qsearchのTT保存拡充~~ | ~~ADR-0054で導入（probe+store+TT手、同一キーガード込み）。+113.6 Elo（H1採択）~~ | ~~完了~~ |
 | ~~eval hash~~ | ~~ADR-0049で導入。+54.1 Elo、NPS +10.4%（H1採択）~~ | ~~完了~~ |
