@@ -65,6 +65,8 @@
 | [0051](0051-probcut.md) | ProbCut（浅い探索による上限カット） | P8 | accepted |
 | [0052](0052-nmp-dynamic.md) | NMPの動的リダクションと検証探索 | P8 | accepted |
 | [0053](0053-docs-structure.md) | ドキュメントの役割分担とメンテナンスルール | P0 | accepted |
+| [0054](0054-qsearch-tt.md) | qsearchへの置換表導入 | P8 | proposed |
+| [0055](0055-lmr-terms.md) | LMRの条件項（improving・history連動） | P8 | proposed |
 
 ## バックログ
 
