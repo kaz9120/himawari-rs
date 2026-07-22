@@ -15,7 +15,7 @@ ADRを起草してこの帳から消す（採番と経緯はADR側に書く）�
 | ~~singular extension再挑戦~~ | ~~ADR-0050で導入。+12.6 Elo（H1採択、P3の-16.0から反転）~~ | ~~完了~~ |
 | ~~ProbCut~~ | ~~ADR-0051で導入。+44.2 Elo（H1採択）~~ | ~~完了~~ |
 | razoring | 浅い深さの絶望局面をqsearchへ落とす | SPRT |
-| NMPの動的深さ・検証探索 | evalマージン依存のR、zugzwang対策 | SPRT |
+| NMPの動的深さ・検証探索 | ADR-0052で導入試行。6264局で+7.8 [-0.7,+16.2]判定未了、保留（adr-0052-wipブランチ） | SPRT保留 |
 | LMR式の再チューニング | log式係数、improving・cutnode・history条件 | SPRT |
 | SEE枝刈り再挑戦 | P3で中立。マージン再設計とNNUE後の再測定 | SPRT |
 | qsearchのTT保存拡充 | 静止探索の置換表活用度を上げる | SPRT |
