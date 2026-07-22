@@ -1,6 +1,6 @@
 # 0054: qsearchに置換表を導入する
 
-- Status: proposed
+- Status: accepted
 - Date: 2026-07-22
 - 関連ADR: [0022](0022-transposition-table.md), [0028](0028-pruning-extensions.md), [0049](0049-eval-hash.md)
 

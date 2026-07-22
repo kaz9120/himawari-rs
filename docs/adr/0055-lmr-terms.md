@@ -1,6 +1,6 @@
 # 0055: LMRに条件項（improving・history連動）を導入する
 
-- Status: proposed
+- Status: accepted
 - Date: 2026-07-22
 - 関連ADR: [0028](0028-pruning-extensions.md), [0046](0046-correction-history.md), [0047](0047-continuation-history.md)
 
