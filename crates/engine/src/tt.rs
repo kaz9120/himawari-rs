@@ -219,17 +219,36 @@ impl Tt {
     ) {
         let generation = self.generation();
         let cluster = &self.clusters[self.cluster_index(key)];
-        // 同一キーがあれば上書き、なければ「depth − 世代差ペナルティ」最小を置換
+        // 空きがあればそこへ、なければ「depth − 世代差ペナルティ」最小を置換。
+        // 同一キーはSF流の上書き判定を通す（ADR-0054）
+        let mut mv = mv;
         let mut victim = 0;
         let mut victim_score = i32::MAX;
         for (i, e) in cluster.0.iter().enumerate() {
             let w0 = e.word0.load(Ordering::Relaxed);
             let w1 = e.word1.load(Ordering::Relaxed);
-            if w1 == 0 || w0 ^ w1 == key {
+            if w1 == 0 {
                 victim = i;
                 break;
             }
             let (data, entry_gen) = unpack(w1);
+            if w0 ^ w1 == key {
+                // 同一キー。浅いエントリで深いエントリを潰さない（ADR-0054）。
+                // Exact・深さ僅差（新+4≧既存）・世代違いのいずれかでのみ上書きする。
+                // qsearchのdepth 0 storeがmain searchの深いエントリを消すのを防ぐ
+                let overwrite = bound == Bound::Exact
+                    || i32::from(depth) + 4 >= i32::from(data.depth)
+                    || entry_gen != generation;
+                if !overwrite {
+                    return;
+                }
+                // 新しい手がなければ既存の手を温存する
+                if mv == Move16::NONE {
+                    mv = data.mv;
+                }
+                victim = i;
+                break;
+            }
             let age = i32::from((32 + generation - entry_gen) & 31);
             let score = i32::from(data.depth) - 8 * age;
             if score < victim_score {
@@ -290,6 +309,58 @@ mod tests {
         let d = tt.probe(key).unwrap();
         assert_eq!(d.mv, Move16(2));
         assert_eq!(d.depth, 5);
+    }
+
+    #[test]
+    fn shallow_store_keeps_deep_same_key_entry() {
+        // 深いエントリ（depth 10）を、浅いqsearch風store（depth 0, Upper）で潰さない
+        let tt = Tt::new(1);
+        let key = 7u64;
+        tt.store(key, Move16(0x11), 100, 0, 10, Bound::Lower, false);
+        tt.store(key, Move16(0x22), -50, 0, 0, Bound::Upper, false);
+        let d = tt.probe(key).unwrap();
+        assert_eq!(d.depth, 10, "深いエントリが浅いstoreで消えた");
+        assert_eq!(d.mv, Move16(0x11));
+        assert_eq!(d.value, 100);
+    }
+
+    #[test]
+    fn shallow_exact_store_overwrites_deep_entry() {
+        // Exactは深さに関わらず上書きする（ADR-0054の条件a）
+        let tt = Tt::new(1);
+        let key = 8u64;
+        tt.store(key, Move16(0x11), 100, 0, 10, Bound::Lower, false);
+        tt.store(key, Move16(0x22), 42, 0, 0, Bound::Exact, false);
+        let d = tt.probe(key).unwrap();
+        assert_eq!(d.depth, 0);
+        assert_eq!(d.bound, Bound::Exact);
+        assert_eq!(d.mv, Move16(0x22));
+    }
+
+    #[test]
+    fn overwrite_without_move_preserves_existing_move() {
+        // 手なし（Move16::NONE）で上書きするとき、既存の手を温存する（条件b: 同depth）
+        let tt = Tt::new(1);
+        let key = 9u64;
+        tt.store(key, Move16(0x33), 10, 0, 5, Bound::Lower, false);
+        tt.store(key, Move16::NONE, 20, 0, 5, Bound::Upper, false);
+        let d = tt.probe(key).unwrap();
+        assert_eq!(d.mv, Move16(0x33), "既存の手が温存されていない");
+        assert_eq!(d.value, 20);
+        assert_eq!(d.bound, Bound::Upper);
+    }
+
+    #[test]
+    fn stale_generation_entry_is_overwritten() {
+        // 世代が違えば浅くても上書きする（条件c）
+        let tt = Tt::new(1);
+        let key = 10u64;
+        tt.store(key, Move16(0x44), 100, 0, 10, Bound::Lower, false);
+        tt.new_search();
+        tt.store(key, Move16(0x55), -30, 0, 0, Bound::Upper, false);
+        let d = tt.probe(key).unwrap();
+        assert_eq!(d.depth, 0, "旧世代の深いエントリが更新されていない");
+        assert_eq!(d.mv, Move16(0x55));
     }
 
     #[test]

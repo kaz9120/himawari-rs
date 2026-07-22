@@ -225,15 +225,18 @@ impl MovePicker {
         }
     }
 
-    pub fn new_qsearch(pos: &Position, with_checks: bool) -> Self {
+    pub fn new_qsearch(pos: &Position, tt_move: Move, with_checks: bool) -> Self {
+        // 王手中はTT手を試さずEvasionsから始める（main searchのnewと同流儀）。
         let stage = if pos.in_check() {
             Stage::EvasionsInit
+        } else if tt_move != Move::NONE {
+            Stage::TtMove
         } else {
             Stage::QCapturesInit
         };
         MovePicker {
             stage,
-            tt_move: Move::NONE,
+            tt_move,
             killers: [Move::NONE; 2],
             counter: Move::NONE,
             scored: Vec::with_capacity(32),
@@ -273,7 +276,11 @@ impl MovePicker {
         loop {
             match self.stage {
                 Stage::TtMove => {
-                    self.stage = Stage::CapturesInit;
+                    self.stage = if self.qsearch {
+                        Stage::QCapturesInit
+                    } else {
+                        Stage::CapturesInit
+                    };
                     if pos.pseudo_legal(self.tt_move) {
                         return Some(self.tt_move);
                     }
@@ -378,7 +385,9 @@ impl MovePicker {
                     let mut list = MoveList::default();
                     generate(pos, GenType::Captures, false, &mut list);
                     for &m in &list {
-                        self.scored.push((m, capture_score(pos, m)));
+                        if m != self.tt_move {
+                            self.scored.push((m, capture_score(pos, m)));
+                        }
                     }
                     self.stage = Stage::QCaptures;
                 }
@@ -402,8 +411,8 @@ impl MovePicker {
                     let mut list = MoveList::default();
                     generate(pos, GenType::Quiets, false, &mut list);
                     for &m in &list {
-                        // 駒損しない静かな王手だけを読む（ADR-0028）
-                        if pos.gives_check(m) && pos.see_ge(m, 0) {
+                        // 駒損しない静かな王手だけを読む（ADR-0028）。TT手は重複回避
+                        if m != self.tt_move && pos.gives_check(m) && pos.see_ge(m, 0) {
                             self.scored.push((m, history.get(m)));
                         }
                     }

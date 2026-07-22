@@ -851,13 +851,47 @@ impl Worker {
             return mate_in(ply);
         }
 
+        // 置換表probe（ADR-0054）。qsearchはPVノードのdepth 0からfull windowでも
+        // 呼ばれる。boundと窓を照合し、条件を満たせば即カットする（fail-soft）。
+        // TT手はpickerの先頭で試す。
+        let orig_alpha = alpha;
+        let key = self.pos.key();
+        let tt_hit = self.shared.tt.probe(key);
+        let mut tt_move = Move::NONE;
+        let mut tt_eval = VALUE_NONE;
+        if let Some(data) = &tt_hit {
+            if let Some(m) = self.pos.to_move(data.mv)
+                && self.pos.pseudo_legal(m)
+            {
+                tt_move = m;
+            }
+            tt_eval = Value::from(data.eval);
+            let tt_value = value_from_tt(data.value, ply);
+            let usable = match data.bound {
+                Bound::Exact => true,
+                Bound::Lower => tt_value >= beta,
+                Bound::Upper => tt_value <= alpha,
+                Bound::None => false,
+            };
+            if usable {
+                return tt_value;
+            }
+        }
+
         let in_check = self.pos.in_check();
+        // stand patの生評価（王手中はなし）。TTのeval欄があればそれを優先し、
+        // なければeval hash経由で計算する（ADR-0054, 0049）。store時のeval欄にも使う。
+        let raw_eval = if in_check {
+            VALUE_NONE
+        } else if tt_eval != VALUE_NONE {
+            tt_eval
+        } else {
+            self.eval_cached(key)
+        };
         let mut best = -VALUE_INFINITE;
         if !in_check {
-            // stand pat（ADR-0024）。eval hash経由で生評価を得（ADR-0049）、
-            // correction historyで補正する（ADR-0046）
-            let raw = self.eval_cached(self.pos.key());
-            let stand = self.to_corrected(raw);
+            // stand pat（ADR-0024）。correction historyで補正する（ADR-0046）
+            let stand = self.to_corrected(raw_eval);
             if stand >= beta {
                 return stand;
             }
@@ -868,8 +902,9 @@ impl Worker {
         }
 
         // 入口plyだけ静かな王手も読む（ADR-0028の項目7）
-        let mut picker = MovePicker::new_qsearch(&self.pos, qdepth == 0);
+        let mut picker = MovePicker::new_qsearch(&self.pos, tt_move, qdepth == 0);
         let mut count = 0u32;
+        let mut best_move = Move::NONE;
         // qsearchのオーダリングはcontを使わない（ADR-0047のスコープ外）
         while let Some(m) =
             picker.next(&self.pos, &self.history, &self.cont, Move::NONE, Move::NONE)
@@ -889,6 +924,7 @@ impl Worker {
             if value > best {
                 best = value;
                 if value > alpha {
+                    best_move = m;
                     alpha = value;
                     if value >= beta {
                         break;
@@ -897,8 +933,27 @@ impl Worker {
             }
         }
         if in_check && count == 0 {
-            return mated_in(ply);
+            // 王手回避で手なし = 詰み。mated値をTTにも保存する（ADR-0054）
+            best = mated_in(ply);
         }
+
+        // 置換表store（ADR-0054）。深さは0固定。boundはfail-high/low/exactで決める。
+        let bound = if best >= beta {
+            Bound::Lower
+        } else if best > orig_alpha {
+            Bound::Exact
+        } else {
+            Bound::Upper
+        };
+        self.shared.tt.store(
+            key,
+            best_move.to_move16(),
+            value_to_tt(best, ply),
+            raw_eval as i16,
+            0,
+            bound,
+            false,
+        );
         best
     }
 
