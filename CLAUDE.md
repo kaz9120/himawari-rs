@@ -46,6 +46,7 @@ RUSTFLAGS="-C target-cpu=native" cargo build --release
 ## data/ の配置（[ADR-0053](docs/adr/0053-docs-structure.md)）
 
 すべてgitignore対象。`data/raw/<データセット名>/` に生データ、
-`data/train/` に加工済みpsv、`data/nets/` に学習済みネットを置く。
+`data/train/` に加工済みpsv、`data/nets/` に学習済みネット、
+`data/sprt/` にselfplayの棋譜ログ（jsonl）を置く。
 チェックポイント（*.pt）は `training/checkpoints/` に置く。
 ネットのファイル名は実験名を含める（例: `halfkp_180M.hmwr.best`）。

@@ -63,20 +63,20 @@ pip install torch tensorboard maturin
 cd crates/py && maturin develop --release && cd ../..
 
 # 教師データの前処理
-cargo run --release --bin psv -- shuffle --in data/000.bin,data/001.bin,... --out data/train.psv
-cargo run --release --bin psv -- head --in data/023.bin --out data/valid.psv --count 200000
+cargo run --release --bin psv -- shuffle --in data/raw/hao_depth9/000.bin,... --out data/train/train.psv
+cargo run --release --bin psv -- head --in data/raw/hao_depth9/023.bin --out data/train/valid.psv --count 200000
 
 # 学習（純粋HalfKP、warmup+cosine decay）
 cd training
-python3 train.py --data ../data/train.psv --valid ../data/valid.psv \
-  --out ../data/net.hmwr --epochs 1 --batch 16384 \
+python3 train.py --data ../data/train/train.psv --valid ../data/train/valid.psv \
+  --out ../data/nets/net.hmwr --epochs 1 --batch 16384 \
   --peak-lr 1e-3 --warmup-steps 100 --lambda 0.7
 
 # 棋力検証（SPRT）
 cargo run --release --bin selfplay -- \
   --baseline target/release/himawari \
   --candidate target/release/himawari \
-  --copt "EvalFile=data/net.hmwr.best" \
+  --copt "EvalFile=data/nets/net.hmwr.best" \
   --tc 10+0.1 --concurrency 8 \
   --openings openings/start_sfens_ply24.txt
 ```
