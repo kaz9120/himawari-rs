@@ -37,6 +37,9 @@ const FUTILITY_MARGIN: Value = 120;
 const LMP_MAX_DEPTH: u32 = 8;
 /// IIR: TTに手がないノードを1浅く読む最小深さ。
 const IIR_MIN_DEPTH: u32 = 4;
+/// razoringの最大深さとマージン（ADR-0057）。
+const RAZOR_MAX_DEPTH: u32 = 3;
+const RAZOR_MARGIN: Value = 300;
 
 /// この手数を超えた静かな手を捨てる（ADR-0028）。
 fn lmp_limit(depth: u32, improving: bool) -> u32 {
@@ -508,6 +511,18 @@ impl Worker {
             && static_eval - RFP_MARGIN * depth as Value >= beta
         {
             return static_eval;
+        }
+
+        // razoring（ADR-0057）: 静的評価がalphaを大きく下回るなら
+        // 通常探索を省略してqsearchに降格する
+        if excluded == Move::NONE
+            && !is_pv
+            && !in_check
+            && depth <= RAZOR_MAX_DEPTH
+            && alpha.abs() < VALUE_MATE_IN_MAX_PLY
+            && static_eval + RAZOR_MARGIN <= alpha
+        {
+            return self.qsearch(alpha, beta, ply, 0);
         }
 
         // NMP（ADR-0028）。手番を渡して浅く探索し、それでもβ以上なら刈る。
