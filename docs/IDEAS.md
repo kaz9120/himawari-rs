@@ -24,7 +24,7 @@ ADRを起草してこの帳から消す（採番と経緯はADR側に書く）�
 | df-pn詰み探索 | 長手数詰み。終盤力・宣言勝ち周りの取りこぼし対策 | SPRT |
 | 王手・取り返し延長の精査 | 延長条件の整理（現状の実装を棚卸しして再設計） | SPRT |
 | aspiration窓の再調整 | NNUE評価のスケールに合わせた初期幅・拡大則 | SPRT |
-| TTのbucket化・prefetch | 衝突耐性と メモリレイテンシ隠蔽 | NPS+SPRT |
+| ~~TTのbucket化・prefetch~~ | ~~bucket化はADR-0022で実装済み。prefetchはADR-0056で不採択（144局で-33.9、Apple Siliconで効果なし）~~ | ~~不採択~~ |
 | Lazy SMPの分担スキーム | スレッドごとのdepth skipパターン見直し | SPRT |
 | 時間管理: PV安定度・fail-low延長 | 多ヘッド（進行度・安定度）と連動させると本命 | SPRT |
 | contempt（千日手スコア） | 強い相手に引き分け許容、弱い相手に回避 | SPRT |

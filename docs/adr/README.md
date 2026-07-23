@@ -67,6 +67,7 @@
 | [0053](0053-docs-structure.md) | ドキュメントの役割分担とメンテナンスルール | P0 | accepted |
 | [0054](0054-qsearch-tt.md) | qsearchへの置換表導入 | P8 | accepted |
 | [0055](0055-lmr-terms.md) | LMRの条件項（improving・history連動） | P8 | rejected |
+| [0056](0056-tt-prefetch.md) | TTのprefetch | P8 | rejected |
 
 ## バックログ
 
