@@ -1,6 +1,6 @@
 # 0066: 学習時だけ駒単独の仮想特徴を併用する（factorizer）
 
-- Status: proposed
+- Status: accepted
 - Date: 2026-07-26
 - 関連ADR: [0034](0034-nnue-architecture.md), [0045](0045-remove-effect-tower.md), [0064](0064-dense-ft-gradient-mps.md)
 

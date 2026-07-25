@@ -75,6 +75,9 @@
 | [0061](0061-psv-memmap-dataset.md) | 学習データの事前シャッフル廃止とRAM常駐＋fork | P8 | proposed |
 | [0062](0062-root-move-nodes.md) | root手ごとの探索ノード数の集計 | P8 | accepted |
 | [0063](0063-book-loader-and-mini-book.md) | 定跡ローダと最小規模の定跡生成 | P8 | accepted |
+| [0064](0064-dense-ft-gradient-mps.md) | FT勾配のdense化とMPS学習（MaskedAdam） | P8 | accepted |
+| [0065](0065-large-scale-dataloader.md) | バッチ一括抽出とチャンク読みによるデータ供給 | P8 | accepted |
+| [0066](0066-halfkp-factorizer.md) | 学習時のみの駒単独仮想特徴（factorizer） | P8 | accepted |
 
 ## バックログ
 

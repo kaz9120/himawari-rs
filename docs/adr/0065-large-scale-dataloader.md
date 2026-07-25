@@ -1,6 +1,6 @@
 # 0065: 学習データをバッチ一括抽出とチャンク読みで供給する
 
-- Status: proposed
+- Status: accepted
 - Date: 2026-07-26
 - 関連ADR: [0043](0043-pyo3-bridge.md), [0061](0061-psv-memmap-dataset.md), [0064](0064-dense-ft-gradient-mps.md)
 
@@ -23,7 +23,7 @@ RAM 48GBに載らない。ADR-0061が選んだ全ロード＋forkは使えない
 ### 案A: memmap＋DataLoaderのshuffle=True
 
 ADR-0061の案A。前処理が要らない。実測5,303 samples/sで、
-76GBへのランダムアクセスがページキャッシュに収まらない。論外である。
+79.7GBへのランダムアクセスがページキャッシュに収まらない。論外である。
 
 ### 案B: 事前シャッフル＋mmap順次読み
 

@@ -1,6 +1,6 @@
 # 0064: FT勾配をdenseにし、学習をMPSで回す
 
-- Status: proposed
+- Status: accepted
 - Date: 2026-07-26
 - 関連ADR: [0040](0040-training-infra-v2.md), [0043](0043-pyo3-bridge.md), [0061](0061-psv-memmap-dataset.md)
 
@@ -46,7 +46,7 @@ forwardは9msにすぎず、計算量そのものは問題ではない。
 
 ### 案A: 現行維持
 
-変更が要らない。ただし1.17B局面の学習が8時間/エポックのままで、
+変更が要らない。ただし19億局面の学習が13時間/エポックのままで、
 実験の回転数が上がらない。
 
 ### 案B: CPU + dense
