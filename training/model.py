@@ -25,9 +25,23 @@ OUT_W_LIMIT = 127.0 / OUT_W_SCALE
 
 
 class NnueModel(nn.Module):
-    def __init__(self, sparse_ft=True):
+    """HalfKPのNNUE。
+
+    `factorized=True` のとき、学習時だけ玉位置に依らない駒の特徴
+    （BonaPiece単独）を並列に持つ（ADR-0066）。`halfkp_index` は
+    `king * FE_END + bona_piece` なので、実特徴のインデックスを
+    FE_ENDで割った余りが仮想特徴のインデックスになる。
+    推論側の構造は変わらない。重みは書き出し時に畳み込む。
+    """
+
+    def __init__(self, sparse_ft=True, factorized=False):
         super().__init__()
         self.ft = nn.EmbeddingBag(FT_IN, FT_OUT, mode="sum", sparse=sparse_ft)
+        self.ft_p = (
+            nn.EmbeddingBag(FE_END, FT_OUT, mode="sum", sparse=sparse_ft)
+            if factorized
+            else None
+        )
         self.ft_bias = nn.Parameter(torch.full((FT_OUT,), 0.5))
         self.l2 = nn.Linear(CONCAT, HIDDEN)
         self.l3 = nn.Linear(HIDDEN, HIDDEN)
@@ -36,6 +50,8 @@ class NnueModel(nn.Module):
 
     def _init_weights(self):
         nn.init.uniform_(self.ft.weight, -0.05, 0.05)
+        if self.ft_p is not None:
+            nn.init.zeros_(self.ft_p.weight)
         nn.init.uniform_(self.l2.weight, -0.1, 0.1)
         nn.init.zeros_(self.l2.bias)
         nn.init.uniform_(self.l3.weight, -0.3, 0.3)
@@ -43,9 +59,23 @@ class NnueModel(nn.Module):
         nn.init.uniform_(self.l4.weight, -0.3, 0.3)
         nn.init.zeros_(self.l4.bias)
 
+    def transform(self, idx, off):
+        z = self.ft(idx, off)
+        if self.ft_p is not None:
+            z = z + self.ft_p(idx % FE_END, off)
+        return z + self.ft_bias
+
+    def folded_ft_weight(self):
+        """仮想特徴を畳み込んだFT重みを返す（書き出し用）。"""
+        w = self.ft.weight.detach().float()
+        if self.ft_p is None:
+            return w
+        virtual = self.ft_p.weight.detach().float()
+        return (w.view(81, FE_END, FT_OUT) + virtual.unsqueeze(0)).view(FT_IN, FT_OUT)
+
     def forward(self, stm_idx, stm_off, opp_idx, opp_off):
-        z_stm = self.ft(stm_idx, stm_off) + self.ft_bias
-        z_opp = self.ft(opp_idx, opp_off) + self.ft_bias
+        z_stm = self.transform(stm_idx, stm_off)
+        z_opp = self.transform(opp_idx, opp_off)
         x = torch.cat([z_stm.clamp(0.0, 1.0), z_opp.clamp(0.0, 1.0)], dim=1)
         h2 = self.l2(x).clamp(0.0, 1.0)
         h3 = self.l3(h2).clamp(0.0, 1.0)

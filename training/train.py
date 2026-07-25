@@ -80,6 +80,11 @@ def main():
         help="バッチ一括抽出のローダを使う（ADR-0065）",
     )
     p.add_argument(
+        "--factorized",
+        action="store_true",
+        help="学習時のみ駒単独の仮想特徴を併用する（ADR-0066）",
+    )
+    p.add_argument(
         "--dense-ft",
         action="store_true",
         help="FT勾配をdenseにする（SparseAdamを外し、MPSで学習できる。ADR-0064）",
@@ -132,7 +137,9 @@ def main():
             valid_n = len(valid_ds)
         print(f"検証データ: {valid_n}局面", file=sys.stderr)
 
-    model = NnueModel(sparse_ft=not args.dense_ft).to(device)
+    model = NnueModel(
+        sparse_ft=not args.dense_ft, factorized=args.factorized
+    ).to(device)
 
     dense_params = [
         model.ft_bias,
@@ -141,6 +148,8 @@ def main():
         model.l4.weight, model.l4.bias,
     ]
     ft_params = [model.ft.weight]
+    if model.ft_p is not None:
+        ft_params.append(model.ft_p.weight)
     lr_fn = lambda step: lr_lambda(
         step, args.warmup_steps, total_steps, args.min_lr, args.peak_lr,
     )

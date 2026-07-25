@@ -12,7 +12,8 @@ from model import (
 def quantize(model: NnueModel) -> dict:
     """Extract f32 weights from model and quantize to integer types."""
     with torch.no_grad():
-        ft_w = model.ft.weight.detach().float()
+        # factorizer使用時は仮想特徴を畳み込む（ADR-0066）
+        ft_w = model.folded_ft_weight()
         ft_b = model.ft_bias.detach().float()
         w2 = model.l2.weight.detach().float()
         b2 = model.l2.bias.detach().float()
