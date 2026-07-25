@@ -1,0 +1,106 @@
+# 0062: root手ごとの探索ノード数を集計する
+
+- Status: proposed
+- Date: 2026-07-25
+- 関連ADR: [0020](0020-search-threading.md), [0031](0031-lazy-smp.md), [0032](0032-multipv.md), [0059](0059-easy-move-scaling.md)
+
+## Context
+
+現在の探索は、ノード数をスレッド合算の1つのカウンタでしか持たない。
+`shared.nodes` に2048ノード刻みで流し込み（search.rs:187〜189）、
+USIの `info nodes` と `nps` に使っている。
+
+root手ごとの内訳は取れない。この情報が要る場面が複数ある。
+
+第1に、ADR-0059の思考時間スケールで使うノード集中度がある。最善手が
+探索ノード全体の何割を占めたかは「他に候補がない」ことの直接的な
+証拠で、StockfishもやねうらもtotalTimeの係数に組み込んでいる。
+
+第2に、MultiPV（ADR-0032）で各ラインにどれだけ配分されたかが
+分からない。解析用途では、2位以下のラインが十分に読まれているかを
+知りたい。
+
+第3に、指し手オーダリング（ADR-0025）の評価がある。オーダリングが
+効いていれば、探索ノードは上位の手に集中する。集中度は指標になる。
+
+## 選択肢と比較
+
+### 案A: RootMoveにノード数フィールドを持たせる
+
+`RootMove` 構造体（search.rs:99）に `nodes` を足し、`search_root` の
+ループで各手の探索前後の差を加算する。RootMoveは最善手を先頭へ移す
+処理で構造体ごと動く（search.rs:296〜301）ため、ノード数も追随する。
+
+### 案B: 別のテーブルで管理する
+
+`HashMap<Move, u64>` や添字配列を探索器側に持つ。RootMoveの並べ替えと
+同期を取る処理が別に要る。
+
+### 案C: 集計しない（ADR-0059の中で局所的に持つ）
+
+必要になった機能の内部に閉じる。他の用途から使えない。
+
+## Decision
+
+案Aを採用する。RootMoveは既に `score`・`prev_score`・`pv` という
+root手ごとの状態を持っており、ノード数もそこに属する。並べ替えとの
+同期が自動で取れる点も案Bより優れる。
+
+### 実装スケッチ
+
+```rust
+pub struct RootMove {
+    pub mv: Move,
+    pub score: Value,
+    pub prev_score: Value,
+    pub pv: Vec<Move>,
+    /// このイテレーションで、この手の探索に費やしたノード数
+    pub nodes: u64,
+}
+```
+
+`search_root`（search.rs:350〜382）のループで加算する。
+
+```rust
+let before = self.nodes;
+let value = if j == 0 { ... } else { ... };
+self.root_moves[i].nodes += self.nodes - before;
+```
+
+aspirationの再探索により `search_root` は同じ深さで複数回呼ばれる。
+イテレーション開始時、`prev_score` を退避する位置（search.rs:265）で
+`nodes` を0にする。
+
+```rust
+for rm in &mut self.root_moves {
+    rm.prev_score = rm.score;
+    rm.nodes = 0;
+}
+```
+
+集計はメインスレッドのローカルノード数（`self.nodes`）だけを見る。
+Lazy SMP（ADR-0031）のヘルパーは自分の `root_moves` を持ち、別の
+深さを探索している。root手ごとの配分が異なるため合算しない。
+
+USIへの露出は本ADRの範囲外とする。`info nodes` は従来どおり全スレッド
+合算を返す。MultiPV各ラインのノード数を返す標準の項目はないため、
+必要になった時点で別途決める。
+
+### 検証
+
+探索の挙動を変えないため、SPRTは行わない。`bench` でNPSに退行が
+ないことを確認する。加算はroot手1つの探索につき1回で、1イテレーション
+あたり多くても数百回である。
+
+## Consequences
+
+- ADR-0059のノード集中度が実装できる
+- MultiPVで各ラインの探索配分が観測できるようになる。解析用途の
+  情報源が増える
+- `RootMove` が8バイト増える。root手は最大593、通常は100前後なので
+  メモリへの影響はない
+- ヘルパースレッドのノード数は集計に入らない。マルチスレッド時、
+  ノード集中度はメインスレッドの視点での値になる。ADR-0059で使う際は
+  この前提で閾値を決める
+- イテレーション開始時のリセットを忘れると、深さが進むほど累積して
+  集中度が歪む。実装時の注意点として残す

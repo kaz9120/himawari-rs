@@ -73,6 +73,7 @@
 | [0059](0059-easy-move-scaling.md) | 思考時間の難易度スケール（安定度・評価下落・ノード集中） | P8 | proposed |
 | [0060](0060-opening-book-policy.md) | 定跡の方針 | P8 | accepted |
 | [0061](0061-psv-memmap-dataset.md) | 学習データの事前シャッフル廃止とRAM常駐＋fork | P8 | proposed |
+| [0062](0062-root-move-nodes.md) | root手ごとの探索ノード数の集計 | P8 | proposed |
 
 ## バックログ
 

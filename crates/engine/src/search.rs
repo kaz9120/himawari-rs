@@ -101,6 +101,9 @@ pub struct RootMove {
     pub score: Value,
     pub prev_score: Value,
     pub pv: Vec<Move>,
+    /// このイテレーションでこの手の探索に費やしたノード数（ADR-0062）。
+    /// メインワーカーのローカル値のみ。イテレーション開始時に0へ戻す
+    pub nodes: u64,
 }
 
 pub struct SearchResult {
@@ -245,6 +248,7 @@ impl Worker {
                 score: -VALUE_INFINITE,
                 prev_score: VALUE_ZERO,
                 pv: Vec::new(),
+                nodes: 0,
             })
             .collect();
         if self.root_moves.is_empty() {
@@ -264,6 +268,9 @@ impl Worker {
         'deepening: for depth in 1..=max_depth {
             for rm in &mut self.root_moves {
                 rm.prev_score = rm.score;
+                // aspirationの再探索で同じ深さを複数回掘るため、
+                // 深さの開始時に集計を戻す（ADR-0062）
+                rm.nodes = 0;
             }
             let lines = self.multi_pv.min(self.root_moves.len());
             for pv_idx in 0..lines {
@@ -350,6 +357,7 @@ impl Worker {
         for (j, &m) in moves.iter().enumerate() {
             let i = pv_idx + j;
             self.move_stack[0] = m;
+            let nodes_before = self.nodes;
             self.pos.do_move(m);
             self.evaluator.push(&self.pos);
             let mut child_pv = Vec::new();
@@ -365,6 +373,8 @@ impl Worker {
             };
             self.evaluator.pop();
             self.pos.undo_move(m);
+            // 打ち切られた分もこの手の探索コストなので先に計上（ADR-0062）
+            self.root_moves[i].nodes += self.nodes - nodes_before;
             if self.stopped() {
                 return (best, best_idx, best_pv);
             }
