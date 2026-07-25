@@ -77,6 +77,20 @@ impl TimeManager {
         self.optimum.is_some_and(|t| self.elapsed() >= t)
     }
 
+    /// optimumのscale倍とmaximumの小さいほうを超えたか（ADR-0059）。
+    /// scaleは局面の難易度による伸縮係数で、1.0なら従来のoptimum判定。
+    #[inline]
+    pub fn over_total(&self, scale: f64) -> bool {
+        let Some(opt) = self.optimum else {
+            return false;
+        };
+        let mut t = opt.as_secs_f64() * scale;
+        if let Some(m) = self.maximum {
+            t = t.min(m.as_secs_f64());
+        }
+        self.elapsed().as_secs_f64() >= t
+    }
+
     #[inline]
     pub fn over_maximum(&self) -> bool {
         self.maximum.is_some_and(|t| self.elapsed() >= t)

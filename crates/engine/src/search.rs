@@ -41,6 +41,20 @@ const IIR_MIN_DEPTH: u32 = 4;
 const RAZOR_MAX_DEPTH: u32 = 3;
 const RAZOR_MARGIN: Value = 300;
 
+/// 思考時間の難易度スケール（ADR-0059）。optimumを3係数の積で伸縮させる。
+/// 評価の下落は時間を伸ばし、最善手の安定とノード集中は縮める。
+const FALLING_UNIT: f64 = 200.0;
+const FALLING_MIN: f64 = 0.6;
+const FALLING_MAX: f64 = 1.7;
+const STABILITY_BASE: f64 = 1.5;
+const STABILITY_STEP: f64 = 0.15;
+const STABILITY_MIN: f64 = 0.75;
+const EFFORT_LO: f64 = 0.75;
+const EFFORT_HI: f64 = 1.0;
+const EFFORT_SCALE_LO: f64 = 0.85;
+const EFFORT_SCALE_HI: f64 = 0.70;
+const SCALE_MIN_DEPTH: u32 = 8;
+
 /// この手数を超えた静かな手を捨てる（ADR-0028）。
 fn lmp_limit(depth: u32, improving: bool) -> u32 {
     let base = 3 + depth * depth;
@@ -259,6 +273,10 @@ impl Worker {
             };
         }
         let mut last_score = VALUE_ZERO;
+        // 思考時間の難易度スケール用の状態（ADR-0059）
+        let mut prev_best = Move::NONE;
+        let mut prev_iter_score = VALUE_ZERO;
+        let mut stable_iters: u32 = 0;
         let max_depth = if self.limits.depth > 0 {
             self.limits.depth
         } else {
@@ -323,7 +341,32 @@ impl Worker {
                     }
                 }
             }
-            if self.stopped() || self.tm.over_optimum() {
+            // 局面の難易度で思考時間をスケールする（ADR-0059）
+            let cur_best = self.root_moves[0].mv;
+            stable_iters = if cur_best == prev_best {
+                stable_iters + 1
+            } else {
+                0
+            };
+            prev_best = cur_best;
+            let scale = if self.multi_pv == 1 && depth >= SCALE_MIN_DEPTH {
+                // 評価が下がっているほど伸ばす（読み抜けを警戒する）
+                let drop = f64::from(prev_iter_score - last_score);
+                let falling = (1.0 + drop / FALLING_UNIT).clamp(FALLING_MIN, FALLING_MAX);
+                // 最善手が変わった直後は伸ばし、連続で不変なら縮める
+                let stability = (STABILITY_BASE - STABILITY_STEP * f64::from(stable_iters))
+                    .clamp(STABILITY_MIN, STABILITY_BASE);
+                // 最善手にノードが集中しているほど縮める（ADR-0062）
+                let total: u64 = self.root_moves.iter().map(|rm| rm.nodes).sum();
+                let ratio = self.root_moves[0].nodes as f64 / total.max(1) as f64;
+                let t = ((ratio - EFFORT_LO) / (EFFORT_HI - EFFORT_LO)).clamp(0.0, 1.0);
+                let effort = EFFORT_SCALE_LO + (EFFORT_SCALE_HI - EFFORT_SCALE_LO) * t;
+                falling * stability * effort
+            } else {
+                1.0
+            };
+            prev_iter_score = last_score;
+            if self.stopped() || self.tm.over_total(scale) {
                 break;
             }
             if self.limits.nodes > 0 && self.nodes >= self.limits.nodes {
