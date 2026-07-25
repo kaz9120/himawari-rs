@@ -2,7 +2,7 @@
 
 - Status: accepted
 - Date: 2026-07-26
-- 関連ADR: [0043](0043-pyo3-bridge.md), [0061](0061-psv-memmap-dataset.md), [0064](0064-dense-ft-gradient-mps.md)
+- 関連ADR: [0043](0043-pyo3-bridge.md), [0061](0061-psv-memmap-dataset.md)（本ADRが置き換え）, [0064](0064-dense-ft-gradient-mps.md)
 
 ## Context
 

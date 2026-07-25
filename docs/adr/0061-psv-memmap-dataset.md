@@ -1,8 +1,8 @@
 # 0061: 学習データの事前シャッフルを廃止し、読み込みをRAM常駐＋forkに統一する
 
-- Status: proposed
+- Status: superseded
 - Date: 2026-07-25
-- 関連ADR: [0040](0040-training-infra-v2.md), [0043](0043-pyo3-bridge.md), [0038](0038-training-data-format.md)
+- 関連ADR: [0040](0040-training-infra-v2.md), [0043](0043-pyo3-bridge.md), [0038](0038-training-data-format.md), [0065](0065-large-scale-dataloader.md)（本ADRを置き換え）
 
 ## Context
 
@@ -110,3 +110,16 @@ halfkp_180M（0.51727）と直接比較できる。
   危険がある
 - `--mmap` を残したので、RAMが小さい環境でも学習自体は動く。速度は
   案Aの水準（1/8.5）に落ちる
+
+## 追記（2026-07-26）
+
+[ADR-0065](0065-large-scale-dataloader.md) が本ADRを置き換えた。
+
+案Cの全ロード＋forkが通用するのは、データがRAMに収まる規模までである。
+19.9億局面（79.7GB）は48GBに載らない。ADR-0065は本ADRの案D
+（事前シャッフル＋順次読み）にバッチ一括抽出を足した形を採り、
+DataLoaderのworkerプロセス自体を使わなくした。forkを明示する必要も
+なくなり、本ADRが挙げたデッドロックの懸念は解消した。
+
+`psv shuffle` のストリーミング化も同ADRで実装した。本ADRが
+「案Dに移る前提」と書いた条件は満たされている。
