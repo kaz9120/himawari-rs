@@ -24,7 +24,19 @@
 | 000〜047 | 各250〜340MB | 各625〜850万 |
 | **合計48ファイル** | **約27GB** | **約3億6000万** |
 
-前処理（最新、P7用）:
+前処理（最新、P8用。[ADR-0061](adr/0061-psv-memmap-dataset.md)）:
+1. 023を除く47ファイルを連結する。事前シャッフルは行わない
+   （DataLoaderの`shuffle=True`が全体から一様にサンプリングする）
+   ```
+   cd data/raw/hao_depth9
+   ls | grep -v "thread_index=023" | tr '\n' '\0' \
+     | xargs -0 cat > ../../train/train_370M.psv
+   ```
+2. 検証データは valid_385M.psv（023由来）を据え置く。
+   valid lossをhalfkp_180Mと直接比較するため
+3. train_370M.psv = 369,779,710局面、valid_385M.psv = 200,000局面
+
+前処理（P7用）:
 1. `psv shuffle --in 000,...,022 --out train_385M.psv --seed 42`
    で23ファイルをシャッフル
 2. `psv head --in 023.bin --out valid_385M.psv --count 200000`

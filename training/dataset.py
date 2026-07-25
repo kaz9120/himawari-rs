@@ -1,5 +1,7 @@
 """PSV dataset reader via Rust PyO3 bridge (ADR-0043, ADR-0045)."""
 
+import os
+
 import numpy as np
 import torch
 from torch.utils.data import Dataset
@@ -10,11 +12,16 @@ import himawari
 class PsvDataset(Dataset):
     """Memory-mapped PSV dataset with Rust feature extraction."""
 
-    def __init__(self, path, lambda_=0.7, score_limit=0):
-        raw = np.fromfile(path, dtype=np.uint8)
-        if raw.size % 40 != 0:
-            raise ValueError(f"ファイルサイズが40の倍数でない: {raw.size}")
-        self.data = raw.reshape(-1, 40)
+    def __init__(self, path, lambda_=0.7, score_limit=0, mmap=False):
+        size = os.path.getsize(path)
+        if size % 40 != 0:
+            raise ValueError(f"ファイルサイズが40の倍数でない: {size}")
+        if mmap:
+            # RAMに載らない規模用。DataLoaderのshuffle=Trueと組むと
+            # ランダムアクセスがページキャッシュを外れて大幅に遅くなる
+            self.data = np.memmap(path, dtype=np.uint8, mode="r", shape=(size // 40, 40))
+        else:
+            self.data = np.fromfile(path, dtype=np.uint8).reshape(-1, 40)
         self.lambda_ = lambda_
         self.score_limit = score_limit
 

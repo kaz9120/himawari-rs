@@ -69,6 +69,7 @@
 | [0055](0055-lmr-terms.md) | LMRの条件項（improving・history連動） | P8 | rejected |
 | [0056](0056-tt-prefetch.md) | TTのprefetch | P8 | rejected |
 | [0057](0057-razoring.md) | razoring（浅いノードのqsearch降格） | P8 | accepted |
+| [0061](0061-psv-memmap-dataset.md) | 学習データの事前シャッフル廃止とRAM常駐＋fork | P8 | proposed |
 
 ## バックログ
 

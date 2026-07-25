@@ -3,6 +3,7 @@
 import argparse
 import csv
 import math
+import multiprocessing
 import os
 import sys
 import time
@@ -67,16 +68,27 @@ def main():
     p.add_argument("--name", default="", help="Experiment name for registry")
     p.add_argument("--notes", default="", help="Notes for registry")
     p.add_argument("--device", default="cpu")
+    p.add_argument(
+        "--mmap",
+        action="store_true",
+        help="学習データをmmapで開く（RAMに載らない規模用。速度は落ちる）",
+    )
     args = p.parse_args()
 
     device = torch.device(args.device)
     print(f"Device: {device}", file=sys.stderr)
 
-    train_ds = PsvDataset(args.data, lambda_=args.lambda_, score_limit=args.score_limit)
+    train_ds = PsvDataset(
+        args.data, lambda_=args.lambda_, score_limit=args.score_limit, mmap=args.mmap
+    )
+    # macOSのstart methodはspawnで、workerごとにデータセットがpickle複製
+    # される。数十GB規模ではOOMになるためforkを明示し、CoWで共有する
+    mp_ctx = multiprocessing.get_context("fork") if args.workers > 0 else None
     train_loader = DataLoader(
         train_ds, batch_size=args.batch, shuffle=True,
         num_workers=args.workers, collate_fn=collate_psv,
         pin_memory=(device.type != "cpu"),
+        multiprocessing_context=mp_ctx,
     )
     data_n = len(train_ds)
     steps_per_epoch = math.ceil(data_n / args.batch)
@@ -88,6 +100,7 @@ def main():
         valid_loader = DataLoader(
             valid_ds, batch_size=args.batch, shuffle=False,
             num_workers=args.workers, collate_fn=collate_psv,
+            multiprocessing_context=mp_ctx,
         )
         print(f"検証データ: {len(valid_ds)}局面", file=sys.stderr)
 
