@@ -46,11 +46,13 @@ qsearch TT +113.6、razoring +184.8、思考時間の難易度スケール +69.3
 
 ## 直近の残作業
 
-- 定跡の実装（[ADR-0063](adr/0063-book-loader-and-mini-book.md)）:
-  USI層のローダと `book gen` による511局面の生成。SPRTでは測れないため、
-  floodgateの「終盤10手の平均消費時間」で効果を見る
+- 定跡（[ADR-0063](adr/0063-book-loader-and-mini-book.md)）は実装・生成
+  ともに完了（133局面）。floodgateへ投入して実戦で効果を見る。
+  `BookFile` の指定が要る（既定は定跡なし）
 - 時間管理の残り: 配分式そのものの再設計はIDEAS.mdの
   「時間配分式の再設計」に残した。やねうら王のmove_horizon方式が参考
+- 次のデータ拡大: hao_depth9の未取得103ファイル（約8億局面）。
+  実力の壁（floodgateのレート3100〜3250）を越えるにはこれが本筋
 - 探索改善キャンペーンの継続（2026-07-23オーナー決定）:
   運用は従来どおり1アイデア1ADR・チューニングなし・SPRTゲート
   （[CLAUDE.md](../CLAUDE.md)参照）。次の候補はIDEAS.mdの探索節から
