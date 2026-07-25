@@ -33,5 +33,9 @@ name = "psv"
 path = "src/bin/psv.rs"
 
 [[bin]]
+name = "book"
+path = "src/bin/book.rs"
+
+[[bin]]
 name = "train"
 path = "src/bin/train/main.rs"

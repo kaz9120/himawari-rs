@@ -3,12 +3,24 @@
 //! stdin読み取りスレッド＋コマンドループ＋探索スレッド分離。
 //! 出力は行単位でロックしてflushする。
 
+mod book;
+
 use std::io::Write;
 use std::sync::{Arc, mpsc};
 
 use himawari_core::{Position, SFEN_STARTPOS};
 use himawari_engine::nnue::NnueNetwork;
 use himawari_engine::{EngineOptions, Limits, ThreadPool};
+
+use book::Book;
+
+/// 定跡の設定（ADR-0063）。探索器には渡さずUSI層で閉じる。
+#[derive(Default)]
+struct BookOptions {
+    file: String,
+    depth: u16,
+    book: Option<Book>,
+}
 
 const ENGINE_NAME: &str = "Himawari";
 const ENGINE_AUTHOR: &str = "Kazumasa Yamamoto";
@@ -38,6 +50,8 @@ fn print_options() {
     print_line("option name MaxMovesToDraw type spin default 0 min 0 max 100000");
     print_line("option name MultiPV type spin default 1 min 1 max 128");
     print_line("option name EvalFile type string default <empty>");
+    print_line("option name BookFile type string default <empty>");
+    print_line("option name BookDepth type spin default 24 min 0 max 1000");
 }
 
 fn parse_position(tokens: &[&str]) -> Option<Position> {
@@ -99,7 +113,7 @@ fn parse_go(tokens: &[&str]) -> Limits {
     limits
 }
 
-fn set_option(opts: &mut EngineOptions, tokens: &[&str]) {
+fn set_option(opts: &mut EngineOptions, bopts: &mut BookOptions, tokens: &[&str]) {
     // setoption name <id> value <x>
     let name_idx = tokens.iter().position(|&t| t == "name");
     let value_idx = tokens.iter().position(|&t| t == "value");
@@ -149,7 +163,41 @@ fn set_option(opts: &mut EngineOptions, tokens: &[&str]) {
                 value
             };
         }
+        "BookFile" => {
+            bopts.file = if value == "<empty>" {
+                String::new()
+            } else {
+                value
+            };
+            bopts.book = load_book(&bopts.file);
+        }
+        "BookDepth" => {
+            if let Ok(v) = value.parse() {
+                bopts.depth = v;
+            }
+        }
         _ => {}
+    }
+}
+
+/// 定跡ファイルを読み込む（ADR-0063）。EvalFileと違い、読めなくても
+/// 起動を止めない。定跡なしで対局できるため、事故にはならない。
+fn load_book(path: &str) -> Option<Book> {
+    if path.is_empty() {
+        return None;
+    }
+    match Book::load(path) {
+        Ok(b) => {
+            print_line(&format!(
+                "info string BookFile loaded: {path} ({}局面)",
+                b.positions()
+            ));
+            Some(b)
+        }
+        Err(e) => {
+            print_line(&format!("info string warning: BookFileを読めません: {e}"));
+            None
+        }
     }
 }
 
@@ -198,6 +246,10 @@ fn main() {
     });
 
     let mut opts = EngineOptions::default();
+    let mut bopts = BookOptions {
+        depth: 24,
+        ..BookOptions::default()
+    };
     let mut pool: Option<ThreadPool> = None;
     let mut position = Position::from_sfen(SFEN_STARTPOS).expect("startpos");
 
@@ -213,7 +265,7 @@ fn main() {
                 print_options();
                 print_line("usiok");
             }
-            "setoption" => set_option(&mut opts, &tokens[1..]),
+            "setoption" => set_option(&mut opts, &mut bopts, &tokens[1..]),
             "isready" => {
                 // 重い初期化（置換表確保・スレッド起動・評価関数読み込み）は
                 // ここで行う。Hash/Threads/EvalFileが変わったら作り直す
@@ -247,6 +299,15 @@ fn main() {
             "go" => {
                 let limits = parse_go(&tokens[1..]);
                 let is_ponder = tokens.contains(&"ponder");
+                // 定跡ヒットなら探索せず即指す（ADR-0063）。
+                // ponderは相手番を読む処理なので定跡を引かない
+                if !is_ponder && position.game_ply() <= bopts.depth {
+                    if let Some(e) = bopts.book.as_ref().and_then(|b| b.probe(&position)) {
+                        print_line("info string book hit");
+                        print_line(&format!("bestmove {}", e.mv));
+                        continue;
+                    }
+                }
                 if pool.is_none() {
                     pool = Some(ThreadPool::new(
                         opts.hash_mb,
