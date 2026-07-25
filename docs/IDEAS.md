@@ -26,7 +26,8 @@ ADRを起草してこの帳から消す（採番と経緯はADR側に書く）�
 | aspiration窓の再調整 | NNUE評価のスケールに合わせた初期幅・拡大則 | SPRT |
 | ~~TTのbucket化・prefetch~~ | ~~bucket化はADR-0022で実装済み。prefetchはADR-0056で不採択（144局で-33.9、Apple Siliconで効果なし）~~ | ~~不採択~~ |
 | Lazy SMPの分担スキーム | スレッドごとのdepth skipパターン見直し | SPRT |
-| 時間管理: PV安定度・fail-low延長 | 多ヘッド（進行度・安定度）と連動させると本命 | SPRT |
+| 時間管理: fail-low延長 | ADR-0059は評価下落で伸ばす。root fail-low時の明示的な延長は未着手 | SPRT |
+| 時間配分式の再設計 | ADR-0021の初期式のまま。終盤の厚みがやねうら王のmove_horizon方式に劣る（ADR-0058で調査） | SPRT |
 | contempt（千日手スコア） | 強い相手に引き分け許容、弱い相手に回避 | SPRT |
 | SEE駒価値のNNUE時代適合 | 枝刈り閾値系の駒価値を再調整 | SPRT |
 
