@@ -13,10 +13,11 @@ GitHub Issuesは使わない。設計判断は [ADR索引](adr/README.md)、
 - フェーズ: **P7出口判定済み（構造を純粋HalfKPで暫定フリーズ）→ P8先行着手**
 
 構造は純粋HalfKP（180Mネット、対駒割+528）で暫定フリーズ済み。
-2026-07-21〜24の探索改善キャンペーンで7件を採択し、単純加算で
-約+474 Eloを積んだ（correction history +44.6、continuation
+2026-07-21〜25の探索改善キャンペーンで8件を採択し、単純加算で
+約+544 Eloを積んだ（correction history +44.6、continuation
 history +20.7、eval hash +54.1、singular +12.6、ProbCut +44.2、
-qsearch TT +113.6、razoring +184.8。詳細は[RESULTS.md](RESULTS.md)）。
+qsearch TT +113.6、razoring +184.8、思考時間の難易度スケール +69.3。
+詳細は[RESULTS.md](RESULTS.md)）。
 
 2026-07-24〜25にfloodgateへ初参戦した（30局19勝11敗、レート3186）。
 棋譜の集計で2点が分かった。負けはすべて相手レート3121以上で、実力の
@@ -45,11 +46,11 @@ qsearch TT +113.6、razoring +184.8。詳細は[RESULTS.md](RESULTS.md)）。
 
 ## 直近の残作業
 
-- 時間管理の改善（floodgateの実測が根拠）:
-  [ADR-0062](adr/0062-root-move-nodes.md)（root手ごとのノード数集計）は
-  実装済み。次に[ADR-0059](adr/0059-easy-move-scaling.md)（思考時間の
-  難易度スケール）を実装しSPRTに掛ける。配分式そのものの再設計は
-  IDEAS.mdの「時間配分式の再設計」に残した
+- 定跡の実装（[ADR-0063](adr/0063-book-loader-and-mini-book.md)）:
+  USI層のローダと `book gen` による511局面の生成。SPRTでは測れないため、
+  floodgateの「終盤10手の平均消費時間」で効果を見る
+- 時間管理の残り: 配分式そのものの再設計はIDEAS.mdの
+  「時間配分式の再設計」に残した。やねうら王のmove_horizon方式が参考
 - 探索改善キャンペーンの継続（2026-07-23オーナー決定）:
   運用は従来どおり1アイデア1ADR・チューニングなし・SPRTゲート
   （[CLAUDE.md](../CLAUDE.md)参照）。次の候補はIDEAS.mdの探索節から
