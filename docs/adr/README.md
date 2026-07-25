@@ -74,6 +74,7 @@
 | [0060](0060-opening-book-policy.md) | 定跡の方針 | P8 | accepted |
 | [0061](0061-psv-memmap-dataset.md) | 学習データの事前シャッフル廃止とRAM常駐＋fork | P8 | proposed |
 | [0062](0062-root-move-nodes.md) | root手ごとの探索ノード数の集計 | P8 | accepted |
+| [0063](0063-book-loader-and-mini-book.md) | 定跡ローダと最小規模の定跡生成 | P8 | accepted |
 
 ## バックログ
 
