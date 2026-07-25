@@ -13,6 +13,7 @@ from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 
 from model import NnueModel, loss_fn
+from optim import MaskedAdam
 from dataset import PsvDataset, collate_psv
 from quantize import save_hmwr
 
@@ -73,6 +74,11 @@ def main():
         action="store_true",
         help="学習データをmmapで開く（RAMに載らない規模用。速度は落ちる）",
     )
+    p.add_argument(
+        "--dense-ft",
+        action="store_true",
+        help="FT勾配をdenseにする（SparseAdamを外し、MPSで学習できる。ADR-0064）",
+    )
     args = p.parse_args()
 
     device = torch.device(args.device)
@@ -104,7 +110,7 @@ def main():
         )
         print(f"検証データ: {len(valid_ds)}局面", file=sys.stderr)
 
-    model = NnueModel().to(device)
+    model = NnueModel(sparse_ft=not args.dense_ft).to(device)
 
     dense_params = [
         model.ft_bias,
@@ -112,14 +118,20 @@ def main():
         model.l3.weight, model.l3.bias,
         model.l4.weight, model.l4.bias,
     ]
-    sparse_params = [model.ft.weight]
+    ft_params = [model.ft.weight]
     lr_fn = lambda step: lr_lambda(
         step, args.warmup_steps, total_steps, args.min_lr, args.peak_lr,
     )
     optimizer_dense = torch.optim.Adam(dense_params, lr=args.peak_lr)
-    optimizer_sparse = torch.optim.SparseAdam(sparse_params, lr=args.peak_lr)
+    # FT勾配をdenseにするとMPSへ載せられる。更新則はSparseAdamと
+    # 同じ「出現した行だけ動かす」を保つ（ADR-0064）
+    optimizer_ft = (
+        MaskedAdam(ft_params, lr=args.peak_lr)
+        if args.dense_ft
+        else torch.optim.SparseAdam(ft_params, lr=args.peak_lr)
+    )
     scheduler_dense = torch.optim.lr_scheduler.LambdaLR(optimizer_dense, lr_lambda=lr_fn)
-    scheduler_sparse = torch.optim.lr_scheduler.LambdaLR(optimizer_sparse, lr_lambda=lr_fn)
+    scheduler_ft = torch.optim.lr_scheduler.LambdaLR(optimizer_ft, lr_lambda=lr_fn)
 
     step = 0
     start_epoch = 0
@@ -132,9 +144,9 @@ def main():
         ckpt = torch.load(args.resume, map_location=device, weights_only=False)
         model.load_state_dict(ckpt["model"])
         optimizer_dense.load_state_dict(ckpt["optimizer_dense"])
-        optimizer_sparse.load_state_dict(ckpt["optimizer_sparse"])
+        optimizer_ft.load_state_dict(ckpt["optimizer_ft"])
         scheduler_dense.load_state_dict(ckpt["scheduler_dense"])
-        scheduler_sparse.load_state_dict(ckpt["scheduler_sparse"])
+        scheduler_ft.load_state_dict(ckpt["scheduler_ft"])
         step = ckpt["step"]
         start_epoch = ckpt["epoch"]
         best_valid = ckpt.get("best_valid", float("inf"))
@@ -179,14 +191,14 @@ def main():
             n = targets.size(0)
 
             optimizer_dense.zero_grad()
-            optimizer_sparse.zero_grad()
+            optimizer_ft.zero_grad()
             out = model(stm_i, stm_o, opp_i, opp_o)
             loss = loss_fn(out, targets)
             loss.backward()
             optimizer_dense.step()
-            optimizer_sparse.step()
+            optimizer_ft.step()
             scheduler_dense.step()
-            scheduler_sparse.step()
+            scheduler_ft.step()
             model.clip_weights()
 
             step += 1
@@ -255,8 +267,8 @@ def main():
                     )
                     if args.checkpoint_dir:
                         _save_checkpoint(
-                            model, optimizer_dense, optimizer_sparse,
-                            scheduler_dense, scheduler_sparse,
+                            model, optimizer_dense, optimizer_ft,
+                            scheduler_dense, scheduler_ft,
                             step, epoch, best_valid, best_step, samples_done,
                             os.path.join(args.checkpoint_dir, "best.ckpt"),
                         )
@@ -265,8 +277,8 @@ def main():
 
                 if args.checkpoint_dir:
                     _save_checkpoint(
-                        model, optimizer_dense, optimizer_sparse,
-                        scheduler_dense, scheduler_sparse,
+                        model, optimizer_dense, optimizer_ft,
+                        scheduler_dense, scheduler_ft,
                         step, epoch, best_valid, best_step, samples_done,
                         os.path.join(args.checkpoint_dir, "latest.ckpt"),
                     )
@@ -320,15 +332,15 @@ def main():
         log_file.close()
 
 
-def _save_checkpoint(model, optimizer_dense, optimizer_sparse,
-                     scheduler_dense, scheduler_sparse,
+def _save_checkpoint(model, optimizer_dense, optimizer_ft,
+                     scheduler_dense, scheduler_ft,
                      step, epoch, best_valid, best_step, samples, path):
     torch.save({
         "model": model.state_dict(),
         "optimizer_dense": optimizer_dense.state_dict(),
-        "optimizer_sparse": optimizer_sparse.state_dict(),
+        "optimizer_ft": optimizer_ft.state_dict(),
         "scheduler_dense": scheduler_dense.state_dict(),
-        "scheduler_sparse": scheduler_sparse.state_dict(),
+        "scheduler_ft": scheduler_ft.state_dict(),
         "step": step,
         "epoch": epoch,
         "best_valid": best_valid,

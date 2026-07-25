@@ -25,9 +25,9 @@ OUT_W_LIMIT = 127.0 / OUT_W_SCALE
 
 
 class NnueModel(nn.Module):
-    def __init__(self):
+    def __init__(self, sparse_ft=True):
         super().__init__()
-        self.ft = nn.EmbeddingBag(FT_IN, FT_OUT, mode="sum", sparse=True)
+        self.ft = nn.EmbeddingBag(FT_IN, FT_OUT, mode="sum", sparse=sparse_ft)
         self.ft_bias = nn.Parameter(torch.full((FT_OUT,), 0.5))
         self.l2 = nn.Linear(CONCAT, HIDDEN)
         self.l3 = nn.Linear(HIDDEN, HIDDEN)
