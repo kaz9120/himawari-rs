@@ -14,7 +14,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 from model import NnueModel, loss_fn
 from optim import MaskedAdam
-from dataset import PsvDataset, collate_psv
+from dataset import PsvBatchLoader, PsvDataset, collate_psv
 from quantize import save_hmwr
 
 
@@ -75,6 +75,11 @@ def main():
         help="学習データをmmapで開く（RAMに載らない規模用。速度は落ちる）",
     )
     p.add_argument(
+        "--batch-loader",
+        action="store_true",
+        help="バッチ一括抽出のローダを使う（ADR-0065）",
+    )
+    p.add_argument(
         "--dense-ft",
         action="store_true",
         help="FT勾配をdenseにする（SparseAdamを外し、MPSで学習できる。ADR-0064）",
@@ -84,31 +89,48 @@ def main():
     device = torch.device(args.device)
     print(f"Device: {device}", file=sys.stderr)
 
-    train_ds = PsvDataset(
-        args.data, lambda_=args.lambda_, score_limit=args.score_limit, mmap=args.mmap
-    )
-    # macOSのstart methodはspawnで、workerごとにデータセットがpickle複製
-    # される。数十GB規模ではOOMになるためforkを明示し、CoWで共有する
-    mp_ctx = multiprocessing.get_context("fork") if args.workers > 0 else None
-    train_loader = DataLoader(
-        train_ds, batch_size=args.batch, shuffle=True,
-        num_workers=args.workers, collate_fn=collate_psv,
-        pin_memory=(device.type != "cpu"),
-        multiprocessing_context=mp_ctx,
-    )
-    data_n = len(train_ds)
+    if args.batch_loader:
+        train_loader = PsvBatchLoader(
+            args.data, args.batch, lambda_=args.lambda_,
+            score_limit=args.score_limit, mmap=args.mmap, shuffle=True,
+        )
+        data_n = train_loader.n
+    else:
+        train_ds = PsvDataset(
+            args.data, lambda_=args.lambda_, score_limit=args.score_limit, mmap=args.mmap
+        )
+        # macOSのstart methodはspawnで、workerごとにデータセットがpickle複製
+        # される。数十GB規模ではOOMになるためforkを明示し、CoWで共有する
+        mp_ctx = multiprocessing.get_context("fork") if args.workers > 0 else None
+        train_loader = DataLoader(
+            train_ds, batch_size=args.batch, shuffle=True,
+            num_workers=args.workers, collate_fn=collate_psv,
+            pin_memory=(device.type != "cpu"),
+            multiprocessing_context=mp_ctx,
+        )
+        data_n = len(train_ds)
     steps_per_epoch = math.ceil(data_n / args.batch)
     total_steps = args.epochs * steps_per_epoch
 
     valid_loader = None
     if args.valid:
-        valid_ds = PsvDataset(args.valid, lambda_=args.lambda_, score_limit=args.score_limit)
-        valid_loader = DataLoader(
-            valid_ds, batch_size=args.batch, shuffle=False,
-            num_workers=args.workers, collate_fn=collate_psv,
-            multiprocessing_context=mp_ctx,
-        )
-        print(f"検証データ: {len(valid_ds)}局面", file=sys.stderr)
+        if args.batch_loader:
+            valid_loader = PsvBatchLoader(
+                args.valid, args.batch, lambda_=args.lambda_,
+                score_limit=args.score_limit, shuffle=False,
+            )
+            valid_n = valid_loader.n
+        else:
+            valid_ds = PsvDataset(
+                args.valid, lambda_=args.lambda_, score_limit=args.score_limit
+            )
+            valid_loader = DataLoader(
+                valid_ds, batch_size=args.batch, shuffle=False,
+                num_workers=args.workers, collate_fn=collate_psv,
+                multiprocessing_context=mp_ctx,
+            )
+            valid_n = len(valid_ds)
+        print(f"検証データ: {valid_n}局面", file=sys.stderr)
 
     model = NnueModel(sparse_ft=not args.dense_ft).to(device)
 

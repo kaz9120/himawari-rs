@@ -4,10 +4,11 @@
 //!   psv stats   --in file [--limit N]          統計表示（局面数・score分布・勝敗）
 //!   psv dump    --in file [--limit N]          SFENと教師信号を1行ずつ表示
 //!   psv head    --in file --out file --count N [--skip M]   部分抽出
-//!   psv shuffle --in file[,file...] --out file [--seed N]   全体シャッフル
+//!   psv shuffle --in file[,file...] --out file [--seed N] [--tmp DIR]  全体シャッフル
 //!
-//! shuffleは全レコードをメモリに載せる（40B×1億局面=4GB）。
-//! それを超える規模は入力を分割して段階的に混ぜる。
+//! shuffleは2パスのバケット法で動く（ADR-0065）。メモリ使用量は
+//! バケット1個分（2GB）に収まるため、入力サイズの制限はない。
+//! 一時ファイルは出力と同じディレクトリに作り、使い終わり次第消す。
 
 use std::io::{BufWriter, Read, Seek, SeekFrom, Write};
 
@@ -153,35 +154,101 @@ fn head(input: &str, output: &str, count: u64, skip: u64) {
     println!("{n}局面を{output}へ書き出しました（{skip}局面スキップ）");
 }
 
-fn shuffle(inputs: &[&str], output: &str, seed: u64) {
-    let mut all: Vec<u8> = Vec::new();
-    for path in inputs {
-        let mut r = open_reader(path);
-        r.read_to_end(&mut all)
-            .unwrap_or_else(|e| die(&format!("読み込み失敗: {path}: {e}")));
-    }
-    if !all.len().is_multiple_of(PSV_BYTES) {
-        die(&format!("入力サイズが40の倍数でない: {}バイト", all.len()));
-    }
-    let n = all.len() / PSV_BYTES;
-    let mut rng = Rng(seed.max(1));
-    // Fisher–Yates
+/// 1バケットの目標サイズ。パス2でバケット1個をメモリに載せる（ADR-0065）。
+const BUCKET_BYTES: u64 = 2 << 30;
+/// バケットごとの書き込みバッファ。40バイト単位の書き込みをまとめる。
+const BUCKET_BUF: usize = 1 << 20;
+
+fn shuffle_in_place(buf: &mut [u8], rng: &mut Rng) {
+    let n = buf.len() / PSV_BYTES;
     for i in (1..n).rev() {
         let j = (rng.next() % (i as u64 + 1)) as usize;
         if i != j {
             let (a, b) = (i * PSV_BYTES, j * PSV_BYTES);
             for k in 0..PSV_BYTES {
-                all.swap(a + k, b + k);
+                buf.swap(a + k, b + k);
             }
         }
     }
-    let mut w = BufWriter::new(
+}
+
+/// 2パスのバケット法で全体をシャッフルする（ADR-0065）。
+///
+/// パス1で各レコードをランダムなバケットへ振り分け、パス2でバケット単位に
+/// メモリ上でシャッフルして連結する。メモリ使用量はバケット1個分に収まる。
+fn shuffle(inputs: &[&str], output: &str, seed: u64, tmp_dir: Option<&str>) {
+    let total: u64 = inputs
+        .iter()
+        .map(|p| {
+            std::fs::metadata(p)
+                .unwrap_or_else(|e| die(&format!("開けません: {p}: {e}")))
+                .len()
+        })
+        .sum();
+    if !total.is_multiple_of(PSV_BYTES as u64) {
+        die(&format!("入力サイズが40の倍数でない: {total}バイト"));
+    }
+    let n_buckets = (total.div_ceil(BUCKET_BYTES)).max(1) as usize;
+    let dir = tmp_dir.map(std::path::PathBuf::from).unwrap_or_else(|| {
+        std::path::Path::new(output)
+            .parent()
+            .unwrap_or(std::path::Path::new("."))
+            .to_path_buf()
+    });
+    let base = std::path::Path::new(output)
+        .file_name()
+        .map(|s| s.to_string_lossy().to_string())
+        .unwrap_or_else(|| "psv".to_string());
+    let paths: Vec<std::path::PathBuf> = (0..n_buckets)
+        .map(|i| dir.join(format!(".{base}.bucket{i:04}")))
+        .collect();
+
+    let mut rng = Rng(seed.max(1));
+    eprintln!(
+        "パス1: {}局面を{n_buckets}バケットへ振り分けます",
+        total / PSV_BYTES as u64
+    );
+    {
+        let mut writers: Vec<BufWriter<std::fs::File>> = paths
+            .iter()
+            .map(|p| {
+                let f = std::fs::File::create(p)
+                    .unwrap_or_else(|e| die(&format!("作成できません: {}: {e}", p.display())));
+                BufWriter::with_capacity(BUCKET_BUF, f)
+            })
+            .collect();
+        let mut buf = [0u8; PSV_BYTES];
+        for path in inputs {
+            let mut r = open_reader(path);
+            while r.read_exact(&mut buf).is_ok() {
+                let b = (rng.next() % n_buckets as u64) as usize;
+                writers[b]
+                    .write_all(&buf)
+                    .unwrap_or_else(|e| die(&format!("書き込み失敗: {e}")));
+            }
+        }
+        for w in &mut writers {
+            w.flush()
+                .unwrap_or_else(|e| die(&format!("flush失敗: {e}")));
+        }
+    }
+
+    eprintln!("パス2: バケットごとにシャッフルして連結します");
+    let mut w = BufWriter::with_capacity(
+        BUCKET_BUF,
         std::fs::File::create(output).unwrap_or_else(|e| die(&format!("作成できません: {e}"))),
     );
-    w.write_all(&all)
-        .unwrap_or_else(|e| die(&format!("書き込み失敗: {e}")));
+    let mut written = 0u64;
+    for p in &paths {
+        let mut data = std::fs::read(p).unwrap_or_else(|e| die(&format!("読み込み失敗: {e}")));
+        shuffle_in_place(&mut data, &mut rng);
+        w.write_all(&data)
+            .unwrap_or_else(|e| die(&format!("書き込み失敗: {e}")));
+        written += (data.len() / PSV_BYTES) as u64;
+        let _ = std::fs::remove_file(p);
+    }
     w.flush().unwrap();
-    println!("{n}局面をシャッフルして{output}へ書き出しました (seed={seed})");
+    println!("{written}局面をシャッフルして{output}へ書き出しました (seed={seed})");
 }
 
 fn main() {
@@ -224,10 +291,12 @@ fn main() {
                 .unwrap_or(1);
             let input = input.unwrap_or_else(|| die("--in が必要です"));
             let inputs: Vec<&str> = input.split(',').collect();
+            let tmp = arg_value(rest, "--tmp");
             shuffle(
                 &inputs,
                 &output.unwrap_or_else(|| die("--out が必要です")),
                 seed,
+                tmp.as_deref(),
             );
         }
         other => die(&format!("不明なサブコマンド: {other}")),

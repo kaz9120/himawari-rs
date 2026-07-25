@@ -10,5 +10,7 @@ crate-type = ["cdylib"]
 
 [dependencies]
 pyo3 = { version = "0.24", features = ["extension-module"] }
+numpy = "0.24"
+rayon = "1"
 himawari-core = { path = "../core" }
 himawari-engine = { path = "../engine" }
