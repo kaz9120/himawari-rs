@@ -7,12 +7,16 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-# Architecture constants (ADR-0034, bonapiece.rs, nnue.rs)
-FE_END = 1548
-FT_IN = 81 * FE_END  # 125,388
-FT_OUT = 256
-CONCAT = FT_OUT * 2  # 512 (ADR-0045: 利き塔除去で旧544→512)
-HIDDEN = 32
+import himawari
+
+# 次元はRust側のビルドから読む（ADR-0067）。ft512 featureでビルドした
+# himawariモジュールを入れれば、学習側も自動で512になる。
+# 定数を二重に持たないので、推論と学習の取り違えが起きない
+FT_IN = himawari.FT_IN
+FT_OUT = himawari.FT_OUT
+HIDDEN = himawari.HIDDEN
+FE_END = FT_IN // 81
+CONCAT = FT_OUT * 2
 
 # Evaluation scale (ADR-0036)
 SIGMOID_SCALE = 600.0

@@ -5,6 +5,10 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 
+[features]
+# FTの出力次元を512にする（ADR-0067）。既定は256
+ft512 = []
+
 [dependencies]
 himawari-core = { path = "../core" }
 

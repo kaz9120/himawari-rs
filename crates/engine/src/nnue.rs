@@ -9,7 +9,11 @@ use himawari_core::{Color, PieceType, Position, Square, bonapiece};
 use crate::value::Value;
 
 /// FT出力次元（片視点）。
+/// FTの出力次元。`ft512` featureで512へ切り替える（ADR-0067）。
+#[cfg(not(feature = "ft512"))]
 pub const FT_OUT: usize = 256;
+#[cfg(feature = "ft512")]
+pub const FT_OUT: usize = 512;
 /// 隠れ層の入力次元（FT両視点）。
 pub const CONCAT: usize = FT_OUT * 2;
 pub const HIDDEN: usize = 32;

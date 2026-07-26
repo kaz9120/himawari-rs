@@ -8,8 +8,20 @@
 //! 学習パイプライン（P5）ができるまでの検証用。
 
 use himawari_engine::nnue::NnueNetwork;
-use himawari_engine::nnue_compat::load_nn_bin;
 use himawari_engine::nnue_io::save;
+
+/// nn.bin（やねうら王形式）を読む。FT 256専用（ADR-0067）。
+fn import_net(path: &str) -> (NnueNetwork, String) {
+    let mut f = std::fs::File::open(path).unwrap_or_else(|e| {
+        eprintln!("開けません: {path}: {e}");
+        std::process::exit(1);
+    });
+    let (net, arch) = himawari_engine::nnue_compat::load_nn_bin(&mut f).unwrap_or_else(|e| {
+        eprintln!("nn.bin読み込み失敗: {e}");
+        std::process::exit(1);
+    });
+    (net, format!("imported from {path} ({arch})"))
+}
 
 fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
@@ -43,17 +55,7 @@ fn main() {
         i += 1;
     }
     let (net, lineage) = match &import {
-        Some(path) => {
-            let mut f = std::fs::File::open(path).unwrap_or_else(|e| {
-                eprintln!("開けません: {path}: {e}");
-                std::process::exit(1);
-            });
-            let (net, arch) = load_nn_bin(&mut f).unwrap_or_else(|e| {
-                eprintln!("nn.bin読み込み失敗: {e}");
-                std::process::exit(1);
-            });
-            (net, format!("imported from {path} ({arch})"))
-        }
+        Some(path) => import_net(path),
         None => (NnueNetwork::random(seed), format!("random seed={seed}")),
     };
     let mut f = std::fs::File::create(&out).unwrap_or_else(|e| {

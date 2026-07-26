@@ -44,6 +44,12 @@ pub fn load_nn_bin(r: &mut impl Read) -> Result<(NnueNetwork, String), String> {
     if !arch.contains("HalfKP") {
         return Err(format!("HalfKPネットではない: {arch}"));
     }
+    // nn.binのFT次元は256で固定である（ADR-0067）
+    if FT_OUT != 256 {
+        return Err(format!(
+            "nn.binはFT 256専用。このビルドはFT {FT_OUT}（ADR-0067）"
+        ));
+    }
 
     let _ft_hash = cur.u32()?;
     let ft_b = cur.i16v(FT_OUT)?;
@@ -73,7 +79,8 @@ pub fn load_nn_bin(r: &mut impl Read) -> Result<(NnueNetwork, String), String> {
     ))
 }
 
-#[cfg(test)]
+// テストは256のnn.binを組み立てるため、512ビルドでは回さない
+#[cfg(all(test, not(feature = "ft512")))]
 mod tests {
     use super::*;
     use crate::nnue::evaluate_scalar;

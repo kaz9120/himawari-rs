@@ -78,7 +78,7 @@
 | [0064](0064-dense-ft-gradient-mps.md) | FT勾配のdense化とMPS学習（MaskedAdam） | P8 | accepted |
 | [0065](0065-large-scale-dataloader.md) | バッチ一括抽出とチャンク読みによるデータ供給 | P8 | accepted |
 | [0066](0066-halfkp-factorizer.md) | 学習時のみの駒単独仮想特徴（factorizer） | P8 | accepted |
-| [0067](0067-ft-dimension-512.md) | FT次元256→512（コンパイル時feature切替） | P8 | proposed |
+| [0067](0067-ft-dimension-512.md) | FT次元256→512（コンパイル時feature切替） | P8 | accepted |
 
 ## バックログ
 
