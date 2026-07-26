@@ -47,6 +47,7 @@ RUSTFLAGS="-C target-cpu=native" cargo build --release
 
 すべてgitignore対象。`data/raw/<データセット名>/` に生データ、
 `data/train/` に加工済みpsv、`data/nets/` に学習済みネット、
-`data/sprt/` にselfplayの棋譜ログ（jsonl）を置く。
+`data/sprt/` にselfplayの棋譜ログ（jsonl）、`data/bin/` に
+比較用に残すビルド済みバイナリを置く。
 チェックポイント（*.pt）は `training/checkpoints/` に置く。
 ネットのファイル名は実験名を含める（例: `halfkp_180M.hmwr.best`）。
