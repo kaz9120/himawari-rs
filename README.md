@@ -36,7 +36,16 @@ cargo build --release
 ```
 
 `target/release/himawari` がUSIエンジン本体。将棋所やShogiGUIに
-エンジン登録して対局できる。開発用ツールは次のとおり。
+エンジン登録して対局できる。
+
+FT次元は既定が256で、featureで512に切り替えられる（ADR-0067）。
+512は評価精度で上回るがNPSが0.65倍に落ちるため、既定では使わない。
+
+```
+cargo build --release --features himawari-engine/ft512
+```
+
+開発用ツールは次のとおり。
 
 ```
 cargo run --release -p himawari-tools --bin perft -- 5   # perft
@@ -58,19 +67,21 @@ PyO3拡張モジュール経由で呼ぶ（ADR-0043）。教師データの
 詳細は [docs/DATASETS.md](docs/DATASETS.md) を参照。
 
 ```bash
-# 初回セットアップ
+# 初回セットアップ（maturin developはvirtualenvを要求するのでbuild+installを使う）
 pip install torch tensorboard maturin
-cd crates/py && maturin develop --release && cd ../..
+cd crates/py && maturin build --release && cd ../..
+pip install --force-reinstall --no-deps target/wheels/himawari-*.whl
 
-# 教師データの前処理
+# 教師データの前処理。shuffleは2パスのバケット法で、RAMに載らない規模も通る
 cargo run --release --bin psv -- shuffle --in data/raw/hao_depth9/000.bin,... --out data/train/train.psv
 cargo run --release --bin psv -- head --in data/raw/hao_depth9/023.bin --out data/train/valid.psv --count 200000
 
-# 学習（純粋HalfKP、warmup+cosine decay）
+# 学習（純粋HalfKP + factorizer、MPS）
 cd training
 python3 train.py --data ../data/train/train.psv --valid ../data/train/valid.psv \
   --out ../data/nets/net.hmwr --epochs 1 --batch 16384 \
-  --peak-lr 1e-3 --warmup-steps 100 --lambda 0.7
+  --peak-lr 1e-3 --warmup-steps 100 --lambda 0.7 \
+  --device mps --dense-ft --batch-loader --factorized
 
 # 棋力検証（SPRT）
 cargo run --release --bin selfplay -- \
@@ -80,6 +91,19 @@ cargo run --release --bin selfplay -- \
   --tc 10+0.1 --concurrency 8 \
   --openings openings/start_sfens_ply24.txt
 ```
+
+学習の主なフラグは次のとおり。
+
+| フラグ | 意味 |
+|---|---|
+| `--device mps` `--dense-ft` | FT勾配をdenseにしてGPUで回す（ADR-0064）。現行の5.5倍 |
+| `--batch-loader` | バッチ一括抽出のローダを使う（ADR-0065） |
+| `--factorized` | 学習時だけ駒単独の仮想特徴を併用する（ADR-0066）。+28.1 Elo |
+| `--mmap` | 学習データをmmapで開く。RAMに載らない規模で使う |
+
+学習側のFT次元はPyO3モジュールが公開する定数から読む。512で学習する
+ときは `maturin build --release --features ft512` で作ったモジュールを
+入れる（ADR-0067）。
 
 ## workspace構成
 

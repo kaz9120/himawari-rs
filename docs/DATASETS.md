@@ -64,11 +64,15 @@
 1. train_big.psv = 86,115,727局面（000〜010シャッフル）
 2. valid_big.psv = 200,000局面（011から抽出）
 
-最新の学習結果（halfkp_180M、純粋HalfKP、利き塔除去後）:
-- data=train_385M.psv, epochs=1, batch=16384, peak_lr=1e-3,
-  warmup=100, cosine decay, lambda=0.7
-- best checkpoint: step 10000（valid loss 0.517）
-- 対駒割SPRT: +528 Elo [+371,+3600]（H1採択、22ペア44局）
+最新の学習結果（halfkp_1900M_fact、純粋HalfKP 256x2-32-32 + factorizer）:
+- data=train_1900M.psv（19.9億局面）, epochs=1, batch=16384,
+  peak_lr=1e-3, warmup=100, cosine decay, lambda=0.7
+- best checkpoint: step 116000（valid loss 0.49513）、所要149分
+- 対halfkp_370M: +243.8 Elo（データ拡大分）、
+  対halfkp_1900M: +28.1 Elo（factorizer分）。いずれもH1採択
+- 詳細は[RESULTS.md](RESULTS.md)、条件は
+  [ADR-0064](adr/0064-dense-ft-gradient-mps.md)〜
+  [ADR-0066](adr/0066-halfkp-factorizer.md)
 
 ## 未取得（候補）
 
