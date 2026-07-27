@@ -42,8 +42,10 @@ NNUE後の再測定に意味がある。
 | singularの多段化 | double/triple extension、multi-cut、negative extension。ADR-0050は単独延長のみ | SPRT |
 | IIRの条件精緻化 | 現状 depth>=4 かつTT手なし。allNode除外と親のreduction量に連動した深さ±1を足す | SPRT |
 | mate1plyの探索組み込み再挑戦 | P3で+1.1（968局、駒割時代）で見送り。やねうら王はTTミス時だけ呼びコストを抑える | SPRT |
-| LMRの固定小数化 | reductionを1024倍固定小数へ。ADR-0055の不採択（-9.0）は整数±1という粒度が原因と読める。項追加の土台 | 非劣性SPRT |
-| LMRの項追加 | rootDelta・ttPv・moveCount・correction値・cutNode・ttCapture・cutoffCnt・ttMove一致・statScore・allNode。1項=1SPRT | SPRT |
+| ~~LMRの固定小数化~~ | ~~ADR-0076で導入。機能検証で3局面とも完全一致（等価変更）を示しSPRTを省いた。1024倍のスケールはやねうら王と2.4%差で一致し、項の重みを換算せずに使える~~ | ~~完了~~ |
+| LMRのcutNode項 | やねうら王の最大の項（+3611 + 985*!ttMove）。searchにcutNode引数を足して伝播させる配管が要る。リダクションを強める唯一の大項で、他の弱める項の前提になる | SPRT |
+| LMRのttPv項（再挑戦） | ADR-0076で単独導入したところ-43.8のH0。弱める方向にしか働かず、cutNode項がないため釣り合いが取れなかった。cutNode導入後に再挑戦する | SPRT |
+| LMRのその他の項 | rootDelta・moveCount・correction値・ttCapture・cutoffCnt・ttMove一致・statScore・allNode。1項=1SPRT。固定小数化（ADR-0076）済みで粒度は確保した | SPRT |
 | LMR再探索の深さ調整 | doDeeperSearch（value > bestValue+48）とdoShallowerSearch（value < bestValue+9）でnewDepthを±1する | SPRT |
 | NMPのR拡大と検証探索 | ADR-0052は+7.8 [-0.7,+16.2]（6264局、判定未了で保留、adr-0052-wipブランチ）。R=3+d/4は小さい。R=7+d/3・cutNode限定・nmpMinPlyで再挑戦 | SPRT保留 |
 | aspiration窓の再調整 | delta 20固定を 5+|meanSquaredScore|/9000 へ、中心を前深さのスコアからaverageScoreへ、拡大をdelta/3へ。fail-high時にrootDepthを削る | SPRT |
