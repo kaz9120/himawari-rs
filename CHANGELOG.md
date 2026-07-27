@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.8.5](https://github.com/kaz9120/himawari-rs/compare/v0.8.4...v0.8.5) (2026-07-27)
+
+
+### その他の変更
+
+* MultiPVの降順保証を並べ替えから出力スコアの頭打ちへ変える ([#26](https://github.com/kaz9120/himawari-rs/issues/26)) ([eee081f](https://github.com/kaz9120/himawari-rs/commit/eee081f9c2054d6926282845751cb66584268057))
+
 ## [0.8.4](https://github.com/kaz9120/himawari-rs/compare/v0.8.3...v0.8.4) (2026-07-27)
 
 
