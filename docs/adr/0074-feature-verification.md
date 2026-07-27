@@ -1,6 +1,6 @@
 # 0074: SPRTの前に機能検証を行う
 
-- Status: proposed
+- Status: accepted
 - Date: 2026-07-27
 - 関連ADR: [0027](0027-sprt-framework.md), [0028](0028-pruning-extensions.md), [0072](0072-history-pruning.md)
 
