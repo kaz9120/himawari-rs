@@ -154,6 +154,25 @@ v0.7.0だが、`Cargo.toml` は0.7.3まで進んでおり、v0.7.3のタグが�
 決められない。導入時のmainのHEADを指定し、それ以降のコミットだけを
 対象にする。
 
+### Cargo.lockはワークフローで同期する
+
+`simple` は `Cargo.toml` の version だけを書き換え、`Cargo.lock` に触れない。
+lock内の `himawari-*` が古いまま残り、次に誰かが `cargo build` を走らせると
+作業ツリーが汚れる。無関係な差分が各PRへ混ざり、1コミット=単一の論理変更
+（[CLAUDE.md](../../CLAUDE.md)）と衝突する。
+
+`release-please.yml` に同期ステップを足して解消する。リリースPRのブランチを
+clone し、`cargo update --workspace` を走らせ、差分があれば同じPRへ積む。
+
+`cargo update --workspace` はworkspaceメンバーのバージョンだけをlockへ反映し、
+外部依存は動かさない。導入時の実測では `himawari-engine` ほか4件が
+0.7.3から0.7.6へ更新され、外部依存17件は `unchanged` のままだった。
+
+auto-mergeを有効にする前に実行する。順序が逆だと、CI通過と同時にマージされて
+同期が間に合わないおそれがある。release-pleaseがリリースPRをforce pushで
+更新するとこのコミットは消えるが、同じjobが再び走って積み直すため、
+マージ時点では必ず揃う。
+
 ## Consequences
 
 - バージョンの更新忘れとタグの打ち忘れがなくなる。番号は
@@ -177,7 +196,12 @@ v0.7.0だが、`Cargo.toml` は0.7.3まで進んでおり、v0.7.3のタグが�
   必要はない
 - release-pleaseの挙動に依存する。ツール側の仕様変更に追随する保守が
   発生する。自前実装（案B）を避けた対価である
-- `simple` は `Cargo.lock` を更新しない。バージョンを上げた直後の
-  mainでは、lock内の `himawari-*` のバージョンが古いままになる。
-  次に `cargo build` を走らせたときへ自動で追随するため実害は小さいが、
-  `--locked` を使うビルドを足すなら対処が要る
+- `simple` は `Cargo.lock` を更新しないため、ワークフローの同期ステップで
+  補う。リリースPRの差分は `Cargo.toml`・`CHANGELOG.md`・
+  `.release-please-manifest.json`・`Cargo.lock` の4つになる。
+  mainが常に整合するので、`--locked` を使うビルドを後から足せる
+- 同期ステップはリリースPRのたびにtoolchainの解決を伴う。
+  `rust-toolchain.toml` がnightlyを指定しているため、
+  リリースPRごとに1〜2分のインストール時間が加わる。
+  頻度が上がって無視できなくなったら、toolchainのキャッシュか
+  `RUSTUP_TOOLCHAIN=stable` の指定で削る

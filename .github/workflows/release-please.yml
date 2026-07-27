@@ -48,8 +48,37 @@ jobs:
           token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
-      # リリースPRの差分はversionとCHANGELOGだけなので、CI通過を条件に
-      # 人間の確認なしでマージする。
+      # simple strategyはCargo.tomlのversionだけを書き換え、Cargo.lockに
+      # 触れない（ADR-0071）。lock内のhimawari-*が古いまま残るのを防ぐため、
+      # リリースPRのブランチで追随させて同じPRに積む。auto-mergeを有効に
+      # する前に実行する（先に有効化すると、CI通過と同時にマージされて
+      # 同期が間に合わないおそれがある）。
+      #
+      # cargo update --workspaceはworkspaceメンバーのバージョンだけを
+      # lockへ反映し、外部依存は動かさない。
+      #
+      # NOTE: 上のauto-mergeステップと同じ理由で、fromJSONをwith/envで
+      # 評価せずシェル内のjqでパースする。
+      - name: Sync Cargo.lock on release PR
+        if: steps.release-please.outputs.prs_created == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_PLEASE_TOKEN }}
+          PR_JSON: ${{ steps.release-please.outputs.pr }}
+          REPO: ${{ github.repository }}
+        run: |
+          BRANCH=$(jq -r '.headBranchName' <<< "$PR_JSON")
+          git clone --depth 1 --branch "$BRANCH" \
+            "https://x-access-token:${GH_TOKEN}@github.com/${REPO}.git" release-pr
+          cd release-pr
+          cargo update --workspace
+          git diff --quiet Cargo.lock && exit 0
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -am "chore: Cargo.lockのバージョンを追随させる"
+          git push
+
+      # リリースPRの差分はversion・CHANGELOG・Cargo.lockだけなので、
+      # CI通過を条件に人間の確認なしでマージする。
       #
       # NOTE: stepのenvはifがfalseでも評価される（actions/runnerの仕様）。
       # pr出力が空のときfromJSONがenvでテンプレートエラーになりjobごと
