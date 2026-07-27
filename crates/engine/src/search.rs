@@ -343,14 +343,24 @@ impl Worker {
                         }
                         self.root_moves[pv_idx].score = score;
                         self.root_moves[pv_idx].pv = pv.clone();
+                        // 確定済みのラインをスコア降順へ整える。fail-softでは
+                        // ラインごとにaspiration窓が違い、返り値が窓に依存する
+                        // ため、探索順のままだとスコアが降順にならないことが
+                        // ある。Stockfishも同じ位置でstable_sortしている
+                        if self.multi_pv > 1 {
+                            self.root_moves[..=pv_idx]
+                                .sort_by_key(|rm| std::cmp::Reverse(rm.score));
+                        }
+                        let line_score = self.root_moves[pv_idx].score;
+                        let line_pv = self.root_moves[pv_idx].pv.clone();
                         if pv_idx == 0 {
-                            last_score = score;
+                            last_score = self.root_moves[0].score;
                         }
                         on_iter(IterInfo {
                             depth,
                             multipv: if self.multi_pv > 1 { pv_idx + 1 } else { 0 },
-                            score,
-                            pv,
+                            score: line_score,
+                            pv: line_pv,
                             // 全ワーカー合算（単スレッドではローカル値と一致）
                             nodes: self.shared.nodes.load(Ordering::Relaxed).max(self.nodes),
                             elapsed_ms: self.tm.elapsed().as_millis() as u64,
