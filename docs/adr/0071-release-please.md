@@ -126,6 +126,11 @@ pull-requests: write）をシークレットに登録する。`GITHUB_TOKEN` が
 起こしたイベントはワークフローを起動しないため、リリースPRにCIが走らず
 auto-mergeの条件が満たされない。
 
+リポジトリの設定でauto-mergeを許可する（`allow_auto_merge`）。
+既定は無効で、そのままだとリリースPRへauto-mergeを設定する手順が
+`exit code 1` で落ちる。release-please本体は成功しリリースPRも作られる
+ため、失敗の原因が分かりにくい。
+
 `release-type` には `simple` を使い、`extra-files` のtoml updaterで
 `$.workspace.package.version` を更新する。
 
@@ -137,9 +142,11 @@ auto-mergeの条件が満たされない。
 
 各クレートに実バージョンを書けばrust strategyは動く。ただしバージョンが
 5箇所へ散り、workspaceの一元管理を失う。`simple` なら構成を変えずに済む。
-副作用としてルートに `version.txt` が作られるが、
-`.release-please-manifest.json` と同じくrelease-pleaseの管理ファイルと
-位置づける。バージョンの正は `Cargo.toml` のままである。
+
+`simple` は既定でルートに `version.txt` を作るが、`extra-files` を
+指定した本構成では作られなかった。リリースPRが更新するのは
+`Cargo.toml`、`.release-please-manifest.json`、`CHANGELOG.md` の3つで
+ある。バージョンの正は `Cargo.toml` のままである。
 
 差分の起点には `bootstrap-sha` を指定する。導入時点で最新のタグは
 v0.7.0だが、`Cargo.toml` は0.7.3まで進んでおり、v0.7.3のタグが存在
