@@ -35,13 +35,13 @@ proposedで起草し、オーナーLGTMでacceptedにする。1アイデア1ADR�
 変更はすべてPR経由で入れる。mainへ直接pushしない。
 PRテンプレートで種別を選び、種別ごとにマージ条件とバージョンが決まる。
 
-| 種別 | 対象 | マージ条件 | バージョン |
-|---|---|---|---|
-| 棋力向上 | 探索・評価関数・時間管理など、強さが変わる変更 | CIが緑、かつSPRTでH1採択 | MINOR |
-| その他 | リファクタ、文書、ツール、CI、依存更新 | CIが緑 | PATCH |
+| 種別 | 対象 | マージ条件 |
+|---|---|---|
+| 棋力向上 | 探索・評価関数・時間管理など、強さが変わる変更 | CIが緑、かつSPRTでH1採択 |
+| その他 | リファクタ、文書、ツール、CI、依存更新 | CIが緑 |
 
-迷う変更は「その他」に倒す。バージョンはPR内でCargo.tomlを更新する。
-MINORのときだけマージ後にタグを打ち、リリースを作る。
+迷う変更は「その他」に倒す。バージョンとタグはrelease-pleaseが作る
+（[ADR-0071](docs/adr/0071-release-please.md)）。`Cargo.toml` は触らない。
 
 PRの作成はテンプレートを明示して行う。
 
@@ -50,21 +50,32 @@ gh pr create --template strength.md   # 棋力向上
 gh pr create --template chore.md      # その他
 ```
 
-## バージョニング（[ADR-0068](docs/adr/0068-sprt-driven-versioning.md)）
+## バージョニング（[ADR-0068](docs/adr/0068-sprt-driven-versioning.md)・[ADR-0071](docs/adr/0071-release-please.md)）
 
-- MAJOR: 世界コンピュータ将棋選手権への参加。次回2027年5月を1.0.0とする
-- MINOR: SPRTでH1採択した変更を取り込んだとき（1採択=1MINOR）
-- PATCH: 棋力に影響しない変更をmainへ入れたとき。例外は設けない
-- タグはMINORとMAJORのときだけ打つ
+コミットの型からrelease-pleaseが算出する。
+
+| 型 | 対象 | bump |
+|---|---|---|
+| `feat` | SPRTでH1採択した変更 | MINOR |
+| `fix` | 棋力に影響しないコードの変更 | PATCH |
+| `docs` | 文書のみの変更 | なし |
+| `chore` | CI・設定・テスト・依存更新 | なし |
+
+判断はバイナリが変わるか、棋力が変わるかの2問で決まる。
+MAJOR（選手権への参加。次回2027年5月を1.0.0）は
+`Release-As: 1.0.0` トレーラで明示する。
 
 ## コミット規律
 
 - 1コミット=単一の論理変更
+- 件名はConventional Commitsの型で始める（`feat:` / `fix:` / `docs:` /
+  `chore:`）。本文は日本語の平叙文のままでよい
+- 棋力向上のコミットは件名にEloを入れる。CHANGELOGに数値が残る
+  （例: `feat: razoringを導入する（+184.8 Elo、ADR-0057）`）
 - コミット前に `cargo fmt` を必須とする（CIが `rustfmt --check` を強制）
-- 棋力が変わる変更には `SPRT:` トレーラを付ける
-  （[ADR-0069](docs/adr/0069-release-notes-automation.md)）。
-  書式は `SPRT: <Elo> [<CI下限>,<CI上限>] <対局数>games <H0|H1>`。
-  `Co-Authored-By` と同じ位置に書く。リリースノートがここから作られる
+- 棋力が変わる変更には `SPRT:` トレーラを付ける。書式は
+  `SPRT: <Elo> [<CI下限>,<CI上限>] <対局数>games <H0|H1>`。
+  `Co-Authored-By` と同じ位置に書く。RESULTS.mdへの転記元になる
 
 ## ビルド
 

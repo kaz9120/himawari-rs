@@ -16,5 +16,8 @@ labels: chore
 ## チェック
 
 - [ ] CIが緑（これがマージ条件。ADR-0070）
-- [ ] `Cargo.toml` のPATCHを上げた（ADR-0068）
+- [ ] コミットの型を選んだ（ADR-0071）
+      `fix`=コードの修正 / `docs`=文書のみ / `chore`=CI・設定・テスト
 - [ ] 設計判断があればADRを起草し、acceptedにした
+
+バージョンはrelease-pleaseが上げる。`Cargo.toml` は触らない。

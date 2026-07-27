@@ -1,8 +1,9 @@
 name: Release
 
-# タグpushでCPU別バイナリをビルドしてGitHub Releaseに添付する
-# （ADR-0003のtarget-feature固定ビルド、ADR-0007のビルド識別子）。
-# Release作成の競合を避けるため、ビルドはartifact経由で単一ジョブに集約する。
+# タグpushでCPU別バイナリをビルドし、release-pleaseが作ったGitHub
+# Releaseへ添付する（ADR-0003のtarget-feature固定ビルド、ADR-0071）。
+# 添付の競合を避けるため、ビルドはartifact経由で単一ジョブに集約する。
+# リリースノートとタグはrelease-pleaseが作るので、ここでは触らない。
 on:
   push:
     tags: ["v*"]
@@ -59,43 +60,11 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      # 前タグからのコミット件名とSPRTトレーラでノートを組む（ADR-0069）
-      - name: Generate release notes
-        shell: bash
-        run: |
-          TAG="${GITHUB_REF_NAME}"
-          PREV=$(git describe --tags --abbrev=0 "${TAG}^" 2>/dev/null || echo "")
-          RANGE="${PREV:+${PREV}..}${TAG}"
-          SPRT=$(git log --pretty=format:"%(trailers:key=SPRT,valueonly)" "$RANGE" | grep -v '^$' || true)
-          {
-            if [ -n "$SPRT" ]; then
-              echo "## 採択したSPRT"
-              echo
-              echo "$SPRT" | sed 's/^/- /'
-              echo
-            fi
-            echo "## 変更"
-            echo
-            git log --no-merges --pretty=format:"- %s" "$RANGE"
-            echo
-            echo
-            echo "## 使い方"
-            echo
-            echo '評価関数は同梱していない（ADR-0069）。USIオプション `EvalFile` に'
-            echo '`.hmwr` のパスを指定する。未指定なら駒割評価で動く。'
-            if [ -n "$PREV" ]; then
-              echo
-              echo "前リリース: ${PREV}"
-            fi
-          } > notes.md
-          cat notes.md
       - uses: actions/download-artifact@v4
         with:
           merge-multiple: true
+      # release-pleaseが作ったリリースへ添付する（ADR-0071）。
+      # bodyを渡さないので、生成済みのリリースノートはそのまま残る。
       - uses: softprops/action-gh-release@v2
         with:
-          body_path: notes.md
           files: himawari-*.zip

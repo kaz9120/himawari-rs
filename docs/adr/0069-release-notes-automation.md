@@ -1,8 +1,8 @@
 # 0069: リリースノートをSPRT採択から自動生成する
 
-- Status: accepted
+- Status: superseded
 - Date: 2026-07-27
-- 関連ADR: [0027](0027-sprt-framework.md), [0037](0037-nnue-file-format.md), [0068](0068-sprt-driven-versioning.md)
+- 関連ADR: [0027](0027-sprt-framework.md), [0037](0037-nnue-file-format.md), [0068](0068-sprt-driven-versioning.md), [0071](0071-release-please.md)（本ADRを置き換え）
 
 ## Context
 
@@ -97,3 +97,17 @@ SPRT採択のたびに版が上がるが、評価関数はそれよりずっと�
   駒割評価で動く。`EvalFile` の指定方法をリリースノートに1行書いて
   補う
 - ノート生成はシェルで完結する。追加の依存を持ち込まない
+
+## 追記（2026-07-27）
+
+[ADR-0071](0071-release-please.md) が本ADRを置き換えた。
+
+リリースノートの生成はrelease-pleaseが担う。CHANGELOGも同時に手に入る
+ため、`release.yml` へ書いたシェルによる生成は役目を終えた。同ファイルは
+バイナリのビルドと添付に絞っている。
+
+`SPRT:` トレーラの書式は引き続き使う。リリースノートの生成元としてでは
+なく、RESULTS.mdへの転記元としてである。SPRTで得たEloは、CHANGELOGに
+残すためコミットの件名にも書く。
+
+評価関数をリリースに含めない方針は変わらない。
