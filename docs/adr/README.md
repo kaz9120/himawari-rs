@@ -91,6 +91,7 @@
 | [0072](0072-history-pruning.md) | history pruning（履歴が悪い静かな手の枝刈り） | - | proposed（保留） |
 | [0073](0073-history-bonus-scale.md) | history bonus/malus式の再設計 | - | accepted |
 | [0074](0074-feature-verification.md) | SPRTの前に機能検証を行う | - | accepted |
+| [0075](0075-razoring-margin.md) | razoringのマージンを2次式にし深さ制限を外す | - | rejected |
 
 ## バックログ
 
