@@ -61,10 +61,14 @@ futility_base = stand + QS_FUTILITY_MARGIN      (QS_FUTILITY_MARGIN = 328)
 ムーブループ内、王手でない手かつ取り返しでない手について:
   count > QS_MOVECOUNT_LIMIT (=2) なら捨てる
   futility_value = futility_base + 取る駒の価値
-  futility_value <= alpha なら best を futility_value まで引き上げて捨てる
-  see_ge(m, alpha - futility_base) が偽なら
-    best を min(alpha, futility_base) まで引き上げて捨てる
+  futility_value <= alpha なら捨てる
+  see_ge(m, alpha - futility_base) が偽なら捨てる
 ```
+
+やねうら王はここで `bestValue` をfutility値まで引き上げてfail-softの
+下限を報告するが、本ADRでは入れない。本エンジンのMultiPVはライン確定ごとに
+出力する設計で、窓に依存する値を返り値へ混ぜるとライン間の整合が崩れる。
+下限を報告しないだけで、alpha-betaの正しさは保たれる。
 
 「取り返しでない手」の判定には、1手前の移動先マスを使う。やねうら王の
 `move.to_sq() != prevSq` に対応する。取り返しは静止探索の主目的であり、
@@ -127,8 +131,9 @@ W-D-L は +699 =47 -496。
 
 静止探索のノードが減り、同じ時間でより深く読めるようになる。
 
-読み抜けが増える方向のリスクがある。取り返しを除外し、王手中を除き、
-`best` を futility 値まで引き上げる（fail-softを保つ）ことで抑える。
+読み抜けが増える方向のリスクがある。取り返しを除外し、王手中を除くことで
+抑える。やねうら王のようにfail-softの下限を引き上げれば上位ノードへ
+より正確な値を返せるが、MultiPVの整合を優先して見送った。
 
 `move_stack` をqsearchでも更新するため、continuation historyを
 静止探索へ広げる道が開く。現在qsearchのオーダリングは
