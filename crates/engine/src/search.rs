@@ -75,20 +75,25 @@ fn lmp_limit(depth: u32, improving: bool) -> u32 {
     if improving { base } else { base / 2 }
 }
 
-/// LMRのリダクション表。r = 0.5 + ln(depth)・ln(count) / 2.25。
-static LMR_TABLE: std::sync::OnceLock<[[u8; 64]; 64]> = std::sync::OnceLock::new();
+/// LMRのリダクション表（ADR-0076で1024倍の固定小数へ）。
+/// r = 1024・(0.5 + ln(depth)・ln(count) / 2.25)。
+/// 1024倍したスケールはやねうら王の `reductions[d]・reductions[mn]`
+/// （係数466対455、差2.4%）と一致するため、あちらの項の重みを換算せずに
+/// 使える（ADR-0074のスケール前提の確認）。
+static LMR_TABLE: std::sync::OnceLock<[[i32; 64]; 64]> = std::sync::OnceLock::new();
 
-fn lmr_reduction(depth: u32, count: u32) -> u32 {
+/// 1024倍したリダクション量。実際の削り幅は呼び側で /1024 する。
+fn lmr_reduction_x1024(depth: u32, count: u32) -> i32 {
     let t = LMR_TABLE.get_or_init(|| {
-        let mut t = [[0u8; 64]; 64];
+        let mut t = [[0i32; 64]; 64];
         for (d, row) in t.iter_mut().enumerate().skip(1) {
             for (c, r) in row.iter_mut().enumerate().skip(1) {
-                *r = (0.5 + (d as f64).ln() * (c as f64).ln() / 2.25) as u8;
+                *r = (1024.0 * (0.5 + (d as f64).ln() * (c as f64).ln() / 2.25)) as i32;
             }
         }
         t
     });
-    u32::from(t[depth.min(63) as usize][count.min(63) as usize])
+    t[depth.min(63) as usize][count.min(63) as usize]
 }
 
 /// スレッド間の共有状態（ADR-0020）。
@@ -815,11 +820,13 @@ impl Worker {
                     && !gives_check
                     && !in_check
                 {
-                    let mut r = lmr_reduction(depth, count);
+                    // 1024倍固定小数で項を加減する（ADR-0076）
+                    let mut r = lmr_reduction_x1024(depth, count);
                     if is_pv {
-                        r = r.saturating_sub(1);
+                        r -= 1024;
                     }
-                    d = new_depth.saturating_sub(r).max(1);
+                    let red = (r / 1024).max(0) as u32;
+                    d = new_depth.saturating_sub(red).max(1);
                 }
                 let mut v = -self.search(-alpha - 1, -alpha, d, ply + 1, m, &mut child_pv, false);
                 if v > alpha && d < new_depth && !self.stopped() {
