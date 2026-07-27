@@ -301,12 +301,13 @@ fn main() {
                 let is_ponder = tokens.contains(&"ponder");
                 // 定跡ヒットなら探索せず即指す（ADR-0063）。
                 // ponderは相手番を読む処理なので定跡を引かない
-                if !is_ponder && position.game_ply() <= bopts.depth {
-                    if let Some(e) = bopts.book.as_ref().and_then(|b| b.probe(&position)) {
-                        print_line("info string book hit");
-                        print_line(&format!("bestmove {}", e.mv));
-                        continue;
-                    }
+                if !is_ponder
+                    && position.game_ply() <= bopts.depth
+                    && let Some(e) = bopts.book.as_ref().and_then(|b| b.probe(&position))
+                {
+                    print_line("info string book hit");
+                    print_line(&format!("bestmove {}", e.mv));
+                    continue;
                 }
                 if pool.is_none() {
                     pool = Some(ThreadPool::new(

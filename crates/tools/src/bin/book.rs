@@ -92,7 +92,9 @@ fn search_lines(
     pool.wait_idle();
 
     // 各ラインについて最終深さの結果を採る
-    let mut best: HashMap<usize, (u32, i32, Vec<String>)> = HashMap::new();
+    // (depth, score, pv)
+    type BestEntry = (u32, i32, Vec<String>);
+    let mut best: HashMap<usize, BestEntry> = HashMap::new();
     for line in sink.lock().expect("sink").iter() {
         let Some((depth, multipv, score, pv)) = parse_info(line) else {
             continue;
@@ -105,7 +107,7 @@ fn search_lines(
             *e = (depth, score, pv);
         }
     }
-    let mut lines: Vec<(usize, (u32, i32, Vec<String>))> = best.into_iter().collect();
+    let mut lines: Vec<(usize, BestEntry)> = best.into_iter().collect();
     lines.sort_by_key(|(k, _)| *k);
     lines
         .into_iter()
@@ -125,7 +127,7 @@ fn generate(cfg: &Config) -> std::io::Result<()> {
     } else {
         let mut f = std::fs::File::open(&cfg.eval)?;
         let (net, lineage) = himawari_engine::nnue_io::load(&mut f)
-            .map_err(|e| std::io::Error::other(format!("{e}")))?;
+            .map_err(|e| std::io::Error::other(e.to_string()))?;
         eprintln!("EvalFile: {} ({lineage})", cfg.eval);
         Some((cfg.eval.clone(), Arc::new(net)))
     };
