@@ -89,7 +89,7 @@
 | [0070](0070-pr-based-workflow.md) | PRベース開発と種別ごとのマージ条件 | - | accepted |
 | [0071](0071-release-please.md) | release-pleaseによるバージョン更新とリリースの自動化 | - | accepted |
 | [0072](0072-history-pruning.md) | history pruning（履歴が悪い静かな手の枝刈り） | - | proposed（保留） |
-| [0073](0073-history-bonus-scale.md) | history bonus/malus式の再設計 | - | proposed |
+| [0073](0073-history-bonus-scale.md) | history bonus/malus式の再設計 | - | accepted |
 | [0074](0074-feature-verification.md) | SPRTの前に機能検証を行う | - | accepted |
 
 ## バックログ

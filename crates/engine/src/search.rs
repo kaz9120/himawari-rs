@@ -55,6 +55,20 @@ const EFFORT_SCALE_LO: f64 = 0.85;
 const EFFORT_SCALE_HI: f64 = 0.70;
 const SCALE_MIN_DEPTH: u32 = 8;
 
+/// history bonus（ADR-0073）。βカットした静かな手へ与える。
+/// 出典はやねうら王の `min(128·depth - 77, 1529)`。評価値と同じく
+/// スケールをStockfish系へ揃える（[ADR-0074](../../docs/adr/0074-feature-verification.md)）。
+fn history_bonus(depth: u32) -> i32 {
+    (128 * depth as i32 - 77).clamp(0, 1529)
+}
+
+/// history malus（ADR-0073）。試して外れた静かな手へ与える。
+/// bonusより大きく、悪い手を早く後ろへ落とす。
+/// 出典はやねうら王の `min(882·depth - 204, 2122)`。
+fn history_malus(depth: u32) -> i32 {
+    (882 * depth as i32 - 204).clamp(0, 2122)
+}
+
 /// この手数を超えた静かな手を捨てる（ADR-0028）。
 fn lmp_limit(depth: u32, improving: bool) -> u32 {
     let base = 3 + depth * depth;
@@ -1032,7 +1046,9 @@ impl Worker {
             k[0] = m;
         }
         self.counters.update(prev, m);
-        let bonus = (depth * depth + 2 * depth) as i32;
+        // bonusとmalusは別式（ADR-0073）。外れた手を強く忘れさせる
+        let bonus = history_bonus(depth);
+        let malus = history_malus(depth);
         self.history.update(m, bonus);
         // continuation history: 1手前・2手前の文脈にbonus/malusを与える（ADR-0047）
         let prev1 = if ply >= 1 {
@@ -1049,9 +1065,9 @@ impl Worker {
         self.cont.update(prev2, m, bonus);
         for &q in tried {
             if q != m {
-                self.history.update(q, -bonus);
-                self.cont.update(prev1, q, -bonus);
-                self.cont.update(prev2, q, -bonus);
+                self.history.update(q, -malus);
+                self.cont.update(prev1, q, -malus);
+                self.cont.update(prev2, q, -malus);
             }
         }
     }
