@@ -33,8 +33,8 @@ NNUE後の再測定に意味がある。
 | capture futility | staticEval + 218 + 223*lmrDepth + 駒価値 + captHist項。capture historyが前提 | SPRT |
 | capture SEE pruning | see_ge(m, -max(167*depth + captHist*34/1024, 0))。capture historyが前提 | SPRT |
 | ttPvフラグの活用 | TTに保存済みだが探索で読んでいない。LMR・RFP・singularの条件へ供給する。ほぼゼロコスト | SPRT |
-| razoringの深さ制限撤廃 | 現状 depth<=3・マージン300固定。やねうら王は深さ無制限で alpha - 502 - 306*d^2。ADR-0057の拡張 | SPRT |
-| RFPの項追加 | improving・opponentWorsening・TTヒット有無・correction値・返り値の(2*beta+eval)/3化 | SPRT |
+| ~~razoringの深さ制限撤廃~~ | ~~ADR-0075で棄却。マージンの向きを取り違えていた。razoringはマージンが大きいほど刈りにくく、本エンジンの300はやねうら王より緩い。揃えるとノードが5.4倍に増える~~ | ~~棄却~~ |
+| RFPの項追加とマージン緩和 | 4種の枝刈りで唯一、本エンジンが刈りにくい側にある（ADR-0075）。現状 120*depth・depth<=6。やねうら王は 76*depth・depth<15 にimprovingとopponentWorseningの項が付いてさらに減る。返り値の(2*beta+eval)/3化も含む | SPRT |
 | ProbCutの条件緩和 | depth>=5を3へ、マージン200固定を224-61*improvingへ、SEE閾値0をprobCutBeta-staticEvalへ | SPRT |
 | TTベースの簡易ProbCut | ムーブループ直前。ttBoundがLOWERかつttDepth>=depth-4かつttValue>=beta+416で即return | SPRT |
 | qsearchのfutility | futilityBase = staticEval + 328 に駒価値を足して判定し、SEE閾値も併用する。movecount>2の打ち切りも | SPRT |
