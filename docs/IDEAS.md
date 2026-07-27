@@ -37,7 +37,7 @@ NNUE後の再測定に意味がある。
 | RFPの項追加とマージン緩和 | 4種の枝刈りで唯一、本エンジンが刈りにくい側にある（ADR-0075）。現状 120*depth・depth<=6。やねうら王は 76*depth・depth<15 にimprovingとopponentWorseningの項が付いてさらに減る。返り値の(2*beta+eval)/3化も含む | SPRT |
 | ProbCutの条件緩和 | depth>=5を3へ、マージン200固定を224-61*improvingへ、SEE閾値0をprobCutBeta-staticEvalへ | SPRT |
 | TTベースの簡易ProbCut | ムーブループ直前。ttBoundがLOWERかつttDepth>=depth-4かつttValue>=beta+416で即return | SPRT |
-| qsearchのfutility | futilityBase = staticEval + 328 に駒価値を足して判定し、SEE閾値も併用する。movecount>2の打ち切りも | SPRT |
+| ~~qsearchのfutility~~ | ~~ADR-0077で導入。+57.3 Elo（H1採択、1242局）。bestValueの引き上げはMultiPVの整合のため入れていない~~ | ~~完了~~ |
 | singularマージンの将棋適合 | 現状 ttValue - 2*depth はStockfishの値のまま。やねうら王は係数を1/55へ下げ「1割がsingularになるよう調整」と明記 | SPRT |
 | singularの多段化 | double/triple extension、multi-cut、negative extension。ADR-0050は単独延長のみ | SPRT |
 | IIRの条件精緻化 | 現状 depth>=4 かつTT手なし。allNode除外と親のreduction量に連動した深さ±1を足す | SPRT |

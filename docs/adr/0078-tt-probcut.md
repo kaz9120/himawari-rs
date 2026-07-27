@@ -1,0 +1,96 @@
+# 0078: 置換表の下界を使った簡易ProbCut
+
+- Status: proposed
+- Date: 2026-07-28
+- 関連ADR: [0051](0051-probcut.md), [0022](0022-transposition-table.md), [0074](0074-feature-verification.md)
+
+## Context
+
+[ADR-0051](0051-probcut.md)でProbCutを導入し、+44.2 Eloを得た。
+浅い確認探索で「十分良い取る手が1つある」ことを示せれば、高深度の
+全探索を省く仕組みである。
+
+やねうら王はこれとは別に、置換表だけで判定する簡易版を持つ。
+ムーブループの直前に置かれる。
+
+```cpp
+probCutBeta = beta + 416;
+if ((ttData.bound & BOUND_LOWER) && ttData.depth >= depth - 4
+    && ttData.value >= probCutBeta && !is_decisive(beta)
+    && is_valid(ttData.value) && !is_decisive(ttData.value))
+    return probCutBeta;
+```
+
+探索を一切行わない。置換表に「この局面はbeta+416以上である」という
+下界が、depth-4以上の深さで記録されていれば、そのまま返す。
+
+本エンジンにはこの判定がない。置換表のカットは
+`tt_depth >= depth` を要求するため、depth-4の情報は使い捨てている。
+
+## 選択肢と比較
+
+### 案A: やねうら王と同じ位置・同じ条件で入れる
+
+ムーブループ直前、singular extensionの後に置く。マージン416、
+深さ条件 `tt_depth >= depth - 4`。
+
+置換表の情報を使うだけで探索を伴わないため、コストがほぼゼロである。
+判定は比較演算4つで済む。
+
+リスクは、浅い情報で高深度のノードを打ち切ること。マージン416
+（歩4.6枚分）と深さ差4がその歯止めになる。
+
+### 案B: 通常のTTカットの深さ条件を緩める
+
+`tt_depth >= depth` を `tt_depth >= depth - 4` にし、マージンを付ける。
+案Aと実質同じだが、既存のTTカットの経路へ手を入れることになる。
+
+TTカットはPVノードでも除外手つき探索でも条件が異なり、変更の影響範囲が
+広い。独立した判定として足す案Aのほうが切り分けやすい。
+
+### 案C: 入れない
+
+現状維持。ProbCut（ADR-0051）が既にあり、重複する部分がある。
+
+ただしADR-0051のProbCutは `depth >= 5` で、確認探索のコストを払う。
+簡易版はコストゼロで、条件も違う（取る手の存在ではなく置換表の下界）。
+重複よりも補完に近い。
+
+## Decision
+
+案Aを採る。
+
+```
+ムーブループの直前、singular extensionの後に置く:
+
+tt_bound が Lower を含み
+かつ tt_depth >= depth - 4
+かつ tt_value >= beta + TT_PROBCUT_MARGIN
+かつ |beta| < 詰み圏
+かつ |tt_value| < 詰み圏
+  → beta + TT_PROBCUT_MARGIN を返す
+```
+
+`TT_PROBCUT_MARGIN = 416`。出典はやねうら王の同名の判定である。
+評価値は歩=90スケールで一致するため、絶対値のまま用いる
+（[ADR-0074](0074-feature-verification.md)）。
+
+除外手つき探索中（singular検証）はスキップする。本エンジンの他の
+枝刈りと同じ扱いにする（[ADR-0050](0050-singular-extension-retry.md)）。
+
+PVノードでも適用するかは、やねうら王の条件に `!PvNode` がないため
+そのまま適用する。ただし機能検証で発動率を測り、PVノードでの発動が
+多いようなら除外を検討する。
+
+## Consequences
+
+置換表の下界が、これまで使えなかった深さ差でも活きるようになる。
+探索を伴わないため、NPSへの影響はほぼない。
+
+浅い情報で高深度ノードを打ち切るため、読み抜けのリスクがある。
+マージン416と深さ差4がその歯止めになる。H0だった場合は
+マージンを上げるか、深さ差を3に狭める方向で1調整=1SPRTを行う。
+
+[ADR-0051](0051-probcut.md)のProbCutと判定が重なる局面がある。
+本ADRの判定が先に働けば確認探索を省ける。逆に本ADRが偽でも
+ADR-0051が発動しうる。両者は排他ではない。
