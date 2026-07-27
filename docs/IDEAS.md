@@ -5,31 +5,92 @@ ADRを起草してこの帳から消す（採番と経緯はADR側に書く）�
 棄却したら理由を1行残して ~~打ち消し~~ にする。
 検証手段の略記: SPRT=対局ゲート、loss=検証損失、NPS=速度計測。
 
-## 探索
+## 探索: 枝刈り・延長・オーダリング
+
+2026-07-27にやねうら王と機能差分を棚卸しした。比較対象は
+yaneurao/YaneuraOu master の 0899d1dc（Stockfish 17〜18系の移植）で、
+`source/engine/yaneuraou-engine/yaneuraou-search.cpp` ほかを参照した。
+以下4節の未着手案の多くはその差分に由来し、メモ中の式はやねうら王側の
+実装値である。差分はムーブループ内の枝刈り・LMRの項・historyの種類・
+時間配分式の4領域に集中する。
+
+過去にSPRTで棄却した案のうち、P3期（駒割評価）の測定は条件が違う。
+singular extensionがP3の-16.0からP8で+12.6に反転した先例があり、
+NNUE後の再測定に意味がある。
+
+| 案 | 狙い・メモ | 検証 |
+|---|---|---|
+| ~~singular extension再挑戦~~ | ~~ADR-0050で導入。+12.6 Elo（H1採択、P3の-16.0から反転）~~ | ~~完了~~ |
+| ~~ProbCut~~ | ~~ADR-0051で導入。+44.2 Elo（H1採択）~~ | ~~完了~~ |
+| ~~razoring~~ | ~~ADR-0057で導入。+184.8 Elo（H1採択）~~ | ~~完了~~ |
+| ~~qsearchのTT保存拡充~~ | ~~ADR-0054で導入（probe+store+TT手、同一キーガード込み）。+113.6 Elo（H1採択）~~ | ~~完了~~ |
+| lmrDepth基準の枝刈り | 現状は生depthで判断する。lmrDepth = newDepth - r/1024 とhistory補正を導入する。下の枝刈り4件の土台 | SPRT |
+| quiet SEE pruning再挑戦 | ムーブループ内で see_ge(m, -25*lmrDepth^2)。P3で+0.9（2266局）だが駒割評価時代の測定 | SPRT |
+| history pruning | cont[0]+cont[1]の合計が -4097*depth 未満の静かな手を捨てる。未実装 | SPRT |
+| capture futility | staticEval + 218 + 223*lmrDepth + 駒価値 + captHist項。capture historyが前提 | SPRT |
+| capture SEE pruning | see_ge(m, -max(167*depth + captHist*34/1024, 0))。capture historyが前提 | SPRT |
+| ttPvフラグの活用 | TTに保存済みだが探索で読んでいない。LMR・RFP・singularの条件へ供給する。ほぼゼロコスト | SPRT |
+| razoringの深さ制限撤廃 | 現状 depth<=3・マージン300固定。やねうら王は深さ無制限で alpha - 502 - 306*d^2。ADR-0057の拡張 | SPRT |
+| RFPの項追加 | improving・opponentWorsening・TTヒット有無・correction値・返り値の(2*beta+eval)/3化 | SPRT |
+| ProbCutの条件緩和 | depth>=5を3へ、マージン200固定を224-61*improvingへ、SEE閾値0をprobCutBeta-staticEvalへ | SPRT |
+| TTベースの簡易ProbCut | ムーブループ直前。ttBoundがLOWERかつttDepth>=depth-4かつttValue>=beta+416で即return | SPRT |
+| qsearchのfutility | futilityBase = staticEval + 328 に駒価値を足して判定し、SEE閾値も併用する。movecount>2の打ち切りも | SPRT |
+| singularマージンの将棋適合 | 現状 ttValue - 2*depth はStockfishの値のまま。やねうら王は係数を1/55へ下げ「1割がsingularになるよう調整」と明記 | SPRT |
+| singularの多段化 | double/triple extension、multi-cut、negative extension。ADR-0050は単独延長のみ | SPRT |
+| IIRの条件精緻化 | 現状 depth>=4 かつTT手なし。allNode除外と親のreduction量に連動した深さ±1を足す | SPRT |
+| mate1plyの探索組み込み再挑戦 | P3で+1.1（968局、駒割時代）で見送り。やねうら王はTTミス時だけ呼びコストを抑える | SPRT |
+| LMRの固定小数化 | reductionを1024倍固定小数へ。ADR-0055の不採択（-9.0）は整数±1という粒度が原因と読める。項追加の土台 | 非劣性SPRT |
+| LMRの項追加 | rootDelta・ttPv・moveCount・correction値・cutNode・ttCapture・cutoffCnt・ttMove一致・statScore・allNode。1項=1SPRT | SPRT |
+| LMR再探索の深さ調整 | doDeeperSearch（value > bestValue+48）とdoShallowerSearch（value < bestValue+9）でnewDepthを±1する | SPRT |
+| NMPのR拡大と検証探索 | ADR-0052は+7.8 [-0.7,+16.2]（6264局、判定未了で保留、adr-0052-wipブランチ）。R=3+d/4は小さい。R=7+d/3・cutNode限定・nmpMinPlyで再挑戦 | SPRT保留 |
+| aspiration窓の再調整 | delta 20固定を 5+|meanSquaredScore|/9000 へ、中心を前深さのスコアからaverageScoreへ、拡大をdelta/3へ。fail-high時にrootDepthを削る | SPRT |
+| 王手・取り返し延長の精査 | やねうら王は王手延長も取り返し延長も持たない（Stockfishが削除、将棋では王手が続きやりすぎになる）。現状のgives_check延長が過剰でないかを測る | SPRT |
+| df-pn詰み探索 | 長手数詰み。終盤力・宣言勝ち周りの取りこぼし対策 | SPRT |
+| SEE駒価値のNNUE時代適合 | 枝刈り閾値系の駒価値を再調整 | SPRT |
+
+## 探索: history
 
 | 案 | 狙い・メモ | 検証 |
 |---|---|---|
 | ~~correction history~~ | ~~ADR-0046で導入。+44.6 Elo（H1採択）~~ | ~~完了~~ |
 | ~~continuation history~~ | ~~ADR-0047で導入。+20.7 Elo（H1採択）~~ | ~~完了~~ |
 | ~~capture history~~ | ~~ADR-0048で不採択（872局で-2.4、効果なし打ち切り）。MVV-LVAとのスケール再設計なら再挑戦可~~ | ~~不採択~~ |
-| ~~singular extension再挑戦~~ | ~~ADR-0050で導入。+12.6 Elo（H1採択、P3の-16.0から反転）~~ | ~~完了~~ |
-| ~~ProbCut~~ | ~~ADR-0051で導入。+44.2 Elo（H1採択）~~ | ~~完了~~ |
-| ~~razoring~~ | ~~ADR-0057で導入。+184.8 Elo（H1採択）~~ | ~~完了~~ |
-| NMPの動的深さ・検証探索 | ADR-0052で導入試行。6264局で+7.8 [-0.7,+16.2]判定未了、保留（adr-0052-wipブランチ） | SPRT保留 |
-| LMR式の再チューニング | ADR-0055のimproving+history項（等重み±1）は960局で-9.0の不採択。項の分解・cutnode項・しきい値再設計で再挑戦可 | SPRT |
-| SEE枝刈り再挑戦 | P3で中立。マージン再設計とNNUE後の再測定 | SPRT |
-| ~~qsearchのTT保存拡充~~ | ~~ADR-0054で導入（probe+store+TT手、同一キーガード込み）。+113.6 Elo（H1採択）~~ | ~~完了~~ |
-| ~~eval hash~~ | ~~ADR-0049で導入。+54.1 Elo、NPS +10.4%（H1採択）~~ | ~~完了~~ |
-| mate1plyテーブル駆動版 | ADR-0029案Bの本来形。判定コストを下げ探索へ復帰 | SPRT |
-| df-pn詰み探索 | 長手数詰み。終盤力・宣言勝ち周りの取りこぼし対策 | SPRT |
-| 王手・取り返し延長の精査 | 延長条件の整理（現状の実装を棚卸しして再設計） | SPRT |
-| aspiration窓の再調整 | NNUE評価のスケールに合わせた初期幅・拡大則 | SPRT |
-| ~~TTのbucket化・prefetch~~ | ~~bucket化はADR-0022で実装済み。prefetchはADR-0056で不採択（144局で-33.9、Apple Siliconで効果なし）~~ | ~~不採択~~ |
-| Lazy SMPの分担スキーム | スレッドごとのdepth skipパターン見直し | SPRT |
+| capture history再挑戦 | 上限10692・初期値-678のgravity方式へ作り替える。capture系の枝刈り2件の前提になる | SPRT |
+| correction historyの多系統化 | 現状はpawn keyのみで+44.6 Elo。minor piece・nonPawn（先手/後手）・continuation（2手前/4手前）を足して重み合成する。core側にキーの追加が要る | SPRT |
+| continuation historyの段数拡張 | 現状2段（1手前・2手前）。6手前まで重み付きにし、[王手中][捕獲]の4系統へ分ける | SPRT |
+| main historyの次元拡張 | 現状[駒32][移動先81]でfromも打ちの区別も持たない。[手番][move.raw()]へ。衝突の実測が先 | SPRT |
+| statScoreの導入 | 捕獲は駒価値+captHist、静かな手は2*mainHist+cont[0]+cont[1]。LMRとbonus式の両方へ供給する | SPRT |
+| pawn history | 歩の配置を条件にした指し手履歴。history pruningの入力にもなる | SPRT |
+| lowPly history | ply<5専用の履歴。毎イテレーション98で初期化する | SPRT |
+| bonus/malus式の再設計 | 現状は depth^2+2*depth の対称式。bonusを min(128*depth-77,1529)+ttMove一致項へ、malusを別式にして後方の手ほど減衰させる | SPRT |
+| TTカット時のhistory更新 | ttValue>=betaでカットするとき、静かなTT手のhistoryと直前手のcontinuation historyを更新する | SPRT |
+
+## 探索: 時間管理
+
+floodgateの負け11局は終盤の時間枯渇だった（RESULTS.md）。この節は
+その対処に直結する。
+
+| 案 | 狙い・メモ | 検証 |
+|---|---|---|
+| 時間配分式のmove_horizon化 | ADR-0021の初期式のまま。MTG = min(max_moves_to_draw - ply + 2, 160±ply補正)/2。切れ負けと秒読みで分岐させ、終盤に厚く配る | SPRT |
+| 秒単位切り上げと使い切り | stopを立てる代わりにsearch_endを設定し、秒単位まで使い切る。maximumがavail*3に張り付く問題も同時に見直す | SPRT |
+| bestMoveChangesのスレッド集約 | 全スレッドの最善手変更回数を集約し 1.04+1.8956*changes/threads を掛ける。現状はメインのstable_itersのみ | SPRT |
+| 安定度のロジスティック化 | 現状は 1.5-0.15*n の線形。0.723+0.79/(1.104+exp(-0.5189*(depth-center)))、center=lastBestMoveDepth+11.57 | SPRT |
+| 最小思考時間とponder延長 | MinimumThinkingTime（やねうら王の既定は2000ms）と、ponder有効時にoptimumを1.25倍する扱い | SPRT |
 | 時間管理: fail-low延長 | ADR-0059は評価下落で伸ばす。root fail-low時の明示的な延長は未着手 | SPRT |
-| 時間配分式の再設計 | ADR-0021の初期式のまま。終盤の厚みがやねうら王のmove_horizon方式に劣る（ADR-0058で調査） | SPRT |
-| contempt（千日手スコア） | 強い相手に引き分け許容、弱い相手に回避 | SPRT |
-| SEE駒価値のNNUE時代適合 | 枝刈り閾値系の駒価値を再調整 | SPRT |
+
+## 探索: 並列・置換表
+
+| 案 | 狙い・メモ | 検証 |
+|---|---|---|
+| ~~TTのbucket化・prefetch~~ | ~~bucket化はADR-0022で実装済み。prefetchはADR-0056で不採択（144局で-33.9、Apple Siliconで効果なし）~~ | ~~不採択~~ |
+| ~~eval hash~~ | ~~ADR-0049で導入。+54.1 Elo、NPS +10.4%（H1採択）~~ | ~~完了~~ |
+| best thread voting | 現状はメインワーカーの結果のみ採用する。(score-minScore+14)*completedDepth で投票させる。Threads>=4で効く | SPRT |
+| Lazy SMPのdelta多様化 | aspiration初期deltaに threadIdx%8 を足す。現状は全ワーカーが同一探索で、多様化源がTT到着順しかない | SPRT |
+| historyのスレッド共有 | pawn historyとcorrection historyをatomicで共有する（やねうら王はNUMA単位）。現状は全てスレッドローカル | SPRT |
+| TTクラスタの手番分割 | インデックスの最下位ビットを手番で置換し、手番違いの衝突を消す | SPRT |
+| draw valueのオプション化 | contempt相当。DrawValueBlack/White（やねうら王の既定は歩の-2%）。強い相手に引き分けを許容する | SPRT |
+| 投了値（ResignValue） | 評価値が閾値を下回ったら投了する。現状は詰みでのみ投了する | 動作 |
 
 ## ネットワーク構造
 
