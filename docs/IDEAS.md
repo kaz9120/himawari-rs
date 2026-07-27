@@ -26,7 +26,6 @@ NNUE後の再測定に意味がある。
 | ~~qsearchのTT保存拡充~~ | ~~ADR-0054で導入（probe+store+TT手、同一キーガード込み）。+113.6 Elo（H1採択）~~ | ~~完了~~ |
 | lmrDepth基準の枝刈り | 現状は生depthで判断する。lmrDepth = newDepth - r/1024 とhistory補正を導入する。下の枝刈り4件の土台 | SPRT |
 | quiet SEE pruning再挑戦 | ムーブループ内で see_ge(m, -25*lmrDepth^2)。P3で+0.9（2266局）だが駒割評価時代の測定 | SPRT |
-| history pruning | cont[0]+cont[1]の合計が -4097*depth 未満の静かな手を捨てる。未実装 | SPRT |
 | capture futility | staticEval + 218 + 223*lmrDepth + 駒価値 + captHist項。capture historyが前提 | SPRT |
 | capture SEE pruning | see_ge(m, -max(167*depth + captHist*34/1024, 0))。capture historyが前提 | SPRT |
 | ttPvフラグの活用 | TTに保存済みだが探索で読んでいない。LMR・RFP・singularの条件へ供給する。ほぼゼロコスト | SPRT |
@@ -57,12 +56,12 @@ NNUE後の再測定に意味がある。
 | ~~capture history~~ | ~~ADR-0048で不採択（872局で-2.4、効果なし打ち切り）。MVV-LVAとのスケール再設計なら再挑戦可~~ | ~~不採択~~ |
 | capture history再挑戦 | 上限10692・初期値-678のgravity方式へ作り替える。capture系の枝刈り2件の前提になる | SPRT |
 | correction historyの多系統化 | 現状はpawn keyのみで+44.6 Elo。minor piece・nonPawn（先手/後手）・continuation（2手前/4手前）を足して重み合成する。core側にキーの追加が要る | SPRT |
-| continuation historyの段数拡張 | 現状2段（1手前・2手前）。6手前まで重み付きにし、[王手中][捕獲]の4系統へ分ける | SPRT |
+| continuation historyの段数拡張 | 現状2段（1手前・2手前）。6手前まで重み付きにし、[王手中][捕獲]の4系統へ分ける。ADR-0073の後に行う。現状のテーブルは0.24%しか埋まっておらず、bonusが小さいまま系統を増やすとさらに疎になって逆効果 | SPRT |
 | main historyの次元拡張 | 現状[駒32][移動先81]でfromも打ちの区別も持たない。[手番][move.raw()]へ。衝突の実測が先 | SPRT |
 | statScoreの導入 | 捕獲は駒価値+captHist、静かな手は2*mainHist+cont[0]+cont[1]。LMRとbonus式の両方へ供給する | SPRT |
 | pawn history | 歩の配置を条件にした指し手履歴。history pruningの入力にもなる | SPRT |
 | lowPly history | ply<5専用の履歴。毎イテレーション98で初期化する | SPRT |
-| bonus/malus式の再設計 | 現状は depth^2+2*depth の対称式。bonusを min(128*depth-77,1529)+ttMove一致項へ、malusを別式にして後方の手ほど減衰させる | SPRT |
+| history bonusのttMove一致項と後方減衰 | ADR-0073は基本式のみを扱う。bonusへ 353*(bestMove==ttMove) を足し、malusを後方の手ほど ×977/1024 で減衰させる。外れた手の順序を保持する必要がある | SPRT |
 | TTカット時のhistory更新 | ttValue>=betaでカットするとき、静かなTT手のhistoryと直前手のcontinuation historyを更新する | SPRT |
 
 ## 探索: 時間管理

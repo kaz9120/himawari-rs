@@ -88,6 +88,8 @@
 | [0069](0069-release-notes-automation.md) | リリースノートのSPRT採択からの自動生成 | - | superseded（[0071](0071-release-please.md)） |
 | [0070](0070-pr-based-workflow.md) | PRベース開発と種別ごとのマージ条件 | - | accepted |
 | [0071](0071-release-please.md) | release-pleaseによるバージョン更新とリリースの自動化 | - | accepted |
+| [0072](0072-history-pruning.md) | history pruning（履歴が悪い静かな手の枝刈り） | - | proposed（保留） |
+| [0073](0073-history-bonus-scale.md) | history bonus/malus式の再設計 | - | proposed |
 
 ## バックログ
 
