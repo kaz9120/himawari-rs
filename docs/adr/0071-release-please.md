@@ -127,8 +127,15 @@ pull-requests: write）をシークレットに登録する。`GITHUB_TOKEN` が
 auto-mergeの条件が満たされない。
 
 `release-type: "rust"` がworkspaceの `[workspace.package] version` を
-更新できるかは、導入時に実際のリリースPRで確かめる。更新されない場合は
-`extra-files` でルートの `Cargo.toml` を対象に加える。
+更新できるか不明なため、`extra-files` のtoml updaterで
+`$.workspace.package.version` を明示的に対象へ加える。二重に更新しても
+同じ値を書くだけで害はない。
+
+差分の起点には `bootstrap-sha` を指定する。導入時点で最新のタグは
+v0.7.0だが、`Cargo.toml` は0.7.3まで進んでおり、v0.7.3のタグが存在
+しない。起点を明示しないと、release-pleaseがどこから差分を取るか
+決められない。導入時のmainのHEADを指定し、それ以降のコミットだけを
+対象にする。
 
 ## Consequences
 
