@@ -4,13 +4,18 @@
 [ADR-0001](0001-adr-process.md) を参照。番号は全体の通し番号で、
 起草した順に採番する。バックログ上の未起草の決定には番号を付けない。
 
-開発は「ADR群を書く→実装→検証」をフェーズ単位で繰り返す。
-各フェーズには出口条件があり、通過するまで次フェーズのADRを書かない。
-フェーズ表は [ROADMAP.md](../ROADMAP.md) を正とする。
+設計判断はADRに起草し、実装と検証を経てacceptedにする。棋力が変わる
+変更はSPRTでのH1採択がマージ条件になる
+（[ADR-0070](0070-pr-based-workflow.md)）。現在地と残作業は
+[ROADMAP.md](../ROADMAP.md) を正とする。
+
+フェーズ管理（P0〜P8）は[ADR-0068](0068-sprt-driven-versioning.md)で
+終えた。下の表の「起草時期」列は当時の区分を履歴として残したもので、
+新規のADRには付けない。
 
 ## 起草済みADR
 
-| ADR | タイトル | フェーズ | Status |
+| ADR | タイトル | 起草時期 | Status |
 |---|---|---|---|
 | [0001](0001-adr-process.md) | ADRテンプレートと運用 | P0 | accepted |
 | [0002](0002-cargo-workspace.md) | cargo workspace構成とクレート分割 | P0 | accepted |
@@ -18,7 +23,7 @@
 | [0004](0004-unsafe-policy.md) | unsafe方針 | P0 | accepted |
 | [0005](0005-static-tables.md) | 静的テーブル生成戦略 | P0 | accepted |
 | [0006](0006-ci-test-bench.md) | CI・テスト・ベンチマーク戦略 | P0 | accepted |
-| [0007](0007-versioning.md) | エンジンのバージョニング戦略 | P0 | accepted |
+| [0007](0007-versioning.md) | エンジンのバージョニング戦略 | P0 | superseded（[0068](0068-sprt-driven-versioning.md)） |
 | [0008](0008-square-coordinates.md) | 座標系（Square/File/Rank） | P1 | accepted |
 | [0009](0009-piece-encoding.md) | Piece/PieceTypeエンコーディング | P1 | accepted |
 | [0010](0010-bitboard-layout.md) | Bitboardレイアウト | P1 | accepted |
@@ -79,53 +84,26 @@
 | [0065](0065-large-scale-dataloader.md) | バッチ一括抽出とチャンク読みによるデータ供給 | P8 | accepted |
 | [0066](0066-halfkp-factorizer.md) | 学習時のみの駒単独仮想特徴（factorizer） | P8 | accepted |
 | [0067](0067-ft-dimension-512.md) | FT次元256→512（コンパイル時feature切替） | P8 | accepted |
+| [0068](0068-sprt-driven-versioning.md) | SPRT採択基準のバージョニングとフェーズ管理の終了 | - | accepted |
+| [0069](0069-release-notes-automation.md) | リリースノートのSPRT採択からの自動生成 | - | accepted |
+| [0070](0070-pr-based-workflow.md) | PRベース開発と種別ごとのマージ条件 | - | accepted |
 
 ## バックログ
 
 未起草の決定事項。起草時に通し番号を採番し、上の表へ移す。
-
-### P1: 盤面表現・指し手生成
-
-（すべて起草済み）
-
-### P2: USI + 探索v1
-
-（すべて起草済み）
-
-### P3: 探索強化 + 並列化 + ルール完全対応
+フェーズ管理を終えた（[ADR-0068](0068-sprt-driven-versioning.md)）ため、
+分類を持たない1つの表にまとめている。
 
 | 決定事項 | 主要論点 |
 |---|---|
-| df-pn詰み探索 | 長手数詰み。mate1ply（ADR-0029）の後段。任意 |
-
-### P4: NNUE推論
-
-（ADRはすべて起草済み。実装はROADMAP参照）
-
-| 決定事項 | 主要論点 |
-|---|---|
-| nnueクレート分離の要否 | ADR-0002の当初計画はnnue独立クレート。現状はengine内実装。P5の学習器との共有範囲を見てから判断 |
-
-### P6: 学習基盤の完成
-
-（ADR-0040で起草済み。early stopping・実験レジストリも同ADR内）
-
-### P7: ネットワーク構造の探索・決定
-
-| 決定事項 | 主要論点 |
-|---|---|
-| 利き塔のon/off | NPSコスト（-40%）に見合うか。学習済みネットでSPRT判定 |
+| df-pn詰み探索 | 長手数詰み。mate1ply（[ADR-0029](0029-mate-search.md)）の後段。任意 |
+| nnueクレート分離の要否 | ADR-0002の当初計画はnnue独立クレート。現状はengine内実装。学習器との共有範囲を見てから判断 |
 | 新特徴量の設計 | 差分計算可能な特徴量の探索。LLM技術（attention等）の局所適用 |
-| 出力ヘッド設計 | WDL・進行度・安定度の多ヘッド化。探索への供給 |
-| FT次元・隠れ層構成 | 256→512等の拡大。NPSとのトレードオフ |
-| output bucket | 駒数で層分岐。PSQT直結パス |
-| factorizer | 学習時のみのK/P分解で汎化加速 |
-
-### P8: 本格学習 + 探索改善 + データ拡大
-
-| 決定事項 | 主要論点 |
-|---|---|
-| gensfen設計 | 開始局面多様化、勝敗ラベル。持将棋は24点法で裁定（2028年選手権から27点法→24点法変更予定） |
+| 出力ヘッド設計 | WDL・進行度・安定度の多ヘッド化。時間管理・枝刈り強度・contemptへの供給 |
+| output bucket | 局面フェーズで最終層を分岐する。将棋は取った駒が持ち駒になり総数が減らないため、手数や盤上駒数など別の指標設計が要る（[ADR-0067](0067-ft-dimension-512.md)） |
+| gensfen設計 | 開始局面多様化、勝敗ラベル。持将棋は24点法で裁定（2028年選手権から27点法→24点法へ変更予定） |
 | 宣言勝ちの24点法対応 | ADR-0030は27点法（CSA）。24点法モードを追加しUSIオプションで切替 |
 | RL世代ループ | 自己対局RL、gensfen自前生成、世代ループ |
-| 探索改善パッケージ | correction history、singular extension再挑戦など（IDEAS.md参照） |
+| 学習済みネットの管理・配布方法 | リリースにもリポジトリにも含めない（[ADR-0069](0069-release-notes-automation.md)）。実験成果物として別系統で管理する。命名規則・保管先・SPRT結果との対応づけ・世代の追跡 |
+| マージ時のバージョン自動更新 | [ADR-0070](0070-pr-based-workflow.md)の第2段階。ブランチ保護とmainへの自動コミットの折り合い |
+| NPS回帰のCI監視 | ベンチ局面のNPSをCIで記録し退行を検知する。評価関数を固定した以上、探索改善の安全網になる |

@@ -1,8 +1,8 @@
 # 0007: エンジンのバージョニング戦略
 
-- Status: accepted
+- Status: superseded
 - Date: 2026-07-17
-- 関連ADR: [0003](0003-toolchain.md), [0006](0006-ci-test-bench.md)
+- 関連ADR: [0003](0003-toolchain.md), [0006](0006-ci-test-bench.md), [0068](0068-sprt-driven-versioning.md)（本ADRを置き換え）
 
 ## Context
 
@@ -82,3 +82,16 @@ NNUE評価関数ファイルの扱いは、方向性のみ次のとおり定め�
   CI経由のビルドに限られる。SPRT用ビルドをCI成果物に寄せる動機になる
 - フェーズ構成が変わった場合（フェーズの分割・追加）はMINORの対応表が
   ずれる。その際はこのADRを更新する
+
+## 追記（2026-07-27）
+
+[ADR-0068](0068-sprt-driven-versioning.md) が本ADRを置き換えた。
+
+本ADRは「1.0.0 = P5出口（自前学習NNUEが駒割にSPRTで有意勝ち）」と
+定めたが、P5は0.6.0で通過し、1.0を打つ機会を逃した。MINORの基準と
+したフェーズ出口も、P8で継続的な改善の段階に入って意味を失った。
+ADR-0068はSPRT採択1件をMINOR、選手権への参加をMAJORとする体系へ
+移している。
+
+`workspace.package.version` を唯一の情報源とする方針と、devビルドを
+`HIMAWARI_BUILD_ID` で識別する方式は、ADR-0068でもそのまま引き継いだ。
