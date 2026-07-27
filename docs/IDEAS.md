@@ -65,6 +65,7 @@ NNUE後の再測定に意味がある。
 | statScoreの導入 | 捕獲は駒価値+captHist、静かな手は2*mainHist+cont[0]+cont[1]。LMRとbonus式の両方へ供給する | SPRT |
 | pawn history | 歩の配置を条件にした指し手履歴。history pruningの入力にもなる | SPRT |
 | lowPly history | ply<5専用の履歴。毎イテレーション98で初期化する | SPRT |
+| historyのdivisor調整 | ADR-0073でbonus/malusを上げた結果、main historyの非ゼロ平均が6590へ上がり最大値が平衡点16384に飽和した。やねうら王の上限は7183。divisorを下げて解像度を戻せるか | SPRT |
 | history bonusのttMove一致項と後方減衰 | ADR-0073は基本式のみを扱う。bonusへ 353*(bestMove==ttMove) を足し、malusを後方の手ほど ×977/1024 で減衰させる。外れた手の順序を保持する必要がある | SPRT |
 | TTカット時のhistory更新 | ttValue>=betaでカットするとき、静かなTT手のhistoryと直前手のcontinuation historyを更新する | SPRT |
 
