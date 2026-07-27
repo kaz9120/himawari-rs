@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.8.4](https://github.com/kaz9120/himawari-rs/compare/v0.8.3...v0.8.4) (2026-07-27)
+
+
+### その他の変更
+
+* MultiPVの出力をスコア降順に整える（ADR-0032） ([#24](https://github.com/kaz9120/himawari-rs/issues/24)) ([15380d6](https://github.com/kaz9120/himawari-rs/commit/15380d6b583e73e9ef8c7dad83fb63def7551232))
+
 ## [0.8.3](https://github.com/kaz9120/himawari-rs/compare/v0.8.2...v0.8.3) (2026-07-27)
 
 
