@@ -1,0 +1,23 @@
+{
+	"$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
+	"release-type": "rust",
+	"bump-minor-pre-major": true,
+	"separate-pull-requests": false,
+	"packages": {
+		".": {
+			"extra-files": [
+				{
+					"type": "toml",
+					"path": "Cargo.toml",
+					"jsonpath": "$.workspace.package.version"
+				}
+			]
+		}
+	},
+	"changelog-sections": [
+		{ "type": "feat", "section": "棋力向上" },
+		{ "type": "fix", "section": "その他の変更" },
+		{ "type": "docs", "section": "ドキュメント", "hidden": false },
+		{ "type": "chore", "section": "内部", "hidden": false }
+	]
+}

@@ -43,6 +43,8 @@ SPRT: <Elo> [<CI下限>,<CI上限>] <対局数>games <H0|H1>
 
 - [ ] CIが緑
 - [ ] SPRTでH1採択（これがマージ条件。ADR-0070）
-- [ ] `Cargo.toml` のMINORを上げた（ADR-0068）
+- [ ] コミットの型は `feat`、件名にEloを入れた（ADR-0071）
 - [ ] RESULTS.mdへ結果を追記した（append-only）
 - [ ] 設計判断があればADRを起草し、acceptedにした
+
+バージョンはrelease-pleaseが上げる。`Cargo.toml` は触らない。

@@ -1,0 +1,63 @@
+name: Release Please
+
+# mainに積まれたConventional Commitsからバージョンbumpを算出し、
+# リリースPRを作成・更新する（ADR-0071）。リリースPRはauto-mergeを
+# 有効化し、required check（check）の通過後に自動でマージされる。
+# マージされるとCargo.tomlのversionとCHANGELOG.mdが更新され、
+# タグとGitHub Releaseが作られる。タグpushを受けてrelease.ymlが
+# CPU別バイナリをビルドし、そのリリースへ添付する。
+#
+# 型とbumpの対応（ADR-0071）:
+#   feat  -> MINOR（SPRTでH1採択した変更）
+#   fix   -> PATCH（棋力に影響しないコードの変更）
+#   docs  -> bumpなし（文書のみ）
+#   chore -> bumpなし（CI・設定・テスト・依存更新）
+# MAJORは Release-As: 1.0.0 トレーラで明示する（選手権への参加）。
+#
+# NOTE: GITHUB_TOKENではなくfine-grained PAT（RELEASE_PLEASE_TOKEN）を使う。
+# GITHUB_TOKENが起こしたイベントはワークフローを起動しない（GitHubの再帰
+# 防止仕様）ため、GITHUB_TOKENのままだと
+#   - リリースPRにpull_requestトリガーのCIが走らず、auto-mergeの
+#     required checkが永遠に満たされない
+#   - リリースPRマージ後のpushで本ワークフローが走らず、タグと
+#     GitHub Releaseの作成が次のpushまで宙に浮く
+# の2点が破綻する。PATの権限はcontents: write + pull-requests: write。
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+# 連続pushでリリースPRの更新とauto-mergeが競合しないよう直列化する。
+# cancel-in-progressにはしない（タグ作成の取りこぼしを防ぐ）。
+concurrency:
+  group: release-please
+  cancel-in-progress: false
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
+        id: release-please
+        with:
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+      # リリースPRの差分はversionとCHANGELOGだけなので、CI通過を条件に
+      # 人間の確認なしでマージする。
+      #
+      # NOTE: stepのenvはifがfalseでも評価される（actions/runnerの仕様）。
+      # pr出力が空のときfromJSONがenvでテンプレートエラーになりjobごと
+      # 落ちるため、envには生のJSONを渡してシェル側でjqでパースする。
+      - name: Enable auto-merge on release PR
+        if: steps.release-please.outputs.prs_created == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_PLEASE_TOKEN }}
+          PR_JSON: ${{ steps.release-please.outputs.pr }}
+          REPO: ${{ github.repository }}
+        run: gh pr merge --auto --squash "$(jq -r '.number' <<< "$PR_JSON")" --repo "$REPO"

@@ -85,8 +85,9 @@
 | [0066](0066-halfkp-factorizer.md) | 学習時のみの駒単独仮想特徴（factorizer） | P8 | accepted |
 | [0067](0067-ft-dimension-512.md) | FT次元256→512（コンパイル時feature切替） | P8 | accepted |
 | [0068](0068-sprt-driven-versioning.md) | SPRT採択基準のバージョニングとフェーズ管理の終了 | - | accepted |
-| [0069](0069-release-notes-automation.md) | リリースノートのSPRT採択からの自動生成 | - | accepted |
+| [0069](0069-release-notes-automation.md) | リリースノートのSPRT採択からの自動生成 | - | superseded（[0071](0071-release-please.md)） |
 | [0070](0070-pr-based-workflow.md) | PRベース開発と種別ごとのマージ条件 | - | accepted |
+| [0071](0071-release-please.md) | release-pleaseによるバージョン更新とリリースの自動化 | - | accepted |
 
 ## バックログ
 
@@ -105,5 +106,4 @@
 | 宣言勝ちの24点法対応 | ADR-0030は27点法（CSA）。24点法モードを追加しUSIオプションで切替 |
 | RL世代ループ | 自己対局RL、gensfen自前生成、世代ループ |
 | 学習済みネットの管理・配布方法 | リリースにもリポジトリにも含めない（[ADR-0069](0069-release-notes-automation.md)）。実験成果物として別系統で管理する。命名規則・保管先・SPRT結果との対応づけ・世代の追跡 |
-| マージ時のバージョン自動更新 | [ADR-0070](0070-pr-based-workflow.md)の第2段階。ブランチ保護とmainへの自動コミットの折り合い |
 | NPS回帰のCI監視 | ベンチ局面のNPSをCIで記録し退行を検知する。評価関数を固定した以上、探索改善の安全網になる |
