@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.9.0](https://github.com/kaz9120/himawari-rs/compare/v0.8.5...v0.9.0) (2026-07-27)
+
+
+### 棋力向上
+
+* 静止探索にfutility枝刈りを入れる（+57.3 Elo、ADR-0077） ([#28](https://github.com/kaz9120/himawari-rs/issues/28)) ([02bc6e7](https://github.com/kaz9120/himawari-rs/commit/02bc6e76cebc290b0b585af9c26da4dd4be9297e))
+
 ## [0.8.5](https://github.com/kaz9120/himawari-rs/compare/v0.8.4...v0.8.5) (2026-07-27)
 
 
