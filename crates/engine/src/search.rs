@@ -40,6 +40,13 @@ const IIR_MIN_DEPTH: u32 = 4;
 /// razoringの最大深さとマージン（ADR-0057）。
 const RAZOR_MAX_DEPTH: u32 = 3;
 const RAZOR_MARGIN: Value = 300;
+/// 静止探索のfutility（ADR-0077）。stand patにこの値を足した額を上限とし、
+/// 取る駒の価値を足してもalphaに届かない手を捨てる。movecount制限は
+/// 「3手目以降は駒価値を見ずに捨てる」。出典はやねうら王の
+/// `futilityBase = staticEval + 328` と `moveCount > 2`。評価値は歩=90
+/// スケールで一致するため絶対値のまま用いる（ADR-0074）。
+const QS_FUTILITY_MARGIN: Value = 328;
+const QS_MOVECOUNT_LIMIT: u32 = 2;
 
 /// 思考時間の難易度スケール（ADR-0059）。optimumを3係数の積で伸縮させる。
 /// 評価の下落は時間を伸ばし、最善手の安定とノード集中は縮める。
@@ -989,6 +996,8 @@ impl Worker {
             self.eval_cached(key)
         };
         let mut best = -VALUE_INFINITE;
+        // 静止探索のfutilityの基準（ADR-0077）。王手中は定義しない
+        let mut futility_base = -VALUE_INFINITE;
         if !in_check {
             // stand pat（ADR-0024）。correction historyで補正する（ADR-0046）
             let stand = self.to_corrected(raw_eval);
@@ -999,7 +1008,17 @@ impl Worker {
                 alpha = stand;
             }
             best = stand;
+            futility_base = stand + QS_FUTILITY_MARGIN;
         }
+        // 1手前の移動先（取り返しをfutilityの対象から外す。ADR-0077）
+        let prev_sq = if ply >= 1
+            && self.move_stack[ply - 1] != Move::NONE
+            && !self.move_stack[ply - 1].is_special()
+        {
+            Some(self.move_stack[ply - 1].to())
+        } else {
+            None
+        };
 
         // 入口plyだけ静かな王手も読む（ADR-0028の項目7）
         let mut picker = MovePicker::new_qsearch(&self.pos, tt_move, qdepth == 0);
@@ -1013,6 +1032,39 @@ impl Worker {
                 continue;
             }
             count += 1;
+
+            // futility（ADR-0077）: 王手をかけず取り返しでもない手を、
+            // 取る駒の価値を足してもalphaへ届かないなら捨てる。
+            // fail-softを保つため、捨てる前にbestを引き上げる
+            if !in_check
+                && futility_base > VALUE_MATED_IN_MAX_PLY
+                && !self.pos.gives_check(m)
+                && Some(m.to()) != prev_sq
+            {
+                if count > QS_MOVECOUNT_LIMIT {
+                    continue;
+                }
+                let captured = self.pos.piece_on(m.to());
+                let gain = if captured.is_empty() {
+                    VALUE_ZERO
+                } else {
+                    himawari_core::piece_value(captured.piece_type())
+                };
+                // やねうら王はここでbestをfutility値まで引き上げるが、
+                // 本エンジンのMultiPVはライン確定ごとに出力し、Stockfishの
+                // ような確定後のソートを持たない。窓に依存する値をbestへ
+                // 入れるとライン間のスコア順序が崩れるため引き上げない。
+                // fail-softの下限を報告しないだけで、探索の正しさは保たれる
+                let futility_value = futility_base + gain;
+                if futility_value <= alpha {
+                    continue;
+                }
+                if !self.pos.see_ge(m, alpha - futility_base) {
+                    continue;
+                }
+            }
+
+            self.move_stack[ply] = m;
             self.pos.do_move(m);
             self.evaluator.push(&self.pos);
             let value = -self.qsearch(-beta, -alpha, ply + 1, qdepth - 1);
