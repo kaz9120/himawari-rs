@@ -56,7 +56,7 @@ NNUE後の再測定に意味がある。
 | ~~capture history~~ | ~~ADR-0048で不採択（872局で-2.4、効果なし打ち切り）。MVV-LVAとのスケール再設計なら再挑戦可~~ | ~~不採択~~ |
 | capture history再挑戦 | 上限10692・初期値-678のgravity方式へ作り替える。capture系の枝刈り2件の前提になる | SPRT |
 | correction historyの多系統化 | 現状はpawn keyのみで+44.6 Elo。minor piece・nonPawn（先手/後手）・continuation（2手前/4手前）を足して重み合成する。core側にキーの追加が要る | SPRT |
-| continuation historyの段数拡張 | 現状2段（1手前・2手前）。6手前まで重み付きにし、[王手中][捕獲]の4系統へ分ける | SPRT |
+| continuation historyの段数拡張 | 現状2段（1手前・2手前）。6手前まで重み付きにし、[王手中][捕獲]の4系統へ分ける。ADR-0073の後に行う。現状のテーブルは0.24%しか埋まっておらず、bonusが小さいまま系統を増やすとさらに疎になって逆効果 | SPRT |
 | main historyの次元拡張 | 現状[駒32][移動先81]でfromも打ちの区別も持たない。[手番][move.raw()]へ。衝突の実測が先 | SPRT |
 | statScoreの導入 | 捕獲は駒価値+captHist、静かな手は2*mainHist+cont[0]+cont[1]。LMRとbonus式の両方へ供給する | SPRT |
 | pawn history | 歩の配置を条件にした指し手履歴。history pruningの入力にもなる | SPRT |
