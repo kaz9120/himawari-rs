@@ -126,10 +126,20 @@ pull-requests: write）をシークレットに登録する。`GITHUB_TOKEN` が
 起こしたイベントはワークフローを起動しないため、リリースPRにCIが走らず
 auto-mergeの条件が満たされない。
 
-`release-type: "rust"` がworkspaceの `[workspace.package] version` を
-更新できるか不明なため、`extra-files` のtoml updaterで
-`$.workspace.package.version` を明示的に対象へ加える。二重に更新しても
-同じ値を書くだけで害はない。
+`release-type` には `simple` を使い、`extra-files` のtoml updaterで
+`$.workspace.package.version` を更新する。
+
+当初は `rust` を指定したが、導入直後の実行が
+`value at path package.version is not tagged` で失敗した。rust strategyは
+各クレートの `package.version` を文字列として書き換えるが、本リポジトリの
+クレートは `version.workspace = true` で継承しており、書き換える値を
+持たないためである。
+
+各クレートに実バージョンを書けばrust strategyは動く。ただしバージョンが
+5箇所へ散り、workspaceの一元管理を失う。`simple` なら構成を変えずに済む。
+副作用としてルートに `version.txt` が作られるが、
+`.release-please-manifest.json` と同じくrelease-pleaseの管理ファイルと
+位置づける。バージョンの正は `Cargo.toml` のままである。
 
 差分の起点には `bootstrap-sha` を指定する。導入時点で最新のタグは
 v0.7.0だが、`Cargo.toml` は0.7.3まで進んでおり、v0.7.3のタグが存在
@@ -160,3 +170,7 @@ v0.7.0だが、`Cargo.toml` は0.7.3まで進んでおり、v0.7.3のタグが�
   必要はない
 - release-pleaseの挙動に依存する。ツール側の仕様変更に追随する保守が
   発生する。自前実装（案B）を避けた対価である
+- `simple` は `Cargo.lock` を更新しない。バージョンを上げた直後の
+  mainでは、lock内の `himawari-*` のバージョンが古いままになる。
+  次に `cargo build` を走らせたときへ自動で追随するため実害は小さいが、
+  `--locked` を使うビルドを足すなら対処が要る
