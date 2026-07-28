@@ -95,6 +95,8 @@
 | [0076](0076-lmr-fixed-point-ttpv.md) | LMRのリダクションを固定小数化する（ttPv項は棄却） | - | accepted |
 | [0077](0077-qsearch-futility.md) | 静止探索にfutility枝刈りとmovecount制限を入れる | - | accepted |
 | [0078](0078-tt-probcut.md) | 置換表の下界を使った簡易ProbCut | - | accepted |
+| [0080](0080-net-release.md) | 学習済みネットをGitHub Releaseで独立に配布する | - | accepted |
+| [0081](0081-portability.md) | 開発環境をスクリプトで再現可能にする | - | accepted |
 
 ## バックログ
 
@@ -112,5 +114,5 @@
 | gensfen設計 | 開始局面多様化、勝敗ラベル。持将棋は24点法で裁定（2028年選手権から27点法→24点法へ変更予定） |
 | 宣言勝ちの24点法対応 | ADR-0030は27点法（CSA）。24点法モードを追加しUSIオプションで切替 |
 | RL世代ループ | 自己対局RL、gensfen自前生成、世代ループ |
-| 学習済みネットの管理・配布方法 | リリースにもリポジトリにも含めない（[ADR-0069](0069-release-notes-automation.md)）。実験成果物として別系統で管理する。命名規則・保管先・SPRT結果との対応づけ・世代の追跡 |
+
 | NPS回帰のCI監視 | ベンチ局面のNPSをCIで記録し退行を検知する。評価関数を固定した以上、探索改善の安全網になる |
