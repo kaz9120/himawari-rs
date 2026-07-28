@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.13.1](https://github.com/kaz9120/himawari-rs/compare/v0.13.0...v0.13.1) (2026-07-28)
+
+
+### その他の変更
+
+* mate_1plyの検証を軽くする（ADR-0094） ([#70](https://github.com/kaz9120/himawari-rs/issues/70)) ([6fd85c4](https://github.com/kaz9120/himawari-rs/commit/6fd85c435d78d562a0cc7a8c5b4e62eee689ab75))
+
 ## [0.13.0](https://github.com/kaz9120/himawari-rs/compare/v0.12.3...v0.13.0) (2026-07-28)
 
 
