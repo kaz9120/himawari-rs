@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.13.0](https://github.com/kaz9120/himawari-rs/compare/v0.12.3...v0.13.0) (2026-07-28)
+
+
+### 棋力向上
+
+* SEEを駒打ちに対応させる（+67.0 Elo、ADR-0091） ([#59](https://github.com/kaz9120/himawari-rs/issues/59)) ([e578957](https://github.com/kaz9120/himawari-rs/commit/e578957b587db00e8bdb62d4ec947d75c4ad20e1))
+
+
+### ドキュメント
+
+* ブランチ運用の規約を足す（ADR-0070） ([#68](https://github.com/kaz9120/himawari-rs/issues/68)) ([038e957](https://github.com/kaz9120/himawari-rs/commit/038e957f01998397cfa4f60cac63ea5857cc4b18))
+
 ## [0.12.3](https://github.com/kaz9120/himawari-rs/compare/v0.12.2...v0.12.3) (2026-07-28)
 
 
