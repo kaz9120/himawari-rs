@@ -113,7 +113,7 @@ fn parse_go(tokens: &[&str]) -> Limits {
     limits
 }
 
-fn set_option(opts: &mut EngineOptions, bopts: &mut BookOptions, tokens: &[&str]) {
+fn set_option(opts: &mut EngineOptions, bopts: &mut BookOptions, tokens: &[&str], line: &str) {
     // setoption name <id> value <x>
     let name_idx = tokens.iter().position(|&t| t == "name");
     let value_idx = tokens.iter().position(|&t| t == "value");
@@ -121,7 +121,21 @@ fn set_option(opts: &mut EngineOptions, bopts: &mut BookOptions, tokens: &[&str]
         return;
     };
     let name = tokens[ni + 1..vi].join(" ");
-    let value = tokens[vi + 1..].join(" ");
+    // 値は元の行から切り出す。トークン列をjoin(" ")で復元すると、
+    // split_whitespaceがUnicodeの空白（全角スペース U+3000 など）も
+    // 区切りにするため、それを含むパスが半角スペースへ化ける
+    let value = match line.find(" value ") {
+        Some(i) => line[i + " value ".len()..].trim(),
+        None => "",
+    };
+    // 値を囲む引用符は落とす。USIは引用符を使わないが、Windowsのパスを
+    // 扱う習慣で付けて渡されることがある。引用符はWindowsのファイル名に
+    // 使えない文字なので、残すと ERROR_INVALID_NAME になる
+    let value = value
+        .strip_prefix('"')
+        .and_then(|v| v.strip_suffix('"'))
+        .unwrap_or(value)
+        .to_string();
     match name.as_str() {
         "USI_Hash" => {
             if let Ok(v) = value.parse() {
@@ -196,6 +210,11 @@ fn load_book(path: &str) -> Option<Book> {
         }
         Err(e) => {
             print_line(&format!("info string warning: BookFileを読めません: {e}"));
+            print_line(&format!("info string   path = {path:?}"));
+            print_line(&format!(
+                "info string   cwd  = {:?}",
+                std::env::current_dir().unwrap_or_default()
+            ));
             None
         }
     }
@@ -210,7 +229,18 @@ fn load_eval(path: &str) -> Option<(String, std::sync::Arc<NnueNetwork>)> {
     let mut f = match std::fs::File::open(path) {
         Ok(f) => f,
         Err(e) => {
+            // パスはデバッグ表示で出す。制御文字や全角空白が混入していても
+            // エスケープされて見えるため、原因の切り分けができる
             print_line(&format!("info string error: EvalFileを開けません: {e}"));
+            print_line(&format!(
+                "info string   path = {path:?} ({}文字 {}バイト)",
+                path.chars().count(),
+                path.len()
+            ));
+            print_line(&format!(
+                "info string   cwd  = {:?}",
+                std::env::current_dir().unwrap_or_default()
+            ));
             std::process::exit(1);
         }
     };
@@ -265,7 +295,7 @@ fn main() {
                 print_options();
                 print_line("usiok");
             }
-            "setoption" => set_option(&mut opts, &mut bopts, &tokens[1..]),
+            "setoption" => set_option(&mut opts, &mut bopts, &tokens[1..], &line),
             "isready" => {
                 // 重い初期化（置換表確保・スレッド起動・評価関数読み込み）は
                 // ここで行う。Hash/Threads/EvalFileが変わったら作り直す
