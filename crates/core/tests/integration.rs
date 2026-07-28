@@ -346,3 +346,24 @@ fn pseudo_legal_accepts_generated_moves() {
         pos.do_move(list.as_slice()[idx]);
     }
 }
+
+/// 駒打ちのSEE（ADR-0091）。打った駒が取られる筋を解く。
+#[test]
+fn see_ge_solves_drops() {
+    use himawari_core::{Color, PieceType, Square};
+
+    // 5四に後手の金。先手が5五へ歩を打つと金に取られる
+    let pos = Position::from_sfen("4k4/9/9/4g4/9/9/9/9/4K4 b P 1").unwrap();
+    let to = Square::from_usi("5e").unwrap();
+    let m = Move::new_drop(PieceType::PAWN, to, Color::Black);
+    assert!(pos.pseudo_legal(m), "5五への歩打ちは擬似合法");
+    assert!(!pos.see_ge(m, 0), "取られる歩打ちの静的交換評価は0未満");
+    assert!(!pos.see_ge(m, -50), "損は歩の価値ぶんあり-50にも届かない");
+    assert!(pos.see_ge(m, -90), "歩1枚(90)の損までは許容される");
+
+    // 誰も利いていないマスへの打ちは損しない
+    let safe = Square::from_usi("1g").unwrap();
+    let m2 = Move::new_drop(PieceType::PAWN, safe, Color::Black);
+    assert!(pos.pseudo_legal(m2), "1七への歩打ちは擬似合法");
+    assert!(pos.see_ge(m2, 0), "取られない打ちは損しない");
+}

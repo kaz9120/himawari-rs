@@ -106,6 +106,7 @@
 | [0088](0088-mate-early-stop.md) | 勝ちの詰みを見つけたら反復深化を打ち切る | - | proposed |
 | [0089](0089-improvement-criteria.md) | 探索改善の選定基準を3軸で置く | - | accepted |
 | [0090](0090-see-pruning.md) | lmrDepth基準を導入しSEEベースの枝刈りを入れる | - | accepted |
+| [0091](0091-see-drop.md) | SEEを駒打ちに対応させる | - | accepted |
 | [0092](0092-aspiration-bound-info.md) | aspirationのfail high/lowをinfoで報告する | - | accepted |
 
 ## バックログ
