@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.12.0](https://github.com/kaz9120/himawari-rs/compare/v0.11.1...v0.12.0) (2026-07-28)
+
+
+### 棋力向上
+
+* lmrDepth基準を導入しSEEベースの枝刈りを入れる（+45.6 Elo、ADR-0090） ([#54](https://github.com/kaz9120/himawari-rs/issues/54)) ([ed1eeeb](https://github.com/kaz9120/himawari-rs/commit/ed1eeeb7aefd7dfb3b8112f55dac78070d02529e))
+
 ## [0.11.1](https://github.com/kaz9120/himawari-rs/compare/v0.11.0...v0.11.1) (2026-07-28)
 
 
