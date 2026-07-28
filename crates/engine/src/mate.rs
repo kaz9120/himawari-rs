@@ -8,22 +8,31 @@
 //! 歩打ちは打ち歩詰めで常に非合法なので候補にしない。
 
 use himawari_core::{
-    Bitboard, Color, Move, MoveList, PieceType, Position, attacks, generate_legal,
+    Bitboard, Color, GenType, Move, MoveList, PieceType, Position, attacks, generate,
+    generate_legal,
 };
 
 /// 候補手を実際に指し、王手かつ回避不能かを検証する。
+///
+/// do_moveは重い（NNUE差分の材料づくりと王手情報の更新を伴う）ので、
+/// 王手にならない手は指す前に弾く（ADR-0094）。回避手の判定も、1つ
+/// 見つけた時点で打ち切る。
 fn is_mate_move(pos: &mut Position, m: Move) -> bool {
     if !pos.pseudo_legal(m) || !pos.is_legal(m) {
         return false;
     }
+    // 王手でなければ詰みにならない。gives_checkは開き王手も拾うため、
+    // 元の実装（指してからin_checkを見る）と同じ手が残る
+    if !pos.gives_check(m) {
+        return false;
+    }
     pos.do_move(m);
-    let mate = pos.in_check() && {
-        let mut list = MoveList::default();
-        generate_legal(pos, true, &mut list);
-        list.is_empty()
-    };
+    // 回避手が1つでもあれば詰みではない。全部を集めてから数える必要はない
+    let mut pseudo = MoveList::default();
+    generate(pos, GenType::Evasions, true, &mut pseudo);
+    let escapable = pseudo.as_slice().iter().any(|&mv| pos.is_legal(mv));
     pos.undo_move(m);
-    mate
+    !escapable
 }
 
 /// 駒打ちの詰み候補。合駒不能な近接打ち（玉の隣接＋桂）に限る。

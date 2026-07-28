@@ -108,6 +108,8 @@
 | [0090](0090-see-pruning.md) | lmrDepth基準を導入しSEEベースの枝刈りを入れる | - | accepted |
 | [0091](0091-see-drop.md) | SEEを駒打ちに対応させる | - | accepted |
 | [0092](0092-aspiration-bound-info.md) | aspirationのfail high/lowをinfoで報告する | - | accepted |
+| [0093](0093-mate1ply-in-search.md) | 1手詰め判定を探索へ組み込む | - | rejected |
+| [0094](0094-mate1ply-speedup.md) | mate_1plyの検証を軽くする | - | proposed |
 
 ## バックログ
 
