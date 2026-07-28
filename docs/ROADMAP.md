@@ -11,7 +11,7 @@ GitHub Issuesは使わない。設計判断は [ADR索引](adr/README.md)、
 
 ## 現在地
 
-- バージョン: 0.7.0（P7出口。2026-07-26オーナー承認）
+- バージョン: 0.11.1（release-pleaseが採番。次のMINORはADR-0090で上がる）
 - フェーズ: **P8進行中（本格学習と探索改善）**
 
 評価関数の構造は純粋HalfKP 256x2-32-32で確定した。19.9億局面の学習に
@@ -28,6 +28,28 @@ FT次元を512へ広げる案は、評価精度で上回るもののNPSが0.65�
 を積んだ（correction history +44.6、continuation history +20.7、
 eval hash +54.1、singular +12.6、ProbCut +44.2、qsearch TT +113.6、
 razoring +184.8、思考時間の難易度スケール +69.3）。
+
+2026-07-28〜29に選定基準を[ADR-0089](adr/0089-improvement-criteria.md)へ
+起こし、速度・ノード効率・終盤の正確さの3軸で候補を評価する運用にした。
+「どの軸に乗るか」と「単独で効く仮説」を書けない候補は着手しない。
+[ADR-0084](adr/0084-lmr-cutnode.md)（LMRのcutNode項）は構造的な理由だけで
+着手して912局を使い、-1.1の中立で棄却した。この失敗が基準づくりの契機に
+なっている。
+
+基準を置いた後の2件は
+[ADR-0085](adr/0085-correction-history-multi.md)（correction historyを
+3系統へ、+17.7）と[ADR-0090](adr/0090-see-pruning.md)（lmrDepth基準と
+SEE枝刈り、+45.6）である。後者は枝刈りを危険度で並べ直したときに
+「危険度の低いSEEベースの2件だけが未実装」と分かって着手した。
+
+同時期に実装の穴を5件埋めた。MultiPV出力の降順が崩れる不具合、詰みを
+読み切っても深さ127まで回る挙動（[ADR-0088](adr/0088-mate-early-stop.md)）、
+`seldepth` と `currmove` の欠落（[ADR-0086](adr/0086-search-observability.md)）、
+aspirationのfail high/lowを報告していない件
+（[ADR-0092](adr/0092-aspiration-bound-info.md)）、SEEが駒打ちを解いて
+いない件（[ADR-0091](adr/0091-see-drop.md)）である。測定側も
+[ADR-0087](adr/0087-sprt-resume.md)でSPRTに中断耐性を入れ、
+`scripts/verify-feature.sh` で機能検証の局面と深さを固定した。
 
 2026-07-24〜25にfloodgateへ初参戦した（30局19勝11敗、レート3186）。
 負けはすべて相手レート3121以上で、実力の境界が3100〜3250にある。
@@ -74,8 +96,16 @@ NPSが0.65倍に落ちる代償を取り返せず、SPRTで-72.8 Elo（968局、
   運用は従来どおり1アイデア1ADR・チューニングなし・SPRTゲート
   （[CLAUDE.md](../CLAUDE.md)参照）。2026-07-27にやねうら王masterと
   機能差分を棚卸しし、候補30件をIDEAS.mdの探索4節に整理した。
-  差分はムーブループ内の枝刈り・LMRの項・historyの種類・時間配分式の
-  4領域に集中する。次の候補はここから選ぶ
+  候補の選定は[ADR-0089](adr/0089-improvement-criteria.md)の3軸で行う。
+  機能差分は「やってないこと」のリストであって「効くこと」のリストでは
+  ないため、差分の大きさだけを理由に着手しない
+- LMRの項は群としてまとめて移植する。1項ずつ積む方針は
+  [ADR-0076](adr/0076-lmr-fixed-point-ttpv.md)（ttPv、-43.8）と
+  [ADR-0084](adr/0084-lmr-cutnode.md)（cutNode、-1.1）で2件続けて
+  否定された。配管は `feat-adr0084-cutnode` ブランチに残してある
+- `mate_1ply` は実装済みだが探索から呼ばれていない（`mate.rs` にある
+  だけ）。[ADR-0089](adr/0089-improvement-criteria.md)の軸3の候補。
+  着手前に発動率を測る（[ADR-0074](adr/0074-feature-verification.md)）
 - ADR-0052（NMP動的化）は保留で確定（2026-07-23オーナー決定）。
   実装はadr-0052-wipブランチ。チューニング段階で再訪する
 - データの残り: hao_depth9のstart_time=1695872823（127ファイル、
