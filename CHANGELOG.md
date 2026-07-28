@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.10.4](https://github.com/kaz9120/himawari-rs/compare/v0.10.3...v0.10.4) (2026-07-28)
+
+
+### ドキュメント
+
+* book-v1の公開を記録しADR-0082の判断を実際に合わせる ([#38](https://github.com/kaz9120/himawari-rs/issues/38)) ([8b40611](https://github.com/kaz9120/himawari-rs/commit/8b406119c8ac56088a4790b57143d67b06d4f4f4))
+
 ## [0.10.3](https://github.com/kaz9120/himawari-rs/compare/v0.10.2...v0.10.3) (2026-07-28)
 
 
