@@ -39,10 +39,11 @@ NNUE後の再測定に意味がある。
 | ~~ProbCut~~ | ~~ADR-0051で導入。+44.2 Elo（H1採択）~~ | ~~完了~~ |
 | ~~razoring~~ | ~~ADR-0057で導入。+184.8 Elo（H1採択）~~ | ~~完了~~ |
 | ~~qsearchのTT保存拡充~~ | ~~ADR-0054で導入（probe+store+TT手、同一キーガード込み）。+113.6 Elo（H1採択）~~ | ~~完了~~ |
-| lmrDepth基準の枝刈り | 現状は生depthで判断する。lmrDepth = newDepth - r/1024 とhistory補正を導入する。下の枝刈り4件の土台 | SPRT |
-| quiet SEE pruning再挑戦 | ムーブループ内で see_ge(m, -25*lmrDepth^2)。P3で+0.9（2266局）だが駒割評価時代の測定 | SPRT |
+| ~~lmrDepth基準の枝刈り~~ | ~~ADR-0090で導入。new_depth - reduction/1024。単独では等価変換で、SEE枝刈りと同時に測る~~ | ~~完了~~ |
+| ~~quiet SEE pruning再挑戦~~ | ~~ADR-0090で導入。see_ge(m, -25*lmrDepth^2)~~ | ~~完了~~ |
+| see_geの打ち対応 | 現状は打つ手のSEEを常に0とし、打った駒がその場で取られる筋を見ていない。将棋は打つ手の比率が高く、ADR-0090のSEE枝刈りをすり抜ける | SPRT |
 | capture futility | staticEval + 218 + 223*lmrDepth + 駒価値 + captHist項。capture historyが前提 | SPRT |
-| capture SEE pruning | see_ge(m, -max(167*depth + captHist*34/1024, 0))。capture historyが前提 | SPRT |
+| ~~capture SEE pruning~~ | ~~ADR-0090で導入。captHist項を落とし -167*depth とした。capture history導入後に項を足せる~~ | ~~完了~~ |
 | ttPvフラグの活用 | TTに保存済みだが探索で読んでいない。LMR・RFP・singularの条件へ供給する。ほぼゼロコスト | SPRT |
 | ~~razoringの深さ制限撤廃~~ | ~~ADR-0075で棄却。マージンの向きを取り違えていた。razoringはマージンが大きいほど刈りにくく、本エンジンの300はやねうら王より緩い。揃えるとノードが5.4倍に増える~~ | ~~棄却~~ |
 | RFPの項追加とマージン緩和 | 4種の枝刈りで唯一、本エンジンが刈りにくい側にある（ADR-0075）。現状 120*depth・depth<=6。やねうら王は 76*depth・depth<15 にimprovingとopponentWorseningの項が付いてさらに減る。返り値の(2*beta+eval)/3化も含む | SPRT |
