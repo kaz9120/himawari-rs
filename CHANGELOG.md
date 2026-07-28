@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.12.3](https://github.com/kaz9120/himawari-rs/compare/v0.12.2...v0.12.3) (2026-07-28)
+
+
+### その他の変更
+
+* 詰まされる側でも反復深化を打ち切る（ADR-0088） ([#66](https://github.com/kaz9120/himawari-rs/issues/66)) ([649586c](https://github.com/kaz9120/himawari-rs/commit/649586c2265e1da254d52f95892c912de9bf1ccc))
+
 ## [0.12.2](https://github.com/kaz9120/himawari-rs/compare/v0.12.1...v0.12.2) (2026-07-28)
 
 
