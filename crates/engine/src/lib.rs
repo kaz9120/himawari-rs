@@ -16,7 +16,7 @@ pub mod tt;
 pub mod value;
 
 pub use eval::Evaluator;
-pub use search::{IterInfo, SearchInfo, SearchResult, Shared, Worker};
+pub use search::{IterInfo, ScoreBound, SearchInfo, SearchResult, Shared, Worker};
 pub use thread::{EngineOptions, ThreadPool};
 pub use timeman::{Limits, TimeManager};
 pub use tt::{Bound, Tt, TtData};

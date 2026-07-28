@@ -147,8 +147,21 @@ impl Shared {
 pub enum SearchInfo {
     /// 反復深化1周分（MultiPVでは1ラインごとに1回）。
     Iteration(IterInfo),
+    /// aspiration窓を外れた途中経過（ADR-0091）。確定値ではないため、
+    /// 消費側はUSIの `lowerbound` / `upperbound` を付けて出す。
+    Bound(IterInfo, ScoreBound),
     /// rootで今読んでいる手（ADR-0086）。長考中の可視化に使う。
     CurrMove { depth: u32, mv: Move },
+}
+
+/// aspiration窓を外れたときのスコアの確からしさ（ADR-0091）。
+/// USIの `lowerbound` / `upperbound` に対応する。
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+pub enum ScoreBound {
+    /// fail high。実際の評価はこの値以上。
+    Lower,
+    /// fail low。実際の評価はこの値以下。
+    Upper,
 }
 
 /// 反復深化1周分の報告（MultiPVでは1ラインごとに1回）。
@@ -317,6 +330,41 @@ impl Worker {
         (raw + corr).clamp(VALUE_MATED_IN_MAX_PLY + 1, VALUE_MATE_IN_MAX_PLY - 1)
     }
 
+    /// aspirationのfail時に途中経過を報告する（ADR-0091）。
+    /// fail lowではPVが空になりうるので、そのときは前の周のPVを使う。
+    #[allow(clippy::too_many_arguments)]
+    fn report_bound(
+        &self,
+        on_info: &mut dyn FnMut(SearchInfo),
+        depth: u32,
+        pv_idx: usize,
+        score: Value,
+        bound: ScoreBound,
+        pv: &[Move],
+    ) {
+        let line: Vec<Move> = if pv.is_empty() {
+            self.root_moves[pv_idx].pv.clone()
+        } else {
+            pv.to_vec()
+        };
+        if line.is_empty() {
+            return;
+        }
+        on_info(SearchInfo::Bound(
+            IterInfo {
+                depth,
+                seldepth: self.sel_depth.max(depth),
+                multipv: if self.multi_pv > 1 { pv_idx + 1 } else { 0 },
+                score,
+                pv: line,
+                nodes: self.shared.nodes.load(Ordering::Relaxed).max(self.nodes),
+                elapsed_ms: self.tm.elapsed().as_millis() as u64,
+                hashfull: self.shared.tt.hashfull(),
+            },
+            bound,
+        ));
+    }
+
     /// 反復深化。各イテレーション完了時にon_iterを呼ぶ。
     pub fn iterate(&mut self, on_info: &mut dyn FnMut(SearchInfo)) -> SearchResult {
         // 入玉宣言勝ち（ADR-0030）: 成立していれば探索せず宣言する
@@ -392,10 +440,15 @@ impl Worker {
                         break 'deepening;
                     }
                     if score <= alpha {
+                        // fail low: 実際の評価はこの値以下（ADR-0091）。
+                        // 窓を広げて読み直す前に、途中経過として報告する
+                        self.report_bound(on_info, depth, pv_idx, score, ScoreBound::Upper, &pv);
                         beta = (alpha + beta) / 2;
                         alpha = (score - delta).max(-VALUE_INFINITE);
                         delta += delta / 2;
                     } else if score >= beta {
+                        // fail high: 実際の評価はこの値以上
+                        self.report_bound(on_info, depth, pv_idx, score, ScoreBound::Lower, &pv);
                         beta = (score + delta).min(VALUE_INFINITE);
                         delta += delta / 2;
                     } else {
