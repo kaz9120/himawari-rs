@@ -17,7 +17,7 @@ use crate::movepick::{
     ContinuationCorrectionHistory, ContinuationHistory, CorrectionHistory, CounterMoves, History,
 };
 use crate::nnue::NnueNetwork;
-use crate::search::{SearchInfo, Shared, Worker};
+use crate::search::{IterInfo, ScoreBound, SearchInfo, Shared, Worker};
 use crate::timeman::{Limits, TimeManager};
 use crate::value::{VALUE_MATE, Value};
 
@@ -113,6 +113,34 @@ pub struct ThreadPool {
 }
 
 /// USIのscore表記（cp / mate）を組み立てる。
+/// USIのinfo行を組み立てる（ADR-0086, 0091）。suffixは `lowerbound` などの
+/// スコア修飾子で、確定値なら空文字を渡す。
+fn format_pv_line(info: &IterInfo, score_suffix: &str) -> String {
+    let pv: Vec<String> = info.pv.iter().map(|m| m.to_usi()).collect();
+    let nps = (info.nodes * 1000)
+        .checked_div(info.elapsed_ms)
+        .unwrap_or(0);
+    // MultiPV>1のときだけmultipvを出す（現行互換）
+    let mpv = if info.multipv > 0 {
+        format!("multipv {} ", info.multipv)
+    } else {
+        String::new()
+    };
+    format!(
+        "info depth {} seldepth {} {}score {}{} nodes {} nps {} time {} hashfull {} pv {}",
+        info.depth,
+        info.seldepth,
+        mpv,
+        format_score(info.score),
+        score_suffix,
+        info.nodes,
+        nps,
+        info.elapsed_ms,
+        info.hashfull,
+        pv.join(" ")
+    )
+}
+
 fn format_score(v: Value) -> String {
     if v.abs() >= VALUE_MATE - 256 {
         let plies = VALUE_MATE - v.abs();
@@ -217,36 +245,18 @@ fn spawn_worker(
                         let Some(out) = &on_line else { return };
                         match info {
                             SearchInfo::CurrMove { depth, mv } => {
-                                out(&format!(
-                                    "info depth {} currmove {}",
-                                    depth,
-                                    mv.to_usi()
-                                ));
+                                out(&format!("info depth {} currmove {}", depth, mv.to_usi()));
                             }
                             SearchInfo::Iteration(info) => {
-                                let pv: Vec<String> =
-                                    info.pv.iter().map(|m| m.to_usi()).collect();
-                                let nps = (info.nodes * 1000)
-                                    .checked_div(info.elapsed_ms)
-                                    .unwrap_or(0);
-                                // MultiPV>1のときだけmultipvを出す（現行互換）
-                                let mpv = if info.multipv > 0 {
-                                    format!("multipv {} ", info.multipv)
-                                } else {
-                                    String::new()
+                                out(&format_pv_line(&info, ""));
+                            }
+                            // fail high/lowは確定値でないことを示す（ADR-0091）
+                            SearchInfo::Bound(info, b) => {
+                                let suffix = match b {
+                                    ScoreBound::Lower => " lowerbound",
+                                    ScoreBound::Upper => " upperbound",
                                 };
-                                out(&format!(
-                                    "info depth {} seldepth {} {}score {} nodes {} nps {} time {} hashfull {} pv {}",
-                                    info.depth,
-                                    info.seldepth,
-                                    mpv,
-                                    format_score(info.score),
-                                    info.nodes,
-                                    nps,
-                                    info.elapsed_ms,
-                                    info.hashfull,
-                                    pv.join(" ")
-                                ));
+                                out(&format_pv_line(&info, suffix));
                             }
                         }
                     });
