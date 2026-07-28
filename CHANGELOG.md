@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.10.10](https://github.com/kaz9120/himawari-rs/compare/v0.10.9...v0.10.10) (2026-07-28)
+
+
+### ドキュメント
+
+* 探索改善の選定基準を3軸で置く（ADR-0089） ([#53](https://github.com/kaz9120/himawari-rs/issues/53)) ([214cd77](https://github.com/kaz9120/himawari-rs/commit/214cd77a8515536c6d539cca460a50d995ac864c))
+
 ## [0.10.9](https://github.com/kaz9120/himawari-rs/compare/v0.10.8...v0.10.9) (2026-07-28)
 
 
