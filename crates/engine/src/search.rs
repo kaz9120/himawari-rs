@@ -9,7 +9,10 @@ use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use himawari_core::{GenType, Move, MoveList, Position, Repetition, generate, generate_legal};
 
 use crate::eval::Evaluator;
-use crate::movepick::{ContinuationHistory, CorrectionHistory, CounterMoves, History, MovePicker};
+use crate::movepick::{
+    ContinuationCorrectionHistory, ContinuationHistory, CorrectionHistory, CounterMoves, History,
+    MovePicker,
+};
 use crate::timeman::{Limits, TimeManager};
 use crate::tt::{Bound, EvalHash, Tt};
 use crate::value::{
@@ -40,6 +43,12 @@ const LMP_MAX_DEPTH: u32 = 8;
 const CURRMOVE_MIN_MS: u64 = 3000;
 /// IIR: TTに手がないノードを1浅く読む最小深さ。
 const IIR_MIN_DEPTH: u32 = 4;
+/// correction historyの合成重み（ADR-0085）。分母は32768。
+/// 合計4096は、歩構造のみだった頃の /8 と等しい。歩構造は実績のある
+/// 系統なので重みを倍にし、追加の2系統で残りを分ける
+const CORR_W_PAWN: i32 = 2048;
+const CORR_W_NON_PAWN: i32 = 1024;
+const CORR_W_CONT: i32 = 1024;
 /// razoringの最大深さとマージン（ADR-0057）。
 const RAZOR_MAX_DEPTH: u32 = 3;
 const RAZOR_MARGIN: Value = 300;
@@ -179,8 +188,12 @@ pub struct Worker {
     pub evaluator: Evaluator,
     pub history: History,
     pub counters: CounterMoves,
-    /// 静的評価のcorrection history（ADR-0046）。
+    /// 静的評価のcorrection history（ADR-0046）。歩構造キー。
     pub corr: CorrectionHistory,
+    /// 歩以外の盤上駒キーのcorrection history（ADR-0085）。
+    pub corr_np: CorrectionHistory,
+    /// 直前の指し手を条件にするcorrection history（ADR-0085）。
+    pub corr_cont: ContinuationCorrectionHistory,
     /// continuation history（ADR-0047）。
     pub cont: ContinuationHistory,
     /// plyごとの指し手スタック（ADR-0047）。move_stack[ply]はその
@@ -217,6 +230,8 @@ impl Worker {
         history: History,
         counters: CounterMoves,
         corr: CorrectionHistory,
+        corr_np: CorrectionHistory,
+        corr_cont: ContinuationCorrectionHistory,
         cont: ContinuationHistory,
     ) -> Worker {
         Worker {
@@ -225,6 +240,8 @@ impl Worker {
             history,
             counters,
             corr,
+            corr_np,
+            corr_cont,
             cont,
             move_stack: vec![Move::NONE; MAX_PLY + 2],
             eval_stack: vec![VALUE_NONE; MAX_PLY + 2],
@@ -281,12 +298,22 @@ impl Worker {
         v
     }
 
-    /// 生の静的評価にcorrection historyの補正を加える（ADR-0046）。
-    /// 補正後が詰み圏に入らないようクランプする。
+    /// 生の静的評価にcorrection historyの補正を加える（ADR-0046, 0085）。
+    /// 3系統を重み付きで合成する。重みの合計は4096/32768 = 1/8で、
+    /// 歩構造のみだった頃の補正の強さと揃えてある。補正後が詰み圏に
+    /// 入らないようクランプする。
     #[inline]
-    fn to_corrected(&self, raw: Value) -> Value {
+    fn to_corrected(&self, raw: Value, ply: usize) -> Value {
         let stm = self.pos.side_to_move();
-        let corr = self.corr.get(stm, self.pos.pawn_key()) / 8;
+        let prev1 = if ply >= 1 {
+            self.move_stack[ply - 1]
+        } else {
+            Move::NONE
+        };
+        let sum = CORR_W_PAWN * self.corr.get(stm, self.pos.pawn_key())
+            + CORR_W_NON_PAWN * self.corr_np.get(stm, self.pos.non_pawn_key())
+            + CORR_W_CONT * self.corr_cont.get(prev1);
+        let corr = sum / 32768;
         (raw + corr).clamp(VALUE_MATED_IN_MAX_PLY + 1, VALUE_MATE_IN_MAX_PLY - 1)
     }
 
@@ -627,7 +654,7 @@ impl Worker {
         let static_eval = if in_check {
             VALUE_NONE
         } else {
-            self.to_corrected(raw_eval)
+            self.to_corrected(raw_eval, ply)
         };
 
         self.eval_stack[ply] = static_eval;
@@ -990,6 +1017,14 @@ impl Worker {
                 let bonus = (diff * depth as i32 / 8).clamp(-128, 128);
                 let stm = self.pos.side_to_move();
                 self.corr.update(stm, self.pos.pawn_key(), bonus);
+                // 追加の2系統も同じbonusで更新する（ADR-0085）
+                self.corr_np.update(stm, self.pos.non_pawn_key(), bonus);
+                let prev1 = if ply >= 1 {
+                    self.move_stack[ply - 1]
+                } else {
+                    Move::NONE
+                };
+                self.corr_cont.update(prev1, bonus);
             }
         }
         best
@@ -1060,7 +1095,7 @@ impl Worker {
         let mut futility_base = -VALUE_INFINITE;
         if !in_check {
             // stand pat（ADR-0024）。correction historyで補正する（ADR-0046）
-            let stand = self.to_corrected(raw_eval);
+            let stand = self.to_corrected(raw_eval, ply);
             if stand >= beta {
                 return stand;
             }
@@ -1238,6 +1273,8 @@ mod tests {
             History::default(),
             CounterMoves::default(),
             CorrectionHistory::default(),
+            CorrectionHistory::default(),
+            ContinuationCorrectionHistory::default(),
             ContinuationHistory::default(),
         );
         let result = worker.iterate(&mut |_| {});

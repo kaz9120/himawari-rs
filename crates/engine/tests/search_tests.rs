@@ -4,7 +4,9 @@ use std::sync::Arc;
 
 use himawari_core::{Move, MoveList, Position, SFEN_STARTPOS, generate_legal};
 use himawari_engine::eval::Evaluator;
-use himawari_engine::movepick::{ContinuationHistory, CorrectionHistory, CounterMoves, History};
+use himawari_engine::movepick::{
+    ContinuationCorrectionHistory, ContinuationHistory, CorrectionHistory, CounterMoves, History,
+};
 use himawari_engine::search::{SearchInfo, Shared, Worker};
 use himawari_engine::timeman::{Limits, TimeManager};
 use himawari_engine::value::{VALUE_MATE, Value};
@@ -28,6 +30,8 @@ fn search_position(sfen: &str, depth: u32) -> (Move, Value) {
         History::default(),
         CounterMoves::default(),
         CorrectionHistory::default(),
+        CorrectionHistory::default(),
+        ContinuationCorrectionHistory::default(),
         ContinuationHistory::default(),
     );
     let result = worker.iterate(&mut |_| {});
@@ -79,6 +83,8 @@ fn selfplay_smoke() {
             History::default(),
             CounterMoves::default(),
             CorrectionHistory::default(),
+            CorrectionHistory::default(),
+            ContinuationCorrectionHistory::default(),
             ContinuationHistory::default(),
         );
         let result = worker.iterate(&mut |_| {});
@@ -116,6 +122,8 @@ fn multipv_lines_are_distinct_and_sorted() {
         History::default(),
         CounterMoves::default(),
         CorrectionHistory::default(),
+        CorrectionHistory::default(),
+        ContinuationCorrectionHistory::default(),
         ContinuationHistory::default(),
     );
     let mut lines: Vec<(usize, Value, Move)> = Vec::new();
@@ -162,6 +170,8 @@ fn nnue_search_returns_legal_moves() {
             History::default(),
             CounterMoves::default(),
             CorrectionHistory::default(),
+            CorrectionHistory::default(),
+            ContinuationCorrectionHistory::default(),
             ContinuationHistory::default(),
         );
         let result = worker.iterate(&mut |_| {});

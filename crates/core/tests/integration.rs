@@ -147,6 +147,17 @@ fn random_playout(seed: u64, plies: usize, all: bool) {
             pos.compute_pawn_key(),
             "pawn_keyの差分と全計算の不一致"
         );
+        // 歩以外の盤上駒キーも同様に検証する（ADR-0085）
+        assert_eq!(
+            pos.non_pawn_key(),
+            fresh.non_pawn_key(),
+            "差分non_pawn_keyと全計算の不一致"
+        );
+        assert_eq!(
+            pos.non_pawn_key(),
+            pos.compute_non_pawn_key(),
+            "non_pawn_keyの差分と全計算の不一致"
+        );
 
         // gives_checkの整合
         let idx = (rng.next() % list.len() as u64) as usize;

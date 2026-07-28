@@ -73,6 +73,45 @@ impl CorrectionHistory {
     }
 }
 
+/// continuation correction history（ADR-0085）。
+/// [1手前の駒 32][移動先 81]に、探索値と静的評価の乖離を蓄積する。
+/// 局面のキーではなく直前の指し手を条件にする点が
+/// [`CorrectionHistory`] と違う。
+pub struct ContinuationCorrectionHistory {
+    table: Box<[[i16; 81]; 32]>,
+}
+
+impl Default for ContinuationCorrectionHistory {
+    fn default() -> Self {
+        ContinuationCorrectionHistory {
+            table: Box::new([[0; 81]; 32]),
+        }
+    }
+}
+
+impl ContinuationCorrectionHistory {
+    #[inline]
+    pub fn get(&self, prev: Move) -> i32 {
+        if prev == Move::NONE || prev.is_special() {
+            return 0;
+        }
+        i32::from(self.table[prev.piece_after().index()][prev.to().index()])
+    }
+
+    /// gravity方式の更新（値域±1024）。[`CorrectionHistory`] と同一。
+    pub fn update(&mut self, prev: Move, bonus: i32) {
+        if prev == Move::NONE || prev.is_special() {
+            return;
+        }
+        let e = &mut self.table[prev.piece_after().index()][prev.to().index()];
+        *e += (bonus - i32::from(*e) * bonus.abs() / 1024) as i16;
+    }
+
+    pub fn clear(&mut self) {
+        *self.table = [[0; 81]; 32];
+    }
+}
+
 /// counter move（[直前の手の駒 32][移動先 81]）。
 pub struct CounterMoves {
     table: Box<[[Move; 81]; 32]>,

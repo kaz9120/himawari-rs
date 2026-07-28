@@ -13,7 +13,9 @@ use std::thread::JoinHandle;
 use himawari_core::Position;
 
 use crate::eval::Evaluator;
-use crate::movepick::{ContinuationHistory, CorrectionHistory, CounterMoves, History};
+use crate::movepick::{
+    ContinuationCorrectionHistory, ContinuationHistory, CorrectionHistory, CounterMoves, History,
+};
 use crate::nnue::NnueNetwork;
 use crate::search::{SearchInfo, Shared, Worker};
 use crate::timeman::{Limits, TimeManager};
@@ -140,6 +142,9 @@ fn spawn_worker(
         let mut history = History::default();
         let mut counters = CounterMoves::default();
         let mut corr = CorrectionHistory::default();
+        // correction historyの追加2系統（ADR-0085）
+        let mut corr_np = CorrectionHistory::default();
+        let mut corr_cont = ContinuationCorrectionHistory::default();
         // 約13.4MB（ADR-0047）。mem::takeの往復でgoごとに空テーブルの
         // 生成が入るが、ゼロ初期化は数msでtc 10+0.1でも無視できる
         let mut cont = ContinuationHistory::default();
@@ -161,6 +166,8 @@ fn spawn_worker(
                     history.clear();
                     counters.clear();
                     corr.clear();
+                    corr_np.clear();
+                    corr_cont.clear();
                     cont.clear();
                 }
                 Job::Search(j) => {
@@ -202,6 +209,8 @@ fn spawn_worker(
                         std::mem::take(&mut history),
                         std::mem::take(&mut counters),
                         std::mem::take(&mut corr),
+                        std::mem::take(&mut corr_np),
+                        std::mem::take(&mut corr_cont),
                         std::mem::take(&mut cont),
                     );
                     let result = worker.iterate(&mut |info| {
@@ -245,6 +254,8 @@ fn spawn_worker(
                     history = std::mem::take(&mut worker.history);
                     counters = std::mem::take(&mut worker.counters);
                     corr = std::mem::take(&mut worker.corr);
+                    corr_np = std::mem::take(&mut worker.corr_np);
+                    corr_cont = std::mem::take(&mut worker.corr_cont);
                     cont = std::mem::take(&mut worker.cont);
                     if is_main {
                         // メインの結論が出たらヘルパーも止める
