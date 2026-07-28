@@ -59,8 +59,10 @@ NPSが0.65倍に落ちる代償を取り返せず、SPRTで-72.8 Elo（968局、
 ## 残作業
 
 - 定跡（[ADR-0063](adr/0063-book-loader-and-mini-book.md)）は実装・生成
-  ともに完了（133局面）。floodgateへ投入して実戦で効果を見る。
-  `BookFile` の指定が要る（既定は定跡なし）
+  ともに完了（133局面）。`book-v1` としてGitHub Releaseで配布している
+  （[ADR-0082](adr/0082-book-release.md)）。floodgateへ投入して実戦で
+  効果を見る。`BookFile` の指定が要る（既定は定跡なし）。現行ネットでの
+  作り直しは実戦の結果を見てから判断する
 - 時間管理の残り: 配分式そのものの再設計はIDEAS.mdの
   「探索: 時間管理」節に残した。やねうら王のmove_horizon方式が参考
 - 容量を保ったままNPSを取り戻す。FT次元の拡大
