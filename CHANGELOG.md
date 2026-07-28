@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.11.0](https://github.com/kaz9120/himawari-rs/compare/v0.10.10...v0.11.0) (2026-07-28)
+
+
+### 棋力向上
+
+* correction historyを3系統に増やす（+17.7 Elo、ADR-0085） ([#56](https://github.com/kaz9120/himawari-rs/issues/56)) ([2d2709e](https://github.com/kaz9120/himawari-rs/commit/2d2709ea2b2595cea6bbed8d0e1fa7b38c685b6c))
+
 ## [0.10.10](https://github.com/kaz9120/himawari-rs/compare/v0.10.9...v0.10.10) (2026-07-28)
 
 
