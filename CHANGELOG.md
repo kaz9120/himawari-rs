@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.10.3](https://github.com/kaz9120/himawari-rs/compare/v0.10.2...v0.10.3) (2026-07-28)
+
+
+### その他の変更
+
+* WindowsバイナリをMSVCランタイム静的リンクで配布する（ADR-0083） ([#36](https://github.com/kaz9120/himawari-rs/issues/36)) ([f6684ff](https://github.com/kaz9120/himawari-rs/commit/f6684ff98e7be811cd4fc0ceb8d9670f036f034d))
+
 ## [0.10.2](https://github.com/kaz9120/himawari-rs/compare/v0.10.1...v0.10.2) (2026-07-28)
 
 
