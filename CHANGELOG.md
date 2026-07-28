@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.10.2](https://github.com/kaz9120/himawari-rs/compare/v0.10.1...v0.10.2) (2026-07-28)
+
+
+### 内部
+
+* 定跡の配布と生成条件の記録を整える（ADR-0082） ([#34](https://github.com/kaz9120/himawari-rs/issues/34)) ([4db7441](https://github.com/kaz9120/himawari-rs/commit/4db74414a0df9107e25b19c8a3620764f67c705b))
+
 ## [0.10.1](https://github.com/kaz9120/himawari-rs/compare/v0.10.0...v0.10.1) (2026-07-28)
 
 
