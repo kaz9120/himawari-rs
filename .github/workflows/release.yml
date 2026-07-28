@@ -25,13 +25,16 @@ jobs:
             name: linux-x64-sse42
             rustflags: "-C target-cpu=x86-64-v2"
             bin: himawari
+          # WindowsはMSVCランタイムを静的リンクする（ADR-0083）。
+          # 既定の動的リンクだと VCRUNTIME140.dll が要り、再頒布可能
+          # パッケージの入っていない環境で起動しない
           - os: windows-latest
             name: windows-x64-avx2
-            rustflags: "-C target-cpu=x86-64-v3"
+            rustflags: "-C target-cpu=x86-64-v3 -C target-feature=+crt-static"
             bin: himawari.exe
           - os: windows-latest
             name: windows-x64-sse42
-            rustflags: "-C target-cpu=x86-64-v2"
+            rustflags: "-C target-cpu=x86-64-v2 -C target-feature=+crt-static"
             bin: himawari.exe
           - os: macos-14
             name: macos-arm64
