@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.10.5](https://github.com/kaz9120/himawari-rs/compare/v0.10.4...v0.10.5) (2026-07-28)
+
+
+### その他の変更
+
+* setoptionの値を元の行から切り出し、引用符を落とす ([#40](https://github.com/kaz9120/himawari-rs/issues/40)) ([3cb18b1](https://github.com/kaz9120/himawari-rs/commit/3cb18b1d58e6f7b888736fbec2b401b7340b0058))
+
 ## [0.10.4](https://github.com/kaz9120/himawari-rs/compare/v0.10.3...v0.10.4) (2026-07-28)
 
 
