@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.12.2](https://github.com/kaz9120/himawari-rs/compare/v0.12.1...v0.12.2) (2026-07-28)
+
+
+### ドキュメント
+
+* 詰まされる側を打ち切らない根拠を実測で補う（ADR-0088） ([#64](https://github.com/kaz9120/himawari-rs/issues/64)) ([9b30cc9](https://github.com/kaz9120/himawari-rs/commit/9b30cc9d943a2c676ff4f7d9c63ea053dd653a08))
+
 ## [0.12.1](https://github.com/kaz9120/himawari-rs/compare/v0.12.0...v0.12.1) (2026-07-28)
 
 
