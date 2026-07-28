@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.12.1](https://github.com/kaz9120/himawari-rs/compare/v0.12.0...v0.12.1) (2026-07-28)
+
+
+### ドキュメント
+
+* ROADMAPの現在地を2026-07-29時点へ更新する ([#62](https://github.com/kaz9120/himawari-rs/issues/62)) ([00b0c35](https://github.com/kaz9120/himawari-rs/commit/00b0c35f29b752145eb763c3c195dc39f377d2c7))
+
 ## [0.12.0](https://github.com/kaz9120/himawari-rs/compare/v0.11.1...v0.12.0) (2026-07-28)
 
 
