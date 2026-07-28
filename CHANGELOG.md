@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.10.0](https://github.com/kaz9120/himawari-rs/compare/v0.9.0...v0.10.0) (2026-07-28)
+
+
+### 棋力向上
+
+* 置換表の下界による簡易ProbCutを入れる（+15.6 Elo、ADR-0078） ([#31](https://github.com/kaz9120/himawari-rs/issues/31)) ([42e97f9](https://github.com/kaz9120/himawari-rs/commit/42e97f977e640ac3e034ec5b2f8669db3184b134))
+
 ## [0.9.0](https://github.com/kaz9120/himawari-rs/compare/v0.8.5...v0.9.0) (2026-07-27)
 
 
