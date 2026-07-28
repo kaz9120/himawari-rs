@@ -99,10 +99,11 @@
 | [0081](0081-portability.md) | 開発環境をスクリプトで再現可能にする | - | accepted |
 | [0082](0082-book-release.md) | 定跡をGitHub Releaseで配布し、生成条件を成果物に残す | - | accepted |
 | [0083](0083-windows-static-crt.md) | WindowsバイナリをMSVCランタイム静的リンクで配布する | - | proposed |
-| [0087](0087-sprt-resume.md) | 中断したSPRTを棋譜から再開できるようにする | - | proposed |
 | [0084](0084-lmr-cutnode.md) | LMRにcutNode項を入れる | - | rejected |
 | [0086](0086-search-observability.md) | 探索の可観測性を上げる（seldepth・currmove） | - | proposed |
+| [0087](0087-sprt-resume.md) | 中断したSPRTを棋譜から再開できるようにする | - | proposed |
 | [0088](0088-mate-early-stop.md) | 勝ちの詰みを見つけたら反復深化を打ち切る | - | proposed |
+| [0089](0089-improvement-criteria.md) | 探索改善の選定基準を3軸で置く | - | accepted |
 
 ## バックログ
 
