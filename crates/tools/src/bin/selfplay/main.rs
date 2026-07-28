@@ -11,7 +11,7 @@
 //!            [--max-pairs N] [--max-moves 320]
 //!            [--adjudicate CP,PLIES] [--option Name=Value]...
 //!            [--copt Name=Value]... [--bopt Name=Value]...
-//!            [--ponder] [--out <path>]
+//!            [--ponder] [--out <path>] [--resume <jsonl>]
 //!
 //! --copt/--boptは候補側/ベースライン側だけに適用するオプション
 //! （例: --copt Threads=4）。--ponderは候補側だけが相手番思考する
@@ -53,6 +53,8 @@ struct Config {
     copts: Vec<(String, String)>,
     bopts: Vec<(String, String)>,
     out: String,
+    /// 既存の棋譜jsonlから再開する（ADR-0087）。空なら新規。
+    resume: String,
 }
 
 /// TimeControlはCloneしないため、生成用の仕様を別に持つ。
@@ -100,6 +102,7 @@ fn parse_args() -> Config {
     let mut copts: Vec<(String, String)> = Vec::new();
     let mut bopts: Vec<(String, String)> = Vec::new();
     let mut out = "selfplay.jsonl".to_string();
+    let mut resume = String::new();
 
     let mut i = 0;
     let value = |args: &[String], i: usize| -> String {
@@ -195,6 +198,7 @@ fn parse_args() -> Config {
                 }
             }
             "--out" => out = value(&args, i),
+            "--resume" => resume = value(&args, i),
             "--ponder" => {
                 ponder = true;
                 i += 1;
@@ -258,6 +262,7 @@ fn parse_args() -> Config {
         copts,
         bopts,
         out,
+        resume,
     }
 }
 
@@ -269,6 +274,71 @@ struct Aggregate {
     /// 停止後に完走した飛行中ペアで判定を再計算してはならない。
     decision: Option<Decision>,
     out: std::fs::File,
+}
+
+/// 既存の棋譜jsonlからpentanomialとW-D-Lを復元する（ADR-0087）。
+/// 戻り値は (pentanomial, wdl, 次に割り当てるペア番号)。
+/// 2局そろっているペアだけを数える。片方しかないペアは捨てる
+fn restore_from_jsonl(path: &str) -> Result<(Pentanomial, [u64; 3], u64), String> {
+    let text = std::fs::read_to_string(path).map_err(|e| format!("{path} を読めません: {e}"))?;
+    // pair番号 -> [game1のスコア, game2のスコア]
+    let mut pairs: std::collections::BTreeMap<u64, [Option<f64>; 2]> = Default::default();
+    for line in text.lines() {
+        if line.trim().is_empty() {
+            continue;
+        }
+        let pair: u64 = json_num(line, "pair").ok_or_else(|| format!("pairがない: {line}"))?;
+        let game: u64 = json_num(line, "game").ok_or_else(|| format!("gameがない: {line}"))?;
+        let cand = json_str(line, "candidate").ok_or_else(|| format!("candidateがない: {line}"))?;
+        let winner = json_str(line, "winner").ok_or_else(|| format!("winnerがない: {line}"))?;
+        let score = if winner == "draw" {
+            0.5
+        } else if winner == cand {
+            1.0
+        } else {
+            0.0
+        };
+        let slot = pairs.entry(pair).or_default();
+        let idx = (game as usize).saturating_sub(1).min(1);
+        slot[idx] = Some(score);
+    }
+    let next_pair = pairs.keys().next_back().map_or(0, |p| p + 1);
+    let mut pent = Pentanomial::default();
+    let mut wdl = [0u64; 3];
+    for scores in pairs.values() {
+        let (Some(s1), Some(s2)) = (scores[0], scores[1]) else {
+            continue;
+        };
+        pent.add(((s1 + s2) * 2.0).round() as usize);
+        for s in [s1, s2] {
+            let idx = if s == 1.0 {
+                0
+            } else if s == 0.5 {
+                1
+            } else {
+                2
+            };
+            wdl[idx] += 1;
+        }
+    }
+    Ok((pent, wdl, next_pair))
+}
+
+/// jsonlの1行から数値フィールドを取り出す。書式は自前生成なので
+/// 完全なJSONパーサは要らない
+fn json_num(line: &str, key: &str) -> Option<u64> {
+    let pat = format!("\"{key}\":");
+    let rest = &line[line.find(&pat)? + pat.len()..];
+    let end = rest.find(|c: char| !c.is_ascii_digit())?;
+    rest[..end].parse().ok()
+}
+
+/// jsonlの1行から文字列フィールドを取り出す。
+fn json_str(line: &str, key: &str) -> Option<String> {
+    let pat = format!("\"{key}\":\"");
+    let rest = &line[line.find(&pat)? + pat.len()..];
+    let end = rest.find('"')?;
+    Some(rest[..end].to_string())
 }
 
 fn candidate_score(rec: &GameRecord, candidate_color: Color) -> f64 {
@@ -444,14 +514,36 @@ fn main() {
             eprintln!("棋譜ファイルを開けません: {e}");
             std::process::exit(3)
         });
+    // 中断したSPRTの続きを回す（ADR-0087）。棋譜からpentanomialを
+    // 復元し、ペア番号も引き継ぐ。開始局面の割り当てが重複しない
+    let (pent, wdl, start_pair) = if cfg.resume.is_empty() {
+        (Pentanomial::default(), [0u64; 3], 0u64)
+    } else {
+        match restore_from_jsonl(&cfg.resume) {
+            Ok(v) => {
+                println!(
+                    "再開: {} から {}ペア（{}局）を復元し、ペア{}から続ける",
+                    cfg.resume,
+                    v.0.total(),
+                    v.1.iter().sum::<u64>(),
+                    v.2
+                );
+                v
+            }
+            Err(e) => {
+                eprintln!("再開できません: {e}");
+                std::process::exit(3)
+            }
+        }
+    };
     let agg = Arc::new(Mutex::new(Aggregate {
-        pent: Pentanomial::default(),
-        wdl: [0; 3],
+        pent,
+        wdl,
         decision: None,
         out,
     }));
     let stop = Arc::new(AtomicBool::new(false));
-    let counter = Arc::new(AtomicU64::new(0));
+    let counter = Arc::new(AtomicU64::new(start_pair));
     let failed = Arc::new(AtomicBool::new(false));
 
     let handles: Vec<_> = (0..cfg.concurrency.max(1))
@@ -504,4 +596,57 @@ fn main() {
         }
     };
     std::process::exit(code);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn line(pair: u64, game: u8, cand: &str, winner: &str) -> String {
+        format!(
+            "{{\"pair\":{pair},\"game\":{game},\"opening\":\"startpos\",\"candidate\":\"{cand}\",\"winner\":\"{winner}\",\"reason\":\"mate\",\"plies\":100,\"moves\":\"\"}}"
+        )
+    }
+
+    #[test]
+    fn json_fields_are_extracted() {
+        let l = line(42, 2, "w", "draw");
+        assert_eq!(json_num(&l, "pair"), Some(42));
+        assert_eq!(json_num(&l, "game"), Some(2));
+        assert_eq!(json_num(&l, "plies"), Some(100));
+        assert_eq!(json_str(&l, "candidate").as_deref(), Some("w"));
+        assert_eq!(json_str(&l, "winner").as_deref(), Some("draw"));
+        assert_eq!(json_num(&l, "nonexistent"), None);
+    }
+
+    /// 2局そろったペアだけを数え、ペア番号は最大値+1から続ける（ADR-0087）。
+    #[test]
+    fn resume_restores_pentanomial_and_skips_incomplete_pair() {
+        let path = std::env::temp_dir().join("himawari_resume_test.jsonl");
+        let text = [
+            // ペア0: 候補が両方勝ち → スコア2.0 → bin 4
+            line(0, 1, "b", "b"),
+            line(0, 2, "w", "w"),
+            // ペア1: 1勝1敗 → スコア1.0 → bin 2
+            line(1, 1, "b", "b"),
+            line(1, 2, "w", "b"),
+            // ペア2: 引き分けと負け → スコア0.5 → bin 1
+            line(2, 1, "b", "draw"),
+            line(2, 2, "w", "b"),
+            // ペア3: 片方だけ（中断時の飛行中）→ 捨てる
+            line(3, 1, "b", "b"),
+        ]
+        .join("\n");
+        std::fs::write(&path, text).expect("write");
+
+        let (pent, wdl, next) = restore_from_jsonl(path.to_str().unwrap()).expect("restore");
+        assert_eq!(pent.0, [0, 1, 1, 0, 1], "bin度数");
+        assert_eq!(pent.total(), 3, "完全なペアは3つ");
+        // 候補視点: 勝ち3(ペア0の2局+ペア1の1局)、引き分け1、負け2
+        assert_eq!(wdl, [3, 1, 2]);
+        // 片方だけのペア3も採番済みなので、続きは4から
+        assert_eq!(next, 4);
+
+        std::fs::remove_file(&path).ok();
+    }
 }
