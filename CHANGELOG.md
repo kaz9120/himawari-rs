@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.10.1](https://github.com/kaz9120/himawari-rs/compare/v0.10.0...v0.10.1) (2026-07-28)
+
+
+### 内部
+
+* 開発環境の再現手順をスクリプト化する（ADR-0080・0081） ([#30](https://github.com/kaz9120/himawari-rs/issues/30)) ([aa8716a](https://github.com/kaz9120/himawari-rs/commit/aa8716a1f95396ea6ff155e05d5755b78b16dfe9))
+
 ## [0.10.0](https://github.com/kaz9120/himawari-rs/compare/v0.9.0...v0.10.0) (2026-07-28)
 
 
