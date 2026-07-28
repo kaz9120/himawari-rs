@@ -521,11 +521,11 @@ impl Worker {
                 1.0
             };
             prev_iter_score = last_score;
-            // 勝ちの詰みを見つけたら打ち切る（ADR-0088）。反復深化なので
-            // より短い詰みがあれば浅い周で見つかっている。これ以上読んでも
-            // 結論は変わらず、終盤の持ち時間を削るだけになる。
-            // 詰まされる側は続ける。深く読めばより長く粘る手が見つかる
-            if self.multi_pv == 1 && last_score >= VALUE_MATE_IN_MAX_PLY {
+            // 詰みが確定したら打ち切る（ADR-0088）。反復深化なので、より短い
+            // 詰みがあれば浅い周で見つかっている。これ以上読んでも結論は
+            // 変わらない。詰まされる側も同じで、より長く粘る手があれば
+            // alpha-betaが既にそちらを選んでいる
+            if self.multi_pv == 1 && last_score.abs() >= VALUE_MATE_IN_MAX_PLY {
                 break;
             }
             if self.stopped() || self.tm.over_total(scale) {
