@@ -5,7 +5,7 @@ use std::sync::Arc;
 use himawari_core::{Move, MoveList, Position, SFEN_STARTPOS, generate_legal};
 use himawari_engine::eval::Evaluator;
 use himawari_engine::movepick::{ContinuationHistory, CorrectionHistory, CounterMoves, History};
-use himawari_engine::search::{Shared, Worker};
+use himawari_engine::search::{SearchInfo, Shared, Worker};
 use himawari_engine::timeman::{Limits, TimeManager};
 use himawari_engine::value::{VALUE_MATE, Value};
 
@@ -120,7 +120,9 @@ fn multipv_lines_are_distinct_and_sorted() {
     );
     let mut lines: Vec<(usize, Value, Move)> = Vec::new();
     worker.iterate(&mut |info| {
-        if info.depth == 6 {
+        if let SearchInfo::Iteration(info) = info
+            && info.depth == 6
+        {
             lines.push((info.multipv, info.score, info.pv[0]));
         }
     });

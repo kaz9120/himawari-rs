@@ -15,7 +15,7 @@ use himawari_core::Position;
 use crate::eval::Evaluator;
 use crate::movepick::{ContinuationHistory, CorrectionHistory, CounterMoves, History};
 use crate::nnue::NnueNetwork;
-use crate::search::{Shared, Worker};
+use crate::search::{SearchInfo, Shared, Worker};
 use crate::timeman::{Limits, TimeManager};
 use crate::value::{VALUE_MATE, Value};
 
@@ -206,27 +206,40 @@ fn spawn_worker(
                     );
                     let result = worker.iterate(&mut |info| {
                         let Some(out) = &on_line else { return };
-                        let pv: Vec<String> = info.pv.iter().map(|m| m.to_usi()).collect();
-                        let nps = (info.nodes * 1000)
-                            .checked_div(info.elapsed_ms)
-                            .unwrap_or(0);
-                        // MultiPV>1のときだけmultipvを出す（現行互換）
-                        let mpv = if info.multipv > 0 {
-                            format!("multipv {} ", info.multipv)
-                        } else {
-                            String::new()
-                        };
-                        out(&format!(
-                            "info depth {} {}score {} nodes {} nps {} time {} hashfull {} pv {}",
-                            info.depth,
-                            mpv,
-                            format_score(info.score),
-                            info.nodes,
-                            nps,
-                            info.elapsed_ms,
-                            info.hashfull,
-                            pv.join(" ")
-                        ));
+                        match info {
+                            SearchInfo::CurrMove { depth, mv } => {
+                                out(&format!(
+                                    "info depth {} currmove {}",
+                                    depth,
+                                    mv.to_usi()
+                                ));
+                            }
+                            SearchInfo::Iteration(info) => {
+                                let pv: Vec<String> =
+                                    info.pv.iter().map(|m| m.to_usi()).collect();
+                                let nps = (info.nodes * 1000)
+                                    .checked_div(info.elapsed_ms)
+                                    .unwrap_or(0);
+                                // MultiPV>1のときだけmultipvを出す（現行互換）
+                                let mpv = if info.multipv > 0 {
+                                    format!("multipv {} ", info.multipv)
+                                } else {
+                                    String::new()
+                                };
+                                out(&format!(
+                                    "info depth {} seldepth {} {}score {} nodes {} nps {} time {} hashfull {} pv {}",
+                                    info.depth,
+                                    info.seldepth,
+                                    mpv,
+                                    format_score(info.score),
+                                    info.nodes,
+                                    nps,
+                                    info.elapsed_ms,
+                                    info.hashfull,
+                                    pv.join(" ")
+                                ));
+                            }
+                        }
                     });
                     // history類を回収して次のgoへ持ち越す
                     history = std::mem::take(&mut worker.history);

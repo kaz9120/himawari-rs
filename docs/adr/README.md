@@ -100,6 +100,7 @@
 | [0082](0082-book-release.md) | 定跡をGitHub Releaseで配布し、生成条件を成果物に残す | - | accepted |
 | [0083](0083-windows-static-crt.md) | WindowsバイナリをMSVCランタイム静的リンクで配布する | - | proposed |
 | [0084](0084-lmr-cutnode.md) | LMRにcutNode項を入れる | - | rejected |
+| [0086](0086-search-observability.md) | 探索の可観測性を上げる（seldepth・currmove） | - | proposed |
 
 ## バックログ
 
