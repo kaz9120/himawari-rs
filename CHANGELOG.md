@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.11.1](https://github.com/kaz9120/himawari-rs/compare/v0.11.0...v0.11.1) (2026-07-28)
+
+
+### その他の変更
+
+* aspirationのfail high/lowをinfoで報告する（ADR-0092） ([#58](https://github.com/kaz9120/himawari-rs/issues/58)) ([6d51068](https://github.com/kaz9120/himawari-rs/commit/6d5106837e8535d4594cc238793092151fce17a7))
+
 ## [0.11.0](https://github.com/kaz9120/himawari-rs/compare/v0.10.10...v0.11.0) (2026-07-28)
 
 
