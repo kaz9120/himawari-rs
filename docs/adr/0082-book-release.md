@@ -1,6 +1,6 @@
 # 0082: 定跡をGitHub Releaseで配布し、生成条件を成果物に残す
 
-- Status: proposed
+- Status: accepted
 - Date: 2026-07-28
 - 関連ADR: [0060](0060-opening-book-policy.md)（配布方針の射程を明確にする）, [0063](0063-book-loader-and-mini-book.md), [0080](0080-net-release.md), [0081](0081-portability.md)
 
