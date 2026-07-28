@@ -26,6 +26,11 @@ const NMP_BASE_REDUCTION: u32 = 3;
 /// LMRの最小深さと最小手数（この手数以降の静かな手を浅く読む）。
 const LMR_MIN_DEPTH: u32 = 3;
 const LMR_MIN_COUNT: u32 = 3;
+/// cutNodeで上乗せするリダクション（ADR-0084。1024倍固定小数）。
+/// 出典はやねうら王の `r += 3611 - 985 * !ttMove` の基本部分。
+/// スケールはADR-0076でやねうら王と2.4%差で一致することを確認済みで、
+/// 項の重みを換算せずに使える（ADR-0074）。
+const LMR_CUT_NODE_R: i32 = 3611;
 /// reverse futilityの最大深さとdepthあたりのマージン。
 const RFP_MAX_DEPTH: u32 = 6;
 const RFP_MARGIN: Value = 120;
@@ -451,12 +456,23 @@ impl Worker {
             self.pos.do_move(m);
             self.evaluator.push(&self.pos);
             let mut child_pv = Vec::new();
+            // cutNodeの伝播（ADR-0084）。rootはallNodeなので、null windowで
+            // 呼ぶ子はcutNodeになる。PV探索の子はどちらでもないのでfalse
             let value = if j == 0 {
-                -self.search(-beta, -alpha, depth - 1, 1, m, &mut child_pv, true)
+                -self.search(-beta, -alpha, depth - 1, 1, m, &mut child_pv, true, false)
             } else {
-                let v = -self.search(-alpha - 1, -alpha, depth - 1, 1, m, &mut child_pv, false);
+                let v = -self.search(
+                    -alpha - 1,
+                    -alpha,
+                    depth - 1,
+                    1,
+                    m,
+                    &mut child_pv,
+                    false,
+                    true,
+                );
                 if v > alpha && !self.stopped() {
-                    -self.search(-beta, -alpha, depth - 1, 1, m, &mut child_pv, true)
+                    -self.search(-beta, -alpha, depth - 1, 1, m, &mut child_pv, true, false)
                 } else {
                     v
                 }
@@ -496,6 +512,8 @@ impl Worker {
         prev: Move,
         pv: &mut Vec<Move>,
         is_pv: bool,
+        // βカットが起きると予想されるノードか（ADR-0084）。LMRを強める
+        cut_node: bool,
     ) -> Value {
         pv.clear();
         if self.stopped() {
@@ -648,6 +666,7 @@ impl Worker {
                 Move::NULL,
                 &mut null_pv,
                 false,
+                !cut_node,
             );
             self.evaluator.pop();
             self.pos.undo_null_move();
@@ -700,6 +719,7 @@ impl Worker {
                         m,
                         &mut child_pv,
                         false,
+                        !cut_node,
                     );
                 }
                 self.evaluator.pop();
@@ -750,6 +770,8 @@ impl Worker {
                 prev,
                 &mut verify_pv,
                 false,
+                // 同じノードの再探索なので反転しない（ADR-0084）
+                cut_node,
             );
             self.excluded_stack[ply] = Move::NONE;
             self.killers[ply] = saved_killers;
@@ -850,7 +872,19 @@ impl Worker {
             self.pos.do_move(m);
             self.evaluator.push(&self.pos);
             let value = if count == 1 {
-                -self.search(-beta, -alpha, new_depth, ply + 1, m, &mut child_pv, is_pv)
+                // PVノードの1手目はPV探索。それ以外はnull windowで、
+                // 親がcutNodeなら子はallNodeになる（ADR-0084）
+                let child_cut = if is_pv { false } else { !cut_node };
+                -self.search(
+                    -beta,
+                    -alpha,
+                    new_depth,
+                    ply + 1,
+                    m,
+                    &mut child_pv,
+                    is_pv,
+                    child_cut,
+                )
             } else {
                 // LMR（ADR-0028）: 遅い静かな手は浅いnull windowで読み、
                 // alphaを超えたときだけ元の深さで読み直す
@@ -866,10 +900,25 @@ impl Worker {
                     if is_pv {
                         r -= 1024;
                     }
+                    // βカットが予想されるノードは強く削る（ADR-0084）
+                    if cut_node {
+                        r += LMR_CUT_NODE_R;
+                    }
                     let red = (r / 1024).max(0) as u32;
                     d = new_depth.saturating_sub(red).max(1);
                 }
-                let mut v = -self.search(-alpha - 1, -alpha, d, ply + 1, m, &mut child_pv, false);
+                // 削った探索は「alphaを超えない」という予想の下で行う。
+                // 予想どおりならβカットが起きるのでcutNode（ADR-0084）
+                let mut v = -self.search(
+                    -alpha - 1,
+                    -alpha,
+                    d,
+                    ply + 1,
+                    m,
+                    &mut child_pv,
+                    false,
+                    true,
+                );
                 if v > alpha && d < new_depth && !self.stopped() {
                     v = -self.search(
                         -alpha - 1,
@@ -879,10 +928,20 @@ impl Worker {
                         m,
                         &mut child_pv,
                         false,
+                        !cut_node,
                     );
                 }
                 if v > alpha && is_pv && !self.stopped() {
-                    -self.search(-beta, -alpha, new_depth, ply + 1, m, &mut child_pv, true)
+                    -self.search(
+                        -beta,
+                        -alpha,
+                        new_depth,
+                        ply + 1,
+                        m,
+                        &mut child_pv,
+                        true,
+                        false,
+                    )
                 } else {
                     v
                 }
