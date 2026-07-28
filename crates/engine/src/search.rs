@@ -35,6 +35,9 @@ const FUTILITY_BASE: Value = 200;
 const FUTILITY_MARGIN: Value = 120;
 /// move count pruningの最大深さ。
 const LMP_MAX_DEPTH: u32 = 8;
+/// 「今読んでいる手」をinfoで出し始める経過時間（ADR-0086）。
+/// USIの慣例に合わせ、短い探索では出さない
+const CURRMOVE_MIN_MS: u64 = 3000;
 /// IIR: TTに手がないノードを1浅く読む最小深さ。
 const IIR_MIN_DEPTH: u32 = 4;
 /// razoringの最大深さとマージン（ADR-0057）。
@@ -130,9 +133,20 @@ impl Shared {
     }
 }
 
+/// 探索中の報告（ADR-0086）。反復深化1周分の結果と、rootで今読んで
+/// いる手の2種類がある。呼び出し側はどちらもUSIのinfo行へ落とす。
+pub enum SearchInfo {
+    /// 反復深化1周分（MultiPVでは1ラインごとに1回）。
+    Iteration(IterInfo),
+    /// rootで今読んでいる手（ADR-0086）。長考中の可視化に使う。
+    CurrMove { depth: u32, mv: Move },
+}
+
 /// 反復深化1周分の報告（MultiPVでは1ラインごとに1回）。
 pub struct IterInfo {
     pub depth: u32,
+    /// 静止探索を含めて到達した最大ply（ADR-0086）。
+    pub seldepth: u32,
     /// 1始まりのライン番号。MultiPV=1のときは0（info出力で省略）。
     pub multipv: usize,
     pub score: Value,
@@ -178,6 +192,8 @@ pub struct Worker {
     /// そのplyのexcluded_stackにTT手が入り、ムーブループで飛ばす。
     excluded_stack: Vec<Move>,
     killers: Vec<[Move; 2]>,
+    /// このイテレーションで到達した最大ply（seldepth。ADR-0086）。
+    sel_depth: u32,
     nodes: u64,
     shared: Arc<Shared>,
     tm: TimeManager,
@@ -214,6 +230,7 @@ impl Worker {
             eval_stack: vec![VALUE_NONE; MAX_PLY + 2],
             excluded_stack: vec![Move::NONE; MAX_PLY + 2],
             killers: vec![[Move::NONE; 2]; MAX_PLY + 2],
+            sel_depth: 0,
             nodes: 0,
             shared,
             tm,
@@ -274,7 +291,7 @@ impl Worker {
     }
 
     /// 反復深化。各イテレーション完了時にon_iterを呼ぶ。
-    pub fn iterate(&mut self, on_iter: &mut dyn FnMut(IterInfo)) -> SearchResult {
+    pub fn iterate(&mut self, on_info: &mut dyn FnMut(SearchInfo)) -> SearchResult {
         // 入玉宣言勝ち（ADR-0030）: 成立していれば探索せず宣言する
         if self.pos.can_declare_win() {
             return SearchResult {
@@ -323,6 +340,8 @@ impl Worker {
                 // 深さの開始時に集計を戻す（ADR-0062）
                 rm.nodes = 0;
             }
+            // seldepthはイテレーションごとに測り直す（ADR-0086）
+            self.sel_depth = 0;
             let lines = self.multi_pv.min(self.root_moves.len());
             // 直前ラインの出力スコア。頭打ちの基準に使う（ADR-0032）
             let mut prev_line_score = VALUE_INFINITE;
@@ -340,7 +359,8 @@ impl Worker {
                     (-VALUE_INFINITE, VALUE_INFINITE)
                 };
                 loop {
-                    let (score, best_idx, pv) = self.search_root(depth, alpha, beta, pv_idx);
+                    let (score, best_idx, pv) =
+                        self.search_root(depth, alpha, beta, pv_idx, on_info);
                     if self.stopped() {
                         break 'deepening;
                     }
@@ -374,8 +394,9 @@ impl Worker {
                         if pv_idx == 0 {
                             last_score = score;
                         }
-                        on_iter(IterInfo {
+                        on_info(SearchInfo::Iteration(IterInfo {
                             depth,
+                            seldepth: self.sel_depth.max(depth),
                             multipv: if self.multi_pv > 1 { pv_idx + 1 } else { 0 },
                             score: line_score,
                             pv: line_pv,
@@ -383,7 +404,7 @@ impl Worker {
                             nodes: self.shared.nodes.load(Ordering::Relaxed).max(self.nodes),
                             elapsed_ms: self.tm.elapsed().as_millis() as u64,
                             hashfull: self.shared.tt.hashfull(),
-                        });
+                        }));
                         break;
                     }
                 }
@@ -433,12 +454,14 @@ impl Worker {
 
     /// root_moves[pv_idx..]を探索する（上位の確定済みラインは除外）。
     /// 戻り値は (スコア, 最善手のroot_moves添字, PV)。
+    #[allow(clippy::too_many_arguments)]
     fn search_root(
         &mut self,
         depth: u32,
         mut alpha: Value,
         beta: Value,
         pv_idx: usize,
+        on_info: &mut dyn FnMut(SearchInfo),
     ) -> (Value, usize, Vec<Move>) {
         let mut best = -VALUE_INFINITE;
         let mut best_idx = pv_idx;
@@ -446,6 +469,11 @@ impl Worker {
         let moves: Vec<Move> = self.root_moves[pv_idx..].iter().map(|rm| rm.mv).collect();
         for (j, &m) in moves.iter().enumerate() {
             let i = pv_idx + j;
+            // 長考中だけ「今読んでいる手」を出す（ADR-0086）。短い探索で
+            // 出すとinfo行が溢れる
+            if self.tm.elapsed().as_millis() as u64 >= CURRMOVE_MIN_MS {
+                on_info(SearchInfo::CurrMove { depth, mv: m });
+            }
             self.move_stack[0] = m;
             let nodes_before = self.nodes;
             self.pos.do_move(m);
@@ -501,6 +529,7 @@ impl Worker {
         if self.stopped() {
             return VALUE_ZERO;
         }
+        self.sel_depth = self.sel_depth.max(ply as u32);
         self.nodes += 1;
         self.check_limits();
         if ply >= MAX_PLY {
@@ -963,6 +992,7 @@ impl Worker {
         if self.stopped() {
             return VALUE_ZERO;
         }
+        self.sel_depth = self.sel_depth.max(ply as u32);
         self.nodes += 1;
         self.check_limits();
         if ply >= MAX_PLY {
