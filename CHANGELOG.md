@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.10.8](https://github.com/kaz9120/himawari-rs/compare/v0.10.7...v0.10.8) (2026-07-28)
+
+
+### その他の変更
+
+* USIのinfoにseldepthとcurrmoveを出す（ADR-0086） ([#48](https://github.com/kaz9120/himawari-rs/issues/48)) ([fde0fa8](https://github.com/kaz9120/himawari-rs/commit/fde0fa893bde91f9c72163f547638b6197befab1))
+
 ## [0.10.7](https://github.com/kaz9120/himawari-rs/compare/v0.10.6...v0.10.7) (2026-07-28)
 
 
