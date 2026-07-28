@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.10.9](https://github.com/kaz9120/himawari-rs/compare/v0.10.8...v0.10.9) (2026-07-28)
+
+
+### その他の変更
+
+* 勝ちの詰みを見つけたら反復深化を打ち切る（ADR-0088） ([#51](https://github.com/kaz9120/himawari-rs/issues/51)) ([f6f97d6](https://github.com/kaz9120/himawari-rs/commit/f6f97d61e083376e5319432bd874b6b0cce54bac))
+
+
+### 内部
+
+* 中断したSPRTを棋譜から再開できるようにする（ADR-0087） ([#49](https://github.com/kaz9120/himawari-rs/issues/49)) ([f86604c](https://github.com/kaz9120/himawari-rs/commit/f86604cdd5caff99116b6f52b12eb94a5fb3412f))
+
 ## [0.10.8](https://github.com/kaz9120/himawari-rs/compare/v0.10.7...v0.10.8) (2026-07-28)
 
 
