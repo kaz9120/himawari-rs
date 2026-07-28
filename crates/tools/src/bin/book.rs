@@ -122,6 +122,13 @@ fn search_lines(
 type Sink = Arc<Mutex<Vec<String>>>;
 
 fn generate(cfg: &Config) -> std::io::Result<()> {
+    // 生成条件をログの先頭に残す（ADR-0082）。定跡は非決定的に生成され、
+    // 評価関数にも依存するため、どの設定で作ったかを後から追えないと
+    // 作り直しの判断ができない
+    eprintln!(
+        "BookGen: ply={} width={} depth={} threads={} hash={}MB",
+        cfg.ply, cfg.width, cfg.depth, cfg.threads, cfg.hash_mb
+    );
     let eval = if cfg.eval.is_empty() {
         None
     } else {

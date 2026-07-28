@@ -10,8 +10,9 @@
 1. WSL2 を入れる（Windowsの場合）
 2. scripts/setup.sh        ツールチェインとビルド
 3. gh auth login           GitHubの認証
-4. 学習済みネットの取得     gh release download
-5. scripts/fetch-dataset.sh 教師データ（学習を回す場合のみ）
+4. 学習済みネットの取得     gh release download net-v<N>
+5. 定跡の取得（任意）       gh release download book-v<N>
+6. scripts/fetch-dataset.sh 教師データ（学習を回す場合のみ）
 ```
 
 所要は2までが15分、4が数分、5が回線次第（77GB）。
@@ -98,7 +99,20 @@ printf 'usi\nsetoption name EvalFile value data/nets/<ネット>\nisready\nquit\
 
 `info string EvalFile loaded: ...` に学習来歴が出れば正しく読めている。
 
-## 5. 教師データ（学習を回す場合のみ）
+## 5. 定跡（任意）
+
+リポジトリには含めない（[ADR-0082](adr/0082-book-release.md)）。
+生成が非決定的なため再現できず、成果物をGitHub Releaseで配る。
+
+```bash
+gh release list | grep book-v
+gh release download book-v<N> -D data/book/
+```
+
+USIオプション `BookFile` にパスを指定する。既定は定跡なしで、
+指定しなければ使われない。
+
+## 6. 教師データ（学習を回す場合のみ）
 
 約160GBの空きが要る（生データ77GB + 加工済み80GB）。
 探索の開発だけなら不要。

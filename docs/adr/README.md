@@ -97,6 +97,7 @@
 | [0078](0078-tt-probcut.md) | 置換表の下界を使った簡易ProbCut | - | accepted |
 | [0080](0080-net-release.md) | 学習済みネットをGitHub Releaseで独立に配布する | - | accepted |
 | [0081](0081-portability.md) | 開発環境をスクリプトで再現可能にする | - | accepted |
+| [0082](0082-book-release.md) | 定跡をGitHub Releaseで配布し、生成条件を成果物に残す | - | proposed |
 
 ## バックログ
 
