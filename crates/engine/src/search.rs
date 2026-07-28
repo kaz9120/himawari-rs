@@ -49,6 +49,13 @@ const IIR_MIN_DEPTH: u32 = 4;
 const CORR_W_PAWN: i32 = 2048;
 const CORR_W_NON_PAWN: i32 = 1024;
 const CORR_W_CONT: i32 = 1024;
+/// SEEベースの枝刈り（ADR-0090）。移動先での駒の取り合いを静的に解き、
+/// この額より損をする手を捨てる。出典はやねうら王の
+/// `-25*lmrDepth^2`（静かな手）と `-167*depth`（取る手、captHist項は除く）。
+/// SEEの駒価値は歩=90でやねうら王と同系列のため絶対値のまま使える
+/// （ADR-0074）。閾値が負なので「多少の駒損は許し、大きな損だけ刈る」
+const SEE_QUIET_COEF: i32 = 25;
+const SEE_CAPTURE_COEF: i32 = 167;
 /// razoringの最大深さとマージン（ADR-0057）。
 const RAZOR_MAX_DEPTH: u32 = 3;
 const RAZOR_MARGIN: Value = 300;
@@ -928,6 +935,26 @@ impl Worker {
             let is_capture = !m.is_drop() && !self.pos.piece_on(m.to()).is_empty();
             let gives_check = self.pos.gives_check(m);
 
+            // 王手延長（ADR-0024）とsingular延長（ADR-0050）。どちらもTT手/王手を
+            // +1する。両立時はmaxで重複させない（depthのまま、depth+1にしない）。
+            // 枝刈りの尺度に使うため、ムーブループの枝刈りより前で決める
+            let new_depth = if gives_check || (singular && m == tt_move) {
+                depth
+            } else {
+                depth - 1
+            };
+
+            // LMRのリダクション量（ADR-0076の1024倍固定小数）。枝刈りの尺度
+            // （lmr_depth）と実際の浅い探索で同じ値を使う
+            let mut reduction_x1024 = lmr_reduction_x1024(depth, count);
+            if is_pv {
+                reduction_x1024 -= 1024;
+            }
+            // lmr_depth: LMRで削ったあとに実際に読む深さ（ADR-0090）。
+            // 生のdepthで枝刈りを判断すると、深いノードほど閾値が大きくなり
+            // 刈りすぎる。実際に読む深さで測る
+            let lmr_depth = (new_depth as i32 - (reduction_x1024 / 1024).max(0)).max(0);
+
             // move count pruning（ADR-0028）: 浅い深さで手数を使い切ったら
             // 残りの静かな手を捨てる。詰まされ筋では無効
             if !is_pv
@@ -954,13 +981,19 @@ impl Worker {
                 continue;
             }
 
-            // 王手延長（ADR-0024）とsingular延長（ADR-0050）。どちらもTT手/王手を
-            // +1する。両立時はmaxで重複させない（depthのまま、depth+1にしない）
-            let new_depth = if gives_check || (singular && m == tt_move) {
-                depth
-            } else {
-                depth - 1
-            };
+            // SEEベースの枝刈り（ADR-0090）。移動先の取り合いを静的に解き、
+            // 大きく駒損する手を読まずに捨てる。静かな手は実効深さの2乗、
+            // 取る手は深さに比例した額まで損を許す
+            if !is_pv && best > VALUE_MATED_IN_MAX_PLY && count > 1 && !in_check {
+                let threshold = if is_capture {
+                    -SEE_CAPTURE_COEF * depth as i32
+                } else {
+                    -SEE_QUIET_COEF * lmr_depth * lmr_depth
+                };
+                if !self.pos.see_ge(m, threshold) {
+                    continue;
+                }
+            }
 
             self.move_stack[ply] = m;
             self.pos.do_move(m);
@@ -977,12 +1010,7 @@ impl Worker {
                     && !gives_check
                     && !in_check
                 {
-                    // 1024倍固定小数で項を加減する（ADR-0076）
-                    let mut r = lmr_reduction_x1024(depth, count);
-                    if is_pv {
-                        r -= 1024;
-                    }
-                    let red = (r / 1024).max(0) as u32;
+                    let red = (reduction_x1024 / 1024).max(0) as u32;
                     d = new_depth.saturating_sub(red).max(1);
                 }
                 let mut v = -self.search(-alpha - 1, -alpha, d, ply + 1, m, &mut child_pv, false);
