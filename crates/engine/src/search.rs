@@ -324,6 +324,8 @@ impl Worker {
                 rm.nodes = 0;
             }
             let lines = self.multi_pv.min(self.root_moves.len());
+            // 直前ラインの出力スコア。頭打ちの基準に使う（ADR-0032）
+            let mut prev_line_score = VALUE_INFINITE;
             for pv_idx in 0..lines {
                 // ラインごとのaspiration。中心は前深さの自ラインのスコア
                 let center = if pv_idx == 0 {
@@ -361,12 +363,13 @@ impl Worker {
                         // ラインごとにaspiration窓が違い、返り値が窓に依存する
                         // ため、探索順のままだと後のラインが前を上回ることが
                         // ある。root_movesへは生の値を残し、出力だけ整える。
-                        // 並べ替えで整えると、確定済みラインと手が重複する
-                        let line_score = if pv_idx > 0 {
-                            score.min(self.root_moves[pv_idx - 1].score)
-                        } else {
-                            score
-                        };
+                        // 並べ替えで整えると、確定済みラインと手が重複する。
+                        // 基準は前ラインの生スコアではなく出力スコアにする。
+                        // 生スコアだと、前ラインが頭打ちされた分を後ろのラインが
+                        // 飛び越えられる（s1=100・s2=150・s3=120で3本目が
+                        // 120となり2本目の100を上回る）
+                        let line_score = score.min(prev_line_score);
+                        prev_line_score = line_score;
                         let line_pv = pv;
                         if pv_idx == 0 {
                             last_score = score;
