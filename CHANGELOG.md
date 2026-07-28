@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.10.7](https://github.com/kaz9120/himawari-rs/compare/v0.10.6...v0.10.7) (2026-07-28)
+
+
+### ドキュメント
+
+* LMRのcutNode項を棄却として記録する（ADR-0084） ([#46](https://github.com/kaz9120/himawari-rs/issues/46)) ([23af0b7](https://github.com/kaz9120/himawari-rs/commit/23af0b71d1b1e3db39591289645ab021d0f46aeb))
+
 ## [0.10.6](https://github.com/kaz9120/himawari-rs/compare/v0.10.5...v0.10.6) (2026-07-28)
 
 
