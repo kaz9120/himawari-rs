@@ -1000,23 +1000,36 @@ impl Position {
     // ---- SEE（静的交換評価。ADR-0025） ----
 
     /// mの静的交換評価がthreshold以上か。成りは考慮しない簡略版。
-    /// Stockfishのsee_geと同じswap構造。
+    /// Stockfishのsee_geと同じswap構造。駒打ちも解く（ADR-0091）。
     pub fn see_ge(&self, m: Move, threshold: i32) -> bool {
-        if m.is_drop() {
-            return 0 >= threshold;
-        }
         let to = m.to();
-        let from = m.from_sq();
-        let mut swap = PIECE_VALUE[self.piece_on(to).piece_type().index()] - threshold;
+        // 打つ手は移動先が空きマスなので取る駒がない。打った駒が盤上へ
+        // 現れるぶん、飛び駒の利きはそこで止まる（occへtoを足す）。
+        // 移動する手はfromが空くのでoccから抜く
+        let (captured, placed, occ0) = if m.is_drop() {
+            (
+                0,
+                PIECE_VALUE[m.drop_piece_type().index()],
+                self.occupied() | Bitboard::from_square(to),
+            )
+        } else {
+            let from = m.from_sq();
+            (
+                PIECE_VALUE[self.piece_on(to).piece_type().index()],
+                PIECE_VALUE[self.piece_on(from).piece_type().index()],
+                self.occupied() ^ Bitboard::from_square(from),
+            )
+        };
+        let mut swap = captured - threshold;
         if swap < 0 {
             return false;
         }
-        swap = PIECE_VALUE[self.piece_on(from).piece_type().index()] - swap;
+        swap = placed - swap;
         if swap <= 0 {
             return true;
         }
 
-        let mut occ = self.occupied() ^ Bitboard::from_square(from);
+        let mut occ = occ0;
         let mut stm = self.side;
         let mut res = true;
         loop {
