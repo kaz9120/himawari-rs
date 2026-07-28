@@ -102,6 +102,7 @@
 | [0087](0087-sprt-resume.md) | 中断したSPRTを棋譜から再開できるようにする | - | proposed |
 | [0084](0084-lmr-cutnode.md) | LMRにcutNode項を入れる | - | rejected |
 | [0086](0086-search-observability.md) | 探索の可観測性を上げる（seldepth・currmove） | - | proposed |
+| [0088](0088-mate-early-stop.md) | 勝ちの詰みを見つけたら反復深化を打ち切る | - | proposed |
 
 ## バックログ
 
