@@ -94,6 +94,7 @@
 | [0075](0075-razoring-margin.md) | razoringのマージンを2次式にし深さ制限を外す | - | rejected |
 | [0076](0076-lmr-fixed-point-ttpv.md) | LMRのリダクションを固定小数化する（ttPv項は棄却） | - | accepted |
 | [0077](0077-qsearch-futility.md) | 静止探索にfutility枝刈りとmovecount制限を入れる | - | accepted |
+| [0078](0078-tt-probcut.md) | 置換表の下界を使った簡易ProbCut | - | accepted |
 
 ## バックログ
 

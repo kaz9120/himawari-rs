@@ -45,6 +45,13 @@ const RAZOR_MARGIN: Value = 300;
 /// 「3手目以降は駒価値を見ずに捨てる」。出典はやねうら王の
 /// `futilityBase = staticEval + 328` と `moveCount > 2`。評価値は歩=90
 /// スケールで一致するため絶対値のまま用いる（ADR-0074）。
+/// 置換表の下界を使った簡易ProbCut（ADR-0078）。探索を伴わず、
+/// TTに `beta + このマージン` 以上の下界が depth-4 以上の深さで
+/// 記録されていればカットする。出典はやねうら王の `beta + 416`。
+/// 評価値は歩=90スケールで一致するため絶対値のまま用いる（ADR-0074）。
+const TT_PROBCUT_MARGIN: Value = 416;
+const TT_PROBCUT_DEPTH_SLACK: u32 = 4;
+
 const QS_FUTILITY_MARGIN: Value = 328;
 const QS_MOVECOUNT_LIMIT: u32 = 2;
 
@@ -751,6 +758,19 @@ impl Worker {
             // TT手が唯一の合法手なら検証探索はmated値を返し、必ず
             // singular=trueになる（唯一手の延長として意図どおり）
             singular = v < singular_beta;
+        }
+
+        // 置換表の下界による簡易ProbCut（ADR-0078）。探索を伴わない。
+        // 除外手つき探索中はスキップする（ADR-0050）
+        let tt_probcut_beta = beta + TT_PROBCUT_MARGIN;
+        if excluded == Move::NONE
+            && matches!(tt_bound, Bound::Lower | Bound::Exact)
+            && tt_depth >= depth.saturating_sub(TT_PROBCUT_DEPTH_SLACK)
+            && tt_value >= tt_probcut_beta
+            && beta.abs() < VALUE_MATE_IN_MAX_PLY
+            && tt_value.abs() < VALUE_MATE_IN_MAX_PLY
+        {
+            return tt_probcut_beta;
         }
 
         let mut picker = MovePicker::new(
