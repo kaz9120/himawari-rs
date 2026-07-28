@@ -11,7 +11,9 @@ use std::time::Instant;
 
 use himawari_core::Position;
 use himawari_engine::eval::Evaluator;
-use himawari_engine::movepick::{ContinuationHistory, CorrectionHistory, CounterMoves, History};
+use himawari_engine::movepick::{
+    ContinuationCorrectionHistory, ContinuationHistory, CorrectionHistory, CounterMoves, History,
+};
 use himawari_engine::search::{Shared, Worker};
 use himawari_engine::timeman::{Limits, TimeManager};
 use himawari_engine::value::VALUE_MATE;
@@ -44,6 +46,8 @@ fn solve(sfen: &str, depth: u32, shared: &Arc<Shared>) -> Option<(u32, String)> 
         History::default(),
         CounterMoves::default(),
         CorrectionHistory::default(),
+        CorrectionHistory::default(),
+        ContinuationCorrectionHistory::default(),
         ContinuationHistory::default(),
     );
     let result = worker.iterate(&mut |_| {});

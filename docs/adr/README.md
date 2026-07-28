@@ -104,6 +104,7 @@
 | [0087](0087-sprt-resume.md) | 中断したSPRTを棋譜から再開できるようにする | - | proposed |
 | [0088](0088-mate-early-stop.md) | 勝ちの詰みを見つけたら反復深化を打ち切る | - | proposed |
 | [0089](0089-improvement-criteria.md) | 探索改善の選定基準を3軸で置く | - | accepted |
+| [0085](0085-correction-history-multi.md) | correction historyを3系統に増やす | - | accepted |
 
 ## バックログ
 
