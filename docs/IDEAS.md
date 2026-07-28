@@ -36,7 +36,7 @@ NNUE後の再測定に意味がある。
 | ~~razoringの深さ制限撤廃~~ | ~~ADR-0075で棄却。マージンの向きを取り違えていた。razoringはマージンが大きいほど刈りにくく、本エンジンの300はやねうら王より緩い。揃えるとノードが5.4倍に増える~~ | ~~棄却~~ |
 | RFPの項追加とマージン緩和 | 4種の枝刈りで唯一、本エンジンが刈りにくい側にある（ADR-0075）。現状 120*depth・depth<=6。やねうら王は 76*depth・depth<15 にimprovingとopponentWorseningの項が付いてさらに減る。返り値の(2*beta+eval)/3化も含む | SPRT |
 | ProbCutの条件緩和 | depth>=5を3へ、マージン200固定を224-61*improvingへ、SEE閾値0をprobCutBeta-staticEvalへ | SPRT |
-| TTベースの簡易ProbCut | ムーブループ直前。ttBoundがLOWERかつttDepth>=depth-4かつttValue>=beta+416で即return | SPRT |
+| ~~TTベースの簡易ProbCut~~ | ~~ADR-0078で導入。+15.6 Elo（H1採択、5404局）。探索を伴わずNPSへの影響なし~~ | ~~完了~~ |
 | ~~qsearchのfutility~~ | ~~ADR-0077で導入。+57.3 Elo（H1採択、1242局）。bestValueの引き上げはMultiPVの整合のため入れていない~~ | ~~完了~~ |
 | singularマージンの将棋適合 | 現状 ttValue - 2*depth はStockfishの値のまま。やねうら王は係数を1/55へ下げ「1割がsingularになるよう調整」と明記 | SPRT |
 | singularの多段化 | double/triple extension、multi-cut、negative extension。ADR-0050は単独延長のみ | SPRT |
