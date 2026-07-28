@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.10.6](https://github.com/kaz9120/himawari-rs/compare/v0.10.5...v0.10.6) (2026-07-28)
+
+
+### その他の変更
+
+* MultiPVの出力スコアを直前ラインの出力値で頭打ちにする ([#43](https://github.com/kaz9120/himawari-rs/issues/43)) ([2acf78e](https://github.com/kaz9120/himawari-rs/commit/2acf78ea499ac620b721d53c4cda6d02a587f89d))
+
+
+### 内部
+
+* 機能検証をスクリプト化し局面と深さを固定する ([#42](https://github.com/kaz9120/himawari-rs/issues/42)) ([29f7d19](https://github.com/kaz9120/himawari-rs/commit/29f7d19001379f19ae2bc690ab013a027284b8b3))
+
 ## [0.10.5](https://github.com/kaz9120/himawari-rs/compare/v0.10.4...v0.10.5) (2026-07-28)
 
 
