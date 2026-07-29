@@ -117,6 +117,7 @@
 | [0100](0100-movepick-argmax-simd.md) | 指し手の最大スコア探索をSoA＋SIMDにする | - | accepted |
 | [0101](0101-movelist-uninit.md) | MoveListのゼロ埋めをやめる | - | accepted |
 | [0102](0102-move-horizon.md) | 残り手数の見積もりをmove horizon方式にする | -107.2 | rejected |
+| [0103](0103-root-score-gap.md) | rootの1位2位差を打ち切りの判定材料に足す案 | - | rejected |
 
 ## バックログ
 
