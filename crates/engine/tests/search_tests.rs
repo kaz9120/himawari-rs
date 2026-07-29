@@ -184,3 +184,52 @@ fn nnue_search_returns_legal_moves() {
         );
     }
 }
+
+/// stopが即座に立っても、深さ1を終えるまでは打ち切らない。
+///
+/// root手は生成順に並んでおり、`iterate` は打ち切り時に `root_moves[0]`
+/// を返す。深さ1の途中で止まると、探索していない「生成順の先頭の手」が
+/// bestmoveになってしまう。深さ1の完走を保証すれば、返る手は必ず深さ1の
+/// 最善手になる。
+#[test]
+fn stop_before_first_iteration_still_returns_the_depth1_best() {
+    let sfen = "1n1gk2nl/1r4g2/1sppppspp/L5p2/1p5P1/2P6/1PSPPPPSP/7R1/1N1GKG1NL w BLPbp 24";
+    let (want, _) = search_position(sfen, 1);
+
+    let pos = Position::from_sfen(sfen).unwrap();
+    let shared = Arc::new(Shared::new(16));
+    // 探索を始める前からstopを立てておく
+    shared
+        .stop
+        .store(true, std::sync::atomic::Ordering::Relaxed);
+    let limits = Limits {
+        infinite: true,
+        ..Limits::default()
+    };
+    let tm = TimeManager::new(&limits, pos.side_to_move(), pos.game_ply(), 120, 1120);
+    let mut worker = Worker::new(
+        pos.clone(),
+        shared,
+        limits,
+        tm,
+        0,
+        1,
+        Evaluator::material(),
+        History::default(),
+        CounterMoves::default(),
+        CorrectionHistory::default(),
+        CorrectionHistory::default(),
+        ContinuationCorrectionHistory::default(),
+        ContinuationHistory::default(),
+    );
+    let got = worker.iterate(&mut |_| {}).best;
+
+    let mut legal = MoveList::default();
+    generate_legal(&pos, false, &mut legal);
+    assert_eq!(got, want, "深さ1の最善手ではなく生成順の先頭を返している");
+    assert_ne!(
+        got,
+        legal.as_slice()[0],
+        "この局面では深さ1の最善手と生成順の先頭が違うことを前提にしている"
+    );
+}
