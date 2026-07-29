@@ -1445,7 +1445,7 @@ impl Worker {
     /// 出典はやねうら王の `update_quiet_histories()`
     /// （yaneuraou-search.cpp:5408-5422）。
     fn update_quiet_histories(&mut self, ply: usize, m: Move, bonus: i32) {
-        self.hist.main.update(m, bonus);
+        self.hist.main.update(self.pos.side_to_move(), m, bonus);
         if ply < LOW_PLY_HISTORY_SIZE {
             self.hist.low_ply.update(ply, m, bonus * 761 / 1024);
         }

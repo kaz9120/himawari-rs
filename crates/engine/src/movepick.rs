@@ -9,7 +9,8 @@
 //! `yaneuraou-search.cpp` を出典とする（ADR-0074）。
 
 use himawari_core::{
-    Bitboard, GenType, Move, MoveList, Piece, PieceType, Position, Square, generate, piece_value,
+    Bitboard, Color, GenType, Move, MoveList, Piece, PieceType, Position, Square, generate,
+    piece_value,
 };
 
 // ---- テーブルの寸法 ----
@@ -68,39 +69,42 @@ fn stats_update(entry: &mut i16, bonus: i32, d: i32) {
     *entry = (v + b - v * b.abs() / d) as i16;
 }
 
-/// main history（[移動後の駒 32][移動先 81]。駒打ちも表現できる）。
+/// main history（ButterflyHistory。[手番 2][指し手16bit 65536]。history.h:206）。
 ///
-/// 参照実装のButterflyHistoryは `[手番][指し手16bit]` だが、本エンジンは
-/// 移動後の駒と移動先で引く。面の定義は変えず、値域だけ参照実装へ
-/// 揃えてある（history.h:206）。
+/// 参照実装と同じく指し手の生16bitを添字にする。移動元を区別するので、
+/// 同じ駒が同じマスへ入る手でも来た筋ごとに別の値を持つ。
+/// 本エンジンの16bitは `to(7) | from(7) | 成 | 打` で、駒打ちのfrom欄には
+/// 駒種（9〜15）が入る。盤上のマス9〜15と数値は重なるが、打ちビットが
+/// 立つので16bit全体では衝突しない（history.h:217-229の方式に対応する）。
 pub struct History {
-    table: Box<[[i16; SQUARE_NB]; PIECE_NB]>,
+    table: Box<[i16]>,
 }
 
 impl Default for History {
     fn default() -> Self {
         History {
-            table: Box::new([[INIT_MAIN; SQUARE_NB]; PIECE_NB]),
+            table: vec![INIT_MAIN; 2 * UINT16_HISTORY_SIZE].into_boxed_slice(),
         }
     }
 }
 
 impl History {
     #[inline]
-    pub fn get(&self, m: Move) -> i32 {
-        i32::from(self.table[m.piece_after().index()][m.to().index()])
+    fn index(c: Color, m: Move) -> usize {
+        c.index() * UINT16_HISTORY_SIZE + usize::from(m.to_move16().0)
     }
 
-    pub fn update(&mut self, m: Move, bonus: i32) {
-        stats_update(
-            &mut self.table[m.piece_after().index()][m.to().index()],
-            bonus,
-            D_BUTTERFLY,
-        );
+    #[inline]
+    pub fn get(&self, c: Color, m: Move) -> i32 {
+        i32::from(self.table[Self::index(c, m)])
+    }
+
+    pub fn update(&mut self, c: Color, m: Move, bonus: i32) {
+        stats_update(&mut self.table[Self::index(c, m)], bonus, D_BUTTERFLY);
     }
 
     pub fn clear(&mut self) {
-        *self.table = [[INIT_MAIN; SQUARE_NB]; PIECE_NB];
+        self.table.fill(INIT_MAIN);
     }
 }
 
@@ -611,12 +615,13 @@ impl MovePicker {
     /// 静かな手のスコア（movepick.cpp:362-393）。
     fn score_quiets(&mut self, pos: &Position, h: &Histories, cont: &[usize; 6], list: &MoveList) {
         let pawn_slot = PawnHistory::slot(pos.pawn_key());
+        let us = pos.side_to_move();
         // 直接王手になるマスは駒種ごとに1回だけ引く
         let mut check_sq: [Option<Bitboard>; PIECE_TYPE_NB] = [None; PIECE_TYPE_NB];
         for &m in list {
             let pc = m.piece_after();
             let to = m.to();
-            let mut v = 2 * h.main.get(m);
+            let mut v = 2 * h.main.get(us, m);
             v += 2 * h.pawn.get(pawn_slot, pc, to);
             v += h.cont.get(cont[0], pc, to);
             v += h.cont.get(cont[1], pc, to);
@@ -644,6 +649,7 @@ impl MovePicker {
         cont: &[usize; 6],
         list: &MoveList,
     ) {
+        let us = pos.side_to_move();
         for &m in list {
             let pc = m.piece_after();
             let to = m.to();
@@ -652,7 +658,7 @@ impl MovePicker {
                 // 取る手が常に上に来るよう下駄を履かせる
                 piece_value(captured.piece_type()) + (1 << 28)
             } else {
-                h.main.get(m) + h.cont.get(cont[0], pc, to)
+                h.main.get(us, m) + h.cont.get(cont[0], pc, to)
             };
             self.moves.push(ExtMove { m, v });
         }
@@ -791,7 +797,7 @@ impl MovePicker {
                     for &m in &list {
                         // 駒損しない静かな王手だけを読む（ADR-0028）
                         if pos.gives_check(m) && pos.see_ge(m, 0) {
-                            let v = h.main.get(m);
+                            let v = h.main.get(pos.side_to_move(), m);
                             self.moves.push(ExtMove { m, v });
                         }
                     }
