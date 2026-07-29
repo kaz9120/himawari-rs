@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.15.1](https://github.com/kaz9120/himawari-rs/compare/v0.15.0...v0.15.1) (2026-07-29)
+
+
+### その他の変更
+
+* 新規開始のsprt-run.shが空配列の展開で落ちるのを直す ([#93](https://github.com/kaz9120/himawari-rs/issues/93)) ([ba6ade7](https://github.com/kaz9120/himawari-rs/commit/ba6ade76913072155978fc91c0d92850f71e683a))
+
 ## [0.15.0](https://github.com/kaz9120/himawari-rs/compare/v0.14.0...v0.15.0) (2026-07-29)
 
 
