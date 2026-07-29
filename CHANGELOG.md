@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.15.4](https://github.com/kaz9120/himawari-rs/compare/v0.15.3...v0.15.4) (2026-07-29)
+
+
+### その他の変更
+
+* 深さ1のイテレーションを終えるまでstopを無視する ([#101](https://github.com/kaz9120/himawari-rs/issues/101)) ([4446c8d](https://github.com/kaz9120/himawari-rs/commit/4446c8d02b91cd83cc8717623b560358344a0382))
+
+
+### ドキュメント
+
+* 時間配分のmove horizon化を棄却した記録を残す（ADR-0102） ([#98](https://github.com/kaz9120/himawari-rs/issues/98)) ([aef504d](https://github.com/kaz9120/himawari-rs/commit/aef504db8a23a3519ebbf6a882f33b2e059207aa))
+
+
+### 内部
+
+* selfplayに両者ponderのモードを足す（--ponder-both） ([#99](https://github.com/kaz9120/himawari-rs/issues/99)) ([fd4bdb3](https://github.com/kaz9120/himawari-rs/commit/fd4bdb352ffc6e53d07a0ff30760120ba08baca9))
+
 ## [0.15.3](https://github.com/kaz9120/himawari-rs/compare/v0.15.2...v0.15.3) (2026-07-29)
 
 
