@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.13.5](https://github.com/kaz9120/himawari-rs/compare/v0.13.4...v0.13.5) (2026-07-29)
+
+
+### 内部
+
+* SPRTの手順をスクリプトへ固める（ADR-0081） ([#78](https://github.com/kaz9120/himawari-rs/issues/78)) ([bfe2ea2](https://github.com/kaz9120/himawari-rs/commit/bfe2ea2032f20f30876b41a5e4e93f8cf2cb4c6a))
+
 ## [0.13.4](https://github.com/kaz9120/himawari-rs/compare/v0.13.3...v0.13.4) (2026-07-29)
 
 
