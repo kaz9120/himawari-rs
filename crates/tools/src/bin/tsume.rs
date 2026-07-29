@@ -34,7 +34,7 @@ fn solve(sfen: &str, depth: u32, shared: &Arc<Shared>) -> Option<(u32, String)> 
         depth,
         ..Limits::default()
     };
-    let tm = TimeManager::new(&limits, pos.side_to_move(), pos.game_ply(), 0, 0);
+    let tm = TimeManager::new(&limits, pos.side_to_move(), pos.game_ply(), 0, 0, false);
     let mut worker = Worker::new(
         pos,
         Arc::clone(shared),

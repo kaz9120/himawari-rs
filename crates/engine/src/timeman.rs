@@ -18,6 +18,12 @@ pub struct Limits {
     pub infinite: bool,
 }
 
+/// USI_Ponderが有効なときにoptimumへ足す割合の逆数（ADR-0107）。
+/// 出典はStockfish `src/timeman.cpp` の
+/// `if (options["Ponder"]) optimumTime += optimumTime / 4;`。
+/// ponderが当たれば相手の時計で読めるため、自分の時計は厚く使える
+const PONDER_OPTIMUM_DIV: u64 = 4;
+
 pub struct TimeManager {
     start: Instant,
     pub optimum: Option<Duration>,
@@ -25,7 +31,15 @@ pub struct TimeManager {
 }
 
 impl TimeManager {
-    pub fn new(limits: &Limits, us: Color, game_ply: u16, delay_ms: u64, delay2_ms: u64) -> Self {
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(
+        limits: &Limits,
+        us: Color,
+        game_ply: u16,
+        delay_ms: u64,
+        delay2_ms: u64,
+        ponder_enabled: bool,
+    ) -> Self {
         let start = Instant::now();
         if limits.infinite {
             return TimeManager {
@@ -57,7 +71,12 @@ impl TimeManager {
         // 残り想定手数で割り、秒読み・加算を足す（ADR-0021の初期式）
         let rem_moves = (48u64.saturating_sub(u64::from(game_ply) / 2)).max(16);
         let avail = my_time / rem_moves + limits.byoyomi + inc;
-        let optimum = avail.saturating_sub(delay_ms).max(10);
+        let mut optimum = avail.saturating_sub(delay_ms).max(10);
+        // ponderが当たれば相手の時計で読めるぶん、自分の時計は厚く使える
+        // （ADR-0107）。外れれば時間は消費されないので期待値で釣り合う
+        if ponder_enabled {
+            optimum += optimum / PONDER_OPTIMUM_DIV;
+        }
         let hard_cap = (my_time + limits.byoyomi).saturating_sub(delay2_ms);
         let maximum = (avail * 3).min(hard_cap).saturating_sub(delay_ms).max(10);
         TimeManager {
@@ -107,10 +126,28 @@ mod tests {
             byoyomi: 3000,
             ..Limits::default()
         };
-        let tm = TimeManager::new(&limits, Color::Black, 50, 120, 1120);
+        let tm = TimeManager::new(&limits, Color::Black, 50, 120, 1120, false);
         // 残り時間0でも秒読み分は使える
         assert!(tm.optimum.unwrap() >= Duration::from_millis(2000));
         assert!(tm.maximum.unwrap() <= Duration::from_millis(3000));
+    }
+
+    /// ADR-0107。USI_Ponderが有効なときだけoptimumが1.25倍になる。
+    #[test]
+    fn ponder_enabled_widens_optimum() {
+        let limits = Limits {
+            btime: 300_000,
+            binc: 10_000,
+            ..Limits::default()
+        };
+        let off = TimeManager::new(&limits, Color::Black, 0, 120, 1120, false);
+        let on = TimeManager::new(&limits, Color::Black, 0, 120, 1120, true);
+        let (o, n) = (off.optimum.unwrap(), on.optimum.unwrap());
+        let want = o * 5 / 4;
+        let slack = Duration::from_millis(1);
+        assert!(n + slack >= want && n <= want + slack, "{n:?} vs {want:?}");
+        // maximumは触らない
+        assert_eq!(off.maximum, on.maximum);
     }
 
     #[test]
@@ -119,7 +156,7 @@ mod tests {
             infinite: true,
             ..Limits::default()
         };
-        let tm = TimeManager::new(&limits, Color::Black, 1, 120, 1120);
+        let tm = TimeManager::new(&limits, Color::Black, 1, 120, 1120, false);
         assert!(tm.optimum.is_none() && tm.maximum.is_none());
     }
 
@@ -129,7 +166,7 @@ mod tests {
             movetime: 1000,
             ..Limits::default()
         };
-        let tm = TimeManager::new(&limits, Color::White, 1, 120, 1120);
+        let tm = TimeManager::new(&limits, Color::White, 1, 120, 1120, false);
         assert_eq!(tm.optimum, tm.maximum);
         assert!(tm.maximum.unwrap() < Duration::from_millis(1000));
     }

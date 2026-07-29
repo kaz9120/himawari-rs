@@ -207,6 +207,7 @@ fn spawn_worker(
                             j.pos.game_ply(),
                             j.opts.network_delay,
                             j.opts.network_delay2,
+                            j.opts.ponder,
                         );
                         (j.limits.clone(), tm)
                     } else {
@@ -217,8 +218,14 @@ fn spawn_worker(
                             depth: j.limits.depth,
                             ..Limits::default()
                         };
-                        let tm =
-                            TimeManager::new(&inf, j.pos.side_to_move(), j.pos.game_ply(), 0, 0);
+                        let tm = TimeManager::new(
+                            &inf,
+                            j.pos.side_to_move(),
+                            j.pos.game_ply(),
+                            0,
+                            0,
+                            false,
+                        );
                         (inf, tm)
                     };
                     let was_ponder = j.ponder;

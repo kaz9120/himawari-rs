@@ -1353,7 +1353,14 @@ mod tests {
             depth,
             ..Limits::default()
         };
-        let tm = TimeManager::new(&limits, pos.side_to_move(), pos.game_ply(), 120, 1120);
+        let tm = TimeManager::new(
+            &limits,
+            pos.side_to_move(),
+            pos.game_ply(),
+            120,
+            1120,
+            false,
+        );
         let mut worker = Worker::new(
             pos,
             shared,
