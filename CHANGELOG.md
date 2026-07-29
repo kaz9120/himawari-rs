@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.15.2](https://github.com/kaz9120/himawari-rs/compare/v0.15.1...v0.15.2) (2026-07-29)
+
+
+### その他の変更
+
+* MoveListのゼロ埋めをやめる（ADR-0101） ([#92](https://github.com/kaz9120/himawari-rs/issues/92)) ([4723258](https://github.com/kaz9120/himawari-rs/commit/47232587944ff9250b6b55e7b3c3e99ad6233388))
+
 ## [0.15.1](https://github.com/kaz9120/himawari-rs/compare/v0.15.0...v0.15.1) (2026-07-29)
 
 
