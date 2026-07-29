@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.16.2](https://github.com/kaz9120/himawari-rs/compare/v0.16.1...v0.16.2) (2026-07-29)
+
+
+### ドキュメント
+
+* aspirationの窓外れが評価値とともに増えることを記録する ([#122](https://github.com/kaz9120/himawari-rs/issues/122)) ([6e7a134](https://github.com/kaz9120/himawari-rs/commit/6e7a13474dc258ec86f94fef9fdbc1b2b5bf37fc))
+
 ## [0.16.1](https://github.com/kaz9120/himawari-rs/compare/v0.16.0...v0.16.1) (2026-07-29)
 
 
