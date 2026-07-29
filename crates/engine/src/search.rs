@@ -11,10 +11,7 @@ use himawari_core::{
 };
 
 use crate::eval::Evaluator;
-use crate::movepick::{
-    ContinuationCorrectionHistory, ContinuationHistory, CorrectionHistory, CounterMoves, History,
-    MovePicker,
-};
+use crate::movepick::{ContinuationCorrectionHistory, ContinuationHistory, Histories, MovePicker};
 use crate::timeman::{Limits, TimeManager};
 use crate::tt::{Bound, EvalHash, Tt};
 use crate::value::{
@@ -240,14 +237,8 @@ const STACK_OFFSET: usize = 7;
 pub struct Worker {
     pub pos: Position,
     pub evaluator: Evaluator,
-    pub history: History,
-    pub counters: CounterMoves,
-    /// 静的評価のcorrection history（ADR-0046, 0109）。4系統を1本に持つ。
-    pub corr: CorrectionHistory,
-    /// 過去の指し手を条件にするcorrection history（ADR-0085, 0109）。
-    pub corr_cont: ContinuationCorrectionHistory,
-    /// continuation history（ADR-0047）。
-    pub cont: ContinuationHistory,
+    /// historyの一式（ADR-0109のG1）。対局を通じてスレッドが持ち回る。
+    pub hist: Histories,
     /// plyごとの探索状態（ADR-0109）。添字は `ply + STACK_OFFSET` で引く。
     /// 前方の余白により、ply 0でも1手前・2手前を境界検査なしで読める。
     stack: Vec<StackEntry>,
@@ -277,20 +268,12 @@ impl Worker {
         max_moves_to_draw: u16,
         multi_pv: usize,
         evaluator: Evaluator,
-        history: History,
-        counters: CounterMoves,
-        corr: CorrectionHistory,
-        corr_cont: ContinuationCorrectionHistory,
-        cont: ContinuationHistory,
+        hist: Histories,
     ) -> Worker {
         Worker {
             pos,
             evaluator,
-            history,
-            counters,
-            corr,
-            corr_cont,
-            cont,
+            hist,
             stack: vec![
                 StackEntry {
                     current_move: Move::NONE,
@@ -383,7 +366,7 @@ impl Worker {
     /// 補正後が詰み圏に入らないようクランプする。
     #[inline]
     fn to_corrected(&self, raw: Value, ply: usize) -> Value {
-        let (pcv, micv, bnpcv, wnpcv) = self.corr.probe(&self.pos);
+        let (pcv, micv, bnpcv, wnpcv) = self.hist.corr.probe(&self.pos);
         // 余白があるのでply 0でも境界検査は要らない。前方は初期値のMove::NONE
         let prev1 = self.stack[ply + STACK_OFFSET - 1].current_move;
         let cntcv = if prev1.is_special() {
@@ -397,7 +380,7 @@ impl Worker {
             let base4 = ContinuationCorrectionHistory::base(
                 self.stack[ply + STACK_OFFSET - 4].current_move,
             );
-            self.corr_cont.get(base2, pc, to) + self.corr_cont.get(base4, pc, to)
+            self.hist.corr_cont.get(base2, pc, to) + self.hist.corr_cont.get(base4, pc, to)
         };
         let sum = CORR_W_PAWN * pcv
             + CORR_W_MINOR * micv
@@ -453,6 +436,8 @@ impl Worker {
         }
         self.shared.tt.new_search();
         self.evaluator.new_search(&self.pos);
+        // lowPly historyはgoのたびに埋め直す（ADR-0109。S:1539-1540）
+        self.hist.new_search();
         let mut list = MoveList::default();
         generate_legal(&self.pos, false, &mut list);
         self.root_moves = list
@@ -1033,7 +1018,7 @@ impl Worker {
             &self.pos,
             tt_move,
             self.stack[ply + STACK_OFFSET].killers,
-            self.counters.get(prev),
+            self.hist.counters.get(prev),
         );
         // continuation historyの面（1手前から6手前まで。ADR-0109のG1）
         let cont = self.cont_bases(ply);
@@ -1044,7 +1029,7 @@ impl Worker {
         let mut tried_quiets: Vec<Move> = Vec::new();
         let mut child_pv = Vec::new();
 
-        while let Some(m) = picker.next(&self.pos, &self.history, &self.cont, &cont) {
+        while let Some(m) = picker.next(&self.pos, &self.hist, &cont) {
             // 除外手はスキップ（singular検証探索。ADR-0050）。通常はexcluded==NONE
             if m == excluded {
                 continue;
@@ -1348,7 +1333,7 @@ impl Worker {
         let cont = self.cont_bases(ply);
         let mut count = 0u32;
         let mut best_move = Move::NONE;
-        while let Some(m) = picker.next(&self.pos, &self.history, &self.cont, &cont) {
+        while let Some(m) = picker.next(&self.pos, &self.hist, &cont) {
             if !self.pos.is_legal(m) {
                 continue;
             }
@@ -1438,7 +1423,7 @@ impl Worker {
     /// 出典はやねうら王の `update_correction_history()`
     /// （yaneuraou-search.cpp:748-771）。系統ごとに重みが違う。
     fn update_correction_history(&mut self, ply: usize, bonus: i32) {
-        self.corr.update_all(&self.pos, bonus);
+        self.hist.corr.update_all(&self.pos, bonus);
         let prev1 = self.stack[ply + STACK_OFFSET - 1].current_move;
         if !prev1.is_special() {
             let to = prev1.to();
@@ -1449,8 +1434,8 @@ impl Worker {
             let base4 = ContinuationCorrectionHistory::base(
                 self.stack[ply + STACK_OFFSET - 4].current_move,
             );
-            self.corr_cont.update(base2, pc, to, bonus * 126 / 128);
-            self.corr_cont.update(base4, pc, to, bonus * 63 / 128);
+            self.hist.corr_cont.update(base2, pc, to, bonus * 126 / 128);
+            self.hist.corr_cont.update(base4, pc, to, bonus * 63 / 128);
         }
     }
 
@@ -1460,15 +1445,15 @@ impl Worker {
             k[1] = k[0];
             k[0] = m;
         }
-        self.counters.update(prev, m);
+        self.hist.counters.update(prev, m);
         // bonusとmalusは別式（ADR-0073）。外れた手を強く忘れさせる
         let bonus = history_bonus(depth);
         let malus = history_malus(depth);
-        self.history.update(m, bonus);
+        self.hist.main.update(m, bonus);
         self.update_continuation_histories(ply, m.piece_after(), m.to(), bonus);
         for &q in tried {
             if q != m {
-                self.history.update(q, -malus);
+                self.hist.main.update(q, -malus);
                 self.update_continuation_histories(ply, q.piece_after(), q.to(), -malus);
             }
         }
@@ -1489,7 +1474,7 @@ impl Worker {
             let e = self.stack[ply + STACK_OFFSET - i];
             if !e.current_move.is_special() {
                 let b = bonus * weight / 1024 + 88 * i32::from(i < 2);
-                self.cont.update(e.cont_base, pc, to, b);
+                self.hist.cont.update(e.cont_base, pc, to, b);
             }
         }
     }
@@ -1527,11 +1512,7 @@ mod tests {
             0,
             1,
             Evaluator::material(),
-            History::default(),
-            CounterMoves::default(),
-            CorrectionHistory::default(),
-            ContinuationCorrectionHistory::default(),
-            ContinuationHistory::default(),
+            Histories::default(),
         );
         let result = worker.iterate(&mut |_| {});
         (worker.nodes, result.best)

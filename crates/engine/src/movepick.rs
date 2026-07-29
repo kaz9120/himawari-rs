@@ -1,11 +1,15 @@
-//! 指し手オーダリング（ADR-0025）。
+//! 指し手オーダリングとhistoryのテーブル群（ADR-0025, 0109）。
 //!
-//! MovePickerは段階生成の状態機械。カットが早いノードでは
-//! Quietsの生成自体を省く。borrow衝突を避けるため、
-//! next()は毎回&Positionと&Historyを受け取る。
+//! MovePickerは段階生成の状態機械。参照実装（やねうら王）の
+//! `movepick.cpp` の遷移をそのまま移してある。カットが早いノードでは
+//! Quietsの生成自体を省く。borrow衝突を避けるため、next()は毎回
+//! &Positionと&Historiesを受け取る。
+//!
+//! テーブルの次元・値域・初期値は参照実装の `history.h` と
+//! `yaneuraou-search.cpp` を出典とする（ADR-0074）。
 
 use himawari_core::{
-    Color, GenType, Move, MoveList, Piece, Position, Square, generate, piece_value,
+    GenType, Move, MoveList, Piece, PieceType, Position, Square, generate, piece_value,
 };
 
 // ---- テーブルの寸法 ----
@@ -14,14 +18,46 @@ use himawari_core::{
 const PIECE_NB: usize = 32;
 /// マスの数。参照実装のSQUARE_NB。
 const SQUARE_NB: usize = 81;
+/// 駒種の数（先後なし）。参照実装のPIECE_TYPE_NB。
+const PIECE_TYPE_NB: usize = 16;
+/// 16bitの指し手をそのまま添字にする表のサイズ（history.h:27）。
+const UINT16_HISTORY_SIZE: usize = 65536;
+/// lowPly historyが覆うply数（history.h:31）。
+pub const LOW_PLY_HISTORY_SIZE: usize = 5;
+/// 歩構造historyのスロット数（history.h:26）。
+const PAWN_HISTORY_BASE_SIZE: usize = 8192;
 /// correction historyのスロット数（history.h:29）。
-const CORRHIST_BASE_SIZE: usize = 65536;
+const CORRHIST_BASE_SIZE: usize = UINT16_HISTORY_SIZE;
+
+// ---- 値域（StatsEntryのD） ----
+
+/// main history / lowPly historyの値域（history.h:206, 239）。
+const D_BUTTERFLY: i32 = 7183;
+/// capture historyの値域（history.h:244）。
+const D_CAPTURE: i32 = 10692;
+/// continuation historyの値域（history.h:249のPieceToHistory）。
+const D_PIECE_TO: i32 = 30000;
+/// pawn historyの値域（history.h:266）。
+const D_PAWN: i32 = 8192;
 /// correction historyの値域（history.h:30）。
 const D_CORRECTION: i32 = 1024;
+/// ttMoveHistoryの値域（history.h:345）。
+const D_TT_MOVE: i32 = 8192;
+
+// ---- 初期値（YaneuraOuWorker::clear。yaneuraou-search.cpp:2139-2176） ----
+
+/// main historyの初期値（yaneuraou-search.cpp:703, 2142）。
+const INIT_MAIN: i16 = 0;
+/// capture historyの初期値（yaneuraou-search.cpp:2143）。
+const INIT_CAPTURE: i16 = -678;
+/// pawn historyの初期値（yaneuraou-search.cpp:2147）。
+const INIT_PAWN: i16 = -1238;
 /// continuation correction historyの初期値（yaneuraou-search.cpp:2153）。
 const INIT_CONT_CORR: i16 = 6;
-/// 応手側の面の広さ（[駒][マス]）。
-const CONT_STRIDE: usize = PIECE_NB * SQUARE_NB;
+/// continuation historyの初期値（yaneuraou-search.cpp:2165）。
+const INIT_CONT: i16 = -523;
+/// lowPly historyの初期値。goのたびに埋め直す（yaneuraou-search.cpp:1540）。
+const INIT_LOW_PLY: i16 = 98;
 
 /// gravity方式の更新（history.h:91-125のStatsEntry::operator<<）。
 /// bonusを±dに丸めたうえで、値が±dを超えないよう自然にゼロへ引き戻す。
@@ -33,14 +69,18 @@ fn stats_update(entry: &mut i16, bonus: i32, d: i32) {
 }
 
 /// main history（[移動後の駒 32][移動先 81]。駒打ちも表現できる）。
+///
+/// 参照実装のButterflyHistoryは `[手番][指し手16bit]` だが、本エンジンは
+/// 移動後の駒と移動先で引く。面の定義は変えず、値域だけ参照実装へ
+/// 揃えてある（history.h:206）。
 pub struct History {
-    table: Box<[[i16; 81]; 32]>,
+    table: Box<[[i16; SQUARE_NB]; PIECE_NB]>,
 }
 
 impl Default for History {
     fn default() -> Self {
         History {
-            table: Box::new([[0; 81]; 32]),
+            table: Box::new([[INIT_MAIN; SQUARE_NB]; PIECE_NB]),
         }
     }
 }
@@ -51,15 +91,129 @@ impl History {
         i32::from(self.table[m.piece_after().index()][m.to().index()])
     }
 
-    /// gravity方式の更新。bonusは±depth²程度。
     pub fn update(&mut self, m: Move, bonus: i32) {
-        let bonus = bonus.clamp(-4000, 4000);
-        let h = &mut self.table[m.piece_after().index()][m.to().index()];
-        *h += (bonus - i32::from(*h) * bonus.abs() / 16384) as i16;
+        stats_update(
+            &mut self.table[m.piece_after().index()][m.to().index()],
+            bonus,
+            D_BUTTERFLY,
+        );
     }
 
     pub fn clear(&mut self) {
-        *self.table = [[0; 81]; 32];
+        *self.table = [[INIT_MAIN; SQUARE_NB]; PIECE_NB];
+    }
+}
+
+/// lowPly history（[ply 5][指し手16bit]。history.h:239）。
+/// root付近のオーダリングを整える。goのたびに98で埋め直す。
+pub struct LowPlyHistory {
+    table: Box<[i16]>,
+}
+
+impl Default for LowPlyHistory {
+    fn default() -> Self {
+        LowPlyHistory {
+            table: vec![INIT_LOW_PLY; LOW_PLY_HISTORY_SIZE * UINT16_HISTORY_SIZE]
+                .into_boxed_slice(),
+        }
+    }
+}
+
+impl LowPlyHistory {
+    #[inline]
+    fn index(ply: usize, m: Move) -> usize {
+        ply * UINT16_HISTORY_SIZE + usize::from(m.to_move16().0)
+    }
+
+    #[inline]
+    pub fn get(&self, ply: usize, m: Move) -> i32 {
+        i32::from(self.table[Self::index(ply, m)])
+    }
+
+    pub fn update(&mut self, ply: usize, m: Move, bonus: i32) {
+        stats_update(&mut self.table[Self::index(ply, m)], bonus, D_BUTTERFLY);
+    }
+
+    /// goのたびに98で埋め直す（yaneuraou-search.cpp:1540）。
+    pub fn fill_for_new_search(&mut self) {
+        self.table.fill(INIT_LOW_PLY);
+    }
+}
+
+/// capture history（[移動後の駒 32][移動先 81][取った駒の種類 16]。history.h:244）。
+pub struct CaptureHistory {
+    table: Box<[i16]>,
+}
+
+impl Default for CaptureHistory {
+    fn default() -> Self {
+        CaptureHistory {
+            table: vec![INIT_CAPTURE; PIECE_NB * SQUARE_NB * PIECE_TYPE_NB].into_boxed_slice(),
+        }
+    }
+}
+
+impl CaptureHistory {
+    #[inline]
+    fn index(pc: Piece, to: Square, captured: PieceType) -> usize {
+        (pc.index() * SQUARE_NB + to.index()) * PIECE_TYPE_NB + captured.index()
+    }
+
+    #[inline]
+    pub fn get(&self, pc: Piece, to: Square, captured: PieceType) -> i32 {
+        i32::from(self.table[Self::index(pc, to, captured)])
+    }
+
+    pub fn update(&mut self, pc: Piece, to: Square, captured: PieceType, bonus: i32) {
+        stats_update(
+            &mut self.table[Self::index(pc, to, captured)],
+            bonus,
+            D_CAPTURE,
+        );
+    }
+
+    pub fn clear(&mut self) {
+        self.table.fill(INIT_CAPTURE);
+    }
+}
+
+/// pawn history（[歩構造キー 8192][移動後の駒 32][移動先 81]。history.h:265）。
+/// 参照実装はスレッド共有のatomicだが、ここではスレッドローカルに持つ。
+pub struct PawnHistory {
+    table: Box<[i16]>,
+}
+
+impl Default for PawnHistory {
+    fn default() -> Self {
+        PawnHistory {
+            table: vec![INIT_PAWN; PAWN_HISTORY_BASE_SIZE * PIECE_NB * SQUARE_NB]
+                .into_boxed_slice(),
+        }
+    }
+}
+
+impl PawnHistory {
+    /// 歩構造キーからスロットを引く（history.h:370-372）。
+    #[inline]
+    pub fn slot(pawn_key: u64) -> usize {
+        (pawn_key as usize & (PAWN_HISTORY_BASE_SIZE - 1)) * PIECE_NB * SQUARE_NB
+    }
+
+    #[inline]
+    pub fn get(&self, slot: usize, pc: Piece, to: Square) -> i32 {
+        i32::from(self.table[slot + pc.index() * SQUARE_NB + to.index()])
+    }
+
+    pub fn update(&mut self, slot: usize, pc: Piece, to: Square, bonus: i32) {
+        stats_update(
+            &mut self.table[slot + pc.index() * SQUARE_NB + to.index()],
+            bonus,
+            D_PAWN,
+        );
+    }
+
+    pub fn clear(&mut self) {
+        self.table.fill(INIT_PAWN);
     }
 }
 
@@ -107,7 +261,7 @@ impl CorrectionHistory {
         );
     }
 
-    /// 4系統の生の値を取り出す（yaneuraou-search.cpp:728-731）。
+    /// 4系統の合成前の生の値を取り出す（yaneuraou-search.cpp:728-731）。
     /// 返り値は (歩, 小駒, 先手非歩, 後手非歩)。
     #[inline]
     pub fn probe(&self, pos: &Position) -> (i32, i32, i32, i32) {
@@ -115,8 +269,16 @@ impl CorrectionHistory {
         (
             self.get(pos.pawn_key(), stm, CORR_PAWN),
             self.get(pos.minor_piece_key(), stm, CORR_MINOR),
-            self.get(pos.non_pawn_key(Color::Black), stm, CORR_NON_PAWN_BLACK),
-            self.get(pos.non_pawn_key(Color::White), stm, CORR_NON_PAWN_WHITE),
+            self.get(
+                pos.non_pawn_key(himawari_core::Color::Black),
+                stm,
+                CORR_NON_PAWN_BLACK,
+            ),
+            self.get(
+                pos.non_pawn_key(himawari_core::Color::White),
+                stm,
+                CORR_NON_PAWN_WHITE,
+            ),
         )
     }
 
@@ -129,13 +291,13 @@ impl CorrectionHistory {
         self.update(pos.pawn_key(), stm, CORR_PAWN, bonus);
         self.update(pos.minor_piece_key(), stm, CORR_MINOR, bonus * 153 / 128);
         self.update(
-            pos.non_pawn_key(Color::Black),
+            pos.non_pawn_key(himawari_core::Color::Black),
             stm,
             CORR_NON_PAWN_BLACK,
             bonus * NON_PAWN_WEIGHT / 128,
         );
         self.update(
-            pos.non_pawn_key(Color::White),
+            pos.non_pawn_key(himawari_core::Color::White),
             stm,
             CORR_NON_PAWN_WHITE,
             bonus * NON_PAWN_WEIGHT / 128,
@@ -153,6 +315,9 @@ impl CorrectionHistory {
 pub struct ContinuationCorrectionHistory {
     table: Box<[i16]>,
 }
+
+/// 応手側の面の広さ（[駒][マス]）。
+const CONT_STRIDE: usize = PIECE_NB * SQUARE_NB;
 
 impl Default for ContinuationCorrectionHistory {
     fn default() -> Self {
@@ -191,6 +356,116 @@ impl ContinuationCorrectionHistory {
     }
 }
 
+/// continuation history（ADR-0047, 0109）。
+/// 論理次元は[王手中か 2][駒を取る手か 2][条件手の駒 32][条件手の移動先 81]
+/// [応手の駒 32][応手の移動先 81]（history.h:259、yaneuraou-search.cpp:2117）。
+/// 巨大ネスト配列のスタック経由初期化はオーバーフローの危険があるため、
+/// フラットなboxed sliceで確保し添字を計算する（約51.3MiB）。
+pub struct ContinuationHistory {
+    table: Box<[i16]>,
+}
+
+impl Default for ContinuationHistory {
+    fn default() -> Self {
+        ContinuationHistory {
+            table: vec![INIT_CONT; 4 * CONT_STRIDE * CONT_STRIDE].into_boxed_slice(),
+        }
+    }
+}
+
+impl ContinuationHistory {
+    /// 条件手から面の先頭添字を作る（yaneuraou-search.cpp:2117）。
+    /// in_checkはその手を指したノードで王手がかかっていたか、
+    /// captureはその手が駒を取る手か。
+    #[inline]
+    pub fn base(in_check: bool, capture: bool, pc: Piece, to: Square) -> usize {
+        (((usize::from(in_check) * 2 + usize::from(capture)) * PIECE_NB + pc.index()) * SQUARE_NB
+            + to.index())
+            * CONT_STRIDE
+    }
+
+    /// 指し手のないplyが指す番兵の面（yaneuraou-search.cpp:1467, 3255）。
+    pub const SENTINEL: usize = 0;
+
+    #[inline]
+    pub fn get(&self, base: usize, pc: Piece, to: Square) -> i32 {
+        i32::from(self.table[base + pc.index() * SQUARE_NB + to.index()])
+    }
+
+    #[inline]
+    pub fn get_move(&self, base: usize, m: Move) -> i32 {
+        self.get(base, m.piece_after(), m.to())
+    }
+
+    pub fn update(&mut self, base: usize, pc: Piece, to: Square, bonus: i32) {
+        stats_update(
+            &mut self.table[base + pc.index() * SQUARE_NB + to.index()],
+            bonus,
+            D_PIECE_TO,
+        );
+    }
+
+    pub fn clear(&mut self) {
+        self.table.fill(INIT_CONT);
+    }
+}
+
+/// TT手が最善手になりやすいかを1個のスカラーで持つ（history.h:345）。
+#[derive(Default)]
+pub struct TtMoveHistory {
+    value: i16,
+}
+
+impl TtMoveHistory {
+    #[inline]
+    pub fn get(&self) -> i32 {
+        i32::from(self.value)
+    }
+
+    pub fn update(&mut self, bonus: i32) {
+        stats_update(&mut self.value, bonus, D_TT_MOVE);
+    }
+
+    pub fn clear(&mut self) {
+        self.value = 0;
+    }
+}
+
+/// スレッドが対局を通じて保持するhistoryの一式（ADR-0109）。
+/// 参照実装のWorkerが持つテーブル群に対応する。
+#[derive(Default)]
+pub struct Histories {
+    pub main: History,
+    pub counters: CounterMoves,
+    pub low_ply: LowPlyHistory,
+    pub capture: CaptureHistory,
+    pub pawn: PawnHistory,
+    pub cont: ContinuationHistory,
+    pub corr: CorrectionHistory,
+    pub corr_cont: ContinuationCorrectionHistory,
+    pub tt_move: TtMoveHistory,
+}
+
+impl Histories {
+    /// 対局間のリセット（yaneuraou-search.cpp:2139-2176）。
+    pub fn clear(&mut self) {
+        self.main.clear();
+        self.counters.clear();
+        self.capture.clear();
+        self.pawn.clear();
+        self.cont.clear();
+        self.corr.clear();
+        self.corr_cont.clear();
+        self.tt_move.clear();
+    }
+
+    /// goごとの初期化。lowPly historyだけは局面ごとに埋め直す
+    /// （yaneuraou-search.cpp:1539-1540）。
+    pub fn new_search(&mut self) {
+        self.low_ply.fill_for_new_search();
+    }
+}
+
 /// counter move（[直前の手の駒 32][移動先 81]）。
 pub struct CounterMoves {
     table: Box<[[Move; 81]; 32]>,
@@ -222,60 +497,6 @@ impl CounterMoves {
 
     pub fn clear(&mut self) {
         *self.table = [[Move::NONE; 81]; 32];
-    }
-}
-
-/// continuation history（ADR-0047, 0109）。
-/// 論理次元は[王手中か 2][駒を取る手か 2][条件手の駒 32][条件手の移動先 81]
-/// [応手の駒 32][応手の移動先 81]（history.h:259、yaneuraou-search.cpp:2117）。
-/// 巨大ネスト配列のスタック経由初期化はオーバーフローの危険があるため、
-/// フラットなboxed sliceで確保し添字を計算する（約51.3MiB）。
-pub struct ContinuationHistory {
-    table: Box<[i16]>,
-}
-
-/// continuation historyの値域（history.h:249のPieceToHistory）。
-const D_PIECE_TO: i32 = 30000;
-/// continuation historyの初期値（yaneuraou-search.cpp:2165）。
-const INIT_CONT: i16 = -523;
-
-impl Default for ContinuationHistory {
-    fn default() -> Self {
-        ContinuationHistory {
-            table: vec![INIT_CONT; 4 * CONT_STRIDE * CONT_STRIDE].into_boxed_slice(),
-        }
-    }
-}
-
-impl ContinuationHistory {
-    /// 条件手から面の先頭添字を作る（yaneuraou-search.cpp:2117）。
-    /// in_checkはその手を指したノードで王手がかかっていたか、
-    /// captureはその手が駒を取る手か。
-    #[inline]
-    pub fn base(in_check: bool, capture: bool, pc: Piece, to: Square) -> usize {
-        (((usize::from(in_check) * 2 + usize::from(capture)) * PIECE_NB + pc.index()) * SQUARE_NB
-            + to.index())
-            * CONT_STRIDE
-    }
-
-    /// 指し手のないplyが指す番兵の面（yaneuraou-search.cpp:1467, 3255）。
-    pub const SENTINEL: usize = 0;
-
-    #[inline]
-    pub fn get(&self, base: usize, pc: Piece, to: Square) -> i32 {
-        i32::from(self.table[base + pc.index() * SQUARE_NB + to.index()])
-    }
-
-    pub fn update(&mut self, base: usize, pc: Piece, to: Square, bonus: i32) {
-        stats_update(
-            &mut self.table[base + pc.index() * SQUARE_NB + to.index()],
-            bonus,
-            D_PIECE_TO,
-        );
-    }
-
-    pub fn clear(&mut self) {
-        self.table.fill(INIT_CONT);
     }
 }
 
@@ -434,13 +655,7 @@ impl MovePicker {
     }
 
     /// contは1手前から6手前までのcontinuation historyの面。
-    pub fn next(
-        &mut self,
-        pos: &Position,
-        history: &History,
-        cont_hist: &ContinuationHistory,
-        cont: &[usize; 6],
-    ) -> Option<Move> {
+    pub fn next(&mut self, pos: &Position, h: &Histories, cont: &[usize; 6]) -> Option<Move> {
         loop {
             match self.stage {
                 Stage::TtMove => {
@@ -511,12 +726,12 @@ impl MovePicker {
                             // （movepick.cpp:364-368）
                             let pc = m.piece_after();
                             let to = m.to();
-                            let score = history.get(m)
-                                + cont_hist.get(cont[0], pc, to)
-                                + cont_hist.get(cont[1], pc, to)
-                                + cont_hist.get(cont[2], pc, to)
-                                + cont_hist.get(cont[3], pc, to)
-                                + cont_hist.get(cont[5], pc, to);
+                            let score = h.main.get(m)
+                                + h.cont.get(cont[0], pc, to)
+                                + h.cont.get(cont[1], pc, to)
+                                + h.cont.get(cont[2], pc, to)
+                                + h.cont.get(cont[3], pc, to)
+                                + h.cont.get(cont[5], pc, to);
                             self.push_scored(m, score);
                         }
                     }
@@ -543,7 +758,7 @@ impl MovePicker {
                         let score = if !m.is_drop() && !pos.piece_on(m.to()).is_empty() {
                             100_000 + capture_score(pos, m)
                         } else {
-                            history.get(m)
+                            h.main.get(m)
                         };
                         self.push_scored(m, score);
                     }
@@ -590,7 +805,7 @@ impl MovePicker {
                     for &m in &list {
                         // 駒損しない静かな王手だけを読む（ADR-0028）。TT手は重複回避
                         if m != self.tt_move && pos.gives_check(m) && pos.see_ge(m, 0) {
-                            self.push_scored(m, history.get(m));
+                            self.push_scored(m, h.main.get(m));
                         }
                     }
                     self.stage = Stage::QChecks;
@@ -650,5 +865,23 @@ mod tests {
         assert_eq!(argmax_first(&[i32::MIN]), 0);
         assert_eq!(argmax_first(&[-5, -5, -5]), 0);
         assert_eq!(argmax_first(&[i32::MIN, i32::MAX]), 1);
+    }
+
+    /// gravity方式の更新が値域を守ること（history.h:91）。
+    #[test]
+    fn stats_update_stays_in_range() {
+        for d in [D_BUTTERFLY, D_CAPTURE, D_PIECE_TO, D_CORRECTION] {
+            let mut e: i16 = 0;
+            for _ in 0..200 {
+                stats_update(&mut e, d * 2, d);
+                assert!(i32::from(e).abs() <= d);
+            }
+            assert_eq!(i32::from(e), d);
+            for _ in 0..400 {
+                stats_update(&mut e, -d * 2, d);
+                assert!(i32::from(e).abs() <= d);
+            }
+            assert_eq!(i32::from(e), -d);
+        }
     }
 }
