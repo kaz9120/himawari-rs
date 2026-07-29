@@ -29,9 +29,6 @@ use crate::value::{
 const NMP_MIN_DEPTH: u32 = 3;
 /// NMPのリダクション: 3 + depth / 4。
 const NMP_BASE_REDUCTION: u32 = 3;
-/// LMRの最小深さと最小手数（この手数以降の静かな手を浅く読む）。
-const LMR_MIN_DEPTH: u32 = 3;
-const LMR_MIN_COUNT: u32 = 3;
 /// reverse futilityの最大深さとdepthあたりのマージン。
 const RFP_MAX_DEPTH: u32 = 6;
 const RFP_MARGIN: Value = 120;
@@ -1326,82 +1323,82 @@ impl Worker {
             self.set_current_move(ply, m, is_capture);
             self.pos.do_move(m);
             self.evaluator.push(&self.pos);
-            let value = if count == 1 {
-                // 第1手はPVならcut_node = false、そうでなければ反転する
-                -self.search(
-                    -beta,
-                    -alpha,
-                    new_depth,
-                    ply + 1,
-                    m,
-                    &mut child_pv,
-                    is_pv,
-                    !is_pv && !cut_node,
-                )
-            } else {
-                // LMR（ADR-0028）: 遅い静かな手は浅いnull windowで読み、
-                // alphaを超えたときだけ元の深さで読み直す
-                let mut d = new_depth;
-                let did_lmr = depth >= LMR_MIN_DEPTH
-                    && count >= LMR_MIN_COUNT
-                    && !is_capture
-                    && !gives_check
-                    && !in_check;
-                if did_lmr {
-                    let red = (r / 1024).max(0) as u32;
-                    d = new_depth.saturating_sub(red).max(1);
-                }
-                // 削った浅い探索はcut_node = true、削らなかった全深さの
-                // null windowは反転する（ADR-0109のG0）
-                let child_cut = if d != new_depth { true } else { !cut_node };
-                let mut v = -self.search(
+
+            // 再探索で伸縮するのでここから可変にする
+            let mut new_depth = new_depth as i32;
+            let mut value = -VALUE_INFINITE;
+            if depth >= 2 && count > 1 {
+                // LMR（yaneuraou-search.cpp:3954-4010）。参照実装の発動条件は
+                // 深さと手数だけで、取る手も王手する手も対象にする。
+                // リダクションが負なら `new_depth + 2` まで深く読む
+                let d = (new_depth - r / 1024).min(new_depth + 2).max(1) + i32::from(is_pv);
+                self.stack[ply + STACK_OFFSET].reduction = new_depth - d;
+                value = -self.search(
                     -alpha - 1,
                     -alpha,
-                    d,
+                    d as u32,
                     ply + 1,
                     m,
                     &mut child_pv,
                     false,
-                    child_cut,
+                    true,
                 );
-                // 減深探索がalphaを超えたかを、再探索の前に控える。
-                // 参照実装が加点の条件に使うのは減深探索の値である
-                // （yaneuraou-search.cpp:3989, 4008）
-                let lmr_raised_alpha = did_lmr && v > alpha;
-                if v > alpha && d < new_depth && !self.stopped() {
-                    // LMR後の再探索も反転する
-                    v = -self.search(
-                        -alpha - 1,
-                        -alpha,
-                        new_depth,
-                        ply + 1,
-                        m,
-                        &mut child_pv,
-                        false,
-                        !cut_node,
-                    );
-                }
-                if lmr_raised_alpha {
+                self.stack[ply + STACK_OFFSET].reduction = 0;
+                if value > alpha {
+                    // 減深探索の結果で読み直す深さを調整する
+                    // （yaneuraou-search.cpp:3997-4000）。十分良ければ深く、
+                    // 十分悪ければ浅くする
+                    let do_deeper = d < new_depth && value > best + 48;
+                    let do_shallower = value < best + 9;
+                    new_depth += i32::from(do_deeper) - i32::from(do_shallower);
+                    if new_depth > d && !self.stopped() {
+                        value = -self.search(
+                            -alpha - 1,
+                            -alpha,
+                            new_depth.max(0) as u32,
+                            ply + 1,
+                            m,
+                            &mut child_pv,
+                            false,
+                            !cut_node,
+                        );
+                    }
                     // LMR後のcontinuation history更新
                     // （yaneuraou-search.cpp:4008）
                     self.update_continuation_histories(ply, m.piece_after(), m.to(), 1426);
                 }
-                if v > alpha && is_pv && !self.stopped() {
-                    // PVの再探索はcut_node = false
-                    -self.search(
-                        -beta,
-                        -alpha,
-                        new_depth,
-                        ply + 1,
-                        m,
-                        &mut child_pv,
-                        true,
-                        false,
-                    )
-                } else {
-                    v
+            } else if !is_pv || count > 1 {
+                // LMRを省いたときの調整（yaneuraou-search.cpp:4017-4030）。
+                // 項12: TT手がなければ削る。削る量が大きければ深さを落とす
+                if tt_move == Move::NONE {
+                    r += 1057;
                 }
-            };
+                let d = new_depth - i32::from(r > 4628) - i32::from(r > 5772 && new_depth > 2);
+                value = -self.search(
+                    -alpha - 1,
+                    -alpha,
+                    d.max(0) as u32,
+                    ply + 1,
+                    m,
+                    &mut child_pv,
+                    false,
+                    !cut_node,
+                );
+            }
+            // PVノードは第1手とfail highの後だけ全窓で読み直す
+            // （yaneuraou-search.cpp:4043-4061）
+            if is_pv && (count == 1 || value > alpha) && !self.stopped() {
+                value = -self.search(
+                    -beta,
+                    -alpha,
+                    new_depth.max(0) as u32,
+                    ply + 1,
+                    m,
+                    &mut child_pv,
+                    true,
+                    false,
+                );
+            }
             self.evaluator.pop();
             self.pos.undo_move(m);
             if self.stopped() {
