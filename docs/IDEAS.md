@@ -91,12 +91,14 @@ floodgateの負け11局は終盤の時間枯渇だった（RESULTS.md）。こ�
 
 | 案 | 狙い・メモ | 検証 |
 |---|---|---|
-| 時間配分式のmove_horizon化 | ADR-0021の初期式のまま。MTG = min(max_moves_to_draw - ply + 2, 160±ply補正)/2。切れ負けと秒読みで分岐させ、終盤に厚く配る | SPRT |
+| ~~時間配分式のmove_horizon化~~ | [ADR-0102](adr/0102-move-horizon.md)で-107.2、棄却。一律に薄くすると最善手が後から変わる局面から時間を奪う | 済 |
 | 秒単位切り上げと使い切り | stopを立てる代わりにsearch_endを設定し、秒単位まで使い切る。maximumがavail*3に張り付く問題も同時に見直す | SPRT |
 | bestMoveChangesのスレッド集約 | 全スレッドの最善手変更回数を集約し 1.04+1.8956*changes/threads を掛ける。現状はメインのstable_itersのみ | SPRT |
 | 安定度のロジスティック化 | 現状は 1.5-0.15*n の線形。0.723+0.79/(1.104+exp(-0.5189*(depth-center)))、center=lastBestMoveDepth+11.57 | SPRT |
 | 最小思考時間とponder延長 | MinimumThinkingTime（やねうら王の既定は2000ms）と、ponder有効時にoptimumを1.25倍する扱い | SPRT |
 | 時間管理: fail-low延長 | ADR-0059は評価下落で伸ばす。root fail-low時の明示的な延長は未着手 | SPRT |
+| rootの1位2位差を判定材料に足す | ADR-0059の案Cは「MultiPV=2でノードが増える」として見送った。MultiPV=1でもrootでfail-lowした手の上界は無料で取れるため前提が変わる。「取る一手」を捉える | SPRT |
+| ponderhitで探索を継続する | 現状はponderhitで再起動し（thread.rs）、満額の時間配分を新規に作る。ponderで読んだ実績が時間管理に伝わらない | SPRT |
 
 ## 探索: 並列・置換表
 

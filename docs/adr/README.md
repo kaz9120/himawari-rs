@@ -116,6 +116,7 @@
 | [0099](0099-nnue-dot-sdot.md) | NNUE隠れ層の内積をSDOTで4行ずつ計算する | - | accepted |
 | [0100](0100-movepick-argmax-simd.md) | 指し手の最大スコア探索をSoA＋SIMDにする | - | accepted |
 | [0101](0101-movelist-uninit.md) | MoveListのゼロ埋めをやめる | - | accepted |
+| [0102](0102-move-horizon.md) | 残り手数の見積もりをmove horizon方式にする | -107.2 | rejected |
 
 ## バックログ
 
