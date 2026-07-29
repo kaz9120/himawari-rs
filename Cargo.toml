@@ -6,7 +6,7 @@ default-members = ["crates/core", "crates/engine", "crates/tools", "crates/usi"]
 [workspace.package]
 version = "0.16.2"
 edition = "2024"
-license = "MIT"
+license = "GPL-3.0-or-later"
 
 [workspace.lints.rust]
 unsafe_op_in_unsafe_fn = "deny"
