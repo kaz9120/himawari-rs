@@ -11,7 +11,10 @@ use himawari_core::{
 };
 
 use crate::eval::Evaluator;
-use crate::movepick::{ContinuationCorrectionHistory, ContinuationHistory, Histories, MovePicker};
+use crate::movepick::{
+    ContinuationCorrectionHistory, ContinuationHistory, Histories, LOW_PLY_HISTORY_SIZE,
+    MovePicker, PawnHistory,
+};
 use crate::timeman::{Limits, TimeManager};
 use crate::tt::{Bound, EvalHash, Tt};
 use crate::value::{
@@ -35,8 +38,6 @@ const RFP_MARGIN: Value = 120;
 const FUTILITY_MAX_DEPTH: u32 = 6;
 const FUTILITY_BASE: Value = 200;
 const FUTILITY_MARGIN: Value = 120;
-/// move count pruningの最大深さ。
-const LMP_MAX_DEPTH: u32 = 8;
 /// 「今読んでいる手」をinfoで出し始める経過時間（ADR-0086）。
 /// USIの慣例に合わせ、短い探索では出さない
 const CURRMOVE_MIN_MS: u64 = 3000;
@@ -107,10 +108,11 @@ fn history_malus(depth: u32) -> i32 {
     (882 * depth as i32 - 204).clamp(0, 2122)
 }
 
-/// この手数を超えた静かな手を捨てる（ADR-0028）。
+/// この手数に達したら静かな手の生成をやめる（ADR-0109のG1）。
+/// 出典はやねうら王の `(3 + depth * depth) / (2 - improving)`
+/// （yaneuraou-search.cpp:3593）。
 fn lmp_limit(depth: u32, improving: bool) -> u32 {
-    let base = 3 + depth * depth;
-    if improving { base } else { base / 2 }
+    (3 + depth * depth) / (2 - u32::from(improving))
 }
 
 /// LMRのリダクション表（ADR-0076で1024倍の固定小数へ）。
@@ -228,7 +230,6 @@ struct StackEntry {
     cont_base: usize,
     /// 同じくcontinuation correction historyの面（G1）。
     cont_corr_base: usize,
-    killers: [Move; 2],
 }
 
 /// Stackの前方余白。ss-6まで境界検査なしで参照するために置く。
@@ -283,7 +284,6 @@ impl Worker {
                     // 指し手のないplyは番兵の面を指す
                     cont_base: ContinuationHistory::SENTINEL,
                     cont_corr_base: 0,
-                    killers: [Move::NONE; 2],
                 };
                 MAX_PLY + 10
             ],
@@ -374,13 +374,13 @@ impl Worker {
         } else {
             let to = prev1.to();
             let pc = self.pos.piece_on(to);
-            let base2 = ContinuationCorrectionHistory::base(
-                self.stack[ply + STACK_OFFSET - 2].current_move,
-            );
-            let base4 = ContinuationCorrectionHistory::base(
-                self.stack[ply + STACK_OFFSET - 4].current_move,
-            );
-            self.hist.corr_cont.get(base2, pc, to) + self.hist.corr_cont.get(base4, pc, to)
+            self.hist
+                .corr_cont
+                .get(self.stack[ply + STACK_OFFSET - 2].cont_corr_base, pc, to)
+                + self
+                    .hist
+                    .corr_cont
+                    .get(self.stack[ply + STACK_OFFSET - 4].cont_corr_base, pc, to)
         };
         let sum = CORR_W_PAWN * pcv
             + CORR_W_MINOR * micv
@@ -973,9 +973,6 @@ impl Worker {
             && self.pos.is_legal(tt_move)
         {
             let singular_beta = tt_value - 2 * depth as Value;
-            // 検証探索はkillers[ply]を書き換える（update_quiet_stats）。
-            // このノードのpickerが読む前に退避・復元する（ADR-0050の注意点）
-            let saved_killers = self.stack[ply + STACK_OFFSET].killers;
             self.stack[ply + STACK_OFFSET].excluded_move = tt_move;
             let mut verify_pv = Vec::new();
             let v = self.search(
@@ -990,7 +987,6 @@ impl Worker {
                 cut_node,
             );
             self.stack[ply + STACK_OFFSET].excluded_move = Move::NONE;
-            self.stack[ply + STACK_OFFSET].killers = saved_killers;
             // 検証探索の再帰でstatic_evalが同値で上書きされる。念のため戻す
             self.stack[ply + STACK_OFFSET].static_eval = static_eval;
             if self.stopped() {
@@ -1014,12 +1010,7 @@ impl Worker {
             return tt_probcut_beta;
         }
 
-        let mut picker = MovePicker::new(
-            &self.pos,
-            tt_move,
-            self.stack[ply + STACK_OFFSET].killers,
-            self.hist.counters.get(prev),
-        );
+        let mut picker = MovePicker::new(&self.pos, tt_move, depth as i32, ply, false);
         // continuation historyの面（1手前から6手前まで。ADR-0109のG1）
         let cont = self.cont_bases(ply);
         let mut best = -VALUE_INFINITE;
@@ -1061,17 +1052,12 @@ impl Worker {
             // 刈りすぎる。実際に読む深さで測る
             let lmr_depth = (new_depth as i32 - (reduction_x1024 / 1024).max(0)).max(0);
 
-            // move count pruning（ADR-0028）: 浅い深さで手数を使い切ったら
-            // 残りの静かな手を捨てる。詰まされ筋では無効
-            if !is_pv
-                && !in_check
-                && !is_capture
-                && !gives_check
-                && depth <= LMP_MAX_DEPTH
-                && best > VALUE_MATED_IN_MAX_PLY
-                && count > lmp_limit(depth, improving)
-            {
-                continue;
+            // move count pruning（ADR-0028, 0109）: 手数を使い切ったら、
+            // MovePickerに静かな手の生成そのものをやめさせる。詰まされ筋では
+            // 無効。参照実装は「rootでない」「bestValueが敗勢でない」の2条件
+            // だけを課す（yaneuraou-search.cpp:3586-3594）
+            if best > VALUE_MATED_IN_MAX_PLY && count >= lmp_limit(depth, improving) {
+                picker.skip_quiet_moves();
             }
 
             // futility（ADR-0028）: 評価がalphaに遠く及ばない浅い静かな手を
@@ -1192,7 +1178,7 @@ impl Worker {
                     }
                     if value >= beta {
                         if !is_capture {
-                            self.update_quiet_stats(m, prev, ply, depth, &tried_quiets);
+                            self.update_quiet_stats(m, ply, depth, &tried_quiets);
                         }
                         break;
                     }
@@ -1329,7 +1315,7 @@ impl Worker {
         };
 
         // 入口plyだけ静かな王手も読む（ADR-0028の項目7）
-        let mut picker = MovePicker::new_qsearch(&self.pos, tt_move, qdepth == 0);
+        let mut picker = MovePicker::new(&self.pos, tt_move, 0, ply, qdepth == 0);
         let cont = self.cont_bases(ply);
         let mut count = 0u32;
         let mut best_move = Move::NONE;
@@ -1428,34 +1414,10 @@ impl Worker {
         if !prev1.is_special() {
             let to = prev1.to();
             let pc = self.pos.piece_on(to);
-            let base2 = ContinuationCorrectionHistory::base(
-                self.stack[ply + STACK_OFFSET - 2].current_move,
-            );
-            let base4 = ContinuationCorrectionHistory::base(
-                self.stack[ply + STACK_OFFSET - 4].current_move,
-            );
+            let base2 = self.stack[ply + STACK_OFFSET - 2].cont_corr_base;
+            let base4 = self.stack[ply + STACK_OFFSET - 4].cont_corr_base;
             self.hist.corr_cont.update(base2, pc, to, bonus * 126 / 128);
             self.hist.corr_cont.update(base4, pc, to, bonus * 63 / 128);
-        }
-    }
-
-    fn update_quiet_stats(&mut self, m: Move, prev: Move, ply: usize, depth: u32, tried: &[Move]) {
-        let k = &mut self.stack[ply + STACK_OFFSET].killers;
-        if k[0] != m {
-            k[1] = k[0];
-            k[0] = m;
-        }
-        self.hist.counters.update(prev, m);
-        // bonusとmalusは別式（ADR-0073）。外れた手を強く忘れさせる
-        let bonus = history_bonus(depth);
-        let malus = history_malus(depth);
-        self.hist.main.update(m, bonus);
-        self.update_continuation_histories(ply, m.piece_after(), m.to(), bonus);
-        for &q in tried {
-            if q != m {
-                self.hist.main.update(q, -malus);
-                self.update_continuation_histories(ply, q.piece_after(), q.to(), -malus);
-            }
         }
     }
 
@@ -1475,6 +1437,33 @@ impl Worker {
             if !e.current_move.is_special() {
                 let b = bonus * weight / 1024 + 88 * i32::from(i < 2);
                 self.hist.cont.update(e.cont_base, pc, to, b);
+            }
+        }
+    }
+
+    /// 静かな手1つのhistoryを更新する（ADR-0109のG1）。
+    /// 出典はやねうら王の `update_quiet_histories()`
+    /// （yaneuraou-search.cpp:5408-5422）。
+    fn update_quiet_histories(&mut self, ply: usize, m: Move, bonus: i32) {
+        self.hist.main.update(m, bonus);
+        if ply < LOW_PLY_HISTORY_SIZE {
+            self.hist.low_ply.update(ply, m, bonus * 761 / 1024);
+        }
+        self.update_continuation_histories(ply, m.piece_after(), m.to(), bonus * 955 / 1024);
+        let slot = PawnHistory::slot(self.pos.pawn_key());
+        let scaled = bonus * if bonus > 0 { 850 } else { 550 } / 1024;
+        self.hist.pawn.update(slot, m.piece_after(), m.to(), scaled);
+    }
+
+    /// βカットした静かな手にbonus、外れた手にmalusを配る（ADR-0073）。
+    /// bonus式の精緻化（ttMove一致項・malusの後方減衰）はG1の第2段で入れる。
+    fn update_quiet_stats(&mut self, m: Move, ply: usize, depth: u32, tried: &[Move]) {
+        let bonus = history_bonus(depth);
+        let malus = history_malus(depth);
+        self.update_quiet_histories(ply, m, bonus);
+        for &q in tried {
+            if q != m {
+                self.update_quiet_histories(ply, q, -malus);
             }
         }
     }

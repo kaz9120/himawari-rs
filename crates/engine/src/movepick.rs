@@ -9,7 +9,7 @@
 //! `yaneuraou-search.cpp` を出典とする（ADR-0074）。
 
 use himawari_core::{
-    GenType, Move, MoveList, Piece, PieceType, Position, Square, generate, piece_value,
+    Bitboard, GenType, Move, MoveList, Piece, PieceType, Position, Square, generate, piece_value,
 };
 
 // ---- テーブルの寸法 ----
@@ -436,7 +436,6 @@ impl TtMoveHistory {
 #[derive(Default)]
 pub struct Histories {
     pub main: History,
-    pub counters: CounterMoves,
     pub low_ply: LowPlyHistory,
     pub capture: CaptureHistory,
     pub pawn: PawnHistory,
@@ -450,7 +449,6 @@ impl Histories {
     /// 対局間のリセット（yaneuraou-search.cpp:2139-2176）。
     pub fn clear(&mut self) {
         self.main.clear();
-        self.counters.clear();
         self.capture.clear();
         self.pawn.clear();
         self.cont.clear();
@@ -466,363 +464,350 @@ impl Histories {
     }
 }
 
-/// counter move（[直前の手の駒 32][移動先 81]）。
-pub struct CounterMoves {
-    table: Box<[[Move; 81]; 32]>,
-}
-
-impl Default for CounterMoves {
-    fn default() -> Self {
-        CounterMoves {
-            table: Box::new([[Move::NONE; 81]; 32]),
-        }
-    }
-}
-
-impl CounterMoves {
-    #[inline]
-    pub fn get(&self, prev: Move) -> Move {
-        if prev == Move::NONE || prev.is_special() {
-            return Move::NONE;
-        }
-        self.table[prev.piece_after().index()][prev.to().index()]
-    }
-
-    pub fn update(&mut self, prev: Move, response: Move) {
-        if prev == Move::NONE || prev.is_special() {
-            return;
-        }
-        self.table[prev.piece_after().index()][prev.to().index()] = response;
-    }
-
-    pub fn clear(&mut self) {
-        *self.table = [[Move::NONE; 81]; 32];
-    }
-}
-
-#[derive(PartialEq, Eq)]
+/// 段階生成の状態（movepick.cpp:22-63）。
+#[derive(Clone, Copy, PartialEq, Eq)]
 enum Stage {
-    TtMove,
-    CapturesInit,
-    GoodCaptures,
-    Killer(usize),
-    Counter,
-    QuietsInit,
-    Quiets,
-    BadCaptures,
-    EvasionsInit,
-    Evasions,
-    QCapturesInit,
-    QCaptures,
+    MainTt,
+    CaptureInit,
+    GoodCapture,
+    QuietInit,
+    GoodQuiet,
+    BadCapture,
+    BadQuiet,
+    EvasionTt,
+    EvasionInit,
+    Evasion,
+    QsearchTt,
+    QCaptureInit,
+    QCapture,
     QChecksInit,
     QChecks,
     Done,
 }
 
-/// 最大値の位置を返す。同点なら最小の添字を選ぶ（ADR-0100）。
-///
-/// 素直な線形走査と同じ結果を返す。前半で最大値をSIMDで求め、後半で
-/// その値が最初に現れる位置を探す。どちらも1要素ずつの比較より
-/// 8倍幅で進むため、走査は2回になっても速い。
-///
-/// `scores` が空のときは呼べない。
-#[inline]
-fn argmax_first(scores: &[i32]) -> usize {
-    use std::simd::Simd;
-    use std::simd::cmp::{SimdOrd, SimdPartialEq};
-    use std::simd::num::SimdInt;
-
-    const LANES: usize = 8;
-    debug_assert!(!scores.is_empty());
-    let (chunks, rest) = scores.as_chunks::<LANES>();
-
-    let mut vmax = Simd::<i32, LANES>::splat(i32::MIN);
-    for c in chunks {
-        vmax = vmax.simd_max(Simd::from_array(*c));
-    }
-    let mut best = vmax.reduce_max();
-    for &v in rest {
-        if v > best {
-            best = v;
-        }
-    }
-
-    let target = Simd::<i32, LANES>::splat(best);
-    for (ci, c) in chunks.iter().enumerate() {
-        let bits = Simd::from_array(*c).simd_eq(target).to_bitmask();
-        if bits != 0 {
-            return ci * LANES + bits.trailing_zeros() as usize;
-        }
-    }
-    let tail = rest
-        .iter()
-        .position(|&v| v == best)
-        .expect("最大値はscoresのどこかにある");
-    chunks.len() * LANES + tail
+/// 採点済みの指し手（参照実装のExtMove）。
+#[derive(Clone, Copy)]
+struct ExtMove {
+    m: Move,
+    v: i32,
 }
 
-/// 取る手のスコア（MVV優先＋成りボーナス）。
-fn capture_score(pos: &Position, m: Move) -> i32 {
-    let victim = piece_value(pos.piece_on(m.to()).piece_type());
-    let promo = if m.is_promote() {
-        piece_value(m.piece_after().piece_type()) - piece_value(m.piece_before().piece_type())
-    } else {
-        0
-    };
-    victim * 16 + promo * 16 - piece_value(m.piece_before().piece_type())
+/// 良い静かな手とみなすスコアの下限（movepick.cpp:459）。
+const GOOD_QUIET_THRESHOLD: i32 = -14000;
+/// 静かな手の部分ソートの閾値係数（movepick.cpp:605）。
+const QUIET_SORT_COEF: i32 = -3560;
+/// 静かな王手へのボーナスと、その資格を測るSEEの下限（movepick.cpp:371）。
+const CHECK_BONUS: i32 = 16384;
+const CHECK_SEE_MARGIN: i32 = -75;
+
+/// limit以上のスコアを持つ指し手だけを降順に並べる（movepick.cpp:91-105）。
+/// limit未満の並びは不定になる。
+fn partial_insertion_sort(a: &mut [ExtMove], limit: i32) {
+    let mut sorted_end = 0usize;
+    for p in 1..a.len() {
+        if a[p].v >= limit {
+            let tmp = a[p];
+            sorted_end += 1;
+            a[p] = a[sorted_end];
+            let mut q = sorted_end;
+            while q != 0 && a[q - 1].v < tmp.v {
+                a[q] = a[q - 1];
+                q -= 1;
+            }
+            a[q] = tmp;
+        }
+    }
 }
 
 pub struct MovePicker {
     stage: Stage,
     tt_move: Move,
-    killers: [Move; 2],
-    counter: Move,
-    /// 採点済みの手。スコアは `scores` の同じ添字に持つ（ADR-0100）
-    moves: Vec<Move>,
-    scores: Vec<i32>,
-    bad_captures: Vec<Move>,
-    yielded_quiet_stage: [Move; 3],
-    qsearch: bool,
+    /// 静かな手の部分ソートの閾値に使う（movepick.cpp:605）。
+    depth: i32,
+    /// lowPly historyを引くためのroot からの手数。
+    ply: usize,
+    /// 静かな手をもう返さない（movepick.cpp:697）。
+    skip_quiets: bool,
+    /// 採点済みの手。[0, end_captures)が取る手、
+    /// [end_captures, end_generated)が静かな手（movepick.cpp:528-563）
+    moves: Vec<ExtMove>,
+    cur: usize,
+    end_cur: usize,
+    end_bad_captures: usize,
+    end_captures: usize,
+    end_generated: usize,
     /// qsearchの入口plyだけ、取る手の後に静かな王手も返す（ADR-0028）。
     with_checks: bool,
 }
 
 impl MovePicker {
-    pub fn new(pos: &Position, tt_move: Move, killers: [Move; 2], counter: Move) -> Self {
+    /// 通常探索・静止探索用（movepick.cpp:120-202）。depth <= 0で静止探索。
+    pub fn new(pos: &Position, tt_move: Move, depth: i32, ply: usize, with_checks: bool) -> Self {
+        let tt_ok = tt_move != Move::NONE && pos.pseudo_legal(tt_move);
         let stage = if pos.in_check() {
-            Stage::EvasionsInit
-        } else if tt_move != Move::NONE {
-            Stage::TtMove
+            if tt_ok {
+                Stage::EvasionTt
+            } else {
+                Stage::EvasionInit
+            }
+        } else if depth > 0 {
+            if tt_ok {
+                Stage::MainTt
+            } else {
+                Stage::CaptureInit
+            }
+        } else if tt_ok {
+            Stage::QsearchTt
         } else {
-            Stage::CapturesInit
+            Stage::QCaptureInit
         };
         MovePicker {
             stage,
             tt_move,
-            killers,
-            counter,
+            depth,
+            ply,
+            skip_quiets: false,
             moves: Vec::with_capacity(64),
-            scores: Vec::with_capacity(64),
-            bad_captures: Vec::new(),
-            yielded_quiet_stage: [Move::NONE; 3],
-            qsearch: false,
-            with_checks: false,
-        }
-    }
-
-    pub fn new_qsearch(pos: &Position, tt_move: Move, with_checks: bool) -> Self {
-        // 王手中はTT手を試さずEvasionsから始める（main searchのnewと同流儀）。
-        let stage = if pos.in_check() {
-            Stage::EvasionsInit
-        } else if tt_move != Move::NONE {
-            Stage::TtMove
-        } else {
-            Stage::QCapturesInit
-        };
-        MovePicker {
-            stage,
-            tt_move,
-            killers: [Move::NONE; 2],
-            counter: Move::NONE,
-            moves: Vec::with_capacity(32),
-            scores: Vec::with_capacity(32),
-            bad_captures: Vec::new(),
-            yielded_quiet_stage: [Move::NONE; 3],
-            qsearch: true,
+            cur: 0,
+            end_cur: 0,
+            end_bad_captures: 0,
+            end_captures: 0,
+            end_generated: 0,
             with_checks,
         }
     }
 
-    /// 採点済みの手を1つ積む。指し手とスコアは同じ添字で対応する。
+    /// 静かな手をもう返さないよう伝える（movepick.cpp:697）。
+    pub fn skip_quiet_moves(&mut self) {
+        self.skip_quiets = true;
+    }
+
+    /// 条件を満たす次の手を返す（movepick.cpp:436-445）。TT手は返さない。
     #[inline]
-    fn push_scored(&mut self, m: Move, score: i32) {
-        self.moves.push(m);
-        self.scores.push(score);
-    }
-
-    /// 最大スコアの手を取り出す（部分選択ソート）。
-    fn pick_best(&mut self) -> Option<Move> {
-        if self.scores.is_empty() {
-            return None;
+    fn select(&mut self, pred: impl Fn(&ExtMove) -> bool) -> Option<Move> {
+        while self.cur < self.end_cur {
+            let e = self.moves[self.cur];
+            self.cur += 1;
+            if e.m != self.tt_move && pred(&e) {
+                return Some(e.m);
+            }
         }
-        let best = argmax_first(&self.scores);
-        self.scores.swap_remove(best);
-        Some(self.moves.swap_remove(best))
+        None
     }
 
-    fn already_yielded(&self, m: Move) -> bool {
-        m == self.tt_move || self.yielded_quiet_stage.contains(&m)
+    /// 取る手のスコア（movepick.cpp:341-342）。
+    /// 取った駒の価値を7倍し、capture historyを足す。倍率7は、あとで
+    /// `see_ge(m, -value/18)` に渡すためにSEEのスケールへ合わせたもの。
+    fn score_captures(&mut self, pos: &Position, h: &Histories, list: &MoveList) {
+        for &m in list {
+            let pc = m.piece_after();
+            let to = m.to();
+            let captured = pos.piece_on(to).piece_type();
+            let v = h.capture.get(pc, to, captured) + 7 * piece_value(captured);
+            self.moves.push(ExtMove { m, v });
+        }
     }
 
+    /// 静かな手のスコア（movepick.cpp:362-393）。
+    fn score_quiets(&mut self, pos: &Position, h: &Histories, cont: &[usize; 6], list: &MoveList) {
+        let pawn_slot = PawnHistory::slot(pos.pawn_key());
+        // 直接王手になるマスは駒種ごとに1回だけ引く
+        let mut check_sq: [Option<Bitboard>; PIECE_TYPE_NB] = [None; PIECE_TYPE_NB];
+        for &m in list {
+            let pc = m.piece_after();
+            let to = m.to();
+            let mut v = 2 * h.main.get(m);
+            v += 2 * h.pawn.get(pawn_slot, pc, to);
+            v += h.cont.get(cont[0], pc, to);
+            v += h.cont.get(cont[1], pc, to);
+            v += h.cont.get(cont[2], pc, to);
+            v += h.cont.get(cont[3], pc, to);
+            v += h.cont.get(cont[5], pc, to);
+            // 王手になる手へのボーナス
+            let pt = pc.piece_type();
+            let cs = *check_sq[pt.index()].get_or_insert_with(|| pos.check_squares(pt));
+            if cs.test(to) && pos.see_ge(m, CHECK_SEE_MARGIN) {
+                v += CHECK_BONUS;
+            }
+            if self.ply < LOW_PLY_HISTORY_SIZE {
+                v += 8 * h.low_ply.get(self.ply, m) / (1 + self.ply as i32);
+            }
+            self.moves.push(ExtMove { m, v });
+        }
+    }
+
+    /// 王手回避のスコア（movepick.cpp:396-421）。
+    fn score_evasions(
+        &mut self,
+        pos: &Position,
+        h: &Histories,
+        cont: &[usize; 6],
+        list: &MoveList,
+    ) {
+        for &m in list {
+            let pc = m.piece_after();
+            let to = m.to();
+            let captured = pos.piece_on(to);
+            let v = if !m.is_drop() && !captured.is_empty() {
+                // 取る手が常に上に来るよう下駄を履かせる
+                piece_value(captured.piece_type()) + (1 << 28)
+            } else {
+                h.main.get(m) + h.cont.get(cont[0], pc, to)
+            };
+            self.moves.push(ExtMove { m, v });
+        }
+    }
+
+    /// 呼ばれるたびに擬似合法手を1つ返す（movepick.cpp:456-695）。
     /// contは1手前から6手前までのcontinuation historyの面。
     pub fn next(&mut self, pos: &Position, h: &Histories, cont: &[usize; 6]) -> Option<Move> {
         loop {
             match self.stage {
-                Stage::TtMove => {
-                    self.stage = if self.qsearch {
-                        Stage::QCapturesInit
-                    } else {
-                        Stage::CapturesInit
-                    };
-                    if pos.pseudo_legal(self.tt_move) {
-                        return Some(self.tt_move);
-                    }
+                Stage::MainTt => {
+                    self.stage = Stage::CaptureInit;
+                    return Some(self.tt_move);
                 }
-                Stage::CapturesInit => {
+                Stage::EvasionTt => {
+                    self.stage = Stage::EvasionInit;
+                    return Some(self.tt_move);
+                }
+                Stage::QsearchTt => {
+                    self.stage = Stage::QCaptureInit;
+                    return Some(self.tt_move);
+                }
+                Stage::CaptureInit | Stage::QCaptureInit => {
                     let mut list = MoveList::default();
                     generate(pos, GenType::Captures, false, &mut list);
-                    for &m in &list {
-                        if m != self.tt_move {
-                            self.push_scored(m, capture_score(pos, m));
-                        }
-                    }
-                    self.stage = Stage::GoodCaptures;
-                }
-                Stage::GoodCaptures => match self.pick_best() {
-                    Some(m) => {
-                        if pos.see_ge(m, 0) {
-                            return Some(m);
-                        }
-                        self.bad_captures.push(m);
-                    }
-                    None => {
-                        self.stage = Stage::Killer(0);
-                    }
-                },
-                Stage::Killer(i) => {
-                    let m = self.killers[i];
-                    self.stage = if i == 0 {
-                        Stage::Killer(1)
+                    self.moves.clear();
+                    self.score_captures(pos, h, &list);
+                    self.cur = 0;
+                    self.end_bad_captures = 0;
+                    self.end_captures = self.moves.len();
+                    self.end_generated = self.end_captures;
+                    self.end_cur = self.end_captures;
+                    // 取る手は数が多くないので全数ソートでよい
+                    partial_insertion_sort(&mut self.moves, i32::MIN);
+                    self.stage = if self.stage == Stage::CaptureInit {
+                        Stage::GoodCapture
                     } else {
-                        Stage::Counter
+                        Stage::QCapture
                     };
-                    if m != Move::NONE
-                        && m != self.tt_move
-                        && pos.piece_on(m.to()).is_empty()
-                        && pos.pseudo_legal(m)
-                    {
-                        self.yielded_quiet_stage[i] = m;
-                        return Some(m);
-                    }
                 }
-                Stage::Counter => {
-                    self.stage = Stage::QuietsInit;
-                    let m = self.counter;
-                    if m != Move::NONE
-                        && !self.already_yielded(m)
-                        && pos.piece_on(m.to()).is_empty()
-                        && pos.pseudo_legal(m)
-                    {
-                        self.yielded_quiet_stage[2] = m;
-                        return Some(m);
-                    }
-                }
-                Stage::QuietsInit => {
-                    let mut list = MoveList::default();
-                    generate(pos, GenType::Quiets, false, &mut list);
-                    for &m in &list {
-                        if !self.already_yielded(m) {
-                            // 1・2・3・4・6手前の5段を等重みで合成する
-                            // （movepick.cpp:364-368）
-                            let pc = m.piece_after();
-                            let to = m.to();
-                            let score = h.main.get(m)
-                                + h.cont.get(cont[0], pc, to)
-                                + h.cont.get(cont[1], pc, to)
-                                + h.cont.get(cont[2], pc, to)
-                                + h.cont.get(cont[3], pc, to)
-                                + h.cont.get(cont[5], pc, to);
-                            self.push_scored(m, score);
+                Stage::GoodCapture => {
+                    // 損な取る手はendBadCapturesへ寄せて後回しにする。
+                    // 閾値はスコアに応じて動く（movepick.cpp:512）
+                    while self.cur < self.end_cur {
+                        let e = self.moves[self.cur];
+                        if e.m != self.tt_move {
+                            if pos.see_ge(e.m, -e.v / 18) {
+                                self.cur += 1;
+                                return Some(e.m);
+                            }
+                            self.moves.swap(self.end_bad_captures, self.cur);
+                            self.end_bad_captures += 1;
                         }
+                        self.cur += 1;
                     }
-                    self.stage = Stage::Quiets;
+                    self.stage = Stage::QuietInit;
                 }
-                Stage::Quiets => match self.pick_best() {
-                    Some(m) => return Some(m),
-                    None => {
-                        self.stage = Stage::BadCaptures;
+                Stage::QuietInit => {
+                    if !self.skip_quiets {
+                        let mut list = MoveList::default();
+                        generate(pos, GenType::Quiets, false, &mut list);
+                        self.score_quiets(pos, h, cont, &list);
+                        self.end_generated = self.moves.len();
+                        self.end_cur = self.end_generated;
+                        partial_insertion_sort(
+                            &mut self.moves[self.cur..self.end_cur],
+                            QUIET_SORT_COEF * self.depth,
+                        );
                     }
-                },
-                Stage::BadCaptures => {
-                    return if self.bad_captures.is_empty() {
+                    self.stage = Stage::GoodQuiet;
+                }
+                Stage::GoodQuiet => {
+                    if !self.skip_quiets
+                        && let Some(m) = self.select(|e| e.v > GOOD_QUIET_THRESHOLD)
+                    {
+                        return Some(m);
+                    }
+                    // 悪い取る手を返す準備。バッファ先頭の領域を読み直す
+                    self.cur = 0;
+                    self.end_cur = self.end_bad_captures;
+                    self.stage = Stage::BadCapture;
+                }
+                Stage::BadCapture => {
+                    if let Some(m) = self.select(|_| true) {
+                        return Some(m);
+                    }
+                    // 悪い静かな手を返す準備
+                    self.cur = self.end_captures;
+                    self.end_cur = self.end_generated;
+                    self.stage = Stage::BadQuiet;
+                }
+                Stage::BadQuiet => {
+                    if self.skip_quiets {
                         self.stage = Stage::Done;
-                        None
-                    } else {
-                        Some(self.bad_captures.remove(0))
-                    };
+                        return None;
+                    }
+                    let m = self.select(|e| e.v <= GOOD_QUIET_THRESHOLD);
+                    if m.is_none() {
+                        self.stage = Stage::Done;
+                    }
+                    return m;
                 }
-                Stage::EvasionsInit => {
+                Stage::EvasionInit => {
                     let mut list = MoveList::default();
                     generate(pos, GenType::Evasions, false, &mut list);
-                    for &m in &list {
-                        let score = if !m.is_drop() && !pos.piece_on(m.to()).is_empty() {
-                            100_000 + capture_score(pos, m)
-                        } else {
-                            h.main.get(m)
-                        };
-                        self.push_scored(m, score);
-                    }
-                    self.stage = Stage::Evasions;
+                    self.moves.clear();
+                    self.score_evasions(pos, h, cont, &list);
+                    self.cur = 0;
+                    self.end_cur = self.moves.len();
+                    partial_insertion_sort(&mut self.moves, i32::MIN);
+                    self.stage = Stage::Evasion;
                 }
-                Stage::Evasions => {
-                    return match self.pick_best() {
-                        Some(m) => Some(m),
-                        None => {
-                            self.stage = Stage::Done;
-                            None
-                        }
-                    };
+                Stage::Evasion => {
+                    let m = self.select(|_| true);
+                    if m.is_none() {
+                        self.stage = Stage::Done;
+                    }
+                    return m;
                 }
-                Stage::QCapturesInit => {
-                    let mut list = MoveList::default();
-                    generate(pos, GenType::Captures, false, &mut list);
-                    for &m in &list {
-                        if m != self.tt_move {
-                            self.push_scored(m, capture_score(pos, m));
-                        }
+                Stage::QCapture => {
+                    // 損な取り合いは静止探索では捨てる（ADR-0024）
+                    if let Some(m) = self.select(|e| pos.see_ge(e.m, 0)) {
+                        return Some(m);
                     }
-                    self.stage = Stage::QCaptures;
+                    if self.with_checks {
+                        self.stage = Stage::QChecksInit;
+                    } else {
+                        self.stage = Stage::Done;
+                        return None;
+                    }
                 }
-                Stage::QCaptures => match self.pick_best() {
-                    Some(m) => {
-                        // 損な取り合いは静止探索では捨てる（ADR-0024）
-                        if pos.see_ge(m, 0) {
-                            return Some(m);
-                        }
-                    }
-                    None => {
-                        if self.with_checks {
-                            self.stage = Stage::QChecksInit;
-                        } else {
-                            self.stage = Stage::Done;
-                            return None;
-                        }
-                    }
-                },
                 Stage::QChecksInit => {
                     let mut list = MoveList::default();
                     generate(pos, GenType::Quiets, false, &mut list);
+                    self.moves.clear();
                     for &m in &list {
-                        // 駒損しない静かな王手だけを読む（ADR-0028）。TT手は重複回避
-                        if m != self.tt_move && pos.gives_check(m) && pos.see_ge(m, 0) {
-                            self.push_scored(m, h.main.get(m));
+                        // 駒損しない静かな王手だけを読む（ADR-0028）
+                        if pos.gives_check(m) && pos.see_ge(m, 0) {
+                            let v = h.main.get(m);
+                            self.moves.push(ExtMove { m, v });
                         }
                     }
+                    self.cur = 0;
+                    self.end_cur = self.moves.len();
+                    partial_insertion_sort(&mut self.moves, i32::MIN);
                     self.stage = Stage::QChecks;
                 }
                 Stage::QChecks => {
-                    return match self.pick_best() {
-                        Some(m) => Some(m),
-                        None => {
-                            self.stage = Stage::Done;
-                            None
-                        }
-                    };
+                    let m = self.select(|_| true);
+                    if m.is_none() {
+                        self.stage = Stage::Done;
+                    }
+                    return m;
                 }
                 Stage::Done => return None,
-            }
-            if self.stage == Stage::Done && self.qsearch {
-                return None;
             }
         }
     }
@@ -832,39 +817,33 @@ impl MovePicker {
 mod tests {
     use super::*;
 
-    /// 最大値の位置が素直な線形走査と一致すること（ADR-0100）。
-    /// 同点は最小の添字を選ぶ。SIMDの幅で割り切れない長さも通す。
+    /// 部分挿入ソートがlimit以上の要素を降順に並べること（movepick.cpp:91）。
     #[test]
-    fn argmax_first_matches_linear_scan() {
-        fn linear(s: &[i32]) -> usize {
-            let mut best = 0;
-            for i in 1..s.len() {
-                if s[i] > s[best] {
-                    best = i;
-                }
-            }
-            best
-        }
+    fn partial_insertion_sort_orders_above_limit() {
+        let mk = |v: i32| ExtMove { m: Move::NONE, v };
+        let mut a: Vec<ExtMove> = [5, -100, 30, 7, -50, 12].iter().map(|&v| mk(v)).collect();
+        partial_insertion_sort(&mut a, 0);
+        // limit以上の4要素が先頭に降順で並ぶ
+        assert_eq!(
+            a.iter().take(4).map(|e| e.v).collect::<Vec<_>>(),
+            vec![30, 12, 7, 5]
+        );
+        // 残りはlimit未満の2要素（順序は不定）
+        let mut rest: Vec<i32> = a.iter().skip(4).map(|e| e.v).collect();
+        rest.sort_unstable();
+        assert_eq!(rest, vec![-100, -50]);
+    }
 
-        let mut x = 0x1234_5678u64;
-        let mut next = move || {
-            x ^= x << 13;
-            x ^= x >> 7;
-            x ^= x << 17;
-            x
-        };
-        for len in 1..40usize {
-            for trial in 0..50 {
-                // 値域を狭くして同点を多く作る。同点の扱いが要点のため
-                let range = if trial % 2 == 0 { 5 } else { 1_000_000 };
-                let v: Vec<i32> = (0..len).map(|_| (next() % range) as i32 - 2).collect();
-                assert_eq!(argmax_first(&v), linear(&v), "len={len} v={v:?}");
-            }
-        }
-
-        assert_eq!(argmax_first(&[i32::MIN]), 0);
-        assert_eq!(argmax_first(&[-5, -5, -5]), 0);
-        assert_eq!(argmax_first(&[i32::MIN, i32::MAX]), 1);
+    /// limitをi32::MINにすると全数が降順に並ぶこと。
+    #[test]
+    fn partial_insertion_sort_full() {
+        let mk = |v: i32| ExtMove { m: Move::NONE, v };
+        let mut a: Vec<ExtMove> = [3, 1, 4, 1, 5, 9, 2, 6].iter().map(|&v| mk(v)).collect();
+        partial_insertion_sort(&mut a, i32::MIN);
+        assert_eq!(
+            a.iter().map(|e| e.v).collect::<Vec<_>>(),
+            vec![9, 6, 5, 4, 3, 2, 1, 1]
+        );
     }
 
     /// gravity方式の更新が値域を守ること（history.h:91）。
