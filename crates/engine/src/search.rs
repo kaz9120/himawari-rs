@@ -29,9 +29,6 @@ use crate::value::{
 const NMP_MIN_DEPTH: u32 = 3;
 /// NMPのリダクション: 3 + depth / 4。
 const NMP_BASE_REDUCTION: u32 = 3;
-/// LMRの最小深さと最小手数（この手数以降の静かな手を浅く読む）。
-const LMR_MIN_DEPTH: u32 = 3;
-const LMR_MIN_COUNT: u32 = 3;
 /// reverse futilityの最大深さとdepthあたりのマージン。
 const RFP_MAX_DEPTH: u32 = 6;
 const RFP_MARGIN: Value = 120;
@@ -106,25 +103,26 @@ fn lmp_limit(depth: u32, improving: bool) -> u32 {
     (3 + depth * depth) / (2 - u32::from(improving))
 }
 
-/// LMRのリダクション表（ADR-0076で1024倍の固定小数へ）。
-/// r = 1024・(0.5 + ln(depth)・ln(count) / 2.25)。
-/// 1024倍したスケールはやねうら王の `reductions[d]・reductions[mn]`
-/// （係数466対455、差2.4%）と一致するため、あちらの項の重みを換算せずに
-/// 使える（ADR-0074のスケール前提の確認）。
-static LMR_TABLE: std::sync::OnceLock<[[i32; 64]; 64]> = std::sync::OnceLock::new();
+/// LMRのリダクション表の要素数。深さと手数の両方でこの表を引くので、
+/// 生成できる手数の上限（`MoveList` の608）に合わせる。
+/// 参照実装も `std::array<int, MAX_MOVES>` である
+/// （yaneuraou-search.h:582）。
+const REDUCTIONS_LEN: usize = 608;
 
-/// 1024倍したリダクション量。実際の削り幅は呼び側で /1024 する。
-fn lmr_reduction_x1024(depth: u32, count: u32) -> i32 {
-    let t = LMR_TABLE.get_or_init(|| {
-        let mut t = [[0i32; 64]; 64];
-        for (d, row) in t.iter_mut().enumerate().skip(1) {
-            for (c, r) in row.iter_mut().enumerate().skip(1) {
-                *r = (1024.0 * (0.5 + (d as f64).ln() * (c as f64).ln() / 2.25)) as i32;
-            }
+/// LMRのリダクション表（G2。yaneuraou-search.cpp:2168-2169）。
+/// `2763 / 128 × ln(i)` を整数化した1次元表で、深さと手数の積を取る。
+/// 積が1024倍の固定小数になるスケールはADR-0076で確認済み。
+static REDUCTIONS: std::sync::OnceLock<[i32; REDUCTIONS_LEN]> = std::sync::OnceLock::new();
+
+fn reductions(i: u32) -> i32 {
+    let t = REDUCTIONS.get_or_init(|| {
+        let mut t = [0i32; REDUCTIONS_LEN];
+        for (i, r) in t.iter_mut().enumerate().skip(1) {
+            *r = (2763.0 / 128.0 * (i as f64).ln()) as i32;
         }
         t
     });
-    t[depth.min(63) as usize][count.min(63) as usize]
+    t[(i as usize).min(REDUCTIONS_LEN - 1)]
 }
 
 /// スレッド間の共有状態（ADR-0020）。
@@ -227,6 +225,19 @@ struct StackEntry {
     /// このplyで置換表にヒットしたか（G1。yaneuraou-search.cpp:2623）。
     /// 同じく1手前の値を読む
     tt_hit: bool,
+    /// 置換表にPVノードとして記録された値か（G2。yaneuraou-search.cpp:2657）。
+    /// LMRのリダクション2項が読み、置換表へ書き戻す
+    tt_pv: bool,
+    /// このplyでβカットした回数（G2。yaneuraou-search.cpp:4214）。
+    /// 親が次plyの値を読む。多いほどリダクションを増やす
+    cutoff_cnt: i32,
+    /// このplyのLMRが削った量（G2。yaneuraou-search.cpp:3980）。
+    /// 子が `priorReduction` として読む側はG4で入れる
+    #[allow(dead_code)]
+    reduction: i32,
+    /// このplyで今調べている手の履歴の強さ（G2。yaneuraou-search.cpp:3924-3932）。
+    /// リダクションの減算と、子でのhistory更新量の2方向へ効く
+    stat_score: i32,
 }
 
 /// Stackの前方余白。ss-6まで境界検査なしで参照するために置く。
@@ -242,6 +253,9 @@ pub struct Worker {
     stack: Vec<StackEntry>,
     /// このイテレーションで到達した最大ply（seldepth。ADR-0086）。
     sel_depth: u32,
+    /// このイテレーションのaspiration窓の幅（G2。yaneuraou-search.cpp:1708）。
+    /// リダクションが「今の窓幅がroot窓幅の何割か」で削る量を決める
+    root_delta: Value,
     /// 深さ1のイテレーションを終えたか。終えるまでstopを無視する。
     /// root手は生成順のままなので、深さ1の途中で打ち切ると探索して
     /// いない手を返してしまう
@@ -283,10 +297,16 @@ impl Worker {
                     cont_corr_base: 0,
                     move_count: 0,
                     tt_hit: false,
+                    tt_pv: false,
+                    cutoff_cnt: 0,
+                    reduction: 0,
+                    stat_score: 0,
                 };
                 MAX_PLY + 10
             ],
             sel_depth: 0,
+            // 0除算を避ける番兵。search_rootが毎回入れ直す
+            root_delta: 1,
             depth1_done: false,
             nodes: 0,
             shared,
@@ -360,11 +380,45 @@ impl Worker {
         std::array::from_fn(|i| self.stack[ply + STACK_OFFSET - 1 - i].cont_base)
     }
 
-    /// 生の静的評価にcorrection historyの補正を加える（ADR-0046, 0109）。
-    /// 6要素を重み付きで合成する（yaneuraou-search.cpp:724-746）。
-    /// 補正後が詰み圏に入らないようクランプする。
+    /// LMRのリダクション量（G2。yaneuraou-search.cpp:5148-5151）。
+    /// 返る値は1024倍の固定小数である。
+    ///
+    /// 基礎値は深さと手数の表の積。そこから窓幅の比で引き、改善して
+    /// いなければ基礎値の206/512を足し、定数1133を足す。窓が広い
+    /// （root窓に近い）ほど削らない。
     #[inline]
-    fn to_corrected(&self, raw: Value, ply: usize) -> Value {
+    fn reduction(&self, improving: bool, depth: u32, move_count: u32, delta: Value) -> i32 {
+        let scale = reductions(depth) * reductions(move_count);
+        scale - delta * 585 / self.root_delta + i32::from(!improving) * scale * 206 / 512 + 1133
+    }
+
+    /// その手の履歴の強さ（G2。yaneuraou-search.cpp:3924-3932）。
+    /// 取る手は取った駒の価値とcapture history、静かな手はmain historyの
+    /// 2倍と1手前・2手前のcontinuation historyで測る。do_moveの前に呼ぶ
+    #[inline]
+    fn stat_score(&self, m: Move, cont: &[usize; 6]) -> i32 {
+        let to = m.to();
+        let pc = m.piece_after();
+        let captured = if m.is_drop() {
+            Piece::EMPTY
+        } else {
+            self.pos.piece_on(to)
+        };
+        if !captured.is_empty() {
+            863 * himawari_core::piece_value(captured.piece_type()) / 128
+                + self.hist.capture.get(pc, to, captured.piece_type())
+        } else {
+            2 * self.hist.main.get(self.pos.side_to_move(), m)
+                + self.hist.cont.get(cont[0], pc, to)
+                + self.hist.cont.get(cont[1], pc, to)
+        }
+    }
+
+    /// correction historyの6要素を重み付きで合成する（ADR-0046, 0109）。
+    /// 出典はやねうら王の `correction_value()`（yaneuraou-search.cpp:724-737）。
+    /// 131072で割る前の値を返す。LMRのリダクションもこの値を読む。
+    #[inline]
+    fn correction_value(&self, ply: usize) -> i32 {
         let (pcv, micv, bnpcv, wnpcv) = self.hist.corr.probe(&self.pos);
         // 余白があるのでply 0でも境界検査は要らない。前方は初期値のMove::NONE
         let prev1 = self.stack[ply + STACK_OFFSET - 1].current_move;
@@ -381,11 +435,24 @@ impl Worker {
                     .corr_cont
                     .get(self.stack[ply + STACK_OFFSET - 4].cont_corr_base, pc, to)
         };
-        let sum = CORR_W_PAWN * pcv
+        CORR_W_PAWN * pcv
             + CORR_W_MINOR * micv
             + CORR_W_NON_PAWN * (wnpcv + bnpcv)
-            + CORR_W_CONT * cntcv;
-        (raw + sum / CORR_DIVISOR).clamp(VALUE_MATED_IN_MAX_PLY + 1, VALUE_MATE_IN_MAX_PLY - 1)
+            + CORR_W_CONT * cntcv
+    }
+
+    /// 生の静的評価にcorrection historyの補正を加える（ADR-0046, 0109）。
+    /// 出典はやねうら王の `to_corrected_static_eval()`
+    /// （yaneuraou-search.cpp:744-746）。詰み圏に入らないようクランプする。
+    #[inline]
+    fn to_corrected_with(&self, raw: Value, cv: i32) -> Value {
+        (raw + cv / CORR_DIVISOR).clamp(VALUE_MATED_IN_MAX_PLY + 1, VALUE_MATE_IN_MAX_PLY - 1)
+    }
+
+    /// correction historyの補正込みの静的評価。
+    #[inline]
+    fn to_corrected(&self, raw: Value, ply: usize) -> Value {
+        self.to_corrected_with(raw, self.correction_value(ply))
     }
 
     /// aspirationのfail時に途中経過を報告する（ADR-0091）。
@@ -642,6 +709,8 @@ impl Worker {
         pv_idx: usize,
         on_info: &mut dyn FnMut(SearchInfo),
     ) -> (Value, usize, Vec<Move>) {
+        // リダクションの窓幅項の基準（yaneuraou-search.cpp:1708）
+        self.root_delta = beta - alpha;
         let mut best = -VALUE_INFINITE;
         let mut best_idx = pv_idx;
         let mut best_pv: Vec<Move> = Vec::new();
@@ -654,6 +723,13 @@ impl Worker {
         // search()なので、置換表ヒットと静的評価がrootでも埋まっている
         let key = self.pos.key();
         self.stack[STACK_OFFSET].tt_hit = self.shared.tt.probe(key).is_some();
+        // rootは常にPVノードなのでttPvはtrue（yaneuraou-search.cpp:2657）
+        self.stack[STACK_OFFSET].tt_pv = true;
+        self.stack[STACK_OFFSET + 2].cutoff_cnt = 0;
+        self.stack[STACK_OFFSET].stat_score = 0;
+        // continuation historyの面（1手前から6手前まで）。rootでも
+        // statScoreの計算に要る
+        let cont = self.cont_bases(0);
         self.stack[STACK_OFFSET].static_eval = if in_check {
             VALUE_NONE
         } else {
@@ -669,6 +745,9 @@ impl Worker {
                 on_info(SearchInfo::CurrMove { depth, mv: m });
             }
             let capture = !m.is_drop() && !self.pos.piece_on(m.to()).is_empty();
+            // 1手目のノードがhistoryの更新量で読む
+            // （yaneuraou-search.cpp:3924-3932）
+            self.stack[STACK_OFFSET].stat_score = self.stat_score(m, &cont);
             self.set_current_move(0, m, capture);
             let nodes_before = self.nodes;
             self.pos.do_move(m);
@@ -712,6 +791,9 @@ impl Worker {
                     best_pv.push(m);
                     best_pv.extend_from_slice(&child_pv);
                     if value >= beta {
+                        // 参照実装はrootも同じ経路を通る
+                        // （yaneuraou-search.cpp:4214）
+                        self.stack[STACK_OFFSET].cutoff_cnt += 1;
                         break;
                     }
                 }
@@ -775,6 +857,10 @@ impl Worker {
         let in_check = self.pos.in_check();
         self.stack[ply + STACK_OFFSET].in_check = in_check;
         self.stack[ply + STACK_OFFSET].move_count = 0;
+        // 2手先のβカット回数を戻す（yaneuraou-search.cpp:2555）。
+        // 自分の次plyは1手前のノードが戻しているので、兄弟をまたいで貯まる
+        self.stack[ply + STACK_OFFSET + 2].cutoff_cnt = 0;
+        self.stack[ply + STACK_OFFSET].stat_score = 0;
         // 1手前が取った駒と、1手前の移動先（yaneuraou-search.cpp:2355, 2550）。
         // historyの更新条件が繰り返し読む
         let prior_capture = self.pos.state().captured;
@@ -793,6 +879,11 @@ impl Worker {
         let tt_hit = self.shared.tt.probe(key);
         // 1手先のノードがhistoryの更新条件で読む（yaneuraou-search.cpp:2623）
         self.stack[ply + STACK_OFFSET].tt_hit = tt_hit.is_some();
+        // 置換表にPVとして記録された値か（yaneuraou-search.cpp:2657）。
+        // 除外手つき探索は同じplyでsearchを呼び直すので、上書きしない
+        if excluded == Move::NONE {
+            self.stack[ply + STACK_OFFSET].tt_pv = is_pv || tt_hit.as_ref().is_some_and(|d| d.pv);
+        }
         let mut tt_move = Move::NONE;
         let mut tt_value = VALUE_NONE;
         let mut tt_depth = 0u32;
@@ -864,10 +955,13 @@ impl Worker {
                 _ => self.eval_cached(key),
             }
         };
+        // correction historyの合成値（yaneuraou-search.cpp:3010）。
+        // 静的評価の補正と、LMRのリダクションの減算が同じ値を読む
+        let corr_value = self.correction_value(ply);
         let static_eval = if in_check {
             VALUE_NONE
         } else {
-            self.to_corrected(raw_eval, ply)
+            self.to_corrected_with(raw_eval, corr_value)
         };
 
         self.stack[ply + STACK_OFFSET].static_eval = static_eval;
@@ -1024,7 +1118,8 @@ impl Worker {
                         raw_eval as i16,
                         depth.saturating_sub(3).min(255) as u8,
                         Bound::Lower,
-                        is_pv,
+                        // 参照実装はttPvを書き戻す（yaneuraou-search.cpp:3418）
+                        self.stack[ply + STACK_OFFSET].tt_pv,
                     );
                     return v;
                 }
@@ -1082,6 +1177,15 @@ impl Worker {
             return tt_probcut_beta;
         }
 
+        // 置換表の手が駒を取る手か（yaneuraou-search.cpp:2672）。
+        // そうならこのノードの全手のリダクションを増やす
+        let tt_capture = tt_move != Move::NONE
+            && !tt_move.is_drop()
+            && !self.pos.piece_on(tt_move.to()).is_empty();
+        // PVでもcutでもないノード（yaneuraou-search.cpp:2251）。
+        // 全手を調べる見込みなのでリダクションを強める
+        let all_node = !(is_pv || cut_node);
+
         let mut picker = MovePicker::new(&self.pos, tt_move, depth as i32, ply, false);
         // continuation historyの面（1手前から6手前まで。ADR-0109のG1）
         let cont = self.cont_bases(ply);
@@ -1117,16 +1221,20 @@ impl Worker {
                 depth - 1
             };
 
-            // LMRのリダクション量（ADR-0076の1024倍固定小数）。枝刈りの尺度
+            // LMRのリダクション量（1024倍の固定小数。G2）。枝刈りの尺度
             // （lmr_depth）と実際の浅い探索で同じ値を使う
-            let mut reduction_x1024 = lmr_reduction_x1024(depth, count);
-            if is_pv {
-                reduction_x1024 -= 1024;
+            let delta = beta - alpha;
+            let mut r = self.reduction(improving, depth, count, delta);
+            // 項1: ttPvノードは削る（yaneuraou-search.cpp:3573-3574）。
+            // 枝刈りの尺度に入るのはここまでで、残りはdo_moveの側で足す
+            if self.stack[ply + STACK_OFFSET].tt_pv {
+                r += 1013;
             }
             // lmr_depth: LMRで削ったあとに実際に読む深さ（ADR-0090）。
             // 生のdepthで枝刈りを判断すると、深いノードほど閾値が大きくなり
-            // 刈りすぎる。実際に読む深さで測る
-            let lmr_depth = (new_depth as i32 - (reduction_x1024 / 1024).max(0)).max(0);
+            // 刈りすぎる。実際に読む深さで測る。参照実装はここでクランプせず、
+            // SEE枝刈りの直前で0止めする（yaneuraou-search.cpp:3600, 3691）
+            let lmr_depth = new_depth as i32 - r / 1024;
 
             // move count pruning（ADR-0028, 0109）: 手数を使い切ったら、
             // MovePickerに静かな手の生成そのものをやめさせる。詰まされ筋では
@@ -1156,6 +1264,8 @@ impl Worker {
                 let threshold = if is_capture {
                     -SEE_CAPTURE_COEF * depth as i32
                 } else {
+                    // 参照実装はここで0止めする（yaneuraou-search.cpp:3691）
+                    let lmr_depth = lmr_depth.max(0);
                     -SEE_QUIET_COEF * lmr_depth * lmr_depth
                 };
                 if !self.pos.see_ge(m, threshold) {
@@ -1163,85 +1273,132 @@ impl Worker {
                 }
             }
 
+            // リダクションの加減算（yaneuraou-search.cpp:3879-3941）。
+            // 参照実装はdo_moveの後に置くが、読む材料は進める前の局面で
+            // 決まるのでここでまとめる
+            //
+            // 項2: ttPvノードは大きく戻す。TTの値がalphaを超える、TTの
+            // 深さが足りている、といった手掛かりがあるほど戻す
+            if self.stack[ply + STACK_OFFSET].tt_pv {
+                r -= 2819
+                    + i32::from(is_pv) * 973
+                    + i32::from(tt_value > alpha) * 905
+                    + i32::from(tt_depth >= depth) * (935 + i32::from(cut_node) * 959);
+            }
+            // 項3: 他の調整を補正する基準オフセット
+            r += 691;
+            // 項4: 手数が進むほど戻す
+            r -= count as i32 * 65;
+            // 項5: correction historyの補正が大きい局面は戻す
+            r -= corr_value.abs() / 25600;
+            // 項6: cutNodeは削る。TT手がなければさらに削る
+            if cut_node {
+                r += 3611 + 985 * i32::from(tt_move == Move::NONE);
+            }
+            // 項7: TT手が駒を取る手なら削る
+            if tt_capture {
+                r += 1054;
+            }
+            // 項8: 次plyでfail highが多いなら削る
+            let child_cutoffs = self.stack[ply + STACK_OFFSET + 1].cutoff_cnt;
+            if child_cutoffs > 1 {
+                r += 251 + 1124 * i32::from(child_cutoffs > 2) + 1042 * i32::from(all_node);
+            }
+            // 項9: TT手は戻す
+            if m == tt_move {
+                r -= 2239;
+            }
+
+            // その手の履歴の強さを控える（yaneuraou-search.cpp:3924-3932）。
+            // 子のhistory更新量にも効くのでdo_moveの前に測る
+            let stat_score = self.stat_score(m, &cont);
+            self.stack[ply + STACK_OFFSET].stat_score = stat_score;
+            // 項10: 履歴の良い手は戻し、悪い手は削る
+            r -= stat_score * 428 / 4096;
+            // 項11: allNodeでは全体を割り増す
+            if all_node {
+                r += r * 273 / (256 * depth as i32 + 260);
+            }
+
             self.set_current_move(ply, m, is_capture);
             self.pos.do_move(m);
             self.evaluator.push(&self.pos);
-            let value = if count == 1 {
-                // 第1手はPVならcut_node = false、そうでなければ反転する
-                -self.search(
-                    -beta,
-                    -alpha,
-                    new_depth,
-                    ply + 1,
-                    m,
-                    &mut child_pv,
-                    is_pv,
-                    !is_pv && !cut_node,
-                )
-            } else {
-                // LMR（ADR-0028）: 遅い静かな手は浅いnull windowで読み、
-                // alphaを超えたときだけ元の深さで読み直す
-                let mut d = new_depth;
-                let did_lmr = depth >= LMR_MIN_DEPTH
-                    && count >= LMR_MIN_COUNT
-                    && !is_capture
-                    && !gives_check
-                    && !in_check;
-                if did_lmr {
-                    let red = (reduction_x1024 / 1024).max(0) as u32;
-                    d = new_depth.saturating_sub(red).max(1);
-                }
-                // 削った浅い探索はcut_node = true、削らなかった全深さの
-                // null windowは反転する（ADR-0109のG0）
-                let child_cut = if d != new_depth { true } else { !cut_node };
-                let mut v = -self.search(
+
+            // 再探索で伸縮するのでここから可変にする
+            let mut new_depth = new_depth as i32;
+            let mut value = -VALUE_INFINITE;
+            if depth >= 2 && count > 1 {
+                // LMR（yaneuraou-search.cpp:3954-4010）。参照実装の発動条件は
+                // 深さと手数だけで、取る手も王手する手も対象にする。
+                // リダクションが負なら `new_depth + 2` まで深く読む
+                let d = (new_depth - r / 1024).min(new_depth + 2).max(1) + i32::from(is_pv);
+                self.stack[ply + STACK_OFFSET].reduction = new_depth - d;
+                value = -self.search(
                     -alpha - 1,
                     -alpha,
-                    d,
+                    d as u32,
                     ply + 1,
                     m,
                     &mut child_pv,
                     false,
-                    child_cut,
+                    true,
                 );
-                // 減深探索がalphaを超えたかを、再探索の前に控える。
-                // 参照実装が加点の条件に使うのは減深探索の値である
-                // （yaneuraou-search.cpp:3989, 4008）
-                let lmr_raised_alpha = did_lmr && v > alpha;
-                if v > alpha && d < new_depth && !self.stopped() {
-                    // LMR後の再探索も反転する
-                    v = -self.search(
-                        -alpha - 1,
-                        -alpha,
-                        new_depth,
-                        ply + 1,
-                        m,
-                        &mut child_pv,
-                        false,
-                        !cut_node,
-                    );
-                }
-                if lmr_raised_alpha {
+                self.stack[ply + STACK_OFFSET].reduction = 0;
+                if value > alpha {
+                    // 減深探索の結果で読み直す深さを調整する
+                    // （yaneuraou-search.cpp:3997-4000）。十分良ければ深く、
+                    // 十分悪ければ浅くする
+                    let do_deeper = d < new_depth && value > best + 48;
+                    let do_shallower = value < best + 9;
+                    new_depth += i32::from(do_deeper) - i32::from(do_shallower);
+                    if new_depth > d && !self.stopped() {
+                        value = -self.search(
+                            -alpha - 1,
+                            -alpha,
+                            new_depth.max(0) as u32,
+                            ply + 1,
+                            m,
+                            &mut child_pv,
+                            false,
+                            !cut_node,
+                        );
+                    }
                     // LMR後のcontinuation history更新
                     // （yaneuraou-search.cpp:4008）
                     self.update_continuation_histories(ply, m.piece_after(), m.to(), 1426);
                 }
-                if v > alpha && is_pv && !self.stopped() {
-                    // PVの再探索はcut_node = false
-                    -self.search(
-                        -beta,
-                        -alpha,
-                        new_depth,
-                        ply + 1,
-                        m,
-                        &mut child_pv,
-                        true,
-                        false,
-                    )
-                } else {
-                    v
+            } else if !is_pv || count > 1 {
+                // LMRを省いたときの調整（yaneuraou-search.cpp:4017-4030）。
+                // 項12: TT手がなければ削る。削る量が大きければ深さを落とす
+                if tt_move == Move::NONE {
+                    r += 1057;
                 }
-            };
+                let d = new_depth - i32::from(r > 4628) - i32::from(r > 5772 && new_depth > 2);
+                value = -self.search(
+                    -alpha - 1,
+                    -alpha,
+                    d.max(0) as u32,
+                    ply + 1,
+                    m,
+                    &mut child_pv,
+                    false,
+                    !cut_node,
+                );
+            }
+            // PVノードは第1手とfail highの後だけ全窓で読み直す
+            // （yaneuraou-search.cpp:4043-4061）
+            if is_pv && (count == 1 || value > alpha) && !self.stopped() {
+                value = -self.search(
+                    -beta,
+                    -alpha,
+                    new_depth.max(0) as u32,
+                    ply + 1,
+                    m,
+                    &mut child_pv,
+                    true,
+                    false,
+                );
+            }
             self.evaluator.pop();
             self.pos.undo_move(m);
             if self.stopped() {
@@ -1259,6 +1416,10 @@ impl Worker {
                         pv.extend_from_slice(&child_pv);
                     }
                     if value >= beta {
+                        // 次plyのfail highの多さをリダクションへ渡す
+                        // （yaneuraou-search.cpp:4214）。本エンジンの延長は
+                        // 最大1手なので `extension < 2` は常に成立する
+                        self.stack[ply + STACK_OFFSET].cutoff_cnt += 1;
                         break;
                     }
                     alpha = value;
@@ -1305,10 +1466,10 @@ impl Worker {
             && prior_capture.is_empty()
         {
             // fail lowを引き起こした1手前の静かな手への加点
-            // （yaneuraou-search.cpp:4320-4341）。第1項の
-            // `-(ss-1)->statScore / 108` はG2で足す
+            // （yaneuraou-search.cpp:4320-4341）
             let prev1 = self.stack[ply + STACK_OFFSET - 1];
             let mut bonus_scale = -232;
+            bonus_scale -= prev1.stat_score / 108;
             bonus_scale += (59 * depth as i32).min(454);
             bonus_scale += 169 * i32::from(prev1.move_count > 8);
             bonus_scale += 145 * i32::from(!in_check && best <= static_eval - 110);
@@ -1339,6 +1500,14 @@ impl Worker {
             );
         }
 
+        // 良い手が見つからなかったなら1手前のttPvを引き継ぐ
+        // （yaneuraou-search.cpp:4367-4368）。1手前が探索木に入れた変化なら、
+        // この局面も探索木へ加える
+        if best <= alpha {
+            self.stack[ply + STACK_OFFSET].tt_pv =
+                self.stack[ply + STACK_OFFSET].tt_pv || self.stack[ply + STACK_OFFSET - 1].tt_pv;
+        }
+
         // 除外手つき探索中はTT storeをしない（ADR-0050）。
         // 検証専用の結果でこのキーの本体を汚さない
         if excluded == Move::NONE {
@@ -1356,7 +1525,9 @@ impl Worker {
                 raw_eval as i16,
                 depth.min(255) as u8,
                 bound,
-                is_pv,
+                // 参照実装はis_pvではなくttPvを書き戻す
+                // （yaneuraou-search.cpp:4397）
+                self.stack[ply + STACK_OFFSET].tt_pv,
             );
         }
 
@@ -1623,9 +1794,11 @@ impl Worker {
         quiets_searched: &[Move],
         captures_searched: &[Move],
     ) {
-        // bonus式（yaneuraou-search.cpp:5307-5309）。第3項の
-        // `(ss-1)->statScore / 32` はstatScoreを入れるG2で足す
-        let bonus = (128 * depth as i32 - 77).min(1529) + 353 * i32::from(best_move == tt_move);
+        // bonus式（yaneuraou-search.cpp:5307-5309）。第3項は1手前の
+        // statScore、つまりこのノードへ来た手の履歴の強さである
+        let bonus = (128 * depth as i32 - 77).min(1529)
+            + 353 * i32::from(best_move == tt_move)
+            + self.stack[ply + STACK_OFFSET - 1].stat_score / 32;
         let malus = (882 * depth as i32 - 204).min(2122);
 
         let to = best_move.to();
