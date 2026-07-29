@@ -115,6 +115,7 @@
 | [0097](0097-capture-history.md) | capture historyを入れ直す（スケールを揃える） | - | rejected |
 | [0099](0099-nnue-dot-sdot.md) | NNUE隠れ層の内積をSDOTで4行ずつ計算する | - | accepted |
 | [0100](0100-movepick-argmax-simd.md) | 指し手の最大スコア探索をSoA＋SIMDにする | - | accepted |
+| [0101](0101-movelist-uninit.md) | MoveListのゼロ埋めをやめる | - | accepted |
 
 ## バックログ
 
