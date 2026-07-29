@@ -69,6 +69,14 @@ const SEE_CAPT_HIST: i32 = 34;
 const CAPT_FUTILITY_BASE: Value = 218;
 const CAPT_FUTILITY_DEPTH: Value = 223;
 const CAPT_FUTILITY_HIST: i32 = 131;
+/// 静かな手のcontinuation history枝刈り（ADR-0109のG3。
+/// yaneuraou-search.cpp:3650）。1手前・2手前のcontinuation historyと
+/// pawn historyの和が `-4097 * depth` を下回る手は読まない
+const CONT_HIST_PRUNE_COEF: i32 = 4097;
+/// historyによるlmrDepth補正の除数（ADR-0109のG3。
+/// yaneuraou-search.cpp:3661）。この補正の後で親futilityと静かな手の
+/// SEE枝刈りが同じlmrDepthを読むので、順序を入れ替えてはならない
+const LMR_DEPTH_HIST_DIVISOR: i32 = 3220;
 /// razoringの最大深さとマージン（ADR-0057）。
 const RAZOR_MAX_DEPTH: u32 = 3;
 const RAZOR_MARGIN: Value = 300;
@@ -1281,7 +1289,7 @@ impl Worker {
                 // （yaneuraou-search.cpp:3599-3600）。生のdepthで枝刈りを
                 // 判断すると、深いノードほど閾値が大きくなり刈りすぎる。
                 // 参照実装は延長を加える前の `depth - 1` を基準にする
-                let lmr_depth = depth as i32 - 1 - r / 1024;
+                let mut lmr_depth = depth as i32 - 1 - r / 1024;
 
                 if is_capture || gives_check {
                     // 取る駒（駒打ちと王手だけの手ではEMPTY）と、その
@@ -1312,6 +1320,28 @@ impl Worker {
                         continue;
                     }
                 } else {
+                    // 静かな手の履歴（yaneuraou-search.cpp:3646-3648）。
+                    // 1手前・2手前のcontinuation historyとpawn historyの和
+                    let to = m.to();
+                    let pc = m.piece_after();
+                    let pawn_slot = PawnHistory::slot(self.pos.pawn_key());
+                    let mut history = self.hist.cont.get(cont[0], pc, to)
+                        + self.hist.cont.get(cont[1], pc, to)
+                        + self.hist.pawn.get(pawn_slot, pc, to);
+
+                    // continuation historyによる枝刈り
+                    // （yaneuraou-search.cpp:3650-3651）。履歴が極端に
+                    // 悪い手は読まない
+                    if history < -CONT_HIST_PRUNE_COEF * depth as i32 {
+                        continue;
+                    }
+
+                    // main historyを足してlmr_depthを補正する
+                    // （yaneuraou-search.cpp:3656-3661）。以降の枝刈りが
+                    // 使う尺度そのものが履歴で動く
+                    history += 71 * self.hist.main.get(self.pos.side_to_move(), m) / 32;
+                    lmr_depth += history / LMR_DEPTH_HIST_DIVISOR;
+
                     // futility（ADR-0028）: 評価がalphaに遠く及ばない浅い
                     // 静かな手を飛ばす
                     if !in_check
