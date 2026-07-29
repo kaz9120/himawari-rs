@@ -43,12 +43,18 @@ const LMP_MAX_DEPTH: u32 = 8;
 const CURRMOVE_MIN_MS: u64 = 3000;
 /// IIR: TTに手がないノードを1浅く読む最小深さ。
 const IIR_MIN_DEPTH: u32 = 4;
-/// correction historyの合成重み（ADR-0085）。分母は32768。
-/// 合計4096は、歩構造のみだった頃の /8 と等しい。歩構造は実績のある
-/// 系統なので重みを倍にし、追加の2系統で残りを分ける
-const CORR_W_PAWN: i32 = 2048;
-const CORR_W_NON_PAWN: i32 = 1024;
-const CORR_W_CONT: i32 = 1024;
+/// correction historyの合成重み（ADR-0085, 0109）。分母は131072。
+/// 出典はやねうら王の `correction_value()`（yaneuraou-search.cpp:737）。
+/// 6要素（歩・小駒・先手非歩・後手非歩・2手前と4手前のcontinuation）を
+/// この重みで合成する
+const CORR_W_PAWN: i32 = 12153;
+const CORR_W_MINOR: i32 = 8620;
+const CORR_W_NON_PAWN: i32 = 12355;
+const CORR_W_CONT: i32 = 7982;
+const CORR_DIVISOR: i32 = 131072;
+/// 1手前の指し手がないときのcontinuation項の代替値
+/// （yaneuraou-search.cpp:735）。
+const CORR_CONT_DEFAULT: i32 = 8;
 /// SEEベースの枝刈り（ADR-0090）。移動先での駒の取り合いを静的に解き、
 /// この額より損をする手を捨てる。出典はやねうら王の
 /// `-25*lmrDepth^2`（静かな手）と `-167*depth`（取る手、captHist項は除く）。
@@ -226,11 +232,9 @@ pub struct Worker {
     pub evaluator: Evaluator,
     pub history: History,
     pub counters: CounterMoves,
-    /// 静的評価のcorrection history（ADR-0046）。歩構造キー。
+    /// 静的評価のcorrection history（ADR-0046, 0109）。4系統を1本に持つ。
     pub corr: CorrectionHistory,
-    /// 歩以外の盤上駒キーのcorrection history（ADR-0085）。
-    pub corr_np: CorrectionHistory,
-    /// 直前の指し手を条件にするcorrection history（ADR-0085）。
+    /// 過去の指し手を条件にするcorrection history（ADR-0085, 0109）。
     pub corr_cont: ContinuationCorrectionHistory,
     /// continuation history（ADR-0047）。
     pub cont: ContinuationHistory,
@@ -266,7 +270,6 @@ impl Worker {
         history: History,
         counters: CounterMoves,
         corr: CorrectionHistory,
-        corr_np: CorrectionHistory,
         corr_cont: ContinuationCorrectionHistory,
         cont: ContinuationHistory,
     ) -> Worker {
@@ -276,7 +279,6 @@ impl Worker {
             history,
             counters,
             corr,
-            corr_np,
             corr_cont,
             cont,
             stack: vec![
@@ -344,20 +346,32 @@ impl Worker {
         v
     }
 
-    /// 生の静的評価にcorrection historyの補正を加える（ADR-0046, 0085）。
-    /// 3系統を重み付きで合成する。重みの合計は4096/32768 = 1/8で、
-    /// 歩構造のみだった頃の補正の強さと揃えてある。補正後が詰み圏に
-    /// 入らないようクランプする。
+    /// 生の静的評価にcorrection historyの補正を加える（ADR-0046, 0109）。
+    /// 6要素を重み付きで合成する（yaneuraou-search.cpp:724-746）。
+    /// 補正後が詰み圏に入らないようクランプする。
     #[inline]
     fn to_corrected(&self, raw: Value, ply: usize) -> Value {
-        let stm = self.pos.side_to_move();
+        let (pcv, micv, bnpcv, wnpcv) = self.corr.probe(&self.pos);
         // 余白があるのでply 0でも境界検査は要らない。前方は初期値のMove::NONE
         let prev1 = self.stack[ply + STACK_OFFSET - 1].current_move;
-        let sum = CORR_W_PAWN * self.corr.get(stm, self.pos.pawn_key())
-            + CORR_W_NON_PAWN * self.corr_np.get(stm, self.pos.non_pawn_key())
-            + CORR_W_CONT * self.corr_cont.get(prev1);
-        let corr = sum / 32768;
-        (raw + corr).clamp(VALUE_MATED_IN_MAX_PLY + 1, VALUE_MATE_IN_MAX_PLY - 1)
+        let cntcv = if prev1.is_special() {
+            CORR_CONT_DEFAULT
+        } else {
+            let to = prev1.to();
+            let pc = self.pos.piece_on(to);
+            let base2 = ContinuationCorrectionHistory::base(
+                self.stack[ply + STACK_OFFSET - 2].current_move,
+            );
+            let base4 = ContinuationCorrectionHistory::base(
+                self.stack[ply + STACK_OFFSET - 4].current_move,
+            );
+            self.corr_cont.get(base2, pc, to) + self.corr_cont.get(base4, pc, to)
+        };
+        let sum = CORR_W_PAWN * pcv
+            + CORR_W_MINOR * micv
+            + CORR_W_NON_PAWN * (wnpcv + bnpcv)
+            + CORR_W_CONT * cntcv;
+        (raw + sum / CORR_DIVISOR).clamp(VALUE_MATED_IN_MAX_PLY + 1, VALUE_MATE_IN_MAX_PLY - 1)
     }
 
     /// aspirationのfail時に途中経過を報告する（ADR-0091）。
@@ -1197,12 +1211,7 @@ impl Worker {
             {
                 let diff = best - static_eval;
                 let bonus = (diff * depth as i32 / 8).clamp(-128, 128);
-                let stm = self.pos.side_to_move();
-                self.corr.update(stm, self.pos.pawn_key(), bonus);
-                // 追加の2系統も同じbonusで更新する（ADR-0085）
-                self.corr_np.update(stm, self.pos.non_pawn_key(), bonus);
-                let prev1 = self.stack[ply + STACK_OFFSET - 1].current_move;
-                self.corr_cont.update(prev1, bonus);
+                self.update_correction_history(ply, bonus);
             }
         }
         best
@@ -1381,6 +1390,26 @@ impl Worker {
         best
     }
 
+    /// correction historyを6要素まとめて更新する（ADR-0109のG1）。
+    /// 出典はやねうら王の `update_correction_history()`
+    /// （yaneuraou-search.cpp:748-771）。系統ごとに重みが違う。
+    fn update_correction_history(&mut self, ply: usize, bonus: i32) {
+        self.corr.update_all(&self.pos, bonus);
+        let prev1 = self.stack[ply + STACK_OFFSET - 1].current_move;
+        if !prev1.is_special() {
+            let to = prev1.to();
+            let pc = self.pos.piece_on(to);
+            let base2 = ContinuationCorrectionHistory::base(
+                self.stack[ply + STACK_OFFSET - 2].current_move,
+            );
+            let base4 = ContinuationCorrectionHistory::base(
+                self.stack[ply + STACK_OFFSET - 4].current_move,
+            );
+            self.corr_cont.update(base2, pc, to, bonus * 126 / 128);
+            self.corr_cont.update(base4, pc, to, bonus * 63 / 128);
+        }
+    }
+
     fn update_quiet_stats(&mut self, m: Move, prev: Move, ply: usize, depth: u32, tried: &[Move]) {
         let k = &mut self.stack[ply + STACK_OFFSET].killers;
         if k[0] != m {
@@ -1441,7 +1470,6 @@ mod tests {
             Evaluator::material(),
             History::default(),
             CounterMoves::default(),
-            CorrectionHistory::default(),
             CorrectionHistory::default(),
             ContinuationCorrectionHistory::default(),
             ContinuationHistory::default(),

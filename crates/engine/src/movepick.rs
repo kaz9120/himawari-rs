@@ -4,7 +4,33 @@
 //! Quietsの生成自体を省く。borrow衝突を避けるため、
 //! next()は毎回&Positionと&Historyを受け取る。
 
-use himawari_core::{Color, GenType, Move, MoveList, Position, generate, piece_value};
+use himawari_core::{
+    Color, GenType, Move, MoveList, Piece, Position, Square, generate, piece_value,
+};
+
+// ---- テーブルの寸法 ----
+
+/// 駒の種類数（先後込み）。参照実装のPIECE_NB。
+const PIECE_NB: usize = 32;
+/// マスの数。参照実装のSQUARE_NB。
+const SQUARE_NB: usize = 81;
+/// correction historyのスロット数（history.h:29）。
+const CORRHIST_BASE_SIZE: usize = 65536;
+/// correction historyの値域（history.h:30）。
+const D_CORRECTION: i32 = 1024;
+/// continuation correction historyの初期値（yaneuraou-search.cpp:2153）。
+const INIT_CONT_CORR: i16 = 6;
+/// 応手側の面の広さ（[駒][マス]）。
+const CONT_STRIDE: usize = PIECE_NB * SQUARE_NB;
+
+/// gravity方式の更新（history.h:91-125のStatsEntry::operator<<）。
+/// bonusを±dに丸めたうえで、値が±dを超えないよう自然にゼロへ引き戻す。
+#[inline]
+fn stats_update(entry: &mut i16, bonus: i32, d: i32) {
+    let b = bonus.clamp(-d, d);
+    let v = i32::from(*entry);
+    *entry = (v + b - v * b.abs() / d) as i16;
+}
 
 /// main history（[移動後の駒 32][移動先 81]。駒打ちも表現できる）。
 pub struct History {
@@ -37,78 +63,131 @@ impl History {
     }
 }
 
-/// 静的評価の系統誤差を補正する履歴（ADR-0046）。
-/// [手番][pawn_key下位14bit]に、探索値と静的評価の乖離を蓄積する。
+/// 静的評価の系統誤差を補正する履歴（ADR-0046, 0109）。
+///
+/// 参照実装のUnifiedCorrectionHistory（history.h:337-339）に対応する。
+/// 1本の表を4系統（歩・小駒・先手非歩・後手非歩）で共有し、系統ごとに
+/// 別のキーで引く。添字は `[キー下位16bit][手番][系統]`。
 pub struct CorrectionHistory {
-    table: Box<[[i16; 16384]; 2]>,
+    table: Box<[i16]>,
 }
+
+/// correction historyの系統（history.h:296-309のCorrectionBundle）。
+const CORR_PAWN: usize = 0;
+const CORR_MINOR: usize = 1;
+const CORR_NON_PAWN_BLACK: usize = 2;
+const CORR_NON_PAWN_WHITE: usize = 3;
+/// 1スロットが持つ系統数。
+const CORR_KINDS: usize = 4;
 
 impl Default for CorrectionHistory {
     fn default() -> Self {
         CorrectionHistory {
-            table: Box::new([[0; 16384]; 2]),
+            table: vec![0i16; CORRHIST_BASE_SIZE * 2 * CORR_KINDS].into_boxed_slice(),
         }
     }
 }
 
 impl CorrectionHistory {
     #[inline]
-    fn slot(pawn_key: u64) -> usize {
-        (pawn_key & 0x3FFF) as usize
+    fn index(key: u64, stm: usize, kind: usize) -> usize {
+        ((key as usize & (CORRHIST_BASE_SIZE - 1)) * 2 + stm) * CORR_KINDS + kind
     }
 
     #[inline]
-    pub fn get(&self, stm: Color, pawn_key: u64) -> i32 {
-        i32::from(self.table[stm.index()][Self::slot(pawn_key)])
+    fn get(&self, key: u64, stm: usize, kind: usize) -> i32 {
+        i32::from(self.table[Self::index(key, stm, kind)])
     }
 
-    /// gravity方式の更新（値域±1024）。bonusは呼び出し側で±128にクランプ済み。
-    pub fn update(&mut self, stm: Color, pawn_key: u64, bonus: i32) {
-        let e = &mut self.table[stm.index()][Self::slot(pawn_key)];
-        *e += (bonus - i32::from(*e) * bonus.abs() / 1024) as i16;
+    fn update(&mut self, key: u64, stm: usize, kind: usize, bonus: i32) {
+        stats_update(
+            &mut self.table[Self::index(key, stm, kind)],
+            bonus,
+            D_CORRECTION,
+        );
+    }
+
+    /// 4系統の生の値を取り出す（yaneuraou-search.cpp:728-731）。
+    /// 返り値は (歩, 小駒, 先手非歩, 後手非歩)。
+    #[inline]
+    pub fn probe(&self, pos: &Position) -> (i32, i32, i32, i32) {
+        let stm = pos.side_to_move().index();
+        (
+            self.get(pos.pawn_key(), stm, CORR_PAWN),
+            self.get(pos.minor_piece_key(), stm, CORR_MINOR),
+            self.get(pos.non_pawn_key(Color::Black), stm, CORR_NON_PAWN_BLACK),
+            self.get(pos.non_pawn_key(Color::White), stm, CORR_NON_PAWN_WHITE),
+        )
+    }
+
+    /// 4系統をまとめて更新する（yaneuraou-search.cpp:759-762）。
+    /// 系統ごとの重みも参照実装のものを使う。
+    pub fn update_all(&mut self, pos: &Position, bonus: i32) {
+        /// 非歩系統の重み（yaneuraou-search.cpp:755）。
+        const NON_PAWN_WEIGHT: i32 = 187;
+        let stm = pos.side_to_move().index();
+        self.update(pos.pawn_key(), stm, CORR_PAWN, bonus);
+        self.update(pos.minor_piece_key(), stm, CORR_MINOR, bonus * 153 / 128);
+        self.update(
+            pos.non_pawn_key(Color::Black),
+            stm,
+            CORR_NON_PAWN_BLACK,
+            bonus * NON_PAWN_WEIGHT / 128,
+        );
+        self.update(
+            pos.non_pawn_key(Color::White),
+            stm,
+            CORR_NON_PAWN_WHITE,
+            bonus * NON_PAWN_WEIGHT / 128,
+        );
     }
 
     pub fn clear(&mut self) {
-        *self.table = [[0; 16384]; 2];
+        self.table.fill(0);
     }
 }
 
-/// continuation correction history（ADR-0085）。
-/// [1手前の駒 32][移動先 81]に、探索値と静的評価の乖離を蓄積する。
-/// 局面のキーではなく直前の指し手を条件にする点が
-/// [`CorrectionHistory`] と違う。
+/// continuation correction history（ADR-0085, 0109）。
+/// 論理次元は[条件手の駒 32][条件手の移動先 81][駒 32][マス 81]
+/// （history.h:325-327）。条件手の側は2手前・4手前を見る。
 pub struct ContinuationCorrectionHistory {
-    table: Box<[[i16; 81]; 32]>,
+    table: Box<[i16]>,
 }
 
 impl Default for ContinuationCorrectionHistory {
     fn default() -> Self {
         ContinuationCorrectionHistory {
-            table: Box::new([[0; 81]; 32]),
+            table: vec![INIT_CONT_CORR; CONT_STRIDE * CONT_STRIDE].into_boxed_slice(),
         }
     }
 }
 
 impl ContinuationCorrectionHistory {
+    /// 条件手から面の先頭添字を作る。指し手がないplyは番兵の面（先頭）を指す
+    /// （yaneuraou-search.cpp:1469, 3256）。
     #[inline]
-    pub fn get(&self, prev: Move) -> i32 {
-        if prev == Move::NONE || prev.is_special() {
+    pub fn base(m: Move) -> usize {
+        if m.is_special() {
             return 0;
         }
-        i32::from(self.table[prev.piece_after().index()][prev.to().index()])
+        (m.piece_after().index() * SQUARE_NB + m.to().index()) * CONT_STRIDE
     }
 
-    /// gravity方式の更新（値域±1024）。[`CorrectionHistory`] と同一。
-    pub fn update(&mut self, prev: Move, bonus: i32) {
-        if prev == Move::NONE || prev.is_special() {
-            return;
-        }
-        let e = &mut self.table[prev.piece_after().index()][prev.to().index()];
-        *e += (bonus - i32::from(*e) * bonus.abs() / 1024) as i16;
+    #[inline]
+    pub fn get(&self, base: usize, pc: Piece, to: Square) -> i32 {
+        i32::from(self.table[base + pc.index() * SQUARE_NB + to.index()])
+    }
+
+    pub fn update(&mut self, base: usize, pc: Piece, to: Square, bonus: i32) {
+        stats_update(
+            &mut self.table[base + pc.index() * SQUARE_NB + to.index()],
+            bonus,
+            D_CORRECTION,
+        );
     }
 
     pub fn clear(&mut self) {
-        *self.table = [[0; 81]; 32];
+        self.table.fill(INIT_CONT_CORR);
     }
 }
 

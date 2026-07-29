@@ -46,7 +46,6 @@ fn solve(sfen: &str, depth: u32, shared: &Arc<Shared>) -> Option<(u32, String)> 
         History::default(),
         CounterMoves::default(),
         CorrectionHistory::default(),
-        CorrectionHistory::default(),
         ContinuationCorrectionHistory::default(),
         ContinuationHistory::default(),
     );

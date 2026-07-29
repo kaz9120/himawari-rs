@@ -30,7 +30,6 @@ fn search_position(sfen: &str, depth: u32) -> (Move, Value) {
         History::default(),
         CounterMoves::default(),
         CorrectionHistory::default(),
-        CorrectionHistory::default(),
         ContinuationCorrectionHistory::default(),
         ContinuationHistory::default(),
     );
@@ -83,7 +82,6 @@ fn selfplay_smoke() {
             History::default(),
             CounterMoves::default(),
             CorrectionHistory::default(),
-            CorrectionHistory::default(),
             ContinuationCorrectionHistory::default(),
             ContinuationHistory::default(),
         );
@@ -121,7 +119,6 @@ fn multipv_lines_are_distinct_and_sorted() {
         Evaluator::material(),
         History::default(),
         CounterMoves::default(),
-        CorrectionHistory::default(),
         CorrectionHistory::default(),
         ContinuationCorrectionHistory::default(),
         ContinuationHistory::default(),
@@ -170,7 +167,6 @@ fn nnue_search_returns_legal_moves() {
             History::default(),
             CounterMoves::default(),
             CorrectionHistory::default(),
-            CorrectionHistory::default(),
             ContinuationCorrectionHistory::default(),
             ContinuationHistory::default(),
         );
@@ -218,7 +214,6 @@ fn stop_before_first_iteration_still_returns_the_depth1_best() {
         History::default(),
         CounterMoves::default(),
         CorrectionHistory::default(),
-        CorrectionHistory::default(),
         ContinuationCorrectionHistory::default(),
         ContinuationHistory::default(),
     );
@@ -262,7 +257,6 @@ fn does_not_end_on_an_unresolved_aspiration_bound() {
         Evaluator::material(),
         History::default(),
         CounterMoves::default(),
-        CorrectionHistory::default(),
         CorrectionHistory::default(),
         ContinuationCorrectionHistory::default(),
         ContinuationHistory::default(),
