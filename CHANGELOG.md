@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.15.0](https://github.com/kaz9120/himawari-rs/compare/v0.14.0...v0.15.0) (2026-07-29)
+
+
+### 棋力向上
+
+* 指し手の最大スコア探索をSoA＋SIMDにする（+106.7 Elo、ADR-0100） ([#89](https://github.com/kaz9120/himawari-rs/issues/89)) ([794895a](https://github.com/kaz9120/himawari-rs/commit/794895a53f83edb8853b7d105d2a6485b0735f68))
+
 ## [0.14.0](https://github.com/kaz9120/himawari-rs/compare/v0.13.9...v0.14.0) (2026-07-29)
 
 
