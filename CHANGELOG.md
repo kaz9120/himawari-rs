@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.15.8](https://github.com/kaz9120/himawari-rs/compare/v0.15.7...v0.15.8) (2026-07-29)
+
+
+### ドキュメント
+
+* 2026-07-29の時間管理キャンペーンをROADMAPに残す ([#112](https://github.com/kaz9120/himawari-rs/issues/112)) ([638cc4f](https://github.com/kaz9120/himawari-rs/commit/638cc4fa97e24ab3c27cc0398cd82c053b4bb1c7))
+* ponderhitでの探索継続を棄却した記録を残す（ADR-0106） ([#113](https://github.com/kaz9120/himawari-rs/issues/113)) ([07dd208](https://github.com/kaz9120/himawari-rs/commit/07dd20811a6aba80fd3c80f1db59e4d3e5cef4fe))
+
 ## [0.15.7](https://github.com/kaz9120/himawari-rs/compare/v0.15.6...v0.15.7) (2026-07-29)
 
 
