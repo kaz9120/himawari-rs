@@ -4,6 +4,8 @@
 //! 駒打ちのfromフィールドは駒種（OSL配列 9〜15）。
 //! 上位: bit 16..=20 に移動後の駒（先後込み）。
 
+use std::mem::MaybeUninit;
+
 use crate::piece::{Piece, PieceType};
 use crate::types::{Color, Square};
 
@@ -154,17 +156,37 @@ impl Move16 {
     }
 }
 
-/// 指し手バッファ。将棋の最大合法手数593を上回る固定長。
+/// 指し手バッファの容量。将棋の最大合法手数593を上回る。
+const MOVE_LIST_CAP: usize = 608;
+
+/// 指し手バッファ。
+///
+/// 生成のたびに全要素を埋めると1回あたり2.4KBの書き込みになり、
+/// 書いた値は一度も読まれない（ADR-0101）。未初期化のまま確保し、
+/// `push` した先頭 `len` 要素だけを有効として扱う。
+///
+/// 不変条件: `moves[..len]` は初期化済みである。`len` を増やすのは
+/// `push` だけで、`clear` は0へ戻すだけである。
 pub struct MoveList {
-    moves: [Move; 608],
+    moves: [MaybeUninit<Move>; MOVE_LIST_CAP],
     len: usize,
 }
 
 impl Default for MoveList {
+    /// `len` だけを書き、`moves` は未初期化のままにする。
+    ///
+    /// `MoveList { moves: [MaybeUninit::uninit(); N], len: 0 }` と
+    /// 構造体を値で組み立てると、LLVMが未初期化の配列を含む
+    /// アグリゲートを定数へ畳み、2,440バイトのゼロクリアを生成する
+    /// （ADR-0101）。フィールド単位で書けばこれが起きない。
+    #[inline]
     fn default() -> Self {
-        MoveList {
-            moves: [Move::NONE; 608],
-            len: 0,
+        let mut this = MaybeUninit::<MoveList>::uninit();
+        // SAFETY: lenを0にすれば型の不変条件（moves[..len]が初期化済み）
+        // を満たす。movesは未初期化のままでよく、as_sliceは空を返す
+        unsafe {
+            (&raw mut (*this.as_mut_ptr()).len).write(0);
+            this.assume_init()
         }
     }
 }
@@ -172,8 +194,8 @@ impl Default for MoveList {
 impl MoveList {
     #[inline]
     pub fn push(&mut self, m: Move) {
-        debug_assert!(self.len < 608);
-        self.moves[self.len] = m;
+        debug_assert!(self.len < MOVE_LIST_CAP);
+        self.moves[self.len].write(m);
         self.len += 1;
     }
 
@@ -194,7 +216,9 @@ impl MoveList {
 
     #[inline]
     pub fn as_slice(&self) -> &[Move] {
-        &self.moves[..self.len]
+        // SAFETY: 先頭len要素はpushで初期化済み（型の不変条件）。
+        // MaybeUninit<Move>はMoveと同じレイアウトを持つ
+        unsafe { std::slice::from_raw_parts(self.moves.as_ptr().cast::<Move>(), self.len) }
     }
 }
 
@@ -265,6 +289,50 @@ mod tests {
         assert!(!normal.is_special());
         let drop = Move::new_drop(PieceType::GOLD, Square::from_index(0), Color::Black);
         assert!(!drop.is_special());
+    }
+
+    /// 未初期化バッファでもpushした範囲だけが見えること（ADR-0101）。
+    #[test]
+    fn move_list_exposes_only_pushed_moves() {
+        let mut list = MoveList::default();
+        assert!(list.is_empty());
+        assert_eq!(list.len(), 0);
+        assert_eq!(list.as_slice(), &[]);
+
+        let a = Move::new_drop(
+            PieceType::PAWN,
+            Square::from_usi("5e").unwrap(),
+            Color::Black,
+        );
+        let b = Move::new_drop(
+            PieceType::GOLD,
+            Square::from_usi("1a").unwrap(),
+            Color::White,
+        );
+        list.push(a);
+        list.push(b);
+        assert_eq!(list.len(), 2);
+        assert_eq!(list.as_slice(), &[a, b]);
+        assert_eq!(list.into_iter().copied().collect::<Vec<_>>(), vec![a, b]);
+
+        // clear後は再び空。前に書いた値は見えない
+        list.clear();
+        assert!(list.is_empty());
+        assert_eq!(list.as_slice(), &[]);
+        list.push(b);
+        assert_eq!(list.as_slice(), &[b]);
+
+        // 容量いっぱいまで積んでも先頭から順に読める
+        let mut full = MoveList::default();
+        for i in 0..MOVE_LIST_CAP {
+            full.push(Move::new_drop(
+                PieceType::PAWN,
+                Square::from_index((i % 81) as u8),
+                Color::Black,
+            ));
+        }
+        assert_eq!(full.len(), MOVE_LIST_CAP);
+        assert_eq!(full.as_slice()[0], full.as_slice()[81]);
     }
 
     #[test]
