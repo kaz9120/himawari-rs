@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.14.0](https://github.com/kaz9120/himawari-rs/compare/v0.13.9...v0.14.0) (2026-07-29)
+
+
+### 棋力向上
+
+* NNUE隠れ層の内積を専用命令で計算する（+59.7 Elo、ADR-0099） ([#88](https://github.com/kaz9120/himawari-rs/issues/88)) ([a67c2c5](https://github.com/kaz9120/himawari-rs/commit/a67c2c5728a9783070cfdb44fedca05824f77b3b))
+
 ## [0.13.9](https://github.com/kaz9120/himawari-rs/compare/v0.13.8...v0.13.9) (2026-07-29)
 
 
