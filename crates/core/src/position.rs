@@ -999,8 +999,9 @@ impl Position {
 
     // ---- SEE（静的交換評価。ADR-0025） ----
 
-    /// mの静的交換評価がthreshold以上か。成りは考慮しない簡略版。
-    /// Stockfishのsee_geと同じswap構造。駒打ちも解く（ADR-0091）。
+    /// mの静的交換評価がthreshold以上か。Stockfishのsee_geと同じswap構造。
+    /// 駒打ちも解き（ADR-0091）、初手の成りも扱う（ADR-0095）。
+    /// 交換の途中で相手が成る筋は見ない簡略版のままである。
     pub fn see_ge(&self, m: Move, threshold: i32) -> bool {
         let to = m.to();
         // 打つ手は移動先が空きマスなので取る駒がない。打った駒が盤上へ
@@ -1014,9 +1015,13 @@ impl Position {
             )
         } else {
             let from = m.from_sq();
+            // 成ると駒の価値が上がる（歩90→と金540など）。その差は取り分で
+            // あり、取り返されるのは成ったあとの駒である（ADR-0095）
+            let before = PIECE_VALUE[self.piece_on(from).piece_type().index()];
+            let after = PIECE_VALUE[m.piece_after().piece_type().index()];
             (
-                PIECE_VALUE[self.piece_on(to).piece_type().index()],
-                PIECE_VALUE[self.piece_on(from).piece_type().index()],
+                PIECE_VALUE[self.piece_on(to).piece_type().index()] + after - before,
+                after,
                 self.occupied() ^ Bitboard::from_square(from),
             )
         };

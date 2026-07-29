@@ -367,3 +367,30 @@ fn see_ge_solves_drops() {
     assert!(pos.pseudo_legal(m2), "1七への歩打ちは擬似合法");
     assert!(pos.see_ge(m2, 0), "取られない打ちは損しない");
 }
+
+/// 成りのSEE（ADR-0095）。成りによる駒の価値上昇を取り分に入れる。
+#[test]
+fn see_ge_accounts_for_promotion() {
+    use himawari_core::{Color, Piece, PieceType, Square};
+
+    // 3四の先手歩が3三の後手歩を取る。取り返す駒はない
+    let pos = Position::from_sfen("4k4/9/6p2/6P2/9/9/9/9/4K4 b - 1").unwrap();
+    let from = Square::from_usi("3d").unwrap();
+    let to = Square::from_usi("3c").unwrap();
+    let promo = Move::new_move(
+        from,
+        to,
+        true,
+        Piece::new(Color::Black, PieceType::PRO_PAWN),
+    );
+    let plain = Move::new_move(from, to, false, Piece::new(Color::Black, PieceType::PAWN));
+    assert!(pos.pseudo_legal(promo) && pos.pseudo_legal(plain));
+
+    // 取る歩は90。成れば と金(540) との差450が上乗せされる
+    assert!(pos.see_ge(plain, 90), "成らない手の取り分は歩1枚");
+    assert!(!pos.see_ge(plain, 400), "成らない手は400に届かない");
+    assert!(
+        pos.see_ge(promo, 400),
+        "成る手は歩90＋成りの利得450で400を超える"
+    );
+}
