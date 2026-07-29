@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.13.3](https://github.com/kaz9120/himawari-rs/compare/v0.13.2...v0.13.3) (2026-07-29)
+
+
+### ドキュメント
+
+* RFPのマージン緩和を棄却として記録する（ADR-0096） ([#74](https://github.com/kaz9120/himawari-rs/issues/74)) ([0a01b0a](https://github.com/kaz9120/himawari-rs/commit/0a01b0ab09ad53630baedc3c6a25aaf57c131230))
+
 ## [0.13.2](https://github.com/kaz9120/himawari-rs/compare/v0.13.1...v0.13.2) (2026-07-29)
 
 
