@@ -147,16 +147,29 @@ fn random_playout(seed: u64, plies: usize, all: bool) {
             pos.compute_pawn_key(),
             "pawn_keyの差分と全計算の不一致"
         );
-        // 歩以外の盤上駒キーも同様に検証する（ADR-0085）
+        // 歩以外の盤上駒キーも同様に検証する（ADR-0085, 0109）
+        for c in [Color::Black, Color::White] {
+            assert_eq!(
+                pos.non_pawn_key(c),
+                fresh.non_pawn_key(c),
+                "差分non_pawn_keyと全計算の不一致"
+            );
+            assert_eq!(
+                pos.non_pawn_key(c),
+                pos.compute_non_pawn_key(c),
+                "non_pawn_keyの差分と全計算の不一致"
+            );
+        }
+        // 小駒キーも同様に検証する（ADR-0109）
         assert_eq!(
-            pos.non_pawn_key(),
-            fresh.non_pawn_key(),
-            "差分non_pawn_keyと全計算の不一致"
+            pos.minor_piece_key(),
+            fresh.minor_piece_key(),
+            "差分minor_piece_keyと全計算の不一致"
         );
         assert_eq!(
-            pos.non_pawn_key(),
-            pos.compute_non_pawn_key(),
-            "non_pawn_keyの差分と全計算の不一致"
+            pos.minor_piece_key(),
+            pos.compute_minor_piece_key(),
+            "minor_piece_keyの差分と全計算の不一致"
         );
 
         // gives_checkの整合

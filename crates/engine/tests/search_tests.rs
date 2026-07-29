@@ -4,9 +4,7 @@ use std::sync::Arc;
 
 use himawari_core::{Move, MoveList, Position, SFEN_STARTPOS, generate_legal};
 use himawari_engine::eval::Evaluator;
-use himawari_engine::movepick::{
-    ContinuationCorrectionHistory, ContinuationHistory, CorrectionHistory, CounterMoves, History,
-};
+use himawari_engine::movepick::Histories;
 use himawari_engine::search::{SearchInfo, Shared, Worker};
 use himawari_engine::timeman::{Limits, TimeManager};
 use himawari_engine::value::{VALUE_MATE, Value};
@@ -27,12 +25,7 @@ fn search_position(sfen: &str, depth: u32) -> (Move, Value) {
         0,
         1,
         Evaluator::material(),
-        History::default(),
-        CounterMoves::default(),
-        CorrectionHistory::default(),
-        CorrectionHistory::default(),
-        ContinuationCorrectionHistory::default(),
-        ContinuationHistory::default(),
+        Histories::default(),
     );
     let result = worker.iterate(&mut |_| {});
     (result.best, result.score)
@@ -80,12 +73,7 @@ fn selfplay_smoke() {
             256,
             1,
             Evaluator::material(),
-            History::default(),
-            CounterMoves::default(),
-            CorrectionHistory::default(),
-            CorrectionHistory::default(),
-            ContinuationCorrectionHistory::default(),
-            ContinuationHistory::default(),
+            Histories::default(),
         );
         let result = worker.iterate(&mut |_| {});
         if result.best == Move::RESIGN {
@@ -119,12 +107,7 @@ fn multipv_lines_are_distinct_and_sorted() {
         0,
         3,
         Evaluator::material(),
-        History::default(),
-        CounterMoves::default(),
-        CorrectionHistory::default(),
-        CorrectionHistory::default(),
-        ContinuationCorrectionHistory::default(),
-        ContinuationHistory::default(),
+        Histories::default(),
     );
     let mut lines: Vec<(usize, Value, Move)> = Vec::new();
     worker.iterate(&mut |info| {
@@ -167,12 +150,7 @@ fn nnue_search_returns_legal_moves() {
             0,
             1,
             Evaluator::nnue(Arc::clone(&net)),
-            History::default(),
-            CounterMoves::default(),
-            CorrectionHistory::default(),
-            CorrectionHistory::default(),
-            ContinuationCorrectionHistory::default(),
-            ContinuationHistory::default(),
+            Histories::default(),
         );
         let result = worker.iterate(&mut |_| {});
         let mut legal = MoveList::default();
@@ -215,12 +193,7 @@ fn stop_before_first_iteration_still_returns_the_depth1_best() {
         0,
         1,
         Evaluator::material(),
-        History::default(),
-        CounterMoves::default(),
-        CorrectionHistory::default(),
-        CorrectionHistory::default(),
-        ContinuationCorrectionHistory::default(),
-        ContinuationHistory::default(),
+        Histories::default(),
     );
     let got = worker.iterate(&mut |_| {}).best;
 
@@ -260,12 +233,7 @@ fn does_not_end_on_an_unresolved_aspiration_bound() {
         0,
         1,
         Evaluator::material(),
-        History::default(),
-        CounterMoves::default(),
-        CorrectionHistory::default(),
-        CorrectionHistory::default(),
-        ContinuationCorrectionHistory::default(),
-        ContinuationHistory::default(),
+        Histories::default(),
     );
     let mut saw_bound = false;
     let mut last_was_bound = false;

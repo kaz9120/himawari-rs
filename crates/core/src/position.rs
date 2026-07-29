@@ -24,6 +24,17 @@ pub const fn piece_value(pt: PieceType) -> i32 {
     PIECE_VALUE[pt.index()]
 }
 
+/// 小駒（minor piece）の駒種マスク。香・桂・銀・金とその成駒に限る。
+/// 出典はやねうら王 position.cpp:28-36 のminor_piece_table。
+const MINOR_PIECE_MASK: u16 = (1 << 2) | (1 << 3) | (1 << 4) | (1 << 5) // と・成香・成桂・成銀
+    | (1 << 9) | (1 << 11) | (1 << 12) | (1 << 13); // 金・香・桂・銀
+
+/// 小駒か（ADR-0109）。correction historyのminor系統に使う。
+#[inline]
+pub const fn is_minor_piece(pt: PieceType) -> bool {
+    MINOR_PIECE_MASK & (1 << pt.0) != 0
+}
+
 /// 入玉宣言の点数（ADR-0030）。飛角系5点、玉以外の他駒1点。
 const fn declaration_points(pt: PieceType) -> u32 {
     match pt {
@@ -64,9 +75,12 @@ pub struct StateInfo {
     pub hand_key: u64,
     /// 歩構造キー（盤上の歩＋両者の持ち歩枚数。ADR-0046）。
     pub pawn_key: u64,
-    /// 歩以外の盤上の駒のキー（成駒を含む。ADR-0085）。
-    /// correction historyの2系統目に使う。持ち駒は含めない
-    pub non_pawn_key: u64,
+    /// 歩以外の盤上の駒のキー（成駒を含む。ADR-0085, 0109）。
+    /// correction historyが先後別に引く。持ち駒は含めない
+    pub non_pawn_key: [u64; 2],
+    /// 小駒のキー（香・桂・銀・金とその成駒。ADR-0109）。
+    /// 先後は区別せず1本に混ぜる。出典はやねうら王 position.cpp:144
+    pub minor_piece_key: u64,
     pub checkers: Bitboard,
     pub blockers_for_king: [Bitboard; 2],
     pub pinners: [Bitboard; 2],
@@ -186,20 +200,39 @@ impl Position {
         self.state().pawn_key
     }
 
-    /// 歩以外の盤上駒のキー（ADR-0085）。correction historyに使う。
+    /// 色cの歩以外の盤上駒のキー（ADR-0085, 0109）。correction historyに使う。
     #[inline]
-    pub fn non_pawn_key(&self) -> u64 {
-        self.state().non_pawn_key
+    pub fn non_pawn_key(&self, c: Color) -> u64 {
+        self.state().non_pawn_key[c.index()]
     }
 
-    /// 歩以外の盤上駒キーの全計算。と金など成歩はこちらに入る。
+    /// 小駒のキー（ADR-0109）。correction historyのminor系統に使う。
+    #[inline]
+    pub fn minor_piece_key(&self) -> u64 {
+        self.state().minor_piece_key
+    }
+
+    /// 色cの歩以外の盤上駒キーの全計算。と金など成歩はこちらに入る。
     /// 持ち駒は含めない。差分更新の検証にも使う。
-    pub fn compute_non_pawn_key(&self) -> u64 {
+    pub fn compute_non_pawn_key(&self, c: Color) -> u64 {
         let mut key = 0u64;
         for i in 0..Square::NB {
             let sq = Square::from_index(i as u8);
             let pc = self.board[sq.index()];
-            if !pc.is_empty() && pc.piece_type() != PieceType::PAWN {
+            if !pc.is_empty() && pc.piece_type() != PieceType::PAWN && pc.color() == c {
+                key ^= zobrist::psq(pc, sq);
+            }
+        }
+        key
+    }
+
+    /// 小駒キーの全計算。差分更新の検証にも使う。
+    pub fn compute_minor_piece_key(&self) -> u64 {
+        let mut key = 0u64;
+        for i in 0..Square::NB {
+            let sq = Square::from_index(i as u8);
+            let pc = self.board[sq.index()];
+            if !pc.is_empty() && is_minor_piece(pc.piece_type()) {
                 key ^= zobrist::psq(pc, sq);
             }
         }
@@ -380,7 +413,35 @@ impl Position {
         self.state().blockers_for_king[them.index()].test(from) && !aligned(from, to, ksq)
     }
 
+    /// 駒種ptの手番側の駒がそこへ動くと相手玉に直接王手になるマスの集合。
+    /// 開き王手は含めない。指し手オーダリングの王手ボーナスに使う
+    /// （ADR-0109。出典はやねうら王のPosition::check_squares）。
+    #[inline]
+    pub fn check_squares(&self, pt: PieceType) -> Bitboard {
+        let them = self.side.flip();
+        let ksq = self.king_sq[them.index()];
+        // 相手の駒として玉の位置から利きを引くと、逆向きの利きの集合になる
+        attacks(Piece::new(them, pt), ksq, self.occupied())
+    }
+
     // ---- do/undo（ADR-0014） ----
+
+    /// 盤上の駒1つを部分キーへXORする（ADR-0109）。
+    /// 歩はpawn_key、それ以外はnon_pawn_key[色]へ入り、
+    /// 小駒はminor_piece_keyにも入る。
+    /// 出典はやねうら王 position.cpp:138-148。
+    #[inline]
+    fn xor_partial_keys(st: &mut StateInfo, pc: Piece, sq: Square) {
+        let k = zobrist::psq(pc, sq);
+        if pc.piece_type() == PieceType::PAWN {
+            st.pawn_key ^= k;
+        } else {
+            if is_minor_piece(pc.piece_type()) {
+                st.minor_piece_key ^= k;
+            }
+            st.non_pawn_key[pc.color().index()] ^= k;
+        }
+    }
 
     pub fn do_move(&mut self, m: Move) {
         debug_assert!(!m.is_special());
@@ -393,6 +454,7 @@ impl Position {
             hand_key: 0,
             pawn_key: prev.pawn_key,
             non_pawn_key: prev.non_pawn_key,
+            minor_piece_key: prev.minor_piece_key,
             checkers: Bitboard::EMPTY,
             blockers_for_king: [Bitboard::EMPTY; 2],
             pinners: [Bitboard::EMPTY; 2],
@@ -410,13 +472,11 @@ impl Position {
             self.put_piece(m.to(), pc);
             st.board_key ^= zobrist::psq(pc, m.to());
             if pt == PieceType::PAWN {
-                // 持ち歩-1、盤上歩の追加
+                // 持ち歩-1（盤上歩の追加はxor_partial_keysが行う）
                 let new = self.hands[us.index()].count(PieceType::PAWN);
                 st.pawn_key ^= zobrist::hand_pawn(us, new + 1) ^ zobrist::hand_pawn(us, new);
-                st.pawn_key ^= zobrist::psq(pc, m.to());
-            } else {
-                st.non_pawn_key ^= zobrist::psq(pc, m.to());
             }
+            Self::xor_partial_keys(&mut st, pc, m.to());
             st.dirty.count = 1;
             st.dirty.piece_old[0] = Piece::EMPTY;
             st.dirty.piece_new[0] = pc;
@@ -433,12 +493,8 @@ impl Position {
                 let hand_kind = captured.piece_type().unpromote();
                 self.hands[us.index()].add(hand_kind);
                 st.board_key ^= zobrist::psq(captured, to);
-                // 盤上歩を取ったら除去。取った歩・と金は持ち歩+1
-                if captured.piece_type() == PieceType::PAWN {
-                    st.pawn_key ^= zobrist::psq(captured, to);
-                } else {
-                    st.non_pawn_key ^= zobrist::psq(captured, to);
-                }
+                // 盤上から取った駒を除去。取った歩・と金は持ち歩+1
+                Self::xor_partial_keys(&mut st, captured, to);
                 if hand_kind == PieceType::PAWN {
                     let new = self.hands[us.index()].count(PieceType::PAWN);
                     st.pawn_key ^= zobrist::hand_pawn(us, new - 1) ^ zobrist::hand_pawn(us, new);
@@ -457,19 +513,10 @@ impl Position {
             let placed = m.piece_after();
             self.put_piece(to, placed);
             st.board_key ^= zobrist::psq(moved, from) ^ zobrist::psq(placed, to);
-            // 歩の移動: fromの歩を除去。成らなければtoへ追加（成ればと金は含めない）
-            if moved.piece_type() == PieceType::PAWN {
-                st.pawn_key ^= zobrist::psq(moved, from);
-                if placed.piece_type() == PieceType::PAWN {
-                    st.pawn_key ^= zobrist::psq(placed, to);
-                }
-            } else {
-                st.non_pawn_key ^= zobrist::psq(moved, from);
-            }
-            // 成った歩（と金）は歩以外の側へ入る
-            if placed.piece_type() != PieceType::PAWN {
-                st.non_pawn_key ^= zobrist::psq(placed, to);
-            }
+            // fromの駒を除去し、toへ移動後の駒を追加する。
+            // 成った歩（と金）は歩の側から抜けて歩以外の側へ入る
+            Self::xor_partial_keys(&mut st, moved, from);
+            Self::xor_partial_keys(&mut st, placed, to);
             if m.is_promote() {
                 st.material += sign
                     * (PIECE_VALUE[placed.piece_type().index()]
@@ -567,6 +614,7 @@ impl Position {
             hand_key: prev.hand_key,
             pawn_key: prev.pawn_key,
             non_pawn_key: prev.non_pawn_key,
+            minor_piece_key: prev.minor_piece_key,
             checkers: Bitboard::EMPTY,
             blockers_for_king: [Bitboard::EMPTY; 2],
             pinners: [Bitboard::EMPTY; 2],
@@ -730,12 +778,17 @@ impl Position {
             }
         }
         let pawn_key = pos.compute_pawn_key();
-        let non_pawn_key = pos.compute_non_pawn_key();
+        let non_pawn_key = [
+            pos.compute_non_pawn_key(Color::Black),
+            pos.compute_non_pawn_key(Color::White),
+        ];
+        let minor_piece_key = pos.compute_minor_piece_key();
         pos.states.push(StateInfo {
             board_key,
             hand_key: u64::from(pos.hands[0].0) | (u64::from(pos.hands[1].0) << 32),
             pawn_key,
             non_pawn_key,
+            minor_piece_key,
             material,
             ..StateInfo::default()
         });
