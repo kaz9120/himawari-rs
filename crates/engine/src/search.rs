@@ -32,10 +32,17 @@ const NMP_BASE_REDUCTION: u32 = 3;
 /// reverse futilityの最大深さとdepthあたりのマージン。
 const RFP_MAX_DEPTH: u32 = 6;
 const RFP_MARGIN: Value = 120;
-/// 子ノードfutilityの最大深さとマージン（基本 + depth比例）。
-const FUTILITY_MAX_DEPTH: u32 = 6;
-const FUTILITY_BASE: Value = 200;
+/// 親ノードfutilityの上限深さとマージン（ADR-0028, 0109のG3。
+/// yaneuraou-search.cpp:3665-3676）。尺度はdepthではなく履歴で補正した
+/// lmrDepthである。マージンは
+/// `42 + 151*(最善手未発見) + 120*lmrDepth + 86*(staticEval > alpha)` で、
+/// これを静的評価へ足してもalphaに届かない手を刈る。評価値は歩=90の
+/// スケールで一致する（ADR-0074）
+const FUTILITY_MAX_DEPTH: i32 = 13;
+const FUTILITY_BASE: Value = 42;
+const FUTILITY_NO_BEST: Value = 151;
 const FUTILITY_MARGIN: Value = 120;
+const FUTILITY_OVER_ALPHA: Value = 86;
 /// 「今読んでいる手」をinfoで出し始める経過時間（ADR-0086）。
 /// USIの慣例に合わせ、短い探索では出さない
 const CURRMOVE_MIN_MS: u64 = 3000;
@@ -66,6 +73,7 @@ const SEE_CAPT_HIST: i32 = 34;
 /// 取る手のfutility（ADR-0109のG3。yaneuraou-search.cpp:3618-3619）。
 /// `staticEval + 218 + 223*lmrDepth + 取った駒の価値 + 131*captHist/1024`
 /// がalpha以下なら刈る。評価値は歩=90スケールで一致する（ADR-0074）
+const CAPT_FUTILITY_MAX_DEPTH: i32 = 7;
 const CAPT_FUTILITY_BASE: Value = 218;
 const CAPT_FUTILITY_DEPTH: Value = 223;
 const CAPT_FUTILITY_HIST: i32 = 131;
@@ -74,8 +82,10 @@ const CAPT_FUTILITY_HIST: i32 = 131;
 /// pawn historyの和が `-4097 * depth` を下回る手は読まない
 const CONT_HIST_PRUNE_COEF: i32 = 4097;
 /// historyによるlmrDepth補正の除数（ADR-0109のG3。
-/// yaneuraou-search.cpp:3661）。この補正の後で親futilityと静かな手の
-/// SEE枝刈りが同じlmrDepthを読むので、順序を入れ替えてはならない
+/// yaneuraou-search.cpp:3661）。上の和にmain historyの `71/32`
+/// （yaneuraou-search.cpp:3656）を足した値をこれで割り、lmrDepthへ
+/// 加える。この補正の後で親futilityと静かな手のSEE枝刈りが同じ
+/// lmrDepthを読むので、順序を入れ替えてはならない
 const LMR_DEPTH_HIST_DIVISOR: i32 = 3220;
 /// razoringの最大深さとマージン（ADR-0057）。
 const RAZOR_MAX_DEPTH: u32 = 3;
@@ -1300,7 +1310,7 @@ impl Worker {
                     // 取る手のfutility（yaneuraou-search.cpp:3616-3623）。
                     // 取った駒の価値を足してもalphaに届かない手を捨てる。
                     // 王手する手は対象外
-                    if !gives_check && lmr_depth < 7 {
+                    if !gives_check && lmr_depth < CAPT_FUTILITY_MAX_DEPTH {
                         let futility_value = static_eval
                             + CAPT_FUTILITY_BASE
                             + CAPT_FUTILITY_DEPTH * lmr_depth
@@ -1319,7 +1329,11 @@ impl Worker {
                     if alpha >= VALUE_DRAW && !self.pos.see_ge(m, -margin) {
                         continue;
                     }
-                } else {
+                } else if !follow_pv || !is_pv {
+                    // 前回の反復深化のPV上にいるPVノードでは、静かな手の
+                    // 枝刈りを一切かけない（yaneuraou-search.cpp:3644）。
+                    // 前回のPVを浅い枝刈りで壊さないための仕掛けである
+                    //
                     // 静かな手の履歴（yaneuraou-search.cpp:3646-3648）。
                     // 1手前・2手前のcontinuation historyとpawn historyの和
                     let to = m.to();
@@ -1342,13 +1356,25 @@ impl Worker {
                     history += 71 * self.hist.main.get(self.pos.side_to_move(), m) / 32;
                     lmr_depth += history / LMR_DEPTH_HIST_DIVISOR;
 
-                    // futility（ADR-0028）: 評価がalphaに遠く及ばない浅い
-                    // 静かな手を飛ばす
-                    if !in_check
-                        && depth <= FUTILITY_MAX_DEPTH
-                        && alpha.abs() < VALUE_MATE_IN_MAX_PLY
-                        && static_eval + FUTILITY_BASE + FUTILITY_MARGIN * depth as Value <= alpha
-                    {
+                    // 親ノードのfutility（yaneuraou-search.cpp:3665-3682）。
+                    // 子を展開する前に、alphaへ届かないと見込める静かな手を
+                    // 捨てる。尺度は補正後のlmr_depthで、まだ最善手が
+                    // 見つかっていないときと静的評価がalphaを超えている
+                    // ときにマージンを積む
+                    let futility_value = static_eval
+                        + FUTILITY_BASE
+                        + FUTILITY_NO_BEST * Value::from(best_move == Move::NONE)
+                        + FUTILITY_MARGIN * lmr_depth
+                        + FUTILITY_OVER_ALPHA * Value::from(static_eval > alpha);
+                    if !in_check && lmr_depth < FUTILITY_MAX_DEPTH && futility_value <= alpha {
+                        // 刈った手の見込み値でbestValueを引き上げる。
+                        // 詰み圏の値は動かさない
+                        if best <= futility_value
+                            && best.abs() < VALUE_MATE_IN_MAX_PLY
+                            && futility_value < VALUE_MATE_IN_MAX_PLY
+                        {
+                            best = futility_value;
+                        }
                         continue;
                     }
 
