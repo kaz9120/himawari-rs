@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.13.7](https://github.com/kaz9120/himawari-rs/compare/v0.13.6...v0.13.7) (2026-07-29)
+
+
+### 内部
+
+* SPRTの再開を自動化する（ADR-0087） ([#82](https://github.com/kaz9120/himawari-rs/issues/82)) ([9f09b1b](https://github.com/kaz9120/himawari-rs/commit/9f09b1b53464aa048334548bee333236b8d4dea0))
+
 ## [0.13.6](https://github.com/kaz9120/himawari-rs/compare/v0.13.5...v0.13.6) (2026-07-29)
 
 
