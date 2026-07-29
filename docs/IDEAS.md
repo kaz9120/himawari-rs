@@ -44,11 +44,11 @@ NNUE後の再測定に意味がある。
 | see_geの打ち対応 | 現状は打つ手のSEEを常に0とし、打った駒がその場で取られる筋を見ていない。将棋は打つ手の比率が高く、ADR-0090のSEE枝刈りをすり抜ける | SPRT |
 | capture futility | staticEval + 218 + 223*lmrDepth + 駒価値 + captHist項。capture historyが前提 | SPRT |
 | ~~capture SEE pruning~~ | ~~ADR-0090で導入。captHist項を落とし -167*depth とした。capture history導入後に項を足せる~~ | ~~完了~~ |
-| ttPvフラグの活用 | TTに保存済みだが探索で読んでいない。LMR・RFP・singularの条件へ供給する。ほぼゼロコスト | SPRT |
+| ~~ttPvフラグの活用~~ | [ADR-0105](adr/0105-ttpv-propagation.md)で棄却。伝播を直しても真になるのは全ノードの0.46%で、RFPの安全弁として閉じるのは0.04%。基準の0.1%に届かない | 済 |
 | ~~razoringの深さ制限撤廃~~ | ~~ADR-0075で棄却。マージンの向きを取り違えていた。razoringはマージンが大きいほど刈りにくく、本エンジンの300はやねうら王より緩い。揃えるとノードが5.4倍に増える~~ | ~~棄却~~ |
 | ~~RFPのマージン緩和~~ | ~~ADR-0096で棄却。42局で-139.4。やねうら王の76*depthは!ss->ttPvという安全弁と組で成立しており、本エンジンにttPvがないまま数値だけ寄せた。分解するとマージンとimproving項が刈りすぎで最善手まで変えていた~~ | ~~棄却~~ |
 | RFPの返り値をβ寄せ | ADR-0096の分解で、返り値を beta+(eval-beta)/3 にする項だけは最善手を変えないと分かった。ノード数は増えるが値の精度が上がる。単独で測る余地がある | SPRT |
-| ttPvフラグの活用（RFPの前提） | TTに保存済みだが探索で読んでいない。RFPやLMRの安全弁として他エンジンが使う。ADR-0096はこれがないまま数値を寄せて失敗した | SPRT |
+| ~~ttPvフラグの活用（RFPの前提）~~ | [ADR-0105](adr/0105-ttpv-propagation.md)で棄却。ADR-0096の「ttPvがない」という反省自体が誤りだった。本エンジンのRFPは深さ6以下で葉に近く、安全弁を置いても閉じる機会が来ない。再訪するなら深さ範囲とimproving項を見る | 済 |
 | ProbCutの条件緩和 | depth>=5を3へ、マージン200固定を224-61*improvingへ、SEE閾値0をprobCutBeta-staticEvalへ | SPRT |
 | ~~TTベースの簡易ProbCut~~ | ~~ADR-0078で導入。+15.6 Elo（H1採択、5404局）。探索を伴わずNPSへの影響なし~~ | ~~完了~~ |
 | ~~qsearchのfutility~~ | ~~ADR-0077で導入。+57.3 Elo（H1採択、1242局）。bestValueの引き上げはMultiPVの整合のため入れていない~~ | ~~完了~~ |
