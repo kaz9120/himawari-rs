@@ -120,6 +120,7 @@
 | [0103](0103-root-score-gap.md) | rootの1位2位差を打ち切りの判定材料に足す案 | - | rejected |
 | [0104](0104-ponderhit-time-accounting.md) | ponderで読んだ時間を持ち時間の予算に数える | -117.8 | rejected |
 | [0105](0105-ttpv-propagation.md) | ttPvの伝播を直しRFPの安全弁に使う案 | - | rejected |
+| [0106](0106-ponderhit-continue.md) | ponderhitで探索を止めずに時間制限だけ差し替える | -54.3 | rejected |
 
 ## バックログ
 
