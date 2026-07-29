@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.20.0](https://github.com/kaz9120/himawari-rs/compare/v0.19.0...v0.20.0) (2026-07-29)
+
+
+### 棋力向上
+
+* ムーブループの枝刈りを参照実装へ揃える（+95.2 Elo、G3、ADR-0112） ([13dbef9](https://github.com/kaz9120/himawari-rs/commit/13dbef9433ebcf188181c2f6032c8ad4710b4f23))
+
 ## [0.19.0](https://github.com/kaz9120/himawari-rs/compare/v0.18.0...v0.19.0) (2026-07-29)
 
 
