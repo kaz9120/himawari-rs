@@ -230,6 +230,12 @@ struct StackEntry {
     cont_base: usize,
     /// 同じくcontinuation correction historyの面（G1）。
     cont_corr_base: usize,
+    /// このplyで今何手目を調べているか（G1。yaneuraou-search.cpp:3520）。
+    /// 1手前の値をhistoryの更新条件が読む
+    move_count: u32,
+    /// このplyで置換表にヒットしたか（G1。yaneuraou-search.cpp:2623）。
+    /// 同じく1手前の値を読む
+    tt_hit: bool,
 }
 
 /// Stackの前方余白。ss-6まで境界検査なしで参照するために置く。
@@ -284,6 +290,8 @@ impl Worker {
                     // 指し手のないplyは番兵の面を指す
                     cont_base: ContinuationHistory::SENTINEL,
                     cont_corr_base: 0,
+                    move_count: 0,
+                    tt_hit: false,
                 };
                 MAX_PLY + 10
             ],
@@ -648,9 +656,22 @@ impl Worker {
         let mut best_pv: Vec<Move> = Vec::new();
         let moves: Vec<Move> = self.root_moves[pv_idx..].iter().map(|rm| rm.mv).collect();
         // 子が読むcontinuation historyの面の選択に要る（ADR-0109のG1）
-        self.stack[STACK_OFFSET].in_check = self.pos.in_check();
+        let in_check = self.pos.in_check();
+        self.stack[STACK_OFFSET].in_check = in_check;
+        // 1手目のノードがhistoryの更新条件でrootのStackを読む
+        // （yaneuraou-search.cpp:2623, 3126-3133）。参照実装はrootも同じ
+        // search()なので、置換表ヒットと静的評価がrootでも埋まっている
+        let key = self.pos.key();
+        self.stack[STACK_OFFSET].tt_hit = self.shared.tt.probe(key).is_some();
+        self.stack[STACK_OFFSET].static_eval = if in_check {
+            VALUE_NONE
+        } else {
+            let raw = self.eval_cached(key);
+            self.to_corrected(raw, 0)
+        };
         for (j, &m) in moves.iter().enumerate() {
             let i = pv_idx + j;
+            self.stack[STACK_OFFSET].move_count = (j + 1) as u32;
             // 長考中だけ「今読んでいる手」を出す（ADR-0086）。短い探索で
             // 出すとinfo行が溢れる
             if self.tm.elapsed().as_millis() as u64 >= CURRMOVE_MIN_MS {
@@ -757,12 +778,18 @@ impl Worker {
             return alpha;
         }
 
+        // ノードの初期化（yaneuraou-search.cpp:2357）。前の兄弟ノードの
+        // 値が残らないよう、手数をここで0へ戻す
+        self.stack[ply + STACK_OFFSET].move_count = 0;
+
         // 除外手（singular extension用。ADR-0050）。検証探索中はTT手が入る
         let excluded = self.stack[ply + STACK_OFFSET].excluded_move;
 
         // 置換表（ADR-0022, 0024）
         let key = self.pos.key();
         let tt_hit = self.shared.tt.probe(key);
+        // 1手先のノードがhistoryの更新条件で読む（yaneuraou-search.cpp:2623）
+        self.stack[ply + STACK_OFFSET].tt_hit = tt_hit.is_some();
         let mut tt_move = Move::NONE;
         let mut tt_value = VALUE_NONE;
         let mut tt_depth = 0u32;
@@ -1029,6 +1056,8 @@ impl Worker {
                 continue;
             }
             count += 1;
+            // 1手先のノードが更新条件で読む（yaneuraou-search.cpp:3520）
+            self.stack[ply + STACK_OFFSET].move_count = count;
             let is_capture = !m.is_drop() && !self.pos.piece_on(m.to()).is_empty();
             let gives_check = self.pos.gives_check(m);
 
@@ -1257,6 +1286,8 @@ impl Worker {
         let orig_alpha = alpha;
         let key = self.pos.key();
         let tt_hit = self.shared.tt.probe(key);
+        // 参照実装はqsearchでもStackへ記録する（yaneuraou-search.cpp:4648）
+        self.stack[ply + STACK_OFFSET].tt_hit = tt_hit.is_some();
         let mut tt_move = Move::NONE;
         let mut tt_eval = VALUE_NONE;
         if let Some(data) = &tt_hit {
