@@ -117,6 +117,7 @@
 | [0100](0100-movepick-argmax-simd.md) | 指し手の最大スコア探索をSoA＋SIMDにする | - | accepted |
 | [0101](0101-movelist-uninit.md) | MoveListのゼロ埋めをやめる | - | accepted |
 | [0102](0102-move-horizon.md) | 残り手数の見積もりをmove horizon方式にする | -107.2 | rejected |
+| [0104](0104-ponderhit-time-accounting.md) | ponderで読んだ時間を持ち時間の予算に数える | - | proposed |
 
 ## バックログ
 
