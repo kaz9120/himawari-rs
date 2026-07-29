@@ -238,6 +238,9 @@ struct StackEntry {
     /// このplyで今調べている手の履歴の強さ（G2。yaneuraou-search.cpp:3924-3932）。
     /// リダクションの減算と、子でのhistory更新量の2方向へ効く
     stat_score: i32,
+    /// 前回の反復深化のPV上にいるか（G3。yaneuraou-search.cpp:2370-2372）。
+    /// PVノードでここが真の間は静かな手の浅い枝刈りを抑え、前回のPVを壊さない
+    follow_pv: bool,
 }
 
 /// Stackの前方余白。ss-6まで境界検査なしで参照するために置く。
@@ -256,6 +259,9 @@ pub struct Worker {
     /// このイテレーションのaspiration窓の幅（G2。yaneuraou-search.cpp:1708）。
     /// リダクションが「今の窓幅がroot窓幅の何割か」で削る量を決める
     root_delta: Value,
+    /// 前回の反復深化で得たPV（G3。yaneuraou-search.h:562）。
+    /// 各ノードの `follow_pv` 判定が読む。goのたびに捨てる
+    last_iteration_pv: Vec<Move>,
     /// 深さ1のイテレーションを終えたか。終えるまでstopを無視する。
     /// root手は生成順のままなので、深さ1の途中で打ち切ると探索して
     /// いない手を返してしまう
@@ -301,12 +307,14 @@ impl Worker {
                     cutoff_cnt: 0,
                     reduction: 0,
                     stat_score: 0,
+                    follow_pv: false,
                 };
                 MAX_PLY + 10
             ],
             sel_depth: 0,
             // 0除算を避ける番兵。search_rootが毎回入れ直す
             root_delta: 1,
+            last_iteration_pv: Vec::new(),
             depth1_done: false,
             nodes: 0,
             shared,
@@ -504,6 +512,9 @@ impl Worker {
         self.evaluator.new_search(&self.pos);
         // lowPly historyはgoのたびに埋め直す（ADR-0109。S:1539-1540）
         self.hist.new_search();
+        // 前回のgoで得たPVは今回の探索では使えないので捨てる
+        // （yaneuraou-search.cpp:943）
+        self.last_iteration_pv.clear();
         let mut list = MoveList::default();
         generate_legal(&self.pos, false, &mut list);
         self.root_moves = list
@@ -631,6 +642,12 @@ impl Worker {
                     }
                 }
             }
+            // 今回の反復のPVを覚える（yaneuraou-search.cpp:1846-1853）。
+            // 次の反復のfollow_pv判定が読む。打ち切られた反復のPVは
+            // 途中までしか探索していないので採らない
+            if !self.shared.stop.load(Ordering::Relaxed) {
+                self.last_iteration_pv.clone_from(&self.root_moves[0].pv);
+            }
             // ここまで来れば深さ1は完走している。以降はstopに従う
             self.depth1_done = true;
             // 局面の難易度で思考時間をスケールする（ADR-0059）
@@ -727,6 +744,8 @@ impl Worker {
         self.stack[STACK_OFFSET].tt_pv = true;
         self.stack[STACK_OFFSET + 2].cutoff_cnt = 0;
         self.stack[STACK_OFFSET].stat_score = 0;
+        // rootは常に前回PVの上にいる（yaneuraou-search.cpp:2370）
+        self.stack[STACK_OFFSET].follow_pv = true;
         // continuation historyの面（1手前から6手前まで）。rootでも
         // statScoreの計算に要る
         let cont = self.cont_bases(0);
@@ -861,6 +880,13 @@ impl Worker {
         // 自分の次plyは1手前のノードが戻しているので、兄弟をまたいで貯まる
         self.stack[ply + STACK_OFFSET + 2].cutoff_cnt = 0;
         self.stack[ply + STACK_OFFSET].stat_score = 0;
+        // 前回の反復深化のPVを辿っているか（yaneuraou-search.cpp:2370-2372）。
+        // 1手前がPV上にいて、1手前の手が前回PVの同じplyの手と一致するときに
+        // 限って真になる。search()はply >= 1でしか呼ばれない
+        let follow_pv = self.stack[ply + STACK_OFFSET - 1].follow_pv
+            && ply - 1 < self.last_iteration_pv.len()
+            && self.stack[ply + STACK_OFFSET - 1].current_move == self.last_iteration_pv[ply - 1];
+        self.stack[ply + STACK_OFFSET].follow_pv = follow_pv;
         // 1手前が取った駒と、1手前の移動先（yaneuraou-search.cpp:2355, 2550）。
         // historyの更新条件が繰り返し読む
         let prior_capture = self.pos.state().captured;
