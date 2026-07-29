@@ -18,7 +18,7 @@ use crate::movepick::{
 };
 use crate::nnue::NnueNetwork;
 use crate::search::{IterInfo, ScoreBound, SearchInfo, Shared, Worker};
-use crate::timeman::{Limits, TimeManager};
+use crate::timeman::{Limits, TimeCtl, TimeManager};
 use crate::value::{VALUE_MATE, Value};
 
 /// メインワーカーへのUSI出力コールバック。
@@ -103,7 +103,10 @@ pub struct ThreadPool {
     workers: Vec<WorkerThread>,
     shared: Arc<Shared>,
     ponder: Arc<PonderCtl>,
-    /// ponderhit時に実時間で再起動するためのジョブ控え。
+    /// メインワーカーと共有する時間制限（ADR-0106）。ponderhitで
+    /// 探索を止めずに差し替える。
+    time_ctl: Arc<TimeCtl>,
+    /// ponderhitで実時間の制限を組むためのジョブ控え。
     pending: Mutex<Option<SearchJob>>,
     /// 生成時のパラメータ（isreadyでの再生成判定用）。
     pub hash_mb: usize,
@@ -154,6 +157,7 @@ fn format_score(v: Value) -> String {
 fn spawn_worker(
     shared: Arc<Shared>,
     ponder: Arc<PonderCtl>,
+    time_ctl: Arc<TimeCtl>,
     net: Option<Arc<NnueNetwork>>,
     is_main: bool,
     on_line: Option<OnLine>,
@@ -199,16 +203,19 @@ fn spawn_worker(
                     cont.clear();
                 }
                 Job::Search(j) => {
-                    // ヘルパーとponder探索は時間制限を持たずstopフラグで止まる
-                    let (limits, tm) = if is_main && !j.ponder {
-                        let tm = TimeManager::new(
-                            &j.limits,
-                            j.pos.side_to_move(),
-                            j.pos.game_ply(),
-                            j.opts.network_delay,
-                            j.opts.network_delay2,
-                        );
-                        (j.limits.clone(), tm)
+                    // ヘルパーは時間制限を持たずstopフラグで止まる。
+                    // メインはTimeCtlを共有し、ponderhitで制限を差し替え
+                    // られるようにする（ADR-0106）。ponder探索も止めずに
+                    // 走らせ続けるため、ここではメインかどうかだけで分ける
+                    let (limits, tm) = if is_main {
+                        // ponder中はノード数・movetimeの制限も外す。時間は
+                        // TimeCtlがdisarmされており、止めるのはstopだけ
+                        let mut l = j.limits.clone();
+                        if j.ponder {
+                            l.nodes = 0;
+                            l.movetime = 0;
+                        }
+                        (l, TimeManager::new(Arc::clone(&time_ctl)))
                     } else {
                         let inf = Limits {
                             infinite: true,
@@ -217,9 +224,7 @@ fn spawn_worker(
                             depth: j.limits.depth,
                             ..Limits::default()
                         };
-                        let tm =
-                            TimeManager::new(&inf, j.pos.side_to_move(), j.pos.game_ply(), 0, 0);
-                        (inf, tm)
+                        (inf, TimeManager::unlimited())
                     };
                     let was_ponder = j.ponder;
                     let evaluator = match &net {
@@ -281,9 +286,10 @@ fn spawn_worker(
                                     st = ponder.cv.wait(st).expect("ponder wait");
                                 }
                             }
-                            // Hit（無音キャンセル→実時間で再起動）ならbestmoveを
-                            // 出さない。Stoppedなら出す
-                            *st == PonderState::Stopped
+                            // HitもStoppedもGUIは手を待っている。ADR-0106で
+                            // 探索を継続するようにしたため、Hitのときの結論が
+                            // そのまま本番の答えになる
+                            matches!(*st, PonderState::Stopped | PonderState::Hit)
                         } else {
                             true
                         };
@@ -324,6 +330,7 @@ impl ThreadPool {
             state: Mutex::new(PonderState::None),
             cv: Condvar::new(),
         });
+        let time_ctl = Arc::new(TimeCtl::default());
         let (eval_file, net_arc) = match net {
             Some((path, n)) => (path, Some(n)),
             None => (String::new(), None),
@@ -334,6 +341,7 @@ impl ThreadPool {
                 spawn_worker(
                     Arc::clone(&shared),
                     Arc::clone(&ponder),
+                    Arc::clone(&time_ctl),
                     net_arc.clone(),
                     i == 0,
                     if i == 0 {
@@ -348,6 +356,7 @@ impl ThreadPool {
             workers,
             shared,
             ponder,
+            time_ctl,
             pending: Mutex::new(None),
             hash_mb,
             threads: n,
@@ -373,6 +382,18 @@ impl ThreadPool {
 
     fn dispatch(&self, pos: Position, limits: Limits, opts: EngineOptions, ponder: bool) {
         self.wait_idle();
+        // ponder中は無制限で走らせ、ponderhitで制限を入れる（ADR-0106）
+        if ponder {
+            self.time_ctl.disarm();
+        } else {
+            self.time_ctl.arm(
+                &limits,
+                pos.side_to_move(),
+                pos.game_ply(),
+                opts.network_delay,
+                opts.network_delay2,
+            );
+        }
         *self.ponder.state.lock().expect("ponder lock") = if ponder {
             PonderState::Searching
         } else {
@@ -395,15 +416,15 @@ impl ThreadPool {
         }
     }
 
-    /// ponderhit（ADR-0033）。探索中なら無音キャンセルして実時間で
-    /// 再起動する（TTが木を即復元する）。保留中なら即bestmove。
+    /// ponderhit（ADR-0033、ADR-0106）。探索は止めずに、時間制限だけを
+    /// 実時間へ差し替える。ponderで積んだ反復深化をそのまま活かす。
+    /// 探索が既に終わって保留中なら、その結論を出す。
     pub fn ponderhit(&self) {
-        let relaunch = {
+        let arm = {
             let mut st = self.ponder.state.lock().expect("ponder lock");
             match *st {
                 PonderState::Searching => {
                     *st = PonderState::Hit;
-                    self.shared.stop.store(true, Ordering::Relaxed);
                     true
                 }
                 PonderState::FinishedHolding => {
@@ -414,11 +435,14 @@ impl ThreadPool {
                 _ => false,
             }
         };
-        if relaunch {
-            self.wait_idle();
-            if let Some(job) = self.pending.lock().expect("pending lock").take() {
-                self.dispatch(job.pos, job.limits, job.opts, false);
-            }
+        if arm && let Some(job) = self.pending.lock().expect("pending lock").take() {
+            self.time_ctl.arm(
+                &job.limits,
+                job.pos.side_to_move(),
+                job.pos.game_ply(),
+                job.opts.network_delay,
+                job.opts.network_delay2,
+            );
         }
     }
 

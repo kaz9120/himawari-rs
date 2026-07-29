@@ -98,7 +98,7 @@ floodgateの負け11局は終盤の時間枯渇だった（RESULTS.md）。こ�
 | 最小思考時間 | MinimumThinkingTime（やねうら王の既定は2000ms）。ADR-0102で「SPRT条件でスケール前提が成り立たない」と判断して見送った。ponder延長の1.25倍は[ADR-0104](adr/0104-ponderhit-time-accounting.md)で測って棄却 | SPRT |
 | 時間管理: fail-low延長 | ADR-0059は評価下落で伸ばす。root fail-low時の明示的な延長は未着手。イテレーション完了を待たない分、falling項より早い情報になる | SPRT |
 | ~~rootの1位2位差を判定材料に足す~~ | [ADR-0103](adr/0103-root-score-gap.md)で実装前に棄却。単独では信号があるが、既存のノード集中度と重複して独立な情報をほぼ持たない | 済 |
-| **ponderhitで探索を継続する** | 現状はponderhitで再起動する（thread.rs）。反復深化の途中経過を捨てる。[ADR-0104](adr/0104-ponderhit-time-accounting.md)が-117.8で棄却され、これが時間会計の前提だと分かった。先にこちらを入れる | SPRT |
+| ~~ponderhitで探索を継続する~~ | [ADR-0106](adr/0106-ponderhit-continue.md)で実装。時間制限を原子変数に持たせ、ponderhitで差し替える。8秒ponderからのponderhitで到達深さ23→24、ノード1.7倍 | SPRT |
 
 ## 探索: 並列・置換表
 
