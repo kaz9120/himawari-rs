@@ -18,7 +18,15 @@ fn search_position(sfen: &str, depth: u32) -> (Move, Value) {
         depth,
         ..Limits::default()
     };
-    let tm = TimeManager::new(&limits, pos.side_to_move(), pos.game_ply(), 120, 1120);
+    let tm = TimeManager::new(
+        &limits,
+        pos.side_to_move(),
+        pos.game_ply(),
+        120,
+        1120,
+        std::time::Instant::now(),
+        false,
+    );
     let mut worker = Worker::new(
         pos,
         shared,
@@ -71,7 +79,15 @@ fn selfplay_smoke() {
             depth: 4,
             ..Limits::default()
         };
-        let tm = TimeManager::new(&limits, pos.side_to_move(), pos.game_ply(), 120, 1120);
+        let tm = TimeManager::new(
+            &limits,
+            pos.side_to_move(),
+            pos.game_ply(),
+            120,
+            1120,
+            std::time::Instant::now(),
+            false,
+        );
         let mut worker = Worker::new(
             pos.clone(),
             Arc::clone(&shared),
@@ -110,7 +126,15 @@ fn multipv_lines_are_distinct_and_sorted() {
         depth: 6,
         ..Limits::default()
     };
-    let tm = TimeManager::new(&limits, pos.side_to_move(), pos.game_ply(), 120, 1120);
+    let tm = TimeManager::new(
+        &limits,
+        pos.side_to_move(),
+        pos.game_ply(),
+        120,
+        1120,
+        std::time::Instant::now(),
+        false,
+    );
     let mut worker = Worker::new(
         pos,
         shared,
@@ -158,7 +182,15 @@ fn nnue_search_returns_legal_moves() {
             depth: 6,
             ..Limits::default()
         };
-        let tm = TimeManager::new(&limits, pos.side_to_move(), pos.game_ply(), 120, 1120);
+        let tm = TimeManager::new(
+            &limits,
+            pos.side_to_move(),
+            pos.game_ply(),
+            120,
+            1120,
+            std::time::Instant::now(),
+            false,
+        );
         let mut worker = Worker::new(
             pos.clone(),
             shared,

@@ -18,6 +18,10 @@ pub struct Limits {
     pub infinite: bool,
 }
 
+/// USI_Ponderが有効なときにoptimumへ足す割合の逆数（ADR-0104）。
+/// Stockfish `src/timeman.cpp` の `optimumTime += optimumTime / 4`。
+const PONDER_OPTIMUM_DIV: u64 = 4;
+
 pub struct TimeManager {
     start: Instant,
     pub optimum: Option<Duration>,
@@ -25,8 +29,18 @@ pub struct TimeManager {
 }
 
 impl TimeManager {
-    pub fn new(limits: &Limits, us: Color, game_ply: u16, delay_ms: u64, delay2_ms: u64) -> Self {
-        let start = Instant::now();
+    /// `start` は計時の起点。ponderhitで再起動するときは `go ponder` の
+    /// 受信時刻を渡し、ponderで読んだ分を予算に数える（ADR-0104）。
+    /// `ponder_enabled` はUSI_Ponderの値で、真ならoptimumを1.25倍する。
+    pub fn new(
+        limits: &Limits,
+        us: Color,
+        game_ply: u16,
+        delay_ms: u64,
+        delay2_ms: u64,
+        start: Instant,
+        ponder_enabled: bool,
+    ) -> Self {
         if limits.infinite {
             return TimeManager {
                 start,
@@ -57,7 +71,12 @@ impl TimeManager {
         // 残り想定手数で割り、秒読み・加算を足す（ADR-0021の初期式）
         let rem_moves = (48u64.saturating_sub(u64::from(game_ply) / 2)).max(16);
         let avail = my_time / rem_moves + limits.byoyomi + inc;
-        let optimum = avail.saturating_sub(delay_ms).max(10);
+        let mut optimum = avail.saturating_sub(delay_ms).max(10);
+        // ponderが当たれば相手の時計で読めるぶん、自分の時計は厚く使える
+        // （ADR-0104。Stockfish timeman.cppの1.25倍）
+        if ponder_enabled {
+            optimum += optimum / PONDER_OPTIMUM_DIV;
+        }
         let hard_cap = (my_time + limits.byoyomi).saturating_sub(delay2_ms);
         let maximum = (avail * 3).min(hard_cap).saturating_sub(delay_ms).max(10);
         TimeManager {
@@ -107,10 +126,40 @@ mod tests {
             byoyomi: 3000,
             ..Limits::default()
         };
-        let tm = TimeManager::new(&limits, Color::Black, 50, 120, 1120);
+        let tm = TimeManager::new(&limits, Color::Black, 50, 120, 1120, Instant::now(), false);
         // 残り時間0でも秒読み分は使える
         assert!(tm.optimum.unwrap() >= Duration::from_millis(2000));
         assert!(tm.maximum.unwrap() <= Duration::from_millis(3000));
+    }
+
+    #[test]
+    fn ponder_enabled_widens_optimum() {
+        let limits = Limits {
+            btime: 300_000,
+            binc: 10_000,
+            ..Limits::default()
+        };
+        let off = TimeManager::new(&limits, Color::Black, 0, 120, 1120, Instant::now(), false);
+        let on = TimeManager::new(&limits, Color::Black, 0, 120, 1120, Instant::now(), true);
+        let (o, n) = (off.optimum.unwrap(), on.optimum.unwrap());
+        // 1.25倍。ミリ秒の整数除算で1msまでずれる
+        let want = o * 5 / 4;
+        let slack = Duration::from_millis(1);
+        assert!(n + slack >= want && n <= want + slack, "{n:?} vs {want:?}");
+    }
+
+    #[test]
+    fn start_carries_the_ponder_elapsed() {
+        let limits = Limits {
+            btime: 300_000,
+            binc: 10_000,
+            ..Limits::default()
+        };
+        // go ponderを1時間前に受けた想定。optimumはとうに超えている
+        let past = Instant::now() - Duration::from_secs(3600);
+        let tm = TimeManager::new(&limits, Color::Black, 0, 120, 1120, past, false);
+        assert!(tm.elapsed() >= Duration::from_secs(3600));
+        assert!(tm.over_total(1.0) && tm.over_maximum());
     }
 
     #[test]
@@ -119,7 +168,7 @@ mod tests {
             infinite: true,
             ..Limits::default()
         };
-        let tm = TimeManager::new(&limits, Color::Black, 1, 120, 1120);
+        let tm = TimeManager::new(&limits, Color::Black, 1, 120, 1120, Instant::now(), false);
         assert!(tm.optimum.is_none() && tm.maximum.is_none());
     }
 
@@ -129,7 +178,7 @@ mod tests {
             movetime: 1000,
             ..Limits::default()
         };
-        let tm = TimeManager::new(&limits, Color::White, 1, 120, 1120);
+        let tm = TimeManager::new(&limits, Color::White, 1, 120, 1120, Instant::now(), false);
         assert_eq!(tm.optimum, tm.maximum);
         assert!(tm.maximum.unwrap() < Duration::from_millis(1000));
     }
