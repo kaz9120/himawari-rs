@@ -227,6 +227,10 @@ pub struct Worker {
     killers: Vec<[Move; 2]>,
     /// このイテレーションで到達した最大ply（seldepth。ADR-0086）。
     sel_depth: u32,
+    /// 深さ1のイテレーションを終えたか。終えるまでstopを無視する。
+    /// root手は生成順のままなので、深さ1の途中で打ち切ると探索して
+    /// いない手を返してしまう
+    depth1_done: bool,
     nodes: u64,
     shared: Arc<Shared>,
     tm: TimeManager,
@@ -268,6 +272,7 @@ impl Worker {
             excluded_stack: vec![Move::NONE; MAX_PLY + 2],
             killers: vec![[Move::NONE; 2]; MAX_PLY + 2],
             sel_depth: 0,
+            depth1_done: false,
             nodes: 0,
             shared,
             tm,
@@ -278,9 +283,13 @@ impl Worker {
         }
     }
 
+    /// 深さ1を終えるまではstopを無視する。`iterate` は打ち切り時に
+    /// `root_moves[0]` を返すが、root手は生成順に並んでいるため、深さ1の
+    /// 途中で止まると探索していない手が出てしまう。深さ1は数msで終わる
+    /// ので、待つ代償は小さい
     #[inline]
     fn stopped(&self) -> bool {
-        self.shared.stop.load(Ordering::Relaxed)
+        self.depth1_done && self.shared.stop.load(Ordering::Relaxed)
     }
 
     /// 定期的な時間・ノード制限の検査。時間制限を持つのはメイン
@@ -496,6 +505,8 @@ impl Worker {
                     }
                 }
             }
+            // ここまで来れば深さ1は完走している。以降はstopに従う
+            self.depth1_done = true;
             // 局面の難易度で思考時間をスケールする（ADR-0059）
             let cur_best = self.root_moves[0].mv;
             stable_iters = if cur_best == prev_best {
