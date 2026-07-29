@@ -417,11 +417,11 @@ impl Worker {
         }
     }
 
-    /// 生の静的評価にcorrection historyの補正を加える（ADR-0046, 0109）。
-    /// 6要素を重み付きで合成する（yaneuraou-search.cpp:724-746）。
-    /// 補正後が詰み圏に入らないようクランプする。
+    /// correction historyの6要素を重み付きで合成する（ADR-0046, 0109）。
+    /// 出典はやねうら王の `correction_value()`（yaneuraou-search.cpp:724-737）。
+    /// 131072で割る前の値を返す。LMRのリダクションもこの値を読む。
     #[inline]
-    fn to_corrected(&self, raw: Value, ply: usize) -> Value {
+    fn correction_value(&self, ply: usize) -> i32 {
         let (pcv, micv, bnpcv, wnpcv) = self.hist.corr.probe(&self.pos);
         // 余白があるのでply 0でも境界検査は要らない。前方は初期値のMove::NONE
         let prev1 = self.stack[ply + STACK_OFFSET - 1].current_move;
@@ -438,11 +438,24 @@ impl Worker {
                     .corr_cont
                     .get(self.stack[ply + STACK_OFFSET - 4].cont_corr_base, pc, to)
         };
-        let sum = CORR_W_PAWN * pcv
+        CORR_W_PAWN * pcv
             + CORR_W_MINOR * micv
             + CORR_W_NON_PAWN * (wnpcv + bnpcv)
-            + CORR_W_CONT * cntcv;
-        (raw + sum / CORR_DIVISOR).clamp(VALUE_MATED_IN_MAX_PLY + 1, VALUE_MATE_IN_MAX_PLY - 1)
+            + CORR_W_CONT * cntcv
+    }
+
+    /// 生の静的評価にcorrection historyの補正を加える（ADR-0046, 0109）。
+    /// 出典はやねうら王の `to_corrected_static_eval()`
+    /// （yaneuraou-search.cpp:744-746）。詰み圏に入らないようクランプする。
+    #[inline]
+    fn to_corrected_with(&self, raw: Value, cv: i32) -> Value {
+        (raw + cv / CORR_DIVISOR).clamp(VALUE_MATED_IN_MAX_PLY + 1, VALUE_MATE_IN_MAX_PLY - 1)
+    }
+
+    /// correction historyの補正込みの静的評価。
+    #[inline]
+    fn to_corrected(&self, raw: Value, ply: usize) -> Value {
+        self.to_corrected_with(raw, self.correction_value(ply))
     }
 
     /// aspirationのfail時に途中経過を報告する（ADR-0091）。
@@ -945,10 +958,13 @@ impl Worker {
                 _ => self.eval_cached(key),
             }
         };
+        // correction historyの合成値（yaneuraou-search.cpp:3010）。
+        // 静的評価の補正と、LMRのリダクションの減算が同じ値を読む
+        let corr_value = self.correction_value(ply);
         let static_eval = if in_check {
             VALUE_NONE
         } else {
-            self.to_corrected(raw_eval, ply)
+            self.to_corrected_with(raw_eval, corr_value)
         };
 
         self.stack[ply + STACK_OFFSET].static_eval = static_eval;
@@ -1164,6 +1180,15 @@ impl Worker {
             return tt_probcut_beta;
         }
 
+        // 置換表の手が駒を取る手か（yaneuraou-search.cpp:2672）。
+        // そうならこのノードの全手のリダクションを増やす
+        let tt_capture = tt_move != Move::NONE
+            && !tt_move.is_drop()
+            && !self.pos.piece_on(tt_move.to()).is_empty();
+        // PVでもcutでもないノード（yaneuraou-search.cpp:2251）。
+        // 全手を調べる見込みなのでリダクションを強める
+        let all_node = !(is_pv || cut_node);
+
         let mut picker = MovePicker::new(&self.pos, tt_move, depth as i32, ply, false);
         // continuation historyの面（1手前から6手前まで。ADR-0109のG1）
         let cont = self.cont_bases(ply);
@@ -1202,7 +1227,12 @@ impl Worker {
             // LMRのリダクション量（1024倍の固定小数。G2）。枝刈りの尺度
             // （lmr_depth）と実際の浅い探索で同じ値を使う
             let delta = beta - alpha;
-            let r = self.reduction(improving, depth, count, delta);
+            let mut r = self.reduction(improving, depth, count, delta);
+            // 項1: ttPvノードは削る（yaneuraou-search.cpp:3573-3574）。
+            // 枝刈りの尺度に入るのはここまでで、残りはdo_moveの側で足す
+            if self.stack[ply + STACK_OFFSET].tt_pv {
+                r += 1013;
+            }
             // lmr_depth: LMRで削ったあとに実際に読む深さ（ADR-0090）。
             // 生のdepthで枝刈りを判断すると、深いノードほど閾値が大きくなり
             // 刈りすぎる。実際に読む深さで測る。参照実装はここでクランプせず、
@@ -1246,9 +1276,52 @@ impl Worker {
                 }
             }
 
+            // リダクションの加減算（yaneuraou-search.cpp:3879-3941）。
+            // 参照実装はdo_moveの後に置くが、読む材料は進める前の局面で
+            // 決まるのでここでまとめる
+            //
+            // 項2: ttPvノードは大きく戻す。TTの値がalphaを超える、TTの
+            // 深さが足りている、といった手掛かりがあるほど戻す
+            if self.stack[ply + STACK_OFFSET].tt_pv {
+                r -= 2819
+                    + i32::from(is_pv) * 973
+                    + i32::from(tt_value > alpha) * 905
+                    + i32::from(tt_depth >= depth) * (935 + i32::from(cut_node) * 959);
+            }
+            // 項3: 他の調整を補正する基準オフセット
+            r += 691;
+            // 項4: 手数が進むほど戻す
+            r -= count as i32 * 65;
+            // 項5: correction historyの補正が大きい局面は戻す
+            r -= corr_value.abs() / 25600;
+            // 項6: cutNodeは削る。TT手がなければさらに削る
+            if cut_node {
+                r += 3611 + 985 * i32::from(tt_move == Move::NONE);
+            }
+            // 項7: TT手が駒を取る手なら削る
+            if tt_capture {
+                r += 1054;
+            }
+            // 項8: 次plyでfail highが多いなら削る
+            let child_cutoffs = self.stack[ply + STACK_OFFSET + 1].cutoff_cnt;
+            if child_cutoffs > 1 {
+                r += 251 + 1124 * i32::from(child_cutoffs > 2) + 1042 * i32::from(all_node);
+            }
+            // 項9: TT手は戻す
+            if m == tt_move {
+                r -= 2239;
+            }
+
             // その手の履歴の強さを控える（yaneuraou-search.cpp:3924-3932）。
             // 子のhistory更新量にも効くのでdo_moveの前に測る
-            self.stack[ply + STACK_OFFSET].stat_score = self.stat_score(m, &cont);
+            let stat_score = self.stat_score(m, &cont);
+            self.stack[ply + STACK_OFFSET].stat_score = stat_score;
+            // 項10: 履歴の良い手は戻し、悪い手は削る
+            r -= stat_score * 428 / 4096;
+            // 項11: allNodeでは全体を割り増す
+            if all_node {
+                r += r * 273 / (256 * depth as i32 + 260);
+            }
 
             self.set_current_move(ply, m, is_capture);
             self.pos.do_move(m);
