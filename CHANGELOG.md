@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.16.3](https://github.com/kaz9120/himawari-rs/compare/v0.16.2...v0.16.3) (2026-07-29)
+
+
+### ドキュメント
+
+* G0の範囲をStackの器に絞り、cutNodeの実引数表を足す（ADR-0109） ([2c40e76](https://github.com/kaz9120/himawari-rs/commit/2c40e7628c681e9511a8e8460625c4d7d42583eb))
+* 参照実装への追従を群単位で進める方針を決める（ADR-0109） ([8600555](https://github.com/kaz9120/himawari-rs/commit/8600555d86770062597fff582efeff3632a7f26f))
+
+
+### 内部
+
+* ライセンスをMITからGPLv3へ変更する（ADR-0108） ([8550b4d](https://github.com/kaz9120/himawari-rs/commit/8550b4d0601522394c9d63b7ed0c60cc024f9e8b))
+
 ## [0.16.2](https://github.com/kaz9120/himawari-rs/compare/v0.16.1...v0.16.2) (2026-07-29)
 
 
