@@ -1,6 +1,6 @@
 # 0100: 指し手の最大スコア探索をSoA＋SIMDにする
 
-- Status: accepted
+- Status: superseded（[0110](0110-g1-history.md)）
 - Date: 2026-07-29
 - 関連ADR: [0099](0099-nnue-dot-sdot.md), [0089](0089-improvement-criteria.md), [0025](0025-move-ordering.md), [0074](0074-feature-verification.md)
 

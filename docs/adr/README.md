@@ -114,7 +114,7 @@
 | [0096](0096-rfp-margin.md) | reverse futilityのマージンと深さ上限を見直す | - | rejected |
 | [0097](0097-capture-history.md) | capture historyを入れ直す（スケールを揃える） | - | rejected |
 | [0099](0099-nnue-dot-sdot.md) | NNUE隠れ層の内積をSDOTで4行ずつ計算する | - | accepted |
-| [0100](0100-movepick-argmax-simd.md) | 指し手の最大スコア探索をSoA＋SIMDにする | - | accepted |
+| [0100](0100-movepick-argmax-simd.md) | 指し手の最大スコア探索をSoA＋SIMDにする | - | superseded（[0110](0110-g1-history.md)） |
 | [0101](0101-movelist-uninit.md) | MoveListのゼロ埋めをやめる | - | accepted |
 | [0102](0102-move-horizon.md) | 残り手数の見積もりをmove horizon方式にする | -107.2 | rejected |
 | [0103](0103-root-score-gap.md) | rootの1位2位差を打ち切りの判定材料に足す案 | - | rejected |
@@ -122,8 +122,9 @@
 | [0105](0105-ttpv-propagation.md) | ttPvの伝播を直しRFPの安全弁に使う案 | - | rejected |
 | [0106](0106-ponderhit-continue.md) | ponderhitで探索を止めずに時間制限だけ差し替える | -54.3 | rejected |
 | [0107](0107-ponder-optimum-bonus.md) | USI_Ponderが有効なとき思考時間を1.25倍する | -1.1 | rejected |
-| [0108](0108-license-gplv3.md) | ライセンスをMITからGPLv3へ変更する | - | proposed |
-| [0109](0109-reference-parity.md) | 参照実装への追従を群単位で進める | - | proposed |
+| [0108](0108-license-gplv3.md) | ライセンスをMITからGPLv3へ変更する | - | accepted |
+| [0109](0109-reference-parity.md) | 参照実装への追従を群単位で進める | - | accepted |
+| [0110](0110-g1-history.md) | historyの面と更新を参照実装へ揃える（G1） | +88.5 | accepted |
 
 ## バックログ
 
