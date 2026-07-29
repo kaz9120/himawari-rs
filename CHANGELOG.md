@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.15.5](https://github.com/kaz9120/himawari-rs/compare/v0.15.4...v0.15.5) (2026-07-29)
+
+
+### ドキュメント
+
+* rootの1位2位差を判定材料に足す案を実装前に棄却する（ADR-0103） ([#102](https://github.com/kaz9120/himawari-rs/issues/102)) ([217fe96](https://github.com/kaz9120/himawari-rs/commit/217fe963f4c39e7957ad047ec67cda55beeba151))
+* オートパイロットで進める前提をCLAUDE.mdに書く ([#105](https://github.com/kaz9120/himawari-rs/issues/105)) ([9ba0ebc](https://github.com/kaz9120/himawari-rs/commit/9ba0ebc88d51b7a40a0e0eda37e4cbaf301d0c11))
+
 ## [0.15.4](https://github.com/kaz9120/himawari-rs/compare/v0.15.3...v0.15.4) (2026-07-29)
 
 
