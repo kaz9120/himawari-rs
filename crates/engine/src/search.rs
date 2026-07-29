@@ -414,6 +414,13 @@ impl Worker {
             };
         }
         let mut last_score = VALUE_ZERO;
+        // 最後に出したinfoが未確定の窓外れ（lowerbound / upperbound）か。
+        // 打ち切りでこのまま終わると、GUIやCSAブリッジは確定していない値を
+        // その手のスコアとして記録する。実際にfloodgateで `4723++` という
+        // 値が残り、直後に評価が8300も反転した
+        let mut unresolved_bound = false;
+        // 確定した最後のイテレーションの深さ。
+        let mut completed_depth = 0u32;
         // 思考時間の難易度スケール用の状態（ADR-0059）
         let mut prev_best = Move::NONE;
         let mut prev_iter_score = VALUE_ZERO;
@@ -459,12 +466,18 @@ impl Worker {
                         // fail low: 実際の評価はこの値以下（ADR-0091）。
                         // 窓を広げて読み直す前に、途中経過として報告する
                         self.report_bound(on_info, depth, pv_idx, score, ScoreBound::Upper, &pv);
+                        if pv_idx == 0 {
+                            unresolved_bound = true;
+                        }
                         beta = (alpha + beta) / 2;
                         alpha = (score - delta).max(-VALUE_INFINITE);
                         delta += delta / 2;
                     } else if score >= beta {
                         // fail high: 実際の評価はこの値以上
                         self.report_bound(on_info, depth, pv_idx, score, ScoreBound::Lower, &pv);
+                        if pv_idx == 0 {
+                            unresolved_bound = true;
+                        }
                         beta = (score + delta).min(VALUE_INFINITE);
                         delta += delta / 2;
                     } else {
@@ -489,6 +502,8 @@ impl Worker {
                         let line_pv = pv;
                         if pv_idx == 0 {
                             last_score = score;
+                            unresolved_bound = false;
+                            completed_depth = depth;
                         }
                         on_info(SearchInfo::Iteration(IterInfo {
                             depth,
@@ -545,6 +560,21 @@ impl Worker {
             if self.limits.nodes > 0 && self.nodes >= self.limits.nodes {
                 break;
             }
+        }
+        // 未確定の窓外れで終わるなら、確定した最後の結果を出し直す。
+        // これを出さないと、消費側の最後の1行が lowerbound / upperbound の
+        // ままになり、指し手と食い違うスコアがその手の評価として残る
+        if unresolved_bound && completed_depth > 0 && !self.root_moves[0].pv.is_empty() {
+            on_info(SearchInfo::Iteration(IterInfo {
+                depth: completed_depth,
+                seldepth: self.sel_depth.max(completed_depth),
+                multipv: if self.multi_pv > 1 { 1 } else { 0 },
+                score: last_score,
+                pv: self.root_moves[0].pv.clone(),
+                nodes: self.shared.nodes.load(Ordering::Relaxed).max(self.nodes),
+                elapsed_ms: self.tm.elapsed().as_millis() as u64,
+                hashfull: self.shared.tt.hashfull(),
+            }));
         }
         // check_limitsで2048刻みに流し込んだ分を除いた端数を合算する
         self.shared
