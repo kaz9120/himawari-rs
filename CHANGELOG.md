@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.18.0](https://github.com/kaz9120/himawari-rs/compare/v0.17.0...v0.18.0) (2026-07-29)
+
+
+### 棋力向上
+
+* historyの面と更新を参照実装へ揃える（+88.5 Elo、G1、ADR-0110） ([97ccaa4](https://github.com/kaz9120/himawari-rs/commit/97ccaa48d6c776a023bfe357c330cf620aac9d31))
+
 ## [0.17.0](https://github.com/kaz9120/himawari-rs/compare/v0.16.3...v0.17.0) (2026-07-29)
 
 
