@@ -111,6 +111,7 @@
 | [0093](0093-mate1ply-in-search.md) | 1手詰め判定を探索へ組み込む | - | rejected |
 | [0094](0094-mate1ply-speedup.md) | mate_1plyの検証を軽くする | - | proposed |
 | [0095](0095-see-promotion.md) | SEEで初手の成りを扱う（ほぼ等価と判明） | - | proposed |
+| [0096](0096-rfp-margin.md) | reverse futilityのマージンと深さ上限を見直す | - | rejected |
 
 ## バックログ
 
