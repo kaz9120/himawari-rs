@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.13.6](https://github.com/kaz9120/himawari-rs/compare/v0.13.5...v0.13.6) (2026-07-29)
+
+
+### ドキュメント
+
+* 待機と判断を分ける運用上の注意を足す（ADR-0098） ([#80](https://github.com/kaz9120/himawari-rs/issues/80)) ([2ac400d](https://github.com/kaz9120/himawari-rs/commit/2ac400d857bac901daed7664e8151b585825c94c))
+
 ## [0.13.5](https://github.com/kaz9120/himawari-rs/compare/v0.13.4...v0.13.5) (2026-07-29)
 
 
