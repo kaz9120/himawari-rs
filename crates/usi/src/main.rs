@@ -6,7 +6,8 @@
 mod book;
 
 use std::io::Write;
-use std::sync::{Arc, mpsc};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, Mutex, mpsc};
 
 use himawari_core::{Position, SFEN_STARTPOS};
 use himawari_engine::nnue::NnueNetwork;
@@ -33,7 +34,54 @@ fn version_string() -> String {
     }
 }
 
+/// USIの入出力をファイルへ写す（`DebugLogFile`）。
+///
+/// floodgateの2026-07-29の対局で、棋譜のコメントに残った `4723++` だけが
+/// 手掛かりになり、原因の特定に時間がかかった。info行が残っていれば
+/// すぐ分かる。探索の中には入れず、USI層の行だけを写すので、1手あたり
+/// 数十行にしかならない。無指定なら分岐1つ分のコストで済む。
+static LOG_ON: AtomicBool = AtomicBool::new(false);
+static LOG_FILE: Mutex<Option<std::io::BufWriter<std::fs::File>>> = Mutex::new(None);
+
+fn log_open(path: &str) -> Result<(), String> {
+    let mut guard = LOG_FILE
+        .lock()
+        .map_err(|_| "ログの排他に失敗".to_string())?;
+    if path.is_empty() {
+        LOG_ON.store(false, Ordering::Relaxed);
+        *guard = None;
+        return Ok(());
+    }
+    let f = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(path)
+        .map_err(|e| format!("{path} を開けない: {e}"))?;
+    *guard = Some(std::io::BufWriter::new(f));
+    LOG_ON.store(true, Ordering::Relaxed);
+    Ok(())
+}
+
+/// 行を1本書く。`dir` は `<`（受信）か `>`（送信）。
+/// 落ちても末尾を失わないよう、毎行flushする。
+fn log_line(dir: char, s: &str) {
+    if !LOG_ON.load(Ordering::Relaxed) {
+        return;
+    }
+    let ms = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_millis())
+        .unwrap_or(0);
+    if let Ok(mut guard) = LOG_FILE.lock()
+        && let Some(w) = guard.as_mut()
+    {
+        let _ = writeln!(w, "{ms} {dir} {s}");
+        let _ = w.flush();
+    }
+}
+
 fn print_line(s: &str) {
+    log_line('>', s);
     let stdout = std::io::stdout();
     let mut lock = stdout.lock();
     let _ = writeln!(lock, "{s}");
@@ -52,6 +100,7 @@ fn print_options() {
     print_line("option name EvalFile type string default <empty>");
     print_line("option name BookFile type string default <empty>");
     print_line("option name BookDepth type spin default 24 min 0 max 1000");
+    print_line("option name DebugLogFile type string default <empty>");
 }
 
 fn parse_position(tokens: &[&str]) -> Option<Position> {
@@ -190,6 +239,18 @@ fn set_option(opts: &mut EngineOptions, bopts: &mut BookOptions, tokens: &[&str]
                 bopts.depth = v;
             }
         }
+        "DebugLogFile" => {
+            let path: &str = if value == "<empty>" {
+                ""
+            } else {
+                value.as_ref()
+            };
+            match log_open(path) {
+                Ok(()) if path.is_empty() => print_line("info string debug log off"),
+                Ok(()) => print_line(&format!("info string debug log -> {path}")),
+                Err(e) => print_line(&format!("info string {e}")),
+            }
+        }
         _ => {}
     }
 }
@@ -264,6 +325,7 @@ fn main() {
         for line in std::io::BufRead::lines(stdin.lock()) {
             match line {
                 Ok(l) => {
+                    log_line('<', &l);
                     if tx.send(l).is_err() {
                         return;
                     }
