@@ -218,6 +218,48 @@ enum Stage {
     Done,
 }
 
+/// 最大値の位置を返す。同点なら最小の添字を選ぶ（ADR-0100）。
+///
+/// 素直な線形走査と同じ結果を返す。前半で最大値をSIMDで求め、後半で
+/// その値が最初に現れる位置を探す。どちらも1要素ずつの比較より
+/// 8倍幅で進むため、走査は2回になっても速い。
+///
+/// `scores` が空のときは呼べない。
+#[inline]
+fn argmax_first(scores: &[i32]) -> usize {
+    use std::simd::Simd;
+    use std::simd::cmp::{SimdOrd, SimdPartialEq};
+    use std::simd::num::SimdInt;
+
+    const LANES: usize = 8;
+    debug_assert!(!scores.is_empty());
+    let (chunks, rest) = scores.as_chunks::<LANES>();
+
+    let mut vmax = Simd::<i32, LANES>::splat(i32::MIN);
+    for c in chunks {
+        vmax = vmax.simd_max(Simd::from_array(*c));
+    }
+    let mut best = vmax.reduce_max();
+    for &v in rest {
+        if v > best {
+            best = v;
+        }
+    }
+
+    let target = Simd::<i32, LANES>::splat(best);
+    for (ci, c) in chunks.iter().enumerate() {
+        let bits = Simd::from_array(*c).simd_eq(target).to_bitmask();
+        if bits != 0 {
+            return ci * LANES + bits.trailing_zeros() as usize;
+        }
+    }
+    let tail = rest
+        .iter()
+        .position(|&v| v == best)
+        .expect("最大値はscoresのどこかにある");
+    chunks.len() * LANES + tail
+}
+
 /// 取る手のスコア（MVV優先＋成りボーナス）。
 fn capture_score(pos: &Position, m: Move) -> i32 {
     let victim = piece_value(pos.piece_on(m.to()).piece_type());
@@ -234,7 +276,9 @@ pub struct MovePicker {
     tt_move: Move,
     killers: [Move; 2],
     counter: Move,
-    scored: Vec<(Move, i32)>,
+    /// 採点済みの手。スコアは `scores` の同じ添字に持つ（ADR-0100）
+    moves: Vec<Move>,
+    scores: Vec<i32>,
     bad_captures: Vec<Move>,
     yielded_quiet_stage: [Move; 3],
     qsearch: bool,
@@ -256,7 +300,8 @@ impl MovePicker {
             tt_move,
             killers,
             counter,
-            scored: Vec::with_capacity(64),
+            moves: Vec::with_capacity(64),
+            scores: Vec::with_capacity(64),
             bad_captures: Vec::new(),
             yielded_quiet_stage: [Move::NONE; 3],
             qsearch: false,
@@ -278,7 +323,8 @@ impl MovePicker {
             tt_move,
             killers: [Move::NONE; 2],
             counter: Move::NONE,
-            scored: Vec::with_capacity(32),
+            moves: Vec::with_capacity(32),
+            scores: Vec::with_capacity(32),
             bad_captures: Vec::new(),
             yielded_quiet_stage: [Move::NONE; 3],
             qsearch: true,
@@ -286,18 +332,21 @@ impl MovePicker {
         }
     }
 
+    /// 採点済みの手を1つ積む。指し手とスコアは同じ添字で対応する。
+    #[inline]
+    fn push_scored(&mut self, m: Move, score: i32) {
+        self.moves.push(m);
+        self.scores.push(score);
+    }
+
     /// 最大スコアの手を取り出す（部分選択ソート）。
     fn pick_best(&mut self) -> Option<Move> {
-        if self.scored.is_empty() {
+        if self.scores.is_empty() {
             return None;
         }
-        let mut best = 0;
-        for i in 1..self.scored.len() {
-            if self.scored[i].1 > self.scored[best].1 {
-                best = i;
-            }
-        }
-        Some(self.scored.swap_remove(best).0)
+        let best = argmax_first(&self.scores);
+        self.scores.swap_remove(best);
+        Some(self.moves.swap_remove(best))
     }
 
     fn already_yielded(&self, m: Move) -> bool {
@@ -329,7 +378,7 @@ impl MovePicker {
                     generate(pos, GenType::Captures, false, &mut list);
                     for &m in &list {
                         if m != self.tt_move {
-                            self.scored.push((m, capture_score(pos, m)));
+                            self.push_scored(m, capture_score(pos, m));
                         }
                     }
                     self.stage = Stage::GoodCaptures;
@@ -379,7 +428,7 @@ impl MovePicker {
                     for &m in &list {
                         if !self.already_yielded(m) {
                             let score = history.get(m) + cont.get(prev1, m) + cont.get(prev2, m);
-                            self.scored.push((m, score));
+                            self.push_scored(m, score);
                         }
                     }
                     self.stage = Stage::Quiets;
@@ -407,7 +456,7 @@ impl MovePicker {
                         } else {
                             history.get(m)
                         };
-                        self.scored.push((m, score));
+                        self.push_scored(m, score);
                     }
                     self.stage = Stage::Evasions;
                 }
@@ -425,7 +474,7 @@ impl MovePicker {
                     generate(pos, GenType::Captures, false, &mut list);
                     for &m in &list {
                         if m != self.tt_move {
-                            self.scored.push((m, capture_score(pos, m)));
+                            self.push_scored(m, capture_score(pos, m));
                         }
                     }
                     self.stage = Stage::QCaptures;
@@ -452,7 +501,7 @@ impl MovePicker {
                     for &m in &list {
                         // 駒損しない静かな王手だけを読む（ADR-0028）。TT手は重複回避
                         if m != self.tt_move && pos.gives_check(m) && pos.see_ge(m, 0) {
-                            self.scored.push((m, history.get(m)));
+                            self.push_scored(m, history.get(m));
                         }
                     }
                     self.stage = Stage::QChecks;
@@ -472,5 +521,45 @@ impl MovePicker {
                 return None;
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// 最大値の位置が素直な線形走査と一致すること（ADR-0100）。
+    /// 同点は最小の添字を選ぶ。SIMDの幅で割り切れない長さも通す。
+    #[test]
+    fn argmax_first_matches_linear_scan() {
+        fn linear(s: &[i32]) -> usize {
+            let mut best = 0;
+            for i in 1..s.len() {
+                if s[i] > s[best] {
+                    best = i;
+                }
+            }
+            best
+        }
+
+        let mut x = 0x1234_5678u64;
+        let mut next = move || {
+            x ^= x << 13;
+            x ^= x >> 7;
+            x ^= x << 17;
+            x
+        };
+        for len in 1..40usize {
+            for trial in 0..50 {
+                // 値域を狭くして同点を多く作る。同点の扱いが要点のため
+                let range = if trial % 2 == 0 { 5 } else { 1_000_000 };
+                let v: Vec<i32> = (0..len).map(|_| (next() % range) as i32 - 2).collect();
+                assert_eq!(argmax_first(&v), linear(&v), "len={len} v={v:?}");
+            }
+        }
+
+        assert_eq!(argmax_first(&[i32::MIN]), 0);
+        assert_eq!(argmax_first(&[-5, -5, -5]), 0);
+        assert_eq!(argmax_first(&[i32::MIN, i32::MAX]), 1);
     }
 }
