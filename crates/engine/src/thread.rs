@@ -9,6 +9,7 @@
 use std::sync::atomic::Ordering;
 use std::sync::{Arc, Condvar, Mutex};
 use std::thread::JoinHandle;
+use std::time::Instant;
 
 use himawari_core::Position;
 
@@ -57,6 +58,9 @@ struct SearchJob {
     limits: Limits,
     opts: EngineOptions,
     ponder: bool,
+    /// 計時の起点。ponderhitでの再起動では `go ponder` の受信時刻を
+    /// 引き継ぎ、ponderで読んだ分を予算に数える（ADR-0104）
+    start: Instant,
 }
 
 enum Job {
@@ -207,6 +211,8 @@ fn spawn_worker(
                             j.pos.game_ply(),
                             j.opts.network_delay,
                             j.opts.network_delay2,
+                            j.start,
+                            j.opts.ponder,
                         );
                         (j.limits.clone(), tm)
                     } else {
@@ -217,8 +223,15 @@ fn spawn_worker(
                             depth: j.limits.depth,
                             ..Limits::default()
                         };
-                        let tm =
-                            TimeManager::new(&inf, j.pos.side_to_move(), j.pos.game_ply(), 0, 0);
+                        let tm = TimeManager::new(
+                            &inf,
+                            j.pos.side_to_move(),
+                            j.pos.game_ply(),
+                            0,
+                            0,
+                            j.start,
+                            false,
+                        );
                         (inf, tm)
                     };
                     let was_ponder = j.ponder;
@@ -356,22 +369,31 @@ impl ThreadPool {
     }
 
     pub fn go(&self, pos: Position, limits: Limits, opts: EngineOptions) {
-        self.dispatch(pos, limits, opts, false);
+        self.dispatch(pos, limits, opts, false, Instant::now());
     }
 
     /// go ponder（ADR-0033）。時間制限なしで探索し、bestmoveは
     /// ponderhit/stopまで保留される。
     pub fn go_ponder(&self, pos: Position, limits: Limits, opts: EngineOptions) {
+        let start = Instant::now();
         *self.pending.lock().expect("pending lock") = Some(SearchJob {
             pos: pos.clone(),
             limits: limits.clone(),
             opts: opts.clone(),
             ponder: false,
+            start,
         });
-        self.dispatch(pos, limits, opts, true);
+        self.dispatch(pos, limits, opts, true, start);
     }
 
-    fn dispatch(&self, pos: Position, limits: Limits, opts: EngineOptions, ponder: bool) {
+    fn dispatch(
+        &self,
+        pos: Position,
+        limits: Limits,
+        opts: EngineOptions,
+        ponder: bool,
+        start: Instant,
+    ) {
         self.wait_idle();
         *self.ponder.state.lock().expect("ponder lock") = if ponder {
             PonderState::Searching
@@ -390,6 +412,7 @@ impl ThreadPool {
                 limits: limits.clone(),
                 opts: opts.clone(),
                 ponder,
+                start,
             })));
             w.ctl.cv.notify_all();
         }
@@ -417,7 +440,9 @@ impl ThreadPool {
         if relaunch {
             self.wait_idle();
             if let Some(job) = self.pending.lock().expect("pending lock").take() {
-                self.dispatch(job.pos, job.limits, job.opts, false);
+                // 起点は go ponder の受信時刻。ponderで読んだ分を
+                // 当該手の予算に数える（ADR-0104）
+                self.dispatch(job.pos, job.limits, job.opts, false, job.start);
             }
         }
     }
