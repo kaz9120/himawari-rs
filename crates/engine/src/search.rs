@@ -227,6 +227,16 @@ struct StackEntry {
     /// このplyで置換表にヒットしたか（G1。yaneuraou-search.cpp:2623）。
     /// 同じく1手前の値を読む
     tt_hit: bool,
+    /// 置換表にPVノードとして記録された値か（G2。yaneuraou-search.cpp:2657）。
+    /// LMRのリダクション2項が読み、置換表へ書き戻す
+    tt_pv: bool,
+    /// このplyでβカットした回数（G2。yaneuraou-search.cpp:4214）。
+    /// 親が次plyの値を読む。多いほどリダクションを増やす
+    cutoff_cnt: i32,
+    /// このplyのLMRが削った量（G2。yaneuraou-search.cpp:3980）。
+    /// 子が `priorReduction` として読む側はG4で入れる
+    #[allow(dead_code)]
+    reduction: i32,
 }
 
 /// Stackの前方余白。ss-6まで境界検査なしで参照するために置く。
@@ -283,6 +293,9 @@ impl Worker {
                     cont_corr_base: 0,
                     move_count: 0,
                     tt_hit: false,
+                    tt_pv: false,
+                    cutoff_cnt: 0,
+                    reduction: 0,
                 };
                 MAX_PLY + 10
             ],
@@ -654,6 +667,9 @@ impl Worker {
         // search()なので、置換表ヒットと静的評価がrootでも埋まっている
         let key = self.pos.key();
         self.stack[STACK_OFFSET].tt_hit = self.shared.tt.probe(key).is_some();
+        // rootは常にPVノードなのでttPvはtrue（yaneuraou-search.cpp:2657）
+        self.stack[STACK_OFFSET].tt_pv = true;
+        self.stack[STACK_OFFSET + 2].cutoff_cnt = 0;
         self.stack[STACK_OFFSET].static_eval = if in_check {
             VALUE_NONE
         } else {
@@ -712,6 +728,9 @@ impl Worker {
                     best_pv.push(m);
                     best_pv.extend_from_slice(&child_pv);
                     if value >= beta {
+                        // 参照実装はrootも同じ経路を通る
+                        // （yaneuraou-search.cpp:4214）
+                        self.stack[STACK_OFFSET].cutoff_cnt += 1;
                         break;
                     }
                 }
@@ -775,6 +794,9 @@ impl Worker {
         let in_check = self.pos.in_check();
         self.stack[ply + STACK_OFFSET].in_check = in_check;
         self.stack[ply + STACK_OFFSET].move_count = 0;
+        // 2手先のβカット回数を戻す（yaneuraou-search.cpp:2555）。
+        // 自分の次plyは1手前のノードが戻しているので、兄弟をまたいで貯まる
+        self.stack[ply + STACK_OFFSET + 2].cutoff_cnt = 0;
         // 1手前が取った駒と、1手前の移動先（yaneuraou-search.cpp:2355, 2550）。
         // historyの更新条件が繰り返し読む
         let prior_capture = self.pos.state().captured;
@@ -793,6 +815,11 @@ impl Worker {
         let tt_hit = self.shared.tt.probe(key);
         // 1手先のノードがhistoryの更新条件で読む（yaneuraou-search.cpp:2623）
         self.stack[ply + STACK_OFFSET].tt_hit = tt_hit.is_some();
+        // 置換表にPVとして記録された値か（yaneuraou-search.cpp:2657）。
+        // 除外手つき探索は同じplyでsearchを呼び直すので、上書きしない
+        if excluded == Move::NONE {
+            self.stack[ply + STACK_OFFSET].tt_pv = is_pv || tt_hit.as_ref().is_some_and(|d| d.pv);
+        }
         let mut tt_move = Move::NONE;
         let mut tt_value = VALUE_NONE;
         let mut tt_depth = 0u32;
@@ -1024,7 +1051,8 @@ impl Worker {
                         raw_eval as i16,
                         depth.saturating_sub(3).min(255) as u8,
                         Bound::Lower,
-                        is_pv,
+                        // 参照実装はttPvを書き戻す（yaneuraou-search.cpp:3418）
+                        self.stack[ply + STACK_OFFSET].tt_pv,
                     );
                     return v;
                 }
@@ -1259,6 +1287,10 @@ impl Worker {
                         pv.extend_from_slice(&child_pv);
                     }
                     if value >= beta {
+                        // 次plyのfail highの多さをリダクションへ渡す
+                        // （yaneuraou-search.cpp:4214）。本エンジンの延長は
+                        // 最大1手なので `extension < 2` は常に成立する
+                        self.stack[ply + STACK_OFFSET].cutoff_cnt += 1;
                         break;
                     }
                     alpha = value;
@@ -1339,6 +1371,14 @@ impl Worker {
             );
         }
 
+        // 良い手が見つからなかったなら1手前のttPvを引き継ぐ
+        // （yaneuraou-search.cpp:4367-4368）。1手前が探索木に入れた変化なら、
+        // この局面も探索木へ加える
+        if best <= alpha {
+            self.stack[ply + STACK_OFFSET].tt_pv =
+                self.stack[ply + STACK_OFFSET].tt_pv || self.stack[ply + STACK_OFFSET - 1].tt_pv;
+        }
+
         // 除外手つき探索中はTT storeをしない（ADR-0050）。
         // 検証専用の結果でこのキーの本体を汚さない
         if excluded == Move::NONE {
@@ -1356,7 +1396,9 @@ impl Worker {
                 raw_eval as i16,
                 depth.min(255) as u8,
                 bound,
-                is_pv,
+                // 参照実装はis_pvではなくttPvを書き戻す
+                // （yaneuraou-search.cpp:4397）
+                self.stack[ply + STACK_OFFSET].tt_pv,
             );
         }
 
