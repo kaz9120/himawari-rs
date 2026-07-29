@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.16.1](https://github.com/kaz9120/himawari-rs/compare/v0.16.0...v0.16.1) (2026-07-29)
+
+
+### ドキュメント
+
+* ponder有効時の思考時間1.25倍を棄却した記録を残す（ADR-0107） ([#121](https://github.com/kaz9120/himawari-rs/issues/121)) ([bd6179f](https://github.com/kaz9120/himawari-rs/commit/bd6179f20b6d909f04a473d4d0571e33b9b2ef09))
+
 ## [0.16.0](https://github.com/kaz9120/himawari-rs/compare/v0.15.9...v0.16.0) (2026-07-29)
 
 
