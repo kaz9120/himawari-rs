@@ -243,14 +243,31 @@ ADRで書く。ここに置くのは、何を移すかと原典の位置であ�
 
 ### G0: Stack構造体化とcutNodeの配線
 
-Stackへ集約するフィールドは、既存4本（currentMove・excludedMove・
-staticEval・killers）に加えて、statScore・moveCount・inCheck・ttPv・
-cutoffCnt・reduction・followPV・continuationHistoryポインタの8つ
-（`yaneuraou-search.h:261-307`）。配列は前方に7要素の余白を取り、
-`ss-6` まで境界検査なしで参照できるようにする（S:1460-1475）。
+既存4本（currentMove・excludedMove・staticEval・killers）を1つの構造体へ
+集約し、配列は前方に7要素の余白を取って `ss-6` まで境界検査なしで参照
+できるようにする（S:1460-1475）。
+
+**フィールドの追加はこの群では行わない。** 参照実装のStackは15
+フィールドを持つ（`yaneuraou-search.h:261-307`）が、statScore・moveCount・
+inCheck・ttPv・cutoffCnt・reduction・followPVは読む側を持つ群で足す。
+先に置くと未使用の警告を抑える指定がコードに残り、後で本当に不要に
+なったフィールドを見つけられなくなる。G0が用意するのは器であって、
+中身ではない。
 
 cutNodeは引数として渡すだけで、読む側はG2以降で入れる。allNodeは
-「PVでもcutNodeでもない」として派生する（S:2251）。
+「PVでもcutNodeでもない」として派生する（S:2251）。実引数は11か所で
+決まり、`!(PvNode && cutNode)` が不変条件になる（S:2283）。
+
+| 呼び出し位置 | cutNodeの実引数 | 出典 |
+|---|---|---|
+| root | false | S:1709 |
+| NMPの子・検証探索 | false | S:3267, S:3295 |
+| ProbCutの子 | 反転 | S:3409 |
+| singular検証探索 | 引き継ぎ | S:3769 |
+| LMRの浅い探索 | true | S:3981 |
+| LMR後の再探索 | 反転 | S:4003 |
+| LMRを省いた全深さ探索 | 反転 | S:4029 |
+| PVの第1手・fail high後の再探索 | false | S:4060 |
 
 ### G1: historyの面と更新の一式
 
