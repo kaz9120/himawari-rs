@@ -11,11 +11,13 @@
 //!            [--max-pairs N] [--max-moves 320]
 //!            [--adjudicate CP,PLIES] [--option Name=Value]...
 //!            [--copt Name=Value]... [--bopt Name=Value]...
-//!            [--ponder] [--out <path>] [--resume <jsonl>]
+//!            [--ponder] [--ponder-both] [--out <path>] [--resume <jsonl>]
 //!
 //! --copt/--boptは候補側/ベースライン側だけに適用するオプション
 //! （例: --copt Threads=4）。--ponderは候補側だけが相手番思考する
-//! 効果測定モード（ADR-0033）。
+//! 効果測定モード（ADR-0033）。--ponder-bothは両者に相手番思考させる
+//! （ponder前提の変更を比べるモード。ADR-0104）。1局が2コアを使うため
+//! --concurrencyを物理コアの半分に落とすこと。
 //!
 //! openingsは1行1局面のSFEN。#始まりはコメント。省略時は平手初期局面
 //! のみ（決定的エンジン同士では毎ペア同一の進行になるため注意）。
@@ -48,6 +50,8 @@ struct Config {
     max_moves: usize,
     adjudicate: Option<(i32, u32)>,
     ponder: bool,
+    /// 両者に相手番思考させる（ADR-0104）。ponderより優先する。
+    ponder_both: bool,
     options: Vec<(String, String)>,
     /// 候補側 / ベースライン側だけに適用するオプション。
     copts: Vec<(String, String)>,
@@ -98,6 +102,7 @@ fn parse_args() -> Config {
     let mut max_moves = 320usize;
     let mut adjudicate = None;
     let mut ponder = false;
+    let mut ponder_both = false;
     let mut options: Vec<(String, String)> = Vec::new();
     let mut copts: Vec<(String, String)> = Vec::new();
     let mut bopts: Vec<(String, String)> = Vec::new();
@@ -204,6 +209,11 @@ fn parse_args() -> Config {
                 i += 1;
                 continue;
             }
+            "--ponder-both" => {
+                ponder_both = true;
+                i += 1;
+                continue;
+            }
             other => usage_exit(&format!("不明な引数: {other}")),
         }
         i += 2;
@@ -258,6 +268,7 @@ fn parse_args() -> Config {
         max_moves,
         adjudicate,
         ponder,
+        ponder_both,
         options,
         copts,
         bopts,
@@ -404,8 +415,11 @@ fn worker(
     let mut cand_opts = common;
     cand_opts.extend(cfg.options.iter().cloned());
     cand_opts.extend(cfg.copts.iter().cloned());
-    if cfg.ponder {
+    if cfg.ponder || cfg.ponder_both {
         cand_opts.push(("USI_Ponder".to_string(), "true".to_string()));
+    }
+    if cfg.ponder_both {
+        base_opts.push(("USI_Ponder".to_string(), "true".to_string()));
     }
     let mut baseline = UsiEngine::launch(&cfg.baseline, &base_opts)?;
     let mut candidate = UsiEngine::launch(&cfg.candidate, &cand_opts)?;
@@ -424,21 +438,27 @@ fn worker(
             break;
         }
         let opening = &cfg.openings[(pair as usize) % cfg.openings.len()];
-        // 候補が先手→後手の順で同一開始局面のペアを消化する
-        // ponderは候補側だけに適用する（効果測定モード。ADR-0033）
+        // 候補が先手→後手の順で同一開始局面のペアを消化する。
+        // --ponderは候補側だけ（効果測定モード。ADR-0033）、
+        // --ponder-bothは両者に相手番思考させる（ADR-0104）
+        let (p_cand, p_base) = if cfg.ponder_both {
+            (true, true)
+        } else {
+            (cfg.ponder, false)
+        };
         let g1 = play_game(
             &mut candidate,
             &mut baseline,
             opening,
             &game_cfg,
-            [cfg.ponder, false],
+            [p_cand, p_base],
         )?;
         let g2 = play_game(
             &mut baseline,
             &mut candidate,
             opening,
             &game_cfg,
-            [false, cfg.ponder],
+            [p_base, p_cand],
         )?;
         let s1 = candidate_score(&g1, Color::Black);
         let s2 = candidate_score(&g2, Color::White);
