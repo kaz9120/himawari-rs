@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.15.3](https://github.com/kaz9120/himawari-rs/compare/v0.15.2...v0.15.3) (2026-07-29)
+
+
+### 内部
+
+* NPS計測とプロファイルの手順をスクリプトへ固める（ADR-0081） ([#96](https://github.com/kaz9120/himawari-rs/issues/96)) ([ca0db43](https://github.com/kaz9120/himawari-rs/commit/ca0db43fcb243c02b2e4b791c1ff9908279a0608))
+
 ## [0.15.2](https://github.com/kaz9120/himawari-rs/compare/v0.15.1...v0.15.2) (2026-07-29)
 
 
