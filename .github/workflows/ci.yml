@@ -19,3 +19,14 @@ jobs:
       - run: cargo test --workspace
       # perft既知値の照合（debugではignoreされる。ADR-0006/0018）
       - run: cargo test --workspace --release
+
+  # NNUE推論のAVX2経路を検証する（ADR-0099）。既定のx86-64ターゲットは
+  # SSE2までで、上のジョブではAVX2経路がコンパイルされない
+  avx2:
+    runs-on: ubuntu-latest
+    env:
+      RUSTFLAGS: -C target-feature=+avx2
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo test -p himawari-engine --release

@@ -248,6 +248,7 @@ dependencies = [
 name = "himawari-engine"
 version = "0.13.9"
 dependencies = [
+ "criterion",
  "himawari-core",
 ]
 
