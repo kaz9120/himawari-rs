@@ -116,6 +116,24 @@ cargo run --release --bin selfplay -- \
 | `crates/py` | PyO3拡張モジュール（特徴抽出・.hmwr I/OをPythonに公開） |
 | `training/` | PyTorch学習器（モデル定義・データセット・学習ループ・量子化） |
 
+## 謝辞
+
+探索部は[やねうら王](https://github.com/yaneurao/YaneuraOu)を参照実装とし、
+機能差分を埋める形で開発している（[ADR-0109](docs/adr/0109-reference-parity.md)）。
+やねうら王は[Stockfish](https://github.com/official-stockfish/Stockfish)の
+探索技法を将棋へ移植したもので、本エンジンはその系譜に連なる。
+移植したファイルには冒頭に由来を書いている。
+
 ## License
 
-MIT
+GPL-3.0-or-later
+
+Copyright (C) 2026 Kazumasa Yamamoto
+
+v0.16.2まではMITで配布した。GPLv3への変更の経緯は
+[ADR-0108](docs/adr/0108-license-gplv3.md)にある。既存のタグはMITのまま
+変わらない。
+
+学習済みネットと定跡データはプログラムの出力物であり、このライセンスの
+対象外とする。配布条件は[ADR-0080](docs/adr/0080-net-release.md)と
+[ADR-0082](docs/adr/0082-book-release.md)を参照。
