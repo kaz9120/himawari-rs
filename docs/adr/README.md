@@ -113,6 +113,7 @@
 | [0095](0095-see-promotion.md) | SEEで初手の成りを扱う（ほぼ等価と判明） | - | proposed |
 | [0096](0096-rfp-margin.md) | reverse futilityのマージンと深さ上限を見直す | - | rejected |
 | [0097](0097-capture-history.md) | capture historyを入れ直す（スケールを揃える） | - | rejected |
+| [0099](0099-nnue-dot-sdot.md) | NNUE隠れ層の内積をSDOTで4行ずつ計算する | - | accepted |
 
 ## バックログ
 
