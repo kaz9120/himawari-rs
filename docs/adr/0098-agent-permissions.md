@@ -99,6 +99,27 @@ SPRTの待機のために、すべての操作の確認を外すことになる�
 `.claude/settings.local.json`（個人設定）は `.gitignore` へ入れ、共有する
 のは `.claude/settings.json` だけにする。
 
+### 運用上の注意: 待機と判断を分ける
+
+`watch-ci.sh` をマージと `&&` で繋ぐと、**複合コマンド全体が破壊的操作
+として判定され**、確認を求められる。起草した当日の運用で踏んだ
+（2026-07-29）。
+
+```bash
+# 誤り: watch-ci.sh が読み取り専用でも、全体で承認が要る
+./scripts/watch-ci.sh 78 && gh pr merge 78 --squash --delete-branch
+
+# 正しい: 待機と判断を分ける
+./scripts/watch-ci.sh 78      # 承認不要。CIの確定まで待つ
+gh pr merge 78 --squash       # 承認を通る。mainへ入れる判断
+```
+
+スクリプトを読み取り専用に保っても、呼び出し側で破壊的操作と結合すれば
+意味がない。**Monitorへ渡すのは待機だけにする。**
+
+この分離は制約ではなく設計である。待機は自動で進み、mainへ取り込む判断は
+オーナーの手元に残る。
+
 ## Consequences
 
 SPRTとCIの待機で止まらなくなる。判定が出るまで数時間かかる変更でも、
