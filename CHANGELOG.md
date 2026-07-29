@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.13.4](https://github.com/kaz9120/himawari-rs/compare/v0.13.3...v0.13.4) (2026-07-29)
+
+
+### 内部
+
+* エージェントが待機で止まらないようにする（ADR-0098） ([#76](https://github.com/kaz9120/himawari-rs/issues/76)) ([750e349](https://github.com/kaz9120/himawari-rs/commit/750e3495f82edaa0f48fd10aafc9eb06f9319b14))
+
 ## [0.13.3](https://github.com/kaz9120/himawari-rs/compare/v0.13.2...v0.13.3) (2026-07-29)
 
 
