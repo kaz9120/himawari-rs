@@ -46,7 +46,9 @@ NNUE後の再測定に意味がある。
 | ~~capture SEE pruning~~ | ~~ADR-0090で導入。captHist項を落とし -167*depth とした。capture history導入後に項を足せる~~ | ~~完了~~ |
 | ttPvフラグの活用 | TTに保存済みだが探索で読んでいない。LMR・RFP・singularの条件へ供給する。ほぼゼロコスト | SPRT |
 | ~~razoringの深さ制限撤廃~~ | ~~ADR-0075で棄却。マージンの向きを取り違えていた。razoringはマージンが大きいほど刈りにくく、本エンジンの300はやねうら王より緩い。揃えるとノードが5.4倍に増える~~ | ~~棄却~~ |
-| RFPの項追加とマージン緩和 | 4種の枝刈りで唯一、本エンジンが刈りにくい側にある（ADR-0075）。現状 120*depth・depth<=6。やねうら王は 76*depth・depth<15 にimprovingとopponentWorseningの項が付いてさらに減る。返り値の(2*beta+eval)/3化も含む | SPRT |
+| ~~RFPのマージン緩和~~ | ~~ADR-0096で棄却。42局で-139.4。やねうら王の76*depthは!ss->ttPvという安全弁と組で成立しており、本エンジンにttPvがないまま数値だけ寄せた。分解するとマージンとimproving項が刈りすぎで最善手まで変えていた~~ | ~~棄却~~ |
+| RFPの返り値をβ寄せ | ADR-0096の分解で、返り値を beta+(eval-beta)/3 にする項だけは最善手を変えないと分かった。ノード数は増えるが値の精度が上がる。単独で測る余地がある | SPRT |
+| ttPvフラグの活用（RFPの前提） | TTに保存済みだが探索で読んでいない。RFPやLMRの安全弁として他エンジンが使う。ADR-0096はこれがないまま数値を寄せて失敗した | SPRT |
 | ProbCutの条件緩和 | depth>=5を3へ、マージン200固定を224-61*improvingへ、SEE閾値0をprobCutBeta-staticEvalへ | SPRT |
 | ~~TTベースの簡易ProbCut~~ | ~~ADR-0078で導入。+15.6 Elo（H1採択、5404局）。探索を伴わずNPSへの影響なし~~ | ~~完了~~ |
 | ~~qsearchのfutility~~ | ~~ADR-0077で導入。+57.3 Elo（H1採択、1242局）。bestValueの引き上げはMultiPVの整合のため入れていない~~ | ~~完了~~ |
