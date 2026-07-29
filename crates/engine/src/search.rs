@@ -94,19 +94,9 @@ const EFFORT_SCALE_LO: f64 = 0.85;
 const EFFORT_SCALE_HI: f64 = 0.70;
 const SCALE_MIN_DEPTH: u32 = 8;
 
-/// history bonus（ADR-0073）。βカットした静かな手へ与える。
-/// 出典はやねうら王の `min(128·depth - 77, 1529)`。評価値と同じく
-/// スケールをStockfish系へ揃える（[ADR-0074](../../docs/adr/0074-feature-verification.md)）。
-fn history_bonus(depth: u32) -> i32 {
-    (128 * depth as i32 - 77).clamp(0, 1529)
-}
-
-/// history malus（ADR-0073）。試して外れた静かな手へ与える。
-/// bonusより大きく、悪い手を早く後ろへ落とす。
-/// 出典はやねうら王の `min(882·depth - 204, 2122)`。
-fn history_malus(depth: u32) -> i32 {
-    (882 * depth as i32 - 204).clamp(0, 2122)
-}
+/// historyのbonus・malusを配る対象として覚えておく手数の上限
+/// （yaneuraou-search.cpp:702のSEARCHEDLIST_CAPACITY）。
+const SEARCHED_LIST_CAPACITY: u32 = 32;
 
 /// この手数に達したら静かな手の生成をやめる（ADR-0109のG1）。
 /// 出典はやねうら王の `(3 + depth * depth) / (2 - improving)`
@@ -781,6 +771,15 @@ impl Worker {
         // ノードの初期化（yaneuraou-search.cpp:2357）。前の兄弟ノードの
         // 値が残らないよう、手数をここで0へ戻す
         self.stack[ply + STACK_OFFSET].move_count = 0;
+        // 1手前が取った駒と、1手前の移動先（yaneuraou-search.cpp:2355, 2550）。
+        // historyの更新条件が繰り返し読む
+        let prior_capture = self.pos.state().captured;
+        let prev_move = self.stack[ply + STACK_OFFSET - 1].current_move;
+        let prev_sq = if prev_move.is_special() {
+            None
+        } else {
+            Some(prev_move.to())
+        };
 
         // 除外手（singular extension用。ADR-0050）。検証探索中はTT手が入る
         let excluded = self.stack[ply + STACK_OFFSET].excluded_move;
@@ -1044,7 +1043,9 @@ impl Worker {
         let mut best_move = Move::NONE;
         let mut best_move_is_capture = false;
         let mut count = 0u32;
-        let mut tried_quiets: Vec<Move> = Vec::new();
+        // 最善にならなかった手を良い順に覚える（yaneuraou-search.cpp:2343-2344）
+        let mut quiets_searched: Vec<Move> = Vec::new();
+        let mut captures_searched: Vec<Move> = Vec::new();
         let mut child_pv = Vec::new();
 
         while let Some(m) = picker.next(&self.pos, &self.hist, &cont) {
@@ -1192,9 +1193,6 @@ impl Worker {
                 return VALUE_ZERO;
             }
 
-            if !is_capture {
-                tried_quiets.push(m);
-            }
             if value > best {
                 best = value;
                 if value > alpha {
@@ -1206,12 +1204,29 @@ impl Worker {
                         pv.extend_from_slice(&child_pv);
                     }
                     if value >= beta {
-                        if !is_capture {
-                            self.update_quiet_stats(m, ply, depth, &tried_quiets);
-                        }
+                        self.update_all_stats(
+                            ply,
+                            depth,
+                            m,
+                            tt_move,
+                            prev_sq,
+                            prior_capture,
+                            &quiets_searched,
+                            &captures_searched,
+                        );
                         break;
                     }
                     alpha = value;
+                }
+            }
+
+            // 最善でなかった手を、あとでmalusを配るために覚えておく
+            // （yaneuraou-search.cpp:4246-4256）。上限は32手
+            if m != best_move && count <= SEARCHED_LIST_CAPACITY {
+                if is_capture {
+                    captures_searched.push(m);
+                } else {
+                    quiets_searched.push(m);
                 }
             }
         }
@@ -1486,16 +1501,68 @@ impl Worker {
         self.hist.pawn.update(slot, m.piece_after(), m.to(), scaled);
     }
 
-    /// βカットした静かな手にbonus、外れた手にmalusを配る（ADR-0073）。
-    /// bonus式の精緻化（ttMove一致項・malusの後方減衰）はG1の第2段で入れる。
-    fn update_quiet_stats(&mut self, m: Move, ply: usize, depth: u32, tried: &[Move]) {
-        let bonus = history_bonus(depth);
-        let malus = history_malus(depth);
-        self.update_quiet_histories(ply, m, bonus);
-        for &q in tried {
-            if q != m {
-                self.update_quiet_histories(ply, q, -malus);
+    /// 統計情報一式を更新する（ADR-0109のG1）。bestMoveが確定したノードの
+    /// 終端で呼ぶ。出典はやねうら王の `update_all_stats()`
+    /// （yaneuraou-search.cpp:5293-5367）。
+    ///
+    /// `quiets_searched` と `captures_searched` は、このノードで調べたが
+    /// 最善にならなかった手を良い順に並べたもの。
+    #[allow(clippy::too_many_arguments)]
+    fn update_all_stats(
+        &mut self,
+        ply: usize,
+        depth: u32,
+        best_move: Move,
+        tt_move: Move,
+        prev_sq: Option<Square>,
+        prior_capture: Piece,
+        quiets_searched: &[Move],
+        captures_searched: &[Move],
+    ) {
+        // bonus式（yaneuraou-search.cpp:5307-5309）。第3項の
+        // `(ss-1)->statScore / 32` はstatScoreを入れるG2で足す
+        let bonus = (128 * depth as i32 - 77).min(1529) + 353 * i32::from(best_move == tt_move);
+        let malus = (882 * depth as i32 - 204).min(2122);
+
+        let to = best_move.to();
+        let captured = self.pos.piece_on(to);
+        if best_move.is_drop() || captured.is_empty() {
+            self.update_quiet_histories(ply, best_move, bonus * 806 / 1024);
+            // 最善でなかった静かな手へmalusを配る。後ろの手ほど軽くする
+            // （yaneuraou-search.cpp:5318-5326）
+            let mut actual_malus = malus * 1113 / 1024;
+            for &q in quiets_searched {
+                actual_malus = actual_malus * 977 / 1024;
+                self.update_quiet_histories(ply, q, -actual_malus);
             }
+        } else {
+            self.hist.capture.update(
+                best_move.piece_after(),
+                to,
+                captured.piece_type(),
+                bonus * 1286 / 1024,
+            );
+        }
+
+        // 1手前が置換表の手でない早い静かな手で、それが反証されたときの
+        // 追加ペナルティ（yaneuraou-search.cpp:5344-5345）
+        if let Some(prev_sq) = prev_sq {
+            let prev = self.stack[ply + STACK_OFFSET - 1];
+            if prev.move_count == 1 + u32::from(prev.tt_hit) && prior_capture.is_empty() {
+                let pc = self.pos.piece_on(prev_sq);
+                self.update_continuation_histories(ply - 1, pc, prev_sq, -malus * 616 / 1024);
+            }
+        }
+
+        // 最善でなかった取る手へmalusを配る（yaneuraou-search.cpp:5359-5364）
+        for &c in captures_searched {
+            let to = c.to();
+            self.hist.capture.update(
+                c.piece_after(),
+                to,
+                self.pos.piece_on(to).piece_type(),
+                -malus * 1559 / 1024,
+            );
         }
     }
 }
