@@ -237,6 +237,9 @@ struct StackEntry {
     /// 子が `priorReduction` として読む側はG4で入れる
     #[allow(dead_code)]
     reduction: i32,
+    /// このplyで今調べている手の履歴の強さ（G2。yaneuraou-search.cpp:3924-3932）。
+    /// リダクションの減算と、子でのhistory更新量の2方向へ効く
+    stat_score: i32,
 }
 
 /// Stackの前方余白。ss-6まで境界検査なしで参照するために置く。
@@ -296,6 +299,7 @@ impl Worker {
                     tt_pv: false,
                     cutoff_cnt: 0,
                     reduction: 0,
+                    stat_score: 0,
                 };
                 MAX_PLY + 10
             ],
@@ -371,6 +375,28 @@ impl Worker {
     #[inline]
     fn cont_bases(&self, ply: usize) -> [usize; 6] {
         std::array::from_fn(|i| self.stack[ply + STACK_OFFSET - 1 - i].cont_base)
+    }
+
+    /// その手の履歴の強さ（G2。yaneuraou-search.cpp:3924-3932）。
+    /// 取る手は取った駒の価値とcapture history、静かな手はmain historyの
+    /// 2倍と1手前・2手前のcontinuation historyで測る。do_moveの前に呼ぶ
+    #[inline]
+    fn stat_score(&self, m: Move, cont: &[usize; 6]) -> i32 {
+        let to = m.to();
+        let pc = m.piece_after();
+        let captured = if m.is_drop() {
+            Piece::EMPTY
+        } else {
+            self.pos.piece_on(to)
+        };
+        if !captured.is_empty() {
+            863 * himawari_core::piece_value(captured.piece_type()) / 128
+                + self.hist.capture.get(pc, to, captured.piece_type())
+        } else {
+            2 * self.hist.main.get(self.pos.side_to_move(), m)
+                + self.hist.cont.get(cont[0], pc, to)
+                + self.hist.cont.get(cont[1], pc, to)
+        }
     }
 
     /// 生の静的評価にcorrection historyの補正を加える（ADR-0046, 0109）。
@@ -670,6 +696,10 @@ impl Worker {
         // rootは常にPVノードなのでttPvはtrue（yaneuraou-search.cpp:2657）
         self.stack[STACK_OFFSET].tt_pv = true;
         self.stack[STACK_OFFSET + 2].cutoff_cnt = 0;
+        self.stack[STACK_OFFSET].stat_score = 0;
+        // continuation historyの面（1手前から6手前まで）。rootでも
+        // statScoreの計算に要る
+        let cont = self.cont_bases(0);
         self.stack[STACK_OFFSET].static_eval = if in_check {
             VALUE_NONE
         } else {
@@ -685,6 +715,9 @@ impl Worker {
                 on_info(SearchInfo::CurrMove { depth, mv: m });
             }
             let capture = !m.is_drop() && !self.pos.piece_on(m.to()).is_empty();
+            // 1手目のノードがhistoryの更新量で読む
+            // （yaneuraou-search.cpp:3924-3932）
+            self.stack[STACK_OFFSET].stat_score = self.stat_score(m, &cont);
             self.set_current_move(0, m, capture);
             let nodes_before = self.nodes;
             self.pos.do_move(m);
@@ -797,6 +830,7 @@ impl Worker {
         // 2手先のβカット回数を戻す（yaneuraou-search.cpp:2555）。
         // 自分の次plyは1手前のノードが戻しているので、兄弟をまたいで貯まる
         self.stack[ply + STACK_OFFSET + 2].cutoff_cnt = 0;
+        self.stack[ply + STACK_OFFSET].stat_score = 0;
         // 1手前が取った駒と、1手前の移動先（yaneuraou-search.cpp:2355, 2550）。
         // historyの更新条件が繰り返し読む
         let prior_capture = self.pos.state().captured;
@@ -1191,6 +1225,10 @@ impl Worker {
                 }
             }
 
+            // その手の履歴の強さを控える（yaneuraou-search.cpp:3924-3932）。
+            // 子のhistory更新量にも効くのでdo_moveの前に測る
+            self.stack[ply + STACK_OFFSET].stat_score = self.stat_score(m, &cont);
+
             self.set_current_move(ply, m, is_capture);
             self.pos.do_move(m);
             self.evaluator.push(&self.pos);
@@ -1337,10 +1375,10 @@ impl Worker {
             && prior_capture.is_empty()
         {
             // fail lowを引き起こした1手前の静かな手への加点
-            // （yaneuraou-search.cpp:4320-4341）。第1項の
-            // `-(ss-1)->statScore / 108` はG2で足す
+            // （yaneuraou-search.cpp:4320-4341）
             let prev1 = self.stack[ply + STACK_OFFSET - 1];
             let mut bonus_scale = -232;
+            bonus_scale -= prev1.stat_score / 108;
             bonus_scale += (59 * depth as i32).min(454);
             bonus_scale += 169 * i32::from(prev1.move_count > 8);
             bonus_scale += 145 * i32::from(!in_check && best <= static_eval - 110);
@@ -1665,9 +1703,11 @@ impl Worker {
         quiets_searched: &[Move],
         captures_searched: &[Move],
     ) {
-        // bonus式（yaneuraou-search.cpp:5307-5309）。第3項の
-        // `(ss-1)->statScore / 32` はstatScoreを入れるG2で足す
-        let bonus = (128 * depth as i32 - 77).min(1529) + 353 * i32::from(best_move == tt_move);
+        // bonus式（yaneuraou-search.cpp:5307-5309）。第3項は1手前の
+        // statScore、つまりこのノードへ来た手の履歴の強さである
+        let bonus = (128 * depth as i32 - 77).min(1529)
+            + 353 * i32::from(best_move == tt_move)
+            + self.stack[ply + STACK_OFFSET - 1].stat_score / 32;
         let malus = (882 * depth as i32 - 204).min(2122);
 
         let to = best_move.to();
