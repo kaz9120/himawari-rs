@@ -53,7 +53,7 @@ for ((attempt = 1; attempt <= MAX_RETRY; attempt++)); do
 		echo "=== 試行 ${attempt}: 新規に開始する ==="
 	fi
 
-	"${SCRIPT_DIR}/sprt.sh" "$BASELINE" "$CANDIDATE" "$NAME" "${ARGS[@]}"
+	"${SCRIPT_DIR}/sprt.sh" "$BASELINE" "$CANDIDATE" "$NAME" ${ARGS[@]+"${ARGS[@]}"}
 	CODE=$?
 
 	case $CODE in
