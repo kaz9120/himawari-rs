@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.13.2](https://github.com/kaz9120/himawari-rs/compare/v0.13.1...v0.13.2) (2026-07-29)
+
+
+### その他の変更
+
+* SEEで初手の成りを扱う（ADR-0095） ([#72](https://github.com/kaz9120/himawari-rs/issues/72)) ([9535517](https://github.com/kaz9120/himawari-rs/commit/953551775143a75ebb509b65998a79f729e1a420))
+
 ## [0.13.1](https://github.com/kaz9120/himawari-rs/compare/v0.13.0...v0.13.1) (2026-07-28)
 
 
