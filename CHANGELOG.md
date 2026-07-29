@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.19.0](https://github.com/kaz9120/himawari-rs/compare/v0.18.0...v0.19.0) (2026-07-29)
+
+
+### 棋力向上
+
+* statScoreとLMRのリダクションを参照実装へ揃える（+124.0 Elo、G2、ADR-0111） ([46b8378](https://github.com/kaz9120/himawari-rs/commit/46b8378a2242a1756bf59b4b822f53071b7bbdc8))
+
 ## [0.18.0](https://github.com/kaz9120/himawari-rs/compare/v0.17.0...v0.18.0) (2026-07-29)
 
 
