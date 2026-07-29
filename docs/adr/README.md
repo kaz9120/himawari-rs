@@ -126,6 +126,7 @@
 | [0109](0109-reference-parity.md) | 参照実装への追従を群単位で進める | - | accepted |
 | [0110](0110-g1-history.md) | historyの面と更新を参照実装へ揃える（G1） | +88.5 | accepted |
 | [0111](0111-g2-lmr.md) | statScoreとLMRのリダクションを参照実装へ揃える（G2） | +124.0 | accepted |
+| [0112](0112-g3-pruning.md) | ムーブループの枝刈りを参照実装へ揃える（G3） | +95.2 | accepted |
 
 ## バックログ
 
