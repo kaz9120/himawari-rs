@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.13.8](https://github.com/kaz9120/himawari-rs/compare/v0.13.7...v0.13.8) (2026-07-29)
+
+
+### ドキュメント
+
+* capture historyの再挑戦を棄却として記録する（ADR-0097） ([#84](https://github.com/kaz9120/himawari-rs/issues/84)) ([2b18c0c](https://github.com/kaz9120/himawari-rs/commit/2b18c0c2a32c0e2632805ae1a1f1a5d0c76309e9))
+
 ## [0.13.7](https://github.com/kaz9120/himawari-rs/compare/v0.13.6...v0.13.7) (2026-07-29)
 
 
