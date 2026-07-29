@@ -121,6 +121,7 @@
 | [0104](0104-ponderhit-time-accounting.md) | ponderで読んだ時間を持ち時間の予算に数える | -117.8 | rejected |
 | [0105](0105-ttpv-propagation.md) | ttPvの伝播を直しRFPの安全弁に使う案 | - | rejected |
 | [0106](0106-ponderhit-continue.md) | ponderhitで探索を止めずに時間制限だけ差し替える | -54.3 | rejected |
+| [0107](0107-ponder-optimum-bonus.md) | USI_Ponderが有効なとき思考時間を1.25倍する | - | proposed |
 
 ## バックログ
 
