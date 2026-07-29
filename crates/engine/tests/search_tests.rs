@@ -233,3 +233,69 @@ fn stop_before_first_iteration_still_returns_the_depth1_best() {
         "この局面では深さ1の最善手と生成順の先頭が違うことを前提にしている"
     );
 }
+
+/// 打ち切られても、最後に出すinfoは確定した結果にする。
+///
+/// aspirationがfail high / fail lowすると lowerbound / upperbound を報告して
+/// 窓を広げ、読み直す。その途中で打ち切られると、最後のinfoが未確定のまま
+/// 終わっていた。GUIやCSAブリッジはそれをその手のスコアとして記録するので、
+/// 実際に指した手と食い違う値が残る。floodgateの棋譜に `4723++` として現れ、
+/// 直後の手で評価が8300反転した。
+#[test]
+fn does_not_end_on_an_unresolved_aspiration_bound() {
+    let sfen = "1n1gk2nl/1r4g2/1sppppspp/L5p2/1p5P1/2P6/1PSPPPPSP/7R1/1N1GKG1NL w BLPbp 24";
+    let pos = Position::from_sfen(sfen).unwrap();
+    let shared = Arc::new(Shared::new(16));
+    let stopper = Arc::clone(&shared);
+    let limits = Limits {
+        depth: 12,
+        ..Limits::default()
+    };
+    let tm = TimeManager::new(&limits, pos.side_to_move(), pos.game_ply(), 120, 1120);
+    let mut worker = Worker::new(
+        pos,
+        shared,
+        limits,
+        tm,
+        0,
+        1,
+        Evaluator::material(),
+        History::default(),
+        CounterMoves::default(),
+        CorrectionHistory::default(),
+        CorrectionHistory::default(),
+        ContinuationCorrectionHistory::default(),
+        ContinuationHistory::default(),
+    );
+    let mut saw_bound = false;
+    let mut last_was_bound = false;
+    let mut last_pv_head: Option<Move> = None;
+    let result = worker.iterate(&mut |info| match info {
+        SearchInfo::Bound(i, _) => {
+            // 窓外れを1回報告させたら、読み直しの途中で打ち切る
+            if !saw_bound {
+                saw_bound = true;
+                stopper
+                    .stop
+                    .store(true, std::sync::atomic::Ordering::Relaxed);
+            }
+            last_was_bound = true;
+            last_pv_head = i.pv.first().copied();
+        }
+        SearchInfo::Iteration(i) => {
+            last_was_bound = false;
+            last_pv_head = i.pv.first().copied();
+        }
+        SearchInfo::CurrMove { .. } => {}
+    });
+    assert!(saw_bound, "この局面で窓外れが起きることを前提にしている");
+    assert!(
+        !last_was_bound,
+        "最後のinfoが未確定の窓外れのまま終わっている"
+    );
+    assert_eq!(
+        last_pv_head,
+        Some(result.best),
+        "最後に報告したPVの先頭とbestmoveが食い違う"
+    );
+}
