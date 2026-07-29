@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.15.9](https://github.com/kaz9120/himawari-rs/compare/v0.15.8...v0.15.9) (2026-07-29)
+
+
+### その他の変更
+
+* 打ち切り時に未確定のaspiration窓外れを最後に残さない ([#116](https://github.com/kaz9120/himawari-rs/issues/116)) ([94bd980](https://github.com/kaz9120/himawari-rs/commit/94bd98078eaeed4dc8bde9e0d81fa7ecfeceea44))
+
 ## [0.15.8](https://github.com/kaz9120/himawari-rs/compare/v0.15.7...v0.15.8) (2026-07-29)
 
 
