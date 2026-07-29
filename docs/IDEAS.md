@@ -95,10 +95,10 @@ floodgateの負け11局は終盤の時間枯渇だった（RESULTS.md）。こ�
 | 秒単位切り上げと使い切り | stopを立てる代わりにsearch_endを設定し、秒単位まで使い切る。maximumがavail*3に張り付く問題も同時に見直す | SPRT |
 | bestMoveChangesのスレッド集約 | 全スレッドの最善手変更回数を集約し 1.04+1.8956*changes/threads を掛ける。現状はメインのstable_itersのみ | SPRT |
 | 安定度のロジスティック化 | 現状は 1.5-0.15*n の線形。0.723+0.79/(1.104+exp(-0.5189*(depth-center)))、center=lastBestMoveDepth+11.57 | SPRT |
-| 最小思考時間とponder延長 | MinimumThinkingTime（やねうら王の既定は2000ms）と、ponder有効時にoptimumを1.25倍する扱い | SPRT |
+| 最小思考時間 | MinimumThinkingTime（やねうら王の既定は2000ms）。ADR-0102で「SPRT条件でスケール前提が成り立たない」と判断して見送った。ponder延長の1.25倍は[ADR-0104](adr/0104-ponderhit-time-accounting.md)で測って棄却 | SPRT |
 | 時間管理: fail-low延長 | ADR-0059は評価下落で伸ばす。root fail-low時の明示的な延長は未着手。イテレーション完了を待たない分、falling項より早い情報になる | SPRT |
 | ~~rootの1位2位差を判定材料に足す~~ | [ADR-0103](adr/0103-root-score-gap.md)で実装前に棄却。単独では信号があるが、既存のノード集中度と重複して独立な情報をほぼ持たない | 済 |
-| ponderhitで探索を継続する | 現状はponderhitで再起動し（thread.rs）、反復深化の途中経過を捨てる。時間会計は[ADR-0104](adr/0104-ponderhit-time-accounting.md) | SPRT |
+| **ponderhitで探索を継続する** | 現状はponderhitで再起動する（thread.rs）。反復深化の途中経過を捨てる。[ADR-0104](adr/0104-ponderhit-time-accounting.md)が-117.8で棄却され、これが時間会計の前提だと分かった。先にこちらを入れる | SPRT |
 
 ## 探索: 並列・置換表
 
