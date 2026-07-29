@@ -203,6 +203,24 @@ pub struct SearchResult {
     pub ponder: Move,
 }
 
+/// plyごとの探索状態（ADR-0109のG0）。
+///
+/// 参照実装のStackに対応する。フィールドは既存の4本ぶんだけを持つ。
+/// statScore・moveCount・ttPvなどは、読む側を入れる群で足す。
+#[derive(Clone, Copy)]
+struct StackEntry {
+    /// このplyで指した手。null moveとrootの手前はMove::NONE
+    current_move: Move,
+    /// singular検証探索中の除外手（ADR-0050）
+    excluded_move: Move,
+    /// 静的評価。王手中はVALUE_NONE
+    static_eval: Value,
+    killers: [Move; 2],
+}
+
+/// Stackの前方余白。ss-6まで境界検査なしで参照するために置く。
+const STACK_OFFSET: usize = 7;
+
 pub struct Worker {
     pub pos: Position,
     pub evaluator: Evaluator,
@@ -216,15 +234,9 @@ pub struct Worker {
     pub corr_cont: ContinuationCorrectionHistory,
     /// continuation history（ADR-0047）。
     pub cont: ContinuationHistory,
-    /// plyごとの指し手スタック（ADR-0047）。move_stack[ply]はその
-    /// plyで指した手（null moveはMove::NONE）。1手前・2手前の参照に使う。
-    move_stack: Vec<Move>,
-    /// plyごとの静的評価（improving判定用。王手中はVALUE_NONE）。
-    eval_stack: Vec<Value>,
-    /// plyごとの除外手（singular extension用。ADR-0050）。検証探索中は
-    /// そのplyのexcluded_stackにTT手が入り、ムーブループで飛ばす。
-    excluded_stack: Vec<Move>,
-    killers: Vec<[Move; 2]>,
+    /// plyごとの探索状態（ADR-0109）。添字は `ply + STACK_OFFSET` で引く。
+    /// 前方の余白により、ply 0でも1手前・2手前を境界検査なしで読める。
+    stack: Vec<StackEntry>,
     /// このイテレーションで到達した最大ply（seldepth。ADR-0086）。
     sel_depth: u32,
     /// 深さ1のイテレーションを終えたか。終えるまでstopを無視する。
@@ -267,10 +279,15 @@ impl Worker {
             corr_np,
             corr_cont,
             cont,
-            move_stack: vec![Move::NONE; MAX_PLY + 2],
-            eval_stack: vec![VALUE_NONE; MAX_PLY + 2],
-            excluded_stack: vec![Move::NONE; MAX_PLY + 2],
-            killers: vec![[Move::NONE; 2]; MAX_PLY + 2],
+            stack: vec![
+                StackEntry {
+                    current_move: Move::NONE,
+                    excluded_move: Move::NONE,
+                    static_eval: VALUE_NONE,
+                    killers: [Move::NONE; 2],
+                };
+                MAX_PLY + 10
+            ],
             sel_depth: 0,
             depth1_done: false,
             nodes: 0,
@@ -334,11 +351,8 @@ impl Worker {
     #[inline]
     fn to_corrected(&self, raw: Value, ply: usize) -> Value {
         let stm = self.pos.side_to_move();
-        let prev1 = if ply >= 1 {
-            self.move_stack[ply - 1]
-        } else {
-            Move::NONE
-        };
+        // 余白があるのでply 0でも境界検査は要らない。前方は初期値のMove::NONE
+        let prev1 = self.stack[ply + STACK_OFFSET - 1].current_move;
         let sum = CORR_W_PAWN * self.corr.get(stm, self.pos.pawn_key())
             + CORR_W_NON_PAWN * self.corr_np.get(stm, self.pos.non_pawn_key())
             + CORR_W_CONT * self.corr_cont.get(prev1);
@@ -609,17 +623,28 @@ impl Worker {
             if self.tm.elapsed().as_millis() as u64 >= CURRMOVE_MIN_MS {
                 on_info(SearchInfo::CurrMove { depth, mv: m });
             }
-            self.move_stack[0] = m;
+            self.stack[STACK_OFFSET].current_move = m;
             let nodes_before = self.nodes;
             self.pos.do_move(m);
             self.evaluator.push(&self.pos);
             let mut child_pv = Vec::new();
+            // rootはcut_node = false。PVの第1手と再探索はfalse、
+            // 第2手以降のnull windowは反転してtrueになる（ADR-0109のG0）
             let value = if j == 0 {
-                -self.search(-beta, -alpha, depth - 1, 1, m, &mut child_pv, true)
+                -self.search(-beta, -alpha, depth - 1, 1, m, &mut child_pv, true, false)
             } else {
-                let v = -self.search(-alpha - 1, -alpha, depth - 1, 1, m, &mut child_pv, false);
+                let v = -self.search(
+                    -alpha - 1,
+                    -alpha,
+                    depth - 1,
+                    1,
+                    m,
+                    &mut child_pv,
+                    false,
+                    true,
+                );
                 if v > alpha && !self.stopped() {
-                    -self.search(-beta, -alpha, depth - 1, 1, m, &mut child_pv, true)
+                    -self.search(-beta, -alpha, depth - 1, 1, m, &mut child_pv, true, false)
                 } else {
                     v
                 }
@@ -659,7 +684,10 @@ impl Worker {
         prev: Move,
         pv: &mut Vec<Move>,
         is_pv: bool,
+        cut_node: bool,
     ) -> Value {
+        // 参照実装の不変条件（ADR-0109のG0）。PVノードはcut_nodeにならない
+        debug_assert!(!(is_pv && cut_node));
         pv.clear();
         if self.stopped() {
             return VALUE_ZERO;
@@ -696,7 +724,7 @@ impl Worker {
         }
 
         // 除外手（singular extension用。ADR-0050）。検証探索中はTT手が入る
-        let excluded = self.excluded_stack[ply];
+        let excluded = self.stack[ply + STACK_OFFSET].excluded_move;
 
         // 置換表（ADR-0022, 0024）
         let key = self.pos.key();
@@ -758,12 +786,11 @@ impl Worker {
             self.to_corrected(raw_eval, ply)
         };
 
-        self.eval_stack[ply] = static_eval;
-        // 2手前より静的評価が改善しているか（枝刈りの強弱に使う）
-        let improving = !in_check
-            && ply >= 2
-            && self.eval_stack[ply - 2] != VALUE_NONE
-            && static_eval > self.eval_stack[ply - 2];
+        self.stack[ply + STACK_OFFSET].static_eval = static_eval;
+        // 2手前より静的評価が改善しているか（枝刈りの強弱に使う）。
+        // 余白の初期値はVALUE_NONEなので、ply < 2でもこの検査でfalseになる
+        let prev2_eval = self.stack[ply + STACK_OFFSET - 2].static_eval;
+        let improving = !in_check && prev2_eval != VALUE_NONE && static_eval > prev2_eval;
 
         // reverse futility（ADR-0028）: 静的評価がβを大きく超えるなら刈る。
         // 除外手つき探索中はスキップ（ADR-0050）
@@ -801,7 +828,7 @@ impl Worker {
         {
             let r = NMP_BASE_REDUCTION + depth / 4;
             let mut null_pv = Vec::new();
-            self.move_stack[ply] = Move::NONE;
+            self.stack[ply + STACK_OFFSET].current_move = Move::NONE;
             self.pos.do_null_move();
             self.evaluator.push(&self.pos);
             let v = -self.search(
@@ -811,6 +838,8 @@ impl Worker {
                 ply + 1,
                 Move::NULL,
                 &mut null_pv,
+                false,
+                // NMPの子はcut_node = false（ADR-0109のG0）
                 false,
             );
             self.evaluator.pop();
@@ -848,7 +877,7 @@ impl Worker {
                 if !self.pos.see_ge(m, 0) || !self.pos.is_legal(m) {
                     continue;
                 }
-                self.move_stack[ply] = m;
+                self.stack[ply + STACK_OFFSET].current_move = m;
                 self.pos.do_move(m);
                 self.evaluator.push(&self.pos);
                 // まずqsearchで確認（窓は (-probcut_beta, -probcut_beta+1)）
@@ -864,6 +893,8 @@ impl Worker {
                         m,
                         &mut child_pv,
                         false,
+                        // ProbCutの子はcut_nodeを反転する（ADR-0109のG0）
+                        !cut_node,
                     );
                 }
                 self.evaluator.pop();
@@ -903,8 +934,8 @@ impl Worker {
             let singular_beta = tt_value - 2 * depth as Value;
             // 検証探索はkillers[ply]を書き換える（update_quiet_stats）。
             // このノードのpickerが読む前に退避・復元する（ADR-0050の注意点）
-            let saved_killers = self.killers[ply];
-            self.excluded_stack[ply] = tt_move;
+            let saved_killers = self.stack[ply + STACK_OFFSET].killers;
+            self.stack[ply + STACK_OFFSET].excluded_move = tt_move;
             let mut verify_pv = Vec::new();
             let v = self.search(
                 singular_beta - 1,
@@ -914,11 +945,13 @@ impl Worker {
                 prev,
                 &mut verify_pv,
                 false,
+                // 検証探索はcut_nodeを引き継ぐ（ADR-0109のG0）
+                cut_node,
             );
-            self.excluded_stack[ply] = Move::NONE;
-            self.killers[ply] = saved_killers;
-            // 検証探索の再帰でeval_stack[ply]が同値で上書きされる。念のため戻す
-            self.eval_stack[ply] = static_eval;
+            self.stack[ply + STACK_OFFSET].excluded_move = Move::NONE;
+            self.stack[ply + STACK_OFFSET].killers = saved_killers;
+            // 検証探索の再帰でstatic_evalが同値で上書きされる。念のため戻す
+            self.stack[ply + STACK_OFFSET].static_eval = static_eval;
             if self.stopped() {
                 return VALUE_ZERO;
             }
@@ -943,20 +976,13 @@ impl Worker {
         let mut picker = MovePicker::new(
             &self.pos,
             tt_move,
-            self.killers[ply],
+            self.stack[ply + STACK_OFFSET].killers,
             self.counters.get(prev),
         );
-        // continuation history用の1手前・2手前（ADR-0047）。NONEはget側で0になる
-        let prev1 = if ply >= 1 {
-            self.move_stack[ply - 1]
-        } else {
-            Move::NONE
-        };
-        let prev2 = if ply >= 2 {
-            self.move_stack[ply - 2]
-        } else {
-            Move::NONE
-        };
+        // continuation history用の1手前・2手前（ADR-0047）。NONEはget側で0になる。
+        // 余白の初期値がMove::NONEなので、ply < 2でも境界検査は要らない
+        let prev1 = self.stack[ply + STACK_OFFSET - 1].current_move;
+        let prev2 = self.stack[ply + STACK_OFFSET - 2].current_move;
         let mut best = -VALUE_INFINITE;
         let mut best_move = Move::NONE;
         let mut best_move_is_capture = false;
@@ -1036,11 +1062,21 @@ impl Worker {
                 }
             }
 
-            self.move_stack[ply] = m;
+            self.stack[ply + STACK_OFFSET].current_move = m;
             self.pos.do_move(m);
             self.evaluator.push(&self.pos);
             let value = if count == 1 {
-                -self.search(-beta, -alpha, new_depth, ply + 1, m, &mut child_pv, is_pv)
+                // 第1手はPVならcut_node = false、そうでなければ反転する
+                -self.search(
+                    -beta,
+                    -alpha,
+                    new_depth,
+                    ply + 1,
+                    m,
+                    &mut child_pv,
+                    is_pv,
+                    !is_pv && !cut_node,
+                )
             } else {
                 // LMR（ADR-0028）: 遅い静かな手は浅いnull windowで読み、
                 // alphaを超えたときだけ元の深さで読み直す
@@ -1054,8 +1090,21 @@ impl Worker {
                     let red = (reduction_x1024 / 1024).max(0) as u32;
                     d = new_depth.saturating_sub(red).max(1);
                 }
-                let mut v = -self.search(-alpha - 1, -alpha, d, ply + 1, m, &mut child_pv, false);
+                // 削った浅い探索はcut_node = true、削らなかった全深さの
+                // null windowは反転する（ADR-0109のG0）
+                let child_cut = if d != new_depth { true } else { !cut_node };
+                let mut v = -self.search(
+                    -alpha - 1,
+                    -alpha,
+                    d,
+                    ply + 1,
+                    m,
+                    &mut child_pv,
+                    false,
+                    child_cut,
+                );
                 if v > alpha && d < new_depth && !self.stopped() {
+                    // LMR後の再探索も反転する
                     v = -self.search(
                         -alpha - 1,
                         -alpha,
@@ -1064,10 +1113,21 @@ impl Worker {
                         m,
                         &mut child_pv,
                         false,
+                        !cut_node,
                     );
                 }
                 if v > alpha && is_pv && !self.stopped() {
-                    -self.search(-beta, -alpha, new_depth, ply + 1, m, &mut child_pv, true)
+                    // PVの再探索はcut_node = false
+                    -self.search(
+                        -beta,
+                        -alpha,
+                        new_depth,
+                        ply + 1,
+                        m,
+                        &mut child_pv,
+                        true,
+                        false,
+                    )
                 } else {
                     v
                 }
@@ -1141,11 +1201,7 @@ impl Worker {
                 self.corr.update(stm, self.pos.pawn_key(), bonus);
                 // 追加の2系統も同じbonusで更新する（ADR-0085）
                 self.corr_np.update(stm, self.pos.non_pawn_key(), bonus);
-                let prev1 = if ply >= 1 {
-                    self.move_stack[ply - 1]
-                } else {
-                    Move::NONE
-                };
+                let prev1 = self.stack[ply + STACK_OFFSET - 1].current_move;
                 self.corr_cont.update(prev1, bonus);
             }
         }
@@ -1227,12 +1283,11 @@ impl Worker {
             best = stand;
             futility_base = stand + QS_FUTILITY_MARGIN;
         }
-        // 1手前の移動先（取り返しをfutilityの対象から外す。ADR-0077）
-        let prev_sq = if ply >= 1
-            && self.move_stack[ply - 1] != Move::NONE
-            && !self.move_stack[ply - 1].is_special()
-        {
-            Some(self.move_stack[ply - 1].to())
+        // 1手前の移動先（取り返しをfutilityの対象から外す。ADR-0077）。
+        // 余白の初期値はMove::NONEなので、ply 0でもNoneになる
+        let prev_move = self.stack[ply + STACK_OFFSET - 1].current_move;
+        let prev_sq = if prev_move != Move::NONE && !prev_move.is_special() {
+            Some(prev_move.to())
         } else {
             None
         };
@@ -1281,7 +1336,7 @@ impl Worker {
                 }
             }
 
-            self.move_stack[ply] = m;
+            self.stack[ply + STACK_OFFSET].current_move = m;
             self.pos.do_move(m);
             self.evaluator.push(&self.pos);
             let value = -self.qsearch(-beta, -alpha, ply + 1, qdepth - 1);
@@ -1327,7 +1382,7 @@ impl Worker {
     }
 
     fn update_quiet_stats(&mut self, m: Move, prev: Move, ply: usize, depth: u32, tried: &[Move]) {
-        let k = &mut self.killers[ply];
+        let k = &mut self.stack[ply + STACK_OFFSET].killers;
         if k[0] != m {
             k[1] = k[0];
             k[0] = m;
@@ -1338,16 +1393,8 @@ impl Worker {
         let malus = history_malus(depth);
         self.history.update(m, bonus);
         // continuation history: 1手前・2手前の文脈にbonus/malusを与える（ADR-0047）
-        let prev1 = if ply >= 1 {
-            self.move_stack[ply - 1]
-        } else {
-            Move::NONE
-        };
-        let prev2 = if ply >= 2 {
-            self.move_stack[ply - 2]
-        } else {
-            Move::NONE
-        };
+        let prev1 = self.stack[ply + STACK_OFFSET - 1].current_move;
+        let prev2 = self.stack[ply + STACK_OFFSET - 2].current_move;
         self.cont.update(prev1, m, bonus);
         self.cont.update(prev2, m, bonus);
         for &q in tried {
