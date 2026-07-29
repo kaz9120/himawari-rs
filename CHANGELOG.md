@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.15.7](https://github.com/kaz9120/himawari-rs/compare/v0.15.6...v0.15.7) (2026-07-29)
+
+
+### ドキュメント
+
+* ttPvの伝播とRFPの安全弁を発動率不足で棄却する（ADR-0105） ([#108](https://github.com/kaz9120/himawari-rs/issues/108)) ([e9b28ef](https://github.com/kaz9120/himawari-rs/commit/e9b28ef1a5bdb1205ff79a649c6af109bcf95190))
+
 ## [0.15.6](https://github.com/kaz9120/himawari-rs/compare/v0.15.5...v0.15.6) (2026-07-29)
 
 
