@@ -96,9 +96,9 @@ floodgateの負け11局は終盤の時間枯渇だった（RESULTS.md）。こ�
 | bestMoveChangesのスレッド集約 | 全スレッドの最善手変更回数を集約し 1.04+1.8956*changes/threads を掛ける。現状はメインのstable_itersのみ | SPRT |
 | 安定度のロジスティック化 | 現状は 1.5-0.15*n の線形。0.723+0.79/(1.104+exp(-0.5189*(depth-center)))、center=lastBestMoveDepth+11.57 | SPRT |
 | 最小思考時間とponder延長 | MinimumThinkingTime（やねうら王の既定は2000ms）と、ponder有効時にoptimumを1.25倍する扱い | SPRT |
-| 時間管理: fail-low延長 | ADR-0059は評価下落で伸ばす。root fail-low時の明示的な延長は未着手 | SPRT |
-| rootの1位2位差を判定材料に足す | ADR-0059の案Cは「MultiPV=2でノードが増える」として見送った。MultiPV=1でもrootでfail-lowした手の上界は無料で取れるため前提が変わる。「取る一手」を捉える | SPRT |
-| ponderhitで探索を継続する | 現状はponderhitで再起動し（thread.rs）、満額の時間配分を新規に作る。ponderで読んだ実績が時間管理に伝わらない | SPRT |
+| 時間管理: fail-low延長 | ADR-0059は評価下落で伸ばす。root fail-low時の明示的な延長は未着手。イテレーション完了を待たない分、falling項より早い情報になる | SPRT |
+| ~~rootの1位2位差を判定材料に足す~~ | [ADR-0103](adr/0103-root-score-gap.md)で実装前に棄却。単独では信号があるが、既存のノード集中度と重複して独立な情報をほぼ持たない | 済 |
+| ponderhitで探索を継続する | 現状はponderhitで再起動し（thread.rs）、反復深化の途中経過を捨てる。時間会計は[ADR-0104](adr/0104-ponderhit-time-accounting.md) | SPRT |
 
 ## 探索: 並列・置換表
 
