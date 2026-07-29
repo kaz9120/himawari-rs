@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.16.0](https://github.com/kaz9120/himawari-rs/compare/v0.15.9...v0.16.0) (2026-07-29)
+
+
+### 棋力向上
+
+* USIの入出力をファイルへ写すDebugLogFileを足す ([#117](https://github.com/kaz9120/himawari-rs/issues/117)) ([0eea97c](https://github.com/kaz9120/himawari-rs/commit/0eea97c629975f2389dbca4b24d6047996ec3e0f))
+
+
+### ドキュメント
+
+* floodgateの対局から入玉局面の評価という論点を立てる ([#119](https://github.com/kaz9120/himawari-rs/issues/119)) ([18eac68](https://github.com/kaz9120/himawari-rs/commit/18eac68a3a64448e57e492e9948235af3d63b372))
+
 ## [0.15.9](https://github.com/kaz9120/himawari-rs/compare/v0.15.8...v0.15.9) (2026-07-29)
 
 
