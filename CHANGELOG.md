@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.15.6](https://github.com/kaz9120/himawari-rs/compare/v0.15.5...v0.15.6) (2026-07-29)
+
+
+### ドキュメント
+
+* ponderの時間会計を棄却した記録を残す（ADR-0104） ([#107](https://github.com/kaz9120/himawari-rs/issues/107)) ([262fc06](https://github.com/kaz9120/himawari-rs/commit/262fc0679d488e26c97fa2d0decbf877f6f5b802))
+
 ## [0.15.5](https://github.com/kaz9120/himawari-rs/compare/v0.15.4...v0.15.5) (2026-07-29)
 
 
