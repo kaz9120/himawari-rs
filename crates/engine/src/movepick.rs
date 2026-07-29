@@ -225,56 +225,57 @@ impl CounterMoves {
     }
 }
 
-/// continuation history（ADR-0047）。
-/// 論理次元は[条件手 piece_after 32][条件手 to 81][応手 piece_after 32][応手 to 81]。
-/// 条件手が直前手（1手前）・2手前のとき、この応手が良かったかをスコアで持つ。
+/// continuation history（ADR-0047, 0109）。
+/// 論理次元は[王手中か 2][駒を取る手か 2][条件手の駒 32][条件手の移動先 81]
+/// [応手の駒 32][応手の移動先 81]（history.h:259、yaneuraou-search.cpp:2117）。
 /// 巨大ネスト配列のスタック経由初期化はオーバーフローの危険があるため、
-/// フラットなboxed sliceで確保し添字を計算する（約13.4MB）。
+/// フラットなboxed sliceで確保し添字を計算する（約51.3MiB）。
 pub struct ContinuationHistory {
     table: Box<[i16]>,
 }
 
-const CONT_PIECE: usize = 32;
-const CONT_SQ: usize = 81;
-const CONT_LEN: usize = CONT_PIECE * CONT_SQ * CONT_PIECE * CONT_SQ;
+/// continuation historyの値域（history.h:249のPieceToHistory）。
+const D_PIECE_TO: i32 = 30000;
+/// continuation historyの初期値（yaneuraou-search.cpp:2165）。
+const INIT_CONT: i16 = -523;
 
 impl Default for ContinuationHistory {
     fn default() -> Self {
         ContinuationHistory {
-            table: vec![0i16; CONT_LEN].into_boxed_slice(),
+            table: vec![INIT_CONT; 4 * CONT_STRIDE * CONT_STRIDE].into_boxed_slice(),
         }
     }
 }
 
 impl ContinuationHistory {
+    /// 条件手から面の先頭添字を作る（yaneuraou-search.cpp:2117）。
+    /// in_checkはその手を指したノードで王手がかかっていたか、
+    /// captureはその手が駒を取る手か。
     #[inline]
-    fn index(prev: Move, m: Move) -> usize {
-        ((prev.piece_after().index() * CONT_SQ + prev.to().index()) * CONT_PIECE
-            + m.piece_after().index())
-            * CONT_SQ
-            + m.to().index()
+    pub fn base(in_check: bool, capture: bool, pc: Piece, to: Square) -> usize {
+        (((usize::from(in_check) * 2 + usize::from(capture)) * PIECE_NB + pc.index()) * SQUARE_NB
+            + to.index())
+            * CONT_STRIDE
     }
 
+    /// 指し手のないplyが指す番兵の面（yaneuraou-search.cpp:1467, 3255）。
+    pub const SENTINEL: usize = 0;
+
     #[inline]
-    pub fn get(&self, prev: Move, m: Move) -> i32 {
-        if prev == Move::NONE || prev.is_special() {
-            return 0;
-        }
-        i32::from(self.table[Self::index(prev, m)])
+    pub fn get(&self, base: usize, pc: Piece, to: Square) -> i32 {
+        i32::from(self.table[base + pc.index() * SQUARE_NB + to.index()])
     }
 
-    /// gravity方式の更新。main historyと同一（クランプ±4000、divisor 16384）。
-    pub fn update(&mut self, prev: Move, m: Move, bonus: i32) {
-        if prev == Move::NONE || prev.is_special() {
-            return;
-        }
-        let bonus = bonus.clamp(-4000, 4000);
-        let h = &mut self.table[Self::index(prev, m)];
-        *h += (bonus - i32::from(*h) * bonus.abs() / 16384) as i16;
+    pub fn update(&mut self, base: usize, pc: Piece, to: Square, bonus: i32) {
+        stats_update(
+            &mut self.table[base + pc.index() * SQUARE_NB + to.index()],
+            bonus,
+            D_PIECE_TO,
+        );
     }
 
     pub fn clear(&mut self) {
-        self.table.iter_mut().for_each(|x| *x = 0);
+        self.table.fill(INIT_CONT);
     }
 }
 
@@ -432,13 +433,13 @@ impl MovePicker {
         m == self.tt_move || self.yielded_quiet_stage.contains(&m)
     }
 
+    /// contは1手前から6手前までのcontinuation historyの面。
     pub fn next(
         &mut self,
         pos: &Position,
         history: &History,
-        cont: &ContinuationHistory,
-        prev1: Move,
-        prev2: Move,
+        cont_hist: &ContinuationHistory,
+        cont: &[usize; 6],
     ) -> Option<Move> {
         loop {
             match self.stage {
@@ -506,7 +507,16 @@ impl MovePicker {
                     generate(pos, GenType::Quiets, false, &mut list);
                     for &m in &list {
                         if !self.already_yielded(m) {
-                            let score = history.get(m) + cont.get(prev1, m) + cont.get(prev2, m);
+                            // 1・2・3・4・6手前の5段を等重みで合成する
+                            // （movepick.cpp:364-368）
+                            let pc = m.piece_after();
+                            let to = m.to();
+                            let score = history.get(m)
+                                + cont_hist.get(cont[0], pc, to)
+                                + cont_hist.get(cont[1], pc, to)
+                                + cont_hist.get(cont[2], pc, to)
+                                + cont_hist.get(cont[3], pc, to)
+                                + cont_hist.get(cont[5], pc, to);
                             self.push_scored(m, score);
                         }
                     }

@@ -6,7 +6,9 @@
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 
-use himawari_core::{GenType, Move, MoveList, Position, Repetition, generate, generate_legal};
+use himawari_core::{
+    GenType, Move, MoveList, Piece, Position, Repetition, Square, generate, generate_legal,
+};
 
 use crate::eval::Evaluator;
 use crate::movepick::{
@@ -209,18 +211,26 @@ pub struct SearchResult {
     pub ponder: Move,
 }
 
-/// plyごとの探索状態（ADR-0109のG0）。
+/// plyごとの探索状態（ADR-0109のG0, G1）。
 ///
-/// 参照実装のStackに対応する。フィールドは既存の4本ぶんだけを持つ。
-/// statScore・moveCount・ttPvなどは、読む側を入れる群で足す。
+/// 参照実装のStackに対応する。statScore・moveCount・ttPvなどは、
+/// 読む側を入れる群で足す。
 #[derive(Clone, Copy)]
 struct StackEntry {
-    /// このplyで指した手。null moveとrootの手前はMove::NONE
+    /// このplyで指した手。null moveはMove::NULL、rootの手前はMove::NONE
     current_move: Move,
     /// singular検証探索中の除外手（ADR-0050）
     excluded_move: Move,
     /// 静的評価。王手中はVALUE_NONE
     static_eval: Value,
+    /// このplyで手番側に王手がかかっていたか（G1）。continuation historyの
+    /// 面の選択と、更新する段数の打ち切りに使う
+    in_check: bool,
+    /// このplyで指した手が条件手になるcontinuation historyの面（G1）。
+    /// 参照実装の `Stack::continuationHistory` に対応する
+    cont_base: usize,
+    /// 同じくcontinuation correction historyの面（G1）。
+    cont_corr_base: usize,
     killers: [Move; 2],
 }
 
@@ -286,6 +296,10 @@ impl Worker {
                     current_move: Move::NONE,
                     excluded_move: Move::NONE,
                     static_eval: VALUE_NONE,
+                    in_check: false,
+                    // 指し手のないplyは番兵の面を指す
+                    cont_base: ContinuationHistory::SENTINEL,
+                    cont_corr_base: 0,
                     killers: [Move::NONE; 2],
                 };
                 MAX_PLY + 10
@@ -344,6 +358,24 @@ impl Worker {
         let v = self.evaluator.evaluate(&self.pos);
         self.shared.eval_hash.store(key, v);
         v
+    }
+
+    /// 指し手をStackへ記録する（ADR-0109。yaneuraou-search.cpp:2102-2120）。
+    /// continuation historyの面は、このplyの王手の有無と手の種別で決まる。
+    #[inline]
+    fn set_current_move(&mut self, ply: usize, m: Move, capture: bool) {
+        let in_check = self.stack[ply + STACK_OFFSET].in_check;
+        let e = &mut self.stack[ply + STACK_OFFSET];
+        e.current_move = m;
+        e.cont_base = ContinuationHistory::base(in_check, capture, m.piece_after(), m.to());
+        e.cont_corr_base = ContinuationCorrectionHistory::base(m);
+    }
+
+    /// 1手前から6手前までのcontinuation historyの面（ADR-0109）。
+    /// 余白があるのでply 0でも境界検査は要らない。
+    #[inline]
+    fn cont_bases(&self, ply: usize) -> [usize; 6] {
+        std::array::from_fn(|i| self.stack[ply + STACK_OFFSET - 1 - i].cont_base)
     }
 
     /// 生の静的評価にcorrection historyの補正を加える（ADR-0046, 0109）。
@@ -630,6 +662,8 @@ impl Worker {
         let mut best_idx = pv_idx;
         let mut best_pv: Vec<Move> = Vec::new();
         let moves: Vec<Move> = self.root_moves[pv_idx..].iter().map(|rm| rm.mv).collect();
+        // 子が読むcontinuation historyの面の選択に要る（ADR-0109のG1）
+        self.stack[STACK_OFFSET].in_check = self.pos.in_check();
         for (j, &m) in moves.iter().enumerate() {
             let i = pv_idx + j;
             // 長考中だけ「今読んでいる手」を出す（ADR-0086）。短い探索で
@@ -637,7 +671,8 @@ impl Worker {
             if self.tm.elapsed().as_millis() as u64 >= CURRMOVE_MIN_MS {
                 on_info(SearchInfo::CurrMove { depth, mv: m });
             }
-            self.stack[STACK_OFFSET].current_move = m;
+            let capture = !m.is_drop() && !self.pos.piece_on(m.to()).is_empty();
+            self.set_current_move(0, m, capture);
             let nodes_before = self.nodes;
             self.pos.do_move(m);
             self.evaluator.push(&self.pos);
@@ -801,6 +836,8 @@ impl Worker {
         };
 
         self.stack[ply + STACK_OFFSET].static_eval = static_eval;
+        // continuation historyの面を決める材料（ADR-0109のG1）
+        self.stack[ply + STACK_OFFSET].in_check = in_check;
         // 2手前より静的評価が改善しているか（枝刈りの強弱に使う）。
         // 余白の初期値はVALUE_NONEなので、ply < 2でもこの検査でfalseになる
         let prev2_eval = self.stack[ply + STACK_OFFSET - 2].static_eval;
@@ -842,7 +879,12 @@ impl Worker {
         {
             let r = NMP_BASE_REDUCTION + depth / 4;
             let mut null_pv = Vec::new();
-            self.stack[ply + STACK_OFFSET].current_move = Move::NONE;
+            // null moveは王手でも駒取りでもないので番兵の面を指す
+            // （yaneuraou-search.cpp:3254-3256）
+            let e = &mut self.stack[ply + STACK_OFFSET];
+            e.current_move = Move::NULL;
+            e.cont_base = ContinuationHistory::SENTINEL;
+            e.cont_corr_base = 0;
             self.pos.do_null_move();
             self.evaluator.push(&self.pos);
             let v = -self.search(
@@ -891,7 +933,7 @@ impl Worker {
                 if !self.pos.see_ge(m, 0) || !self.pos.is_legal(m) {
                     continue;
                 }
-                self.stack[ply + STACK_OFFSET].current_move = m;
+                self.set_current_move(ply, m, !self.pos.piece_on(m.to()).is_empty());
                 self.pos.do_move(m);
                 self.evaluator.push(&self.pos);
                 // まずqsearchで確認（窓は (-probcut_beta, -probcut_beta+1)）
@@ -993,10 +1035,8 @@ impl Worker {
             self.stack[ply + STACK_OFFSET].killers,
             self.counters.get(prev),
         );
-        // continuation history用の1手前・2手前（ADR-0047）。NONEはget側で0になる。
-        // 余白の初期値がMove::NONEなので、ply < 2でも境界検査は要らない
-        let prev1 = self.stack[ply + STACK_OFFSET - 1].current_move;
-        let prev2 = self.stack[ply + STACK_OFFSET - 2].current_move;
+        // continuation historyの面（1手前から6手前まで。ADR-0109のG1）
+        let cont = self.cont_bases(ply);
         let mut best = -VALUE_INFINITE;
         let mut best_move = Move::NONE;
         let mut best_move_is_capture = false;
@@ -1004,7 +1044,7 @@ impl Worker {
         let mut tried_quiets: Vec<Move> = Vec::new();
         let mut child_pv = Vec::new();
 
-        while let Some(m) = picker.next(&self.pos, &self.history, &self.cont, prev1, prev2) {
+        while let Some(m) = picker.next(&self.pos, &self.history, &self.cont, &cont) {
             // 除外手はスキップ（singular検証探索。ADR-0050）。通常はexcluded==NONE
             if m == excluded {
                 continue;
@@ -1076,7 +1116,7 @@ impl Worker {
                 }
             }
 
-            self.stack[ply + STACK_OFFSET].current_move = m;
+            self.set_current_move(ply, m, is_capture);
             self.pos.do_move(m);
             self.evaluator.push(&self.pos);
             let value = if count == 1 {
@@ -1268,6 +1308,8 @@ impl Worker {
         }
 
         let in_check = self.pos.in_check();
+        // continuation historyの面を決める材料（ADR-0109のG1）
+        self.stack[ply + STACK_OFFSET].in_check = in_check;
         // stand patの生評価（王手中はなし）。TTのeval欄があればそれを優先し、
         // なければeval hash経由で計算する（ADR-0054, 0049）。store時のeval欄にも使う。
         let raw_eval = if in_check {
@@ -1303,12 +1345,10 @@ impl Worker {
 
         // 入口plyだけ静かな王手も読む（ADR-0028の項目7）
         let mut picker = MovePicker::new_qsearch(&self.pos, tt_move, qdepth == 0);
+        let cont = self.cont_bases(ply);
         let mut count = 0u32;
         let mut best_move = Move::NONE;
-        // qsearchのオーダリングはcontを使わない（ADR-0047のスコープ外）
-        while let Some(m) =
-            picker.next(&self.pos, &self.history, &self.cont, Move::NONE, Move::NONE)
-        {
+        while let Some(m) = picker.next(&self.pos, &self.history, &self.cont, &cont) {
             if !self.pos.is_legal(m) {
                 continue;
             }
@@ -1345,7 +1385,11 @@ impl Worker {
                 }
             }
 
-            self.stack[ply + STACK_OFFSET].current_move = m;
+            self.set_current_move(
+                ply,
+                m,
+                !m.is_drop() && !self.pos.piece_on(m.to()).is_empty(),
+            );
             self.pos.do_move(m);
             self.evaluator.push(&self.pos);
             let value = -self.qsearch(-beta, -alpha, ply + 1, qdepth - 1);
@@ -1421,16 +1465,31 @@ impl Worker {
         let bonus = history_bonus(depth);
         let malus = history_malus(depth);
         self.history.update(m, bonus);
-        // continuation history: 1手前・2手前の文脈にbonus/malusを与える（ADR-0047）
-        let prev1 = self.stack[ply + STACK_OFFSET - 1].current_move;
-        let prev2 = self.stack[ply + STACK_OFFSET - 2].current_move;
-        self.cont.update(prev1, m, bonus);
-        self.cont.update(prev2, m, bonus);
+        self.update_continuation_histories(ply, m.piece_after(), m.to(), bonus);
         for &q in tried {
             if q != m {
                 self.history.update(q, -malus);
-                self.cont.update(prev1, q, -malus);
-                self.cont.update(prev2, q, -malus);
+                self.update_continuation_histories(ply, q.piece_after(), q.to(), -malus);
+            }
+        }
+    }
+
+    /// continuation historyへ段ごとの重みでbonusを配る（ADR-0109のG1）。
+    /// 出典はやねうら王の `update_continuation_histories()`
+    /// （yaneuraou-search.cpp:5384-5398）。王手中は2手前までで打ち切る。
+    fn update_continuation_histories(&mut self, ply: usize, pc: Piece, to: Square, bonus: i32) {
+        /// 何手前の面にどれだけ配るか（yaneuraou-search.cpp:5385-5386）。
+        const CONTHIST_BONUSES: [(usize, i32); 6] =
+            [(1, 1157), (2, 648), (3, 288), (4, 576), (5, 140), (6, 441)];
+        let in_check = self.stack[ply + STACK_OFFSET].in_check;
+        for (i, weight) in CONTHIST_BONUSES {
+            if in_check && i > 2 {
+                break;
+            }
+            let e = self.stack[ply + STACK_OFFSET - i];
+            if !e.current_move.is_special() {
+                let b = bonus * weight / 1024 + 88 * i32::from(i < 2);
+                self.cont.update(e.cont_base, pc, to, b);
             }
         }
     }
