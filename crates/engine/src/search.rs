@@ -106,25 +106,26 @@ fn lmp_limit(depth: u32, improving: bool) -> u32 {
     (3 + depth * depth) / (2 - u32::from(improving))
 }
 
-/// LMRのリダクション表（ADR-0076で1024倍の固定小数へ）。
-/// r = 1024・(0.5 + ln(depth)・ln(count) / 2.25)。
-/// 1024倍したスケールはやねうら王の `reductions[d]・reductions[mn]`
-/// （係数466対455、差2.4%）と一致するため、あちらの項の重みを換算せずに
-/// 使える（ADR-0074のスケール前提の確認）。
-static LMR_TABLE: std::sync::OnceLock<[[i32; 64]; 64]> = std::sync::OnceLock::new();
+/// LMRのリダクション表の要素数。深さと手数の両方でこの表を引くので、
+/// 生成できる手数の上限（`MoveList` の608）に合わせる。
+/// 参照実装も `std::array<int, MAX_MOVES>` である
+/// （yaneuraou-search.h:582）。
+const REDUCTIONS_LEN: usize = 608;
 
-/// 1024倍したリダクション量。実際の削り幅は呼び側で /1024 する。
-fn lmr_reduction_x1024(depth: u32, count: u32) -> i32 {
-    let t = LMR_TABLE.get_or_init(|| {
-        let mut t = [[0i32; 64]; 64];
-        for (d, row) in t.iter_mut().enumerate().skip(1) {
-            for (c, r) in row.iter_mut().enumerate().skip(1) {
-                *r = (1024.0 * (0.5 + (d as f64).ln() * (c as f64).ln() / 2.25)) as i32;
-            }
+/// LMRのリダクション表（G2。yaneuraou-search.cpp:2168-2169）。
+/// `2763 / 128 × ln(i)` を整数化した1次元表で、深さと手数の積を取る。
+/// 積が1024倍の固定小数になるスケールはADR-0076で確認済み。
+static REDUCTIONS: std::sync::OnceLock<[i32; REDUCTIONS_LEN]> = std::sync::OnceLock::new();
+
+fn reductions(i: u32) -> i32 {
+    let t = REDUCTIONS.get_or_init(|| {
+        let mut t = [0i32; REDUCTIONS_LEN];
+        for (i, r) in t.iter_mut().enumerate().skip(1) {
+            *r = (2763.0 / 128.0 * (i as f64).ln()) as i32;
         }
         t
     });
-    t[depth.min(63) as usize][count.min(63) as usize]
+    t[(i as usize).min(REDUCTIONS_LEN - 1)]
 }
 
 /// スレッド間の共有状態（ADR-0020）。
@@ -255,6 +256,9 @@ pub struct Worker {
     stack: Vec<StackEntry>,
     /// このイテレーションで到達した最大ply（seldepth。ADR-0086）。
     sel_depth: u32,
+    /// このイテレーションのaspiration窓の幅（G2。yaneuraou-search.cpp:1708）。
+    /// リダクションが「今の窓幅がroot窓幅の何割か」で削る量を決める
+    root_delta: Value,
     /// 深さ1のイテレーションを終えたか。終えるまでstopを無視する。
     /// root手は生成順のままなので、深さ1の途中で打ち切ると探索して
     /// いない手を返してしまう
@@ -304,6 +308,8 @@ impl Worker {
                 MAX_PLY + 10
             ],
             sel_depth: 0,
+            // 0除算を避ける番兵。search_rootが毎回入れ直す
+            root_delta: 1,
             depth1_done: false,
             nodes: 0,
             shared,
@@ -375,6 +381,18 @@ impl Worker {
     #[inline]
     fn cont_bases(&self, ply: usize) -> [usize; 6] {
         std::array::from_fn(|i| self.stack[ply + STACK_OFFSET - 1 - i].cont_base)
+    }
+
+    /// LMRのリダクション量（G2。yaneuraou-search.cpp:5148-5151）。
+    /// 返る値は1024倍の固定小数である。
+    ///
+    /// 基礎値は深さと手数の表の積。そこから窓幅の比で引き、改善して
+    /// いなければ基礎値の206/512を足し、定数1133を足す。窓が広い
+    /// （root窓に近い）ほど削らない。
+    #[inline]
+    fn reduction(&self, improving: bool, depth: u32, move_count: u32, delta: Value) -> i32 {
+        let scale = reductions(depth) * reductions(move_count);
+        scale - delta * 585 / self.root_delta + i32::from(!improving) * scale * 206 / 512 + 1133
     }
 
     /// その手の履歴の強さ（G2。yaneuraou-search.cpp:3924-3932）。
@@ -681,6 +699,8 @@ impl Worker {
         pv_idx: usize,
         on_info: &mut dyn FnMut(SearchInfo),
     ) -> (Value, usize, Vec<Move>) {
+        // リダクションの窓幅項の基準（yaneuraou-search.cpp:1708）
+        self.root_delta = beta - alpha;
         let mut best = -VALUE_INFINITE;
         let mut best_idx = pv_idx;
         let mut best_pv: Vec<Move> = Vec::new();
@@ -1179,16 +1199,15 @@ impl Worker {
                 depth - 1
             };
 
-            // LMRのリダクション量（ADR-0076の1024倍固定小数）。枝刈りの尺度
+            // LMRのリダクション量（1024倍の固定小数。G2）。枝刈りの尺度
             // （lmr_depth）と実際の浅い探索で同じ値を使う
-            let mut reduction_x1024 = lmr_reduction_x1024(depth, count);
-            if is_pv {
-                reduction_x1024 -= 1024;
-            }
+            let delta = beta - alpha;
+            let r = self.reduction(improving, depth, count, delta);
             // lmr_depth: LMRで削ったあとに実際に読む深さ（ADR-0090）。
             // 生のdepthで枝刈りを判断すると、深いノードほど閾値が大きくなり
-            // 刈りすぎる。実際に読む深さで測る
-            let lmr_depth = (new_depth as i32 - (reduction_x1024 / 1024).max(0)).max(0);
+            // 刈りすぎる。実際に読む深さで測る。参照実装はここでクランプせず、
+            // SEE枝刈りの直前で0止めする（yaneuraou-search.cpp:3600, 3691）
+            let lmr_depth = new_depth as i32 - r / 1024;
 
             // move count pruning（ADR-0028, 0109）: 手数を使い切ったら、
             // MovePickerに静かな手の生成そのものをやめさせる。詰まされ筋では
@@ -1218,6 +1237,8 @@ impl Worker {
                 let threshold = if is_capture {
                     -SEE_CAPTURE_COEF * depth as i32
                 } else {
+                    // 参照実装はここで0止めする（yaneuraou-search.cpp:3691）
+                    let lmr_depth = lmr_depth.max(0);
                     -SEE_QUIET_COEF * lmr_depth * lmr_depth
                 };
                 if !self.pos.see_ge(m, threshold) {
@@ -1254,7 +1275,7 @@ impl Worker {
                     && !gives_check
                     && !in_check;
                 if did_lmr {
-                    let red = (reduction_x1024 / 1024).max(0) as u32;
+                    let red = (r / 1024).max(0) as u32;
                     d = new_depth.saturating_sub(red).max(1);
                 }
                 // 削った浅い探索はcut_node = true、削らなかった全深さの
