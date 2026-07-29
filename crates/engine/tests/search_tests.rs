@@ -238,7 +238,15 @@ fn stop_before_first_iteration_still_returns_the_depth1_best() {
         infinite: true,
         ..Limits::default()
     };
-    let tm = TimeManager::new(&limits, pos.side_to_move(), pos.game_ply(), 120, 1120);
+    let tm = TimeManager::new(
+        &limits,
+        pos.side_to_move(),
+        pos.game_ply(),
+        120,
+        1120,
+        std::time::Instant::now(),
+        false,
+    );
     let mut worker = Worker::new(
         pos.clone(),
         shared,
