@@ -32,10 +32,17 @@ const NMP_BASE_REDUCTION: u32 = 3;
 /// reverse futilityの最大深さとdepthあたりのマージン。
 const RFP_MAX_DEPTH: u32 = 6;
 const RFP_MARGIN: Value = 120;
-/// 子ノードfutilityの最大深さとマージン（基本 + depth比例）。
-const FUTILITY_MAX_DEPTH: u32 = 6;
-const FUTILITY_BASE: Value = 200;
+/// 親ノードfutilityの上限深さとマージン（ADR-0028, 0109のG3。
+/// yaneuraou-search.cpp:3665-3676）。尺度はdepthではなく履歴で補正した
+/// lmrDepthである。マージンは
+/// `42 + 151*(最善手未発見) + 120*lmrDepth + 86*(staticEval > alpha)` で、
+/// これを静的評価へ足してもalphaに届かない手を刈る。評価値は歩=90の
+/// スケールで一致する（ADR-0074）
+const FUTILITY_MAX_DEPTH: i32 = 13;
+const FUTILITY_BASE: Value = 42;
+const FUTILITY_NO_BEST: Value = 151;
 const FUTILITY_MARGIN: Value = 120;
+const FUTILITY_OVER_ALPHA: Value = 86;
 /// 「今読んでいる手」をinfoで出し始める経過時間（ADR-0086）。
 /// USIの慣例に合わせ、短い探索では出さない
 const CURRMOVE_MIN_MS: u64 = 3000;
@@ -53,13 +60,33 @@ const CORR_DIVISOR: i32 = 131072;
 /// 1手前の指し手がないときのcontinuation項の代替値
 /// （yaneuraou-search.cpp:735）。
 const CORR_CONT_DEFAULT: i32 = 8;
-/// SEEベースの枝刈り（ADR-0090）。移動先での駒の取り合いを静的に解き、
-/// この額より損をする手を捨てる。出典はやねうら王の
-/// `-25*lmrDepth^2`（静かな手）と `-167*depth`（取る手、captHist項は除く）。
-/// SEEの駒価値は歩=90でやねうら王と同系列のため絶対値のまま使える
-/// （ADR-0074）。閾値が負なので「多少の駒損は許し、大きな損だけ刈る」
+/// SEEベースの枝刈り（ADR-0090, 0109）。移動先での駒の取り合いを静的に
+/// 解き、この額より損をする手を捨てる。出典はやねうら王の
+/// `-25*lmrDepth^2`（静かな手。yaneuraou-search.cpp:3697）と
+/// `-max(167*depth + captHist*34/1024, 0)`（取る手・王手する手。
+/// yaneuraou-search.cpp:3631）。SEEの駒価値は歩=90でやねうら王と
+/// 同系列のため絶対値のまま使える（ADR-0074）。閾値が負なので
+/// 「多少の駒損は許し、大きな損だけ刈る」
 const SEE_QUIET_COEF: i32 = 25;
 const SEE_CAPTURE_COEF: i32 = 167;
+const SEE_CAPT_HIST: i32 = 34;
+/// 取る手のfutility（ADR-0109のG3。yaneuraou-search.cpp:3618-3619）。
+/// `staticEval + 218 + 223*lmrDepth + 取った駒の価値 + 131*captHist/1024`
+/// がalpha以下なら刈る。評価値は歩=90スケールで一致する（ADR-0074）
+const CAPT_FUTILITY_MAX_DEPTH: i32 = 7;
+const CAPT_FUTILITY_BASE: Value = 218;
+const CAPT_FUTILITY_DEPTH: Value = 223;
+const CAPT_FUTILITY_HIST: i32 = 131;
+/// 静かな手のcontinuation history枝刈り（ADR-0109のG3。
+/// yaneuraou-search.cpp:3650）。1手前・2手前のcontinuation historyと
+/// pawn historyの和が `-4097 * depth` を下回る手は読まない
+const CONT_HIST_PRUNE_COEF: i32 = 4097;
+/// historyによるlmrDepth補正の除数（ADR-0109のG3。
+/// yaneuraou-search.cpp:3661）。上の和にmain historyの `71/32`
+/// （yaneuraou-search.cpp:3656）を足した値をこれで割り、lmrDepthへ
+/// 加える。この補正の後で親futilityと静かな手のSEE枝刈りが同じ
+/// lmrDepthを読むので、順序を入れ替えてはならない
+const LMR_DEPTH_HIST_DIVISOR: i32 = 3220;
 /// razoringの最大深さとマージン（ADR-0057）。
 const RAZOR_MAX_DEPTH: u32 = 3;
 const RAZOR_MARGIN: Value = 300;
@@ -238,6 +265,9 @@ struct StackEntry {
     /// このplyで今調べている手の履歴の強さ（G2。yaneuraou-search.cpp:3924-3932）。
     /// リダクションの減算と、子でのhistory更新量の2方向へ効く
     stat_score: i32,
+    /// 前回の反復深化のPV上にいるか（G3。yaneuraou-search.cpp:2370-2372）。
+    /// PVノードでここが真の間は静かな手の浅い枝刈りを抑え、前回のPVを壊さない
+    follow_pv: bool,
 }
 
 /// Stackの前方余白。ss-6まで境界検査なしで参照するために置く。
@@ -256,6 +286,9 @@ pub struct Worker {
     /// このイテレーションのaspiration窓の幅（G2。yaneuraou-search.cpp:1708）。
     /// リダクションが「今の窓幅がroot窓幅の何割か」で削る量を決める
     root_delta: Value,
+    /// 前回の反復深化で得たPV（G3。yaneuraou-search.h:562）。
+    /// 各ノードの `follow_pv` 判定が読む。goのたびに捨てる
+    last_iteration_pv: Vec<Move>,
     /// 深さ1のイテレーションを終えたか。終えるまでstopを無視する。
     /// root手は生成順のままなので、深さ1の途中で打ち切ると探索して
     /// いない手を返してしまう
@@ -301,12 +334,14 @@ impl Worker {
                     cutoff_cnt: 0,
                     reduction: 0,
                     stat_score: 0,
+                    follow_pv: false,
                 };
                 MAX_PLY + 10
             ],
             sel_depth: 0,
             // 0除算を避ける番兵。search_rootが毎回入れ直す
             root_delta: 1,
+            last_iteration_pv: Vec::new(),
             depth1_done: false,
             nodes: 0,
             shared,
@@ -504,6 +539,9 @@ impl Worker {
         self.evaluator.new_search(&self.pos);
         // lowPly historyはgoのたびに埋め直す（ADR-0109。S:1539-1540）
         self.hist.new_search();
+        // 前回のgoで得たPVは今回の探索では使えないので捨てる
+        // （yaneuraou-search.cpp:943）
+        self.last_iteration_pv.clear();
         let mut list = MoveList::default();
         generate_legal(&self.pos, false, &mut list);
         self.root_moves = list
@@ -631,6 +669,12 @@ impl Worker {
                     }
                 }
             }
+            // 今回の反復のPVを覚える（yaneuraou-search.cpp:1846-1853）。
+            // 次の反復のfollow_pv判定が読む。打ち切られた反復のPVは
+            // 途中までしか探索していないので採らない
+            if !self.shared.stop.load(Ordering::Relaxed) {
+                self.last_iteration_pv.clone_from(&self.root_moves[0].pv);
+            }
             // ここまで来れば深さ1は完走している。以降はstopに従う
             self.depth1_done = true;
             // 局面の難易度で思考時間をスケールする（ADR-0059）
@@ -727,6 +771,8 @@ impl Worker {
         self.stack[STACK_OFFSET].tt_pv = true;
         self.stack[STACK_OFFSET + 2].cutoff_cnt = 0;
         self.stack[STACK_OFFSET].stat_score = 0;
+        // rootは常に前回PVの上にいる（yaneuraou-search.cpp:2370）
+        self.stack[STACK_OFFSET].follow_pv = true;
         // continuation historyの面（1手前から6手前まで）。rootでも
         // statScoreの計算に要る
         let cont = self.cont_bases(0);
@@ -861,6 +907,13 @@ impl Worker {
         // 自分の次plyは1手前のノードが戻しているので、兄弟をまたいで貯まる
         self.stack[ply + STACK_OFFSET + 2].cutoff_cnt = 0;
         self.stack[ply + STACK_OFFSET].stat_score = 0;
+        // 前回の反復深化のPVを辿っているか（yaneuraou-search.cpp:2370-2372）。
+        // 1手前がPV上にいて、1手前の手が前回PVの同じplyの手と一致するときに
+        // 限って真になる。search()はply >= 1でしか呼ばれない
+        let follow_pv = self.stack[ply + STACK_OFFSET - 1].follow_pv
+            && ply - 1 < self.last_iteration_pv.len()
+            && self.stack[ply + STACK_OFFSET - 1].current_move == self.last_iteration_pv[ply - 1];
+        self.stack[ply + STACK_OFFSET].follow_pv = follow_pv;
         // 1手前が取った駒と、1手前の移動先（yaneuraou-search.cpp:2355, 2550）。
         // historyの更新条件が繰り返し読む
         let prior_capture = self.pos.state().captured;
@@ -1214,7 +1267,8 @@ impl Worker {
 
             // 王手延長（ADR-0024）とsingular延長（ADR-0050）。どちらもTT手/王手を
             // +1する。両立時はmaxで重複させない（depthのまま、depth+1にしない）。
-            // 枝刈りの尺度に使うため、ムーブループの枝刈りより前で決める
+            // 参照実装は延長をムーブループの枝刈りの後で加えるので、枝刈りの
+            // 尺度（lmr_depth）はこの値でなく `depth - 1` を基準にする
             let new_depth = if gives_check || (singular && m == tt_move) {
                 depth
             } else {
@@ -1230,46 +1284,106 @@ impl Worker {
             if self.stack[ply + STACK_OFFSET].tt_pv {
                 r += 1013;
             }
-            // lmr_depth: LMRで削ったあとに実際に読む深さ（ADR-0090）。
-            // 生のdepthで枝刈りを判断すると、深いノードほど閾値が大きくなり
-            // 刈りすぎる。実際に読む深さで測る。参照実装はここでクランプせず、
-            // SEE枝刈りの直前で0止めする（yaneuraou-search.cpp:3600, 3691）
-            let lmr_depth = new_depth as i32 - r / 1024;
+            // Step 14: 浅い深さでの枝刈り（yaneuraou-search.cpp:3586-3698）。
+            // 前提条件は「rootでない」「bestValueが敗勢でない」の2つだけで、
+            // search()は常にrootでない。bestは1手目を読み終えるまで
+            // -VALUE_INFINITEなので、第1手はこのブロックに入らない
+            if best > VALUE_MATED_IN_MAX_PLY {
+                // move count pruning（yaneuraou-search.cpp:3592-3593）: 手数を
+                // 使い切ったら、MovePickerに静かな手の生成そのものをやめさせる
+                if count >= lmp_limit(depth, improving) {
+                    picker.skip_quiet_moves();
+                }
 
-            // move count pruning（ADR-0028, 0109）: 手数を使い切ったら、
-            // MovePickerに静かな手の生成そのものをやめさせる。詰まされ筋では
-            // 無効。参照実装は「rootでない」「bestValueが敗勢でない」の2条件
-            // だけを課す（yaneuraou-search.cpp:3586-3594）
-            if best > VALUE_MATED_IN_MAX_PLY && count >= lmp_limit(depth, improving) {
-                picker.skip_quiet_moves();
-            }
+                // lmr_depth: LMRで削ったあとに実際に読む深さ
+                // （yaneuraou-search.cpp:3599-3600）。生のdepthで枝刈りを
+                // 判断すると、深いノードほど閾値が大きくなり刈りすぎる。
+                // 参照実装は延長を加える前の `depth - 1` を基準にする
+                let mut lmr_depth = depth as i32 - 1 - r / 1024;
 
-            // futility（ADR-0028）: 評価がalphaに遠く及ばない浅い静かな手を
-            // 飛ばす。最初の手は必ず読む（countは既に加算済み）
-            if !in_check
-                && !is_capture
-                && !gives_check
-                && count > 1
-                && depth <= FUTILITY_MAX_DEPTH
-                && alpha.abs() < VALUE_MATE_IN_MAX_PLY
-                && static_eval + FUTILITY_BASE + FUTILITY_MARGIN * depth as Value <= alpha
-            {
-                continue;
-            }
+                if is_capture || gives_check {
+                    // 取る駒（駒打ちと王手だけの手ではEMPTY）と、その
+                    // capture history（yaneuraou-search.cpp:3612-3614）
+                    let captured = self.pos.piece_on(m.to()).piece_type();
+                    let capt_hist = self.hist.capture.get(m.piece_after(), m.to(), captured);
 
-            // SEEベースの枝刈り（ADR-0090）。移動先の取り合いを静的に解き、
-            // 大きく駒損する手を読まずに捨てる。静かな手は実効深さの2乗、
-            // 取る手は深さに比例した額まで損を許す
-            if !is_pv && best > VALUE_MATED_IN_MAX_PLY && count > 1 && !in_check {
-                let threshold = if is_capture {
-                    -SEE_CAPTURE_COEF * depth as i32
-                } else {
-                    // 参照実装はここで0止めする（yaneuraou-search.cpp:3691）
+                    // 取る手のfutility（yaneuraou-search.cpp:3616-3623）。
+                    // 取った駒の価値を足してもalphaに届かない手を捨てる。
+                    // 王手する手は対象外
+                    if !gives_check && lmr_depth < CAPT_FUTILITY_MAX_DEPTH {
+                        let futility_value = static_eval
+                            + CAPT_FUTILITY_BASE
+                            + CAPT_FUTILITY_DEPTH * lmr_depth
+                            + himawari_core::piece_value(captured)
+                            + CAPT_FUTILITY_HIST * capt_hist / 1024;
+                        if futility_value <= alpha {
+                            continue;
+                        }
+                    }
+
+                    // 取る手・王手する手のSEE枝刈り
+                    // （yaneuraou-search.cpp:3634-3641）。許す損の額が
+                    // capture historyで動く。alphaが負のときは刈らない
+                    let margin =
+                        (SEE_CAPTURE_COEF * depth as i32 + capt_hist * SEE_CAPT_HIST / 1024).max(0);
+                    if alpha >= VALUE_DRAW && !self.pos.see_ge(m, -margin) {
+                        continue;
+                    }
+                } else if !follow_pv || !is_pv {
+                    // 前回の反復深化のPV上にいるPVノードでは、静かな手の
+                    // 枝刈りを一切かけない（yaneuraou-search.cpp:3644）。
+                    // 前回のPVを浅い枝刈りで壊さないための仕掛けである
+                    //
+                    // 静かな手の履歴（yaneuraou-search.cpp:3646-3648）。
+                    // 1手前・2手前のcontinuation historyとpawn historyの和
+                    let to = m.to();
+                    let pc = m.piece_after();
+                    let pawn_slot = PawnHistory::slot(self.pos.pawn_key());
+                    let mut history = self.hist.cont.get(cont[0], pc, to)
+                        + self.hist.cont.get(cont[1], pc, to)
+                        + self.hist.pawn.get(pawn_slot, pc, to);
+
+                    // continuation historyによる枝刈り
+                    // （yaneuraou-search.cpp:3650-3651）。履歴が極端に
+                    // 悪い手は読まない
+                    if history < -CONT_HIST_PRUNE_COEF * depth as i32 {
+                        continue;
+                    }
+
+                    // main historyを足してlmr_depthを補正する
+                    // （yaneuraou-search.cpp:3656-3661）。以降の枝刈りが
+                    // 使う尺度そのものが履歴で動く
+                    history += 71 * self.hist.main.get(self.pos.side_to_move(), m) / 32;
+                    lmr_depth += history / LMR_DEPTH_HIST_DIVISOR;
+
+                    // 親ノードのfutility（yaneuraou-search.cpp:3665-3682）。
+                    // 子を展開する前に、alphaへ届かないと見込める静かな手を
+                    // 捨てる。尺度は補正後のlmr_depthで、まだ最善手が
+                    // 見つかっていないときと静的評価がalphaを超えている
+                    // ときにマージンを積む
+                    let futility_value = static_eval
+                        + FUTILITY_BASE
+                        + FUTILITY_NO_BEST * Value::from(best_move == Move::NONE)
+                        + FUTILITY_MARGIN * lmr_depth
+                        + FUTILITY_OVER_ALPHA * Value::from(static_eval > alpha);
+                    if !in_check && lmr_depth < FUTILITY_MAX_DEPTH && futility_value <= alpha {
+                        // 刈った手の見込み値でbestValueを引き上げる。
+                        // 詰み圏の値は動かさない
+                        if best <= futility_value
+                            && best.abs() < VALUE_MATE_IN_MAX_PLY
+                            && futility_value < VALUE_MATE_IN_MAX_PLY
+                        {
+                            best = futility_value;
+                        }
+                        continue;
+                    }
+
+                    // 負のSEEを持つ手の枝刈り（yaneuraou-search.cpp:3691-3698）。
+                    // 参照実装はここで0止めする
                     let lmr_depth = lmr_depth.max(0);
-                    -SEE_QUIET_COEF * lmr_depth * lmr_depth
-                };
-                if !self.pos.see_ge(m, threshold) {
-                    continue;
+                    if !self.pos.see_ge(m, -SEE_QUIET_COEF * lmr_depth * lmr_depth) {
+                        continue;
+                    }
                 }
             }
 
