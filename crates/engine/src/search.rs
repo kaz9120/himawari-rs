@@ -259,8 +259,7 @@ struct StackEntry {
     /// 親が次plyの値を読む。多いほどリダクションを増やす
     cutoff_cnt: i32,
     /// このplyのLMRが削った量（G2。yaneuraou-search.cpp:3980）。
-    /// 子が `priorReduction` として読む側はG4で入れる
-    #[allow(dead_code)]
+    /// 子が `priorReduction` として読み、深さの事後補正に使う（G4）
     reduction: i32,
     /// このplyで今調べている手の履歴の強さ（G2。yaneuraou-search.cpp:3924-3932）。
     /// リダクションの減算と、子でのhistory更新量の2方向へ効く
@@ -907,6 +906,10 @@ impl Worker {
         // 自分の次plyは1手前のノードが戻しているので、兄弟をまたいで貯まる
         self.stack[ply + STACK_OFFSET + 2].cutoff_cnt = 0;
         self.stack[ply + STACK_OFFSET].stat_score = 0;
+        // 1手前のLMRが削った量（yaneuraou-search.cpp:2552-2553）。
+        // 読んだ側が消す。深さの事後補正がこの値を見る
+        let prior_reduction = self.stack[ply + STACK_OFFSET - 1].reduction;
+        self.stack[ply + STACK_OFFSET - 1].reduction = 0;
         // 前回の反復深化のPVを辿っているか（yaneuraou-search.cpp:2370-2372）。
         // 1手前がPV上にいて、1手前の手が前回PVの同じplyの手と一致するときに
         // 限って真になる。search()はply >= 1でしか呼ばれない
@@ -991,7 +994,7 @@ impl Worker {
 
         // IIR（ADR-0028）: TTに手がないノードは良い順序を作れないので
         // 1浅く読み、再訪時にTT手付きで読み直す
-        let depth = if depth >= IIR_MIN_DEPTH && tt_move == Move::NONE {
+        let mut depth = if depth >= IIR_MIN_DEPTH && tt_move == Move::NONE {
             depth - 1
         } else {
             depth
@@ -1057,6 +1060,24 @@ impl Worker {
         // 静的評価が2手前の写しでしかないため、判断材料にできない
         if !in_check {
             improving = static_eval > self.stack[ply + STACK_OFFSET - 2].static_eval;
+            // 相手の状況が悪化しているか（yaneuraou-search.cpp:3169）。
+            // 普通は `static_eval == -(1手前のstatic_eval)` なので、これを
+            // 上回るなら相手にとって評価が悪くなっている
+            let opponent_worsening = static_eval > -self.stack[ply + STACK_OFFSET - 1].static_eval;
+
+            // 1手前のリダクションに応じた残り深さの事後補正
+            // （yaneuraou-search.cpp:3176-3179）。深く削って戻ってきた手が
+            // 相手を悪くできていないなら1手足し、静的評価の和が閾値を超えて
+            // いるなら1手引く
+            if prior_reduction >= 3 && !opponent_worsening {
+                depth += 1;
+            }
+            if prior_reduction >= 2
+                && depth >= 2
+                && static_eval + self.stack[ply + STACK_OFFSET - 1].static_eval > 173
+            {
+                depth -= 1;
+            }
 
             // reverse futility（ADR-0028）: 静的評価がβを大きく超えるなら刈る。
             // 除外手つき探索中はスキップ（ADR-0050）
@@ -1547,6 +1568,12 @@ impl Worker {
                         // 最大1手なので `extension < 2` は常に成立する
                         self.stack[ply + STACK_OFFSET].cutoff_cnt += 1;
                         break;
+                    }
+                    // alphaを更新できたので、残りの手を浅く読む
+                    // （yaneuraou-search.cpp:4228-4229）。決着スコアのときは
+                    // 深さを保って読み切る
+                    if depth > 2 && depth < 14 && value.abs() < VALUE_MATE_IN_MAX_PLY {
+                        depth -= 2;
                     }
                     alpha = value;
                 }
