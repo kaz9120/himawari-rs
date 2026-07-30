@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.24.0](https://github.com/kaz9120/himawari-rs/compare/v0.23.0...v0.24.0) (2026-07-30)
+
+
+### 棋力向上
+
+* 停止を予約する構造へ移し最小思考時間を入れる（G7、ADR-0116） ([5d165b3](https://github.com/kaz9120/himawari-rs/commit/5d165b3f824e36c7bb966cf01b4cb2d2829cc904))
+
 ## [0.23.0](https://github.com/kaz9120/himawari-rs/compare/v0.22.0...v0.23.0) (2026-07-30)
 
 
