@@ -7,6 +7,10 @@ use std::time::{Duration, Instant};
 
 use himawari_core::Color;
 
+/// 終局までにこれくらい自分が指すと考えて計画を練る（timeman.cpp:17）。
+/// 近年は終局までの平均手数が伸びているので160に設定されている
+const MOVE_HORIZON: i64 = 160;
+
 /// goコマンドの探索制限。時間はミリ秒。
 #[derive(Clone, Default, Debug)]
 pub struct Limits {
@@ -137,6 +141,39 @@ impl TimeManager {
             return;
         }
 
+        // 切れ負けであるか（timeman.cpp:196）
+        let time_forfeit = inc == 0 && byoyomi == 0;
+
+        // 対局長の見積もり（timeman.cpp:203-208）。切れ負けなら40手ぶん
+        // 長く見る。序盤は定跡で進むので大きめに、40手目以降は減らして考える
+        let ply = i64::from(game_ply);
+        let move_horizon = if time_forfeit {
+            MOVE_HORIZON + 40 - ply.min(40)
+        } else {
+            // + 20は調整項
+            MOVE_HORIZON + 20 - ply.min(80)
+        };
+
+        // 残りの自分の手番の回数（timeman.cpp:213）。平手の初期局面はply==1。
+        // ply == 255 or 256でMTGが1になるように2を足す
+        let mtg = (opts.max_moves_to_draw - ply + 2).min(move_horizon) / 2;
+
+        if mtg <= 0 {
+            // 終局までの最大手数が指定されている前提なので通らないはず。
+            // 事故防止のために何か設定はしておく（timeman.cpp:215-222）
+            self.minimum_time = 500;
+            self.optimum_time = 500;
+            self.maximum_time = 500;
+            return;
+        }
+        if mtg == 1 {
+            // この手番で終了なので使いきれば良い（timeman.cpp:223-228）
+            self.minimum_time = self.remain_time;
+            self.optimum_time = self.remain_time;
+            self.maximum_time = self.remain_time;
+            return;
+        }
+
         // 最小思考時間（timeman.cpp:235-236）。秒未満を切り上げないときは
         // 秒未満での戦いなので下限を1にする
         self.minimum_time = (opts.minimum_thinking_time - opts.network_delay).max(
@@ -147,13 +184,57 @@ impl TimeManager {
             },
         );
 
-        // 残り想定手数で割り、秒読み・加算を足す（ADR-0021の初期式）。
-        // 配分式の参照実装への差し替えはこの群の最後で行う
-        let rem_moves = (48i64 - i64::from(game_ply) / 2).max(16);
-        let avail = my_time / rem_moves + byoyomi + inc;
-        self.optimum_time = (avail - opts.network_delay).max(10);
-        self.maximum_time = ((avail * 3).min(self.remain_time) - opts.network_delay).max(10);
-        self.maximum_time = self.maximum_time.max(self.optimum_time);
+        // 最適・最大思考時間には、まず上限値を入れておく（timeman.cpp:239）
+        self.optimum_time = self.remain_time;
+        self.maximum_time = self.remain_time;
+
+        // 残り手数において残り時間はあとどれくらいあるのか
+        // （timeman.cpp:246-254）。秒読み時間も残り手数に付随するとみなす。
+        // 秒単位切り上げでは各手で1秒未満を使う前提で予約しておく
+        let mut remain_estimate = my_time + inc * mtg + byoyomi * mtg;
+        if self.round_up_to_full_second {
+            remain_estimate -= (mtg + 1) * 1000;
+        }
+        let remain_estimate = remain_estimate.max(0);
+
+        // optimumの候補（timeman.cpp:257）
+        let t1 = self.minimum_time + remain_estimate / mtg;
+
+        // maximumの候補（timeman.cpp:263-277）。5.0でもうまく管理できる。
+        // 切れ負けでは5分を切ったらこの比率を抑える。3分で3.0、2分で2.0、
+        // 1分以下は1.0固定になる
+        let mut max_ratio = 5.0f64;
+        if time_forfeit {
+            max_ratio = max_ratio.min((my_time as f64 / (60.0 * 1000.0)).max(1.0));
+        }
+        let mut t2 = self.minimum_time + (remain_estimate as f64 * max_ratio / mtg as f64) as i64;
+        // maximumは残り時間の30%以上は使わない。optimumが超える分は
+        // 残り手数が少ないときなので構わない
+        t2 = t2.min((remain_estimate as f64 * 0.3) as i64);
+
+        // slowMoverは百分率で、optimumの係数として働く（timeman.cpp:280-281）
+        self.optimum_time = t1.min(self.optimum_time) * opts.slow_mover / 100;
+        self.maximum_time = t2.min(self.maximum_time);
+
+        // USI_Ponder有効時のoptimum1.25倍（timeman.cpp:285-286）はG8で入れる
+
+        // 秒読みモードで持ち時間がないなら、使いきったほうが得
+        // （timeman.cpp:291-302）。持ち時間が秒読みの1.2倍未満なら該当する
+        self.is_final_push = false;
+        if byoyomi > 0 && my_time < (byoyomi as f64 * 1.2) as i64 {
+            let t = byoyomi + my_time;
+            self.minimum_time = t;
+            self.optimum_time = t;
+            self.maximum_time = t;
+            // "ponderhit"の時刻から数えてminimum分は使ってほしい
+            self.is_final_push = true;
+        }
+
+        // 残り時間 - NetworkDelay2よりは短くしないと切れ負けになりうる
+        // （timeman.cpp:305-307）
+        self.minimum_time = self.round_up(self.minimum_time).min(self.remain_time);
+        self.optimum_time = self.optimum_time.min(self.remain_time);
+        self.maximum_time = self.round_up(self.maximum_time).min(self.remain_time);
     }
 
     /// 1秒単位で繰り上げてdelayを引く（timeman.cpp:312-344）。
@@ -254,10 +335,63 @@ mod tests {
         // 残り時間0でも秒読み分は使える。ただしNetworkDelay2の1120msは
         // 切れ負け防止に残すので、remain_timeは3000-1120=1880になる
         assert_eq!(tm.remain_time, 1880);
-        // 最小思考時間 MinimumThinkingTime - NetworkDelay = 1880（T:235-236）
+        // 持ち時間0は秒読みの1.2倍未満なのでisFinalPushが立ち、
+        // 3手すべてが byoyomi + my_time = 3000 になる（T:291-302）。
+        // そのあとremain_timeで頭打ちされて1880で揃う（T:305-307）
+        assert!(tm.is_final_push);
         assert_eq!(tm.minimum(), 1880);
-        assert!(tm.optimum() >= 2000);
-        assert!(tm.maximum() <= 3000);
+        assert_eq!(tm.optimum(), 1880);
+        assert_eq!(tm.maximum(), 1880);
+    }
+
+    #[test]
+    fn fischer_uses_move_horizon() {
+        // 300+10。ply==1なのでmove_horizon = 160 + 20 - 1 = 179、MTG = 89
+        let limits = Limits {
+            btime: 300_000,
+            binc: 10_000,
+            ..Limits::default()
+        };
+        let tm = TimeManager::new(&limits, Color::Black, 1, &TimeOptions::default());
+        assert_eq!(tm.remain_time, 300_000 - 1120);
+        // remain_estimate = 300000 + 10000*89 - 90*1000 = 1_100_000
+        // optimum = minimumTime + remain_estimate / MTG = 1880 + 12359
+        assert_eq!(tm.optimum(), 14239);
+        // maximum = round_up(1880 + 1_100_000*5/89) = round_up(63797)
+        assert_eq!(tm.maximum(), 63_880);
+        assert_eq!(tm.minimum(), 1880);
+    }
+
+    #[test]
+    fn slow_mover_scales_optimum() {
+        let limits = Limits {
+            btime: 300_000,
+            binc: 10_000,
+            ..Limits::default()
+        };
+        let opts = TimeOptions {
+            slow_mover: 200,
+            ..TimeOptions::default()
+        };
+        let tm = TimeManager::new(&limits, Color::Black, 1, &opts);
+        // optimumだけが2倍になる（T:280）
+        assert_eq!(tm.optimum(), 14239 * 2);
+        assert_eq!(tm.maximum(), 63_880);
+    }
+
+    #[test]
+    fn sudden_death_caps_max_ratio() {
+        // 切れ負け（加算も秒読みもない）で残り1分。max_ratioが1.0固定になる
+        let limits = Limits {
+            btime: 60_000,
+            ..Limits::default()
+        };
+        let tm = TimeManager::new(&limits, Color::Black, 1, &TimeOptions::default());
+        // move_horizon = 160 + 40 - 1 = 199、MTG = 99
+        // remain_estimate = 60000 - 100*1000 → 0 に落ちる
+        assert_eq!(tm.optimum(), 1880);
+        // remain_estimateが0なのでmaximumも1880（round_upの下限）
+        assert_eq!(tm.maximum(), 1880);
     }
 
     #[test]
