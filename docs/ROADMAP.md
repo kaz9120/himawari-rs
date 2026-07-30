@@ -135,7 +135,7 @@ NPSが0.65倍に落ちる代償を取り返せず、SPRTで-72.8 Elo（968局、
 | G4 | improvingの再定義とevalベース枝刈り | G0 | **完了 +41.1**（[ADR-0113](adr/0113-g4-eval-pruning.md)） |
 | G5 | singularの条件・multi-cut・negative extension | G0 | **完了 +48.2**（[ADR-0114](adr/0114-g5-singular.md)）。多段延長は保留 |
 | G6 | qsearchの差分＋mate_1plyの高速化 | G0 | **完了 +45.6**（[ADR-0115](adr/0115-g6-qsearch.md)） |
-| G7 | 停止の予約と最小思考時間 | なし | 未着手 |
+| G7 | 停止の予約と最小思考時間 | なし | **完了 ±0**（[ADR-0116](adr/0116-g7-timeman.md)）。非劣性で取り込み |
 | G8 | ponderの会計・継続・予約 | G7 | 未着手 |
 | G9 | 反復深化とaspirationの一式 | G7, G8 | 未着手 |
 | G10 | 定跡のponder手、best thread voting、ResignValue | なし | 未着手 |
