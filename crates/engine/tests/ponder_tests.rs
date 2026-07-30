@@ -32,6 +32,25 @@ fn bestmove_count(lines: &Lines) -> usize {
         .count()
 }
 
+/// info行のdepthを出力順に集める。
+fn info_depths(lines: &Lines) -> Vec<u32> {
+    lines
+        .lock()
+        .unwrap()
+        .iter()
+        .filter_map(|l| {
+            let mut it = l.split_whitespace();
+            (it.next()? == "info" && it.next()? == "depth")
+                .then(|| it.next()?.parse::<u32>().ok())
+                .flatten()
+        })
+        .collect()
+}
+
+fn max_depth(lines: &Lines) -> u32 {
+    info_depths(lines).into_iter().max().unwrap_or(0)
+}
+
 fn wait_for_bestmove(lines: &Lines, timeout: Duration) -> bool {
     let deadline = Instant::now() + timeout;
     while Instant::now() < deadline {
@@ -47,9 +66,9 @@ fn pos(sfen: &str) -> himawari_core::Position {
     himawari_core::Position::from_sfen(sfen).unwrap()
 }
 
-/// go ponder → ponderhit → 実時間探索 → bestmoveが1回だけ出る。
+/// go ponder → ponderhit → 探索を継続 → bestmoveが1回だけ出る。
 #[test]
-fn ponderhit_relaunches_and_emits_once() {
+fn ponderhit_continues_and_emits_once() {
     let (pool, lines) = make_pool();
     let limits = Limits {
         movetime: 300,
@@ -70,6 +89,41 @@ fn ponderhit_relaunches_and_emits_once() {
     );
     pool.wait_idle();
     assert_eq!(bestmove_count(&lines), 1);
+    pool.quit();
+}
+
+/// ponderhitで探索を再起動しない（ADR-0109のG8）。再起動すると
+/// 反復深化が深さ1からやり直しになるので、infoのdepthが巻き戻る。
+#[test]
+fn ponderhit_does_not_restart_iterative_deepening() {
+    let (pool, lines) = make_pool();
+    // ponder中は時間で止まらない。ponderhit後にmovetime超過で止まる
+    let limits = Limits {
+        movetime: 800,
+        ..Limits::default()
+    };
+    let opts = EngineOptions {
+        network_delay: 0,
+        network_delay2: 0,
+        ..EngineOptions::default()
+    };
+    pool.go_ponder(pos(SFEN_STARTPOS), limits, opts);
+    std::thread::sleep(Duration::from_millis(300));
+    assert_eq!(bestmove_count(&lines), 0, "ponder中にbestmoveが出た");
+    let depth_before = max_depth(&lines);
+    assert!(depth_before > 0, "ponder中にinfoが出ていない");
+    pool.ponderhit();
+    assert!(
+        wait_for_bestmove(&lines, Duration::from_secs(5)),
+        "ponderhit後にbestmoveが出ない"
+    );
+    pool.wait_idle();
+    // 深さが巻き戻っていないこと。再起動なら1へ戻る
+    let depths = info_depths(&lines);
+    assert!(
+        depths.windows(2).all(|w| w[0] <= w[1]),
+        "反復深化の深さが巻き戻った（再起動している）: {depths:?}"
+    );
     pool.quit();
 }
 
