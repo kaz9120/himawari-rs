@@ -138,6 +138,21 @@ fn random_position(rng: &mut Rng) -> Option<Position> {
         board[sq] = Some(c);
     }
 
+    // 遠くの飛角香も置く。開き王手と合駒の経路を通すため
+    let sliders = ['R', 'B', 'L', '+', 'D'];
+    for _ in 0..(rng.next() % 3) {
+        let sq = (rng.next() % 81) as usize;
+        if board[sq].is_some() {
+            continue;
+        }
+        let c = sliders[(rng.next() % sliders.len() as u64) as usize];
+        // 先手の香は1段目（段の添字0）に置けない
+        if c == 'L' && sq % 9 < 1 {
+            continue;
+        }
+        board[sq] = Some(c);
+    }
+
     // 受け方（後手）の駒を数枚。玉の守りになる
     let defenders = ['g', 's', 'p', 'n', 'l'];
     let n_def = rng.next() % 3;
