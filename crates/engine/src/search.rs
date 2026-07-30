@@ -2045,6 +2045,12 @@ impl Worker {
             }
             // stand pat（ADR-0024。yaneuraou-search.cpp:4813-4823）
             if best >= beta {
+                // 決着スコアでなければ、返す値をβへ半分寄せる
+                // （yaneuraou-search.cpp:4815-4817）。βを大きく超えた
+                // stand patをそのまま返さず、見積りの甘さを削る
+                if best.abs() < VALUE_MATE_IN_MAX_PLY {
+                    best = (best + beta) / 2;
+                }
                 // TTにヒットしていなければ、探索を伴わない値として書き出す。
                 // depthはDEPTH_UNSEARCHEDなのでTTカットには使われない
                 if tt_hit.is_none() {
@@ -2105,16 +2111,23 @@ impl Worker {
                 } else {
                     himawari_core::piece_value(captured.piece_type())
                 };
-                // やねうら王はここでbestをfutility値まで引き上げるが、
-                // 本エンジンのMultiPVはライン確定ごとに出力し、Stockfishの
-                // ような確定後のソートを持たない。窓に依存する値をbestへ
-                // 入れるとライン間のスコア順序が崩れるため引き上げない。
-                // fail-softの下限を報告しないだけで、探索の正しさは保たれる
+                // 捨てる前にbestを引き上げる（yaneuraou-search.cpp:4950-4954,
+                // 4965-4969）。fail-softの下限を正しく報告するためである。
+                // 検討モード（MultiPV>1）だけは抑える。ライン確定ごとに出力し、
+                // 確定後のソートを持たないので、窓に依存する値を入れると
+                // ライン間のスコア順序が崩れる（ADR-0077, 0109）
+                let raise = self.multi_pv == 1;
                 let futility_value = futility_base + gain;
                 if futility_value <= alpha {
+                    if raise {
+                        best = best.max(futility_value);
+                    }
                     continue;
                 }
                 if !self.pos.see_ge(m, alpha - futility_base) {
+                    if raise {
+                        best = best.max(alpha.min(futility_base));
+                    }
                     continue;
                 }
             }
@@ -2148,6 +2161,12 @@ impl Worker {
         // 再訪問の確率が極めて低く、置換表を汚すだけだからである
         if in_check && count == 0 {
             return mated_in(ply);
+        }
+
+        // 決着スコアでなければ、返す値をβへ半分寄せる
+        // （yaneuraou-search.cpp:5093-5094）。stand patと同じ扱いである
+        if best.abs() < VALUE_MATE_IN_MAX_PLY && best > beta {
+            best = (best + beta) / 2;
         }
 
         // 置換表store（yaneuraou-search.cpp:5124-5126）。深さはDEPTH_QS固定。
