@@ -484,8 +484,6 @@ enum Stage {
     QsearchTt,
     QCaptureInit,
     QCapture,
-    QChecksInit,
-    QChecks,
     ProbCutTt,
     ProbCutInit,
     ProbCut,
@@ -543,21 +541,12 @@ pub struct MovePicker {
     end_bad_captures: usize,
     end_captures: usize,
     end_generated: usize,
-    /// qsearchの入口plyだけ、取る手の後に静かな王手も返す（ADR-0028）。
-    with_checks: bool,
     /// ProbCut用。SEEがこの値以上の取る手だけを返す（movepick.cpp:684）。
     threshold: i32,
 }
 
 impl MovePicker {
-    fn make(
-        stage: Stage,
-        tt_move: Move,
-        depth: i32,
-        ply: usize,
-        with_checks: bool,
-        threshold: i32,
-    ) -> Self {
+    fn make(stage: Stage, tt_move: Move, depth: i32, ply: usize, threshold: i32) -> Self {
         MovePicker {
             stage,
             tt_move,
@@ -570,13 +559,12 @@ impl MovePicker {
             end_bad_captures: 0,
             end_captures: 0,
             end_generated: 0,
-            with_checks,
             threshold,
         }
     }
 
     /// 通常探索・静止探索用（movepick.cpp:120-202）。depth <= 0で静止探索。
-    pub fn new(pos: &Position, tt_move: Move, depth: i32, ply: usize, with_checks: bool) -> Self {
+    pub fn new(pos: &Position, tt_move: Move, depth: i32, ply: usize) -> Self {
         let tt_ok = tt_move != Move::NONE && pos.pseudo_legal(tt_move);
         let stage = if pos.in_check() {
             if tt_ok {
@@ -595,7 +583,7 @@ impl MovePicker {
         } else {
             Stage::QCaptureInit
         };
-        Self::make(stage, tt_move, depth, ply, with_checks, 0)
+        Self::make(stage, tt_move, depth, ply, 0)
     }
 
     /// ProbCut用（movepick.cpp:204-252）。SEEが閾値以上の取る手だけを返す。
@@ -612,7 +600,7 @@ impl MovePicker {
         } else {
             Stage::ProbCutInit
         };
-        Self::make(stage, tt_move, 0, 0, false, threshold)
+        Self::make(stage, tt_move, 0, 0, threshold)
     }
 
     /// 静かな手をもう返さないよう伝える（movepick.cpp:697）。
@@ -818,34 +806,8 @@ impl MovePicker {
                     return m;
                 }
                 Stage::QCapture => {
-                    // 損な取り合いは静止探索では捨てる（ADR-0024）
-                    if let Some(m) = self.select(|e| pos.see_ge(e.m, 0)) {
-                        return Some(m);
-                    }
-                    if self.with_checks {
-                        self.stage = Stage::QChecksInit;
-                    } else {
-                        self.stage = Stage::Done;
-                        return None;
-                    }
-                }
-                Stage::QChecksInit => {
-                    let mut list = MoveList::default();
-                    generate(pos, GenType::Quiets, false, &mut list);
-                    self.moves.clear();
-                    for &m in &list {
-                        // 駒損しない静かな王手だけを読む（ADR-0028）
-                        if pos.gives_check(m) && pos.see_ge(m, 0) {
-                            let v = h.main.get(pos.side_to_move(), m);
-                            self.moves.push(ExtMove { m, v });
-                        }
-                    }
-                    self.cur = 0;
-                    self.end_cur = self.moves.len();
-                    partial_insertion_sort(&mut self.moves, i32::MIN);
-                    self.stage = Stage::QChecks;
-                }
-                Stage::QChecks => {
+                    // 参照実装は取る手を条件なしに良い順で返す（movepick.cpp:679-682）。
+                    // 損な取り合いの切り捨ては静止探索側のSEE下限が担う
                     let m = self.select(|_| true);
                     if m.is_none() {
                         self.stage = Stage::Done;
