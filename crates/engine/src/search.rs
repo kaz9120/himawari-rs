@@ -2022,6 +2022,29 @@ impl Worker {
         let mut futility_base = -VALUE_INFINITE;
         if !in_check {
             let corr_value = self.correction_value(ply);
+            // 1手詰め判定（ADR-0029。yaneuraou-search.cpp:4756-4784）。
+            // 置換表にヒットしたときはすでに調べたはずなので、ミスのときだけ
+            // 呼ぶ。王手中も呼ばない。評価関数の呼び出しより手前に置くので、
+            // 詰みがあるときはevaluate()を省ける
+            if tt_hit.is_none()
+                && let Some(m) = crate::mate::mate_1ply(&mut self.pos)
+            {
+                // 次のノードで（指し手がなくなって）詰むという解釈
+                let mate = mate_in(ply + 1);
+                // 原典はmate_in()の値をvalue_to_tt()に通さず、そのまま書く
+                // （yaneuraou-search.cpp:4777と、同じ処理の説明がある2911-2914）。
+                // eval欄は評価関数を呼ぶ前なのでVALUE_NONEである
+                self.shared.tt.store(
+                    key,
+                    m.to_move16(),
+                    mate as i16,
+                    VALUE_NONE as i16,
+                    TT_DEPTH_QS,
+                    Bound::Exact,
+                    self.stack[ply + STACK_OFFSET].tt_pv,
+                );
+                return mate;
+            }
             // TTのeval欄が空なら評価関数を呼ぶ（yaneuraou-search.cpp:4729-4731）
             raw_eval = if tt_eval != VALUE_NONE {
                 tt_eval
