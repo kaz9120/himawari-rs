@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.23.0](https://github.com/kaz9120/himawari-rs/compare/v0.22.0...v0.23.0) (2026-07-30)
+
+
+### 棋力向上
+
+* qsearchを参照実装へ揃えmate_1plyを指さない方式へ書き換える（+45.6 Elo、G6、ADR-0115） ([3719bfe](https://github.com/kaz9120/himawari-rs/commit/3719bfe6b6347729977c5c1ef29e8178724c9cf0))
+
 ## [0.22.0](https://github.com/kaz9120/himawari-rs/compare/v0.21.0...v0.22.0) (2026-07-30)
 
 
