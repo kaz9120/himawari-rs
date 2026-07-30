@@ -130,6 +130,7 @@
 | [0113](0113-g4-eval-pruning.md) | improvingの再定義とevalベース枝刈りを参照実装へ揃える（G4） | +41.1 | accepted |
 | [0114](0114-g5-singular.md) | singularの条件とmulti-cut・negative extensionを参照実装へ揃える（G5） | +48.2 | accepted |
 | [0115](0115-g6-qsearch.md) | qsearchを参照実装へ揃え、mate_1plyを指さない方式へ書き換える（G6） | +45.6 | accepted |
+| [0116](0116-g7-timeman.md) | 停止を予約する構造へ移し最小思考時間を入れる（G7） | ±0（非劣性） | accepted |
 
 ## バックログ
 

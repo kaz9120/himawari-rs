@@ -95,6 +95,9 @@ fn print_options() {
     print_line("option name Threads type spin default 1 min 1 max 512");
     print_line("option name NetworkDelay type spin default 120 min 0 max 10000");
     print_line("option name NetworkDelay2 type spin default 1120 min 0 max 10000");
+    print_line("option name MinimumThinkingTime type spin default 2000 min 1 max 100000");
+    print_line("option name SlowMover type spin default 100 min 1 max 1000");
+    print_line("option name RoundUpToFullSecond type check default true");
     print_line("option name MaxMovesToDraw type spin default 0 min 0 max 100000");
     print_line("option name MultiPV type spin default 1 min 1 max 128");
     print_line("option name EvalFile type string default <empty>");
@@ -205,6 +208,19 @@ fn set_option(opts: &mut EngineOptions, bopts: &mut BookOptions, tokens: &[&str]
             if let Ok(v) = value.parse() {
                 opts.network_delay2 = v;
             }
+        }
+        "MinimumThinkingTime" => {
+            if let Ok(v) = value.parse() {
+                opts.minimum_thinking_time = v;
+            }
+        }
+        "SlowMover" => {
+            if let Ok(v) = value.parse() {
+                opts.slow_mover = v;
+            }
+        }
+        "RoundUpToFullSecond" => {
+            opts.round_up_to_full_second = value == "true";
         }
         "MaxMovesToDraw" => {
             if let Ok(v) = value.parse() {

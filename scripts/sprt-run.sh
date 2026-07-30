@@ -23,17 +23,18 @@ source "${SCRIPT_DIR}/env.sh"
 usage() {
 	cat <<'USAGE'
 使い方:
-  scripts/sprt-run.sh <baselineバイナリ> <candidateバイナリ> <名前> [再試行の上限]
+  scripts/sprt-run.sh <baselineバイナリ> <candidateバイナリ> <名前> [再試行の上限] [追加引数...]
 
 scripts/sprt.sh を呼び、判定が出る前に落ちたら --resume で再開する。
 既存の棋譜があれば最初から --resume で始める。
 
 再試行の上限は既定20回。判定が出るか上限に達するまで繰り返す。
+追加引数はsprt.shへ素通しする（例: --copt MinimumThinkingTime=1）。
 終了コードは sprt.sh のもの（0=H1採択、1=H0採択、2=判定に至らず、3=実行エラー）。
 USAGE
 }
 
-if [[ $# -lt 3 || $# -gt 4 ]]; then
+if [[ $# -lt 3 ]]; then
 	usage
 	exit 3
 fi
@@ -41,7 +42,14 @@ fi
 BASELINE="$1"
 CANDIDATE="$2"
 NAME="$3"
-MAX_RETRY="${4:-20}"
+shift 3
+# 4番目が数値なら再試行の上限。それ以降はsprt.shへ素通しする
+MAX_RETRY=20
+if [[ $# -gt 0 && "$1" =~ ^[0-9]+$ ]]; then
+	MAX_RETRY="$1"
+	shift
+fi
+EXTRA=("$@")
 JSONL="${REPO_ROOT}/data/sprt/${NAME}.jsonl"
 
 for ((attempt = 1; attempt <= MAX_RETRY; attempt++)); do
@@ -53,7 +61,8 @@ for ((attempt = 1; attempt <= MAX_RETRY; attempt++)); do
 		echo "=== 試行 ${attempt}: 新規に開始する ==="
 	fi
 
-	"${SCRIPT_DIR}/sprt.sh" "$BASELINE" "$CANDIDATE" "$NAME" ${ARGS[@]+"${ARGS[@]}"}
+	"${SCRIPT_DIR}/sprt.sh" "$BASELINE" "$CANDIDATE" "$NAME" \
+		${ARGS[@]+"${ARGS[@]}"} ${EXTRA[@]+"${EXTRA[@]}"}
 	CODE=$?
 
 	case $CODE in

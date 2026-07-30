@@ -18,6 +18,6 @@ pub mod value;
 pub use eval::Evaluator;
 pub use search::{IterInfo, ScoreBound, SearchInfo, SearchResult, Shared, Worker};
 pub use thread::{EngineOptions, ThreadPool};
-pub use timeman::{Limits, TimeManager};
+pub use timeman::{Limits, TimeManager, TimeOptions};
 pub use tt::{Bound, Tt, TtData};
 pub use value::{MAX_PLY, VALUE_INFINITE, VALUE_MATE, Value, mate_in, mated_in};
