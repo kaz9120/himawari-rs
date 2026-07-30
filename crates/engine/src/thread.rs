@@ -9,6 +9,7 @@
 use std::sync::atomic::Ordering;
 use std::sync::{Arc, Condvar, Mutex};
 use std::thread::JoinHandle;
+use std::time::Instant;
 
 use himawari_core::Position;
 
@@ -131,6 +132,8 @@ pub struct ThreadPool {
     ponder: Arc<PonderCtl>,
     /// ponderhit時に実時間で再起動するためのジョブ控え。
     pending: Mutex<Option<SearchJob>>,
+    /// 今回のgoの受領時刻。ponderhitの時刻をここからの経過へ換算する。
+    start: Mutex<Instant>,
     /// 生成時のパラメータ（isreadyでの再生成判定用）。
     pub hash_mb: usize,
     pub threads: usize,
@@ -213,8 +216,12 @@ fn spawn_worker(
                     hist.clear();
                 }
                 Job::Search(j) => {
-                    // ヘルパーとponder探索は時間制限を持たずstopフラグで止まる
-                    let (limits, tm) = if is_main && !j.ponder {
+                    // ヘルパーは時間制限を持たずstopフラグで止まる。
+                    // メインはgo ponderでも実際の持ち時間で時間管理する
+                    // （S:960-975。参照実装の `use_time_management()` は
+                    // ponderMode を見ない）。ponder中に止めないのは
+                    // check_limitsのponderガードが担う（S:5502-5507）
+                    let (limits, tm) = if is_main {
                         let tm = TimeManager::new(
                             &j.limits,
                             j.pos.side_to_move(),
@@ -358,6 +365,7 @@ impl ThreadPool {
             shared,
             ponder,
             pending: Mutex::new(None),
+            start: Mutex::new(Instant::now()),
             hash_mb,
             threads: n,
             eval_file,
@@ -387,8 +395,13 @@ impl ThreadPool {
         } else {
             PonderState::None
         };
+        // 計時の起点をponderhitの換算用に控える
+        *self.start.lock().expect("start lock") = limits.start.unwrap_or_else(Instant::now);
         self.shared.stop.store(false, Ordering::Relaxed);
         self.shared.aborted_search.store(false, Ordering::Relaxed);
+        // go受領時点の初期化（S:114-120 pre_start_searching）
+        self.shared.ponder.store(ponder, Ordering::SeqCst);
+        self.shared.ponderhit_offset.store(0, Ordering::SeqCst);
         self.shared.nodes.store(0, Ordering::Relaxed);
         for w in &self.workers {
             // idleはgo側で同期的に下ろす。workerが起きる前にquit/stopが
@@ -408,6 +421,12 @@ impl ThreadPool {
     /// ponderhit（ADR-0033）。探索中なら無音キャンセルして実時間で
     /// 再起動する（TTが木を即復元する）。保留中なら即bestmove。
     pub fn ponderhit(&self) {
+        // ponderhitの時刻を先に書き、そのあとponderフラグを下ろす。
+        // 順序が逆だと、他スレッドがponderフラグを見て古いponderhitTimeで
+        // 計算してしまう（S:299-308）
+        let off = self.start.lock().expect("start lock").elapsed().as_millis() as i64;
+        self.shared.ponderhit_offset.store(off, Ordering::SeqCst);
+        self.shared.ponder.store(false, Ordering::SeqCst);
         let relaunch = {
             let mut st = self.ponder.state.lock().expect("ponder lock");
             match *st {

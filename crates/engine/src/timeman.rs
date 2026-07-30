@@ -75,10 +75,6 @@ pub struct TimeManager {
     start: Instant,
     /// 時間制御を行うか（search.h:195）。falseなら時刻での停止をしない
     use_time_management: bool,
-    /// `ponderhitTime - startTime`[ms]（timeman.h:120）。"ponderhit" を
-    /// 受けるまでは0で、goからの経過時間とponderhitからの経過時間が
-    /// 一致する。ponderの会計はG8で入れるので、この群では常に0
-    ponderhit_offset: i64,
     /// 探索終了予定時刻。startからの経過時間[ms]で、0なら未確定
     /// （timeman.h:93）
     pub search_end: i64,
@@ -100,7 +96,6 @@ impl TimeManager {
             // go受領時刻を起点にする（timeman.cpp:148）。指定がなければ現在時刻
             start: limits.start.unwrap_or_else(Instant::now),
             use_time_management: limits.use_time_management(),
-            ponderhit_offset: 0,
             search_end: 0,
             is_final_push: false,
             minimum_time: 0,
@@ -281,20 +276,25 @@ impl TimeManager {
     ///
     /// 引数 `e` はstartからの経過時間[ms]。呼び出し側が既に持っている
     /// 値を渡してもらい、二度測るのを避ける。
+    /// 引数 `ponderhit_offset` は `ponderhitTime - startTime`[ms]
+    /// （timeman.h:120）。"ponderhit" を受けるまでは0で、goからの経過時間と
+    /// ponderhitからの経過時間が一致する。参照実装はTimeManagementの
+    /// メンバーだが、本エンジンでは書き手がUSIスレッドで読み手が探索
+    /// スレッドなので、共有の原子変数から読んだ値を渡してもらう。
     /// ponderhitからの経過時間で切り上げつつ、goから数えて `minimum()`
     /// の分は思考させる。`is_final_push` のときは切り上げの基準も
     /// ponderhitの時刻から数える
-    pub fn set_search_end(&mut self, e: i64) {
+    pub fn set_search_end(&mut self, e: i64, ponderhit_offset: i64) {
         // 1. ponderhitからの経過時間（go ponderしていないならgoからの経過）
-        let t1 = e - self.ponderhit_offset;
+        let t1 = e - ponderhit_offset;
         // 2. goした時刻からminimum()を足し、ponderhitからの経過へ換算した値
         let t2 = if self.is_final_push {
             self.minimum_time
         } else {
-            self.minimum_time - self.ponderhit_offset
+            self.minimum_time - ponderhit_offset
         };
         // 大きいほうを秒単位で切り上げ、startからの経過時間へ戻す
-        self.search_end = self.round_up(t1.max(t2)) + self.ponderhit_offset;
+        self.search_end = self.round_up(t1.max(t2)) + ponderhit_offset;
     }
 
     #[inline]
@@ -467,7 +467,23 @@ mod tests {
         let mut tm = TimeManager::new(&limits, Color::Black, 1, &TimeOptions::default());
         assert_eq!(tm.search_end, 0);
         // 経過時間が最小思考時間より短くても、最小思考時間まで予約する
-        tm.set_search_end(300);
+        tm.set_search_end(300, 0);
         assert_eq!(tm.search_end, 1880);
+    }
+
+    #[test]
+    fn search_end_counts_from_ponderhit() {
+        // go ponderで5秒読んだあとponderhitした場合（T:347-373）。
+        // 切り上げの基準はponderhitからの経過時間になる
+        let limits = Limits {
+            btime: 300_000,
+            binc: 10_000,
+            ..Limits::default()
+        };
+        let mut tm = TimeManager::new(&limits, Color::Black, 1, &TimeOptions::default());
+        // t1 = 6000 - 5000 = 1000、t2 = 1880 - 5000 = -3120。
+        // 大きいほうの1000を切り上げて1880、そこへoffsetを戻す
+        tm.set_search_end(6000, 5000);
+        assert_eq!(tm.search_end, 1880 + 5000);
     }
 }
