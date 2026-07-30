@@ -25,10 +25,17 @@ use crate::value::{
 
 // ---- 探索定数（ADR-0028。調整は1調整=1SPRT） ----
 
-/// NMPの最小深さ。
-const NMP_MIN_DEPTH: u32 = 3;
-/// NMPのリダクション: 3 + depth / 4。
-const NMP_BASE_REDUCTION: u32 = 3;
+/// NMP（ADR-0028, 0109のG4。yaneuraou-search.cpp:3236-3301）。
+/// 発動条件はcutNodeで、静的評価が `beta - 16*depth - 53*improving + 378`
+/// 以上のとき。リダクションは `7 + depth/3`。深さが16以上なら、同じ深さの
+/// 検証探索でzugzwangの誤りを確かめる。評価値は歩=90スケールで一致する
+/// ため絶対値のまま使う（ADR-0074）
+const NMP_EVAL_DEPTH: Value = 16;
+const NMP_EVAL_IMPROVING: Value = 53;
+const NMP_EVAL_BASE: Value = 378;
+const NMP_BASE_REDUCTION: u32 = 7;
+const NMP_DEPTH_DIVISOR: u32 = 3;
+const NMP_VERIFY_MIN_DEPTH: u32 = 16;
 /// 子ノードのfutility（RFP。ADR-0109のG4。yaneuraou-search.cpp:3217-3227）。
 /// 係数 `m = 76 - 21*(TT不ヒット)` を置くと、マージンは
 /// `m*depth - (2686*improving + 362*opponentWorsening)*m/1024 + |correction値|/180600`
@@ -298,6 +305,10 @@ pub struct Worker {
     /// このイテレーションのaspiration窓の幅（G2。yaneuraou-search.cpp:1708）。
     /// リダクションが「今の窓幅がroot窓幅の何割か」で削る量を決める
     root_delta: Value,
+    /// このplyに達するまでNMPを止める（G4。yaneuraou-search.h:543）。
+    /// NMPの検証探索の中で立て、探索を抜けたら0へ戻す。再帰的な検証を
+    /// 認めないための状態で、スレッドごとに持つ
+    nmp_min_ply: usize,
     /// 前回の反復深化で得たPV（G3。yaneuraou-search.h:562）。
     /// 各ノードの `follow_pv` 判定が読む。goのたびに捨てる
     last_iteration_pv: Vec<Move>,
@@ -353,6 +364,7 @@ impl Worker {
             sel_depth: 0,
             // 0除算を避ける番兵。search_rootが毎回入れ直す
             root_delta: 1,
+            nmp_min_ply: 0,
             last_iteration_pv: Vec::new(),
             depth1_done: false,
             nodes: 0,
@@ -1148,16 +1160,24 @@ impl Worker {
                 return (2 * beta + eval) / 3;
             }
 
-            // NMP（ADR-0028）。手番を渡して浅く探索し、それでもβ以上なら刈る。
+            // NMP（ADR-0028, 0109のG4。yaneuraou-search.cpp:3236-3301）。
+            // 手番を渡して浅く探索し、それでもβ以上なら刈る。cutNode限定で、
+            // 深さの下限はない。評価の閾値はβから残り深さとimprovingで割り引く。
             // 除外手つき探索中はスキップ（ADR-0050）
-            if excluded == Move::NONE
-                && !is_pv
-                && prev != Move::NULL
-                && depth >= NMP_MIN_DEPTH
-                && static_eval >= beta
-                && beta.abs() < VALUE_MATE_IN_MAX_PLY
+            if cut_node
+                && static_eval
+                    >= beta
+                        - NMP_EVAL_DEPTH * depth as Value
+                        - NMP_EVAL_IMPROVING * Value::from(improving)
+                        + NMP_EVAL_BASE
+                && excluded == Move::NONE
+                && ply >= self.nmp_min_ply
+                && beta > VALUE_MATED_IN_MAX_PLY
             {
-                let r = NMP_BASE_REDUCTION + depth / 4;
+                // 連続してnull moveは指さない（yaneuraou-search.cpp:3247）。
+                // null moveの子はcut_node = falseなのでここへ来ない
+                debug_assert!(prev != Move::NULL);
+                let r = NMP_BASE_REDUCTION + depth / NMP_DEPTH_DIVISOR;
                 let mut null_pv = Vec::new();
                 // null moveは王手でも駒取りでもないので番兵の面を指す
                 // （yaneuraou-search.cpp:3254-3256）
@@ -1183,9 +1203,33 @@ impl Worker {
                 if self.stopped() {
                     return VALUE_ZERO;
                 }
-                if v >= beta {
-                    // パス由来の詰みスコアは信用せずβに丸める
-                    return if v >= VALUE_MATE_IN_MAX_PLY { beta } else { v };
+                // パス由来の詰みスコアは信用しない。刈らずに読み進める
+                if v >= beta && v < VALUE_MATE_IN_MAX_PLY {
+                    // 深いところでは同じ深さの検証探索で裏を取る
+                    // （yaneuraou-search.cpp:3277-3301）。zugzwangでの誤りを
+                    // 減らす。検証探索の中ではnmpMinPlyまでNMPを止める
+                    if self.nmp_min_ply != 0 || depth < NMP_VERIFY_MIN_DEPTH {
+                        return v;
+                    }
+                    self.nmp_min_ply = ply + 3 * (depth - r) as usize / 4;
+                    let mut verify_pv = Vec::new();
+                    let vv = self.search(
+                        beta - 1,
+                        beta,
+                        depth - r,
+                        ply,
+                        prev,
+                        &mut verify_pv,
+                        false,
+                        false,
+                    );
+                    self.nmp_min_ply = 0;
+                    if self.stopped() {
+                        return VALUE_ZERO;
+                    }
+                    if vv >= beta {
+                        return v;
+                    }
                 }
             }
 
