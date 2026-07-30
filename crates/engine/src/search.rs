@@ -326,6 +326,10 @@ pub struct Worker {
     /// このイテレーションのaspiration窓の幅（G2。yaneuraou-search.cpp:1708）。
     /// リダクションが「今の窓幅がroot窓幅の何割か」で削る量を決める
     root_delta: Value,
+    /// 今の反復深化の深さ（G5。yaneuraou-search.h:557）。
+    /// singularの多段化のマージンが `ply > rootDepth` で分岐に使う。
+    /// rootから遠いノードでは延長を積みにくくする項である
+    root_depth: u32,
     /// このplyに達するまでNMPを止める（G4。yaneuraou-search.h:543）。
     /// NMPの検証探索の中で立て、探索を抜けたら0へ戻す。再帰的な検証を
     /// 認めないための状態で、スレッドごとに持つ
@@ -385,6 +389,7 @@ impl Worker {
             sel_depth: 0,
             // 0除算を避ける番兵。search_rootが毎回入れ直す
             root_delta: 1,
+            root_depth: 0,
             nmp_min_ply: 0,
             last_iteration_pv: Vec::new(),
             depth1_done: false,
@@ -823,6 +828,9 @@ impl Worker {
     ) -> (Value, usize, Vec<Move>) {
         // リダクションの窓幅項の基準（yaneuraou-search.cpp:1708）
         self.root_delta = beta - alpha;
+        // singularの多段化のマージンが読む（yaneuraou-search.cpp:1550, 3779）。
+        // aspirationの再探索でも同じ深さなので、ここで入れ直してよい
+        self.root_depth = depth;
         let mut best = -VALUE_INFINITE;
         let mut best_idx = pv_idx;
         let mut best_pv: Vec<Move> = Vec::new();
@@ -1370,7 +1378,14 @@ impl Worker {
         // いると見て延長する。参照実装はムーブループの中でTT手に当たったときに
         // 判定するが、対象はTT手だけで、TT手はMovePickerが最初に返す。ループの
         // 手前で1回求めても同じである（ムーブループの枝刈りは第1手には効かない）
-        let mut singular = false;
+        //
+        // 延長を積む前の深さ。MovePickerのオーダリングの尺度
+        // （yaneuraou-search.cpp:3453）と、TT手のnewDepthの基準
+        // （yaneuraou-search.cpp:3556）がこの値を読む。参照実装はどちらも
+        // depthを増やす前に決まるので、singularでdepthが増えても動かない
+        let depth_pre_singular = depth as i32;
+        // TT手に与える延長。Noneは判定に入らなかったことを表す
+        let mut singular_ext: Option<i32> = None;
         if excluded == Move::NONE
             && ply > 0
             && tt_move != Move::NONE
@@ -1413,11 +1428,58 @@ impl Worker {
                 return VALUE_ZERO;
             }
             // TT手が唯一の合法手なら検証探索はmated値を返し、必ず
-            // singular=trueになる（唯一手の延長として意図どおり）
-            singular = v < singular_beta;
+            // 延長側へ入る（唯一手の延長として意図どおり）
+            if v < singular_beta {
+                // 多段延長（yaneuraou-search.cpp:3777-3788）。検証値が
+                // singular_betaをマージン分下回るごとに1手積み、最大+3にする。
+                // 組合せ爆発を抑えるため、PVノードではマージンを大きく取って
+                // 積みにくくする。TT手が取る手でない・correction値が大きい・
+                // ttMoveHistoryが良い・rootから遠い、では積みやすくなる
+                let corr_adj = corr_value.abs() / 210590;
+                let far = i32::from(ply as u32 > self.root_depth);
+                let double_margin = -4 + 212 * i32::from(is_pv)
+                    - 182 * i32::from(!tt_capture)
+                    - corr_adj
+                    - 906 * self.hist.tt_move.get() / 116517
+                    - far * 44;
+                let triple_margin = 73 + 320 * i32::from(is_pv) - 218 * i32::from(!tt_capture)
+                    + 92 * i32::from(self.stack[ply + STACK_OFFSET].tt_pv)
+                    - corr_adj
+                    - far * 45;
+                singular_ext = Some(
+                    1 + i32::from(v < singular_beta - double_margin)
+                        + i32::from(v < singular_beta - triple_margin),
+                );
+                // このノード自体の深さも1手増やす（yaneuraou-search.cpp:3788）。
+                // TT手のnewDepthは増やす前の値で決まっているので、増分は
+                // 残りの手とTT storeに効く
+                depth += 1;
+            } else if v >= beta && v.abs() < VALUE_MATE_IN_MAX_PLY {
+                // multi-cut（yaneuraou-search.cpp:3817-3821）。TT手を除いた
+                // 浅い探索でもβを超えたので、このノードは「1手だけ傑出」では
+                // なく複数の手がfail highすると見て、部分木をまとめて刈る。
+                // 返す値はsoftbound（真の値がこれ以上と分かっている値）である
+                self.hist
+                    .tt_move
+                    .update((-424 - 107 * depth as i32).max(-3375));
+                return v;
+            } else if tt_value >= beta {
+                // negative extension（yaneuraou-search.cpp:3841-3850）。
+                // 検証値がsingular_betaとβの間なので、singularともmulti-cutとも
+                // 言えない。TT手が今のβを超えてfail highすると見込めるなら
+                // 大きく削り、他の手を先に読ませる
+                singular_ext = Some(-3);
+            } else if cut_node {
+                // 同じくcutNodeだが、TT手がβを超えるとは見込めない場合
+                singular_ext = Some(-2);
+            } else {
+                // どの分岐にも入らない場合は延長も短縮もしない。
+                // 参照実装のextensionの初期値0に対応する
+                singular_ext = Some(0);
+            }
         }
 
-        let mut picker = MovePicker::new(&self.pos, tt_move, depth as i32, ply, false);
+        let mut picker = MovePicker::new(&self.pos, tt_move, depth_pre_singular, ply, false);
         // continuation historyの面（1手前から6手前まで。ADR-0109のG1）
         let cont = self.cont_bases(ply);
         let mut best = -VALUE_INFINITE;
@@ -1443,15 +1505,21 @@ impl Worker {
             let is_capture = !m.is_drop() && !self.pos.piece_on(m.to()).is_empty();
             let gives_check = self.pos.gives_check(m);
 
-            // 王手延長（ADR-0024）とsingular延長（ADR-0050）。どちらもTT手/王手を
-            // +1する。両立時はmaxで重複させない（depthのまま、depth+1にしない）。
+            // 延長（yaneuraou-search.cpp:3543, 3872）。singularの判定に入った
+            // TT手はその結果を使う。王手延長（ADR-0024）は参照実装が持たない
+            // 本エンジンの機能なので残すが、singularの判定が付いた手では
+            // singular側を採る（多段化した延長量を王手延長で潰さない）。
             // 参照実装は延長をムーブループの枝刈りの後で加えるので、枝刈りの
             // 尺度（lmr_depth）はこの値でなく `depth - 1` を基準にする
-            let new_depth = if gives_check || (singular && m == tt_move) {
-                depth
-            } else {
-                depth - 1
+            let (extension, base_depth) = match singular_ext {
+                // singularの判定が付いたTT手。参照実装はムーブループの中で
+                // `newDepth = depth - 1` を先に決め、そのあとdepthを増やすので、
+                // 増えた1手はTT手自身には乗らない
+                // （yaneuraou-search.cpp:3556, 3788）
+                Some(e) if m == tt_move => (e, depth_pre_singular),
+                _ => (i32::from(gives_check), depth as i32),
             };
+            let mut new_depth = base_depth - 1 + extension;
 
             // LMRのリダクション量（1024倍の固定小数。G2）。枝刈りの尺度
             // （lmr_depth）と実際の浅い探索で同じ値を使う
@@ -1616,8 +1684,6 @@ impl Worker {
             self.pos.do_move(m);
             self.evaluator.push(&self.pos);
 
-            // 再探索で伸縮するのでここから可変にする
-            let mut new_depth = new_depth as i32;
             let mut value = -VALUE_INFINITE;
             if depth >= 2 && count > 1 {
                 // LMR（yaneuraou-search.cpp:3954-4010）。参照実装の発動条件は
@@ -1680,6 +1746,17 @@ impl Worker {
             // PVノードは第1手とfail highの後だけ全窓で読み直す
             // （yaneuraou-search.cpp:4043-4061）
             if is_pv && (count == 1 || value > alpha) && !self.stopped() {
+                // 静止探索へ直行する手前で、TT手だけは1手残す
+                // （yaneuraou-search.cpp:4053-4057）。負の延長でnew_depthが
+                // 0以下になったTT手をqsearchへ落とすと、詰みの発見が鈍る
+                if m == tt_move
+                    && ((tt_value != VALUE_NONE
+                        && tt_value.abs() >= VALUE_MATE_IN_MAX_PLY
+                        && tt_depth > 0)
+                        || tt_depth > 1)
+                {
+                    new_depth = new_depth.max(1);
+                }
                 value = -self.search(
                     -beta,
                     -alpha,
@@ -1709,9 +1786,11 @@ impl Worker {
                     }
                     if value >= beta {
                         // 次plyのfail highの多さをリダクションへ渡す
-                        // （yaneuraou-search.cpp:4214）。本エンジンの延長は
-                        // 最大1手なので `extension < 2` は常に成立する
-                        self.stack[ply + STACK_OFFSET].cutoff_cnt += 1;
+                        // （yaneuraou-search.cpp:4214）。2手以上延長した手の
+                        // カットは数えない（G5で延長が最大+3になった）
+                        if extension < 2 || is_pv {
+                            self.stack[ply + STACK_OFFSET].cutoff_cnt += 1;
+                        }
                         break;
                     }
                     // alphaを更新できたので、残りの手を浅く読む
@@ -1753,8 +1832,8 @@ impl Worker {
                 &quiets_searched,
                 &captures_searched,
             );
-            // ttMoveHistoryはここでしか更新しない。multi-cut由来の加点
-            // （yaneuraou-search.cpp:3819）はsingularの多段化と同じ群なのでG5で足す
+            // 非PVノードのbestMove確定時の更新（yaneuraou-search.cpp:4308）。
+            // もう1か所、multi-cutが減点する（yaneuraou-search.cpp:3819）
             if !is_pv {
                 self.hist
                     .tt_move
