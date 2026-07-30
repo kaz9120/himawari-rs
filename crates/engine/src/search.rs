@@ -29,9 +29,19 @@ use crate::value::{
 const NMP_MIN_DEPTH: u32 = 3;
 /// NMPのリダクション: 3 + depth / 4。
 const NMP_BASE_REDUCTION: u32 = 3;
-/// reverse futilityの最大深さとdepthあたりのマージン。
-const RFP_MAX_DEPTH: u32 = 6;
-const RFP_MARGIN: Value = 120;
+/// 子ノードのfutility（RFP。ADR-0109のG4。yaneuraou-search.cpp:3217-3227）。
+/// 係数 `m = 76 - 21*(TT不ヒット)` を置くと、マージンは
+/// `m*depth - (2686*improving + 362*opponentWorsening)*m/1024 + |correction値|/180600`
+/// になる。これを評価から引いてもβを超えるなら刈る。返り値は `(2β+eval)/3`。
+/// 評価値は歩=90スケールで一致するため絶対値のまま使う（ADR-0074）。
+/// correction historyの分母131072はG1で参照実装へ揃えたので、除数180600も
+/// 換算せずに使える（ADR-0109の「定数の扱い」）
+const RFP_MAX_DEPTH: u32 = 15;
+const RFP_MULT: i32 = 76;
+const RFP_NO_TT_HIT: i32 = 21;
+const RFP_IMPROVING: i32 = 2686;
+const RFP_OPP_WORSENING: i32 = 362;
+const RFP_CORR_DIVISOR: i32 = 180600;
 /// 親ノードfutilityの上限深さとマージン（ADR-0028, 0109のG3。
 /// yaneuraou-search.cpp:3665-3676）。尺度はdepthではなく履歴で補正した
 /// lmrDepthである。マージンは
@@ -87,9 +97,12 @@ const CONT_HIST_PRUNE_COEF: i32 = 4097;
 /// 加える。この補正の後で親futilityと静かな手のSEE枝刈りが同じ
 /// lmrDepthを読むので、順序を入れ替えてはならない
 const LMR_DEPTH_HIST_DIVISOR: i32 = 3220;
-/// razoringの最大深さとマージン（ADR-0057）。
-const RAZOR_MAX_DEPTH: u32 = 3;
-const RAZOR_MARGIN: Value = 300;
+/// razoring（ADR-0057, 0109のG4。yaneuraou-search.cpp:3191-3192）。
+/// 評価が `alpha - 502 - 306*depth^2` を下回るなら通常探索をやめて
+/// qsearchの値を返す。深さの上限はなく、マージンがdepthの2乗で伸びる。
+/// 評価値は歩=90スケールで一致するため絶対値のまま使う（ADR-0074）
+const RAZOR_BASE: Value = 502;
+const RAZOR_DEPTH_COEF: Value = 306;
 /// 静止探索のfutility（ADR-0077）。stand patにこの値を足した額を上限とし、
 /// 取る駒の価値を足してもalphaに届かない手を捨てる。movecount制限は
 /// 「3手目以降は駒価値を見ずに捨てる」。出典はやねうら王の
@@ -988,6 +1001,15 @@ impl Worker {
             }
         }
 
+        // 置換表の手が駒を取る手か（yaneuraou-search.cpp:2671）。
+        // RFPの条件とリダクションの1項が読む
+        let tt_capture = tt_move != Move::NONE
+            && !tt_move.is_drop()
+            && !self.pos.piece_on(tt_move.to()).is_empty();
+        // PVでもcutでもないノード（yaneuraou-search.cpp:2251）。
+        // 全手を調べる見込みなのでリダクションを強める。IIRの条件も読む
+        let all_node = !(is_pv || cut_node);
+
         if depth == 0 {
             return self.qsearch(alpha, beta, ply, 0);
         }
@@ -1024,6 +1046,23 @@ impl Worker {
         };
 
         self.stack[ply + STACK_OFFSET].static_eval = static_eval;
+        // 置換表の値がこの局面の見積りとしてより適切なら、枝刈り用の評価値へ
+        // 採用する（yaneuraou-search.cpp:3084-3087）。下界なら真の値はこれ
+        // 以上、上界ならこれ以下と分かっているため。razoringとRFPがこの値を
+        // 読み、NMP以降とムーブループはstatic_evalを読む。除外手つき探索と
+        // TT不ヒットのときは採用しない（参照実装のStep 6の分岐に対応する）
+        let mut eval = static_eval;
+        if !in_check && excluded == Move::NONE && tt_hit.is_some() && tt_value != VALUE_NONE {
+            let usable = if tt_value > eval {
+                matches!(tt_bound, Bound::Lower | Bound::Exact)
+            } else {
+                matches!(tt_bound, Bound::Upper | Bound::Exact)
+            };
+            if usable {
+                eval = tt_value;
+            }
+        }
+        let eval = eval;
         // 静的評価の差で静かな手のオーダリングを補正する
         // （yaneuraou-search.cpp:3126-3133）。1手前で評価が下がっていれば
         // 1手前の手を良い手とみなして加点する。参照実装は王手中ここへ来ない
@@ -1079,26 +1118,34 @@ impl Worker {
                 depth -= 1;
             }
 
-            // reverse futility（ADR-0028）: 静的評価がβを大きく超えるなら刈る。
-            // 除外手つき探索中はスキップ（ADR-0050）
-            if excluded == Move::NONE
-                && !is_pv
-                && depth <= RFP_MAX_DEPTH
-                && beta.abs() < VALUE_MATE_IN_MAX_PLY
-                && static_eval - RFP_MARGIN * depth as Value >= beta
-            {
-                return static_eval;
+            // razoring（ADR-0057, 0109のG4。yaneuraou-search.cpp:3191-3192）。
+            // 評価がalphaを大きく下回るなら通常探索をやめ、qsearchの値を返す。
+            // PVノードでないことが唯一の前提で、深さの上限はない
+            if !is_pv && eval < alpha - RAZOR_BASE - RAZOR_DEPTH_COEF * (depth * depth) as Value {
+                return self.qsearch(alpha, beta, ply, 0);
             }
 
-            // razoring（ADR-0057）: 静的評価がalphaを大きく下回るなら
-            // 通常探索を省略してqsearchに降格する
-            if excluded == Move::NONE
-                && !is_pv
-                && depth <= RAZOR_MAX_DEPTH
-                && alpha.abs() < VALUE_MATE_IN_MAX_PLY
-                && static_eval + RAZOR_MARGIN <= alpha
+            // 子ノードのfutility（RFP。yaneuraou-search.cpp:3217-3227）。
+            // 残り深さで評価が動きうる幅を見積り、それを引いてもβを超えるなら
+            // 刈る。TTにヒットしていないノードは見積りを狭める
+            let futility_mult =
+                RFP_MULT - RFP_NO_TT_HIT * i32::from(!self.stack[ply + STACK_OFFSET].tt_hit);
+            let futility_margin = futility_mult * depth as i32
+                - (RFP_IMPROVING * i32::from(improving)
+                    + RFP_OPP_WORSENING * i32::from(opponent_worsening))
+                    * futility_mult
+                    / 1024
+                + corr_value.abs() / RFP_CORR_DIVISOR;
+            if !self.stack[ply + STACK_OFFSET].tt_pv
+                && depth < RFP_MAX_DEPTH
+                && eval >= beta
+                && eval - futility_margin >= beta
+                && (tt_move == Move::NONE || tt_capture)
+                && beta > VALUE_MATED_IN_MAX_PLY
+                && eval < VALUE_MATE_IN_MAX_PLY
             {
-                return self.qsearch(alpha, beta, ply, 0);
+                // 静的評価そのものではなく、βへ寄せた値を返す
+                return (2 * beta + eval) / 3;
             }
 
             // NMP（ADR-0028）。手番を渡して浅く探索し、それでもβ以上なら刈る。
@@ -1262,15 +1309,6 @@ impl Worker {
         {
             return tt_probcut_beta;
         }
-
-        // 置換表の手が駒を取る手か（yaneuraou-search.cpp:2672）。
-        // そうならこのノードの全手のリダクションを増やす
-        let tt_capture = tt_move != Move::NONE
-            && !tt_move.is_drop()
-            && !self.pos.piece_on(tt_move.to()).is_empty();
-        // PVでもcutでもないノード（yaneuraou-search.cpp:2251）。
-        // 全手を調べる見込みなのでリダクションを強める
-        let all_node = !(is_pv || cut_node);
 
         let mut picker = MovePicker::new(&self.pos, tt_move, depth as i32, ply, false);
         // continuation historyの面（1手前から6手前まで。ADR-0109のG1）
