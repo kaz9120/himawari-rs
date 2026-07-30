@@ -40,7 +40,7 @@ fn finds_known_mates() {
         "4k4/9/4P4/9/9/9/9/9/4K4 b G 1",
     ] {
         let mut pos = Position::from_sfen(sfen).unwrap();
-        let m = mate_1ply(&mut pos);
+        let m = mate_1ply(&pos);
         assert!(m.is_some(), "1手詰めを見逃した: {sfen}");
         verify_is_mate(&mut pos, m.unwrap());
     }
@@ -61,7 +61,7 @@ fn random_playouts_soundness() {
                 break;
             }
             if !pos.in_check() {
-                if let Some(m) = mate_1ply(&mut pos) {
+                if let Some(m) = mate_1ply(&pos) {
                     found += 1;
                     verify_is_mate(&mut pos, m);
                 }

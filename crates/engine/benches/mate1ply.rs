@@ -71,7 +71,7 @@ fn bench(c: &mut Criterion) {
     g.bench_function("all", |b| {
         b.iter(|| {
             for p in all.iter_mut() {
-                black_box(mate_1ply(black_box(p)));
+                black_box(mate_1ply(black_box(&*p)));
             }
         });
     });
@@ -79,7 +79,7 @@ fn bench(c: &mut Criterion) {
     g.bench_function("no_mate", |b| {
         b.iter(|| {
             for p in no_mate.iter_mut() {
-                black_box(mate_1ply(black_box(p)));
+                black_box(mate_1ply(black_box(&*p)));
             }
         });
     });
