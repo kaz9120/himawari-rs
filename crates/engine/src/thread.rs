@@ -16,7 +16,7 @@ use crate::eval::Evaluator;
 use crate::movepick::Histories;
 use crate::nnue::NnueNetwork;
 use crate::search::{IterInfo, ScoreBound, SearchInfo, Shared, Worker};
-use crate::timeman::{Limits, TimeManager};
+use crate::timeman::{Limits, TimeManager, TimeOptions};
 use crate::value::{VALUE_MATE, Value};
 
 /// メインワーカーへのUSI出力コールバック。
@@ -29,6 +29,12 @@ pub struct EngineOptions {
     pub threads: usize,
     pub network_delay: u64,
     pub network_delay2: u64,
+    /// 最小思考時間[ms]（timeman.cpp:47）
+    pub minimum_thinking_time: u64,
+    /// 序盤重視率。百分率（timeman.cpp:52）
+    pub slow_mover: u64,
+    /// 持ち時間の各秒をぎりぎりまで使うか（timeman.cpp:55）
+    pub round_up_to_full_second: bool,
     pub max_moves_to_draw: u16,
     pub multi_pv: usize,
     pub ponder: bool,
@@ -42,10 +48,32 @@ impl Default for EngineOptions {
             threads: 1,
             network_delay: 120,
             network_delay2: 1120,
+            minimum_thinking_time: 2000,
+            slow_mover: 100,
+            round_up_to_full_second: true,
             max_moves_to_draw: 0,
             multi_pv: 1,
             ponder: false,
             eval_file: String::new(),
+        }
+    }
+}
+
+impl EngineOptions {
+    /// 時間管理へ渡す値を切り出す。`MaxMovesToDraw` の0は指定なしの
+    /// 意味なので100000として扱う（yaneuraou-search.cpp:72-77）
+    pub fn time_options(&self) -> TimeOptions {
+        TimeOptions {
+            network_delay: self.network_delay as i64,
+            network_delay2: self.network_delay2 as i64,
+            minimum_thinking_time: self.minimum_thinking_time as i64,
+            slow_mover: self.slow_mover as i64,
+            round_up_to_full_second: self.round_up_to_full_second,
+            max_moves_to_draw: if self.max_moves_to_draw == 0 {
+                100_000
+            } else {
+                i64::from(self.max_moves_to_draw)
+            },
         }
     }
 }
@@ -191,8 +219,7 @@ fn spawn_worker(
                             &j.limits,
                             j.pos.side_to_move(),
                             j.pos.game_ply(),
-                            j.opts.network_delay,
-                            j.opts.network_delay2,
+                            &j.opts.time_options(),
                         );
                         (j.limits.clone(), tm)
                     } else {
@@ -203,8 +230,12 @@ fn spawn_worker(
                             depth: j.limits.depth,
                             ..Limits::default()
                         };
-                        let tm =
-                            TimeManager::new(&inf, j.pos.side_to_move(), j.pos.game_ply(), 0, 0);
+                        let tm = TimeManager::new(
+                            &inf,
+                            j.pos.side_to_move(),
+                            j.pos.game_ply(),
+                            &TimeOptions::default(),
+                        );
                         (inf, tm)
                     };
                     let was_ponder = j.ponder;
@@ -355,6 +386,7 @@ impl ThreadPool {
             PonderState::None
         };
         self.shared.stop.store(false, Ordering::Relaxed);
+        self.shared.aborted_search.store(false, Ordering::Relaxed);
         self.shared.nodes.store(0, Ordering::Relaxed);
         for w in &self.workers {
             // idleはgo側で同期的に下ろす。workerが起きる前にquit/stopが

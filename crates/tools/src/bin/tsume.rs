@@ -13,7 +13,7 @@ use himawari_core::Position;
 use himawari_engine::eval::Evaluator;
 use himawari_engine::movepick::Histories;
 use himawari_engine::search::{Shared, Worker};
-use himawari_engine::timeman::{Limits, TimeManager};
+use himawari_engine::timeman::{Limits, TimeManager, TimeOptions};
 use himawari_engine::value::VALUE_MATE;
 
 /// 手で検証済みのスモークセット（SFEN, 詰み手数）。
@@ -32,7 +32,12 @@ fn solve(sfen: &str, depth: u32, shared: &Arc<Shared>) -> Option<(u32, String)> 
         depth,
         ..Limits::default()
     };
-    let tm = TimeManager::new(&limits, pos.side_to_move(), pos.game_ply(), 0, 0);
+    let tm = TimeManager::new(
+        &limits,
+        pos.side_to_move(),
+        pos.game_ply(),
+        &TimeOptions::default(),
+    );
     let mut worker = Worker::new(
         pos,
         Arc::clone(shared),

@@ -6,7 +6,7 @@ use himawari_core::{Move, MoveList, Position, SFEN_STARTPOS, generate_legal};
 use himawari_engine::eval::Evaluator;
 use himawari_engine::movepick::Histories;
 use himawari_engine::search::{SearchInfo, Shared, Worker};
-use himawari_engine::timeman::{Limits, TimeManager};
+use himawari_engine::timeman::{Limits, TimeManager, TimeOptions};
 use himawari_engine::value::{VALUE_MATE, Value};
 
 fn search_position(sfen: &str, depth: u32) -> (Move, Value) {
@@ -16,7 +16,12 @@ fn search_position(sfen: &str, depth: u32) -> (Move, Value) {
         depth,
         ..Limits::default()
     };
-    let tm = TimeManager::new(&limits, pos.side_to_move(), pos.game_ply(), 120, 1120);
+    let tm = TimeManager::new(
+        &limits,
+        pos.side_to_move(),
+        pos.game_ply(),
+        &TimeOptions::default(),
+    );
     let mut worker = Worker::new(
         pos,
         shared,
@@ -64,7 +69,12 @@ fn selfplay_smoke() {
             depth: 4,
             ..Limits::default()
         };
-        let tm = TimeManager::new(&limits, pos.side_to_move(), pos.game_ply(), 120, 1120);
+        let tm = TimeManager::new(
+            &limits,
+            pos.side_to_move(),
+            pos.game_ply(),
+            &TimeOptions::default(),
+        );
         let mut worker = Worker::new(
             pos.clone(),
             Arc::clone(&shared),
@@ -98,7 +108,12 @@ fn multipv_lines_are_distinct_and_sorted() {
         depth: 6,
         ..Limits::default()
     };
-    let tm = TimeManager::new(&limits, pos.side_to_move(), pos.game_ply(), 120, 1120);
+    let tm = TimeManager::new(
+        &limits,
+        pos.side_to_move(),
+        pos.game_ply(),
+        &TimeOptions::default(),
+    );
     let mut worker = Worker::new(
         pos,
         shared,
@@ -141,7 +156,12 @@ fn nnue_search_returns_legal_moves() {
             depth: 6,
             ..Limits::default()
         };
-        let tm = TimeManager::new(&limits, pos.side_to_move(), pos.game_ply(), 120, 1120);
+        let tm = TimeManager::new(
+            &limits,
+            pos.side_to_move(),
+            pos.game_ply(),
+            &TimeOptions::default(),
+        );
         let mut worker = Worker::new(
             pos.clone(),
             shared,
@@ -184,7 +204,12 @@ fn stop_before_first_iteration_still_returns_the_depth1_best() {
         infinite: true,
         ..Limits::default()
     };
-    let tm = TimeManager::new(&limits, pos.side_to_move(), pos.game_ply(), 120, 1120);
+    let tm = TimeManager::new(
+        &limits,
+        pos.side_to_move(),
+        pos.game_ply(),
+        &TimeOptions::default(),
+    );
     let mut worker = Worker::new(
         pos.clone(),
         shared,
@@ -224,7 +249,12 @@ fn does_not_end_on_an_unresolved_aspiration_bound() {
         depth: 12,
         ..Limits::default()
     };
-    let tm = TimeManager::new(&limits, pos.side_to_move(), pos.game_ply(), 120, 1120);
+    let tm = TimeManager::new(
+        &limits,
+        pos.side_to_move(),
+        pos.game_ply(),
+        &TimeOptions::default(),
+    );
     let mut worker = Worker::new(
         pos,
         shared,

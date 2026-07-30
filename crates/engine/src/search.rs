@@ -210,6 +210,9 @@ fn reductions(i: u32) -> i32 {
 /// スレッド間の共有状態（ADR-0020）。
 pub struct Shared {
     pub stop: AtomicBool,
+    /// 探索を破棄した（反復の途中で止めた）ことを示す（thread.h:296-301）。
+    /// 中断した反復のスコアは信用できないので、前の反復へ戻す判断に使う
+    pub aborted_search: AtomicBool,
     pub nodes: AtomicU64,
     pub tt: Tt,
     /// 評価値キャッシュ（ADR-0049）。全スレッド共有、new_gameでクリア。
@@ -220,6 +223,7 @@ impl Shared {
     pub fn new(hash_mb: usize) -> Shared {
         Shared {
             stop: AtomicBool::new(false),
+            aborted_search: AtomicBool::new(false),
             nodes: AtomicU64::new(0),
             tt: Tt::new(hash_mb),
             eval_hash: EvalHash::new(),
@@ -426,19 +430,35 @@ impl Worker {
         self.depth1_done && self.shared.stop.load(Ordering::Relaxed)
     }
 
-    /// 定期的な時間・ノード制限の検査。時間制限を持つのはメイン
-    /// ワーカーだけ（ヘルパーはtmが無制限。ADR-0020, 0031）。
+    /// 定期的な時間・ノード制限の検査（S:5480-5560）。時間制限を持つのは
+    /// メインワーカーだけ（ヘルパーはtmが無制限。ADR-0020, 0031）。
     /// あわせてローカルのノード数を共有カウンタへ流し込む。
+    ///
+    /// 即座に止めるのは3つだけである。movetime超過、nodes超過、予約した
+    /// 終了時刻の到来。`maximum()` の超過はその場では止めず、秒単位で
+    /// 切り上げた終了時刻を予約する。秒ぎりぎりまで思考したほうが得だから
     #[inline]
-    fn check_limits(&self) {
-        if self.nodes.is_multiple_of(2048) {
-            self.shared.nodes.fetch_add(2048, Ordering::Relaxed);
-            if self.tm.over_maximum() {
-                self.shared.stop.store(true, Ordering::Relaxed);
-            }
-            if self.limits.nodes > 0 && self.nodes >= self.limits.nodes {
-                self.shared.stop.store(true, Ordering::Relaxed);
-            }
+    fn check_limits(&mut self) {
+        if !self.nodes.is_multiple_of(2048) {
+            return;
+        }
+        self.shared.nodes.fetch_add(2048, Ordering::Relaxed);
+        // 深さ1を終えるまでは止めない（S:5542の completedDepth >= 1）
+        if !self.depth1_done {
+            return;
+        }
+        let elapsed = self.tm.elapsed_ms();
+        if (self.limits.movetime > 0 && elapsed >= self.limits.movetime as i64)
+            || (self.limits.nodes > 0 && self.nodes >= self.limits.nodes)
+            || (self.tm.search_end > 0 && self.tm.search_end <= elapsed)
+        {
+            self.shared.aborted_search.store(true, Ordering::Relaxed);
+            self.shared.stop.store(true, Ordering::Relaxed);
+        } else if self.tm.search_end == 0
+            && self.tm.use_time_management()
+            && elapsed > self.tm.maximum()
+        {
+            self.tm.set_search_end(elapsed);
         }
     }
 
@@ -796,11 +816,21 @@ impl Worker {
             if self.multi_pv == 1 && last_score.abs() >= VALUE_MATE_IN_MAX_PLY {
                 break;
             }
-            if self.stopped() || self.tm.over_total(scale) {
+            if self.stopped() {
                 break;
             }
             if self.limits.nodes > 0 && self.nodes >= self.limits.nodes {
                 break;
+            }
+            // 次の反復を回す時間があるか（S:1961-2048）。停止条件を満たして
+            // もその場では止めず、秒単位で切り上げた終了時刻を予約する。
+            // 予約済みなら終了は確定しているので測り直さない
+            if self.tm.search_end == 0
+                && !self.shared.stop.load(Ordering::Relaxed)
+                && self.tm.over_total(scale)
+            {
+                let elapsed = self.tm.elapsed_ms();
+                self.tm.set_search_end(elapsed);
             }
         }
         // 未確定の窓外れで終わるなら、確定した最後の結果を出し直す。
@@ -2347,6 +2377,7 @@ impl Worker {
 mod tests {
     use super::*;
     use crate::eval::Evaluator;
+    use crate::timeman::TimeOptions;
     use himawari_core::Position;
 
     /// eval hashあり/なしで探索した (総ノード数, 最善手) を返す。
@@ -2354,6 +2385,7 @@ mod tests {
         let pos = Position::from_sfen(sfen).unwrap();
         let shared = Arc::new(Shared {
             stop: AtomicBool::new(false),
+            aborted_search: AtomicBool::new(false),
             nodes: AtomicU64::new(0),
             tt: Tt::new(16),
             eval_hash: if eval_hash {
@@ -2366,7 +2398,12 @@ mod tests {
             depth,
             ..Limits::default()
         };
-        let tm = TimeManager::new(&limits, pos.side_to_move(), pos.game_ply(), 120, 1120);
+        let tm = TimeManager::new(
+            &limits,
+            pos.side_to_move(),
+            pos.game_ply(),
+            &TimeOptions::default(),
+        );
         let mut worker = Worker::new(
             pos,
             shared,
