@@ -368,6 +368,11 @@ pub struct Worker {
     /// root手は生成順のままなので、深さ1の途中で打ち切ると探索して
     /// いない手を返してしまう
     depth1_done: bool,
+    /// go ponder中に予算を使い切った（yaneuraou-search.h:220）。
+    /// ponder中はGUIの指示があるまで止められないので、その場では止めず
+    /// 予約だけしておく。ponderhit後の最初の判定で終了時刻が確定する。
+    /// aspirationのfail lowで解除する（S:1783-1784）
+    stop_on_ponderhit: bool,
     nodes: u64,
     shared: Arc<Shared>,
     tm: TimeManager,
@@ -420,6 +425,7 @@ impl Worker {
             nmp_min_ply: 0,
             last_iteration_pv: Vec::new(),
             depth1_done: false,
+            stop_on_ponderhit: false,
             nodes: 0,
             shared,
             tm,
@@ -474,7 +480,9 @@ impl Worker {
             self.shared.stop.store(true, Ordering::Relaxed);
         } else if self.tm.search_end == 0
             && self.tm.use_time_management()
-            && elapsed > self.tm.maximum()
+            // ponder中に予算を使い切っていたなら、ponderhit後の最初の
+            // 判定でここへ来る（S:5551-5558の条件1と2）
+            && (elapsed > self.tm.maximum() || self.stop_on_ponderhit)
         {
             self.tm.set_search_end(elapsed, ponderhit_offset);
         }
@@ -749,6 +757,9 @@ impl Worker {
                         }
                         beta = (alpha + beta) / 2;
                         alpha = (score - delta).max(-VALUE_INFINITE);
+                        // 評価が下がったので、予約した停止を解除する
+                        // （S:1783-1784）。読み直す価値のある局面である
+                        self.stop_on_ponderhit = false;
                         delta += delta / 2;
                     } else if score >= beta {
                         // fail high: 実際の評価はこの値以上
@@ -851,16 +862,22 @@ impl Worker {
             }
             // 次の反復を回す時間があるか（S:1961-2048）。停止条件を満たして
             // もその場では止めず、秒単位で切り上げた終了時刻を予約する。
-            // 予約済みなら終了は確定しているので測り直さない。
-            // go ponder中は予約しない（GUIの指示があるまで止めないため）
-            if self.tm.search_end == 0
+            // 予約済みなら終了は確定しているので測り直さない
+            if self.tm.use_time_management()
                 && !self.shared.stop.load(Ordering::Relaxed)
-                && !self.shared.ponder.load(Ordering::SeqCst)
+                && !self.stop_on_ponderhit
+                && self.tm.search_end == 0
                 && self.tm.over_total(scale)
             {
-                let elapsed = self.tm.elapsed_ms();
-                let ponderhit_offset = self.shared.ponderhit_offset.load(Ordering::SeqCst);
-                self.tm.set_search_end(elapsed, ponderhit_offset);
+                if self.shared.ponder.load(Ordering::SeqCst) {
+                    // go ponder中はGUIの指示があるまで止められない。
+                    // 停止を予約だけしておく（S:2043-2044）
+                    self.stop_on_ponderhit = true;
+                } else {
+                    let elapsed = self.tm.elapsed_ms();
+                    let ponderhit_offset = self.shared.ponderhit_offset.load(Ordering::SeqCst);
+                    self.tm.set_search_end(elapsed, ponderhit_offset);
+                }
             }
         }
         // 中断した探索で得た詰み負けのスコアは信用できない（S:1864-1887）。
