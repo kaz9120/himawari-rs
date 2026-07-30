@@ -997,7 +997,7 @@ impl Worker {
             depth
         };
 
-        // 静的評価（ADR-0028）。王手中はVALUE_NONE。TTのevalを再利用する。
+        // 静的評価（ADR-0028, 0109のG4）。TTのevalを再利用する。
         // rawは補正前（TT保存用）、static_evalはcorrection history補正後（ADR-0046）。
         let raw_eval = if in_check {
             VALUE_NONE
@@ -1011,8 +1011,11 @@ impl Worker {
         // correction historyの合成値（yaneuraou-search.cpp:3010）。
         // 静的評価の補正と、LMRのリダクションの減算が同じ値を読む
         let corr_value = self.correction_value(ply);
+        // 王手中は評価関数を呼ばず、2手前の静的評価をそのまま写す
+        // （yaneuraou-search.cpp:3017）。将棋は王手が続くので、ここを
+        // VALUE_NONEにするとimprovingの連鎖が切れて枝刈りが一律に甘くなる
         let static_eval = if in_check {
-            VALUE_NONE
+            self.stack[ply + STACK_OFFSET - 2].static_eval
         } else {
             self.to_corrected_with(raw_eval, corr_value)
         };
@@ -1042,139 +1045,148 @@ impl Worker {
             }
         }
 
-        // 2手前より静的評価が改善しているか（枝刈りの強弱に使う）。
-        // 余白の初期値はVALUE_NONEなので、ply < 2でもこの検査でfalseになる
-        let prev2_eval = self.stack[ply + STACK_OFFSET - 2].static_eval;
-        let improving = !in_check && prev2_eval != VALUE_NONE && static_eval > prev2_eval;
+        // 2手前より静的評価が改善しているか（枝刈りの強弱に使う。
+        // yaneuraou-search.cpp:3159）。王手中はfalse固定である。
+        // 王手中のstatic_evalが2手前の写しなので、連続王手でも連鎖は切れない。
+        // 余白の初期値VALUE_NONE（32602）を上回るstatic_evalは存在しないため、
+        // ply < 2でも比較だけでfalseになる（参照実装も同じ性質に依存する）
+        let mut improving = false;
 
-        // reverse futility（ADR-0028）: 静的評価がβを大きく超えるなら刈る。
-        // 除外手つき探索中はスキップ（ADR-0050）
-        if excluded == Move::NONE
-            && !is_pv
-            && !in_check
-            && depth <= RFP_MAX_DEPTH
-            && beta.abs() < VALUE_MATE_IN_MAX_PLY
-            && static_eval - RFP_MARGIN * depth as Value >= beta
-        {
-            return static_eval;
-        }
+        // 王手中はevalベースの枝刈りを一切行わない
+        // （yaneuraou-search.cpp:3013-3020のgoto moves_loop）。
+        // 静的評価が2手前の写しでしかないため、判断材料にできない
+        if !in_check {
+            improving = static_eval > self.stack[ply + STACK_OFFSET - 2].static_eval;
 
-        // razoring（ADR-0057）: 静的評価がalphaを大きく下回るなら
-        // 通常探索を省略してqsearchに降格する
-        if excluded == Move::NONE
-            && !is_pv
-            && !in_check
-            && depth <= RAZOR_MAX_DEPTH
-            && alpha.abs() < VALUE_MATE_IN_MAX_PLY
-            && static_eval + RAZOR_MARGIN <= alpha
-        {
-            return self.qsearch(alpha, beta, ply, 0);
-        }
-
-        // NMP（ADR-0028）。手番を渡して浅く探索し、それでもβ以上なら刈る。
-        // 除外手つき探索中はスキップ（ADR-0050）
-        if excluded == Move::NONE
-            && !is_pv
-            && !in_check
-            && prev != Move::NULL
-            && depth >= NMP_MIN_DEPTH
-            && static_eval >= beta
-            && beta.abs() < VALUE_MATE_IN_MAX_PLY
-        {
-            let r = NMP_BASE_REDUCTION + depth / 4;
-            let mut null_pv = Vec::new();
-            // null moveは王手でも駒取りでもないので番兵の面を指す
-            // （yaneuraou-search.cpp:3254-3256）
-            let e = &mut self.stack[ply + STACK_OFFSET];
-            e.current_move = Move::NULL;
-            e.cont_base = ContinuationHistory::SENTINEL;
-            e.cont_corr_base = 0;
-            self.pos.do_null_move();
-            self.evaluator.push(&self.pos);
-            let v = -self.search(
-                -beta,
-                -beta + 1,
-                depth.saturating_sub(r),
-                ply + 1,
-                Move::NULL,
-                &mut null_pv,
-                false,
-                // NMPの子はcut_node = false（ADR-0109のG0）
-                false,
-            );
-            self.evaluator.pop();
-            self.pos.undo_null_move();
-            if self.stopped() {
-                return VALUE_ZERO;
+            // reverse futility（ADR-0028）: 静的評価がβを大きく超えるなら刈る。
+            // 除外手つき探索中はスキップ（ADR-0050）
+            if excluded == Move::NONE
+                && !is_pv
+                && depth <= RFP_MAX_DEPTH
+                && beta.abs() < VALUE_MATE_IN_MAX_PLY
+                && static_eval - RFP_MARGIN * depth as Value >= beta
+            {
+                return static_eval;
             }
-            if v >= beta {
-                // パス由来の詰みスコアは信用せずβに丸める
-                return if v >= VALUE_MATE_IN_MAX_PLY { beta } else { v };
-            }
-        }
 
-        // ProbCut（ADR-0051）。betaを大きく超えそうなノードでは、浅い確認探索で
-        // 「十分良い取る手が1つある」ことを示せれば高深度の全探索を省いてカットする。
-        // non-PV・非王手・除外手なし・depth>=5で発動。除外手つき探索中はスキップ。
-        const PROBCUT_MARGIN: Value = 200;
-        const PROBCUT_DEPTH_REDUCTION: u32 = 4;
-        const PROBCUT_MIN_DEPTH: u32 = 5;
-        let probcut_beta = beta + PROBCUT_MARGIN;
-        if excluded == Move::NONE
-            && !is_pv
-            && !in_check
-            && depth >= PROBCUT_MIN_DEPTH
-            && beta.abs() < VALUE_MATE_IN_MAX_PLY
-            // TTに深い情報があり矛盾する（probcut_beta未満と分かっている）ならスキップ
-            && !(tt_hit.is_some()
-                && tt_depth >= depth.saturating_sub(3)
-                && tt_value < probcut_beta)
-        {
-            let mut list = MoveList::default();
-            generate(&self.pos, GenType::Captures, false, &mut list);
-            for &m in &list {
-                // SEE>=0の取る手だけを確認対象にする
-                if !self.pos.see_ge(m, 0) || !self.pos.is_legal(m) {
-                    continue;
-                }
-                self.set_current_move(ply, m, !self.pos.piece_on(m.to()).is_empty());
-                self.pos.do_move(m);
+            // razoring（ADR-0057）: 静的評価がalphaを大きく下回るなら
+            // 通常探索を省略してqsearchに降格する
+            if excluded == Move::NONE
+                && !is_pv
+                && depth <= RAZOR_MAX_DEPTH
+                && alpha.abs() < VALUE_MATE_IN_MAX_PLY
+                && static_eval + RAZOR_MARGIN <= alpha
+            {
+                return self.qsearch(alpha, beta, ply, 0);
+            }
+
+            // NMP（ADR-0028）。手番を渡して浅く探索し、それでもβ以上なら刈る。
+            // 除外手つき探索中はスキップ（ADR-0050）
+            if excluded == Move::NONE
+                && !is_pv
+                && prev != Move::NULL
+                && depth >= NMP_MIN_DEPTH
+                && static_eval >= beta
+                && beta.abs() < VALUE_MATE_IN_MAX_PLY
+            {
+                let r = NMP_BASE_REDUCTION + depth / 4;
+                let mut null_pv = Vec::new();
+                // null moveは王手でも駒取りでもないので番兵の面を指す
+                // （yaneuraou-search.cpp:3254-3256）
+                let e = &mut self.stack[ply + STACK_OFFSET];
+                e.current_move = Move::NULL;
+                e.cont_base = ContinuationHistory::SENTINEL;
+                e.cont_corr_base = 0;
+                self.pos.do_null_move();
                 self.evaluator.push(&self.pos);
-                // まずqsearchで確認（窓は (-probcut_beta, -probcut_beta+1)）
-                let mut v = -self.qsearch(-probcut_beta, -probcut_beta + 1, ply + 1, 0);
-                // 通ったら同じ窓で通常探索 depth-4 を確認する
-                if v >= probcut_beta {
-                    let mut child_pv = Vec::new();
-                    v = -self.search(
-                        -probcut_beta,
-                        -probcut_beta + 1,
-                        depth - PROBCUT_DEPTH_REDUCTION,
-                        ply + 1,
-                        m,
-                        &mut child_pv,
-                        false,
-                        // ProbCutの子はcut_nodeを反転する（ADR-0109のG0）
-                        !cut_node,
-                    );
-                }
+                let v = -self.search(
+                    -beta,
+                    -beta + 1,
+                    depth.saturating_sub(r),
+                    ply + 1,
+                    Move::NULL,
+                    &mut null_pv,
+                    false,
+                    // NMPの子はcut_node = false（ADR-0109のG0）
+                    false,
+                );
                 self.evaluator.pop();
-                self.pos.undo_move(m);
+                self.pos.undo_null_move();
                 if self.stopped() {
                     return VALUE_ZERO;
                 }
-                if v >= probcut_beta {
-                    // fail-soft。TTにlower bound・depth-3で保存してカットする
-                    self.shared.tt.store(
-                        key,
-                        m.to_move16(),
-                        value_to_tt(v, ply),
-                        raw_eval as i16,
-                        depth.saturating_sub(3).min(255) as u8,
-                        Bound::Lower,
-                        // 参照実装はttPvを書き戻す（yaneuraou-search.cpp:3418）
-                        self.stack[ply + STACK_OFFSET].tt_pv,
-                    );
-                    return v;
+                if v >= beta {
+                    // パス由来の詰みスコアは信用せずβに丸める
+                    return if v >= VALUE_MATE_IN_MAX_PLY { beta } else { v };
+                }
+            }
+
+            // NMPの後にβで再計算する（yaneuraou-search.cpp:3306）。
+            // 静的評価がβ以上なら、2手前と比べていなくても改善扱いにする
+            improving |= static_eval >= beta;
+
+            // ProbCut（ADR-0051）。betaを大きく超えそうなノードでは、浅い確認探索で
+            // 「十分良い取る手が1つある」ことを示せれば高深度の全探索を省いてカットする。
+            // non-PV・除外手なし・depth>=5で発動。除外手つき探索中はスキップ。
+            const PROBCUT_MARGIN: Value = 200;
+            const PROBCUT_DEPTH_REDUCTION: u32 = 4;
+            const PROBCUT_MIN_DEPTH: u32 = 5;
+            let probcut_beta = beta + PROBCUT_MARGIN;
+            if excluded == Move::NONE
+                && !is_pv
+                && depth >= PROBCUT_MIN_DEPTH
+                && beta.abs() < VALUE_MATE_IN_MAX_PLY
+                // TTに深い情報があり矛盾する（probcut_beta未満と分かっている）ならスキップ
+                && !(tt_hit.is_some()
+                    && tt_depth >= depth.saturating_sub(3)
+                    && tt_value < probcut_beta)
+            {
+                let mut list = MoveList::default();
+                generate(&self.pos, GenType::Captures, false, &mut list);
+                for &m in &list {
+                    // SEE>=0の取る手だけを確認対象にする
+                    if !self.pos.see_ge(m, 0) || !self.pos.is_legal(m) {
+                        continue;
+                    }
+                    self.set_current_move(ply, m, !self.pos.piece_on(m.to()).is_empty());
+                    self.pos.do_move(m);
+                    self.evaluator.push(&self.pos);
+                    // まずqsearchで確認（窓は (-probcut_beta, -probcut_beta+1)）
+                    let mut v = -self.qsearch(-probcut_beta, -probcut_beta + 1, ply + 1, 0);
+                    // 通ったら同じ窓で通常探索 depth-4 を確認する
+                    if v >= probcut_beta {
+                        let mut child_pv = Vec::new();
+                        v = -self.search(
+                            -probcut_beta,
+                            -probcut_beta + 1,
+                            depth - PROBCUT_DEPTH_REDUCTION,
+                            ply + 1,
+                            m,
+                            &mut child_pv,
+                            false,
+                            // ProbCutの子はcut_nodeを反転する（ADR-0109のG0）
+                            !cut_node,
+                        );
+                    }
+                    self.evaluator.pop();
+                    self.pos.undo_move(m);
+                    if self.stopped() {
+                        return VALUE_ZERO;
+                    }
+                    if v >= probcut_beta {
+                        // fail-soft。TTにlower bound・depth-3で保存してカットする
+                        self.shared.tt.store(
+                            key,
+                            m.to_move16(),
+                            value_to_tt(v, ply),
+                            raw_eval as i16,
+                            depth.saturating_sub(3).min(255) as u8,
+                            Bound::Lower,
+                            // 参照実装はttPvを書き戻す（yaneuraou-search.cpp:3418）
+                            self.stack[ply + STACK_OFFSET].tt_pv,
+                        );
+                        return v;
+                    }
                 }
             }
         }
