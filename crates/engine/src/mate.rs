@@ -11,7 +11,8 @@
 //! 歩打ちは打ち歩詰めで常に非合法なので候補にしない。
 
 use himawari_core::{
-    Bitboard, Color, Move, MoveList, Piece, PieceType, Position, Square, attacks, generate_legal,
+    Bitboard, Color, Move, MoveList, Piece, PieceType, Position, Rank, Square, attacks,
+    generate_legal,
 };
 
 /// 玉の近傍へ移動できる駒の位置（出典はやねうら王
@@ -19,20 +20,13 @@ use himawari_core::{
 ///
 /// 占有なしの最大到達で作るので、どの占有に対しても上位集合になる。
 struct CheckCand {
-    /// 駒種を問わない和集合。まずこれで自駒を絞る
-    any: Bitboard,
-    /// 駒種ごとの移動元候補。玉と空は空集合
+    /// 駒種ごとの移動元候補。金の動きをする5種はGOLDの1本で代表する
     by_pt: [Bitboard; PieceType::NB],
 }
 
-/// 移動で王手をかけうる駒種。玉は候補にしない。
-const MOVERS: [PieceType; 13] = [
-    PieceType::PRO_PAWN,
-    PieceType::PRO_LANCE,
-    PieceType::PRO_KNIGHT,
-    PieceType::PRO_SILVER,
-    PieceType::HORSE,
-    PieceType::DRAGON,
+/// 移動で王手をかけうる駒種。成金4種は動きが金と同じなのでGOLDに寄せる。
+/// 玉は候補にしない。
+const MOVERS: [PieceType; 9] = [
     PieceType::GOLD,
     PieceType::PAWN,
     PieceType::LANCE,
@@ -40,6 +34,20 @@ const MOVERS: [PieceType; 13] = [
     PieceType::SILVER,
     PieceType::BISHOP,
     PieceType::ROOK,
+    PieceType::HORSE,
+    PieceType::DRAGON,
+];
+
+/// MOVERSのうち、盤上の駒種と1対1で対応するもの（金の動きをする駒を除く）。
+const PLAIN_MOVERS: [PieceType; 8] = [
+    PieceType::PAWN,
+    PieceType::LANCE,
+    PieceType::KNIGHT,
+    PieceType::SILVER,
+    PieceType::BISHOP,
+    PieceType::ROOK,
+    PieceType::HORSE,
+    PieceType::DRAGON,
 ];
 
 static CHECK_CAND: std::sync::OnceLock<Vec<CheckCand>> = std::sync::OnceLock::new();
@@ -56,7 +64,6 @@ fn check_cand(us: Color, ksq: Square) -> &'static CheckCand {
                 let near = attacks::king_attacks(ksq);
                 let knight_to = attacks::knight_attacks(c.flip(), ksq);
                 let mut e = CheckCand {
-                    any: Bitboard::EMPTY,
                     by_pt: [Bitboard::EMPTY; PieceType::NB],
                 };
                 for pt in MOVERS {
@@ -77,7 +84,6 @@ fn check_cand(us: Color, ksq: Square) -> &'static CheckCand {
                         }
                     }
                     e.by_pt[pt.index()] = bb;
-                    e.any |= bb;
                 }
                 v.push(e);
             }
@@ -109,11 +115,44 @@ fn our_attackers(
     a
 }
 
+/// 移動先toの駒が玉に取られてしまうか。取られるなら詰みではない。
+///
+/// 成り・不成や打つ駒種によらず結果が同じなので、候補の列挙側で1回だけ
+/// 判定する。is_mate_moveの玉の逃げ場の検査と同じことを、いちばん効く
+/// 枝刈りとして前に出したものである。
+#[inline]
+fn king_captures_to(pos: &Position, us: Color, ksq: Square, to: Square, from_bb: Bitboard) -> bool {
+    if !attacks::king_attacks(ksq).test(to) {
+        return false;
+    }
+    // 玉が動くので占有から玉を抜く。toの駒は自分自身へ利かないので、
+    // 移動先の利きを足す必要はない
+    let occ = (pos.occupied() ^ from_bb) ^ Bitboard::from_square(ksq);
+    (pos.attackers_to(us, to, occ) & !from_bb).is_empty()
+}
+
+/// 行き所のない駒になるので不成では入れないマス。
+/// 歩・香は最終段、桂は最終2段。成れる場合は成りの手が別に作られる。
+#[inline]
+fn no_retreat(us: Color, pt: PieceType) -> Bitboard {
+    let last = if us == Color::Black { 0 } else { 8 };
+    let second = if us == Color::Black { 1 } else { 7 };
+    match pt {
+        PieceType::PAWN | PieceType::LANCE => Bitboard::rank(Rank(last)),
+        PieceType::KNIGHT => Bitboard::rank(Rank(last)) | Bitboard::rank(Rank(second)),
+        _ => Bitboard::EMPTY,
+    }
+}
+
 /// 手mが詰みかを、駒を動かさずに判定する。
 ///
 /// trueを返すなら確実に詰み（偽陽性なし）。合駒が成立しうる局面は
 /// 安全側に倒してfalseを返すため、見逃しはあり得る。
+///
+/// mは擬似合法であることが前提。候補の列挙側が利きから作るので、
+/// `pseudo_legal` の再検査はしない（行き所のない駒だけ列挙側で除く）。
 fn is_mate_move(pos: &Position, m: Move) -> bool {
+    debug_assert!(pos.pseudo_legal(m), "擬似合法でない手: {}", m.to_usi());
     let us = pos.side_to_move();
     let them = us.flip();
     let ksq = pos.king(them);
@@ -132,28 +171,20 @@ fn is_mate_move(pos: &Position, m: Move) -> bool {
     // 玉を除いた占有。玉が動いた後の利きを見るのに使う
     let occ_no_king = occ_after ^ ksq_bb;
 
-    // 1. 移動先の駒を玉に取られるなら詰みではない。いちばん効く枝刈りなので
-    //    合法性の検査より前に置く。取られる駒は自分自身へ利かないので、
-    //    移動先の利きを足す必要はない
-    if attacks::king_attacks(ksq).test(to)
-        && (pos.attackers_to(us, to, occ_no_king) & !from_bb).is_empty()
-    {
-        return false;
-    }
-    if !pos.pseudo_legal(m) || !pos.is_legal(m) {
+    if !pos.is_legal(m) {
         return false;
     }
 
-    // 2. 王手になっているか。開き王手もここで拾える
+    // 1. 王手になっているか。開き王手もここで拾える
     let checkers = our_attackers(pos, us, ksq, occ_after, from_bb, to, pc);
     if checkers.is_empty() {
         return false;
     }
 
-    // 3. 玉の逃げ場。移動先toへ逃げる手は1で処理済み。
-    //    自駒のあるマスは取って逃げる手なので候補に残す
+    // 2. 玉の逃げ場。自駒のあるマスは取って逃げる手なので候補に残す。
+    //    移動先toも（隣接していれば）ここで検査される
     let their_after = pos.color_bb(them) & !to_bb;
-    for s in attacks::king_attacks(ksq) & !their_after & !to_bb {
+    for s in attacks::king_attacks(ksq) & !their_after {
         let o = occ_no_king | Bitboard::from_square(s);
         if our_attackers(pos, us, s, o, from_bb, to, pc).is_empty() {
             return false;
@@ -167,7 +198,7 @@ fn is_mate_move(pos: &Position, m: Move) -> bool {
     let csq = checkers.lsb();
     let csq_bb = Bitboard::from_square(csq);
 
-    // 4. 玉以外の駒で王手駒を取る。取った後も王手が残るなら回避にならない
+    // 3. 玉以外の駒で王手駒を取る。取った後も王手が残るなら回避にならない
     for d in pos.attackers_to(them, csq, occ_after) & !to_bb & !ksq_bb {
         let o = occ_after ^ Bitboard::from_square(d);
         // csqにあった駒は取られたのでマスクで外す
@@ -176,7 +207,7 @@ fn is_mate_move(pos: &Position, m: Move) -> bool {
         }
     }
 
-    // 5. 合駒。玉と王手駒の間があるのは開き王手の場合だけ
+    // 4. 合駒。玉と王手駒の間があるのは開き王手の場合だけ
     let inter = attacks::between(ksq, csq);
     if !inter.is_empty() {
         // 持ち駒があれば遮れるとみなす（安全側）
@@ -225,8 +256,12 @@ fn drop_mates(pos: &Position, us: Color, ksq: Square) -> Option<Move> {
             PieceType::LANCE => attacks::pawn_attacks(them, ksq),
             PieceType::ROOK => attacks::rook_attacks(ksq, Bitboard::ALL),
             _ => attacks::bishop_attacks(ksq, Bitboard::ALL),
-        } & empty;
+        } & empty
+            & !no_retreat(us, pt);
         for to in targets {
+            if king_captures_to(pos, us, ksq, to, Bitboard::EMPTY) {
+                continue;
+            }
             let m = Move::new_drop(pt, to, us);
             if is_mate_move(pos, m) {
                 return Some(m);
@@ -239,36 +274,49 @@ fn drop_mates(pos: &Position, us: Color, ksq: Square) -> Option<Move> {
 /// 盤上の駒の詰み候補。移動先を玉の隣接8マスと桂の王手マスに限る。
 /// 王手になるかの事前判定はせず、検証側に任せる（間接王手も拾える）。
 fn move_mates(pos: &Position, us: Color, ksq: Square) -> Option<Move> {
+    // 玉の近傍へ届かない駒は利きを作らずに捨てる。駒種ごとの候補との積を
+    // 取るので、玉と、届かない駒はここで全部落ちる
+    let cand = check_cand(us, ksq);
+    let mut froms = pos.golds(us) & cand.by_pt[PieceType::GOLD.index()];
+    for pt in PLAIN_MOVERS {
+        froms |= pos.pieces(us, pt) & cand.by_pt[pt.index()];
+    }
+    if froms.is_empty() {
+        return None;
+    }
     let them = us.flip();
     let occ = pos.occupied();
     let ours = pos.color_bb(us);
     let near = attacks::king_attacks(ksq) & !ours;
     let knight_to = attacks::knight_attacks(them, ksq) & !ours;
     let zone = Bitboard::promotion_zone(us);
-    // 玉の近傍へ届かない駒は利きを作らずに捨てる。玉もこれで外れる
-    let cand = check_cand(us, ksq);
-    for from in ours & cand.any {
+    for from in froms {
         let pc = pos.piece_on(from);
         let pt = pc.piece_type();
-        if !cand.by_pt[pt.index()].test(from) {
-            continue;
-        }
+        let from_bb = Bitboard::from_square(from);
         let targets = attacks::attacks(pc, from, occ)
             & if pt == PieceType::KNIGHT {
                 knight_to
             } else {
                 near
             };
+        // 不成では入れないマス。成りの手は別に作る
+        let blocked = no_retreat(us, pt);
         for to in targets {
+            if king_captures_to(pos, us, ksq, to, from_bb) {
+                continue;
+            }
             if pt.can_promote() && (zone.test(from) || zone.test(to)) {
                 let m = Move::new_move(from, to, true, pc.promote());
                 if is_mate_move(pos, m) {
                     return Some(m);
                 }
             }
-            let m = Move::new_move(from, to, false, pc);
-            if is_mate_move(pos, m) {
-                return Some(m);
+            if !blocked.test(to) {
+                let m = Move::new_move(from, to, false, pc);
+                if is_mate_move(pos, m) {
+                    return Some(m);
+                }
             }
         }
     }
