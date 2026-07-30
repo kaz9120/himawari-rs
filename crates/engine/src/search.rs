@@ -670,6 +670,10 @@ impl Worker {
             };
         }
         let mut last_score = VALUE_ZERO;
+        // 最後に確定した最善手のPVとスコア（S:1426-1428）。中断した反復の
+        // 詰み負けスコアはここへ戻すために覚える
+        let mut last_best_pv: Vec<Move> = Vec::new();
+        let mut last_best_score = -VALUE_INFINITE;
         // 最後に出したinfoが未確定の窓外れ（lowerbound / upperbound）か。
         // 打ち切りでこのまま終わると、GUIやCSAブリッジは確定していない値を
         // その手のスコアとして記録する。実際にfloodgateで `4723++` という
@@ -782,6 +786,11 @@ impl Worker {
             if !self.shared.stop.load(Ordering::Relaxed) {
                 self.last_iteration_pv.clone_from(&self.root_moves[0].pv);
             }
+            // 最善手が変わったら、確定したPVとスコアを覚え直す（S:1888-1893）
+            if self.root_moves[0].pv.first() != last_best_pv.first() {
+                last_best_pv.clone_from(&self.root_moves[0].pv);
+                last_best_score = self.root_moves[0].score;
+            }
             // ここまで来れば深さ1は完走している。以降はstopに従う
             self.depth1_done = true;
             // 局面の難易度で思考時間をスケールする（ADR-0059）
@@ -832,6 +841,32 @@ impl Worker {
                 let elapsed = self.tm.elapsed_ms();
                 self.tm.set_search_end(elapsed);
             }
+        }
+        // 中断した探索で得た詰み負けのスコアは信用できない（S:1864-1887）。
+        // 残りのroot手を読めば、負けが延びたり反証されたりしうる。前の
+        // 反復で確定したPVとスコアへ戻す。
+        //
+        // 参照実装はこの判定を反復の末尾で毎回行う。本エンジンは中断時に
+        // 反復の途中で抜けるので、ループを出たあとに1回だけ行う。
+        // abortedSearchが立つとstopも立ち、その反復で必ずループを出るので
+        // 判定の回数は変わらない
+        if self.shared.aborted_search.load(Ordering::Relaxed)
+            && self.root_moves[0].score != -VALUE_INFINITE
+            && self.root_moves[0].score <= VALUE_MATED_IN_MAX_PLY
+            && !last_best_pv.is_empty()
+        {
+            // 確定した最善手を先頭へ移す
+            if let Some(i) = self
+                .root_moves
+                .iter()
+                .position(|rm| rm.mv == last_best_pv[0])
+            {
+                let rm = self.root_moves.remove(i);
+                self.root_moves.insert(0, rm);
+            }
+            self.root_moves[0].pv.clone_from(&last_best_pv);
+            self.root_moves[0].score = last_best_score;
+            last_score = last_best_score;
         }
         // 未確定の窓外れで終わるなら、確定した最後の結果を出し直す。
         // これを出さないと、消費側の最後の1行が lowerbound / upperbound の
