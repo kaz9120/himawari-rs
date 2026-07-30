@@ -75,6 +75,17 @@ const PROBCUT_MARGIN: Value = 224;
 const PROBCUT_IMPROVING: Value = 61;
 const PROBCUT_MIN_DEPTH: u32 = 3;
 const PROBCUT_DEPTH_REDUCTION: i32 = 4;
+/// singular extension（ADR-0050, 0109のG5。yaneuraou-search.cpp:3747-3758）。
+/// TT手を除外した検証探索を `ttValue - (60 + 66*(ttPvかつ非PV)) * depth / 55`
+/// の窓で行う。深さの下限は `6 + ttPv` である。参照実装はチェスの
+/// `2 * depth` では「1手以外はすべてそれぐらい悪い」ため大半がsingularに
+/// なると書き、1割ぐらいがsingularになる係数へ調整している
+/// （yaneuraou-search.cpp:3728-3731）。評価値は歩=90スケールで一致する
+/// ため絶対値のまま使う（ADR-0074）
+const SINGULAR_MIN_DEPTH: u32 = 6;
+const SINGULAR_MARGIN: Value = 60;
+const SINGULAR_MARGIN_TTPV: Value = 66;
+const SINGULAR_MARGIN_DIV: Value = 55;
 /// correction historyの合成重み（ADR-0085, 0109）。分母は131072。
 /// 出典はやねうら王の `correction_value()`（yaneuraou-search.cpp:737）。
 /// 6要素（歩・小駒・先手非歩・後手非歩・2手前と4手前のcontinuation）を
@@ -1341,13 +1352,30 @@ impl Worker {
             }
         }
 
-        // singular extension（ADR-0050）。TT手を除外した検証探索がsingular_beta
-        // を下回れば、TT手だけが良い手と見て延長する。案A（単独延長のみ）
+        // 置換表の下界による簡易ProbCut（ADR-0078）。探索を伴わない。
+        // 除外手つき探索中はスキップする（ADR-0050）
+        let tt_probcut_beta = beta + TT_PROBCUT_MARGIN;
+        if excluded == Move::NONE
+            && matches!(tt_bound, Bound::Lower | Bound::Exact)
+            && tt_depth >= depth.saturating_sub(TT_PROBCUT_DEPTH_SLACK)
+            && tt_value >= tt_probcut_beta
+            && beta.abs() < VALUE_MATE_IN_MAX_PLY
+            && tt_value.abs() < VALUE_MATE_IN_MAX_PLY
+        {
+            return tt_probcut_beta;
+        }
+
+        // singular extension（ADR-0050, 0109のG5。yaneuraou-search.cpp:3745-3782）。
+        // TT手を除外した検証探索がsingular_betaを下回れば、TT手だけが傑出して
+        // いると見て延長する。参照実装はムーブループの中でTT手に当たったときに
+        // 判定するが、対象はTT手だけで、TT手はMovePickerが最初に返す。ループの
+        // 手前で1回求めても同じである（ムーブループの枝刈りは第1手には効かない）
         let mut singular = false;
         if excluded == Move::NONE
-            && depth >= 7
             && ply > 0
             && tt_move != Move::NONE
+            // ttPvノードでは1手深いところから判定する
+            && depth >= SINGULAR_MIN_DEPTH + u32::from(self.stack[ply + STACK_OFFSET].tt_pv)
             && tt_bound != Bound::Upper
             && tt_bound != Bound::None
             && tt_depth >= depth.saturating_sub(3)
@@ -1356,13 +1384,21 @@ impl Worker {
             && !self.is_shuffling(tt_move, ply)
             && self.pos.is_legal(tt_move)
         {
-            let singular_beta = tt_value - 2 * depth as Value;
+            let singular_beta = tt_value
+                - (SINGULAR_MARGIN
+                    + SINGULAR_MARGIN_TTPV
+                        * Value::from(self.stack[ply + STACK_OFFSET].tt_pv && !is_pv))
+                    * depth as Value
+                    / SINGULAR_MARGIN_DIV;
+            // 検証探索の深さは延長前のnewDepth（= depth - 1）の半分
+            // （yaneuraou-search.cpp:3758）
+            let singular_depth = (depth - 1) / 2;
             self.stack[ply + STACK_OFFSET].excluded_move = tt_move;
             let mut verify_pv = Vec::new();
             let v = self.search(
                 singular_beta - 1,
                 singular_beta,
-                depth / 2,
+                singular_depth,
                 ply,
                 prev,
                 &mut verify_pv,
@@ -1379,19 +1415,6 @@ impl Worker {
             // TT手が唯一の合法手なら検証探索はmated値を返し、必ず
             // singular=trueになる（唯一手の延長として意図どおり）
             singular = v < singular_beta;
-        }
-
-        // 置換表の下界による簡易ProbCut（ADR-0078）。探索を伴わない。
-        // 除外手つき探索中はスキップする（ADR-0050）
-        let tt_probcut_beta = beta + TT_PROBCUT_MARGIN;
-        if excluded == Move::NONE
-            && matches!(tt_bound, Bound::Lower | Bound::Exact)
-            && tt_depth >= depth.saturating_sub(TT_PROBCUT_DEPTH_SLACK)
-            && tt_value >= tt_probcut_beta
-            && beta.abs() < VALUE_MATE_IN_MAX_PLY
-            && tt_value.abs() < VALUE_MATE_IN_MAX_PLY
-        {
-            return tt_probcut_beta;
         }
 
         let mut picker = MovePicker::new(&self.pos, tt_move, depth as i32, ply, false);
