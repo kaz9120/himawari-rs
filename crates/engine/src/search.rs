@@ -1075,7 +1075,7 @@ impl Worker {
         let all_node = !(is_pv || cut_node);
 
         if depth == 0 {
-            return self.qsearch(alpha, beta, ply, 0);
+            return self.qsearch(alpha, beta, ply);
         }
 
         // 静的評価（ADR-0028, 0109のG4）。TTのevalを再利用する。
@@ -1177,7 +1177,7 @@ impl Worker {
             // 評価がalphaを大きく下回るなら通常探索をやめ、qsearchの値を返す。
             // PVノードでないことが唯一の前提で、深さの上限はない
             if !is_pv && eval < alpha - RAZOR_BASE - RAZOR_DEPTH_COEF * (depth * depth) as Value {
-                return self.qsearch(alpha, beta, ply, 0);
+                return self.qsearch(alpha, beta, ply);
             }
 
             // 子ノードのfutility（RFP。yaneuraou-search.cpp:3217-3227）。
@@ -1317,7 +1317,7 @@ impl Worker {
                     self.pos.do_move(m);
                     self.evaluator.push(&self.pos);
                     // まずqsearchで確認（窓は (-probcut_beta, -probcut_beta+1)）
-                    let mut v = -self.qsearch(-probcut_beta, -probcut_beta + 1, ply + 1, 0);
+                    let mut v = -self.qsearch(-probcut_beta, -probcut_beta + 1, ply + 1);
                     // 通ったら同じ窓で通常探索 depth-4 を確認する
                     if v >= probcut_beta && probcut_depth > 0 {
                         let mut child_pv = Vec::new();
@@ -1472,7 +1472,7 @@ impl Worker {
             }
         }
 
-        let mut picker = MovePicker::new(&self.pos, tt_move, depth_pre_singular, ply, false);
+        let mut picker = MovePicker::new(&self.pos, tt_move, depth_pre_singular, ply);
         // continuation historyの面（1手前から6手前まで。ADR-0109のG1）
         let cont = self.cont_bases(ply);
         let mut best = -VALUE_INFINITE;
@@ -1924,7 +1924,7 @@ impl Worker {
         best
     }
 
-    fn qsearch(&mut self, mut alpha: Value, beta: Value, ply: usize, qdepth: i32) -> Value {
+    fn qsearch(&mut self, mut alpha: Value, beta: Value, ply: usize) -> Value {
         if self.stopped() {
             return VALUE_ZERO;
         }
@@ -2012,8 +2012,9 @@ impl Worker {
             None
         };
 
-        // 入口plyだけ静かな王手も読む（ADR-0028の項目7）
-        let mut picker = MovePicker::new(&self.pos, tt_move, 0, ply, qdepth == 0);
+        // 参照実装は静止探索で取る手（歩成を含む）だけを生成する
+        // （movepick.cpp:69）。静かな王手は生成しない
+        let mut picker = MovePicker::new(&self.pos, tt_move, 0, ply);
         let cont = self.cont_bases(ply);
         let mut count = 0u32;
         let mut best_move = Move::NONE;
@@ -2061,7 +2062,7 @@ impl Worker {
             );
             self.pos.do_move(m);
             self.evaluator.push(&self.pos);
-            let value = -self.qsearch(-beta, -alpha, ply + 1, qdepth - 1);
+            let value = -self.qsearch(-beta, -alpha, ply + 1);
             self.evaluator.pop();
             self.pos.undo_move(m);
             if self.stopped() {
