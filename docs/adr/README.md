@@ -128,6 +128,7 @@
 | [0111](0111-g2-lmr.md) | statScoreとLMRのリダクションを参照実装へ揃える（G2） | +124.0 | accepted |
 | [0112](0112-g3-pruning.md) | ムーブループの枝刈りを参照実装へ揃える（G3） | +95.2 | accepted |
 | [0113](0113-g4-eval-pruning.md) | improvingの再定義とevalベース枝刈りを参照実装へ揃える（G4） | +41.1 | accepted |
+| [0114](0114-g5-singular.md) | singularの条件とmulti-cut・negative extensionを参照実装へ揃える（G5） | +48.2 | accepted |
 
 ## バックログ
 
