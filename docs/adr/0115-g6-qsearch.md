@@ -1,6 +1,6 @@
 # 0115: qsearchを参照実装へ揃え、mate_1plyを指さない方式へ書き換える（G6）
 
-- Status: proposed
+- Status: accepted
 - Date: 2026-07-30
 - 関連ADR: [0109](0109-reference-parity.md), [0093](0093-mate1ply-in-search.md), [0094](0094-mate1ply-speedup.md), [0029](0029-mate-search.md), [0077](0077-qsearch-futility.md), [0054](0054-qsearch-tt.md), [0028](0028-pruning-extensions.md), [0022](0022-tt-design.md)
 
@@ -170,7 +170,18 @@ NPSへの影響は0.84%に収まる。
 
 ## SPRT
 
-（結果は判定後に追記する）
+既定条件（10+0.1、elo0=0、elo1=5、α=β=0.05）でG5完了時点のバイナリと比べた。
+
+```
+H1採択 | 1448局 | +740 =157 -551 | Elo +45.6 [+28.5,+62.9] | LLR +2.89
+```
+
+**+45.6 Eloで採択した。** 6群の単純加算で+442.6になる。
+
+**mate_1plyを書き換える前に一度測りかけていた。** 286局の時点で中断し、棋譜を
+破棄した。旧mate_1plyのままではNPSが1割落ちる状態で、参照実装が前提とする
+「1手詰め判定が安い」が成立していない。前提を揃えてから測るのが正しいと
+判断した。
 
 ## Consequences
 
