@@ -483,6 +483,29 @@ impl Worker {
         }
     }
 
+    /// 往復手（shuffling）か（G5。yaneuraou-search.cpp:813-838）。
+    /// 2手前・4手前と行き先を交換しているだけの手は、singularの検証探索に
+    /// かけない。参照実装の `#if STOCKFISH` の外側が将棋版で、50手ルールの
+    /// 条件を落とし、代わりに駒打ちを除いている。取る手も往復手ではない
+    fn is_shuffling(&self, m: Move, ply: usize) -> bool {
+        // capture_stage(m) は将棋版では単なるcapture(m)（position.h:1345）
+        if m.is_drop() || !self.pos.piece_on(m.to()).is_empty() {
+            return false;
+        }
+        // null moveをまたぐと2手前・4手前の手が繋がらない。局面が動いて
+        // いない手数が浅いうちも対象にしない
+        if self.pos.state().plies_from_null <= 6 || ply < 18 {
+            return false;
+        }
+        let move2 = self.stack[ply + STACK_OFFSET - 2].current_move;
+        let move4 = self.stack[ply + STACK_OFFSET - 4].current_move;
+        // is_ok()は「fromとtoが違う」ことなので、特殊手の除外に対応する
+        if move2.is_special() || move4.is_special() || move2.is_drop() || move4.is_drop() {
+            return false;
+        }
+        m.from_sq() == move2.to() && move2.from_sq() == move4.to()
+    }
+
     /// correction historyの6要素を重み付きで合成する（ADR-0046, 0109）。
     /// 出典はやねうら王の `correction_value()`（yaneuraou-search.cpp:724-737）。
     /// 131072で割る前の値を返す。LMRのリダクションもこの値を読む。
@@ -1329,6 +1352,8 @@ impl Worker {
             && tt_bound != Bound::None
             && tt_depth >= depth.saturating_sub(3)
             && tt_value.abs() < VALUE_MATE_IN_MAX_PLY
+            // 往復手は検証探索にかけない（G5。yaneuraou-search.cpp:3749）
+            && !self.is_shuffling(tt_move, ply)
             && self.pos.is_legal(tt_move)
         {
             let singular_beta = tt_value - 2 * depth as Value;
