@@ -146,6 +146,16 @@ const TT_PROBCUT_DEPTH_SLACK: u32 = 4;
 const QS_FUTILITY_MARGIN: Value = 328;
 const QS_MOVECOUNT_LIMIT: u32 = 2;
 
+/// 置換表のdepth欄のゲタ（tt.cpp:45-66, 103-164）。参照実装も内部で
+/// DEPTH_NONE（-3）分を下駄履きして符号なしで持つ。同じ表現を採る。
+/// 深さの比較はすべて差なので、ゲタを履かせても置換方針は変わらない
+const TT_DEPTH_OFFSET: i32 = 3;
+/// 静止探索が書き出すdepth（types.h:405のDEPTH_QS = 0）。
+const TT_DEPTH_QS: u8 = 3;
+/// 探索を伴わない値を書き出すdepth（types.h:418のDEPTH_UNSEARCHED = -2）。
+/// DEPTH_QSより小さいので、この値ではTTカットが起きない
+const TT_DEPTH_UNSEARCHED: u8 = 1;
+
 /// 思考時間の難易度スケール（ADR-0059）。optimumを3係数の積で伸縮させる。
 /// 評価の下落は時間を伸ばし、最善手の安定とノード集中は縮める。
 const FALLING_UNIT: f64 = 200.0;
@@ -1019,7 +1029,9 @@ impl Worker {
         }
         let mut tt_move = Move::NONE;
         let mut tt_value = VALUE_NONE;
-        let mut tt_depth = 0u32;
+        // 置換表のdepth欄はゲタを外して扱う。ヒットしないときは参照実装の
+        // DEPTH_NONE（tt.cpp:445）に合わせて -3 とする
+        let mut tt_depth = -TT_DEPTH_OFFSET;
         let mut tt_bound = Bound::None;
         if let Some(data) = &tt_hit {
             if let Some(m) = self.pos.to_move(data.mv)
@@ -1028,10 +1040,10 @@ impl Worker {
                 tt_move = m;
             }
             tt_value = value_from_tt(data.value, ply);
-            tt_depth = u32::from(data.depth);
+            tt_depth = i32::from(data.depth) - TT_DEPTH_OFFSET;
             tt_bound = data.bound;
             // TTカット。除外手つき探索中はカットしない（probeは行い、eval再利用は可）
-            if excluded == Move::NONE && !is_pv && tt_depth >= depth {
+            if excluded == Move::NONE && !is_pv && tt_depth >= depth as i32 {
                 let usable = match tt_bound {
                     Bound::Exact => true,
                     Bound::Lower => tt_value >= beta,
@@ -1075,7 +1087,8 @@ impl Worker {
         let all_node = !(is_pv || cut_node);
 
         if depth == 0 {
-            return self.qsearch(alpha, beta, ply);
+            // 参照実装はノード種別を引き継ぐ（yaneuraou-search.cpp:2256）
+            return self.qsearch(alpha, beta, ply, is_pv);
         }
 
         // 静的評価（ADR-0028, 0109のG4）。TTのevalを再利用する。
@@ -1177,7 +1190,8 @@ impl Worker {
             // 評価がalphaを大きく下回るなら通常探索をやめ、qsearchの値を返す。
             // PVノードでないことが唯一の前提で、深さの上限はない
             if !is_pv && eval < alpha - RAZOR_BASE - RAZOR_DEPTH_COEF * (depth * depth) as Value {
-                return self.qsearch(alpha, beta, ply);
+                // razoringは非PVノード限定なので常にNonPV（yaneuraou-search.cpp:3192）
+                return self.qsearch(alpha, beta, ply, false);
             }
 
             // 子ノードのfutility（RFP。yaneuraou-search.cpp:3217-3227）。
@@ -1317,7 +1331,7 @@ impl Worker {
                     self.pos.do_move(m);
                     self.evaluator.push(&self.pos);
                     // まずqsearchで確認（窓は (-probcut_beta, -probcut_beta+1)）
-                    let mut v = -self.qsearch(-probcut_beta, -probcut_beta + 1, ply + 1);
+                    let mut v = -self.qsearch(-probcut_beta, -probcut_beta + 1, ply + 1, false);
                     // 通ったら同じ窓で通常探索 depth-4 を確認する
                     if v >= probcut_beta && probcut_depth > 0 {
                         let mut child_pv = Vec::new();
@@ -1345,7 +1359,7 @@ impl Worker {
                             m.to_move16(),
                             value_to_tt(v, ply),
                             raw_eval as i16,
-                            (probcut_depth + 1).clamp(0, 255) as u8,
+                            (probcut_depth + 1 + TT_DEPTH_OFFSET).clamp(0, 255) as u8,
                             Bound::Lower,
                             // 参照実装はttPvを書き戻す（yaneuraou-search.cpp:3418）
                             self.stack[ply + STACK_OFFSET].tt_pv,
@@ -1365,7 +1379,7 @@ impl Worker {
         let tt_probcut_beta = beta + TT_PROBCUT_MARGIN;
         if excluded == Move::NONE
             && matches!(tt_bound, Bound::Lower | Bound::Exact)
-            && tt_depth >= depth.saturating_sub(TT_PROBCUT_DEPTH_SLACK)
+            && tt_depth >= depth.saturating_sub(TT_PROBCUT_DEPTH_SLACK) as i32
             && tt_value >= tt_probcut_beta
             && beta.abs() < VALUE_MATE_IN_MAX_PLY
             && tt_value.abs() < VALUE_MATE_IN_MAX_PLY
@@ -1393,7 +1407,7 @@ impl Worker {
             && depth >= SINGULAR_MIN_DEPTH + u32::from(self.stack[ply + STACK_OFFSET].tt_pv)
             && tt_bound != Bound::Upper
             && tt_bound != Bound::None
-            && tt_depth >= depth.saturating_sub(3)
+            && tt_depth >= depth.saturating_sub(3) as i32
             && tt_value.abs() < VALUE_MATE_IN_MAX_PLY
             // 往復手は検証探索にかけない（G5。yaneuraou-search.cpp:3749）
             && !self.is_shuffling(tt_move, ply)
@@ -1636,7 +1650,7 @@ impl Worker {
                 r -= 2819
                     + i32::from(is_pv) * 973
                     + i32::from(tt_value > alpha) * 905
-                    + i32::from(tt_depth >= depth) * (935 + i32::from(cut_node) * 959);
+                    + i32::from(tt_depth >= depth as i32) * (935 + i32::from(cut_node) * 959);
             }
             // 項3: 他の調整を補正する基準オフセット
             r += 691;
@@ -1900,7 +1914,7 @@ impl Worker {
                 best_move.to_move16(),
                 value_to_tt(best, ply),
                 raw_eval as i16,
-                depth.min(255) as u8,
+                (depth as i32 + TT_DEPTH_OFFSET).min(255) as u8,
                 bound,
                 // 参照実装はis_pvではなくttPvを書き戻す
                 // （yaneuraou-search.cpp:4397）
@@ -1924,7 +1938,10 @@ impl Worker {
         best
     }
 
-    fn qsearch(&mut self, mut alpha: Value, beta: Value, ply: usize) -> Value {
+    /// 静止探索（ADR-0024, 0109のG6）。出典はやねうら王の `qsearch()`
+    /// （yaneuraou-search.cpp:4441-5145）。参照実装は `qsearch<PV>` と
+    /// `qsearch<NonPV>` をテンプレートで分けるので、`is_pv` で受ける。
+    fn qsearch(&mut self, mut alpha: Value, beta: Value, ply: usize, is_pv: bool) -> Value {
         if self.stopped() {
             return VALUE_ZERO;
         }
@@ -1942,21 +1959,27 @@ impl Worker {
             Repetition::Inferior => return -VALUE_SUPERIOR,
             Repetition::None => {}
         }
-        // 入玉宣言勝ち（ADR-0030）
+        // 最大手数の到達（yaneuraou-search.cpp:4620）。通常探索と同じ扱いにする
+        if self.max_moves_to_draw > 0 && self.pos.game_ply() >= self.max_moves_to_draw {
+            return self.draw_value();
+        }
+        // 入玉宣言勝ち（ADR-0030）。ADR-0109で唯一の例外として位置を残す
         if self.pos.can_declare_win() {
             return mate_in(ply);
         }
 
-        // 置換表probe（ADR-0054）。qsearchはPVノードのdepth 0からfull windowでも
-        // 呼ばれる。boundと窓を照合し、条件を満たせば即カットする（fail-soft）。
-        // TT手はpickerの先頭で試す。
-        let orig_alpha = alpha;
+        // Step 3. 置換表probe（ADR-0054。yaneuraou-search.cpp:4645-4685）
         let key = self.pos.key();
         let tt_hit = self.shared.tt.probe(key);
         // 参照実装はqsearchでもStackへ記録する（yaneuraou-search.cpp:4648）
         self.stack[ply + STACK_OFFSET].tt_hit = tt_hit.is_some();
+        // 置換表にPVノードとして記録された値か（yaneuraou-search.cpp:4657）。
+        // 末尾のstoreへそのまま書き戻す
+        let pv_hit = tt_hit.as_ref().is_some_and(|d| d.pv);
         let mut tt_move = Move::NONE;
         let mut tt_eval = VALUE_NONE;
+        let mut tt_value = VALUE_NONE;
+        let mut tt_bound = Bound::None;
         if let Some(data) = &tt_hit {
             if let Some(m) = self.pos.to_move(data.mv)
                 && self.pos.pseudo_legal(m)
@@ -1964,14 +1987,21 @@ impl Worker {
                 tt_move = m;
             }
             tt_eval = Value::from(data.eval);
-            let tt_value = value_from_tt(data.value, ply);
-            let usable = match data.bound {
-                Bound::Exact => true,
-                Bound::Lower => tt_value >= beta,
-                Bound::Upper => tt_value <= alpha,
-                Bound::None => false,
-            };
-            if usable {
+            tt_value = value_from_tt(data.value, ply);
+            tt_bound = data.bound;
+            // TTカットは非PVノードだけで行う（yaneuraou-search.cpp:4670-4679）。
+            // PVノードでは前回evaluateした値が使えるのでカットしない。
+            // DEPTH_UNSEARCHEDで書かれたstand patの記録はここを通らない
+            if !is_pv
+                && data.depth >= TT_DEPTH_QS
+                && tt_value != VALUE_NONE
+                // 原典の `bound & (value >= beta ? LOWER : UPPER)` をそのまま写す
+                && if tt_value >= beta {
+                    matches!(tt_bound, Bound::Lower | Bound::Exact)
+                } else {
+                    matches!(tt_bound, Bound::Upper | Bound::Exact)
+                }
+            {
                 return tt_value;
             }
         }
@@ -1979,28 +2009,62 @@ impl Worker {
         let in_check = self.pos.in_check();
         // continuation historyの面を決める材料（ADR-0109のG1）
         self.stack[ply + STACK_OFFSET].in_check = in_check;
-        // stand patの生評価（王手中はなし）。TTのeval欄があればそれを優先し、
-        // なければeval hash経由で計算する（ADR-0054, 0049）。store時のeval欄にも使う。
-        let raw_eval = if in_check {
-            VALUE_NONE
-        } else if tt_eval != VALUE_NONE {
-            tt_eval
-        } else {
-            self.eval_cached(key)
-        };
+
+        // Step 4. 静的評価（yaneuraou-search.cpp:4713-4837）。
+        // rawは補正前でTT storeのeval欄へそのまま入る。王手中は定義しない
+        let mut raw_eval = VALUE_NONE;
         let mut best = -VALUE_INFINITE;
         // 静止探索のfutilityの基準（ADR-0077）。王手中は定義しない
         let mut futility_base = -VALUE_INFINITE;
         if !in_check {
-            // stand pat（ADR-0024）。correction historyで補正する（ADR-0046）
-            let stand = self.to_corrected(raw_eval, ply);
-            if stand >= beta {
-                return stand;
-            }
-            if stand > alpha {
-                alpha = stand;
-            }
+            let corr_value = self.correction_value(ply);
+            // TTのeval欄が空なら評価関数を呼ぶ（yaneuraou-search.cpp:4729-4731）
+            raw_eval = if tt_eval != VALUE_NONE {
+                tt_eval
+            } else {
+                self.eval_cached(key)
+            };
+            // 参照実装は静止探索でもstaticEvalをStackへ記録する
+            // （yaneuraou-search.cpp:4729, 4790）。親のimprovingがこの値を読む
+            let stand = self.to_corrected_with(raw_eval, corr_value);
+            self.stack[ply + STACK_OFFSET].static_eval = stand;
             best = stand;
+            // TTの値のほうがこの局面の見積りとして良ければ採用する
+            // （yaneuraou-search.cpp:4743-4745）。詰みスコアは動かさない
+            if tt_hit.is_some()
+                && tt_value != VALUE_NONE
+                && tt_value.abs() < VALUE_MATE_IN_MAX_PLY
+                // 原典の `bound & (value > bestValue ? LOWER : UPPER)` をそのまま写す
+                && if tt_value > best {
+                    matches!(tt_bound, Bound::Lower | Bound::Exact)
+                } else {
+                    matches!(tt_bound, Bound::Upper | Bound::Exact)
+                }
+            {
+                best = tt_value;
+            }
+            // stand pat（ADR-0024。yaneuraou-search.cpp:4813-4823）
+            if best >= beta {
+                // TTにヒットしていなければ、探索を伴わない値として書き出す。
+                // depthはDEPTH_UNSEARCHEDなのでTTカットには使われない
+                if tt_hit.is_none() {
+                    self.shared.tt.store(
+                        key,
+                        Move::NONE.to_move16(),
+                        value_to_tt(best, ply),
+                        raw_eval as i16,
+                        TT_DEPTH_UNSEARCHED,
+                        Bound::Lower,
+                        false,
+                    );
+                }
+                return best;
+            }
+            if best > alpha {
+                alpha = best;
+            }
+            // 基準はTT値で上書きする前のstaticEvalである
+            // （yaneuraou-search.cpp:4836）
             futility_base = stand + QS_FUTILITY_MARGIN;
         }
         // 1手前の移動先（取り返しをfutilityの対象から外す。ADR-0077）。
@@ -2062,7 +2126,7 @@ impl Worker {
             );
             self.pos.do_move(m);
             self.evaluator.push(&self.pos);
-            let value = -self.qsearch(-beta, -alpha, ply + 1);
+            let value = -self.qsearch(-beta, -alpha, ply + 1, is_pv);
             self.evaluator.pop();
             self.pos.undo_move(m);
             if self.stopped() {
@@ -2079,27 +2143,27 @@ impl Worker {
                 }
             }
         }
+        // Step 9. 詰みの確認（yaneuraou-search.cpp:5054-5070）。
+        // 王手中に合法手が尽きたら詰み。参照実装は置換表へ書かずに返す。
+        // 再訪問の確率が極めて低く、置換表を汚すだけだからである
         if in_check && count == 0 {
-            // 王手回避で手なし = 詰み。mated値をTTにも保存する（ADR-0054）
-            best = mated_in(ply);
+            return mated_in(ply);
         }
 
-        // 置換表store（ADR-0054）。深さは0固定。boundはfail-high/low/exactで決める。
-        let bound = if best >= beta {
-            Bound::Lower
-        } else if best > orig_alpha {
-            Bound::Exact
-        } else {
-            Bound::Upper
-        };
+        // 置換表store（yaneuraou-search.cpp:5124-5126）。深さはDEPTH_QS固定。
+        // 静止探索の結果は信用ならないのでBOUND_EXACTは書かない
         self.shared.tt.store(
             key,
             best_move.to_move16(),
             value_to_tt(best, ply),
             raw_eval as i16,
-            0,
-            bound,
-            false,
+            TT_DEPTH_QS,
+            if best >= beta {
+                Bound::Lower
+            } else {
+                Bound::Upper
+            },
+            pv_hit,
         );
         best
     }
