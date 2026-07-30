@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.21.0](https://github.com/kaz9120/himawari-rs/compare/v0.20.0...v0.21.0) (2026-07-30)
+
+
+### 棋力向上
+
+* improvingの再定義とevalベース枝刈りを参照実装へ揃える（+41.1 Elo、G4、ADR-0113） ([6aa0013](https://github.com/kaz9120/himawari-rs/commit/6aa001302be80e320e3779de53904268c01790ab))
+
 ## [0.20.0](https://github.com/kaz9120/himawari-rs/compare/v0.19.0...v0.20.0) (2026-07-29)
 
 
