@@ -228,6 +228,8 @@ fn spawn_worker(
                             nodes: 0,
                             movetime: 0,
                             depth: j.limits.depth,
+                            // 計時の起点はgo受領時刻のまま引き継ぐ
+                            start: j.limits.start,
                             ..Limits::default()
                         };
                         let tm = TimeManager::new(

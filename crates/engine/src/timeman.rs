@@ -14,6 +14,10 @@ const MOVE_HORIZON: i64 = 160;
 /// goコマンドの探索制限。時間はミリ秒。
 #[derive(Clone, Default, Debug)]
 pub struct Limits {
+    /// go受領時刻（search.h:209、usi.cpp:506）。GUIとの時差をなくすため、
+    /// goコマンドを受け取った直後に記録する。Noneなら計時の起点は
+    /// `TimeManager::new` の呼び出し時刻になる
+    pub start: Option<Instant>,
     pub btime: u64,
     pub wtime: u64,
     pub byoyomi: u64,
@@ -67,6 +71,7 @@ impl Default for TimeOptions {
 }
 
 pub struct TimeManager {
+    /// 計時の起点。`Limits::start`（go受領時刻）をコピーする（timeman.cpp:76）
     start: Instant,
     /// 時間制御を行うか（search.h:195）。falseなら時刻での停止をしない
     use_time_management: bool,
@@ -92,7 +97,8 @@ pub struct TimeManager {
 impl TimeManager {
     pub fn new(limits: &Limits, us: Color, game_ply: u16, opts: &TimeOptions) -> Self {
         let mut tm = TimeManager {
-            start: Instant::now(),
+            // go受領時刻を起点にする（timeman.cpp:148）。指定がなければ現在時刻
+            start: limits.start.unwrap_or_else(Instant::now),
             use_time_management: limits.use_time_management(),
             ponderhit_offset: 0,
             search_end: 0,
