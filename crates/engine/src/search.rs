@@ -1427,8 +1427,8 @@ impl Worker {
             if self.stopped() {
                 return VALUE_ZERO;
             }
-            // TT手が唯一の合法手なら検証探索はmated値を返し、必ず
-            // 延長側へ入る（唯一手の延長として意図どおり）
+            // 検証値の位置で3通りに分かれる。singular_beta未満なら多段延長、
+            // beta以上ならmulti-cut、間ならnegative extensionになる
             if v < singular_beta {
                 // 多段延長（yaneuraou-search.cpp:3777-3788）。検証値が
                 // singular_betaをマージン分下回るごとに1手積み、最大+3にする。
@@ -1815,6 +1815,13 @@ impl Worker {
         }
 
         if count == 0 {
+            // 除外手つき探索（singularの検証）では、TT手を除いたせいで手が
+            // 尽きただけなのでfail lowのスコアを返す（yaneuraou-search.cpp:4295）。
+            // 詰みの値を返すと、TT手が唯一の合法手であるノードの検証値が
+            // 常に最小になり、多段延長が必ず最大まで積む
+            if excluded != Move::NONE {
+                return alpha;
+            }
             // 合法手なし = 詰み（将棋はステイルメイトも負け）
             return mated_in(ply);
         }
