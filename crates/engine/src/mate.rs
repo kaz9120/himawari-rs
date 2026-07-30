@@ -14,6 +14,79 @@ use himawari_core::{
     Bitboard, Color, Move, MoveList, Piece, PieceType, Position, Square, attacks, generate_legal,
 };
 
+/// 玉の近傍へ移動できる駒の位置（出典はやねうら王
+/// mate1ply_without_effect.cpp:48のCHECK_CAND_BB）。
+///
+/// 占有なしの最大到達で作るので、どの占有に対しても上位集合になる。
+struct CheckCand {
+    /// 駒種を問わない和集合。まずこれで自駒を絞る
+    any: Bitboard,
+    /// 駒種ごとの移動元候補。玉と空は空集合
+    by_pt: [Bitboard; PieceType::NB],
+}
+
+/// 移動で王手をかけうる駒種。玉は候補にしない。
+const MOVERS: [PieceType; 13] = [
+    PieceType::PRO_PAWN,
+    PieceType::PRO_LANCE,
+    PieceType::PRO_KNIGHT,
+    PieceType::PRO_SILVER,
+    PieceType::HORSE,
+    PieceType::DRAGON,
+    PieceType::GOLD,
+    PieceType::PAWN,
+    PieceType::LANCE,
+    PieceType::KNIGHT,
+    PieceType::SILVER,
+    PieceType::BISHOP,
+    PieceType::ROOK,
+];
+
+static CHECK_CAND: std::sync::OnceLock<Vec<CheckCand>> = std::sync::OnceLock::new();
+
+/// 色usの駒が、玉ksqの近傍（桂は桂の王手マス）へ動ける移動元の候補。
+#[inline]
+fn check_cand(us: Color, ksq: Square) -> &'static CheckCand {
+    let t = CHECK_CAND.get_or_init(|| {
+        let mut v = Vec::with_capacity(2 * 81);
+        for c in [Color::Black, Color::White] {
+            for ki in 0..81u8 {
+                let ksq = Square::from_index(ki);
+                // move_matesの移動先と同じ集合。占有によるマスクは掛けない
+                let near = attacks::king_attacks(ksq);
+                let knight_to = attacks::knight_attacks(c.flip(), ksq);
+                let mut e = CheckCand {
+                    any: Bitboard::EMPTY,
+                    by_pt: [Bitboard::EMPTY; PieceType::NB],
+                };
+                for pt in MOVERS {
+                    let target = if pt == PieceType::KNIGHT {
+                        knight_to
+                    } else {
+                        near
+                    };
+                    let pc = Piece::new(c, pt);
+                    let mut bb = Bitboard::EMPTY;
+                    for fi in 0..81u8 {
+                        let from = Square::from_index(fi);
+                        if from == ksq {
+                            continue;
+                        }
+                        if !(attacks::attacks(pc, from, Bitboard::EMPTY) & target).is_empty() {
+                            bb.set(from);
+                        }
+                    }
+                    e.by_pt[pt.index()] = bb;
+                    e.any |= bb;
+                }
+                v.push(e);
+            }
+        }
+        v
+    });
+    &t[us.index() * 81 + ksq.index()]
+}
+
 /// 手を指した後の盤面で、手番側の駒がsqへ利いている集合。
 ///
 /// 盤面は変えない。移動元fromの駒は移動済みなのでマスクで外し、
@@ -168,13 +241,16 @@ fn drop_mates(pos: &Position, us: Color, ksq: Square) -> Option<Move> {
 fn move_mates(pos: &Position, us: Color, ksq: Square) -> Option<Move> {
     let them = us.flip();
     let occ = pos.occupied();
-    let near = attacks::king_attacks(ksq) & !pos.color_bb(us);
-    let knight_to = attacks::knight_attacks(them, ksq) & !pos.color_bb(us);
+    let ours = pos.color_bb(us);
+    let near = attacks::king_attacks(ksq) & !ours;
+    let knight_to = attacks::knight_attacks(them, ksq) & !ours;
     let zone = Bitboard::promotion_zone(us);
-    for from in pos.color_bb(us) {
+    // 玉の近傍へ届かない駒は利きを作らずに捨てる。玉もこれで外れる
+    let cand = check_cand(us, ksq);
+    for from in ours & cand.any {
         let pc = pos.piece_on(from);
         let pt = pc.piece_type();
-        if pt == PieceType::KING {
+        if !cand.by_pt[pt.index()].test(from) {
             continue;
         }
         let targets = attacks::attacks(pc, from, occ)
