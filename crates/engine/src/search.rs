@@ -7,8 +7,7 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 
 use himawari_core::{
-    GenType, Move, MoveList, Piece, PieceType, Position, Repetition, Square, generate,
-    generate_legal,
+    Move, MoveList, Piece, PieceType, Position, Repetition, Square, generate_legal,
 };
 
 use crate::eval::Evaluator;
@@ -63,8 +62,19 @@ const FUTILITY_OVER_ALPHA: Value = 86;
 /// 「今読んでいる手」をinfoで出し始める経過時間（ADR-0086）。
 /// USIの慣例に合わせ、短い探索では出さない
 const CURRMOVE_MIN_MS: u64 = 3000;
-/// IIR: TTに手がないノードを1浅く読む最小深さ。
-const IIR_MIN_DEPTH: u32 = 4;
+/// IIR（ADR-0028, 0109のG4。yaneuraou-search.cpp:3319-3320）。
+/// TTに手がないノードを1浅く読む。前回PVの上・allNode・1手前を大きく
+/// 削って来たノードは対象外
+const IIR_MIN_DEPTH: u32 = 6;
+const IIR_MAX_PRIOR_REDUCTION: i32 = 3;
+/// ProbCut（ADR-0051, 0109のG4。yaneuraou-search.cpp:3357-3424）。
+/// 閾値は `beta + 224 - 61*improving`、確認探索の深さは `depth - 4`。
+/// MovePickerへ渡すSEEの閾値は `閾値 - 静的評価` である。評価値は歩=90
+/// スケールで一致するため絶対値のまま使う（ADR-0074）
+const PROBCUT_MARGIN: Value = 224;
+const PROBCUT_IMPROVING: Value = 61;
+const PROBCUT_MIN_DEPTH: u32 = 3;
+const PROBCUT_DEPTH_REDUCTION: i32 = 4;
 /// correction historyの合成重み（ADR-0085, 0109）。分母は131072。
 /// 出典はやねうら王の `correction_value()`（yaneuraou-search.cpp:737）。
 /// 6要素（歩・小駒・先手非歩・後手非歩・2手前と4手前のcontinuation）を
@@ -877,7 +887,7 @@ impl Worker {
         &mut self,
         mut alpha: Value,
         beta: Value,
-        depth: u32,
+        mut depth: u32,
         ply: usize,
         prev: Move,
         pv: &mut Vec<Move>,
@@ -1026,14 +1036,6 @@ impl Worker {
             return self.qsearch(alpha, beta, ply, 0);
         }
 
-        // IIR（ADR-0028）: TTに手がないノードは良い順序を作れないので
-        // 1浅く読み、再訪時にTT手付きで読み直す
-        let mut depth = if depth >= IIR_MIN_DEPTH && tt_move == Move::NONE {
-            depth - 1
-        } else {
-            depth
-        };
-
         // 静的評価（ADR-0028, 0109のG4）。TTのevalを再利用する。
         // rawは補正前（TT保存用）、static_evalはcorrection history補正後（ADR-0046）。
         let raw_eval = if in_check {
@@ -1074,7 +1076,6 @@ impl Worker {
                 eval = tt_value;
             }
         }
-        let eval = eval;
         // 静的評価の差で静かな手のオーダリングを補正する
         // （yaneuraou-search.cpp:3126-3133）。1手前で評価が下がっていれば
         // 1手前の手を良い手とみなして加点する。参照実装は王手中ここへ来ない
@@ -1237,27 +1238,37 @@ impl Worker {
             // 静的評価がβ以上なら、2手前と比べていなくても改善扱いにする
             improving |= static_eval >= beta;
 
-            // ProbCut（ADR-0051）。betaを大きく超えそうなノードでは、浅い確認探索で
-            // 「十分良い取る手が1つある」ことを示せれば高深度の全探索を省いてカットする。
-            // non-PV・除外手なし・depth>=5で発動。除外手つき探索中はスキップ。
-            const PROBCUT_MARGIN: Value = 200;
-            const PROBCUT_DEPTH_REDUCTION: u32 = 4;
-            const PROBCUT_MIN_DEPTH: u32 = 5;
-            let probcut_beta = beta + PROBCUT_MARGIN;
-            if excluded == Move::NONE
-                && !is_pv
-                && depth >= PROBCUT_MIN_DEPTH
-                && beta.abs() < VALUE_MATE_IN_MAX_PLY
-                // TTに深い情報があり矛盾する（probcut_beta未満と分かっている）ならスキップ
-                && !(tt_hit.is_some()
-                    && tt_depth >= depth.saturating_sub(3)
-                    && tt_value < probcut_beta)
+            // IIR（ADR-0028, 0109のG4。yaneuraou-search.cpp:3319-3320）。
+            // TTに手がないノードは良い順序を作れないので1浅く読み、再訪時に
+            // TT手付きで読み直す。前回PVの上と、全手を読むallNodeでは行わない。
+            // 1手前を深く削って来たノードも対象から外す
+            if !follow_pv
+                && !all_node
+                && depth >= IIR_MIN_DEPTH
+                && tt_move == Move::NONE
+                && prior_reduction <= IIR_MAX_PRIOR_REDUCTION
             {
-                let mut list = MoveList::default();
-                generate(&self.pos, GenType::Captures, false, &mut list);
-                for &m in &list {
-                    // SEE>=0の取る手だけを確認対象にする
-                    if !self.pos.see_ge(m, 0) || !self.pos.is_legal(m) {
+                depth -= 1;
+            }
+
+            // ProbCut（ADR-0051, 0109のG4。yaneuraou-search.cpp:3357-3424）。
+            // betaを大きく超えそうなノードでは、浅い確認探索で「十分良い取る手が
+            // 1つある」ことを示せれば高深度の全探索を省いてカットする。
+            // 閾値はimprovingで動き、MovePickerがSEEでこの閾値を満たす取る手
+            // だけをcapture history込みの順序で返す
+            let probcut_beta = beta + PROBCUT_MARGIN - PROBCUT_IMPROVING * Value::from(improving);
+            if depth >= PROBCUT_MIN_DEPTH
+                && beta.abs() < VALUE_MATE_IN_MAX_PLY
+                // 置換表の値がprobcut_beta未満と分かっているなら試さない
+                && !(tt_value != VALUE_NONE && tt_value < probcut_beta)
+            {
+                let probcut_depth = depth as i32 - PROBCUT_DEPTH_REDUCTION;
+                let mut picker =
+                    MovePicker::new_probcut(&self.pos, tt_move, probcut_beta - static_eval);
+                let cont = self.cont_bases(ply);
+                while let Some(m) = picker.next(&self.pos, &self.hist, &cont) {
+                    // 除外手はsingular検証探索中のTT手（ADR-0050）
+                    if m == excluded || !self.pos.is_legal(m) {
                         continue;
                     }
                     self.set_current_move(ply, m, !self.pos.piece_on(m.to()).is_empty());
@@ -1266,12 +1277,12 @@ impl Worker {
                     // まずqsearchで確認（窓は (-probcut_beta, -probcut_beta+1)）
                     let mut v = -self.qsearch(-probcut_beta, -probcut_beta + 1, ply + 1, 0);
                     // 通ったら同じ窓で通常探索 depth-4 を確認する
-                    if v >= probcut_beta {
+                    if v >= probcut_beta && probcut_depth > 0 {
                         let mut child_pv = Vec::new();
                         v = -self.search(
                             -probcut_beta,
                             -probcut_beta + 1,
-                            depth - PROBCUT_DEPTH_REDUCTION,
+                            probcut_depth as u32,
                             ply + 1,
                             m,
                             &mut child_pv,
@@ -1286,18 +1297,22 @@ impl Worker {
                         return VALUE_ZERO;
                     }
                     if v >= probcut_beta {
-                        // fail-soft。TTにlower bound・depth-3で保存してカットする
+                        // fail-soft。TTにlower bound・depth-3で保存する
                         self.shared.tt.store(
                             key,
                             m.to_move16(),
                             value_to_tt(v, ply),
                             raw_eval as i16,
-                            depth.saturating_sub(3).min(255) as u8,
+                            (probcut_depth + 1).clamp(0, 255) as u8,
                             Bound::Lower,
                             // 参照実装はttPvを書き戻す（yaneuraou-search.cpp:3418）
                             self.stack[ply + STACK_OFFSET].tt_pv,
                         );
-                        return v;
+                        // 決着スコアでなければ、上乗せしたマージンを戻して
+                        // カットする。決着スコアのときは次の手を試す
+                        if v.abs() < VALUE_MATE_IN_MAX_PLY {
+                            return v - (probcut_beta - beta);
+                        }
                     }
                 }
             }

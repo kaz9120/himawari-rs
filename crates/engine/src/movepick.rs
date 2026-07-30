@@ -486,6 +486,9 @@ enum Stage {
     QCapture,
     QChecksInit,
     QChecks,
+    ProbCutTt,
+    ProbCutInit,
+    ProbCut,
     Done,
 }
 
@@ -542,9 +545,36 @@ pub struct MovePicker {
     end_generated: usize,
     /// qsearchの入口plyだけ、取る手の後に静かな王手も返す（ADR-0028）。
     with_checks: bool,
+    /// ProbCut用。SEEがこの値以上の取る手だけを返す（movepick.cpp:684）。
+    threshold: i32,
 }
 
 impl MovePicker {
+    fn make(
+        stage: Stage,
+        tt_move: Move,
+        depth: i32,
+        ply: usize,
+        with_checks: bool,
+        threshold: i32,
+    ) -> Self {
+        MovePicker {
+            stage,
+            tt_move,
+            depth,
+            ply,
+            skip_quiets: false,
+            moves: Vec::with_capacity(64),
+            cur: 0,
+            end_cur: 0,
+            end_bad_captures: 0,
+            end_captures: 0,
+            end_generated: 0,
+            with_checks,
+            threshold,
+        }
+    }
+
     /// 通常探索・静止探索用（movepick.cpp:120-202）。depth <= 0で静止探索。
     pub fn new(pos: &Position, tt_move: Move, depth: i32, ply: usize, with_checks: bool) -> Self {
         let tt_ok = tt_move != Move::NONE && pos.pseudo_legal(tt_move);
@@ -565,20 +595,24 @@ impl MovePicker {
         } else {
             Stage::QCaptureInit
         };
-        MovePicker {
-            stage,
-            tt_move,
-            depth,
-            ply,
-            skip_quiets: false,
-            moves: Vec::with_capacity(64),
-            cur: 0,
-            end_cur: 0,
-            end_bad_captures: 0,
-            end_captures: 0,
-            end_generated: 0,
-            with_checks,
-        }
+        Self::make(stage, tt_move, depth, ply, with_checks, 0)
+    }
+
+    /// ProbCut用（movepick.cpp:204-252）。SEEが閾値以上の取る手だけを返す。
+    /// 置換表の手は取る手でありさえすれば、SEEを見ずに先に返す
+    /// （movepick.cpp:245-248）。ProbCutは王手中に呼ばれない
+    pub fn new_probcut(pos: &Position, tt_move: Move, threshold: i32) -> Self {
+        debug_assert!(!pos.in_check());
+        let tt_ok = tt_move != Move::NONE
+            && !tt_move.is_drop()
+            && !pos.piece_on(tt_move.to()).is_empty()
+            && pos.pseudo_legal(tt_move);
+        let stage = if tt_ok {
+            Stage::ProbCutTt
+        } else {
+            Stage::ProbCutInit
+        };
+        Self::make(stage, tt_move, 0, 0, false, threshold)
     }
 
     /// 静かな手をもう返さないよう伝える（movepick.cpp:697）。
@@ -681,7 +715,12 @@ impl MovePicker {
                     self.stage = Stage::QCaptureInit;
                     return Some(self.tt_move);
                 }
-                Stage::CaptureInit | Stage::QCaptureInit => {
+                Stage::ProbCutTt => {
+                    self.stage = Stage::ProbCutInit;
+                    return Some(self.tt_move);
+                }
+                Stage::CaptureInit | Stage::QCaptureInit | Stage::ProbCutInit => {
+                    let init_stage = self.stage;
                     let mut list = MoveList::default();
                     generate(pos, GenType::Captures, false, &mut list);
                     self.moves.clear();
@@ -693,10 +732,10 @@ impl MovePicker {
                     self.end_cur = self.end_captures;
                     // 取る手は数が多くないので全数ソートでよい
                     partial_insertion_sort(&mut self.moves, i32::MIN);
-                    self.stage = if self.stage == Stage::CaptureInit {
-                        Stage::GoodCapture
-                    } else {
-                        Stage::QCapture
+                    self.stage = match init_stage {
+                        Stage::CaptureInit => Stage::GoodCapture,
+                        Stage::QCaptureInit => Stage::QCapture,
+                        _ => Stage::ProbCut,
                     };
                 }
                 Stage::GoodCapture => {
@@ -808,6 +847,16 @@ impl MovePicker {
                 }
                 Stage::QChecks => {
                     let m = self.select(|_| true);
+                    if m.is_none() {
+                        self.stage = Stage::Done;
+                    }
+                    return m;
+                }
+                Stage::ProbCut => {
+                    // 閾値以上のSEEを持つ取る手だけを良い順に返す
+                    // （movepick.cpp:684-685）
+                    let th = self.threshold;
+                    let m = self.select(|e| pos.see_ge(e.m, th));
                     if m.is_none() {
                         self.stage = Stage::Done;
                     }
