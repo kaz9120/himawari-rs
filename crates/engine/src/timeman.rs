@@ -188,29 +188,28 @@ impl TimeManager {
         self.optimum_time = self.remain_time;
         self.maximum_time = self.remain_time;
 
-        // 残り手数において残り時間はあとどれくらいあるのか
-        // （timeman.cpp:246-254）。秒読み時間も残り手数に付随するとみなす。
-        // 秒単位切り上げでは各手で1秒未満を使う前提で予約しておく
-        let mut remain_estimate = my_time + inc * mtg + byoyomi * mtg;
-        if self.round_up_to_full_second {
-            remain_estimate -= (mtg + 1) * 1000;
-        }
-        let remain_estimate = remain_estimate.max(0);
+        // 配分の分母は現行（ADR-0021）のまま据え置く。G7の切り分けである。
+        //
+        // 参照実装の分母（move horizon方式のMTG）を入れた版は、支えを揃えた
+        // うえでも730局で-15.7だった。分母だけをmove horizon方式にした
+        // [ADR-0102](../../docs/adr/0102-move-horizon.md)は-107.2で、支えを
+        // 足しても中立までしか戻らない。分母は本エンジンの現行式が釣り合って
+        // いるという判断で、支え（最小思考時間・秒単位切り上げ・停止の予約）
+        // だけを参照実装から採る
+        let rem_moves = (48i64 - i64::from(game_ply) / 2).max(16);
+        let avail = my_time / rem_moves + byoyomi + inc;
 
-        // optimumの候補（timeman.cpp:257）
-        let t1 = self.minimum_time + remain_estimate / mtg;
+        // optimumの候補。最小思考時間の床は参照実装から採る（timeman.cpp:257）
+        let t1 = self.minimum_time + avail;
 
-        // maximumの候補（timeman.cpp:263-277）。5.0でもうまく管理できる。
-        // 切れ負けでは5分を切ったらこの比率を抑える。3分で3.0、2分で2.0、
-        // 1分以下は1.0固定になる
-        let mut max_ratio = 5.0f64;
+        // maximumの候補。倍率は現行の3倍を据え置く（ADR-0021）。
+        // 切れ負けでは5分を切ったら比率を抑える（timeman.cpp:270-276）。
+        // これは分母に依らない安全弁なので採る
+        let mut max_ratio = 3.0f64;
         if time_forfeit {
             max_ratio = max_ratio.min((my_time as f64 / (60.0 * 1000.0)).max(1.0));
         }
-        let mut t2 = self.minimum_time + (remain_estimate as f64 * max_ratio / mtg as f64) as i64;
-        // maximumは残り時間の30%以上は使わない。optimumが超える分は
-        // 残り手数が少ないときなので構わない
-        t2 = t2.min((remain_estimate as f64 * 0.3) as i64);
+        let t2 = self.minimum_time + (avail as f64 * max_ratio) as i64;
 
         // slowMoverは百分率で、optimumの係数として働く（timeman.cpp:280-281）
         self.optimum_time = t1.min(self.optimum_time) * opts.slow_mover / 100;
@@ -345,8 +344,9 @@ mod tests {
     }
 
     #[test]
-    fn fischer_uses_move_horizon() {
-        // 300+10。ply==1なのでmove_horizon = 160 + 20 - 1 = 179、MTG = 89
+    fn fischer_adds_minimum_to_current_formula() {
+        // 300+10。配分の分母は現行式（ADR-0021）を据え置き、最小思考時間の
+        // 床だけを参照実装から採る（G7の切り分け）
         let limits = Limits {
             btime: 300_000,
             binc: 10_000,
@@ -354,11 +354,11 @@ mod tests {
         };
         let tm = TimeManager::new(&limits, Color::Black, 1, &TimeOptions::default());
         assert_eq!(tm.remain_time, 300_000 - 1120);
-        // remain_estimate = 300000 + 10000*89 - 90*1000 = 1_100_000
-        // optimum = minimumTime + remain_estimate / MTG = 1880 + 12359
-        assert_eq!(tm.optimum(), 14239);
-        // maximum = round_up(1880 + 1_100_000*5/89) = round_up(63797)
-        assert_eq!(tm.maximum(), 63_880);
+        // rem_moves = max(48 - 0, 16) = 48、avail = 300000/48 + 10000 = 16250
+        // optimum = minimumTime + avail = 1880 + 16250
+        assert_eq!(tm.optimum(), 18130);
+        // maximum = round_up(1880 + 16250*3) = round_up(50630)
+        assert_eq!(tm.maximum(), 50_880);
         assert_eq!(tm.minimum(), 1880);
     }
 
@@ -375,8 +375,8 @@ mod tests {
         };
         let tm = TimeManager::new(&limits, Color::Black, 1, &opts);
         // optimumだけが2倍になる（T:280）
-        assert_eq!(tm.optimum(), 14239 * 2);
-        assert_eq!(tm.maximum(), 63_880);
+        assert_eq!(tm.optimum(), 18130 * 2);
+        assert_eq!(tm.maximum(), 50_880);
     }
 
     #[test]
@@ -387,11 +387,10 @@ mod tests {
             ..Limits::default()
         };
         let tm = TimeManager::new(&limits, Color::Black, 1, &TimeOptions::default());
-        // move_horizon = 160 + 40 - 1 = 199、MTG = 99
-        // remain_estimate = 60000 - 100*1000 → 0 に落ちる
-        assert_eq!(tm.optimum(), 1880);
-        // remain_estimateが0なのでmaximumも1880（round_upの下限）
-        assert_eq!(tm.maximum(), 1880);
+        // avail = 60000/48 = 1250、max_ratio = min(3.0, max(60000/60000, 1.0)) = 1.0
+        // なのでt1とt2が同じ値になる
+        assert_eq!(tm.optimum(), 1880 + 1250);
+        assert_eq!(tm.maximum(), 3880);
     }
 
     #[test]
