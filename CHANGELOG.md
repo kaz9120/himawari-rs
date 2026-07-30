@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.22.0](https://github.com/kaz9120/himawari-rs/compare/v0.21.0...v0.22.0) (2026-07-30)
+
+
+### 棋力向上
+
+* singularの条件とmulti-cut・negative extensionを参照実装へ揃える（+48.2 Elo、G5、ADR-0114） ([8c501ea](https://github.com/kaz9120/himawari-rs/commit/8c501ea741d28a0af0b17b477f33d92257f5899b))
+
 ## [0.21.0](https://github.com/kaz9120/himawari-rs/compare/v0.20.0...v0.21.0) (2026-07-30)
 
 
