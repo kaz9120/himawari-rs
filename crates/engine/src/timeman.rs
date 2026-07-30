@@ -11,6 +11,12 @@ use himawari_core::Color;
 /// 近年は終局までの平均手数が伸びているので160に設定されている
 const MOVE_HORIZON: i64 = 160;
 
+/// USI_Ponder有効時にoptimumへ足す分の除数（timeman.cpp:285-286）。
+/// ponderhitすると時間が予測より余っていくので、思考時間を多めに取る。
+/// 参照実装は `Stochastic_Ponder` が無効であることも条件にするが、
+/// 本エンジンはそのオプションを持たないので常に無効として扱う
+const PONDER_OPTIMUM_DIV: i64 = 4;
+
 /// goコマンドの探索制限。時間はミリ秒。
 #[derive(Clone, Default, Debug)]
 pub struct Limits {
@@ -55,6 +61,9 @@ pub struct TimeOptions {
     /// 引き分けになる手数。0（指定なし）は100000として扱う
     /// （yaneuraou-search.cpp:72-77）
     pub max_moves_to_draw: i64,
+    /// USI_Ponderが有効か（timeman.cpp:285）。optimumを1.25倍する条件で、
+    /// 当該探索がponder探索かどうかでは判定しない
+    pub ponder: bool,
 }
 
 impl Default for TimeOptions {
@@ -66,6 +75,7 @@ impl Default for TimeOptions {
             slow_mover: 100,
             round_up_to_full_second: true,
             max_moves_to_draw: 100_000,
+            ponder: false,
         }
     }
 }
@@ -224,7 +234,14 @@ impl TimeManager {
             (t1.min(self.optimum_time) * opts.slow_mover / 100 - opts.network_delay).max(1);
         self.maximum_time = t2.min(self.maximum_time);
 
-        // USI_Ponder有効時のoptimum1.25倍（timeman.cpp:285-286）はG8で入れる
+        // USI_Ponder有効時はoptimumを1.25倍する（timeman.cpp:285-286）。
+        // ponderhitすると、その手の思考の一部が相手の時計で進むぶん、
+        // 自分の持ち時間は予測より余っていく。maximumは触らない。
+        // 参照実装は倍率をNetworkDelayを引く前に掛けるが、本エンジンは
+        // optimumからもNetworkDelayを引くので（ADR-0116）引いたあとに掛ける
+        if opts.ponder {
+            self.optimum_time += self.optimum_time / PONDER_OPTIMUM_DIV;
+        }
 
         // 秒読みモードで持ち時間がないなら、使いきったほうが得
         // （timeman.cpp:291-302）。持ち時間が秒読みの1.2倍未満なら該当する
@@ -398,6 +415,24 @@ mod tests {
         // optimumだけが2倍になる（T:280）。NetworkDelayは倍率のあとに引く
         assert_eq!(tm.optimum(), 18130 * 2 - 120);
         assert_eq!(tm.maximum(), 50_880);
+    }
+
+    #[test]
+    fn ponder_scales_optimum() {
+        // USI_Ponder有効時はoptimumだけが1.25倍になる（T:285-286）
+        let limits = Limits {
+            btime: 300_000,
+            binc: 10_000,
+            ..Limits::default()
+        };
+        let opts = TimeOptions {
+            ponder: true,
+            ..TimeOptions::default()
+        };
+        let tm = TimeManager::new(&limits, Color::Black, 1, &opts);
+        assert_eq!(tm.optimum(), 18010 + 18010 / 4);
+        assert_eq!(tm.maximum(), 50_880);
+        assert_eq!(tm.minimum(), 1880);
     }
 
     #[test]

@@ -75,6 +75,7 @@ impl EngineOptions {
             } else {
                 i64::from(self.max_moves_to_draw)
             },
+            ponder: self.ponder,
         }
     }
 }
