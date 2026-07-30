@@ -211,8 +211,16 @@ impl TimeManager {
         }
         let t2 = self.minimum_time + (avail as f64 * max_ratio) as i64;
 
-        // slowMoverは百分率で、optimumの係数として働く（timeman.cpp:280-281）
-        self.optimum_time = t1.min(self.optimum_time) * opts.slow_mover / 100;
+        // slowMoverは百分率で、optimumの係数として働く（timeman.cpp:280-281）。
+        //
+        // optimumからもNetworkDelayを引く。参照実装は引かないが、あちらは
+        // `minimumTime = MinimumThinkingTime - NetworkDelay` の床（既定1880ms）が
+        // optimumへ加算されるため、その中に遅延の保護が含まれている。床を下げると
+        // 保護まで消える。10+0.1で `MinimumThinkingTime=1` にして測ったところ、
+        // optimumが常に121ms大きくなり、availが42〜600msしかない条件では1.6〜2.8倍の
+        // 下駄になった。終盤の到達深さが8ply落ちる（ADR-0116）
+        self.optimum_time =
+            (t1.min(self.optimum_time) * opts.slow_mover / 100 - opts.network_delay).max(1);
         self.maximum_time = t2.min(self.maximum_time);
 
         // USI_Ponder有効時のoptimum1.25倍（timeman.cpp:285-286）はG8で入れる
@@ -231,9 +239,16 @@ impl TimeManager {
 
         // 残り時間 - NetworkDelay2よりは短くしないと切れ負けになりうる
         // （timeman.cpp:305-307）
-        self.minimum_time = self.round_up(self.minimum_time).min(self.remain_time);
+        self.minimum_time = self
+            .round_up(self.minimum_time)
+            .min(self.remain_time)
+            .max(0);
         self.optimum_time = self.optimum_time.min(self.remain_time);
         self.maximum_time = self.round_up(self.maximum_time).min(self.remain_time);
+        // maximumがoptimumを下回らないようにする（ADR-0021から引き継ぐ安全弁）。
+        // 参照実装はこの保証を持たないが、床を下げると32%の手でmaximumのほうが
+        // 小さくなり、optimumが目標として働かなくなる
+        self.maximum_time = self.maximum_time.max(self.optimum_time);
     }
 
     /// 1秒単位で繰り上げてdelayを引く（timeman.cpp:312-344）。
@@ -355,8 +370,8 @@ mod tests {
         let tm = TimeManager::new(&limits, Color::Black, 1, &TimeOptions::default());
         assert_eq!(tm.remain_time, 300_000 - 1120);
         // rem_moves = max(48 - 0, 16) = 48、avail = 300000/48 + 10000 = 16250
-        // optimum = minimumTime + avail = 1880 + 16250
-        assert_eq!(tm.optimum(), 18130);
+        // optimum = minimumTime + avail - NetworkDelay = 1880 + 16250 - 120
+        assert_eq!(tm.optimum(), 18010);
         // maximum = round_up(1880 + 16250*3) = round_up(50630)
         assert_eq!(tm.maximum(), 50_880);
         assert_eq!(tm.minimum(), 1880);
@@ -374,8 +389,8 @@ mod tests {
             ..TimeOptions::default()
         };
         let tm = TimeManager::new(&limits, Color::Black, 1, &opts);
-        // optimumだけが2倍になる（T:280）
-        assert_eq!(tm.optimum(), 18130 * 2);
+        // optimumだけが2倍になる（T:280）。NetworkDelayは倍率のあとに引く
+        assert_eq!(tm.optimum(), 18130 * 2 - 120);
         assert_eq!(tm.maximum(), 50_880);
     }
 
@@ -389,7 +404,7 @@ mod tests {
         let tm = TimeManager::new(&limits, Color::Black, 1, &TimeOptions::default());
         // avail = 60000/48 = 1250、max_ratio = min(3.0, max(60000/60000, 1.0)) = 1.0
         // なのでt1とt2が同じ値になる
-        assert_eq!(tm.optimum(), 1880 + 1250);
+        assert_eq!(tm.optimum(), 1880 + 1250 - 120);
         assert_eq!(tm.maximum(), 3880);
     }
 
