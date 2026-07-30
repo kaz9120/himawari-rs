@@ -1435,21 +1435,14 @@ impl Worker {
                 // 組合せ爆発を抑えるため、PVノードではマージンを大きく取って
                 // 積みにくくする。TT手が取る手でない・correction値が大きい・
                 // ttMoveHistoryが良い・rootから遠い、では積みやすくなる
-                let corr_adj = corr_value.abs() / 210590;
-                let far = i32::from(ply as u32 > self.root_depth);
-                let double_margin = -4 + 212 * i32::from(is_pv)
-                    - 182 * i32::from(!tt_capture)
-                    - corr_adj
-                    - 906 * self.hist.tt_move.get() / 116517
-                    - far * 44;
-                let triple_margin = 73 + 320 * i32::from(is_pv) - 218 * i32::from(!tt_capture)
-                    + 92 * i32::from(self.stack[ply + STACK_OFFSET].tt_pv)
-                    - corr_adj
-                    - far * 45;
-                singular_ext = Some(
-                    1 + i32::from(v < singular_beta - double_margin)
-                        + i32::from(v < singular_beta - triple_margin),
-                );
+                // 多段延長は入れない（ADR-0114の二分割）。参照実装の
+                // doubleMargin / tripleMarginをそのまま移すと、本エンジンでは
+                // singular率が43.5%（参照実装の設計点は1割）あるため+3まで
+                // 積む機会が4倍以上になる。群全体では562局で-99.0だった。
+                // 到達深さが30秒で4段落ちたのが主因である。
+                // 検証窓の係数は本エンジンで成立していないので、多段化は
+                // singular率を設計点へ寄せてから再訪する
+                singular_ext = Some(1);
                 // このノード自体の深さも1手増やす（yaneuraou-search.cpp:3788）。
                 // TT手のnewDepthは増やす前の値で決まっているので、増分は
                 // 残りの手とTT storeに効く
