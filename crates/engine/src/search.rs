@@ -450,7 +450,10 @@ impl Worker {
         let elapsed = self.tm.elapsed_ms();
         if (self.limits.movetime > 0 && elapsed >= self.limits.movetime as i64)
             || (self.limits.nodes > 0 && self.nodes >= self.limits.nodes)
-            || (self.tm.search_end > 0 && self.tm.search_end <= elapsed)
+            // search_endは0が「未確定」を表す。負の値も予約済みとして扱う。
+            // MinimumThinkingTimeを小さくするとround_upがNetworkDelayを
+            // 引いて負になり、0比較では止まらなくなる
+            || (self.tm.search_end != 0 && self.tm.search_end <= elapsed)
         {
             self.shared.aborted_search.store(true, Ordering::Relaxed);
             self.shared.stop.store(true, Ordering::Relaxed);
