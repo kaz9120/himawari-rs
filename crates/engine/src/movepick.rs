@@ -806,8 +806,9 @@ impl MovePicker {
                     return m;
                 }
                 Stage::QCapture => {
-                    // 損な取り合いは静止探索では捨てる（ADR-0024）
-                    let m = self.select(|e| pos.see_ge(e.m, 0));
+                    // 参照実装は取る手を条件なしに良い順で返す（movepick.cpp:679-682）。
+                    // 損な取り合いの切り捨ては静止探索側のSEE下限が担う
+                    let m = self.select(|_| true);
                     if m.is_none() {
                         self.stage = Stage::Done;
                     }

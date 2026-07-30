@@ -145,6 +145,10 @@ const TT_PROBCUT_DEPTH_SLACK: u32 = 4;
 
 const QS_FUTILITY_MARGIN: Value = 328;
 const QS_MOVECOUNT_LIMIT: u32 = 2;
+/// 静止探索で探索する取る手のSEE下限（yaneuraou-search.cpp:4989）。
+/// 出典のPawnValueは90で、本エンジンの歩の価値と一致するため絶対値のまま
+/// 用いる（ADR-0074）。歩損（-90）は下回るので、歩損は許す下限である
+const QS_SEE_MARGIN: Value = -73;
 
 /// 置換表のdepth欄のゲタ（tt.cpp:45-66, 103-164）。参照実装も内部で
 /// DEPTH_NONE（-3）分を下駄履きして符号なしで持つ。同じ表現を採る。
@@ -2093,50 +2097,61 @@ impl Worker {
                 continue;
             }
             count += 1;
+            // capture_stage(m) は将棋版では単なるcapture(m)（position.h:1317-1320）
+            let capture = !m.is_drop() && !self.pos.piece_on(m.to()).is_empty();
 
-            // futility（ADR-0077）: 王手をかけず取り返しでもない手を、
-            // 取る駒の価値を足してもalphaへ届かないなら捨てる。
-            // fail-softを保つため、捨てる前にbestを引き上げる
-            if !in_check
-                && futility_base > VALUE_MATED_IN_MAX_PLY
-                && !self.pos.gives_check(m)
-                && Some(m.to()) != prev_sq
-            {
-                if count > QS_MOVECOUNT_LIMIT {
+            // Step 6. 枝刈り（yaneuraou-search.cpp:4930-4991）。
+            // bestValueが負け側の決着スコアの間は何も刈らない。詰みを逃れる
+            // 手を探している最中だからである
+            if best > VALUE_MATED_IN_MAX_PLY {
+                // futility（ADR-0077）: 王手をかけず取り返しでもない手を、
+                // 取る駒の価値を足してもalphaへ届かないなら捨てる
+                if futility_base > VALUE_MATED_IN_MAX_PLY
+                    && Some(m.to()) != prev_sq
+                    && !self.pos.gives_check(m)
+                {
+                    if count > QS_MOVECOUNT_LIMIT {
+                        continue;
+                    }
+                    let captured = self.pos.piece_on(m.to());
+                    let gain = if captured.is_empty() {
+                        VALUE_ZERO
+                    } else {
+                        himawari_core::piece_value(captured.piece_type())
+                    };
+                    // 捨てる前にbestを引き上げる（yaneuraou-search.cpp:4950-4954,
+                    // 4965-4969）。fail-softの下限を正しく報告するためである。
+                    // 検討モード（MultiPV>1）だけは抑える。ライン確定ごとに出力し、
+                    // 確定後のソートを持たないので、窓に依存する値を入れると
+                    // ライン間のスコア順序が崩れる（ADR-0077, 0109）
+                    let raise = self.multi_pv == 1;
+                    let futility_value = futility_base + gain;
+                    if futility_value <= alpha {
+                        if raise {
+                            best = best.max(futility_value);
+                        }
+                        continue;
+                    }
+                    if !self.pos.see_ge(m, alpha - futility_base) {
+                        if raise {
+                            best = best.max(alpha.min(futility_base));
+                        }
+                        continue;
+                    }
+                }
+
+                // 取る手でない手は一律に捨てる（yaneuraou-search.cpp:4975-4976）
+                if !capture {
                     continue;
                 }
-                let captured = self.pos.piece_on(m.to());
-                let gain = if captured.is_empty() {
-                    VALUE_ZERO
-                } else {
-                    himawari_core::piece_value(captured.piece_type())
-                };
-                // 捨てる前にbestを引き上げる（yaneuraou-search.cpp:4950-4954,
-                // 4965-4969）。fail-softの下限を正しく報告するためである。
-                // 検討モード（MultiPV>1）だけは抑える。ライン確定ごとに出力し、
-                // 確定後のソートを持たないので、窓に依存する値を入れると
-                // ライン間のスコア順序が崩れる（ADR-0077, 0109）
-                let raise = self.multi_pv == 1;
-                let futility_value = futility_base + gain;
-                if futility_value <= alpha {
-                    if raise {
-                        best = best.max(futility_value);
-                    }
-                    continue;
-                }
-                if !self.pos.see_ge(m, alpha - futility_base) {
-                    if raise {
-                        best = best.max(alpha.min(futility_base));
-                    }
+                // SEEが十分悪い手は探索しない（yaneuraou-search.cpp:4989-4990）。
+                // 無駄な王手ラッシュを抑える。歩損は許す下限である
+                if !self.pos.see_ge(m, QS_SEE_MARGIN) {
                     continue;
                 }
             }
 
-            self.set_current_move(
-                ply,
-                m,
-                !m.is_drop() && !self.pos.piece_on(m.to()).is_empty(),
-            );
+            self.set_current_move(ply, m, capture);
             self.pos.do_move(m);
             self.evaluator.push(&self.pos);
             let value = -self.qsearch(-beta, -alpha, ply + 1, is_pv);
