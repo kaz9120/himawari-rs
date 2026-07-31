@@ -70,7 +70,7 @@
 - best checkpoint: step 116000（valid loss 0.49513）、所要149分
 - 対halfkp_370M: +243.8 Elo（データ拡大分）、
   対halfkp_1900M: +28.1 Elo（factorizer分）。いずれもH1採択
-- 詳細は[RESULTS.md](RESULTS.md)、条件は
+- 詳細は計測記録、条件は
   [ADR-0064](adr/0064-dense-ft-gradient-mps.md)〜
   [ADR-0066](adr/0066-halfkp-factorizer.md)
 

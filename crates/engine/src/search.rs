@@ -7,7 +7,7 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicI64, AtomicU64, Ordering};
 
 use himawari_core::{
-    Move, MoveList, Piece, PieceType, Position, Repetition, Square, generate_legal,
+    Color, Move, MoveList, Piece, PieceType, Position, Repetition, Square, generate_legal,
 };
 
 use crate::eval::Evaluator;
@@ -18,8 +18,8 @@ use crate::movepick::{
 use crate::timeman::{Limits, TimeManager};
 use crate::tt::{Bound, EvalHash, Tt};
 use crate::value::{
-    MAX_PLY, VALUE_DRAW, VALUE_INFINITE, VALUE_MATE_IN_MAX_PLY, VALUE_MATED_IN_MAX_PLY, VALUE_NONE,
-    VALUE_SUPERIOR, VALUE_ZERO, Value, mate_in, mated_in, value_from_tt, value_to_tt,
+    MAX_PLY, PAWN_VALUE, VALUE_DRAW, VALUE_INFINITE, VALUE_MATE_IN_MAX_PLY, VALUE_MATED_IN_MAX_PLY,
+    VALUE_NONE, VALUE_SUPERIOR, VALUE_ZERO, Value, mate_in, mated_in, value_from_tt, value_to_tt,
 };
 
 // ---- 探索定数（ADR-0028。調整は1調整=1SPRT） ----
@@ -385,6 +385,16 @@ pub struct SearchResult {
     pub score: Value,
     /// 相手の予測応手（PVの2手目。なければNONE。ADR-0033）。
     pub ponder: Move,
+    /// `root_moves[0]` の生スコア（G10。S:610-611の投票が読む）。
+    /// USIへ出す `score` と違い、頭打ちや窓外れの整形をしていない
+    pub root_score: Value,
+    /// `root_moves[0].average_score`（G10。S:1250）。
+    /// best threadのものを次のgoへ持ち越す
+    pub root_average_score: Value,
+    /// `root_moves[0].pv`（G10。S:625-626の投票が読む）。
+    pub pv: Vec<Move>,
+    /// 確定した最後のイテレーションの深さ（G10。S:618の投票が読む）。
+    pub completed_depth: u32,
 }
 
 /// plyごとの探索状態（ADR-0109のG0, G1）。
@@ -482,6 +492,12 @@ pub struct Worker {
     thread_count: usize,
     /// goをまたぐ記憶（G9）。スレッドループが持ち回る
     pub memory: MainMemory,
+    /// rootの手番（G10）。引き分けの評価値の符号を決める
+    root_color: Color,
+    /// rootの手番から見た引き分けの評価値（G10。S:1002-1009）。
+    /// `DrawValueBlack` / `DrawValueWhite` を歩の価値で換算した値で、
+    /// `ThreadPool` が `set_draw_value` で入れる。既定は0（従来と同じ）
+    draw_value_us: Value,
 }
 
 impl Worker {
@@ -496,6 +512,7 @@ impl Worker {
         evaluator: Evaluator,
         hist: Histories,
     ) -> Worker {
+        let root_color = pos.side_to_move();
         Worker {
             pos,
             evaluator,
@@ -537,7 +554,21 @@ impl Worker {
             thread_idx: 0,
             thread_count: 1,
             memory: MainMemory::default(),
+            root_color,
+            draw_value_us: VALUE_ZERO,
         }
+    }
+
+    /// 引き分けの評価値を設定する（G10。S:1002-1009）。手番別の設定値を
+    /// 歩の価値で換算し、rootの手番から見た値として持つ。
+    /// 相手番のleafでは符号を反転させる。非対称な探索を避けるためである
+    pub fn set_draw_value(&mut self, black: i32, white: i32) {
+        let v = if self.root_color == Color::Black {
+            black
+        } else {
+            white
+        };
+        self.draw_value_us = v * PAWN_VALUE / 100;
     }
 
     /// このワーカーの通し番号と総数を渡す（G9）。aspirationの多様化と
@@ -601,8 +632,15 @@ impl Worker {
 
     #[inline]
     fn draw_value(&self) -> Value {
-        // 千日手PVへの固着を防ぐ±1の揺らぎ（ADR-0026）
-        VALUE_DRAW + 1 - (self.nodes & 2) as Value
+        // 手番別の引き分けスコア（G10。S:1008-1009、S:2468）。
+        // rootと同じ手番なら+、相手番なら-にする
+        let base = if self.pos.side_to_move() == self.root_color {
+            self.draw_value_us
+        } else {
+            -self.draw_value_us
+        };
+        // 千日手PVへの固着を防ぐ±1の揺らぎ（ADR-0026、S:785のvalue_draw）
+        base + VALUE_DRAW + 1 - (self.nodes & 2) as Value
     }
 
     /// 生の静的評価をeval hash経由で得る（ADR-0049）。ヒットなら
@@ -777,6 +815,10 @@ impl Worker {
                 best: Move::WIN,
                 score: mate_in(0),
                 ponder: Move::NONE,
+                root_score: -VALUE_INFINITE,
+                root_average_score: -VALUE_INFINITE,
+                pv: Vec::new(),
+                completed_depth: 0,
             };
         }
         self.shared.tt.new_search();
@@ -806,6 +848,10 @@ impl Worker {
                 best: Move::RESIGN,
                 score: mated_in(0),
                 ponder: Move::NONE,
+                root_score: -VALUE_INFINITE,
+                root_average_score: -VALUE_INFINITE,
+                pv: Vec::new(),
+                completed_depth: 0,
             };
         }
         // 前回のgoと手番が入れ替わっているなら、持ち越したスコアの符号を
@@ -1125,8 +1171,8 @@ impl Worker {
             }));
         }
         // 次のgoで使う値を持ち越す（G9。S:1249-1253）。参照実装はbest thread
-        // のrootMoves[0]から採る。本エンジンはbest thread votingを持たない
-        // ので（G10）、自スレッドの先頭手から採る
+        // のrootMoves[0]から採る。投票で他スレッドが選ばれたときは、
+        // 呼び出し側（ThreadPool）がそちらの値で上書きする（G10）
         self.memory.best_previous_score = self.root_moves[0].score;
         self.memory.best_previous_average_score = self.root_moves[0].average_score;
         self.memory.last_game_ply = root_game_ply;
@@ -1138,6 +1184,10 @@ impl Worker {
             best: self.root_moves[0].mv,
             score: last_score,
             ponder: self.root_moves[0].pv.get(1).copied().unwrap_or(Move::NONE),
+            root_score: self.root_moves[0].score,
+            root_average_score: self.root_moves[0].average_score,
+            pv: self.root_moves[0].pv.clone(),
+            completed_depth,
         }
     }
 

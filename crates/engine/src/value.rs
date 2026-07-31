@@ -3,6 +3,9 @@
 pub type Value = i32;
 
 pub const VALUE_ZERO: Value = 0;
+/// 歩の価値[cp]（evaluate.h:78の `PawnValue`）。参照実装は90だが、本エンジンの
+/// 評価値はcpスケールそのものなので100になる。`DrawValue*` の換算に使う
+pub const PAWN_VALUE: Value = 100;
 pub const VALUE_DRAW: Value = 0;
 pub const VALUE_MATE: Value = 32000;
 pub const VALUE_INFINITE: Value = 32601;

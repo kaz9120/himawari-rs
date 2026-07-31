@@ -6,7 +6,7 @@
 
 ## Context
 
-2026-07-27にやねうら王masterと探索部の機能差分を棚卸しした（[IDEAS.md](../IDEAS.md)）。
+2026-07-27にやねうら王masterと探索部の機能差分を棚卸しした（[ROADMAPの候補](../ROADMAP.md#候補)）。
 ムーブループ内の枝刈りは、やねうら王が5種類を持つのに対し本エンジンは
 2種類（LMP・quiet futility）しかない。この差が最大の構造的欠落だった。
 
@@ -44,7 +44,7 @@ history pruningだけは前提を持たず、単独で実装・検証できる�
 案Aに `History::get(m)` を足す。項が増えて分散が広がり、閾値を取りやすい。
 
 欠点は、main historyが`[移動後の駒][移動先]`しか持たず、fromも駒打ちの
-区別も表現しないこと（[IDEAS.md](../IDEAS.md)の「main historyの次元拡張」）。
+区別も表現しないこと（[ROADMAPの候補](../ROADMAP.md#候補)の「main historyの次元拡張」）。
 衝突した局面の値が混ざるため、枝刈りの判断材料としては信頼度が落ちる。
 やねうら王もmain historyはこの判定に入れず、後段の`lmrDepth`補正でのみ使う。
 
@@ -195,7 +195,7 @@ Decisionで行ったスケール換算は値域の理論値を使ったが、実
 本ADRは保留のままとする。3回目に進むなら、閾値をさらに動かすのではなく
 判定材料を増やしてから戻る。現在の材料はcontinuation history 2項だけで、
 やねうら王は同じ判定にpawn historyを加えた3項を使う。
-[IDEAS.md](../IDEAS.md)の「pawn history」を先に済ませるのが筋である。
+[ROADMAPの候補](../ROADMAP.md#候補)の「pawn history」を先に済ませるのが筋である。
 
 ## Consequences
 
@@ -204,7 +204,7 @@ Decisionで行ったスケール換算は値域の理論値を使ったが、実
 PVノード除外で抑える。
 
 閾値がcontinuation historyのスケールに依存するため、
-[IDEAS.md](../IDEAS.md)の「bonus/malus式の再設計」や「continuation historyの
+[ROADMAPの候補](../ROADMAP.md#候補)の「bonus/malus式の再設計」や「continuation historyの
 段数拡張」を実施すると、この閾値の再調整が必要になる。両者を変えるときは
 `HISTORY_PRUNING_MARGIN` の再測定を同じPRに含める。
 

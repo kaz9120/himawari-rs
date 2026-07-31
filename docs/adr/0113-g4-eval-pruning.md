@@ -2,7 +2,7 @@
 
 - Status: accepted
 - Date: 2026-07-30
-- 関連ADR: [0109](0109-reference-parity.md), [0112](0112-g3-pruning.md), [0111](0111-g2-lmr.md), [0096](0096-rfp-margin.md), [0075](0075-razoring-depth.md), [0052](0052-nmp-dynamic.md), [0074](0074-feature-verification.md)
+- 関連ADR: [0109](0109-reference-parity.md), [0112](0112-g3-pruning.md), [0111](0111-g2-lmr.md), [0096](0096-rfp-margin.md), [0075](0075-razoring-margin.md), [0052](0052-nmp-dynamic.md), [0074](0074-feature-verification.md)
 
 ## Context
 
@@ -17,7 +17,7 @@ LMP・`reduction()` である。定義を変えると5か所の挙動が同時�
 後でimprovingが長くfalseに張り付き、枝刈りが一律に甘くなる。参照実装は王手中に
 2手前の静的評価を写して連鎖を切らない。
 
-この領域は過去に3件触って3件とも通っていない。[ADR-0075](0075-razoring-depth.md)は
+この領域は過去に3件触って3件とも通っていない。[ADR-0075](0075-razoring-margin.md)は
 razoringの深さ制限撤廃でマージンの向きを取り違えて棄却、
 [ADR-0096](0096-rfp-margin.md)はRFPのマージン緩和で-139.4、
 [ADR-0052](0052-nmp-dynamic.md)はNMPのR拡大が判定未了で保留のままだった。
@@ -147,7 +147,7 @@ G1が762局、G2が508局、G3が718局だったのに対し2倍以上である�
 ほど必要な局数は増える。
 
 **過去に3件通らなかった領域が、improvingの定義ごと揃えると通った。**
-[ADR-0075](0075-razoring-depth.md)・[ADR-0096](0096-rfp-margin.md)・
+[ADR-0075](0075-razoring-margin.md)・[ADR-0096](0096-rfp-margin.md)・
 [ADR-0052](0052-nmp-dynamic.md)はいずれもimprovingを触らずに数値だけを
 寄せていた。
 

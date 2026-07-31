@@ -12,7 +12,7 @@ qsearchであり、置換の多い将棋では同一局面のqsearch木を
 何度も読み直している。eval hash（ADR-0049）は評価1回分しか
 省けないが、TTなら静止探索の結論（boundとbest move）ごと
 再利用できる。SF系ではqsearchのTT probe/storeは標準装備で、
-IDEAS.mdの「qsearchのTT保存拡充」に当たる。
+ROADMAPの候補の「qsearchのTT保存拡充」に当たる。
 
 ## 選択肢と比較
 
@@ -61,7 +61,7 @@ SPRTはADR-0028の既定条件。両エンジンに
 - TTへの書き込みがqsearchノード分増え、main searchの深い
   エントリの寿命が統計的に縮む。depth 0エントリは置換で
   すぐ上書きされる側なので影響は限定的とみるが、H0の場合は
-  この圧迫が主因の疑いがある（bucket化・置換方針はIDEAS.mdの
+  この圧迫が主因の疑いがある（bucket化・置換方針はROADMAPの候補の
   別項目）
 - qsearch入口のTT probeはメモリアクセス1回のコスト。カット
   率がこれを上回るかはSPRTで判定する

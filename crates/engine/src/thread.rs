@@ -11,14 +11,16 @@ use std::sync::{Arc, Condvar, Mutex};
 use std::thread::JoinHandle;
 use std::time::Instant;
 
-use himawari_core::Position;
+use himawari_core::{Move, Position};
 
 use crate::eval::Evaluator;
 use crate::movepick::Histories;
 use crate::nnue::NnueNetwork;
-use crate::search::{IterInfo, MainMemory, ScoreBound, SearchInfo, Shared, Worker};
+use crate::search::{IterInfo, MainMemory, ScoreBound, SearchInfo, SearchResult, Shared, Worker};
 use crate::timeman::{Limits, TimeManager, TimeOptions};
-use crate::value::{VALUE_MATE, Value};
+use crate::value::{
+    VALUE_INFINITE, VALUE_MATE, VALUE_MATE_IN_MAX_PLY, VALUE_MATED_IN_MAX_PLY, VALUE_ZERO, Value,
+};
 
 /// メインワーカーへのUSI出力コールバック。
 pub type OnLine = Arc<dyn Fn(&str) + Send + Sync>;
@@ -39,6 +41,14 @@ pub struct EngineOptions {
     pub max_moves_to_draw: u16,
     pub multi_pv: usize,
     pub ponder: bool,
+    /// 投了スコア（S:155）。GUIへ出す評価値がこの値の符号違いを
+    /// 下回ったら投了する。既定99999は「投了しない」の意味
+    pub resign_value: i32,
+    /// 先手番のときの引き分けの評価値（S:151）。歩を100とした百分率で、
+    /// 既定の-2は千日手をわずかに嫌う設定である
+    pub draw_value_black: i32,
+    /// 後手番のときの引き分けの評価値（S:152）
+    pub draw_value_white: i32,
     pub eval_file: String,
 }
 
@@ -55,6 +65,9 @@ impl Default for EngineOptions {
             max_moves_to_draw: 0,
             multi_pv: 1,
             ponder: false,
+            resign_value: 99999,
+            draw_value_black: -2,
+            draw_value_white: -2,
             eval_file: String::new(),
         }
     }
@@ -122,6 +135,14 @@ struct PonderCtl {
     cv: Condvar,
 }
 
+/// 各スレッドの結論を集める場所（G10）。best thread votingが読む。
+/// メインは全スレッドが書き終わるのを待ってから投票する
+/// （S:1195-1197の `wait_for_search_finished`）。
+struct Results {
+    slots: Mutex<Vec<Option<SearchResult>>>,
+    cv: Condvar,
+}
+
 struct WorkerThread {
     ctl: Arc<Ctl>,
     handle: Option<JoinHandle<()>>,
@@ -131,6 +152,8 @@ pub struct ThreadPool {
     workers: Vec<WorkerThread>,
     shared: Arc<Shared>,
     ponder: Arc<PonderCtl>,
+    /// 各スレッドの結論（G10）。goのたびに空へ戻す
+    results: Arc<Results>,
     /// 今回のgoの受領時刻。ponderhitの時刻をここからの経過へ換算する。
     start: Mutex<Instant>,
     /// 生成時のパラメータ（isreadyでの再生成判定用）。
@@ -169,6 +192,91 @@ fn format_pv_line(info: &IterInfo, score_suffix: &str) -> String {
     )
 }
 
+/// 詰み確定のスコアか（types.h:513-516の `is_win`）。
+#[inline]
+fn is_win(v: Value) -> bool {
+    v >= VALUE_MATE_IN_MAX_PLY
+}
+
+/// 詰まされ確定のスコアか（types.h:519-522の `is_loss`）。
+#[inline]
+fn is_loss(v: Value) -> bool {
+    v <= VALUE_MATED_IN_MAX_PLY
+}
+
+/// 並列探索でいちばん良い思考をしたスレッドを選ぶ（S:599-671の
+/// `get_best_thread`）。呼び出し側は全スレッドのPVが空でないことを保証する。
+///
+/// 得票は「最小スコアからの差に14を足した値 × 確定深さ」の合計で、同じ手を
+/// 選んだスレッドの分を足し合わせる。優先順位は3段ある。勝ち確定なら短い
+/// 詰みへ、負け確定なら短い詰まされへ、それ以外は得票数で選ぶ。
+fn get_best_thread(results: &[SearchResult]) -> usize {
+    // 全スレッドのスコアの最小値（S:609-611）
+    let min_score = results
+        .iter()
+        .map(|r| r.root_score)
+        .min()
+        .unwrap_or(VALUE_INFINITE);
+    // スコアと深さで投票する（S:613-618）
+    let voting_value = |r: &SearchResult| -> i64 {
+        i64::from(r.root_score - min_score + 14) * i64::from(r.completed_depth)
+    };
+    // Moveはハッシュを持たないので連想リストで数える。スレッド数は
+    // 高々数十なので線形探索で足りる
+    let mut votes: Vec<(Move, i64)> = Vec::with_capacity(results.len());
+    for r in results {
+        let v = voting_value(r);
+        match votes.iter_mut().find(|(m, _)| *m == r.pv[0]) {
+            Some((_, acc)) => *acc += v,
+            None => votes.push((r.pv[0], v)),
+        }
+    }
+    let vote_of = |m: Move| -> i64 {
+        votes
+            .iter()
+            .find(|(k, _)| *k == m)
+            .map(|(_, v)| *v)
+            .unwrap_or(0)
+    };
+    let mut best = 0usize;
+    for (i, r) in results.iter().enumerate() {
+        let b = &results[best];
+        let best_score = b.root_score;
+        let new_score = r.root_score;
+        let best_vote = vote_of(b.pv[0]);
+        let new_vote = vote_of(r.pv[0]);
+        let best_in_win = is_win(best_score);
+        let new_in_win = is_win(new_score);
+        // -VALUE_INFINITEはまだ値がない番兵なので負け確定とは見ない
+        let best_in_loss = best_score != -VALUE_INFINITE && is_loss(best_score);
+        let new_in_loss = new_score != -VALUE_INFINITE && is_loss(new_score);
+        // PVが2手以下のスレッドは投票値を0扱いにする（S:643-646）。
+        // 途中で切れたPVを持つスレッドを選ばないための細工である
+        let better_voting_value = voting_value(r) * i64::from(r.pv.len() > 2)
+            > voting_value(b) * i64::from(b.pv.len() > 2);
+        if best_in_win {
+            // 詰みは短いほうを選ぶ（S:648-653）
+            if new_score > best_score {
+                best = i;
+            }
+        } else if best_in_loss {
+            // 詰まされる側も短いほうを選ぶ（S:654-659）。
+            // 原典のコメントは "pick the shortest mated" で、
+            // より小さいスコア（＝早く詰まされる）を採るコードと一致する
+            if new_in_loss && new_score < best_score {
+                best = i;
+            }
+        } else if new_in_win
+            || new_in_loss
+            || (!is_loss(new_score)
+                && (new_vote > best_vote || (new_vote == best_vote && better_voting_value)))
+        {
+            best = i;
+        }
+    }
+    best
+}
+
 fn format_score(v: Value) -> String {
     if v.abs() >= VALUE_MATE - 256 {
         let plies = VALUE_MATE - v.abs();
@@ -182,6 +290,7 @@ fn format_score(v: Value) -> String {
 fn spawn_worker(
     shared: Arc<Shared>,
     ponder: Arc<PonderCtl>,
+    results: Arc<Results>,
     net: Option<Arc<NnueNetwork>>,
     thread_idx: usize,
     thread_count: usize,
@@ -268,6 +377,7 @@ fn spawn_worker(
                         hist,
                     );
                     worker.set_thread(thread_idx, thread_count);
+                    worker.set_draw_value(j.opts.draw_value_black, j.opts.draw_value_white);
                     worker.memory = memory;
                     let result = worker.iterate(&mut |info| {
                         let Some(out) = &on_line else { return };
@@ -291,6 +401,12 @@ fn spawn_worker(
                     // history類とgoをまたぐ記憶を回収して次のgoへ持ち越す
                     hist = worker.hist;
                     memory = worker.memory;
+                    // 自分の結論を投票用に置く（G10）
+                    {
+                        let mut g = results.slots.lock().expect("results lock");
+                        g[thread_idx] = Some(result);
+                        results.cv.notify_all();
+                    }
                     if is_main {
                         // メインの結論が出たらヘルパーも止める
                         shared.stop.store(true, Ordering::Relaxed);
@@ -307,16 +423,86 @@ fn spawn_worker(
                                 }
                             }
                         }
-                        // ponderhitでも探索を継続するので、ここで得た結論が
-                        // そのまま本番の結論になる。常に出してよい
+                        // 全スレッドの結論が揃うのを待つ（S:1195-1197の
+                        // `wait_for_search_finished`）。stopは既に立てたので
+                        // ヘルパーはすぐ抜ける
+                        let all: Vec<SearchResult> = {
+                            let mut g = results.slots.lock().expect("results lock");
+                            while g.iter().any(|r| r.is_none()) {
+                                g = results.cv.wait(g).expect("results wait");
+                            }
+                            g.iter_mut().filter_map(|r| r.take()).collect()
+                        };
+                        // 投票で最終手を選ぶ（S:1239-1246）。MultiPVや
+                        // go depthのときは参照実装も投票しない
+                        let chosen = if thread_count > 1
+                            && j.opts.multi_pv == 1
+                            && j.limits.depth == 0
+                            && all.iter().all(|r| !r.pv.is_empty())
+                        {
+                            get_best_thread(&all)
+                        } else {
+                            0
+                        };
+                        let result = &all[chosen];
+                        if chosen != 0 {
+                            // 次のgoへ持ち越す値もbest threadのものにする
+                            // （S:1249-1253）
+                            memory.best_previous_score = result.root_score;
+                            memory.best_previous_average_score = result.root_average_score;
+                        }
                         if let Some(out) = &on_line {
-                            let ponder_hint =
-                                if j.opts.ponder && result.ponder != himawari_core::Move::NONE {
+                            // メイン以外が選ばれたら、そのスレッドのPVを
+                            // 出し直す（S:1332-1348）。既に出したPVは
+                            // メインのものなので指し手と食い違う
+                            if chosen != 0 {
+                                out(&format!("info string best thread = {chosen}"));
+                                out(&format_pv_line(
+                                    &IterInfo {
+                                        depth: result.completed_depth,
+                                        seldepth: result.completed_depth,
+                                        multipv: 0,
+                                        score: result.score,
+                                        pv: result.pv.clone(),
+                                        nodes: shared.nodes.load(Ordering::Relaxed),
+                                        elapsed_ms: j
+                                            .limits
+                                            .start
+                                            .map(|s| s.elapsed().as_millis() as u64)
+                                            .unwrap_or(0),
+                                        hashfull: shared.tt.hashfull(),
+                                    },
+                                    "",
+                                ));
+                            }
+                            // 投了スコアを下回っていたら投了する
+                            // （S:1289-1298、S:1337-1342）。定跡ヒットなどの
+                            // search_skipped経路では判定しないが、本エンジンは
+                            // 定跡をUSI層で引くのでここは常に通常探索である
+                            let resign_score = if result.score == -VALUE_INFINITE {
+                                VALUE_ZERO
+                            } else {
+                                result.score
+                            };
+                            if result.root_score != -VALUE_INFINITE
+                                && resign_score <= -j.opts.resign_value
+                            {
+                                out(&format!(
+                                    "info string resign by ResignValue: score {resign_score}"
+                                ));
+                                out("bestmove resign");
+                            } else {
+                                // ponderhitでも探索を継続するので、ここで得た結論が
+                                // そのまま本番の結論になる。常に出してよい
+                                let ponder_hint = if j.opts.ponder
+                                    && result.ponder != himawari_core::Move::NONE
+                                {
                                     format!(" ponder {}", result.ponder.to_usi())
                                 } else {
                                     String::new()
                                 };
-                            out(&format!("bestmove {}{}", result.best.to_usi(), ponder_hint));
+                                out(&format!("bestmove {}{}", result.best.to_usi(), ponder_hint));
+                            }
                         }
                     }
                     let mut idle = ctl2.idle.lock().expect("idle lock");
@@ -351,11 +537,16 @@ impl ThreadPool {
             None => (String::new(), None),
         };
         let n = threads.max(1);
+        let results = Arc::new(Results {
+            slots: Mutex::new((0..n).map(|_| None).collect()),
+            cv: Condvar::new(),
+        });
         let workers = (0..n)
             .map(|i| {
                 spawn_worker(
                     Arc::clone(&shared),
                     Arc::clone(&ponder),
+                    Arc::clone(&results),
                     net_arc.clone(),
                     i,
                     n,
@@ -371,6 +562,7 @@ impl ThreadPool {
             workers,
             shared,
             ponder,
+            results,
             start: Mutex::new(Instant::now()),
             hash_mb,
             threads: n,
@@ -397,6 +589,10 @@ impl ThreadPool {
         };
         // 計時の起点をponderhitの換算用に控える
         *self.start.lock().expect("start lock") = limits.start.unwrap_or_else(Instant::now);
+        // 前回の結論を捨てる（G10）。wait_idle済みなので書き手はいない
+        for slot in self.results.slots.lock().expect("results lock").iter_mut() {
+            *slot = None;
+        }
         self.shared.stop.store(false, Ordering::Relaxed);
         self.shared.aborted_search.store(false, Ordering::Relaxed);
         // go受領時点の初期化（S:114-120 pre_start_searching）
@@ -496,5 +692,83 @@ impl ThreadPool {
                 let _ = h.join();
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::value::{mate_in, mated_in};
+
+    // 投票の区別に使う適当な指し手。合法性は問わない
+    const A: Move = Move::WIN;
+    const B: Move = Move::RESIGN;
+
+    fn res(score: Value, depth: u32, pv: Vec<Move>) -> SearchResult {
+        SearchResult {
+            best: pv[0],
+            score,
+            ponder: pv.get(1).copied().unwrap_or(Move::NONE),
+            root_score: score,
+            root_average_score: score,
+            pv,
+            completed_depth: depth,
+        }
+    }
+
+    #[test]
+    fn single_thread_picks_itself() {
+        let all = vec![res(10, 12, vec![A, B, A])];
+        assert_eq!(get_best_thread(&all), 0);
+    }
+
+    #[test]
+    fn deeper_thread_wins_on_equal_score() {
+        // 同じスコアなら確定深さの大きいほうが得票を伸ばす
+        let all = vec![res(0, 10, vec![A, B, A]), res(0, 20, vec![B, A, B])];
+        assert_eq!(get_best_thread(&all), 1);
+    }
+
+    #[test]
+    fn shorter_mate_wins() {
+        // 勝ち確定なら短い詰みを選ぶ（深さや得票では選ばない）
+        let all = vec![
+            res(mate_in(10), 30, vec![A, B, A]),
+            res(mate_in(4), 5, vec![B, A, B]),
+        ];
+        assert_eq!(get_best_thread(&all), 1);
+    }
+
+    #[test]
+    fn shortest_mated_line_wins() {
+        // 負け確定ならスコアの小さいほう（＝早く詰まされるほう）を選ぶ。
+        // 原典のコメントも "pick the shortest mated" で、コードと一致する
+        let all = vec![
+            res(mated_in(10), 20, vec![A, B, A]),
+            res(mated_in(4), 20, vec![B, A, B]),
+        ];
+        assert_eq!(get_best_thread(&all), 1);
+    }
+
+    #[test]
+    fn truncated_pv_loses_the_tie() {
+        // 得票が同じなら、PVが2手以下のスレッドは選ばれない
+        let short = res(0, 14, vec![A, B]);
+        let long = res(0, 14, vec![B, A, B]);
+        assert_eq!(get_best_thread(&[short, long]), 1);
+        let short = res(0, 14, vec![B, A]);
+        let long = res(0, 14, vec![A, B, A]);
+        assert_eq!(get_best_thread(&[long, short]), 0);
+    }
+
+    #[test]
+    fn same_move_accumulates_votes() {
+        // 同じ手を選んだ2スレッドの票が合算され、単独の深いスレッドを上回る
+        let all = vec![
+            res(0, 12, vec![A, B, A]),
+            res(0, 12, vec![A, B, A]),
+            res(0, 20, vec![B, A, B]),
+        ];
+        assert_eq!(get_best_thread(&all), 0);
     }
 }

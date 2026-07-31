@@ -2,14 +2,14 @@
 
 - Status: accepted
 - Date: 2026-07-30
-- 関連ADR: [0109](0109-reference-parity.md), [0113](0113-g4-eval-pruning.md), [0050](0050-singular-extension.md), [0074](0074-feature-verification.md)
+- 関連ADR: [0109](0109-reference-parity.md), [0113](0113-g4-eval-pruning.md), [0050](0050-singular-extension-retry.md), [0074](0074-feature-verification.md)
 
 ## Context
 
 [ADR-0109](0109-reference-parity.md)の追従キャンペーンの第6群。singularの
 検証探索の結果を、返り値の位置で3通りに使い分ける形へ揃える。
 
-本エンジンは延長側（+1のみ）しか持たない（[ADR-0050](0050-singular-extension.md)の
+本エンジンは延長側（+1のみ）しか持たない（[ADR-0050](0050-singular-extension-retry.md)の
 案A）。参照実装は同じ検証探索1回の結果を排他的な3分岐で使う。検証値が
 singularBeta未満なら多段延長（最大+3）、beta以上ならmulti-cut、中間なら
 negative extension（−3または−2）である。
@@ -174,7 +174,7 @@ negative extensionだけを入れる」である。切り分けの測定でノ�
 係数では届かないため、判定そのものの作り方を変える必要がある。
 
 これは「参照実装の値をそのまま使う」という方針の例外になる。追従が一巡して
-から判断する。[IDEAS.md](../IDEAS.md)へ1行で戻した。
+から判断する。[ROADMAPの候補](../ROADMAP.md#候補)へ1行で戻した。
 
 **参照実装の値が本エンジンで成立しなかった最初の例である。**
 [ADR-0074](0074-feature-verification.md)は「出典のスケール前提が本エンジンで

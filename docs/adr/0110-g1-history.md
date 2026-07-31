@@ -2,7 +2,7 @@
 
 - Status: accepted
 - Date: 2026-07-30
-- 関連ADR: [0109](0109-reference-parity.md), [0100](0100-movepick-argmax-simd.md), [0097](0097-capture-history.md), [0085](0085-correction-history-multi.md), [0073](0073-history-bonus.md), [0047](0047-continuation-history.md)
+- 関連ADR: [0109](0109-reference-parity.md), [0100](0100-movepick-argmax-simd.md), [0097](0097-capture-history.md), [0085](0085-correction-history-multi.md), [0073](0073-history-bonus-scale.md), [0047](0047-continuation-history.md)
 
 ## Context
 

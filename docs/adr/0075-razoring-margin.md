@@ -64,5 +64,5 @@ razoringとfutilityは本エンジンの方がよく刈る。razoringが+184.8 E
 付いてさらに減る。depth 3で360対228、depth 6で720対456となり、
 本エンジンの方が刈りにくい。深さ上限も6対15で狭い。次はここを見る。
 
-[IDEAS.md](../IDEAS.md)の「razoringの深さ制限撤廃」は本ADRで棄却する。
+[ROADMAPの候補](../ROADMAP.md#候補)の「razoringの深さ制限撤廃」は本ADRで棄却する。
 向きを取り違えた記述だったため、行ごと差し替える。

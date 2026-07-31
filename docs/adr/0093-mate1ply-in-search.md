@@ -11,7 +11,7 @@
 呼ばれていない。`crates/engine/src/mate.rs` に関数があるだけで、
 `search.rs` からの参照がゼロである。
 
-[IDEAS.md](../IDEAS.md)には「P3で+1.1（968局、駒割時代）で見送り」と
+[ROADMAPの候補](../ROADMAP.md#候補)には「P3で+1.1（968局、駒割時代）で見送り」と
 記録がある。当時は駒割評価で、探索も枝刈りがほとんど入っていなかった。
 [ADR-0050](0050-singular-extension-retry.md)のsingular extensionが
 P3の-16.0からP8で+12.6に反転した先例があり、NNUE後の再測定に意味がある。
