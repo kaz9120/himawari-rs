@@ -2,10 +2,10 @@
 
 Rustで書くコンピュータ将棋エンジン（USIプロトコル対応）。
 
-評価関数はNNUE、探索はalpha-beta＋Lazy SMPを最終形とし、
-自己対局による教師データ生成と学習器まで自前で実装する。
+評価関数はNNUE、探索はalpha-beta＋Lazy SMPで、自己対局による教師データ生成と
+学習器まで自前で実装する。探索部は[やねうら王](https://github.com/yaneurao/YaneuraOu)を
+参照実装として機能差分を埋めた（[ADR-0109](docs/adr/0109-reference-parity.md)）。
 参考: [Stockfish](https://github.com/official-stockfish/stockfish)、
-[やねうら王](https://github.com/yaneurao/yaneuraou)、
 [Chess Programming Wiki](https://www.chessprogramming.org/Main_Page)
 
 ## ドキュメント構成
@@ -19,15 +19,23 @@ Rustで書くコンピュータ将棋エンジン（USIプロトコル対応）�
 | [docs/RESULTS.md](docs/RESULTS.md) | 計測・検証結果の時系列ログ（append-only） |
 | [docs/adr/README.md](docs/adr/README.md) | 設計判断の索引と未起草バックログ（設計はここが正） |
 | docs/adr/NNNN-*.md | 個々の設計判断（ADR） |
-| [docs/IDEAS.md](docs/IDEAS.md) | 改善アイデア帳 |
+| [docs/IDEAS.md](docs/IDEAS.md) | 未着手の改善アイデア（完了・棄却はADRへ移す） |
 | [docs/DATASETS.md](docs/DATASETS.md) | 教師データの所在と前処理手順 |
 | [CLAUDE.md](CLAUDE.md) | エージェント向けの作業規約（ゲート運用・コミット規律） |
 
 ## 開発プロセス
 
-設計判断はすべてADRとして記録し、実装より先に書く。
-「ADR群を書く→実装→検証」をフェーズ単位で繰り返し、
-各フェーズの出口条件（perft一致、対局完走など）を通過してから次へ進む。
+設計判断はすべてADRとして記録し、実装より先に書く。**過去の意思決定はADRが
+持ち、ROADMAPとIDEAS.mdには今と未来の判断に要る情報だけを置く。**
+
+棋力が変わる変更はSPRTでH1採択したものだけをmainへ入れる
+（[ADR-0028](docs/adr/0028-pruning-extensions.md)）。単発の変更は1機能=1SPRT、
+参照実装への追従は1群=1SPRTで測る（[ADR-0109](docs/adr/0109-reference-parity.md)）。
+SPRTの前に機能検証（固定深さでのノード数の比較）と発動率の計測を行う
+（[ADR-0074](docs/adr/0074-feature-verification.md)）。
+
+フェーズ管理は[ADR-0068](docs/adr/0068-sprt-driven-versioning.md)で終え、
+現在はSPRT採択を単位に進めている。
 
 ## ビルドと使い方
 
