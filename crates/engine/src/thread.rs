@@ -19,7 +19,7 @@ use crate::nnue::NnueNetwork;
 use crate::search::{IterInfo, MainMemory, ScoreBound, SearchInfo, SearchResult, Shared, Worker};
 use crate::timeman::{Limits, TimeManager, TimeOptions};
 use crate::value::{
-    VALUE_INFINITE, VALUE_MATE, VALUE_MATE_IN_MAX_PLY, VALUE_MATED_IN_MAX_PLY, Value,
+    VALUE_INFINITE, VALUE_MATE, VALUE_MATE_IN_MAX_PLY, VALUE_MATED_IN_MAX_PLY, VALUE_ZERO, Value,
 };
 
 /// メインワーカーへのUSI出力コールバック。
@@ -41,6 +41,14 @@ pub struct EngineOptions {
     pub max_moves_to_draw: u16,
     pub multi_pv: usize,
     pub ponder: bool,
+    /// 投了スコア（S:155）。GUIへ出す評価値がこの値の符号違いを
+    /// 下回ったら投了する。既定99999は「投了しない」の意味
+    pub resign_value: i32,
+    /// 先手番のときの引き分けの評価値（S:151）。歩を100とした百分率で、
+    /// 既定の-2は千日手をわずかに嫌う設定である
+    pub draw_value_black: i32,
+    /// 後手番のときの引き分けの評価値（S:152）
+    pub draw_value_white: i32,
     pub eval_file: String,
 }
 
@@ -57,6 +65,9 @@ impl Default for EngineOptions {
             max_moves_to_draw: 0,
             multi_pv: 1,
             ponder: false,
+            resign_value: 99999,
+            draw_value_black: -2,
+            draw_value_white: -2,
             eval_file: String::new(),
         }
     }
@@ -366,6 +377,7 @@ fn spawn_worker(
                         hist,
                     );
                     worker.set_thread(thread_idx, thread_count);
+                    worker.set_draw_value(j.opts.draw_value_black, j.opts.draw_value_white);
                     worker.memory = memory;
                     let result = worker.iterate(&mut |info| {
                         let Some(out) = &on_line else { return };
@@ -463,15 +475,34 @@ fn spawn_worker(
                                     "",
                                 ));
                             }
-                            // ponderhitでも探索を継続するので、ここで得た結論が
-                            // そのまま本番の結論になる。常に出してよい
-                            let ponder_hint =
-                                if j.opts.ponder && result.ponder != himawari_core::Move::NONE {
+                            // 投了スコアを下回っていたら投了する
+                            // （S:1289-1298、S:1337-1342）。定跡ヒットなどの
+                            // search_skipped経路では判定しないが、本エンジンは
+                            // 定跡をUSI層で引くのでここは常に通常探索である
+                            let resign_score = if result.score == -VALUE_INFINITE {
+                                VALUE_ZERO
+                            } else {
+                                result.score
+                            };
+                            if result.root_score != -VALUE_INFINITE
+                                && resign_score <= -j.opts.resign_value
+                            {
+                                out(&format!(
+                                    "info string resign by ResignValue: score {resign_score}"
+                                ));
+                                out("bestmove resign");
+                            } else {
+                                // ponderhitでも探索を継続するので、ここで得た結論が
+                                // そのまま本番の結論になる。常に出してよい
+                                let ponder_hint = if j.opts.ponder
+                                    && result.ponder != himawari_core::Move::NONE
+                                {
                                     format!(" ponder {}", result.ponder.to_usi())
                                 } else {
                                     String::new()
                                 };
-                            out(&format!("bestmove {}{}", result.best.to_usi(), ponder_hint));
+                                out(&format!("bestmove {}{}", result.best.to_usi(), ponder_hint));
+                            }
                         }
                     }
                     let mut idle = ctl2.idle.lock().expect("idle lock");

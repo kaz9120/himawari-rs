@@ -7,7 +7,7 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicI64, AtomicU64, Ordering};
 
 use himawari_core::{
-    Move, MoveList, Piece, PieceType, Position, Repetition, Square, generate_legal,
+    Color, Move, MoveList, Piece, PieceType, Position, Repetition, Square, generate_legal,
 };
 
 use crate::eval::Evaluator;
@@ -18,8 +18,8 @@ use crate::movepick::{
 use crate::timeman::{Limits, TimeManager};
 use crate::tt::{Bound, EvalHash, Tt};
 use crate::value::{
-    MAX_PLY, VALUE_DRAW, VALUE_INFINITE, VALUE_MATE_IN_MAX_PLY, VALUE_MATED_IN_MAX_PLY, VALUE_NONE,
-    VALUE_SUPERIOR, VALUE_ZERO, Value, mate_in, mated_in, value_from_tt, value_to_tt,
+    MAX_PLY, PAWN_VALUE, VALUE_DRAW, VALUE_INFINITE, VALUE_MATE_IN_MAX_PLY, VALUE_MATED_IN_MAX_PLY,
+    VALUE_NONE, VALUE_SUPERIOR, VALUE_ZERO, Value, mate_in, mated_in, value_from_tt, value_to_tt,
 };
 
 // ---- 探索定数（ADR-0028。調整は1調整=1SPRT） ----
@@ -492,6 +492,12 @@ pub struct Worker {
     thread_count: usize,
     /// goをまたぐ記憶（G9）。スレッドループが持ち回る
     pub memory: MainMemory,
+    /// rootの手番（G10）。引き分けの評価値の符号を決める
+    root_color: Color,
+    /// rootの手番から見た引き分けの評価値（G10。S:1002-1009）。
+    /// `DrawValueBlack` / `DrawValueWhite` を歩の価値で換算した値で、
+    /// `ThreadPool` が `set_draw_value` で入れる。既定は0（従来と同じ）
+    draw_value_us: Value,
 }
 
 impl Worker {
@@ -506,6 +512,7 @@ impl Worker {
         evaluator: Evaluator,
         hist: Histories,
     ) -> Worker {
+        let root_color = pos.side_to_move();
         Worker {
             pos,
             evaluator,
@@ -547,7 +554,21 @@ impl Worker {
             thread_idx: 0,
             thread_count: 1,
             memory: MainMemory::default(),
+            root_color,
+            draw_value_us: VALUE_ZERO,
         }
+    }
+
+    /// 引き分けの評価値を設定する（G10。S:1002-1009）。手番別の設定値を
+    /// 歩の価値で換算し、rootの手番から見た値として持つ。
+    /// 相手番のleafでは符号を反転させる。非対称な探索を避けるためである
+    pub fn set_draw_value(&mut self, black: i32, white: i32) {
+        let v = if self.root_color == Color::Black {
+            black
+        } else {
+            white
+        };
+        self.draw_value_us = v * PAWN_VALUE / 100;
     }
 
     /// このワーカーの通し番号と総数を渡す（G9）。aspirationの多様化と
@@ -611,8 +632,15 @@ impl Worker {
 
     #[inline]
     fn draw_value(&self) -> Value {
-        // 千日手PVへの固着を防ぐ±1の揺らぎ（ADR-0026）
-        VALUE_DRAW + 1 - (self.nodes & 2) as Value
+        // 手番別の引き分けスコア（G10。S:1008-1009、S:2468）。
+        // rootと同じ手番なら+、相手番なら-にする
+        let base = if self.pos.side_to_move() == self.root_color {
+            self.draw_value_us
+        } else {
+            -self.draw_value_us
+        };
+        // 千日手PVへの固着を防ぐ±1の揺らぎ（ADR-0026、S:785のvalue_draw）
+        base + VALUE_DRAW + 1 - (self.nodes & 2) as Value
     }
 
     /// 生の静的評価をeval hash経由で得る（ADR-0049）。ヒットなら

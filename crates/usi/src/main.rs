@@ -93,6 +93,10 @@ fn print_options() {
     print_line("option name RoundUpToFullSecond type check default true");
     print_line("option name MaxMovesToDraw type spin default 0 min 0 max 100000");
     print_line("option name MultiPV type spin default 1 min 1 max 128");
+    // 実務オプション（ADR-0109のG10。S:151-155）
+    print_line("option name ResignValue type spin default 99999 min 0 max 99999");
+    print_line("option name DrawValueBlack type spin default -2 min -30000 max 30000");
+    print_line("option name DrawValueWhite type spin default -2 min -30000 max 30000");
     print_line("option name EvalFile type string default <empty>");
     print_line("option name BookFile type string default <empty>");
     print_line("option name BookDepth type spin default 24 min 0 max 1000");
@@ -237,6 +241,21 @@ fn set_option(opts: &mut EngineOptions, bopts: &mut BookOptions, tokens: &[&str]
         "MultiPV" => {
             if let Ok(v) = value.parse::<usize>() {
                 opts.multi_pv = v.max(1);
+            }
+        }
+        "ResignValue" => {
+            if let Ok(v) = value.parse() {
+                opts.resign_value = v;
+            }
+        }
+        "DrawValueBlack" => {
+            if let Ok(v) = value.parse() {
+                opts.draw_value_black = v;
+            }
+        }
+        "DrawValueWhite" => {
+            if let Ok(v) = value.parse() {
+                opts.draw_value_white = v;
             }
         }
         "USI_Ponder" => {
