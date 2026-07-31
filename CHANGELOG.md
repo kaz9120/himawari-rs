@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.27.0](https://github.com/kaz9120/himawari-rs/compare/v0.26.0...v0.27.0) (2026-07-31)
+
+
+### 棋力向上
+
+* 定跡・投票・実務オプションを参照実装へ揃える（G10、ADR-0119） ([75fa045](https://github.com/kaz9120/himawari-rs/commit/75fa045f92b1cc113b96f1d5cc825560a08cf45b))
+
 ## [0.26.0](https://github.com/kaz9120/himawari-rs/compare/v0.25.0...v0.26.0) (2026-07-31)
 
 
