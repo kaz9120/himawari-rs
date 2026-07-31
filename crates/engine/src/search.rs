@@ -221,6 +221,14 @@ pub struct Shared {
     /// `ponderhitTime - startTime`）。"ponderhit" を受けるまでは0
     pub ponderhit_offset: AtomicI64,
     pub nodes: AtomicU64,
+    /// 反復深化で深さが増えているか（G9。yaneuraou-search.h:232）。
+    /// メインが時間の余りから決め、全スレッドが次の反復の頭で読む。
+    /// 偽なら同じ深さを掘り直したとみなし `search_again_counter` が増える
+    pub increase_depth: AtomicBool,
+    /// rootの最善手が変わった回数（G9。yaneuraou-search.h:539）。
+    /// 参照実装はスレッドごとの原子変数を持ち、メインが毎反復で合算して
+    /// 0へ戻す。本エンジンは合算先を1つにまとめ、`swap(0)` で汲み出す
+    pub best_move_changes: AtomicU64,
     pub tt: Tt,
     /// 評価値キャッシュ（ADR-0049）。全スレッド共有、new_gameでクリア。
     pub eval_hash: EvalHash,
@@ -234,6 +242,8 @@ impl Shared {
             ponder: AtomicBool::new(false),
             ponderhit_offset: AtomicI64::new(0),
             nodes: AtomicU64::new(0),
+            increase_depth: AtomicBool::new(true),
+            best_move_changes: AtomicU64::new(0),
             tt: Tt::new(hash_mb),
             eval_hash: EvalHash::new(),
         }
@@ -285,6 +295,50 @@ pub struct RootMove {
     /// このイテレーションでこの手の探索に費やしたノード数（ADR-0062）。
     /// メインワーカーのローカル値のみ。イテレーション開始時に0へ戻す
     pub nodes: u64,
+    /// スコアの移動平均（G9。search.h:139、yaneuraou-search.cpp:4105-4106）。
+    /// aspirationの窓の中心に使う。前深さの生スコアより揺れが小さい。
+    /// 初期値の `-VALUE_INFINITE` は「まだ値がない」ことを表す番兵
+    pub average_score: Value,
+    /// スコアの二乗平均（G9。search.h:142、yaneuraou-search.cpp:4108-4110）。
+    /// 符号を保つため `value * |value|` を平均する。aspirationの初期窓幅が
+    /// この絶対値に比例して広がる。初期値の `-VALUE_INFINITE^2` は番兵で、
+    /// **この値のまま窓幅を計算すると窓が全開になる。** 深さ1で
+    /// aspirationを事実上無効にする仕掛けである
+    pub mean_squared_score: Value,
+}
+
+/// `RootMove::mean_squared_score` の番兵（search.h:142）。
+const MEAN_SQUARED_NONE: Value = -(VALUE_INFINITE * VALUE_INFINITE);
+
+/// goをまたいでメインスレッドが持ち越す記憶（G9。yaneuraou-search.h:207-247）。
+/// 参照実装はSearchManagerのメンバーで、`isready` でクリアされる。
+/// 本エンジンはスレッドループが持ち、`usinewgame` でクリアする
+pub struct MainMemory {
+    /// 前回のgoの最終スコア（yaneuraou-search.h:215）。`iter_value` の
+    /// 初期値に使う。`VALUE_INFINITE` は「前回がない」ことを表す番兵
+    pub best_previous_score: Value,
+    /// 前回のgoの最善手の `average_score`（yaneuraou-search.h:216）。
+    /// 思考時間のfallingEvalが読む。番兵は同じく `VALUE_INFINITE` で、
+    /// **番兵のままだとfallingEvalが上限に張り付き、初手に時間を多く使う。**
+    /// 参照実装のコメントが明示する意図的な挙動である（S:281-285）
+    pub best_previous_average_score: Value,
+    /// 前回のgoのtimeReduction（yaneuraou-search.h:211）
+    pub previous_time_reduction: f64,
+    /// 前回のgoのgame_ply（yaneuraou-search.h:247）。手番が入れ替わって
+    /// いないかの検出に使う
+    pub last_game_ply: u16,
+}
+
+impl Default for MainMemory {
+    /// 参照実装の `YaneuraOuEngine::clear()`（S:281-292）と同じ初期値。
+    fn default() -> Self {
+        MainMemory {
+            best_previous_score: VALUE_INFINITE,
+            best_previous_average_score: VALUE_INFINITE,
+            previous_time_reduction: 0.85,
+            last_game_ply: 0,
+        }
+    }
 }
 
 pub struct SearchResult {
@@ -381,6 +435,14 @@ pub struct Worker {
     /// 検討モードのライン数（ADR-0032）。対局時は1。
     multi_pv: usize,
     root_moves: Vec<RootMove>,
+    /// このワーカーの通し番号（G9。thread.h:198のthreadIdx）。
+    /// aspirationの初期窓幅を `thread_idx % 8` だけずらす。参照実装が持つ
+    /// 唯一の明示的なLazy SMPの多様化である
+    thread_idx: usize,
+    /// ワーカーの総数（G9）。bestMoveInstabilityの分母になる
+    thread_count: usize,
+    /// goをまたぐ記憶（G9）。スレッドループが持ち回る
+    pub memory: MainMemory,
 }
 
 impl Worker {
@@ -433,7 +495,17 @@ impl Worker {
             max_moves_to_draw,
             multi_pv: multi_pv.max(1),
             root_moves: Vec::new(),
+            thread_idx: 0,
+            thread_count: 1,
+            memory: MainMemory::default(),
         }
+    }
+
+    /// このワーカーの通し番号と総数を渡す（G9）。aspirationの多様化と
+    /// bestMoveInstabilityの分母に使う。既定は単スレッド相当の (0, 1)。
+    pub fn set_thread(&mut self, idx: usize, count: usize) {
+        self.thread_idx = idx;
+        self.thread_count = count.max(1);
     }
 
     /// 深さ1を終えるまではstopを無視する。`iterate` は打ち切り時に
@@ -686,6 +758,8 @@ impl Worker {
                 prev_score: VALUE_ZERO,
                 pv: Vec::new(),
                 nodes: 0,
+                average_score: -VALUE_INFINITE,
+                mean_squared_score: MEAN_SQUARED_NONE,
             })
             .collect();
         if self.root_moves.is_empty() {
@@ -694,6 +768,17 @@ impl Worker {
                 score: mated_in(0),
                 ponder: Move::NONE,
             };
+        }
+        // 前回のgoと手番が入れ替わっているなら、持ち越したスコアの符号を
+        // 反転させる（G9。S:1483-1492）。番兵はそのまま残す
+        let root_game_ply = self.pos.game_ply();
+        if (i32::from(self.memory.last_game_ply) - i32::from(root_game_ply)) & 1 != 0 {
+            if self.memory.best_previous_score != VALUE_INFINITE {
+                self.memory.best_previous_score = -self.memory.best_previous_score;
+            }
+            if self.memory.best_previous_average_score != VALUE_INFINITE {
+                self.memory.best_previous_average_score = -self.memory.best_previous_average_score;
+            }
         }
         let mut last_score = VALUE_ZERO;
         // 最後に確定した最善手のPVとスコア（S:1426-1428）。中断した反復の
@@ -921,6 +1006,12 @@ impl Worker {
                 hashfull: self.shared.tt.hashfull(),
             }));
         }
+        // 次のgoで使う値を持ち越す（G9。S:1249-1253）。参照実装はbest thread
+        // のrootMoves[0]から採る。本エンジンはbest thread votingを持たない
+        // ので（G10）、自スレッドの先頭手から採る
+        self.memory.best_previous_score = self.root_moves[0].score;
+        self.memory.best_previous_average_score = self.root_moves[0].average_score;
+        self.memory.last_game_ply = root_game_ply;
         // check_limitsで2048刻みに流し込んだ分を除いた端数を合算する
         self.shared
             .nodes
@@ -1020,6 +1111,22 @@ impl Worker {
             if self.stopped() {
                 return (best, best_idx, best_pv);
             }
+            // スコアの移動平均と二乗平均（G9。yaneuraou-search.cpp:4105-4110）。
+            // 次の反復のaspiration窓の中心と幅になる。番兵のときは初回として
+            // 値をそのまま入れる。二乗平均は符号を保つため |value| を掛ける
+            {
+                let rm = &mut self.root_moves[i];
+                rm.average_score = if rm.average_score != -VALUE_INFINITE {
+                    (value + rm.average_score) / 2
+                } else {
+                    value
+                };
+                rm.mean_squared_score = if rm.mean_squared_score != MEAN_SQUARED_NONE {
+                    (value * value.abs() + rm.mean_squared_score) / 2
+                } else {
+                    value * value.abs()
+                };
+            }
             if value > best {
                 best = value;
                 if value > alpha {
@@ -1029,6 +1136,14 @@ impl Worker {
                     best_pv.clear();
                     best_pv.push(m);
                     best_pv.extend_from_slice(&child_pv);
+                    // 最善手が入れ替わった回数を数える（G9。
+                    // yaneuraou-search.cpp:4157-4160）。1手目での確定は
+                    // 入れ替わりではない。MultiPVでは1本目だけを数える
+                    if j > 0 && pv_idx == 0 {
+                        self.shared
+                            .best_move_changes
+                            .fetch_add(1, Ordering::Relaxed);
+                    }
                     if value >= beta {
                         // 参照実装はrootも同じ経路を通る
                         // （yaneuraou-search.cpp:4214）
@@ -2462,6 +2577,8 @@ mod tests {
             ponder: AtomicBool::new(false),
             ponderhit_offset: AtomicI64::new(0),
             nodes: AtomicU64::new(0),
+            increase_depth: AtomicBool::new(true),
+            best_move_changes: AtomicU64::new(0),
             tt: Tt::new(16),
             eval_hash: if eval_hash {
                 EvalHash::new()
