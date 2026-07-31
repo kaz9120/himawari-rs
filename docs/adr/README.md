@@ -131,6 +131,7 @@
 | [0114](0114-g5-singular.md) | singularの条件とmulti-cut・negative extensionを参照実装へ揃える（G5） | +48.2 | accepted |
 | [0115](0115-g6-qsearch.md) | qsearchを参照実装へ揃え、mate_1plyを指さない方式へ書き換える（G6） | +45.6 | accepted |
 | [0116](0116-g7-timeman.md) | 停止を予約する構造へ移し最小思考時間を入れる（G7） | ±0（非劣性） | accepted |
+| [0117](0117-g8-ponder.md) | ponderの会計・継続・予約を参照実装へ揃える（G8） | +19.3 | accepted |
 
 ## バックログ
 
