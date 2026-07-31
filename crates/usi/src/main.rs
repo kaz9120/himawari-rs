@@ -14,15 +14,7 @@ use himawari_core::{Position, SFEN_STARTPOS};
 use himawari_engine::nnue::NnueNetwork;
 use himawari_engine::{EngineOptions, Limits, ThreadPool};
 
-use book::Book;
-
-/// 定跡の設定（ADR-0063）。探索器には渡さずUSI層で閉じる。
-#[derive(Default)]
-struct BookOptions {
-    file: String,
-    depth: u16,
-    book: Option<Book>,
-}
+use book::{Book, BookOptions};
 
 const ENGINE_NAME: &str = "Himawari";
 const ENGINE_AUTHOR: &str = "Kazumasa Yamamoto";
@@ -104,6 +96,15 @@ fn print_options() {
     print_line("option name EvalFile type string default <empty>");
     print_line("option name BookFile type string default <empty>");
     print_line("option name BookDepth type spin default 24 min 0 max 1000");
+    // 定跡の引き方（ADR-0109のG10。既定値はbook.cpp:1308-1392）
+    print_line("option name USI_OwnBook type check default true");
+    print_line("option name BookIgnoreRate type spin default 0 min 0 max 100");
+    print_line("option name BookEvalDiff type spin default 30 min 0 max 99999");
+    print_line("option name BookEvalBlackLimit type spin default 0 min -99999 max 99999");
+    print_line("option name BookEvalWhiteLimit type spin default -140 min -99999 max 99999");
+    print_line("option name BookDepthLimit type spin default 16 min 0 max 99999");
+    print_line("option name FlippedBook type check default true");
+    print_line("option name BookRandomize type check default false");
     print_line("option name DebugLogFile type string default <empty>");
 }
 
@@ -258,9 +259,37 @@ fn set_option(opts: &mut EngineOptions, bopts: &mut BookOptions, tokens: &[&str]
         }
         "BookDepth" => {
             if let Ok(v) = value.parse() {
-                bopts.depth = v;
+                bopts.params.book_moves = v;
             }
         }
+        "USI_OwnBook" => bopts.params.own_book = value == "true",
+        "BookIgnoreRate" => {
+            if let Ok(v) = value.parse() {
+                bopts.params.ignore_rate = v;
+            }
+        }
+        "BookEvalDiff" => {
+            if let Ok(v) = value.parse() {
+                bopts.params.eval_diff = v;
+            }
+        }
+        "BookEvalBlackLimit" => {
+            if let Ok(v) = value.parse() {
+                bopts.params.eval_black_limit = v;
+            }
+        }
+        "BookEvalWhiteLimit" => {
+            if let Ok(v) = value.parse() {
+                bopts.params.eval_white_limit = v;
+            }
+        }
+        "BookDepthLimit" => {
+            if let Ok(v) = value.parse() {
+                bopts.params.depth_limit = v;
+            }
+        }
+        "FlippedBook" => bopts.params.flipped = value == "true",
+        "BookRandomize" => bopts.params.randomize = value == "true",
         "DebugLogFile" => {
             let path: &str = if value == "<empty>" {
                 ""
@@ -360,10 +389,11 @@ fn main() {
     });
 
     let mut opts = EngineOptions::default();
-    let mut bopts = BookOptions {
-        depth: 24,
-        ..BookOptions::default()
-    };
+    let mut bopts = BookOptions::default();
+    // go ponder中に定跡へヒットしたときの保留（S:1157-1187）。
+    // 参照実装は探索をスキップしたままstop/ponderhitを待ち、そのあとで
+    // bestmoveを出す。探索スレッドが動いていないのでUSI層で保持する
+    let mut pending_book: Option<String> = None;
     let mut pool: Option<ThreadPool> = None;
     let mut position = Position::from_sfen(SFEN_STARTPOS).expect("startpos");
 
@@ -413,14 +443,32 @@ fn main() {
             "go" => {
                 let limits = parse_go(&tokens[1..]);
                 let is_ponder = tokens.contains(&"ponder");
-                // 定跡ヒットなら探索せず即指す（ADR-0063）。
-                // ponderは相手番を読む処理なので定跡を引かない
-                if !is_ponder
-                    && position.game_ply() <= bopts.depth
-                    && let Some(e) = bopts.book.as_ref().and_then(|b| b.probe(&position))
-                {
-                    print_line("info string book hit");
-                    print_line(&format!("bestmove {}", e.mv));
+                // 定跡ヒットなら探索しない（ADR-0063）。go ponderでも引く
+                // （S:1115-1117。参照実装のsearch()はponderでも定跡を通る）
+                let mut notes = Vec::new();
+                let hit = bopts.probe(&position, &mut notes);
+                for n in notes {
+                    print_line(&format!("info string {n}"));
+                }
+                if let Some(h) = hit {
+                    print_line(&format!(
+                        "info string book hit: score {} depth {}",
+                        h.value, h.depth
+                    ));
+                    // 定跡の予想応手をponder手として返す（B:58、S:1364-1369）。
+                    // これがないと定跡区間でGUIがponderを始められない
+                    let ponder_hint = if opts.ponder && h.ponder != himawari_core::Move::NONE {
+                        format!(" ponder {}", h.ponder.to_usi())
+                    } else {
+                        String::new()
+                    };
+                    let line = format!("bestmove {}{}", h.mv.to_usi(), ponder_hint);
+                    if is_ponder {
+                        // go ponder中はGUIの指示を待ってから出す
+                        pending_book = Some(line);
+                    } else {
+                        print_line(&line);
+                    }
                     continue;
                 }
                 if pool.is_none() {
@@ -439,12 +487,26 @@ fn main() {
                     }
                 }
             }
-            "stop" | "gameover" => {
+            "stop" => {
+                // 保留していた定跡のbestmoveをここで出す（S:1157-1187）
+                if let Some(line) = pending_book.take() {
+                    print_line(&line);
+                }
+                if let Some(p) = &pool {
+                    p.stop();
+                }
+            }
+            "gameover" => {
+                // 対局終了なのでbestmoveは出さない
+                pending_book = None;
                 if let Some(p) = &pool {
                     p.stop();
                 }
             }
             "ponderhit" => {
+                if let Some(line) = pending_book.take() {
+                    print_line(&line);
+                }
                 if let Some(p) = &pool {
                     p.ponderhit();
                 }
