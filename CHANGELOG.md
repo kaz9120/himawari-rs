@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.26.0](https://github.com/kaz9120/himawari-rs/compare/v0.25.0...v0.26.0) (2026-07-31)
+
+
+### 棋力向上
+
+* 反復深化とaspirationを参照実装へ揃える（+55.6 Elo、G9、ADR-0118） ([89ecaf9](https://github.com/kaz9120/himawari-rs/commit/89ecaf9a47b4d3948826ee89a637e067a4c97ba9))
+
 ## [0.25.0](https://github.com/kaz9120/himawari-rs/compare/v0.24.0...v0.25.0) (2026-07-31)
 
 
