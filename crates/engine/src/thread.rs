@@ -9,6 +9,7 @@
 use std::sync::atomic::Ordering;
 use std::sync::{Arc, Condvar, Mutex};
 use std::thread::JoinHandle;
+use std::time::Instant;
 
 use himawari_core::Position;
 
@@ -74,6 +75,7 @@ impl EngineOptions {
             } else {
                 i64::from(self.max_moves_to_draw)
             },
+            ponder: self.ponder,
         }
     }
 }
@@ -98,18 +100,18 @@ struct Ctl {
     idle_cv: Condvar,
 }
 
-/// ponder中のbestmove保留状態（ADR-0033）。
+/// ponder中のbestmove保留状態（ADR-0033、ADR-0109のG8）。
 /// go ponder中は探索が終わってもbestmoveを出さず、ponderhit/stopの
-/// 解決を待つ（2手指し防御）。
+/// 解決を待つ（2手指し防御。S:1162-1187）。
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 enum PonderState {
     /// ponderしていない（通常探索）。
     None,
-    /// ponder探索中。
+    /// ponder探索中。bestmoveは保留する。
     Searching,
     /// ponder探索が自然終了し、bestmoveを保留して待機中。
     FinishedHolding,
-    /// ponderhitで実時間探索へ切替（探索中なら無音キャンセル）。
+    /// ponderhitを受けた。探索は止めずに続け、終わったらbestmoveを出す。
     Hit,
     /// stopされた（bestmoveを出してよい）。
     Stopped,
@@ -129,8 +131,8 @@ pub struct ThreadPool {
     workers: Vec<WorkerThread>,
     shared: Arc<Shared>,
     ponder: Arc<PonderCtl>,
-    /// ponderhit時に実時間で再起動するためのジョブ控え。
-    pending: Mutex<Option<SearchJob>>,
+    /// 今回のgoの受領時刻。ponderhitの時刻をここからの経過へ換算する。
+    start: Mutex<Instant>,
     /// 生成時のパラメータ（isreadyでの再生成判定用）。
     pub hash_mb: usize,
     pub threads: usize,
@@ -213,8 +215,12 @@ fn spawn_worker(
                     hist.clear();
                 }
                 Job::Search(j) => {
-                    // ヘルパーとponder探索は時間制限を持たずstopフラグで止まる
-                    let (limits, tm) = if is_main && !j.ponder {
+                    // ヘルパーは時間制限を持たずstopフラグで止まる。
+                    // メインはgo ponderでも実際の持ち時間で時間管理する
+                    // （S:960-975。参照実装の `use_time_management()` は
+                    // ponderMode を見ない）。ponder中に止めないのは
+                    // check_limitsのponderガードが担う（S:5502-5507）
+                    let (limits, tm) = if is_main {
                         let tm = TimeManager::new(
                             &j.limits,
                             j.pos.side_to_move(),
@@ -228,6 +234,8 @@ fn spawn_worker(
                             nodes: 0,
                             movetime: 0,
                             depth: j.limits.depth,
+                            // 計時の起点はgo受領時刻のまま引き継ぐ
+                            start: j.limits.start,
                             ..Limits::default()
                         };
                         let tm = TimeManager::new(
@@ -277,9 +285,10 @@ fn spawn_worker(
                     if is_main {
                         // メインの結論が出たらヘルパーも止める
                         shared.stop.store(true, Ordering::Relaxed);
-                        // ponder中はbestmoveを保留し、ponderhit/stopの解決を
-                        // 待つ（ADR-0033の2手指し防御）
-                        let emit = if was_ponder {
+                        // go ponder中に探索が自然終了したら、ponderhit/stopが
+                        // 来るまでbestmoveを保留する（2手指し防御。S:1162-1187の
+                        // `while (!threads.stop && (ponder || limits.infinite))`）
+                        if was_ponder {
                             let mut st = ponder.state.lock().expect("ponder lock");
                             if *st == PonderState::Searching {
                                 *st = PonderState::FinishedHolding;
@@ -288,13 +297,10 @@ fn spawn_worker(
                                     st = ponder.cv.wait(st).expect("ponder wait");
                                 }
                             }
-                            // Hit（無音キャンセル→実時間で再起動）ならbestmoveを
-                            // 出さない。Stoppedなら出す
-                            *st == PonderState::Stopped
-                        } else {
-                            true
-                        };
-                        if emit && let Some(out) = &on_line {
+                        }
+                        // ponderhitでも探索を継続するので、ここで得た結論が
+                        // そのまま本番の結論になる。常に出してよい
+                        if let Some(out) = &on_line {
                             let ponder_hint =
                                 if j.opts.ponder && result.ponder != himawari_core::Move::NONE {
                                     format!(" ponder {}", result.ponder.to_usi())
@@ -355,7 +361,7 @@ impl ThreadPool {
             workers,
             shared,
             ponder,
-            pending: Mutex::new(None),
+            start: Mutex::new(Instant::now()),
             hash_mb,
             threads: n,
             eval_file,
@@ -366,15 +372,9 @@ impl ThreadPool {
         self.dispatch(pos, limits, opts, false);
     }
 
-    /// go ponder（ADR-0033）。時間制限なしで探索し、bestmoveは
-    /// ponderhit/stopまで保留される。
+    /// go ponder（ADR-0033、ADR-0109のG8）。実際の持ち時間で時間管理しつつ
+    /// 時間では止まらず、bestmoveはponderhit/stopまで保留される。
     pub fn go_ponder(&self, pos: Position, limits: Limits, opts: EngineOptions) {
-        *self.pending.lock().expect("pending lock") = Some(SearchJob {
-            pos: pos.clone(),
-            limits: limits.clone(),
-            opts: opts.clone(),
-            ponder: false,
-        });
         self.dispatch(pos, limits, opts, true);
     }
 
@@ -385,8 +385,13 @@ impl ThreadPool {
         } else {
             PonderState::None
         };
+        // 計時の起点をponderhitの換算用に控える
+        *self.start.lock().expect("start lock") = limits.start.unwrap_or_else(Instant::now);
         self.shared.stop.store(false, Ordering::Relaxed);
         self.shared.aborted_search.store(false, Ordering::Relaxed);
+        // go受領時点の初期化（S:114-120 pre_start_searching）
+        self.shared.ponder.store(ponder, Ordering::SeqCst);
+        self.shared.ponderhit_offset.store(0, Ordering::SeqCst);
         self.shared.nodes.store(0, Ordering::Relaxed);
         for w in &self.workers {
             // idleはgo側で同期的に下ろす。workerが起きる前にquit/stopが
@@ -403,30 +408,26 @@ impl ThreadPool {
         }
     }
 
-    /// ponderhit（ADR-0033）。探索中なら無音キャンセルして実時間で
-    /// 再起動する（TTが木を即復元する）。保留中なら即bestmove。
+    /// ponderhit（ADR-0109のG8）。**探索は止めない。** ponderフラグを
+    /// 下ろすだけで、探索スレッドは次の判定から時間で止まるようになる
+    /// （S:299-308）。保留中ならその場で解放してbestmoveを出させる。
     pub fn ponderhit(&self) {
-        let relaunch = {
-            let mut st = self.ponder.state.lock().expect("ponder lock");
-            match *st {
-                PonderState::Searching => {
-                    *st = PonderState::Hit;
-                    self.shared.stop.store(true, Ordering::Relaxed);
-                    true
-                }
-                PonderState::FinishedHolding => {
-                    *st = PonderState::Stopped;
-                    self.ponder.cv.notify_all();
-                    false
-                }
-                _ => false,
+        // ponderhitの時刻を先に書き、そのあとponderフラグを下ろす。
+        // 順序が逆だと、他スレッドがponderフラグを見て古いponderhitTimeで
+        // 計算してしまう（S:299-308の原典コメント）
+        let off = self.start.lock().expect("start lock").elapsed().as_millis() as i64;
+        self.shared.ponderhit_offset.store(off, Ordering::SeqCst);
+        self.shared.ponder.store(false, Ordering::SeqCst);
+        let mut st = self.ponder.state.lock().expect("ponder lock");
+        match *st {
+            // 探索中。止めずに続け、終わったらbestmoveを出す
+            PonderState::Searching => *st = PonderState::Hit,
+            // 既に読み終えて保留している。解放する
+            PonderState::FinishedHolding => {
+                *st = PonderState::Hit;
+                self.ponder.cv.notify_all();
             }
-        };
-        if relaunch {
-            self.wait_idle();
-            if let Some(job) = self.pending.lock().expect("pending lock").take() {
-                self.dispatch(job.pos, job.limits, job.opts, false);
-            }
+            _ => {}
         }
     }
 

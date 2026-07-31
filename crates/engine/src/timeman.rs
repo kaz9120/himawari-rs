@@ -11,9 +11,19 @@ use himawari_core::Color;
 /// 近年は終局までの平均手数が伸びているので160に設定されている
 const MOVE_HORIZON: i64 = 160;
 
+/// USI_Ponder有効時にoptimumへ足す分の除数（timeman.cpp:285-286）。
+/// ponderhitすると時間が予測より余っていくので、思考時間を多めに取る。
+/// 参照実装は `Stochastic_Ponder` が無効であることも条件にするが、
+/// 本エンジンはそのオプションを持たないので常に無効として扱う
+const PONDER_OPTIMUM_DIV: i64 = 4;
+
 /// goコマンドの探索制限。時間はミリ秒。
 #[derive(Clone, Default, Debug)]
 pub struct Limits {
+    /// go受領時刻（search.h:209、usi.cpp:506）。GUIとの時差をなくすため、
+    /// goコマンドを受け取った直後に記録する。Noneなら計時の起点は
+    /// `TimeManager::new` の呼び出し時刻になる
+    pub start: Option<Instant>,
     pub btime: u64,
     pub wtime: u64,
     pub byoyomi: u64,
@@ -51,6 +61,9 @@ pub struct TimeOptions {
     /// 引き分けになる手数。0（指定なし）は100000として扱う
     /// （yaneuraou-search.cpp:72-77）
     pub max_moves_to_draw: i64,
+    /// USI_Ponderが有効か（timeman.cpp:285）。optimumを1.25倍する条件で、
+    /// 当該探索がponder探索かどうかでは判定しない
+    pub ponder: bool,
 }
 
 impl Default for TimeOptions {
@@ -62,18 +75,16 @@ impl Default for TimeOptions {
             slow_mover: 100,
             round_up_to_full_second: true,
             max_moves_to_draw: 100_000,
+            ponder: false,
         }
     }
 }
 
 pub struct TimeManager {
+    /// 計時の起点。`Limits::start`（go受領時刻）をコピーする（timeman.cpp:76）
     start: Instant,
     /// 時間制御を行うか（search.h:195）。falseなら時刻での停止をしない
     use_time_management: bool,
-    /// `ponderhitTime - startTime`[ms]（timeman.h:120）。"ponderhit" を
-    /// 受けるまでは0で、goからの経過時間とponderhitからの経過時間が
-    /// 一致する。ponderの会計はG8で入れるので、この群では常に0
-    ponderhit_offset: i64,
     /// 探索終了予定時刻。startからの経過時間[ms]で、0なら未確定
     /// （timeman.h:93）
     pub search_end: i64,
@@ -92,9 +103,9 @@ pub struct TimeManager {
 impl TimeManager {
     pub fn new(limits: &Limits, us: Color, game_ply: u16, opts: &TimeOptions) -> Self {
         let mut tm = TimeManager {
-            start: Instant::now(),
+            // go受領時刻を起点にする（timeman.cpp:148）。指定がなければ現在時刻
+            start: limits.start.unwrap_or_else(Instant::now),
             use_time_management: limits.use_time_management(),
-            ponderhit_offset: 0,
             search_end: 0,
             is_final_push: false,
             minimum_time: 0,
@@ -223,7 +234,14 @@ impl TimeManager {
             (t1.min(self.optimum_time) * opts.slow_mover / 100 - opts.network_delay).max(1);
         self.maximum_time = t2.min(self.maximum_time);
 
-        // USI_Ponder有効時のoptimum1.25倍（timeman.cpp:285-286）はG8で入れる
+        // USI_Ponder有効時はoptimumを1.25倍する（timeman.cpp:285-286）。
+        // ponderhitすると、その手の思考の一部が相手の時計で進むぶん、
+        // 自分の持ち時間は予測より余っていく。maximumは触らない。
+        // 参照実装は倍率をNetworkDelayを引く前に掛けるが、本エンジンは
+        // optimumからもNetworkDelayを引くので（ADR-0116）引いたあとに掛ける
+        if opts.ponder {
+            self.optimum_time += self.optimum_time / PONDER_OPTIMUM_DIV;
+        }
 
         // 秒読みモードで持ち時間がないなら、使いきったほうが得
         // （timeman.cpp:291-302）。持ち時間が秒読みの1.2倍未満なら該当する
@@ -275,20 +293,25 @@ impl TimeManager {
     ///
     /// 引数 `e` はstartからの経過時間[ms]。呼び出し側が既に持っている
     /// 値を渡してもらい、二度測るのを避ける。
+    /// 引数 `ponderhit_offset` は `ponderhitTime - startTime`[ms]
+    /// （timeman.h:120）。"ponderhit" を受けるまでは0で、goからの経過時間と
+    /// ponderhitからの経過時間が一致する。参照実装はTimeManagementの
+    /// メンバーだが、本エンジンでは書き手がUSIスレッドで読み手が探索
+    /// スレッドなので、共有の原子変数から読んだ値を渡してもらう。
     /// ponderhitからの経過時間で切り上げつつ、goから数えて `minimum()`
     /// の分は思考させる。`is_final_push` のときは切り上げの基準も
     /// ponderhitの時刻から数える
-    pub fn set_search_end(&mut self, e: i64) {
+    pub fn set_search_end(&mut self, e: i64, ponderhit_offset: i64) {
         // 1. ponderhitからの経過時間（go ponderしていないならgoからの経過）
-        let t1 = e - self.ponderhit_offset;
+        let t1 = e - ponderhit_offset;
         // 2. goした時刻からminimum()を足し、ponderhitからの経過へ換算した値
         let t2 = if self.is_final_push {
             self.minimum_time
         } else {
-            self.minimum_time - self.ponderhit_offset
+            self.minimum_time - ponderhit_offset
         };
         // 大きいほうを秒単位で切り上げ、startからの経過時間へ戻す
-        self.search_end = self.round_up(t1.max(t2)) + self.ponderhit_offset;
+        self.search_end = self.round_up(t1.max(t2)) + ponderhit_offset;
     }
 
     #[inline]
@@ -395,6 +418,24 @@ mod tests {
     }
 
     #[test]
+    fn ponder_scales_optimum() {
+        // USI_Ponder有効時はoptimumだけが1.25倍になる（T:285-286）
+        let limits = Limits {
+            btime: 300_000,
+            binc: 10_000,
+            ..Limits::default()
+        };
+        let opts = TimeOptions {
+            ponder: true,
+            ..TimeOptions::default()
+        };
+        let tm = TimeManager::new(&limits, Color::Black, 1, &opts);
+        assert_eq!(tm.optimum(), 18010 + 18010 / 4);
+        assert_eq!(tm.maximum(), 50_880);
+        assert_eq!(tm.minimum(), 1880);
+    }
+
+    #[test]
     fn sudden_death_caps_max_ratio() {
         // 切れ負け（加算も秒読みもない）で残り1分。max_ratioが1.0固定になる
         let limits = Limits {
@@ -461,7 +502,23 @@ mod tests {
         let mut tm = TimeManager::new(&limits, Color::Black, 1, &TimeOptions::default());
         assert_eq!(tm.search_end, 0);
         // 経過時間が最小思考時間より短くても、最小思考時間まで予約する
-        tm.set_search_end(300);
+        tm.set_search_end(300, 0);
         assert_eq!(tm.search_end, 1880);
+    }
+
+    #[test]
+    fn search_end_counts_from_ponderhit() {
+        // go ponderで5秒読んだあとponderhitした場合（T:347-373）。
+        // 切り上げの基準はponderhitからの経過時間になる
+        let limits = Limits {
+            btime: 300_000,
+            binc: 10_000,
+            ..Limits::default()
+        };
+        let mut tm = TimeManager::new(&limits, Color::Black, 1, &TimeOptions::default());
+        // t1 = 6000 - 5000 = 1000、t2 = 1880 - 5000 = -3120。
+        // 大きいほうの1000を切り上げて1880、そこへoffsetを戻す
+        tm.set_search_end(6000, 5000);
+        assert_eq!(tm.search_end, 1880 + 5000);
     }
 }

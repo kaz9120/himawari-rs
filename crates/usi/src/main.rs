@@ -8,6 +8,7 @@ mod book;
 use std::io::Write;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, mpsc};
+use std::time::Instant;
 
 use himawari_core::{Position, SFEN_STARTPOS};
 use himawari_engine::nnue::NnueNetwork;
@@ -132,7 +133,12 @@ fn parse_position(tokens: &[&str]) -> Option<Position> {
 }
 
 fn parse_go(tokens: &[&str]) -> Limits {
-    let mut limits = Limits::default();
+    // 計時の起点はgoを受け取った時刻にする（usi.cpp:506）。
+    // 解析やスレッド起動にかかる分だけ計時が遅れるのを防ぐ
+    let mut limits = Limits {
+        start: Some(Instant::now()),
+        ..Limits::default()
+    };
     let mut i = 0;
     while i < tokens.len() {
         let value = |j: usize| tokens.get(j).and_then(|s| s.parse::<u64>().ok());

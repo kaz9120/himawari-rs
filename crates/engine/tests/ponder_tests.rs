@@ -32,6 +32,56 @@ fn bestmove_count(lines: &Lines) -> usize {
         .count()
 }
 
+/// info行のdepthを出力順に集める。
+fn info_depths(lines: &Lines) -> Vec<u32> {
+    lines
+        .lock()
+        .unwrap()
+        .iter()
+        .filter_map(|l| {
+            let mut it = l.split_whitespace();
+            (it.next()? == "info" && it.next()? == "depth")
+                .then(|| it.next()?.parse::<u32>().ok())
+                .flatten()
+        })
+        .collect()
+}
+
+fn max_depth(lines: &Lines) -> u32 {
+    info_depths(lines).into_iter().max().unwrap_or(0)
+}
+
+/// 確定した反復の深さだけを拾う。窓外れの `lowerbound` / `upperbound` と
+/// `currmove` は同じ深さで複数回出るので除く（ADR-0086, 0091）。
+fn completed_depths(lines: &Lines) -> Vec<u32> {
+    lines
+        .lock()
+        .unwrap()
+        .iter()
+        .filter(|l| {
+            !l.contains("lowerbound") && !l.contains("upperbound") && !l.contains("currmove")
+        })
+        .filter_map(|l| {
+            let mut it = l.split_whitespace();
+            (it.next()? == "info" && it.next()? == "depth")
+                .then(|| it.next()?.parse::<u32>().ok())
+                .flatten()
+        })
+        .collect()
+}
+
+/// infoが1行でも出るまで待つ。CIの速度に依存させないためのポーリング。
+fn wait_for_info(lines: &Lines, timeout: Duration) -> bool {
+    let deadline = Instant::now() + timeout;
+    while Instant::now() < deadline {
+        if max_depth(lines) > 0 {
+            return true;
+        }
+        std::thread::sleep(Duration::from_millis(10));
+    }
+    false
+}
+
 fn wait_for_bestmove(lines: &Lines, timeout: Duration) -> bool {
     let deadline = Instant::now() + timeout;
     while Instant::now() < deadline {
@@ -47,9 +97,9 @@ fn pos(sfen: &str) -> himawari_core::Position {
     himawari_core::Position::from_sfen(sfen).unwrap()
 }
 
-/// go ponder → ponderhit → 実時間探索 → bestmoveが1回だけ出る。
+/// go ponder → ponderhit → 探索を継続 → bestmoveが1回だけ出る。
 #[test]
-fn ponderhit_relaunches_and_emits_once() {
+fn ponderhit_continues_and_emits_once() {
     let (pool, lines) = make_pool();
     let limits = Limits {
         movetime: 300,
@@ -70,6 +120,51 @@ fn ponderhit_relaunches_and_emits_once() {
     );
     pool.wait_idle();
     assert_eq!(bestmove_count(&lines), 1);
+    pool.quit();
+}
+
+/// ponderhitで探索を再起動しない（ADR-0109のG8）。再起動すると
+/// 反復深化が深さ1からやり直しになるので、infoのdepthが巻き戻る。
+#[test]
+fn ponderhit_does_not_restart_iterative_deepening() {
+    let (pool, lines) = make_pool();
+    // 深さで止める。時間で止めるとCIの速度で挙動が変わる
+    let limits = Limits {
+        depth: 8,
+        ..Limits::default()
+    };
+    let opts = EngineOptions {
+        network_delay: 0,
+        network_delay2: 0,
+        ..EngineOptions::default()
+    };
+    pool.go_ponder(pos(SFEN_STARTPOS), limits, opts);
+    // infoが出るまで待つ。sleep固定だと遅いマシンで0行になる
+    assert!(
+        wait_for_info(&lines, Duration::from_secs(5)),
+        "ponder中にinfoが出ていない"
+    );
+    assert_eq!(bestmove_count(&lines), 0, "ponder中にbestmoveが出た");
+    pool.ponderhit();
+    assert!(
+        wait_for_bestmove(&lines, Duration::from_secs(10)),
+        "ponderhit後にbestmoveが出ない"
+    );
+    pool.wait_idle();
+    // 再起動していないこと。再起動すると反復深化が深さ1からやり直しになり、
+    // 同じ深さの確定infoが2回出る。深さがどこまで進むかはマシンの速度で
+    // 変わるが、重複の有無は変わらない
+    let depths = completed_depths(&lines);
+    let mut seen = std::collections::HashSet::new();
+    let dup: Vec<u32> = depths
+        .iter()
+        .filter(|d| !seen.insert(**d))
+        .copied()
+        .collect();
+    assert!(
+        dup.is_empty(),
+        "同じ深さの確定infoが複数回出た（再起動している）: 重複={dup:?} 全体={depths:?}"
+    );
     pool.quit();
 }
 

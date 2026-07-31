@@ -4,7 +4,7 @@
 //! PVは三角配列（Vecの連結）。詰みスコアはTT境界でply補正する。
 
 use std::sync::Arc;
-use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicI64, AtomicU64, Ordering};
 
 use himawari_core::{
     Move, MoveList, Piece, PieceType, Position, Repetition, Square, generate_legal,
@@ -213,6 +213,13 @@ pub struct Shared {
     /// 探索を破棄した（反復の途中で止めた）ことを示す（thread.h:296-301）。
     /// 中断した反復のスコアは信用できないので、前の反復へ戻す判断に使う
     pub aborted_search: AtomicBool,
+    /// go ponder中か（yaneuraou-search.h:203-214の `SearchManager::ponder`）。
+    /// 真の間は時間で探索を止めない。"ponderhit" で偽になる。"stop" では
+    /// 変えない（参照実装も同じ。stopは `stop` フラグ側で止まる）
+    pub ponder: AtomicBool,
+    /// "ponderhit" した時刻の、go受領時刻からの経過[ms]（timeman.h:120の
+    /// `ponderhitTime - startTime`）。"ponderhit" を受けるまでは0
+    pub ponderhit_offset: AtomicI64,
     pub nodes: AtomicU64,
     pub tt: Tt,
     /// 評価値キャッシュ（ADR-0049）。全スレッド共有、new_gameでクリア。
@@ -224,6 +231,8 @@ impl Shared {
         Shared {
             stop: AtomicBool::new(false),
             aborted_search: AtomicBool::new(false),
+            ponder: AtomicBool::new(false),
+            ponderhit_offset: AtomicI64::new(0),
             nodes: AtomicU64::new(0),
             tt: Tt::new(hash_mb),
             eval_hash: EvalHash::new(),
@@ -359,6 +368,11 @@ pub struct Worker {
     /// root手は生成順のままなので、深さ1の途中で打ち切ると探索して
     /// いない手を返してしまう
     depth1_done: bool,
+    /// go ponder中に予算を使い切った（yaneuraou-search.h:220）。
+    /// ponder中はGUIの指示があるまで止められないので、その場では止めず
+    /// 予約だけしておく。ponderhit後の最初の判定で終了時刻が確定する。
+    /// aspirationのfail lowで解除する（S:1783-1784）
+    stop_on_ponderhit: bool,
     nodes: u64,
     shared: Arc<Shared>,
     tm: TimeManager,
@@ -411,6 +425,7 @@ impl Worker {
             nmp_min_ply: 0,
             last_iteration_pv: Vec::new(),
             depth1_done: false,
+            stop_on_ponderhit: false,
             nodes: 0,
             shared,
             tm,
@@ -443,11 +458,17 @@ impl Worker {
             return;
         }
         self.shared.nodes.fetch_add(2048, Ordering::Relaxed);
+        // go ponder中はGUIの指示があるまで止めない（S:5502-5507）。
+        // 時間管理そのものは働いていて、経過時間はgo受領時刻から数える
+        if self.shared.ponder.load(Ordering::SeqCst) {
+            return;
+        }
         // 深さ1を終えるまでは止めない（S:5542の completedDepth >= 1）
         if !self.depth1_done {
             return;
         }
         let elapsed = self.tm.elapsed_ms();
+        let ponderhit_offset = self.shared.ponderhit_offset.load(Ordering::SeqCst);
         if (self.limits.movetime > 0 && elapsed >= self.limits.movetime as i64)
             || (self.limits.nodes > 0 && self.nodes >= self.limits.nodes)
             // search_endは0が「未確定」を表す。負の値も予約済みとして扱う。
@@ -459,9 +480,11 @@ impl Worker {
             self.shared.stop.store(true, Ordering::Relaxed);
         } else if self.tm.search_end == 0
             && self.tm.use_time_management()
-            && elapsed > self.tm.maximum()
+            // ponder中に予算を使い切っていたなら、ponderhit後の最初の
+            // 判定でここへ来る（S:5551-5558の条件1と2）
+            && (elapsed > self.tm.maximum() || self.stop_on_ponderhit)
         {
-            self.tm.set_search_end(elapsed);
+            self.tm.set_search_end(elapsed, ponderhit_offset);
         }
     }
 
@@ -734,6 +757,9 @@ impl Worker {
                         }
                         beta = (alpha + beta) / 2;
                         alpha = (score - delta).max(-VALUE_INFINITE);
+                        // 評価が下がったので、予約した停止を解除する
+                        // （S:1783-1784）。読み直す価値のある局面である
+                        self.stop_on_ponderhit = false;
                         delta += delta / 2;
                     } else if score >= beta {
                         // fail high: 実際の評価はこの値以上
@@ -837,12 +863,21 @@ impl Worker {
             // 次の反復を回す時間があるか（S:1961-2048）。停止条件を満たして
             // もその場では止めず、秒単位で切り上げた終了時刻を予約する。
             // 予約済みなら終了は確定しているので測り直さない
-            if self.tm.search_end == 0
+            if self.tm.use_time_management()
                 && !self.shared.stop.load(Ordering::Relaxed)
+                && !self.stop_on_ponderhit
+                && self.tm.search_end == 0
                 && self.tm.over_total(scale)
             {
-                let elapsed = self.tm.elapsed_ms();
-                self.tm.set_search_end(elapsed);
+                if self.shared.ponder.load(Ordering::SeqCst) {
+                    // go ponder中はGUIの指示があるまで止められない。
+                    // 停止を予約だけしておく（S:2043-2044）
+                    self.stop_on_ponderhit = true;
+                } else {
+                    let elapsed = self.tm.elapsed_ms();
+                    let ponderhit_offset = self.shared.ponderhit_offset.load(Ordering::SeqCst);
+                    self.tm.set_search_end(elapsed, ponderhit_offset);
+                }
             }
         }
         // 中断した探索で得た詰み負けのスコアは信用できない（S:1864-1887）。
@@ -2424,6 +2459,8 @@ mod tests {
         let shared = Arc::new(Shared {
             stop: AtomicBool::new(false),
             aborted_search: AtomicBool::new(false),
+            ponder: AtomicBool::new(false),
+            ponderhit_offset: AtomicI64::new(0),
             nodes: AtomicU64::new(0),
             tt: Tt::new(16),
             eval_hash: if eval_hash {
