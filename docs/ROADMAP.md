@@ -137,7 +137,7 @@ NPSが0.65倍に落ちる代償を取り返せず、SPRTで-72.8 Elo（968局、
 | G6 | qsearchの差分＋mate_1plyの高速化 | G0 | **完了 +45.6**（[ADR-0115](adr/0115-g6-qsearch.md)） |
 | G7 | 停止の予約と最小思考時間 | なし | **完了 ±0**（[ADR-0116](adr/0116-g7-timeman.md)）。非劣性で取り込み |
 | G8 | ponderの会計・継続・予約 | G7 | **完了 +19.3**（[ADR-0117](adr/0117-g8-ponder.md)） |
-| G9 | 反復深化とaspirationの一式 | G7, G8 | 未着手 |
+| G9 | 反復深化とaspirationの一式 | G7, G8 | **完了 +55.6**（[ADR-0118](adr/0118-g9-aspiration.md)） |
 | G10 | 定跡のponder手、best thread voting、ResignValue | なし | 未着手 |
 
 G0は挙動を変えない等価変換で、機能検証（ノード数の完全一致）で確かめて

@@ -344,18 +344,6 @@ impl TimeManager {
     pub fn elapsed_ms(&self) -> i64 {
         self.start.elapsed().as_millis() as i64
     }
-
-    /// optimumのscale倍とmaximumの小さいほうを超えたか（ADR-0059、S:2019）。
-    /// scaleは局面の難易度による伸縮係数で、1.0なら素のoptimum判定。
-    /// 参照実装の `totalTime` に相当する値との比較で、判定は狭義の超過
-    #[inline]
-    pub fn over_total(&self, scale: f64) -> bool {
-        if !self.use_time_management {
-            return false;
-        }
-        let total = (self.optimum_time as f64 * scale).min(self.maximum_time as f64);
-        self.elapsed_ms() as f64 > total
-    }
 }
 
 #[cfg(test)]
@@ -458,7 +446,6 @@ mod tests {
         let tm = TimeManager::new(&limits, Color::Black, 1, &TimeOptions::default());
         // 無制限では時刻による停止をしない
         assert!(!tm.use_time_management());
-        assert!(!tm.over_total(1.0));
     }
 
     #[test]

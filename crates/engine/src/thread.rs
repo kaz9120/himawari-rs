@@ -16,7 +16,7 @@ use himawari_core::Position;
 use crate::eval::Evaluator;
 use crate::movepick::Histories;
 use crate::nnue::NnueNetwork;
-use crate::search::{IterInfo, ScoreBound, SearchInfo, Shared, Worker};
+use crate::search::{IterInfo, MainMemory, ScoreBound, SearchInfo, Shared, Worker};
 use crate::timeman::{Limits, TimeManager, TimeOptions};
 use crate::value::{VALUE_MATE, Value};
 
@@ -183,9 +183,11 @@ fn spawn_worker(
     shared: Arc<Shared>,
     ponder: Arc<PonderCtl>,
     net: Option<Arc<NnueNetwork>>,
-    is_main: bool,
+    thread_idx: usize,
+    thread_count: usize,
     on_line: Option<OnLine>,
 ) -> WorkerThread {
+    let is_main = thread_idx == 0;
     let ctl = Arc::new(Ctl {
         job: Mutex::new(None),
         cv: Condvar::new(),
@@ -197,6 +199,9 @@ fn spawn_worker(
         // スレッドローカル状態（対局を通じて保持。ADR-0020, 0109）。
         // 約100MiBあるので、goごとに作り直さずWorkerへ渡して回収する
         let mut hist = Histories::default();
+        // goをまたぐ記憶（G9）。参照実装がSearchManagerに置く値で、
+        // 対局開始時にだけクリアする
+        let mut memory = MainMemory::default();
         loop {
             let job = {
                 let mut guard = ctl2.job.lock().expect("job lock");
@@ -213,6 +218,7 @@ fn spawn_worker(
                 Job::Quit => break,
                 Job::NewGame => {
                     hist.clear();
+                    memory = MainMemory::default();
                 }
                 Job::Search(j) => {
                     // ヘルパーは時間制限を持たずstopフラグで止まる。
@@ -261,6 +267,8 @@ fn spawn_worker(
                         evaluator,
                         hist,
                     );
+                    worker.set_thread(thread_idx, thread_count);
+                    worker.memory = memory;
                     let result = worker.iterate(&mut |info| {
                         let Some(out) = &on_line else { return };
                         match info {
@@ -280,8 +288,9 @@ fn spawn_worker(
                             }
                         }
                     });
-                    // history類を回収して次のgoへ持ち越す（確保し直さない）
+                    // history類とgoをまたぐ記憶を回収して次のgoへ持ち越す
                     hist = worker.hist;
+                    memory = worker.memory;
                     if is_main {
                         // メインの結論が出たらヘルパーも止める
                         shared.stop.store(true, Ordering::Relaxed);
@@ -348,7 +357,8 @@ impl ThreadPool {
                     Arc::clone(&shared),
                     Arc::clone(&ponder),
                     net_arc.clone(),
-                    i == 0,
+                    i,
+                    n,
                     if i == 0 {
                         Some(Arc::clone(&on_line))
                     } else {
@@ -393,6 +403,8 @@ impl ThreadPool {
         self.shared.ponder.store(ponder, Ordering::SeqCst);
         self.shared.ponderhit_offset.store(0, Ordering::SeqCst);
         self.shared.nodes.store(0, Ordering::Relaxed);
+        self.shared.increase_depth.store(true, Ordering::Relaxed);
+        self.shared.best_move_changes.store(0, Ordering::Relaxed);
         for w in &self.workers {
             // idleはgo側で同期的に下ろす。workerが起きる前にquit/stopが
             // 来ても探索ジョブが破棄されない（bestmoveを必ず返す）
