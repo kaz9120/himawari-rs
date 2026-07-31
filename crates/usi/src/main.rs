@@ -451,6 +451,8 @@ fn main() {
                 print_line("readyok");
             }
             "usinewgame" => {
+                // 前局の保留が残っていても持ち越さない
+                pending_book = None;
                 if let Some(p) = &pool {
                     p.new_game();
                 }
@@ -482,8 +484,9 @@ fn main() {
                         String::new()
                     };
                     let line = format!("bestmove {}{}", h.mv.to_usi(), ponder_hint);
-                    if is_ponder {
-                        // go ponder中はGUIの指示を待ってから出す
+                    // go ponder / go infinite ではGUIの指示を待ってから出す
+                    // （S:1157-1160の `ponder || limits.infinite`）
+                    if is_ponder || limits.infinite {
                         pending_book = Some(line);
                     } else {
                         print_line(&line);
