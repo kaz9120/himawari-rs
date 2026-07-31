@@ -29,12 +29,18 @@ himawari-rsで作業するエージェントの規約。詳細は各文書へリ
 | [docs/ROADMAP.md](docs/ROADMAP.md) | 未来 | 現在地、フェーズ表、直近の残作業 |
 | [docs/RESULTS.md](docs/RESULTS.md) | 時系列 | 計測・検証の1行ログ（append-only） |
 | [docs/adr/](docs/adr/README.md) | 決定 | 設計判断と経緯 |
-| [docs/IDEAS.md](docs/IDEAS.md) | 候補 | 1案1行の受け皿 |
+| [docs/IDEAS.md](docs/IDEAS.md) | 候補 | **未着手**の案を1案1行で |
 | [docs/DATASETS.md](docs/DATASETS.md) | 資産 | データの所在と前処理 |
 | [README.md](README.md) | 入口 | 人間向けの概要・手順 |
 
-同じ情報を2文書に書かない。参照はリンクで行う。RESULTS.mdはappend-only。
-訂正は訂正行の追記で行い、過去の行を書き換えない。
+同じ情報を2文書に書かない。参照はリンクで行う。
+
+**過去の意思決定はADRが持つ。** ROADMAPとIDEAS.mdには、今と未来の判断に
+要る情報だけを置く。完了・棄却した案はIDEAS.mdから消す（ADRに記録が残る）。
+ROADMAPの過去の結論が後の測定で覆ったら、訂正を追記して現在地を更新する。
+
+RESULTS.mdだけはappend-onlyで、訂正も追記で行い過去の行を書き換えない。
+時系列の記録が「いつ何を知っていたか」を示すためである。
 
 ## ADRプロセス
 
@@ -43,18 +49,29 @@ proposedで起草し、オーナーLGTMでacceptedにする。1アイデア1ADR�
 
 ## SPRTゲート（[ADR-0028](docs/adr/0028-pruning-extensions.md)）
 
-- 1機能=1SPRT。H1採択した変更だけをmainに取り込む
+- H1採択した変更だけをmainに取り込む
+- 単発の変更は1機能=1SPRT。**参照実装への追従は1群=1SPRT**
+  （[ADR-0109](docs/adr/0109-reference-parity.md)）
 - 既定条件: `--tc 10+0.1 --concurrency 8 --adjudicate 2000,8`、
   elo0=0、elo1=5、α=β=0.05
 - 結果（対局数、W-D-L、Elo±CI、LLR）をコミットメッセージと
   RESULTS.mdに記録する
 
+**既定条件で測れない変更がある。** 時間管理は参照実装の既定値が実戦の持ち時間
+（floodgateの300+10）を前提にしており、10+0.1では床が配分を支配する。条件を
+変えて測るか、非劣性検定（elo0=-5、elo1=0）へ落とす。条件を変えたら、なぜ既定で
+測れないかをADRに書く（[ADR-0116](docs/adr/0116-g7-timeman.md)が例）。
+
 SPRTの前に機能検証を行う（[ADR-0074](docs/adr/0074-feature-verification.md)）。
 固定深さで3局面以上のノード数を変更前後で比べ、変わることを確かめる。
 全局面で一致したら探索に影響していない。枝刈り・延長は発動率も測り、
-0.1%を下回るならSPRTにかけない。他エンジンの係数を借りるときは、
-その出典が前提とするスケールが本エンジンで成り立つかを実測する。
-探索定数を足すADRには、出典・出典のスケール前提・成立の根拠を書く。
+0.1%を下回るならSPRTにかけない。
+
+他エンジンから移すときは、**その値が何に支えられているかまで移す。** 確かめる
+のは3つある。係数のスケールが本エンジンで成り立つか、発動頻度の設計点が同じか、
+その値を守っている別の仕組みがないか。3つ目を落として失敗した例が2件ある
+（[ADR-0116](docs/adr/0116-g7-timeman.md)・[ADR-0118](docs/adr/0118-g9-aspiration.md)）。
+探索定数を足すADRには、出典・前提・成立の根拠を書く。
 
 ## 開発フロー（[ADR-0070](docs/adr/0070-pr-based-workflow.md)）
 
