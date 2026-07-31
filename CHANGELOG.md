@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.25.0](https://github.com/kaz9120/himawari-rs/compare/v0.24.0...v0.25.0) (2026-07-31)
+
+
+### 棋力向上
+
+* ponderの会計・継続・予約を参照実装へ揃える（+19.3 Elo、G8、ADR-0117） ([9c054f2](https://github.com/kaz9120/himawari-rs/commit/9c054f2e8c24965bfd5d88e3e26cc6a3a0b06dea))
+
 ## [0.24.0](https://github.com/kaz9120/himawari-rs/compare/v0.23.0...v0.24.0) (2026-07-30)
 
 
