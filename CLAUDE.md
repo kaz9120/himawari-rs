@@ -29,7 +29,6 @@ himawari-rsで作業するエージェントの規約。詳細は各文書へリ
 | [docs/ROADMAP.md](docs/ROADMAP.md) | 現在地・方向・候補 | 今どこにいて、次にどちらへ向かい、何をやりうるか |
 | [docs/RESULTS.md](docs/RESULTS.md) | 時系列 | 計測・検証の1行ログ（append-only） |
 | [docs/adr/](docs/adr/README.md) | 決定 | 設計判断と経緯 |
-| [docs/ROADMAPの候補](docs/ROADMAPの候補) | 候補 | 未着手の案を1案1行で |
 | [docs/DATASETS.md](docs/DATASETS.md) | 資産 | データの所在と前処理 |
 | [README.md](README.md) | 入口 | 人間向けの概要・手順 |
 

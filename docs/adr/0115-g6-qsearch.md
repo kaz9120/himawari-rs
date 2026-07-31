@@ -2,7 +2,7 @@
 
 - Status: accepted
 - Date: 2026-07-30
-- 関連ADR: [0109](0109-reference-parity.md), [0093](0093-mate1ply-in-search.md), [0094](0094-mate1ply-speedup.md), [0029](0029-mate-search.md), [0077](0077-qsearch-futility.md), [0054](0054-qsearch-tt.md), [0028](0028-pruning-extensions.md), [0022](0022-tt-design.md)
+- 関連ADR: [0109](0109-reference-parity.md), [0093](0093-mate1ply-in-search.md), [0094](0094-mate1ply-speedup.md), [0029](0029-mate-search.md), [0077](0077-qsearch-futility.md), [0054](0054-qsearch-tt.md), [0028](0028-pruning-extensions.md), [0022](0022-transposition-table.md)
 
 ## Context
 
@@ -98,7 +98,7 @@ qsearchの差分を揃え、あわせて `mate_1ply` を指さない方式へ書
 これを表せなかった。
 
 参照実装自身が内部でゲタを履かせて符号なしで持つため、同じ表現に変えた。深さの
-比較はすべて差なので置換方針（[ADR-0022](0022-tt-design.md)）は変わらない。
+比較はすべて差なので置換方針（[ADR-0022](0022-transposition-table.md)）は変わらない。
 
 ## 測定
 
@@ -204,7 +204,7 @@ SPRTが要る。
 前計算する案は145→284 µsで大幅に悪化した（候補が0本の局面でも前計算が走る）。
 **元が安いと前計算が乗らない。**
 
-TTのdepth欄の表現を変えた。[ADR-0022](0022-tt-design.md)の置換方針は変わらないが、
+TTのdepth欄の表現を変えた。[ADR-0022](0022-transposition-table.md)の置換方針は変わらないが、
 depth欄を直接読むコードがあれば影響する。
 
 付録の漏れが2群連続で出た（G5の返り値、G6のmate_1ply本体）。**付録は

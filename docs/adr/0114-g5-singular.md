@@ -2,14 +2,14 @@
 
 - Status: accepted
 - Date: 2026-07-30
-- 関連ADR: [0109](0109-reference-parity.md), [0113](0113-g4-eval-pruning.md), [0050](0050-singular-extension.md), [0074](0074-feature-verification.md)
+- 関連ADR: [0109](0109-reference-parity.md), [0113](0113-g4-eval-pruning.md), [0050](0050-singular-extension-retry.md), [0074](0074-feature-verification.md)
 
 ## Context
 
 [ADR-0109](0109-reference-parity.md)の追従キャンペーンの第6群。singularの
 検証探索の結果を、返り値の位置で3通りに使い分ける形へ揃える。
 
-本エンジンは延長側（+1のみ）しか持たない（[ADR-0050](0050-singular-extension.md)の
+本エンジンは延長側（+1のみ）しか持たない（[ADR-0050](0050-singular-extension-retry.md)の
 案A）。参照実装は同じ検証探索1回の結果を排他的な3分岐で使う。検証値が
 singularBeta未満なら多段延長（最大+3）、beta以上ならmulti-cut、中間なら
 negative extension（−3または−2）である。

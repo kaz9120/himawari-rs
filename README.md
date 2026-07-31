@@ -19,7 +19,6 @@ Rustで書くコンピュータ将棋エンジン（USIプロトコル対応）�
 | [docs/RESULTS.md](docs/RESULTS.md) | 計測・検証結果の時系列ログ（append-only） |
 | [docs/adr/README.md](docs/adr/README.md) | 設計判断の索引と未起草バックログ（設計はここが正） |
 | docs/adr/NNNN-*.md | 個々の設計判断（ADR） |
-| [docs/ROADMAPの候補](docs/ROADMAPの候補) | 未着手の改善アイデア（完了・棄却はADRへ移す） |
 | [docs/DATASETS.md](docs/DATASETS.md) | 教師データの所在と前処理手順 |
 | [CLAUDE.md](CLAUDE.md) | エージェント向けの作業規約（ゲート運用・コミット規律） |
 

@@ -2,7 +2,7 @@
 
 - Status: accepted
 - Date: 2026-07-31
-- 関連ADR: [0109](0109-reference-parity.md), [0059](0059-easy-move-scaling.md), [0062](0062-node-effort.md), [0031](0031-lazy-smp.md), [0117](0117-g8-ponder.md), [0074](0074-feature-verification.md)
+- 関連ADR: [0109](0109-reference-parity.md), [0059](0059-easy-move-scaling.md), [0062](0062-root-move-nodes.md), [0031](0031-lazy-smp.md), [0117](0117-g8-ponder.md), [0074](0074-feature-verification.md)
 
 ## Context
 
@@ -47,7 +47,7 @@ aspirationの窓・思考時間の伸縮・increaseDepthをまとめて入れる
 | failedHighCntで実効深さを削る | S:1705-1706 | 新規 |
 | 思考時間5係数 | S:1958-1996 | [ADR-0059](0059-easy-move-scaling.md)の3係数を置換 |
 | 合法手1手の502ms上限 | S:1995-1996 | 新規 |
-| `effort` をgo全体の累計へ | search.h:129 | [ADR-0062](0062-node-effort.md)は1周ごとに0へ戻していた |
+| `effort` をgo全体の累計へ | search.h:129 | [ADR-0062](0062-root-move-nodes.md)は1周ごとに0へ戻していた |
 | increaseDepth / searchAgainCounter | S:1600-1606, 2049-2051 | 新規 |
 | root探索ごとの安定ソート | S:1717, 4113-4165 | 新規 |
 
@@ -178,7 +178,7 @@ GUI表示の深さが実際より深く出る。参照実装も同じ挙動な�
 棋譜を読むときはこの差を念頭に置く。
 
 [ADR-0059](0059-easy-move-scaling.md)の3係数は置き換えた。+69.3を得た機能だが、
-参照実装の5係数がそれを含む形で上回った。[ADR-0062](0062-node-effort.md)の
+参照実装の5係数がそれを含む形で上回った。[ADR-0062](0062-root-move-nodes.md)の
 `effort` も1周ごとの集計からgo全体の累計へ変えた。**追従が過去の採択を
 上書きする2例目である**（1例目は[ADR-0115](0115-g6-qsearch.md)が
 [ADR-0100](0100-movepick-argmax-simd.md)をsupersededにした件）。

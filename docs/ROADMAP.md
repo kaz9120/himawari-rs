@@ -33,7 +33,7 @@ GPLv3へ揃え、逐語的な移植を可能にした（[ADR-0108](adr/0108-lice
 - [ADR-0104](adr/0104-ponderhit-time-accounting.md)・[0106](adr/0106-ponderhit-continue.md)・
   [0107](adr/0107-ponder-optimum-bonus.md)（ponder、-117.8と-54.3と棄却）は4本の
   支えのうち1本ずつだった。4本揃えたG8が+19.3
-- [ADR-0075](adr/0075-razoring-depth.md)・[0096](adr/0096-rfp-margin.md)・
+- [ADR-0075](adr/0075-razoring-margin.md)・[0096](adr/0096-rfp-margin.md)・
   [0052](adr/0052-nmp-dynamic.md)（razoring・RFP・NMP）はimprovingの定義を触らずに
   数値だけを寄せていた。定義ごと揃えたG4が+41.1
 
