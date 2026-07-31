@@ -26,18 +26,24 @@ himawari-rsで作業するエージェントの規約。詳細は各文書へリ
 
 | 文書 | 軸 | 持つ情報 |
 |---|---|---|
-| [docs/ROADMAP.md](docs/ROADMAP.md) | 未来 | 現在地、フェーズ表、直近の残作業 |
+| [docs/ROADMAP.md](docs/ROADMAP.md) | 現在地と方向 | 今どこにいて、次にどちらへ向かうか |
 | [docs/RESULTS.md](docs/RESULTS.md) | 時系列 | 計測・検証の1行ログ（append-only） |
 | [docs/adr/](docs/adr/README.md) | 決定 | 設計判断と経緯 |
-| [docs/IDEAS.md](docs/IDEAS.md) | 候補 | **未着手**の案を1案1行で |
+| [docs/IDEAS.md](docs/IDEAS.md) | 候補 | 未着手の案を1案1行で |
 | [docs/DATASETS.md](docs/DATASETS.md) | 資産 | データの所在と前処理 |
 | [README.md](README.md) | 入口 | 人間向けの概要・手順 |
 
 同じ情報を2文書に書かない。参照はリンクで行う。
 
-**過去の意思決定はADRが持つ。** ROADMAPとIDEAS.mdには、今と未来の判断に
-要る情報だけを置く。完了・棄却した案はIDEAS.mdから消す（ADRに記録が残る）。
-ROADMAPの過去の結論が後の測定で覆ったら、訂正を追記して現在地を更新する。
+**案は IDEAS → ADR → 完了 の順に動く。** IDEAS.mdは候補の在庫で、着手を決めたら
+ADRを起こしてIDEAS.mdから消す。完了・棄却した案もIDEAS.mdには残さない。
+**ROADMAPは候補を列挙しない。** 「今どこにいて、次にどちらへ向かうか」だけを書き、
+具体的な候補はIDEAS.mdへのリンクで示す。この3文書の役割が重なったら、
+ROADMAPから候補を削ってIDEAS.mdへ寄せる。
+
+**過去の意思決定はADRが持つ。** ROADMAPの過去の結論が後の測定で覆ったら、
+訂正を追記して現在地を更新する。経緯を追うための記録はROADMAPの「記録」節へ
+置き、現在の判断に要る結論は「次の方向」へ上げる。
 
 RESULTS.mdだけはappend-onlyで、訂正も追記で行い過去の行を書き換えない。
 時系列の記録が「いつ何を知っていたか」を示すためである。
