@@ -83,7 +83,7 @@ t1 = minimumTime + remain_estimate / MTG;
 Himawariの現行式（16.4秒）とほぼ一致する。終盤の厚みには差がある
 （やねうら王は `move_horizon = 100 − min(ply, 80)` でMTGを絞るため、
 ply=80・残り100秒で20秒を配る。Himawariは16.25秒）。この差は
-配分式の再設計として別途扱う（IDEAS.mdの「時間配分式の再設計」）。
+配分式の再設計として別途扱う（ROADMAPの候補の「時間配分式の再設計」）。
 
 ## Consequences
 

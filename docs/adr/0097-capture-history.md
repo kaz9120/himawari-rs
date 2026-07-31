@@ -129,7 +129,7 @@ victim * 16 + promo * 16 - attacker
 
 ## Consequences
 
-capture historyは持たない。[IDEAS.md](../IDEAS.md)の
+capture historyは持たない。[ROADMAPの候補](../ROADMAP.md#候補)の
 「capture SEE pruningへcaptHist項を足す」も前提が消えるため取り下げる。
 
 得られた知見は2つある。

@@ -6,7 +6,7 @@
 
 ## Context
 
-探索改善キャンペーンの続行。IDEAS.mdの「TTのbucket化・prefetch」
+探索改善キャンペーンの続行。ROADMAPの候補の「TTのbucket化・prefetch」
 のうち、bucket化は4-way クラスタとしてADR-0022で実装済みである。
 本ADRはprefetchの導入を扱う。
 

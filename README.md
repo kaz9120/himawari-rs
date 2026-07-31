@@ -15,18 +15,18 @@ Rustで書くコンピュータ将棋エンジン（USIプロトコル対応）�
 
 | 文書 | 役割 |
 |---|---|
-| [docs/ROADMAP.md](docs/ROADMAP.md) | 現在地・フェーズ進捗・残作業（状況はここが正） |
+| [docs/ROADMAP.md](docs/ROADMAP.md) | 現在地・次の方向・未着手の候補（状況はここが正） |
 | [docs/RESULTS.md](docs/RESULTS.md) | 計測・検証結果の時系列ログ（append-only） |
 | [docs/adr/README.md](docs/adr/README.md) | 設計判断の索引と未起草バックログ（設計はここが正） |
 | docs/adr/NNNN-*.md | 個々の設計判断（ADR） |
-| [docs/IDEAS.md](docs/IDEAS.md) | 未着手の改善アイデア（完了・棄却はADRへ移す） |
+| [docs/ROADMAPの候補](docs/ROADMAPの候補) | 未着手の改善アイデア（完了・棄却はADRへ移す） |
 | [docs/DATASETS.md](docs/DATASETS.md) | 教師データの所在と前処理手順 |
 | [CLAUDE.md](CLAUDE.md) | エージェント向けの作業規約（ゲート運用・コミット規律） |
 
 ## 開発プロセス
 
 設計判断はすべてADRとして記録し、実装より先に書く。**過去の意思決定はADRが
-持ち、ROADMAPとIDEAS.mdには今と未来の判断に要る情報だけを置く。**
+持ち、ROADMAPとROADMAPの候補には今と未来の判断に要る情報だけを置く。**
 
 棋力が変わる変更はSPRTでH1採択したものだけをmainへ入れる
 （[ADR-0028](docs/adr/0028-pruning-extensions.md)）。単発の変更は1機能=1SPRT、

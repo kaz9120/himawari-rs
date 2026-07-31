@@ -16,7 +16,7 @@ correction history・continuation historyでTTに入る値と
 オーダリングの質が上がった。TT手が本当に「唯一の良い手」で
 ある局面を検証するコストが、当時より回収しやすい。
 SF系ではsingular extensionは延長系で最大の利得源であり、
-IDEAS.mdでも再挑戦を予定していた。
+ROADMAPの候補でも再挑戦を予定していた。
 
 ## 選択肢と比較
 

@@ -35,7 +35,7 @@ gravityは「同一エントリへ何度も更新が来る」ことを前提に�
 一度受けただけで枝刈りの閾値圏へ入る大きさである。同じ次元のテーブルでも
 機能するのはこの差による。
 
-影響はhistory pruningだけではない。IDEAS.mdに並ぶLMRのstatScore項、
+影響はhistory pruningだけではない。ROADMAPの候補に並ぶLMRのstatScore項、
 capture系の枝刈りマージン（`131·captHist/1024` など）も、他エンジンの
 係数はあちらのスケールを前提に決まっている。historyを判断材料として
 使う候補すべてが、この式に依存する。
@@ -152,12 +152,12 @@ move orderingの土台を入れ替えるだけで40 Eloを超えた。
 
 機能検証で記録した「main historyの飽和」は、この結果を見る限り
 実害として現れなかった。divisorをやねうら王相当へ揃える案は、
-[IDEAS.md](../IDEAS.md)へ独立した候補として残す。
+[ROADMAPの候補](../ROADMAP.md#候補)へ独立した候補として残す。
 
 ## Consequences
 
 historyの実効値域が数百から数千へ広がる。他エンジンの係数を参照する
-根拠ができ、IDEAS.mdの「LMRの項追加」「capture系の枝刈り」
+根拠ができ、ROADMAPの候補の「LMRの項追加」「capture系の枝刈り」
 「history pruning」がいずれも成立する土台になる。
 
 move orderingの挙動が全面的に変わる。[ADR-0047](0047-continuation-history.md)や
@@ -172,7 +172,7 @@ history pruningの閾値を決め直すときは、この偏りを織り込ん�
 採択後は、bonus/malusの係数そのものが1調整=1SPRTの対象になる。
 やねうら王の係数は将棋向けに調整されたものだが、本エンジンの
 テーブル次元（main historyが`[駒][移動先]`しかない）とは前提が違う。
-IDEAS.mdの「main historyの次元拡張」を実施したら再調整する。
+ROADMAPの候補の「main historyの次元拡張」を実施したら再調整する。
 
 ### 見直しのトリガー
 

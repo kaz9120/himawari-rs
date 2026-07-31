@@ -135,12 +135,12 @@ SPRTを省いて取り込む。
 固定小数化のみを採る。ttPv項は入れない。
 
 ttPv項の再挑戦は、cutNode を導入して反対方向の項を揃えてから行う。
-単独では釣り合いが取れない。[IDEAS.md](../IDEAS.md)へ依存関係とともに
+単独では釣り合いが取れない。[ROADMAPの候補](../ROADMAP.md#候補)へ依存関係とともに
 残す。
 
 ## Consequences
 
-以後のLMR項追加が1項=1SPRTで積めるようになる。IDEAS.mdに残る
+以後のLMR項追加が1項=1SPRTで積めるようになる。ROADMAPの候補に残る
 rootDelta・moveCount・correction値・cutNode・ttCapture・cutoffCnt・
 ttMove一致・statScore・allNodeは、すべてこの土台の上に乗る。
 [ADR-0055](0055-lmr-terms.md)で不採択になったimproving項とhistory項も、
