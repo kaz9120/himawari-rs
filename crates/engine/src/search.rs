@@ -173,19 +173,43 @@ const ASPIRATION_GROWTH_DIV: Value = 3;
 /// 参照実装が持つ唯一の明示的なLazy SMPの多様化である（ADR-0031）
 const ASPIRATION_THREAD_SPREAD: usize = 8;
 
-/// 思考時間の難易度スケール（ADR-0059）。optimumを3係数の積で伸縮させる。
-/// 評価の下落は時間を伸ばし、最善手の安定とノード集中は縮める。
-const FALLING_UNIT: f64 = 200.0;
-const FALLING_MIN: f64 = 0.6;
-const FALLING_MAX: f64 = 1.7;
-const STABILITY_BASE: f64 = 1.5;
-const STABILITY_STEP: f64 = 0.15;
-const STABILITY_MIN: f64 = 0.75;
-const EFFORT_LO: f64 = 0.75;
-const EFFORT_HI: f64 = 1.0;
-const EFFORT_SCALE_LO: f64 = 0.85;
-const EFFORT_SCALE_HI: f64 = 0.70;
-const SCALE_MIN_DEPTH: u32 = 8;
+/// 思考時間の伸縮（ADR-0109のG9。yaneuraou-search.cpp:1958-1996）。
+/// optimumを5係数の積で伸ばし縮めする。ADR-0059の3係数（falling /
+/// stability / effort）はこのうち3つに対応するので、置き換えである。
+///
+/// fallingEval（S:1972-1976）は評価の下落で時間を伸ばす。入力は2本で、
+/// 前回goの最善手の移動平均と4回前の反復のスコアである。前回goが
+/// ないときは番兵の `VALUE_INFINITE` が入り、上限に張り付く。参照実装が
+/// 「対局の初手にかかる時間に影響する」と書く意図的な挙動である
+const FALLING_BASE: f64 = 11.325;
+const FALLING_PREV_GO: f64 = 2.115;
+const FALLING_ITER: f64 = 0.987;
+const FALLING_MIN: f64 = 0.5688;
+const FALLING_MAX: f64 = 1.5698;
+/// timeReduction（S:1981-1983）は最善手が長く不変なら時間を縮める
+/// ロジスティック。中心は「最善手が最後に変わった深さ + 11.57」
+const TIME_REDUCTION_K: f64 = 0.5189;
+const TIME_REDUCTION_CENTER: f64 = 11.57;
+const TIME_REDUCTION_BASE: f64 = 0.723;
+const TIME_REDUCTION_NUM: f64 = 0.79;
+const TIME_REDUCTION_DEN: f64 = 1.104;
+/// reduction（S:1984-1985）は前回goのtimeReductionを持ち越して均す
+const REDUCTION_BASE: f64 = 1.455;
+const REDUCTION_SCALE: f64 = 2.2375;
+/// bestMoveInstability（S:1986）は最善手の入れ替わりで時間を伸ばす。
+/// 分母はスレッド数で、スレッド横断のbestMoveChangesを平均する
+const INSTABILITY_BASE: f64 = 1.04;
+const INSTABILITY_COEF: f64 = 1.8956;
+/// highBestMoveEffort（S:1969-1970, 1987）は最善手にノードが集中して
+/// いれば時間を縮める。閾値の2値で、10万分率で92425（92.4%）以上
+const EFFORT_MIN_DEPTH: u32 = 10;
+const EFFORT_THRESHOLD: u64 = 92_425;
+const EFFORT_SCALE: f64 = 0.666;
+/// 合法手が1手しかないときの上限[ms]（S:1995-1996）
+const SINGLE_MOVE_CAP_MS: f64 = 502.0;
+/// increaseDepthの判定比（S:2050-2051）。totalTimeのこの割合を超えて
+/// いれば、次の反復では実効深さを削って掘り直す
+const INCREASE_DEPTH_RATIO: f64 = 0.503;
 
 /// historyのbonus・malusを配る対象として覚えておく手数の上限
 /// （yaneuraou-search.cpp:702のSEARCHEDLIST_CAPACITY）。
@@ -305,9 +329,11 @@ pub struct RootMove {
     pub score: Value,
     pub prev_score: Value,
     pub pv: Vec<Move>,
-    /// このイテレーションでこの手の探索に費やしたノード数（ADR-0062）。
-    /// メインワーカーのローカル値のみ。イテレーション開始時に0へ戻す
-    pub nodes: u64,
+    /// この手の探索に費やしたノード数（ADR-0062、G9。search.h:129）。
+    /// メインワーカーのローカル値のみ。**go全体の累計で、イテレーション
+    /// ごとには戻さない。** highBestMoveEffortが読む比の分母も同じく
+    /// go全体の累計ノード数である（S:1969-1970）
+    pub effort: u64,
     /// スコアの移動平均（G9。search.h:139、yaneuraou-search.cpp:4105-4106）。
     /// aspirationの窓の中心に使う。前深さの生スコアより揺れが小さい。
     /// 初期値の `-VALUE_INFINITE` は「まだ値がない」ことを表す番兵
@@ -770,7 +796,7 @@ impl Worker {
                 score: -VALUE_INFINITE,
                 prev_score: VALUE_ZERO,
                 pv: Vec::new(),
-                nodes: 0,
+                effort: 0,
                 average_score: -VALUE_INFINITE,
                 mean_squared_score: MEAN_SQUARED_NONE,
             })
@@ -805,10 +831,29 @@ impl Worker {
         let mut unresolved_bound = false;
         // 確定した最後のイテレーションの深さ。
         let mut completed_depth = 0u32;
-        // 思考時間の難易度スケール用の状態（ADR-0059）
-        let mut prev_best = Move::NONE;
-        let mut prev_iter_score = VALUE_ZERO;
-        let mut stable_iters: u32 = 0;
+        // メインワーカーか（S:1917）。時間管理と統計はメインだけが行う
+        let is_main = self.thread_idx == 0;
+        // 直近のroot探索の返り値（S:1438）。窓を外した回も含む。
+        // 思考時間のfallingEvalが読む
+        let mut best_value = -VALUE_INFINITE;
+        // 最善手が最後に変わった深さ（S:1426）。timeReductionの中心になる
+        let mut last_best_move_depth = 0u32;
+        // 直近4反復のスコアの環状バッファ（S:1440, 2055-2056）。
+        // fallingEvalが4回前の反復のスコアと比べる
+        let mut iter_value = [VALUE_ZERO; 4];
+        let mut iter_idx = 0usize;
+        // 最善手が入れ替わった回数の統計（S:1439）。反復ごとに半減させ、
+        // 全スレッドの計数を足し込む
+        let mut tot_best_move_changes = 0.0f64;
+        // 今回goのtimeReduction（S:1439, 2062）。次のgoへ持ち越す
+        let mut time_reduction = 1.0f64;
+        // 前回goのスコアで環状バッファを埋める（S:1495-1498）。
+        // 前回がなければ0で埋める
+        iter_value.fill(if self.memory.best_previous_score == VALUE_INFINITE {
+            VALUE_ZERO
+        } else {
+            self.memory.best_previous_score
+        });
         let max_depth = if self.limits.depth > 0 {
             self.limits.depth
         } else {
@@ -816,11 +861,13 @@ impl Worker {
         };
 
         'deepening: for depth in 1..=max_depth {
+            // 反復の世代が進んだので、最善手の入れ替わりの重みを半分にする
+            // （S:1577-1581）。メインだけが集計する
+            if is_main {
+                tot_best_move_changes /= 2.0;
+            }
             for rm in &mut self.root_moves {
                 rm.prev_score = rm.score;
-                // aspirationの再探索で同じ深さを複数回掘るため、
-                // 深さの開始時に集計を戻す（ADR-0062）
-                rm.nodes = 0;
             }
             // seldepthはイテレーションごとに測り直す（ADR-0086）
             self.sel_depth = 0;
@@ -846,6 +893,7 @@ impl Worker {
                     let adjusted_depth = depth.saturating_sub(failed_high_cnt).max(1);
                     let (score, best_idx, pv) =
                         self.search_root(adjusted_depth, alpha, beta, pv_idx, on_info);
+                    best_value = score;
                     if self.stopped() {
                         break 'deepening;
                     }
@@ -897,7 +945,6 @@ impl Worker {
                         if pv_idx == 0 {
                             last_score = score;
                             unresolved_bound = false;
-                            completed_depth = depth;
                         }
                         on_info(SearchInfo::Iteration(IterInfo {
                             depth,
@@ -920,40 +967,24 @@ impl Worker {
             // 次の反復のfollow_pv判定が読む。打ち切られた反復のPVは
             // 途中までしか探索していないので採らない
             if !self.shared.stop.load(Ordering::Relaxed) {
+                completed_depth = depth;
+                // 最善手が前の反復から変わった深さを覚える（S:1848-1851）。
+                // timeReductionのロジスティックの中心になる
+                if self.last_iteration_pv.is_empty()
+                    || self.last_iteration_pv.first() != self.root_moves[0].pv.first()
+                {
+                    last_best_move_depth = depth;
+                }
                 self.last_iteration_pv.clone_from(&self.root_moves[0].pv);
             }
             // 最善手が変わったら、確定したPVとスコアを覚え直す（S:1888-1893）
             if self.root_moves[0].pv.first() != last_best_pv.first() {
                 last_best_pv.clone_from(&self.root_moves[0].pv);
                 last_best_score = self.root_moves[0].score;
+                last_best_move_depth = depth;
             }
             // ここまで来れば深さ1は完走している。以降はstopに従う
             self.depth1_done = true;
-            // 局面の難易度で思考時間をスケールする（ADR-0059）
-            let cur_best = self.root_moves[0].mv;
-            stable_iters = if cur_best == prev_best {
-                stable_iters + 1
-            } else {
-                0
-            };
-            prev_best = cur_best;
-            let scale = if self.multi_pv == 1 && depth >= SCALE_MIN_DEPTH {
-                // 評価が下がっているほど伸ばす（読み抜けを警戒する）
-                let drop = f64::from(prev_iter_score - last_score);
-                let falling = (1.0 + drop / FALLING_UNIT).clamp(FALLING_MIN, FALLING_MAX);
-                // 最善手が変わった直後は伸ばし、連続で不変なら縮める
-                let stability = (STABILITY_BASE - STABILITY_STEP * f64::from(stable_iters))
-                    .clamp(STABILITY_MIN, STABILITY_BASE);
-                // 最善手にノードが集中しているほど縮める（ADR-0062）
-                let total: u64 = self.root_moves.iter().map(|rm| rm.nodes).sum();
-                let ratio = self.root_moves[0].nodes as f64 / total.max(1) as f64;
-                let t = ((ratio - EFFORT_LO) / (EFFORT_HI - EFFORT_LO)).clamp(0.0, 1.0);
-                let effort = EFFORT_SCALE_LO + (EFFORT_SCALE_HI - EFFORT_SCALE_LO) * t;
-                falling * stability * effort
-            } else {
-                1.0
-            };
-            prev_iter_score = last_score;
             // 詰みが確定したら打ち切る（ADR-0088）。反復深化なので、より短い
             // 詰みがあれば浅い周で見つかっている。これ以上読んでも結論は
             // 変わらない。詰まされる側も同じで、より長く粘る手があれば
@@ -967,26 +998,82 @@ impl Worker {
             if self.limits.nodes > 0 && self.nodes >= self.limits.nodes {
                 break;
             }
-            // 次の反復を回す時間があるか（S:1961-2048）。停止条件を満たして
+            // ここから先はメインだけが行う（S:1917）
+            if !is_main {
+                continue;
+            }
+            // 全スレッドの最善手の入れ替わり回数を汲み出す（S:1952-1956）
+            tot_best_move_changes +=
+                self.shared.best_move_changes.swap(0, Ordering::Relaxed) as f64;
+            // 次の反復を回す時間があるか（S:1961-2053）。停止条件を満たして
             // もその場では止めず、秒単位で切り上げた終了時刻を予約する。
             // 予約済みなら終了は確定しているので測り直さない
             if self.tm.use_time_management()
                 && !self.shared.stop.load(Ordering::Relaxed)
                 && !self.stop_on_ponderhit
                 && self.tm.search_end == 0
-                && self.tm.over_total(scale)
             {
-                if self.shared.ponder.load(Ordering::SeqCst) {
-                    // go ponder中はGUIの指示があるまで止められない。
-                    // 停止を予約だけしておく（S:2043-2044）
-                    self.stop_on_ponderhit = true;
+                // 最善手にノードがどれだけ集中しているか（10万分率）。
+                // 分子も分母もgo全体の累計である（S:1969-1970）
+                let nodes_effort = self.root_moves[0].effort * 100_000 / self.nodes.max(1);
+                // 評価が下がっているほど伸ばす（S:1972-1976）
+                let falling = ((FALLING_BASE
+                    + FALLING_PREV_GO
+                        * f64::from(self.memory.best_previous_average_score - best_value)
+                    + FALLING_ITER * f64::from(iter_value[iter_idx] - best_value))
+                    / 100.0)
+                    .clamp(FALLING_MIN, FALLING_MAX);
+                // 最善手が長く不変なら縮める（S:1980-1983）
+                let center = f64::from(last_best_move_depth) + TIME_REDUCTION_CENTER;
+                time_reduction = TIME_REDUCTION_BASE
+                    + TIME_REDUCTION_NUM
+                        / (TIME_REDUCTION_DEN
+                            + (-TIME_REDUCTION_K * (f64::from(completed_depth) - center)).exp());
+                // 前回goのtimeReductionで均す（S:1984-1985）
+                let reduction = (REDUCTION_BASE + self.memory.previous_time_reduction)
+                    / (REDUCTION_SCALE * time_reduction);
+                // 最善手が揺れているほど伸ばす（S:1986）
+                let instability = INSTABILITY_BASE
+                    + INSTABILITY_COEF * tot_best_move_changes / self.thread_count as f64;
+                // ノードが集中しているなら縮める（S:1987）
+                let high_effort =
+                    if completed_depth >= EFFORT_MIN_DEPTH && nodes_effort >= EFFORT_THRESHOLD {
+                        EFFORT_SCALE
+                    } else {
+                        1.0
+                    };
+                let mut total_time =
+                    self.tm.optimum() as f64 * falling * reduction * instability * high_effort;
+                // 合法手が1手ならこれ以上考えても仕方がない（S:1995-1996）
+                if self.root_moves.len() == 1 {
+                    total_time = total_time.min(SINGLE_MOVE_CAP_MS);
+                }
+                let elapsed = self.tm.elapsed_ms();
+                if (elapsed as f64) > total_time.min(self.tm.maximum() as f64) {
+                    if self.shared.ponder.load(Ordering::SeqCst) {
+                        // go ponder中はGUIの指示があるまで止められない。
+                        // 停止を予約だけしておく（S:2043-2044）
+                        self.stop_on_ponderhit = true;
+                    } else {
+                        let ponderhit_offset = self.shared.ponderhit_offset.load(Ordering::SeqCst);
+                        self.tm.set_search_end(elapsed, ponderhit_offset);
+                    }
                 } else {
-                    let elapsed = self.tm.elapsed_ms();
-                    let ponderhit_offset = self.shared.ponderhit_offset.load(Ordering::SeqCst);
-                    self.tm.set_search_end(elapsed, ponderhit_offset);
+                    // 深さを1段上げる余裕はないが、まだ時間はある状態
+                    // （S:2049-2051）。次の反復では実効深さを削って掘り直す
+                    self.shared.increase_depth.store(
+                        self.shared.ponder.load(Ordering::SeqCst)
+                            || (elapsed as f64) <= total_time * INCREASE_DEPTH_RATIO,
+                        Ordering::Relaxed,
+                    );
                 }
             }
+            // 4反復前のスコアと比べるための環状バッファ（S:2055-2056）
+            iter_value[iter_idx] = best_value;
+            iter_idx = (iter_idx + 1) & 3;
         }
+        // 今回goのtimeReductionを次のgoへ持ち越す（S:2062）
+        self.memory.previous_time_reduction = time_reduction;
         // 中断した探索で得た詰み負けのスコアは信用できない（S:1864-1887）。
         // 残りのroot手を読めば、負けが延びたり反証されたりしうる。前の
         // 反復で確定したPVとスコアへ戻す。
@@ -1126,7 +1213,7 @@ impl Worker {
             self.evaluator.pop();
             self.pos.undo_move(m);
             // 打ち切られた分もこの手の探索コストなので先に計上（ADR-0062）
-            self.root_moves[i].nodes += self.nodes - nodes_before;
+            self.root_moves[i].effort += self.nodes - nodes_before;
             if self.stopped() {
                 return (best, best_idx, best_pv);
             }
