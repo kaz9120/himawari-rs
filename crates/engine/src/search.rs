@@ -735,8 +735,7 @@ impl Worker {
     }
 
     /// aspirationのfail時に途中経過を報告する（ADR-0091）。
-    /// fail lowではPVが空になりうるので、そのときは前の周のPVを使う。
-    #[allow(clippy::too_many_arguments)]
+    /// PVは並べ替え済みの `root_moves[pv_idx]` から採る。
     fn report_bound(
         &self,
         on_info: &mut dyn FnMut(SearchInfo),
@@ -744,13 +743,8 @@ impl Worker {
         pv_idx: usize,
         score: Value,
         bound: ScoreBound,
-        pv: &[Move],
     ) {
-        let line: Vec<Move> = if pv.is_empty() {
-            self.root_moves[pv_idx].pv.clone()
-        } else {
-            pv.to_vec()
-        };
+        let line: Vec<Move> = self.root_moves[pv_idx].pv.clone();
         if line.is_empty() {
             return;
         }
@@ -767,6 +761,12 @@ impl Worker {
             },
             bound,
         ));
+    }
+
+    /// root手をスコアの降順に安定ソートする（search.h:168-171）。
+    /// 同点なら前の反復のスコアの降順で、それも同点なら元の並びを保つ。
+    fn sort_root_moves(moves: &mut [RootMove]) {
+        moves.sort_by(|a, b| b.score.cmp(&a.score).then(b.prev_score.cmp(&a.prev_score)));
     }
 
     /// 反復深化。各イテレーション完了時にon_iterを呼ぶ。
@@ -903,8 +903,11 @@ impl Worker {
                         .saturating_sub(failed_high_cnt)
                         .saturating_sub(3 * (search_again_counter + 1) / 4)
                         .max(1);
-                    let (score, best_idx, pv) =
-                        self.search_root(adjusted_depth, alpha, beta, pv_idx, on_info);
+                    let score = self.search_root(adjusted_depth, alpha, beta, pv_idx, on_info);
+                    // 窓を外した回も含めて毎回並べ替える（S:1717）。
+                    // 実の値を持つのは1手目とalphaを更新した手だけなので、
+                    // 安定ソートでなければ残りの並びが崩れる
+                    Self::sort_root_moves(&mut self.root_moves[pv_idx..]);
                     best_value = score;
                     if self.stopped() {
                         break 'deepening;
@@ -912,7 +915,7 @@ impl Worker {
                     if score <= alpha {
                         // fail low: 実際の評価はこの値以下（ADR-0091）。
                         // 窓を広げて読み直す前に、途中経過として報告する
-                        self.report_bound(on_info, depth, pv_idx, score, ScoreBound::Upper, &pv);
+                        self.report_bound(on_info, depth, pv_idx, score, ScoreBound::Upper);
                         if pv_idx == 0 {
                             unresolved_bound = true;
                         }
@@ -925,7 +928,7 @@ impl Worker {
                         self.stop_on_ponderhit = false;
                     } else if score >= beta {
                         // fail high: 実際の評価はこの値以上
-                        self.report_bound(on_info, depth, pv_idx, score, ScoreBound::Lower, &pv);
+                        self.report_bound(on_info, depth, pv_idx, score, ScoreBound::Lower);
                         if pv_idx == 0 {
                             unresolved_bound = true;
                         }
@@ -935,13 +938,7 @@ impl Worker {
                         beta = (score + delta).min(VALUE_INFINITE);
                         failed_high_cnt += 1;
                     } else {
-                        // 成功: 最善手をこのラインの先頭へ移して確定する
-                        if best_idx != pv_idx {
-                            let rm = self.root_moves.remove(best_idx);
-                            self.root_moves.insert(pv_idx, rm);
-                        }
-                        self.root_moves[pv_idx].score = score;
-                        self.root_moves[pv_idx].pv = pv.clone();
+                        // 成功。最善手は並べ替えでこのラインの先頭に来ている。
                         // 出力スコアを前のラインで頭打ちにする。fail-softでは
                         // ラインごとにaspiration窓が違い、返り値が窓に依存する
                         // ため、探索順のままだと後のラインが前を上回ることが
@@ -953,7 +950,7 @@ impl Worker {
                         // 120となり2本目の100を上回る）
                         let line_score = score.min(prev_line_score);
                         prev_line_score = line_score;
-                        let line_pv = pv;
+                        let line_pv = self.root_moves[pv_idx].pv.clone();
                         if pv_idx == 0 {
                             last_score = score;
                             unresolved_bound = false;
@@ -1145,7 +1142,8 @@ impl Worker {
     }
 
     /// root_moves[pv_idx..]を探索する（上位の確定済みラインは除外）。
-    /// 戻り値は (スコア, 最善手のroot_moves添字, PV)。
+    /// 戻り値はfail-softのスコア。各root手のスコアとPVは `root_moves` へ
+    /// 直接書く（S:4113-4165）。呼び出し側は探索のあとで並べ替えて先頭を読む
     #[allow(clippy::too_many_arguments)]
     fn search_root(
         &mut self,
@@ -1154,12 +1152,10 @@ impl Worker {
         beta: Value,
         pv_idx: usize,
         on_info: &mut dyn FnMut(SearchInfo),
-    ) -> (Value, usize, Vec<Move>) {
+    ) -> Value {
         // リダクションの窓幅項の基準（yaneuraou-search.cpp:1708）
         self.root_delta = beta - alpha;
         let mut best = -VALUE_INFINITE;
-        let mut best_idx = pv_idx;
-        let mut best_pv: Vec<Move> = Vec::new();
         let moves: Vec<Move> = self.root_moves[pv_idx..].iter().map(|rm| rm.mv).collect();
         // 子が読むcontinuation historyの面の選択に要る（ADR-0109のG1）
         let in_check = self.pos.in_check();
@@ -1227,7 +1223,7 @@ impl Worker {
             // 打ち切られた分もこの手の探索コストなので先に計上（ADR-0062）
             self.root_moves[i].effort += self.nodes - nodes_before;
             if self.stopped() {
-                return (best, best_idx, best_pv);
+                return best;
             }
             // スコアの移動平均と二乗平均（G9。yaneuraou-search.cpp:4105-4110）。
             // 次の反復のaspiration窓の中心と幅になる。番兵のときは初回として
@@ -1245,33 +1241,40 @@ impl Worker {
                     value * value.abs()
                 };
             }
+            // root手のスコアとPVを書く（S:4113-4165）。実の値を持つのは
+            // 1手目とalphaを更新した手だけで、残りは -VALUE_INFINITE にする。
+            // この形なら途中で打ち切っても並べ替えが前の深さの結論を壊さない
+            if j == 0 || value > alpha {
+                self.root_moves[i].score = value;
+                let line = &mut self.root_moves[i].pv;
+                line.clear();
+                line.push(m);
+                line.extend_from_slice(&child_pv);
+                // 最善手が入れ替わった回数を数える（G9。
+                // yaneuraou-search.cpp:4157-4160）。1手目での確定は
+                // 入れ替わりではない。MultiPVでは1本目だけを数える
+                if j > 0 && pv_idx == 0 {
+                    self.shared
+                        .best_move_changes
+                        .fetch_add(1, Ordering::Relaxed);
+                }
+            } else {
+                self.root_moves[i].score = -VALUE_INFINITE;
+            }
             if value > best {
                 best = value;
                 if value > alpha {
-                    alpha = value;
-                    best_idx = i;
-                    self.root_moves[i].score = value;
-                    best_pv.clear();
-                    best_pv.push(m);
-                    best_pv.extend_from_slice(&child_pv);
-                    // 最善手が入れ替わった回数を数える（G9。
-                    // yaneuraou-search.cpp:4157-4160）。1手目での確定は
-                    // 入れ替わりではない。MultiPVでは1本目だけを数える
-                    if j > 0 && pv_idx == 0 {
-                        self.shared
-                            .best_move_changes
-                            .fetch_add(1, Ordering::Relaxed);
-                    }
                     if value >= beta {
                         // 参照実装はrootも同じ経路を通る
                         // （yaneuraou-search.cpp:4214）
                         self.stack[STACK_OFFSET].cutoff_cnt += 1;
                         break;
                     }
+                    alpha = value;
                 }
             }
         }
-        (best, best_idx, best_pv)
+        best
     }
 
     #[allow(clippy::too_many_arguments)]
