@@ -385,6 +385,16 @@ pub struct SearchResult {
     pub score: Value,
     /// 相手の予測応手（PVの2手目。なければNONE。ADR-0033）。
     pub ponder: Move,
+    /// `root_moves[0]` の生スコア（G10。S:610-611の投票が読む）。
+    /// USIへ出す `score` と違い、頭打ちや窓外れの整形をしていない
+    pub root_score: Value,
+    /// `root_moves[0].average_score`（G10。S:1250）。
+    /// best threadのものを次のgoへ持ち越す
+    pub root_average_score: Value,
+    /// `root_moves[0].pv`（G10。S:625-626の投票が読む）。
+    pub pv: Vec<Move>,
+    /// 確定した最後のイテレーションの深さ（G10。S:618の投票が読む）。
+    pub completed_depth: u32,
 }
 
 /// plyごとの探索状態（ADR-0109のG0, G1）。
@@ -777,6 +787,10 @@ impl Worker {
                 best: Move::WIN,
                 score: mate_in(0),
                 ponder: Move::NONE,
+                root_score: -VALUE_INFINITE,
+                root_average_score: -VALUE_INFINITE,
+                pv: Vec::new(),
+                completed_depth: 0,
             };
         }
         self.shared.tt.new_search();
@@ -806,6 +820,10 @@ impl Worker {
                 best: Move::RESIGN,
                 score: mated_in(0),
                 ponder: Move::NONE,
+                root_score: -VALUE_INFINITE,
+                root_average_score: -VALUE_INFINITE,
+                pv: Vec::new(),
+                completed_depth: 0,
             };
         }
         // 前回のgoと手番が入れ替わっているなら、持ち越したスコアの符号を
@@ -1125,8 +1143,8 @@ impl Worker {
             }));
         }
         // 次のgoで使う値を持ち越す（G9。S:1249-1253）。参照実装はbest thread
-        // のrootMoves[0]から採る。本エンジンはbest thread votingを持たない
-        // ので（G10）、自スレッドの先頭手から採る
+        // のrootMoves[0]から採る。投票で他スレッドが選ばれたときは、
+        // 呼び出し側（ThreadPool）がそちらの値で上書きする（G10）
         self.memory.best_previous_score = self.root_moves[0].score;
         self.memory.best_previous_average_score = self.root_moves[0].average_score;
         self.memory.last_game_ply = root_game_ply;
@@ -1138,6 +1156,10 @@ impl Worker {
             best: self.root_moves[0].mv,
             score: last_score,
             ponder: self.root_moves[0].pv.get(1).copied().unwrap_or(Move::NONE),
+            root_score: self.root_moves[0].score,
+            root_average_score: self.root_moves[0].average_score,
+            pv: self.root_moves[0].pv.clone(),
+            completed_depth,
         }
     }
 
