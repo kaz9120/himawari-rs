@@ -160,6 +160,19 @@ const TT_DEPTH_QS: u8 = 3;
 /// DEPTH_QSより小さいので、この値ではTTカットが起きない
 const TT_DEPTH_UNSEARCHED: u8 = 1;
 
+/// aspirationの初期窓（ADR-0109のG9。yaneuraou-search.cpp:1670-1673）。
+/// 幅は `5 + threadIdx%8 + |二乗平均スコア|/9000` で、評価値が大きいほど
+/// 広がる。中心は前深さの生スコアではなくスコアの移動平均に置く。
+/// 外したら幅を4/3倍にして読み直す（yaneuraou-search.cpp:1795）。
+/// 評価値は歩=90スケールで参照実装と一致するため、除数9000は換算せずに
+/// 使える（ADR-0074）
+const ASPIRATION_BASE: Value = 5;
+const ASPIRATION_MSS_DIV: Value = 9000;
+const ASPIRATION_GROWTH_DIV: Value = 3;
+/// スレッドごとの窓幅のずれ幅（yaneuraou-search.cpp:1670）。
+/// 参照実装が持つ唯一の明示的なLazy SMPの多様化である（ADR-0031）
+const ASPIRATION_THREAD_SPREAD: usize = 8;
+
 /// 思考時間の難易度スケール（ADR-0059）。optimumを3係数の積で伸縮させる。
 /// 評価の下落は時間を伸ばし、最善手の安定とノード集中は縮める。
 const FALLING_UNIT: f64 = 200.0;
@@ -811,25 +824,28 @@ impl Worker {
             }
             // seldepthはイテレーションごとに測り直す（ADR-0086）
             self.sel_depth = 0;
+            // singularの多段化のマージンが読む（S:1550, 3779）。実効深さ
+            // （fail highで削った値）ではなく反復深化の深さを入れる
+            self.root_depth = depth;
             let lines = self.multi_pv.min(self.root_moves.len());
             // 直前ラインの出力スコア。頭打ちの基準に使う（ADR-0032）
             let mut prev_line_score = VALUE_INFINITE;
             for pv_idx in 0..lines {
-                // ラインごとのaspiration。中心は前深さの自ラインのスコア
-                let center = if pv_idx == 0 {
-                    last_score
-                } else {
-                    self.root_moves[pv_idx].prev_score
-                };
-                let mut delta = 20;
-                let (mut alpha, mut beta) = if depth >= 5 && center > -VALUE_INFINITE {
-                    (center - delta, center + delta)
-                } else {
-                    (-VALUE_INFINITE, VALUE_INFINITE)
-                };
+                // ラインごとのaspiration（G9。S:1669-1673）。窓幅は評価値の
+                // 二乗平均に比例して広がり、中心はスコアの移動平均に置く。
+                // 深さ1では二乗平均が番兵のままなので窓が全開になる
+                let mut delta = ASPIRATION_BASE
+                    + (self.thread_idx % ASPIRATION_THREAD_SPREAD) as Value
+                    + self.root_moves[pv_idx].mean_squared_score.abs() / ASPIRATION_MSS_DIV;
+                let avg = self.root_moves[pv_idx].average_score;
+                let mut alpha = (avg - delta).max(-VALUE_INFINITE);
+                let mut beta = (avg + delta).min(VALUE_INFINITE);
+                // fail highした回数。1回ごとに実効深さを1段削る（S:1705-1706）
+                let mut failed_high_cnt = 0u32;
                 loop {
+                    let adjusted_depth = depth.saturating_sub(failed_high_cnt).max(1);
                     let (score, best_idx, pv) =
-                        self.search_root(depth, alpha, beta, pv_idx, on_info);
+                        self.search_root(adjusted_depth, alpha, beta, pv_idx, on_info);
                     if self.stopped() {
                         break 'deepening;
                     }
@@ -840,20 +856,24 @@ impl Worker {
                         if pv_idx == 0 {
                             unresolved_bound = true;
                         }
-                        beta = (alpha + beta) / 2;
+                        // 窓は下へずらす。上端は元のalphaに畳む（S:1777-1784）
+                        beta = alpha;
                         alpha = (score - delta).max(-VALUE_INFINITE);
+                        failed_high_cnt = 0;
                         // 評価が下がったので、予約した停止を解除する
                         // （S:1783-1784）。読み直す価値のある局面である
                         self.stop_on_ponderhit = false;
-                        delta += delta / 2;
                     } else if score >= beta {
                         // fail high: 実際の評価はこの値以上
                         self.report_bound(on_info, depth, pv_idx, score, ScoreBound::Lower, &pv);
                         if pv_idx == 0 {
                             unresolved_bound = true;
                         }
+                        // 下端は元のbetaから幅の分だけ戻した位置まで上げる
+                        // （S:1786-1790）
+                        alpha = (beta - delta).max(alpha);
                         beta = (score + delta).min(VALUE_INFINITE);
-                        delta += delta / 2;
+                        failed_high_cnt += 1;
                     } else {
                         // 成功: 最善手をこのラインの先頭へ移して確定する
                         if best_idx != pv_idx {
@@ -892,6 +912,8 @@ impl Worker {
                         }));
                         break;
                     }
+                    // 外したので次は幅を4/3倍にする（S:1795）
+                    delta += delta / ASPIRATION_GROWTH_DIV;
                 }
             }
             // 今回の反復のPVを覚える（yaneuraou-search.cpp:1846-1853）。
@@ -1036,9 +1058,6 @@ impl Worker {
     ) -> (Value, usize, Vec<Move>) {
         // リダクションの窓幅項の基準（yaneuraou-search.cpp:1708）
         self.root_delta = beta - alpha;
-        // singularの多段化のマージンが読む（yaneuraou-search.cpp:1550, 3779）。
-        // aspirationの再探索でも同じ深さなので、ここで入れ直してよい
-        self.root_depth = depth;
         let mut best = -VALUE_INFINITE;
         let mut best_idx = pv_idx;
         let mut best_pv: Vec<Move> = Vec::new();
