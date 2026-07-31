@@ -847,6 +847,8 @@ impl Worker {
         let mut tot_best_move_changes = 0.0f64;
         // 今回goのtimeReduction（S:1439, 2062）。次のgoへ持ち越す
         let mut time_reduction = 1.0f64;
+        // 同じ深さを掘り直した回数（S:1531-1534）。実効深さを削る量に効く
+        let mut search_again_counter = 0u32;
         // 前回goのスコアで環状バッファを埋める（S:1495-1498）。
         // 前回がなければ0で埋める
         iter_value.fill(if self.memory.best_previous_score == VALUE_INFINITE {
@@ -869,6 +871,11 @@ impl Worker {
             for rm in &mut self.root_moves {
                 rm.prev_score = rm.score;
             }
+            // 深さが増えていないなら同じ深さを掘り直したことになる
+            // （S:1600-1606）。メインが余り時間から立てた旗を全スレッドが読む
+            if !self.shared.increase_depth.load(Ordering::Relaxed) {
+                search_again_counter += 1;
+            }
             // seldepthはイテレーションごとに測り直す（ADR-0086）
             self.sel_depth = 0;
             // singularの多段化のマージンが読む（S:1550, 3779）。実効深さ
@@ -890,7 +897,12 @@ impl Worker {
                 // fail highした回数。1回ごとに実効深さを1段削る（S:1705-1706）
                 let mut failed_high_cnt = 0u32;
                 loop {
-                    let adjusted_depth = depth.saturating_sub(failed_high_cnt).max(1);
+                    // fail highと掘り直しの分だけ実効深さを削る（S:1699-1707）。
+                    // searchAgain 4回につき1回は深さが進むようにしてある
+                    let adjusted_depth = depth
+                        .saturating_sub(failed_high_cnt)
+                        .saturating_sub(3 * (search_again_counter + 1) / 4)
+                        .max(1);
                     let (score, best_idx, pv) =
                         self.search_root(adjusted_depth, alpha, beta, pv_idx, on_info);
                     best_value = score;
