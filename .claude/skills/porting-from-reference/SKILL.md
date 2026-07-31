@@ -132,9 +132,9 @@ Bashツールの `run_in_background: true` で起動する。注意が3つある
 - SPRT: 条件と結果
 - Consequences: 何が変わったか、何を保留したか、次の群への影響
 
-採択したら `docs/RESULTS.md` へ追記し、`docs/ROADMAP.md` の表と
-`docs/adr/README.md` の索引を更新する。**過去の結論が覆ったらROADMAPに訂正を
-追記する。**
+採択したらコミットに `SPRT:` トレーラを付け（CHANGELOGへ載る）、
+`docs/adr/README.md` の索引を更新する。着手した候補を `docs/ROADMAP.md` から
+消す。**過去の結論が覆ったらROADMAPの記述を直す。**
 
 ## 原典の罠
 
@@ -157,6 +157,11 @@ Bashツールの `run_in_background: true` で起動する。注意が3つある
   下げると保護まで消え、終盤の到達深さが8ply落ちた
 - bestMoveInstabilityは、root探索1回ごとの安定ソートに守られている。並べ替えが
   ないと同じ入れ替わりを数え直し、係数が膨らむ
+
+**参照実装の値が本エンジンで成立しないことがある。** 2件出た。singular率
+（設計点1割に対し本エンジンは43.5%）と時間配分の分母（move horizon方式が2度とも
+通らない）である。**該当部分だけを据え置き、残りを採る。** 群全体が負けたら、
+まずこの可能性を疑って二分割する。
 
 **番兵をそのまま移す。** `meanSquaredScore` の初期値 `−VALUE_INFINITE²` は、
 窓幅の式に入ると窓を全開にする。深さ1でaspirationを無効にする仕掛けである。

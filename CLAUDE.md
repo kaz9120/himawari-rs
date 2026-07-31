@@ -24,28 +24,29 @@ himawari-rsで作業するエージェントの規約。詳細は各文書へリ
 
 ## 文書の役割分担
 
-| 文書 | 軸 | 持つ情報 |
+| 文書 | 読むとき | 持つ情報 |
 |---|---|---|
-| [docs/ROADMAP.md](docs/ROADMAP.md) | 現在地・方向・候補 | 今どこにいて、次にどちらへ向かい、何をやりうるか |
-| [docs/RESULTS.md](docs/RESULTS.md) | 時系列 | 計測・検証の1行ログ（append-only） |
-| [docs/adr/](docs/adr/README.md) | 決定 | 設計判断と経緯 |
-| [docs/DATASETS.md](docs/DATASETS.md) | 資産 | データの所在と前処理 |
-| [README.md](README.md) | 入口 | 人間向けの概要・手順 |
+| このファイル | 毎回 | 作業の規約 |
+| [.claude/skills/](.claude/skills/) | 該当する作業のとき | 手順 |
+| [docs/adr/](docs/adr/README.md) | 判断の根拠を探すとき | 設計判断と経緯・測定の詳細 |
+| [docs/ROADMAP.md](docs/ROADMAP.md) | 着手を決めるとき | 現行構成・次の方向・候補 |
+| [docs/DATASETS.md](docs/DATASETS.md) | データを扱うとき | データの所在と前処理 |
+| [README.md](README.md) | 環境を作るとき | 概要・環境構築・ビルド |
+| [CHANGELOG.md](CHANGELOG.md) | 何が入ったか見るとき | release-pleaseが生成 |
 
-同じ情報を2文書に書かない。参照はリンクで行う。
+**文書は「誰がいつ読むか」で決める。** CLAUDE.mdは毎回、スキルは該当作業のとき、
+ADRは判断の根拠を探すとき、ROADMAPは着手を決めるときに読む。読み手のいない
+文書は作らない。同じ情報を2文書に書かない。
+
+**何が入ったかはCHANGELOG.md（release-pleaseが生成）、なぜそうしたかはADR、
+次に何をするかはROADMAPが持つ。** かつてIDEAS.md・RESULTS.md・SETUP.mdを
+別に持っていたが、2026-08-01にそれぞれROADMAP・（CHANGELOGとADR）・READMEへ
+統合した。
 
 **案は ROADMAPの候補 → ADR → 完了 の順に動く。** 着手を決めたらADRを起こして
-候補から消す。完了・棄却した案も候補には残さない（経緯と結果はADRが持つ）。
+候補から消す。完了・棄却した案も候補には残さない。
 
-ROADMAPは4節で構成する。現在地・次の方向・候補・学んだこと。**経緯の詳細は
-ADRが持ち、ROADMAPには現在の判断に要る結論だけを置く。** 過去の結論が後の測定で
-覆ったら、訂正を追記して現在地を更新する。
-
-かつてIDEAS.mdを別に持っていたが、ROADMAPの残作業と役割が重なったため2026-08-01に
-統合した。文書を分けると「どちらに書くか」の判断が毎回発生する。
-
-RESULTS.mdだけはappend-onlyで、訂正も追記で行い過去の行を書き換えない。
-時系列の記録が「いつ何を知っていたか」を示すためである。
+ROADMAPは3節で構成する。現行構成・次の方向・候補。過去の経緯は書かない。
 
 ## ADRプロセス
 
@@ -59,8 +60,8 @@ proposedで起草し、オーナーLGTMでacceptedにする。1アイデア1ADR�
   （[ADR-0109](docs/adr/0109-reference-parity.md)）
 - 既定条件: `--tc 10+0.1 --concurrency 8 --adjudicate 2000,8`、
   elo0=0、elo1=5、α=β=0.05
-- 結果（対局数、W-D-L、Elo±CI、LLR）をコミットメッセージと
-  RESULTS.mdに記録する
+- 結果（対局数、W-D-L、Elo±CI、LLR）をコミットメッセージへ書く。
+  `SPRT:` トレーラがCHANGELOGへ載り、詳細はADRが持つ
 
 **既定条件で測れない変更がある。** 時間管理は参照実装の既定値が実戦の持ち時間
 （floodgateの300+10）を前提にしており、10+0.1では床が配分を支配する。条件を
@@ -129,7 +130,14 @@ MAJOR（選手権への参加。次回2027年5月を1.0.0）は
 - コミット前に `cargo fmt` を必須とする（CIが `rustfmt --check` を強制）
 - 棋力が変わる変更には `SPRT:` トレーラを付ける。書式は
   `SPRT: <Elo> [<CI下限>,<CI上限>] <対局数>games <H0|H1>`。
-  `Co-Authored-By` と同じ位置に書く。RESULTS.mdへの転記元になる
+  `Co-Authored-By` と同じ位置に書く。release-pleaseがCHANGELOGへ載せる
+
+## テスト
+
+**CIはローカルより遅い。時間に依存するテストを書かない。** `sleep` で待つと
+遅い環境で落ちる。待つならポーリングにし、判定はマシンの速度に依存しない量で
+行う。「反復深化が再起動したか」は経過時間ではなく「同じ深さの確定infoが2回
+出たか」で判定できる。
 
 ## ビルド
 

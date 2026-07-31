@@ -402,7 +402,7 @@ goをまたぐ記憶はbestPreviousAverageScoreとpreviousTimeReduction
 S:1986）。timeReductionのロジスティック化（S:1981-1983）。
 
 deltaの評価値依存項は、評価値が大きいほど窓外れが増える現象
-（[RESULTS.md](../RESULTS.md)）に直接効く。
+（RESULTS.md（当時の計測記録。現在はCHANGELOGとADRが持つ））に直接効く。
 
 ### G10: 定跡・投票・実務オプション
 

@@ -33,7 +33,7 @@ floodgateの300+10と相似比（持ち時間/加算 = 30）を揃えた30+1で
 振れており、読み負けている。
 
 floodgateの負け11局が「105手以上・終盤10手の消費7〜9秒」だった事実
-（[RESULTS.md](../RESULTS.md)）と同じ形である。
+（RESULTS.md（当時の計測記録。現在はCHANGELOGとADRが持つ））と同じ形である。
 
 ### 軸との関係
 
@@ -185,7 +185,7 @@ optimumがNoneの経路を通らないため、固定深さのノード数は完
 終盤0.8段の得を、どちらが重いかはSPRTで決める。
 
 なお `MaxMovesToDraw` による分母の縮みは158手以降でしか働かない。
-対局長の中央値は125手（[RESULTS.md](../RESULTS.md)の直近SPRT）なので、
+対局長の中央値は125手（RESULTS.md（当時の計測記録。現在はCHANGELOGとADRが持つ）の直近SPRT）なので、
 典型的な対局で効いているのは序中盤の温存だけである。
 
 SPRTは[ADR-0028](0028-pruning-extensions.md)の既定条件で行った。
