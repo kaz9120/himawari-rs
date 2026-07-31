@@ -1,6 +1,6 @@
 # 0118: 反復深化とaspirationを参照実装へ揃える（G9）
 
-- Status: proposed
+- Status: accepted
 - Date: 2026-07-31
 - 関連ADR: [0109](0109-reference-parity.md), [0059](0059-easy-move-scaling.md), [0062](0062-node-effort.md), [0031](0031-lazy-smp.md), [0117](0117-g8-ponder.md), [0074](0074-feature-verification.md)
 
@@ -142,9 +142,16 @@ highBestMoveEffort 0.96 である。
 
 ## SPRT
 
-（結果は判定後に追記する）
+```
+H1採択 | 1154局 | +614 =109 -431 | Elo +55.6 [+36.6,+74.8] | LLR +2.92
+```
 
-条件は床を外す（`MinimumThinkingTime=1`・`RoundUpToFullSecond=false`）。既定の
+**+55.6 Eloで採択した。** 探索の群ではG2（+124.0）・G3（+95.2）・G1（+88.5）に
+次ぐ。MEMORY.mdが「次の本命」と記録していた見立てが当たった。
+
+### 条件
+
+床を外す（`MinimumThinkingTime=1`・`RoundUpToFullSecond=false`）。既定の
 2000は10+0.1で成立しない（[ADR-0116](0116-g7-timeman.md)）。[ADR-0117](0117-g8-ponder.md)が
 300を選んだのは `set_search_end` の `t2` 項を残すためで、この群はponderを
 使わないので `t2` は効かない。
@@ -155,4 +162,28 @@ highBestMoveEffort 0.96 である。
 
 ## Consequences
 
-（判定後に書く）
+**MEMORY.mdの見立てが当たった。** 2026-07-29に「aspirationの窓外れ（評価値が
+大きいほど再探索が増える）が次の本命」と記録していた。+55.6はその見立てを
+裏づける。
+
+**効いたのは評価値の大きい局面である。** 2500以上の帯でノードが1/27になる。
+序盤の互角な局面ではむしろ窓外れが増えるが（2.46→5.39）、ノード数は増えない。
+勝敗が決まる終盤で深く読めるようになったことが効いたと読める。
+
+思考時間の5係数化で実効深さが2.9ply深くなった（14.22→17.11）。時間を5.6%多く
+使うが、それ以上に深く読む。
+
+**`increaseDepth` でinfoのdepthが名目値になった。** 名目19.93に対し実効17.11で、
+GUI表示の深さが実際より深く出る。参照実装も同じ挙動なので揃えたが、floodgateの
+棋譜を読むときはこの差を念頭に置く。
+
+[ADR-0059](0059-easy-move-scaling.md)の3係数は置き換えた。+69.3を得た機能だが、
+参照実装の5係数がそれを含む形で上回った。[ADR-0062](0062-node-effort.md)の
+`effort` も1周ごとの集計からgo全体の累計へ変えた。**追従が過去の採択を
+上書きする2例目である**（1例目は[ADR-0115](0115-g6-qsearch.md)が
+[ADR-0100](0100-movepick-argmax-simd.md)をsupersededにした件）。
+
+`threadIdx%8` の多様化はThreads=1では効かない。既定が1なので、この群の+55.6に
+多様化の寄与は含まれない。**多様化だけを測るなら `Threads=4` で追試する。**
+[ADR-0031](0031-lazy-smp.md)が「多様化しない案B」を選んだ判断を見直す材料に
+なる。
