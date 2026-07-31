@@ -27,16 +27,15 @@ himawari-rsで作業するエージェントの規約。詳細は各文書へリ
 | 文書 | 読むとき | 持つ情報 |
 |---|---|---|
 | このファイル | 毎回 | 作業の規約 |
-| [.claude/skills/](.claude/skills/) | 該当する作業のとき | 手順 |
 | [docs/adr/](docs/adr/README.md) | 判断の根拠を探すとき | 設計判断と経緯・測定の詳細 |
 | [docs/ROADMAP.md](docs/ROADMAP.md) | 着手を決めるとき | 現行構成・次の方向・候補 |
 | [docs/DATASETS.md](docs/DATASETS.md) | データを扱うとき | データの所在と前処理 |
 | [README.md](README.md) | 環境を作るとき | 概要・環境構築・ビルド |
 | [CHANGELOG.md](CHANGELOG.md) | 何が入ったか見るとき | release-pleaseが生成 |
 
-**文書は「誰がいつ読むか」で決める。** CLAUDE.mdは毎回、スキルは該当作業のとき、
-ADRは判断の根拠を探すとき、ROADMAPは着手を決めるときに読む。読み手のいない
-文書は作らない。同じ情報を2文書に書かない。
+**文書は「誰がいつ読むか」で決める。** このファイルは毎回、ADRは判断の根拠を
+探すとき、ROADMAPは着手を決めるときに読む。読み手のいない文書は作らない。
+同じ情報を2文書に書かない。
 
 **何が入ったかはCHANGELOG.md（release-pleaseが生成）、なぜそうしたかはADR、
 次に何をするかはROADMAPが持つ。** かつてIDEAS.md・RESULTS.md・SETUP.mdを
