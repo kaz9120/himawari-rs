@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.27.6](https://github.com/kaz9120/himawari-rs/compare/v0.27.5...v0.27.6) (2026-08-01)
+
+
+### その他の変更
+
+* 探索本体を責務ごとに切り出す（ADR-0125） ([#160](https://github.com/kaz9120/himawari-rs/issues/160)) ([3ef7302](https://github.com/kaz9120/himawari-rs/commit/3ef7302e42bea55f69746f6fd5ddb81f9a368d05))
+
 ## [0.27.5](https://github.com/kaz9120/himawari-rs/compare/v0.27.4...v0.27.5) (2026-08-01)
 
 
