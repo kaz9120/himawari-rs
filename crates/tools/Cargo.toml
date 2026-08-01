@@ -45,10 +45,6 @@ name = "book"
 path = "src/bin/book.rs"
 
 [[bin]]
-name = "train"
-path = "src/bin/train/main.rs"
-
-[[bin]]
 name = "bench"
 path = "src/bin/bench.rs"
 

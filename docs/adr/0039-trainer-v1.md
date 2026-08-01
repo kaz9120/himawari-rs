@@ -1,6 +1,6 @@
 # 0039: 学習器v1（教師あり）
 
-- Status: accepted（2026-07-20オーナー承認。基本は全部Rustで完結させる方針）
+- Status: superseded（[ADR-0040](0040-training-infra-v2.md)がPyTorchへ移行し、2026-08-01に実装を削除）
 - Date: 2026-07-20
 - 関連ADR: [0034](0034-nnue-architecture.md), [0036](0036-nnue-quantization-simd.md), [0037](0037-nnue-file-format.md), [0038](0038-training-data-format.md)
 
@@ -75,3 +75,20 @@ RL・世代ループ・多ヘッド化は後続ADRに送る。
   利用を別ADRで再検討する
 - 学習器と推論器で同じ特徴抽出コード（engineのnnueモジュール）を
   共有するため、特徴のバグは外部照合済みの推論側で抑えられている
+
+## 2026-08-01: 実装を削除した
+
+[ADR-0040](0040-training-infra-v2.md)はPyTorchへ移すにあたり、Rust学習器を
+「勾配・量子化の参照実装」として残すと決めた。**その役割は果たされなかった。**
+
+- 生成されたネットは0個である。`data/nets/` の全ネットが `train-v2-pytorch` 由来
+- PyTorch実装と突き合わせる仕組みが作られなかった。`crates/tools/src/bin/train/` の
+  テスト3件はいずれもRust実装の内部整合（数値微分との勾配一致、小データへの過学習、
+  量子化とfloatの一致）で、Python側とは比べていない
+- `training/test_forward.py` はdocコメントに「Rust参照実装との順伝播一致テスト」と
+  書いてあるが、実装はPythonのfloatと量子化模倣の比較で、Rustを呼んでいない
+- 参照は `crates/tools/Cargo.toml` の `[[bin]]` だけで、docs・scripts・CIからゼロ
+
+1212行を消した。**参照実装は、突き合わせて初めて参照実装になる。** 突き合わせる
+仕組みがないまま置いておくと、実装が古びても誰も気づかない。必要になれば履歴から
+戻せる（2026-08-01オーナー判断）。
