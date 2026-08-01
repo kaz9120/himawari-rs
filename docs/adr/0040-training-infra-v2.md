@@ -54,7 +54,9 @@ Rustに残すもの:
 - 推論エンジン（engine crateのnnueモジュール）
 - PSVツール（psv shuffle, psv head, psv stat）
 - SPRT対局（selfplay）
-- Rust学習器（勾配・量子化の参照実装。ADR-0039の方針どおり）
+- ~~Rust学習器（勾配・量子化の参照実装。ADR-0039の方針どおり）~~
+  → 2026-08-01に削除した。突き合わせる仕組みを作らないまま使われなくなった
+  （[ADR-0039](0039-trainer-v1.md)の追記を参照）
 
 境界はPSV形式（入力、ADR-0038）と.hmwr形式（出力、ADR-0037）。
 両形式ともPython側でも読み書きを実装し、Rust実装との
