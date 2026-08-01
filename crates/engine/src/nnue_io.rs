@@ -232,67 +232,63 @@ pub fn load(r: &mut impl Read) -> Result<(NnueNetwork, String), String> {
     ))
 }
 
-/// 小さい構成のファイルを読み、いまのビルド構成へゼロ埋めで広げる
-/// （ADR-0127）。
+/// 別の構成のファイルを読み、いまのビルド構成へ合わせる（ADR-0127）。
 ///
-/// 足した次元の重みとバイアスをすべてゼロにすると、その出力はclipped
-/// ReLUで0になり、受け取る側の列もゼロなので積和に効かない。**評価値は
-/// 元のネットと完全に一致する。** 構成だけを変えて探索木を揃えられるので、
-/// 速度の差だけを取り出せる。
-pub fn load_expanding(r: &mut impl Read) -> Result<(NnueNetwork, String), String> {
+/// **広げるときは評価値が元と完全に一致する。** 足した次元の重みと
+/// バイアスをすべてゼロにすると、その出力はclipped ReLUで0になり、
+/// 受け取る側の列もゼロなので積和に効かない。構成だけを変えて探索木を
+/// 揃えられるので、速度の差だけを取り出せる。
+///
+/// 切り詰めるときは重みを捨てるので**評価値が変わる。** それでも重みの
+/// 大きさは学習済みのままなので、活性が飽和した乱数ネットよりは現実に
+/// 近い探索木になる。小さい構成を基準にして比べたいときに使う。
+pub fn load_resized(r: &mut impl Read) -> Result<(NnueNetwork, String), String> {
     let (dims, lineage, body) = read_header(r)?;
     let [ft_in, src_ft, src_l1, src_l2] = dims;
     if ft_in != FT_IN {
         return Err(format!("FT入力が違う: ファイル{ft_in} 実装{FT_IN}"));
     }
-    for (name, src, dst) in [
-        ("FT", src_ft, FT_OUT),
-        ("L1", src_l1, L1_OUT),
-        ("L2", src_l2, L2_OUT),
-    ] {
-        if src > dst {
-            return Err(format!(
-                "{name}を{src}から{dst}へ縮められない。広げる向きにだけ使える"
-            ));
-        }
-    }
 
-    /// 行優先の行列を、行数と列幅の両方を広げて写す。
-    fn expand_rows<T: Copy + Default>(
+    /// 行優先の行列を、行数と列幅を合わせて写す。余りはゼロのまま。
+    fn fit_rows<T: Copy + Default>(
         src: &[T],
         src_cols: usize,
         dst_rows: usize,
         dst_cols: usize,
+        used_cols: usize,
     ) -> Vec<T> {
         let mut v = vec![T::default(); dst_rows * dst_cols];
-        for (i, row) in src.chunks_exact(src_cols).enumerate() {
-            v[i * dst_cols..i * dst_cols + src_cols].copy_from_slice(row);
+        let cols = src_cols.min(used_cols);
+        for (i, row) in src.chunks_exact(src_cols).take(dst_rows).enumerate() {
+            v[i * dst_cols..i * dst_cols + cols].copy_from_slice(&row[..cols]);
         }
         v
     }
 
-    /// 末尾をゼロで埋めて長さを合わせる。
-    fn extend<T: Copy + Default>(mut src: Vec<T>, len: usize) -> Vec<T> {
+    /// 長さを合わせる。伸ばすぶんはゼロで埋める。
+    fn fit<T: Copy + Default>(mut src: Vec<T>, len: usize) -> Vec<T> {
         src.resize(len, T::default());
         src
     }
 
     let mut cur = Cursor::new(&body);
-    let ft_b = extend(cur.i16v(src_ft)?, FT_OUT);
-    let ft_w = expand_rows(&cur.i16v(FT_IN * src_ft)?, src_ft, FT_IN, FT_OUT);
-    let b2 = extend(cur.i32v(src_l1)?, L1_OUT);
+    let ft_b = fit(cur.i16v(src_ft)?, FT_OUT);
+    let ft_w = fit_rows(&cur.i16v(FT_IN * src_ft)?, src_ft, FT_IN, FT_OUT, FT_OUT);
+    let b2 = fit(cur.i32v(src_l1)?, L1_OUT);
     // 隠れ層1の入力は2視点の連結なので、視点ごとに写す
     let src_w2 = cur.i8v(src_l1 * src_ft * 2)?;
     let mut w2 = vec![0i8; L1_OUT * CONCAT];
-    for (o, row) in src_w2.chunks_exact(src_ft * 2).enumerate() {
+    let ft_cols = src_ft.min(FT_OUT);
+    for (o, row) in src_w2.chunks_exact(src_ft * 2).take(L1_OUT).enumerate() {
         for half in 0..2 {
             let dst = o * CONCAT + half * FT_OUT;
-            w2[dst..dst + src_ft].copy_from_slice(&row[half * src_ft..(half + 1) * src_ft]);
+            w2[dst..dst + ft_cols].copy_from_slice(&row[half * src_ft..half * src_ft + ft_cols]);
         }
     }
-    let b3 = extend(cur.i32v(src_l2)?, L2_OUT);
-    let w3 = expand_rows(&cur.i8v(src_l2 * src_l1)?, src_l1, L2_OUT, L1_PAD);
-    let w4 = extend(cur.i8v(src_l2)?, L2_OUT);
+    let b3 = fit(cur.i32v(src_l2)?, L2_OUT);
+    // 列幅はL1_PADだが、値を置くのはL1_OUTまで（残りは常にゼロ）
+    let w3 = fit_rows(&cur.i8v(src_l2 * src_l1)?, src_l1, L2_OUT, L1_PAD, L1_OUT);
+    let w4 = fit(cur.i8v(src_l2)?, L2_OUT);
     let b4 = cur.i32v(1)?[0];
     cur.expect_end()?;
 
@@ -307,7 +303,7 @@ pub fn load_expanding(r: &mut impl Read) -> Result<(NnueNetwork, String), String
             w4,
             b4,
         },
-        format!("{lineage} / expanded to {ARCH}"),
+        format!("{lineage} / resized to {ARCH}"),
     ))
 }
 
