@@ -2,22 +2,58 @@
 """samplyのプロファイルからself時間の上位を出す（ADR-0099）。
 
 関数単位とソース行単位の2つを出す。行番号はデバッグ情報が要る
-（CARGO_PROFILE_RELEASE_DEBUG=1 でビルドする）。
+（CARGO_PROFILE_RELEASE_DEBUG=1 でビルドする）。ソース行の解決には
+atos を使うため、macOS上でしか行番号は出ない。
 
-使い方:
-  scripts/profile-report.py <profile.json.gz> [バイナリ] [表示件数]
+終了コード: 0=成功、2=引数エラー、3=実行時エラー（ADR-0122）。
 """
 
+import argparse
 import bisect
 import gzip
 import json
+import platform
 import re
+import shutil
 import subprocess
 import sys
 from collections import defaultdict
 
 # Mach-Oの既定のロードアドレス。atosへ渡すRVAの基準
 MACHO_VM_BASE = 0x100000000
+
+
+def error(message):
+    """エラーメッセージを規約の書式でstderrへ出す。"""
+    print(f"エラー: {message}", file=sys.stderr)
+
+
+class ArgParser(argparse.ArgumentParser):
+    """引数エラーを「エラー: ...」の書式・終了コード2に揃える。"""
+
+    def error(self, message):
+        error(message)
+        sys.exit(2)
+
+
+def build_parser():
+    parser = ArgParser(
+        prog="profile-report.py",
+        description="samplyのプロファイルからself時間の上位を出す（ADR-0099）。",
+        epilog="行番号はデバッグ情報が要る（CARGO_PROFILE_RELEASE_DEBUG=1 でビルドする）。"
+        "ソース行の解決はmacOS上のatosに限る。",
+    )
+    parser.add_argument("profile", help="samplyのプロファイル（*.json.gz）")
+    parser.add_argument(
+        "binary",
+        nargs="?",
+        default=None,
+        help="デバッグ情報付きバイナリ。省略するとソース行は出さない",
+    )
+    parser.add_argument(
+        "--top", type=int, default=20, help="上位何件を表示するか（既定20）"
+    )
+    return parser
 
 
 def load_symbols(syms_path):
@@ -52,6 +88,12 @@ def make_resolver(lib_syms):
 def hottest_thread(profile):
     """サンプル数が最も多いスレッド（＝探索スレッド）を返す。"""
     return max(profile["threads"], key=lambda t: len(t["samples"]["stack"]))
+
+
+def sample_hz(profile):
+    """プロファイルのサンプリング周波数をmeta.interval（ミリ秒）から求める。"""
+    interval_ms = profile["meta"]["interval"]
+    return 1000.0 / interval_ms
 
 
 def collect(profile, resolve):
@@ -92,47 +134,48 @@ def collect(profile, resolve):
 
 
 def resolve_lines(binary, addrs):
-    """アドレス -> "関数名 (file.rs:123)" をatosで引く。"""
-    lines = {}
+    """アドレス -> "関数名 (file.rs:123)" をatosで引く。
+
+    戻り値は (アドレス -> 行文字列の辞書, 諦めた理由)。
+    解決を試みて空だった場合と最初から試みなかった場合を区別するため、
+    諦めた理由はNoneでない文字列で返す。
+    """
     if not binary or not addrs:
-        return lines
+        return {}, None
+    system = platform.system()
+    if system != "Darwin":
+        return {}, f"atosはmacOS専用。{system}では実行できない"
+    if shutil.which("atos") is None:
+        return {}, "atosが見つからない（Xcodeコマンドラインツールが要る）"
+
+    lines = {}
+    arch = platform.machine()
     addrs = sorted(addrs)
     for i in range(0, len(addrs), 2000):
         chunk = addrs[i : i + 2000]
-        try:
-            out = subprocess.run(
-                ["atos", "-o", binary, "-arch", "arm64", "-l", hex(MACHO_VM_BASE)]
-                + [hex(MACHO_VM_BASE + a) for a in chunk],
-                capture_output=True,
-                text=True,
-                check=False,
-            ).stdout.splitlines()
-        except FileNotFoundError:
-            return lines
+        out = subprocess.run(
+            ["atos", "-o", binary, "-arch", arch, "-l", hex(MACHO_VM_BASE)]
+            + [hex(MACHO_VM_BASE + a) for a in chunk],
+            capture_output=True,
+            text=True,
+            check=False,
+        ).stdout.splitlines()
         for a, line in zip(chunk, out):
             lines[a] = line
-    return lines
+    return lines, None
 
 
-def main():
-    if len(sys.argv) < 2:
-        print(__doc__, file=sys.stderr)
-        return 2
-    prof_path = sys.argv[1]
-    binary = sys.argv[2] if len(sys.argv) > 2 else None
-    topn = int(sys.argv[3]) if len(sys.argv) > 3 else 20
-
-    syms_path = prof_path.replace(".json.gz", ".json.syms.json")
-    with gzip.open(prof_path) as f:
-        profile = json.load(f)
-    resolve = make_resolver(load_symbols(syms_path))
-    counts, total = collect(profile, resolve)
+def report(profile, binary, topn):
+    """レポート本文を組み立てて標準出力へ書く。成功時は0を返す。"""
+    resolve = make_resolver(load_symbols(profile["syms_path"]))
+    counts, total = collect(profile["data"], resolve)
+    hz = sample_hz(profile["data"])
 
     by_func = defaultdict(int)
     for (_, _, name), v in counts.items():
         by_func[name] += v
 
-    print(f"総サンプル {total}（2000Hz、約{total / 2000:.1f}秒）")
+    print(f"総サンプル {total}（{hz:g}Hz、約{total / hz:.1f}秒）")
     print()
     print(f"--- self時間の上位{topn}（関数） ---")
     print("| 箇所 | self時間 |")
@@ -142,10 +185,16 @@ def main():
 
     # 自前バイナリのアドレスをソース行へ落とす
     own = [a for (lib, a, _) in counts if lib and a is not None and lib != "dyld"]
-    lines = resolve_lines(binary, own)
-    if not any(re.search(r"\([^()]+:\d+\)$", v) for v in lines.values()):
+    lines, skip_reason = resolve_lines(binary, own)
+    has_lines = any(re.search(r"\([^()]+:\d+\)$", v) for v in lines.values())
+    if not has_lines:
         print()
-        print("（行番号なし。CARGO_PROFILE_RELEASE_DEBUG=1 でビルドすると出る）")
+        if skip_reason:
+            print(f"（行番号なし。{skip_reason}）")
+        elif binary is None:
+            print("（行番号なし。バイナリを指定すると出る）")
+        else:
+            print("（行番号なし。CARGO_PROFILE_RELEASE_DEBUG=1 でビルドすると出る）")
         return 0
 
     by_line = defaultdict(int)
@@ -161,6 +210,25 @@ def main():
     for (name, loc), v in sorted(by_line.items(), key=lambda x: -x[1])[:topn]:
         print(f"{v * 100 / total:6.2f}%  {loc:24s} {name}")
     return 0
+
+
+def main(argv=None):
+    parser = build_parser()
+    args = parser.parse_args(argv)
+
+    syms_path = args.profile.replace(".json.gz", ".json.syms.json")
+    try:
+        with gzip.open(args.profile) as f:
+            data = json.load(f)
+    except (OSError, gzip.BadGzipFile, json.JSONDecodeError) as e:
+        error(f"プロファイルを読めない: {args.profile}（{e}）")
+        return 3
+
+    try:
+        return report({"data": data, "syms_path": syms_path}, args.binary, args.top)
+    except (OSError, json.JSONDecodeError, KeyError) as e:
+        error(f"プロファイルの解析に失敗した: {e}")
+        return 3
 
 
 if __name__ == "__main__":
