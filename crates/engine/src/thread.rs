@@ -380,22 +380,8 @@ fn spawn_worker(
                     worker.set_draw_value(j.opts.draw_value_black, j.opts.draw_value_white);
                     worker.memory = memory;
                     let result = worker.iterate(&mut |info| {
-                        let Some(out) = &on_line else { return };
-                        match info {
-                            SearchInfo::CurrMove { depth, mv } => {
-                                out(&format!("info depth {} currmove {}", depth, mv.to_usi()));
-                            }
-                            SearchInfo::Iteration(info) => {
-                                out(&format_pv_line(&info, ""));
-                            }
-                            // fail high/lowは確定値でないことを示す（ADR-0091）
-                            SearchInfo::Bound(info, b) => {
-                                let suffix = match b {
-                                    ScoreBound::Lower => " lowerbound",
-                                    ScoreBound::Upper => " upperbound",
-                                };
-                                out(&format_pv_line(&info, suffix));
-                            }
+                        if let Some(out) = &on_line {
+                            ThreadPool::emit_info(out, info);
                         }
                     });
                     // history類とgoをまたぐ記憶を回収して次のgoへ持ち越す
@@ -433,77 +419,15 @@ fn spawn_worker(
                             }
                             g.iter_mut().filter_map(|r| r.take()).collect()
                         };
-                        // 投票で最終手を選ぶ（S:1239-1246）。MultiPVや
-                        // go depthのときは参照実装も投票しない
-                        let chosen = if thread_count > 1
-                            && j.opts.multi_pv == 1
-                            && j.limits.depth == 0
-                            && all.iter().all(|r| !r.pv.is_empty())
-                        {
-                            get_best_thread(&all)
-                        } else {
-                            0
-                        };
-                        let result = &all[chosen];
-                        if chosen != 0 {
-                            // 次のgoへ持ち越す値もbest threadのものにする
-                            // （S:1249-1253）
-                            memory.best_previous_score = result.root_score;
-                            memory.best_previous_average_score = result.root_average_score;
-                        }
-                        if let Some(out) = &on_line {
-                            // メイン以外が選ばれたら、そのスレッドのPVを
-                            // 出し直す（S:1332-1348）。既に出したPVは
-                            // メインのものなので指し手と食い違う
-                            if chosen != 0 {
-                                out(&format!("info string best thread = {chosen}"));
-                                out(&format_pv_line(
-                                    &IterInfo {
-                                        depth: result.completed_depth,
-                                        seldepth: result.completed_depth,
-                                        multipv: 0,
-                                        score: result.score,
-                                        pv: result.pv.clone(),
-                                        nodes: shared.nodes.load(Ordering::Relaxed),
-                                        elapsed_ms: j
-                                            .limits
-                                            .start
-                                            .map(|s| s.elapsed().as_millis() as u64)
-                                            .unwrap_or(0),
-                                        hashfull: shared.tt.hashfull(),
-                                    },
-                                    "",
-                                ));
-                            }
-                            // 投了スコアを下回っていたら投了する
-                            // （S:1289-1298、S:1337-1342）。定跡ヒットなどの
-                            // search_skipped経路では判定しないが、本エンジンは
-                            // 定跡をUSI層で引くのでここは常に通常探索である
-                            let resign_score = if result.score == -VALUE_INFINITE {
-                                VALUE_ZERO
-                            } else {
-                                result.score
-                            };
-                            if result.root_score != -VALUE_INFINITE
-                                && resign_score <= -j.opts.resign_value
-                            {
-                                out(&format!(
-                                    "info string resign by ResignValue: score {resign_score}"
-                                ));
-                                out("bestmove resign");
-                            } else {
-                                // ponderhitでも探索を継続するので、ここで得た結論が
-                                // そのまま本番の結論になる。常に出してよい
-                                let ponder_hint = if j.opts.ponder
-                                    && result.ponder != himawari_core::Move::NONE
-                                {
-                                    format!(" ponder {}", result.ponder.to_usi())
-                                } else {
-                                    String::new()
-                                };
-                                out(&format!("bestmove {}{}", result.best.to_usi(), ponder_hint));
-                            }
-                        }
+                        ThreadPool::conclude(
+                            on_line.as_ref(),
+                            &shared,
+                            &all,
+                            &j.opts,
+                            &j.limits,
+                            thread_count,
+                            &mut memory,
+                        );
                     }
                     let mut idle = ctl2.idle.lock().expect("idle lock");
                     *idle = true;
@@ -519,6 +443,106 @@ fn spawn_worker(
 }
 
 impl ThreadPool {
+    /// 探索中の報告をUSIのinfo行へ落とす（ADR-0086, 0091, 0125）。
+    /// 探索スレッドはこの関数を呼ぶだけで、プロトコルを知らない。
+    fn emit_info(out: &OnLine, info: SearchInfo) {
+        match info {
+            SearchInfo::CurrMove { depth, mv } => {
+                out(&format!("info depth {} currmove {}", depth, mv.to_usi()));
+            }
+            SearchInfo::Iteration(info) => {
+                out(&format_pv_line(&info, ""));
+            }
+            // fail high/lowは確定値でないことを示す（ADR-0091）
+            SearchInfo::Bound(info, b) => {
+                let suffix = match b {
+                    ScoreBound::Lower => " lowerbound",
+                    ScoreBound::Upper => " upperbound",
+                };
+                out(&format_pv_line(&info, suffix));
+            }
+        }
+    }
+
+    /// 全スレッドの結論から最終手を決め、bestmoveまで出す（G10, ADR-0125。
+    /// S:1239-1348）。投票・投了判定・bestmove出力の3つを行う。
+    /// 次のgoへ持ち越す記憶も、best threadのもので上書きする（S:1249-1253）。
+    fn conclude(
+        out: Option<&OnLine>,
+        shared: &Shared,
+        all: &[SearchResult],
+        opts: &EngineOptions,
+        limits: &Limits,
+        thread_count: usize,
+        memory: &mut MainMemory,
+    ) {
+        // 投票で最終手を選ぶ（S:1239-1246）。MultiPVや
+        // go depthのときは参照実装も投票しない
+        let chosen = if thread_count > 1
+            && opts.multi_pv == 1
+            && limits.depth == 0
+            && all.iter().all(|r| !r.pv.is_empty())
+        {
+            get_best_thread(all)
+        } else {
+            0
+        };
+        let result = &all[chosen];
+        if chosen != 0 {
+            // 次のgoへ持ち越す値もbest threadのものにする
+            // （S:1249-1253）
+            memory.best_previous_score = result.root_score;
+            memory.best_previous_average_score = result.root_average_score;
+        }
+        let Some(out) = out else { return };
+        // メイン以外が選ばれたら、そのスレッドのPVを
+        // 出し直す（S:1332-1348）。既に出したPVは
+        // メインのものなので指し手と食い違う
+        if chosen != 0 {
+            out(&format!("info string best thread = {chosen}"));
+            out(&format_pv_line(
+                &IterInfo {
+                    depth: result.completed_depth,
+                    seldepth: result.completed_depth,
+                    multipv: 0,
+                    score: result.score,
+                    pv: result.pv.clone(),
+                    nodes: shared.nodes.load(Ordering::Relaxed),
+                    elapsed_ms: limits
+                        .start
+                        .map(|s| s.elapsed().as_millis() as u64)
+                        .unwrap_or(0),
+                    hashfull: shared.tt.hashfull(),
+                },
+                "",
+            ));
+        }
+        // 投了スコアを下回っていたら投了する
+        // （S:1289-1298、S:1337-1342）。定跡ヒットなどの
+        // search_skipped経路では判定しないが、本エンジンは
+        // 定跡をUSI層で引くのでここは常に通常探索である
+        let resign_score = if result.score == -VALUE_INFINITE {
+            VALUE_ZERO
+        } else {
+            result.score
+        };
+        if result.root_score != -VALUE_INFINITE && resign_score <= -opts.resign_value {
+            out(&format!(
+                "info string resign by ResignValue: score {resign_score}"
+            ));
+            out("bestmove resign");
+        } else {
+            // ponderhitでも探索を継続するので、ここで得た結論が
+            // そのまま本番の結論になる。常に出してよい
+            let ponder_hint = if opts.ponder && result.ponder != himawari_core::Move::NONE {
+                format!(" ponder {}", result.ponder.to_usi())
+            } else {
+                String::new()
+            };
+            out(&format!("bestmove {}{}", result.best.to_usi(), ponder_hint));
+        }
+    }
+
     /// on_lineはメインワーカーからのUSI出力行（info/bestmove）を受け取る。
     /// netがSomeならNNUE評価、Noneなら駒割評価で探索する。
     pub fn new(
