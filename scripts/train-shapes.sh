@@ -15,16 +15,19 @@ usage() {
 使い方:
   scripts/train-shapes.sh <構成> [構成...]
 
-構成は <FT>x<L1>x<L2>（例 512x16x32）。1構成あたり3億局面で約20分かかる。
+構成は <FT>x<L1>x<L2>[x<L3>]（例 512x16x32、256x32x32x32）。
+1構成あたり3億局面で50〜100分かかる。
 
 構成ごとに次を作る。
-  data/nets/train-<構成>.hmwr        学習したネット
-  training/runs/net_shape/<構成>.tsv 学習ログ（type=validの行にvalid loss）
+  data/nets/train-<構成>-s<種>.hmwr       学習したネット
+  training/runs/net_shape/<構成>-s<種>.tsv 学習ログ（type=validの行）
 結果は training/runs/registry.tsv にも1行ずつ積む。
 
-データは環境変数で変えられる。
+データと乱数種は環境変数で変えられる。
   SHAPE_TRAIN_DATA  既定 data/train/train_300M.psv
   SHAPE_VALID_DATA  既定 data/train/valid_385M.psv
+  SHAPE_SEED        既定 0。同じ構成を別の種で回すと、条件の差と初期値の
+                    差を切り分けられる（ADR-0127）
 USAGE
 }
 
@@ -42,6 +45,7 @@ cd "$REPO_ROOT"
 
 DATA="${SHAPE_TRAIN_DATA:-data/train/train_300M.psv}"
 VALID="${SHAPE_VALID_DATA:-data/train/valid_385M.psv}"
+SEED="${SHAPE_SEED:-0}"
 [[ -f "$DATA" ]] || die "学習データがない: ${DATA}"
 [[ -f "$VALID" ]] || die "検証データがない: ${VALID}"
 mkdir -p training/runs/net_shape data/nets
@@ -53,8 +57,8 @@ log_info "学習データ: ${DATA}"
 log_info "検証データ: ${VALID}"
 
 for spec in "$@"; do
-	if [[ ! "$spec" =~ ^[0-9]+x[0-9]+x[0-9]+$ ]]; then
-		die "構成の書き方が違う: ${spec}（<FT>x<L1>x<L2>）"
+	if [[ ! "$spec" =~ ^[0-9]+x[0-9]+x[0-9]+(x[0-9]+)?$ ]]; then
+		die "構成の書き方が違う: ${spec}（<FT>x<L1>x<L2>[x<L3>]）"
 	fi
 
 	log_info "PyO3拡張をビルド: ${spec}"
@@ -73,12 +77,13 @@ for spec in "$@"; do
 	python3 training/train.py \
 		--data "$DATA" \
 		--valid "$VALID" \
-		--out "data/nets/train-${spec}.hmwr" \
+		--out "data/nets/train-${spec}-s${SEED}.hmwr" \
 		--batch-loader --dense-ft --factorized \
-		--log-file "training/runs/net_shape/${spec}.tsv" \
+		--seed "$SEED" \
+		--log-file "training/runs/net_shape/${spec}-s${SEED}.tsv" \
 		--registry training/runs/registry.tsv \
-		--name "shape_${spec}" \
-		--notes "ネットワーク構成の比較（ADR-0127）: ${spec}"
+		--name "shape_${spec}_s${SEED}" \
+		--notes "ネットワーク構成の比較（ADR-0127）: ${spec}、seed ${SEED}"
 done
 
 log_step "完了"

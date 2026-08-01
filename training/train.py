@@ -73,6 +73,12 @@ def main():
     p.add_argument("--notes", default="", help="Notes for registry")
     p.add_argument("--device", default="cpu")
     p.add_argument(
+        "--seed",
+        type=int,
+        help="モデル初期化とデータ順序の乱数種。指定しないとPyTorchが実行ごとに"
+             "違う種を引くため、同じ条件でもvalid lossが動く（ADR-0127）",
+    )
+    p.add_argument(
         "--mmap",
         action="store_true",
         help="学習データをmmapで開く（RAMに載らない規模用。速度は落ちる）",
@@ -97,11 +103,17 @@ def main():
     device = torch.device(args.device)
     print(f"Device: {device}", file=sys.stderr)
 
+    # 種を固定しないと初期化とデータ順が実行ごとに変わり、条件の差と
+    # 初期値の差を分けられない（ADR-0127）
+    if args.seed is not None:
+        torch.manual_seed(args.seed)
+        print(f"Seed: {args.seed}", file=sys.stderr)
+
     if args.batch_loader:
         train_loader = PsvBatchLoader(
             args.data, args.batch, lambda_=args.lambda_,
             score_limit=args.score_limit, mmap=args.mmap, shuffle=True,
-            score_clamp=args.score_clamp,
+            score_clamp=args.score_clamp, seed=args.seed or 0,
         )
         data_n = train_loader.n
     else:
@@ -150,8 +162,11 @@ def main():
         model.ft_bias,
         model.l2.weight, model.l2.bias,
         model.l3.weight, model.l3.bias,
-        model.l4.weight, model.l4.bias,
+        model.out.weight, model.out.bias,
     ]
+    # 4層構成でだけ持つ隠れ層3（ADR-0127）
+    if model.l4 is not None:
+        dense_params.extend([model.l4.weight, model.l4.bias])
     ft_params = [model.ft.weight]
     if model.ft_p is not None:
         ft_params.append(model.ft_p.weight)
