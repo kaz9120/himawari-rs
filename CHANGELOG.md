@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.27.11](https://github.com/kaz9120/himawari-rs/compare/v0.27.10...v0.27.11) (2026-08-01)
+
+
+### その他の変更
+
+* 教師信号の詰みスコアを測り、現行の素通しを維持する（ADR-0126） ([#171](https://github.com/kaz9120/himawari-rs/issues/171)) ([28e8f9f](https://github.com/kaz9120/himawari-rs/commit/28e8f9f575ae02ea2c1bafbb206f4dda63fb20da))
+
 ## [0.27.10](https://github.com/kaz9120/himawari-rs/compare/v0.27.9...v0.27.10) (2026-08-01)
 
 
