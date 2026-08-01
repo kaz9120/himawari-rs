@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.27.8](https://github.com/kaz9120/himawari-rs/compare/v0.27.7...v0.27.8) (2026-08-01)
+
+
+### ドキュメント
+
+* 整理と高速化の一巡をROADMAPへ反映する ([#165](https://github.com/kaz9120/himawari-rs/issues/165)) ([a921f8a](https://github.com/kaz9120/himawari-rs/commit/a921f8a70439e8b9d3046dfc5b6d9d40ab9ba35e))
+
 ## [0.27.7](https://github.com/kaz9120/himawari-rs/compare/v0.27.6...v0.27.7) (2026-08-01)
 
 
