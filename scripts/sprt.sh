@@ -29,9 +29,16 @@ SPRTの前に機能検証を済ませること（ADR-0074）。固定深さで�
 USAGE
 }
 
+if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+	usage
+	exit 0
+fi
+
+# 引数エラーはADR-0122の規約で2。exec後にselfplayが返す2（判定に至らず）
+# とは意味が違うが、両者が発生する経路は排他的なので取り違えない
 if [[ $# -lt 3 ]]; then
 	usage
-	exit 1
+	exit 2
 fi
 
 BASELINE="$1"
@@ -40,32 +47,27 @@ NAME="$3"
 shift 3
 
 for f in "$BASELINE" "$CANDIDATE"; do
-	if [[ ! -x "$f" ]]; then
-		echo "エラー: 実行できない: $f" >&2
-		exit 3
-	fi
+	require_executable "$f"
 done
 
 if [[ ! -f "$EVAL_FILE" ]]; then
-	echo "エラー: 評価関数がない: $EVAL_FILE" >&2
-	echo "  gh release download net-v<N> -D data/nets/ で取得する" >&2
+	log_error "評価関数がない: $EVAL_FILE"
+	log_error "  gh release download net-v<N> -D data/nets/ で取得する"
 	exit 3
 fi
 
 SELFPLAY="${REPO_ROOT}/target/release/selfplay"
 if [[ ! -x "$SELFPLAY" ]]; then
-	echo "エラー: $SELFPLAY がない。cargo build --release を実行する" >&2
-	exit 3
+	die "${SELFPLAY} がない。cargo build --release を実行する"
 fi
 
 OUT_DIR="${REPO_ROOT}/data/sprt"
 mkdir -p "$OUT_DIR"
 
-echo "=== SPRT: $NAME ==="
+log_step "SPRT: $NAME"
 env_summary
-echo "baseline : $BASELINE"
-echo "candidate: $CANDIDATE"
-echo
+log_info "baseline : $BASELINE"
+log_info "candidate: $CANDIDATE"
 
 exec "$SELFPLAY" \
 	--baseline "$BASELINE" \

@@ -6,6 +6,10 @@
 # 成果物がそのマシンにしか存在しないためである。
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=./env.sh
+source "${SCRIPT_DIR}/env.sh"
+
 usage() {
 	cat <<'USAGE'
 使い方:
@@ -25,54 +29,44 @@ usage() {
 USAGE
 }
 
+if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+	usage
+	exit 0
+fi
+
 if [[ $# -lt 2 ]]; then
 	usage
-	exit 1
+	exit 2
 fi
 
 NET_PATH="$1"
 VERSION="$2"
 EXTRA_NOTE="${3:-}"
 
-if [[ ! -f "$NET_PATH" ]]; then
-	echo "エラー: ファイルがない: $NET_PATH" >&2
-	exit 1
-fi
-
-if ! [[ "$VERSION" =~ ^[0-9]+$ ]]; then
-	echo "エラー: バージョン番号は1以上の整数で指定する: $VERSION" >&2
-	exit 1
-fi
-
-if ! command -v gh >/dev/null 2>&1; then
-	echo "エラー: gh CLI が要る" >&2
-	exit 1
-fi
+require_file "$NET_PATH" "ネットファイル"
+release_validate_version "$VERSION"
 
 TAG="net-v${VERSION}"
-
-if gh release view "$TAG" >/dev/null 2>&1; then
-	echo "エラー: $TAG は既にある。番号を上げる" >&2
-	exit 1
-fi
+release_check_prereqs "$TAG"
 
 # ヘッダからlineageを読む（ADR-0037の形式）。
 #   magic 8B / version 4B / dims 12B / lineage長 4B / lineage / hash 8B / body
 LLEN=$(od -An -tu4 -j24 -N4 "$NET_PATH" | tr -d ' ')
 if [[ -z "$LLEN" || "$LLEN" -gt 4096 ]]; then
-	echo "エラー: lineage長が読めない（Himawari NNUE形式か確認する）" >&2
-	exit 1
+	die "lineage長が読めない（Himawari NNUE形式か確認する）"
 fi
 LINEAGE=$(dd if="$NET_PATH" bs=1 skip=28 count="$LLEN" 2>/dev/null)
 
 ASSET_NAME="$(basename "$NET_PATH")"
 ASSET_NAME="${ASSET_NAME%.best}"
-SIZE=$(du -h "$NET_PATH" | cut -f1)
+SIZE=$(release_file_size "$NET_PATH")
 
-TMP_ASSET="$(mktemp -d)/${ASSET_NAME}"
+TMP_ASSET_DIR="$(mktemp -d)"
+TMP_ASSET="${TMP_ASSET_DIR}/${ASSET_NAME}"
 cp "$NET_PATH" "$TMP_ASSET"
 
 NOTES_FILE="$(mktemp)"
+trap 'rm -rf "$TMP_ASSET_DIR"; rm -f "$NOTES_FILE"' EXIT
 {
 	echo "## 学習来歴"
 	echo
@@ -105,18 +99,8 @@ NOTES_FILE="$(mktemp)"
 	echo "計測の詳細は [RESULTS.md](../blob/main/docs/RESULTS.md) を参照。"
 } >"$NOTES_FILE"
 
-echo "タグ: $TAG"
-echo "アセット: $ASSET_NAME ($SIZE)"
-echo "lineage: $LINEAGE"
-echo
+log_info "タグ: $TAG"
+log_info "アセット: $ASSET_NAME ($SIZE)"
+log_info "lineage: $LINEAGE"
 
-gh release create "$TAG" "$TMP_ASSET" \
-	--title "$TAG: $ASSET_NAME" \
-	--notes-file "$NOTES_FILE" \
-	--latest=false
-
-rm -f "$NOTES_FILE"
-rm -rf "$(dirname "$TMP_ASSET")"
-
-echo
-echo "作成した: $(gh release view "$TAG" --json url --jq .url)"
+release_create "$TAG" "$TAG: $ASSET_NAME" "$NOTES_FILE" "$TMP_ASSET"

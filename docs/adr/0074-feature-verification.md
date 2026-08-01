@@ -70,11 +70,13 @@ ADR-0072はまさにこの形で、2078局を使ってから診断した。事�
 3. 他エンジンの係数を参照した場合は、参照元のスケール前提が本エンジンで
    成り立つかを実測で確かめる。理論値域の比で換算しただけでは足りない
 
-ノード数の測定は `scripts/verify-feature.sh` で行う。局面と深さを
-スクリプト側で固定し、ADRへ貼れる表を出す。
+ノード数の測定は `verify` コマンドで行う。局面と深さをツール側で固定し、
+ADRへ貼れる表を出す（2026-08-01に `scripts/verify-feature.sh` から移した。
+[ADR-0122](0122-tooling-language-split.md)）。
 
 ```
-scripts/verify-feature.sh data/bin/base-adr00NN data/bin/cand-adr00NN
+cargo run --release -p himawari-tools --bin verify -- \
+  data/bin/base-adr00NN data/bin/cand-adr00NN
 ```
 
 局面は初期局面と `openings/start_sfens_ply24.txt` の先頭3行、深さは13を

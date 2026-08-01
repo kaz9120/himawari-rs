@@ -51,3 +51,129 @@ SPRT並列度    : ${SPRT_CONCURRENCY}
 持ち時間      : ${SPRT_TC}
 SUMMARY
 }
+
+# --- 共通ログ関数 -----------------------------------------------------
+#
+# タイムスタンプは既定で付けない。release-*.sh のように数秒で終わる
+# スクリプトでは、出力を目で追うだけなので不要である。sprt-run.sh・
+# watch-*.sh のように長時間ポーリングするスクリプトだけが、source後に
+# LOG_TIMESTAMP=1 を立てて使う。
+LOG_TIMESTAMP="${LOG_TIMESTAMP:-0}"
+export LOG_TIMESTAMP
+
+# 色は端末に出しているときだけ付ける。リダイレクト先がファイルだと
+# エスケープシーケンスがそのまま文字として混ざり、後から読むログが
+# 逆に読みにくくなるため、[[ -t 1 ]] で端末かどうかを見て決める。
+if [[ -t 1 ]]; then
+	_LOG_YELLOW=$'\033[33m'
+	_LOG_RED=$'\033[31m'
+	_LOG_RESET=$'\033[0m'
+else
+	_LOG_YELLOW=""
+	_LOG_RED=""
+	_LOG_RESET=""
+fi
+
+_log_prefix() {
+	if [[ "$LOG_TIMESTAMP" == "1" ]]; then
+		printf '[%s] ' "$(date '+%H:%M:%S')"
+	fi
+}
+
+# 見出し。段落の区切りとして使う
+log_step() {
+	printf '\n%s=== %s ===\n' "$(_log_prefix)" "$1"
+}
+
+# 通常の進捗表示
+log_info() {
+	printf '%s%s\n' "$(_log_prefix)" "$1"
+}
+
+# 異常系は必ずstderrへ出す。呼び出し元での分岐を邪魔しないため
+log_warn() {
+	printf '%s%s警告: %s%s\n' "$(_log_prefix)" "$_LOG_YELLOW" "$1" "$_LOG_RESET" >&2
+}
+
+log_error() {
+	printf '%s%sエラー: %s%s\n' "$(_log_prefix)" "$_LOG_RED" "$1" "$_LOG_RESET" >&2
+}
+
+# エラーを出して終了する。終了コードは省略時3（実行時エラー、ADR-0122）
+die() {
+	log_error "$1"
+	exit "${2:-3}"
+}
+
+# --- 共通の前提チェック -------------------------------------------------
+
+require_file() {
+	local path="$1" desc="${2:-ファイル}"
+	if [[ ! -f "$path" ]]; then
+		die "${desc}がない: ${path}" 3
+	fi
+}
+
+require_executable() {
+	local path="$1"
+	if [[ ! -x "$path" ]]; then
+		die "実行できない: ${path}" 3
+	fi
+}
+
+require_command() {
+	local cmd="$1"
+	if ! command -v "$cmd" >/dev/null 2>&1; then
+		die "${cmd} コマンドが要る" 3
+	fi
+}
+
+# --- GitHub Releaseの共通処理（release-book.sh / release-net.sh） -------
+#
+# 骨格だけが共通で、ノートの中身（定跡は局面数、ネットはlineage）は
+# スクリプトごとに違う。無理に1本へまとめず、ここでは骨格だけを持つ
+# （docs/adr/0122-tooling-language-split.md）。
+
+release_validate_version() {
+	local version="$1"
+	if ! [[ "$version" =~ ^[0-9]+$ ]]; then
+		die "バージョン番号は1以上の整数で指定する: ${version}" 3
+	fi
+}
+
+# ghの存在とタグの重複を確認する。どちらかが不成立なら終了する
+release_check_prereqs() {
+	local tag="$1"
+	require_command gh
+	if gh release view "$tag" >/dev/null 2>&1; then
+		die "${tag} は既にある。番号を上げる" 3
+	fi
+}
+
+release_file_size() {
+	du -h "$1" | cut -f1
+}
+
+# タグ・タイトル・ノートファイル・アセット（複数可）からリリースを作る。
+# 作成後にURLを表示するところまで含む。
+#
+# RELEASE_DRY_RUN=1 なら実行せず、走るはずのコマンドとノート本文を出す。
+# リリースの作成は外から見える操作で、消しても「あった」ことは残る。
+# 動作確認のつもりで本物を作ってしまう事故を防ぐための逃げ道である
+# （2026-08-01に book-v99999 を実際に作り、直後に削除した）。
+release_create() {
+	local tag="$1" title="$2" notes_file="$3"
+	shift 3
+	if [[ "${RELEASE_DRY_RUN:-0}" == "1" ]]; then
+		log_warn "RELEASE_DRY_RUN=1 のため作成しない"
+		log_info "gh release create ${tag} $* --title ${title} --notes-file ${notes_file} --latest=false"
+		log_info "--- ノート本文 ---"
+		cat "$notes_file"
+		return 0
+	fi
+	gh release create "$tag" "$@" \
+		--title "$title" \
+		--notes-file "$notes_file" \
+		--latest=false
+	log_info "作成した: $(gh release view "$tag" --json url --jq .url)"
+}

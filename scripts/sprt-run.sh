@@ -14,8 +14,14 @@
 # 後者でも棋譜は残る。次にこのスクリプトを実行すれば、既存の棋譜から
 # 続きを回す（ADR-0087）。「止まらない」ではなく「止まっても失わない」
 # のが本質である。
+#
+# -eを付けない。下のループでsprt.shの終了コードを $? で分岐取得する
+# 必要があり、-eがあるとsprt.shの非0終了で即座にシェルごと終了して
+# しまい、再試行の分岐に届かない
 set -uo pipefail
 
+# 判定が出るまで数時間〜数日かかることがあるため、ログに時刻を付ける
+LOG_TIMESTAMP=1
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=./env.sh
 source "${SCRIPT_DIR}/env.sh"
@@ -34,9 +40,14 @@ scripts/sprt.sh を呼び、判定が出る前に落ちたら --resume で再開
 USAGE
 }
 
+if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+	usage
+	exit 0
+fi
+
 if [[ $# -lt 3 ]]; then
 	usage
-	exit 3
+	exit 2
 fi
 
 BASELINE="$1"
@@ -56,9 +67,9 @@ for ((attempt = 1; attempt <= MAX_RETRY; attempt++)); do
 	ARGS=()
 	if [[ -s "$JSONL" ]]; then
 		ARGS+=(--resume "$JSONL")
-		echo "=== 試行 ${attempt}: 既存の棋譜から再開する（$(wc -l <"$JSONL") 局） ==="
+		log_step "試行 ${attempt}: 既存の棋譜から再開する（$(wc -l <"$JSONL") 局）"
 	else
-		echo "=== 試行 ${attempt}: 新規に開始する ==="
+		log_step "試行 ${attempt}: 新規に開始する"
 	fi
 
 	"${SCRIPT_DIR}/sprt.sh" "$BASELINE" "$CANDIDATE" "$NAME" \
@@ -68,15 +79,14 @@ for ((attempt = 1; attempt <= MAX_RETRY; attempt++)); do
 	case $CODE in
 	0 | 1 | 2)
 		# 判定が出た（H1・H0）か、上限まで回して判定に至らなかった
-		echo "=== SPRT終了: 終了コード ${CODE} ==="
+		log_step "SPRT終了: 終了コード ${CODE}"
 		exit $CODE
 		;;
 	*)
-		echo "=== 試行 ${attempt} が異常終了（コード ${CODE}）。再開する ===" >&2
+		log_warn "試行 ${attempt} が異常終了（コード ${CODE}）。再開する"
 		sleep 5
 		;;
 	esac
 done
 
-echo "エラー: ${MAX_RETRY}回試しても判定に至らなかった" >&2
-exit 3
+die "${MAX_RETRY}回試しても判定に至らなかった"
