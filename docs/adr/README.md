@@ -135,6 +135,7 @@
 | [0118](0118-g9-aspiration.md) | 反復深化とaspirationを参照実装へ揃える（G9） | +55.6 | accepted |
 | [0119](0119-g10-book.md) | 定跡・投票・実務オプションを参照実装へ揃える（G10） | +8.0 | accepted |
 | [0120](0120-after-parity.md) | 追従一巡後の方向を評価関数と探索の結合へ置く | - | proposed |
+| [0121](0121-book-scale-up.md) | 定跡を損失の小さい順に掘り、上限と再開を付ける | - | proposed |
 
 ## バックログ
 
