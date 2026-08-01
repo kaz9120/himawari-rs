@@ -24,7 +24,6 @@
 //! 棋譜は--out（既定 selfplay.jsonl）へ1局1行のJSONで追記する。
 //! 終了コード: 0=H1採択、1=H0採択、2=判定に至らず、3=実行エラー。
 
-mod engine;
 mod game;
 mod sprt;
 
@@ -33,8 +32,8 @@ use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 
 use himawari_core::{Color, Position, SFEN_STARTPOS};
+use himawari_tools::usi_engine::UsiEngine;
 
-use engine::UsiEngine;
 use game::{GameConfig, GameRecord, TimeControl, play_game};
 use sprt::{Decision, Pentanomial, Sprt, elo_estimate};
 

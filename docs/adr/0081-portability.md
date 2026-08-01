@@ -100,6 +100,11 @@ NPS計測とプロファイル取得を3件続けて手で組み立てた。同�
 [ADR-0101](0101-movelist-uninit.md)では、行番号がなければ
 「`MoveList::default()` がまだゼロ埋めしている」ことに気づけなかった。
 
+2026-08-01追記: この3本のうち `verify-feature.sh`・`bench-nps.sh`・`profile.sh`
+はRustのbin（`verify`・`bench`・`profile`）へ移した。役割・局面・出力は
+そのままで、USIエンジンの起動と後始末を共有する
+（[ADR-0122](0122-tooling-language-split.md)）。
+
 `build-pair.sh` は未コミットの変更があると中断する。SPRTにかけるのは
 コミット済みの状態だけにするためで、[ADR-0070](0070-pr-based-workflow.md)の
 ブランチ運用と揃えてある。

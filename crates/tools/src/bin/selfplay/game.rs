@@ -12,8 +12,7 @@ use std::collections::HashMap;
 use std::time::{Duration, Instant};
 
 use himawari_core::{Color, MoveList, Position, Repetition, generate_legal};
-
-use crate::engine::UsiEngine;
+use himawari_tools::usi_engine::UsiEngine;
 
 pub enum TimeControl {
     Fischer { base_ms: u64, inc_ms: u64 },

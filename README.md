@@ -89,13 +89,16 @@ WindowsではWSL2上で動かす。macOSでも開発できる（Apple Siliconで
 ```sh
 cargo test --workspace            # テスト（debug）
 cargo test --workspace --release  # perft既知値の照合込み
-scripts/bench-nps.sh              # NPS計測
-scripts/verify-feature.sh <base> <cand>   # 探索の変化を固定深さで比較
+cargo run --release -p himawari-tools --bin bench -- <base> <cand>   # NPS計測
+cargo run --release -p himawari-tools --bin verify -- <base> <cand>  # 探索の変化を固定深さで比較
 scripts/sprt-run.sh <base> <cand> <名前>  # SPRTで棋力を検定
 ```
 
 開発用ツールは `cargo run --release -p himawari-tools --bin <name>` で動く
-（`perft` / `tsume` / `makenet` / `selfplay` / `psv` / `book`）。
+（`perft` / `tsume` / `makenet` / `selfplay` / `psv` / `book` /
+`bench` / `verify` / `profile`）。`bench`・`verify`・`profile` は評価関数の
+場所を環境変数 `EVAL_FILE` から読む。`source scripts/env.sh` で入る
+（[ADR-0122](docs/adr/0122-tooling-language-split.md)）。
 
 ### 学習
 

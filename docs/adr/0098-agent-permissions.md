@@ -75,7 +75,6 @@ SPRTの待機のために、すべての操作の確認を外すことになる�
 {
   "permissions": {
     "allow": [
-      "Bash(./scripts/verify-feature.sh:*)",
       "Bash(./scripts/watch-ci.sh:*)",
       "Bash(./scripts/watch-sprt.sh:*)",
       "Bash(awk *)",
@@ -83,6 +82,7 @@ SPRTの待機のために、すべての操作の確認を外すことになる�
       "Bash(cargo build:*)",
       "Bash(cargo clippy:*)",
       "Bash(cargo fmt:*)",
+      "Bash(cargo run --release -p himawari-tools --bin verify:*)",
       "Bash(cargo test:*)"
     ]
   }
