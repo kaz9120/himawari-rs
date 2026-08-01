@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.27.3](https://github.com/kaz9120/himawari-rs/compare/v0.27.2...v0.27.3) (2026-08-01)
+
+
+### その他の変更
+
+* 長時間走る処理を停止ファイルで止められるようにする（ADR-0123） ([#155](https://github.com/kaz9120/himawari-rs/issues/155)) ([676b75f](https://github.com/kaz9120/himawari-rs/commit/676b75f8edd63a670c7c3bf082f857480b9e3cd8))
+
 ## [0.27.2](https://github.com/kaz9120/himawari-rs/compare/v0.27.1...v0.27.2) (2026-08-01)
 
 
