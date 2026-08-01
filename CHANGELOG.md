@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.27.2](https://github.com/kaz9120/himawari-rs/compare/v0.27.1...v0.27.2) (2026-08-01)
+
+
+### 内部
+
+* 開発スクリプトを役割で3言語に分ける（ADR-0122） ([#153](https://github.com/kaz9120/himawari-rs/issues/153)) ([1b3b597](https://github.com/kaz9120/himawari-rs/commit/1b3b59727ff41761c69d845868987371cd32a9ef))
+
 ## [0.27.1](https://github.com/kaz9120/himawari-rs/compare/v0.27.0...v0.27.1) (2026-08-01)
 
 
