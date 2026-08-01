@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.27.7](https://github.com/kaz9120/himawari-rs/compare/v0.27.6...v0.27.7) (2026-08-01)
+
+
+### その他の変更
+
+* ホットパスのコピーと間接参照を削る（ADR-0124、第2・3群、+2.71% NPS） ([#163](https://github.com/kaz9120/himawari-rs/issues/163)) ([1863359](https://github.com/kaz9120/himawari-rs/commit/18633593f25c095a42a5e99efc669849d9edd90f))
+
 ## [0.27.6](https://github.com/kaz9120/himawari-rs/compare/v0.27.5...v0.27.6) (2026-08-01)
 
 
