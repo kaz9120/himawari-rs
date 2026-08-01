@@ -30,6 +30,11 @@ candidateは現在のHEAD、baselineは指定ref（既定 origin/main）。
 USAGE
 }
 
+if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+	usage
+	exit 0
+fi
+
 if [[ $# -lt 1 || $# -gt 2 ]]; then
 	usage
 	exit 2
@@ -45,14 +50,12 @@ cd "$REPO_ROOT"
 
 # 未コミットの変更があると、どちらをcandidateにしたか後から辿れない
 if ! git diff --quiet -- crates/ || ! git diff --cached --quiet -- crates/; then
-	echo "エラー: crates/ に未コミットの変更がある。コミットしてから実行する" >&2
 	git status --short -- crates/ >&2
-	exit 3
+	die "crates/ に未コミットの変更がある。コミットしてから実行する"
 fi
 
 if ! git rev-parse --verify --quiet "$BASE_REF" >/dev/null; then
-	echo "エラー: baselineのrefが見つからない: $BASE_REF" >&2
-	exit 3
+	die "baselineのrefが見つからない: $BASE_REF"
 fi
 
 mkdir -p "$BIN_DIR"
@@ -63,16 +66,15 @@ build() {
 	cp "${REPO_ROOT}/target/release/himawari" "$out"
 }
 
-echo "=== SPRT用バイナリの作成: ${NAME} ==="
-echo "candidate: $(git rev-parse --short HEAD) （現在のHEAD）"
-echo "baseline : $(git rev-parse --short "$BASE_REF") （${BASE_REF}）"
-echo "RUSTFLAGS: ${RUSTFLAGS_NATIVE}"
-echo
+log_step "SPRT用バイナリの作成: ${NAME}"
+log_info "candidate: $(git rev-parse --short HEAD) （現在のHEAD）"
+log_info "baseline : $(git rev-parse --short "$BASE_REF") （${BASE_REF}）"
+log_info "RUSTFLAGS: ${RUSTFLAGS_NATIVE}"
 
-echo "candidateをビルド中..."
+log_info "candidateをビルド中..."
 build "$CAND_OUT"
 
-echo "baselineをビルド中..."
+log_info "baselineをビルド中..."
 # crates/ だけ差し替える。worktreeを切るとビルドキャッシュが別になり遅い
 git checkout "$BASE_REF" -- crates/
 trap 'git checkout HEAD -- crates/' EXIT
@@ -80,15 +82,14 @@ build "$BASE_OUT"
 git checkout HEAD -- crates/
 trap - EXIT
 
-echo
 if cmp -s "$BASE_OUT" "$CAND_OUT"; then
-	echo "警告: 2本が同一のバイナリになった。探索に差がない可能性がある" >&2
-	echo "  機能検証（scripts/verify-feature.sh）で確かめること" >&2
+	log_warn "2本が同一のバイナリになった。探索に差がない可能性がある"
+	log_warn "  機能検証で確かめること"
 	exit 1
 fi
-echo "完了:"
+log_step "完了"
 ls -la "$BASE_OUT" "$CAND_OUT"
-echo
-echo "次の手順:"
-echo "  scripts/verify-feature.sh ${BASE_OUT#"$REPO_ROOT"/} ${CAND_OUT#"$REPO_ROOT"/}"
+log_info ""
+log_info "次の手順:"
+echo "  cargo run --release -p himawari-tools --bin verify -- ${BASE_OUT#"$REPO_ROOT"/} ${CAND_OUT#"$REPO_ROOT"/}"
 echo "  scripts/sprt.sh ${BASE_OUT#"$REPO_ROOT"/} ${CAND_OUT#"$REPO_ROOT"/} ${NAME}"

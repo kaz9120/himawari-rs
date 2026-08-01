@@ -6,22 +6,40 @@
 # gh release download で取る（SETUP.md 参照）。
 set -euo pipefail
 
-REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=./env.sh
+source "${SCRIPT_DIR}/env.sh"
+
 SKIP_PYTHON="${SKIP_PYTHON:-0}"
 
-log() { printf '\n=== %s ===\n' "$1"; }
+usage() {
+	cat <<'USAGE'
+使い方:
+  scripts/setup.sh
 
-if [[ "$(uname -s)" != "Linux" ]]; then
-	echo "このスクリプトはLinux（WSL2を含む）向け。macOSではbrewで個別に入れる" >&2
-	exit 1
+開発環境を構築する（Linux / WSL2向け）。APTパッケージ・gh CLI・Rust・
+Python仮想環境を入れ、ビルドとテストまで通す。
+
+環境変数:
+  SKIP_PYTHON=1  Python / PyTorch のセットアップを飛ばす
+USAGE
+}
+
+if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+	usage
+	exit 0
 fi
 
-log "APTパッケージ"
+if [[ "$(uname -s)" != "Linux" ]]; then
+	die "このスクリプトはLinux（WSL2を含む）向け。macOSではbrewで個別に入れる"
+fi
+
+log_step "APTパッケージ"
 sudo apt-get update -qq
 sudo apt-get install -y --no-install-recommends \
 	build-essential curl git pkg-config libssl-dev ca-certificates
 
-log "gh CLI"
+log_step "gh CLI"
 if ! command -v gh >/dev/null 2>&1; then
 	curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg |
 		sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
@@ -31,22 +49,22 @@ if ! command -v gh >/dev/null 2>&1; then
 	sudo apt-get update -qq
 	sudo apt-get install -y gh
 else
-	echo "導入済み: $(gh --version | head -1)"
+	log_info "導入済み: $(gh --version | head -1)"
 fi
 
-log "Rust"
+log_step "Rust"
 if ! command -v rustup >/dev/null 2>&1; then
 	curl --proto '=https' --tlsv1.2 -fsSL https://sh.rustup.rs | sh -s -- -y --no-modify-path
 	# shellcheck disable=SC1091
 	source "$HOME/.cargo/env"
 else
-	echo "導入済み: $(rustup --version)"
+	log_info "導入済み: $(rustup --version)"
 fi
 # rust-toolchain.toml のチャネルとコンポーネントが自動で入る
 (cd "$REPO_ROOT" && rustup show active-toolchain)
 
 if [[ "$SKIP_PYTHON" != "1" ]]; then
-	log "Python と PyTorch"
+	log_step "Python と PyTorch"
 	sudo apt-get install -y --no-install-recommends python3 python3-pip python3-venv
 	if [[ ! -d "${REPO_ROOT}/.venv" ]]; then
 		python3 -m venv "${REPO_ROOT}/.venv"
@@ -55,18 +73,18 @@ if [[ "$SKIP_PYTHON" != "1" ]]; then
 	source "${REPO_ROOT}/.venv/bin/activate"
 	pip install --quiet --upgrade pip
 	pip install --quiet -r "${REPO_ROOT}/training/requirements.txt"
-	echo "torch $(python3 -c 'import torch; print(torch.__version__)')"
+	log_info "torch $(python3 -c 'import torch; print(torch.__version__)')"
 	python3 -c 'import torch; print("CUDA:", torch.cuda.is_available())'
 	deactivate
 fi
 
-log "ビルド"
-(cd "$REPO_ROOT" && RUSTFLAGS="-C target-cpu=native" cargo build --release)
+log_step "ビルド"
+(cd "$REPO_ROOT" && RUSTFLAGS="$RUSTFLAGS_NATIVE" cargo build --release)
 
-log "テスト"
+log_step "テスト"
 (cd "$REPO_ROOT" && cargo test --release --quiet 2>&1 | tail -5)
 
-log "完了"
+log_step "完了"
 cat <<'NEXT'
 次の手順:
 

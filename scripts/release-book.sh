@@ -5,6 +5,10 @@
 # 同じものは再現できない。成果物そのものを保存する。
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=./env.sh
+source "${SCRIPT_DIR}/env.sh"
+
 usage() {
 	cat <<'USAGE'
 使い方:
@@ -22,9 +26,14 @@ genログを渡すと、生成条件（ply/width/depth/threads）と使用ネッ
 USAGE
 }
 
+if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+	usage
+	exit 0
+fi
+
 if [[ $# -lt 2 ]]; then
 	usage
-	exit 1
+	exit 2
 fi
 
 DB_PATH="$1"
@@ -32,36 +41,19 @@ VERSION="$2"
 GEN_LOG="${3:-}"
 EXTRA_NOTE="${4:-}"
 
-if [[ ! -f "$DB_PATH" ]]; then
-	echo "エラー: ファイルがない: $DB_PATH" >&2
-	exit 1
-fi
-
-if ! [[ "$VERSION" =~ ^[0-9]+$ ]]; then
-	echo "エラー: バージョン番号は1以上の整数で指定する: $VERSION" >&2
-	exit 1
-fi
-
-if ! command -v gh >/dev/null 2>&1; then
-	echo "エラー: gh CLI が要る" >&2
-	exit 1
-fi
+require_file "$DB_PATH" "定跡ファイル"
+release_validate_version "$VERSION"
 
 TAG="book-v${VERSION}"
-
-if gh release view "$TAG" >/dev/null 2>&1; then
-	echo "エラー: $TAG は既にある。番号を上げる" >&2
-	exit 1
-fi
+release_check_prereqs "$TAG"
 
 # 形式の確認。db2016互換のヘッダで始まる
 if ! head -1 "$DB_PATH" | grep -q '^#YANEURAOU-DB'; then
-	echo "エラー: db2016形式のヘッダがない: $DB_PATH" >&2
-	exit 1
+	die "db2016形式のヘッダがない: ${DB_PATH}"
 fi
 
 POSITIONS=$(grep -c '^sfen' "$DB_PATH")
-SIZE=$(du -h "$DB_PATH" | cut -f1)
+SIZE=$(release_file_size "$DB_PATH")
 ASSET_NAME="$(basename "$DB_PATH")"
 
 # genログから生成条件を拾う（ADR-0082でbook genが出すようにした）
@@ -75,6 +67,7 @@ if [[ -n "$GEN_LOG" && -f "$GEN_LOG" ]]; then
 fi
 
 NOTES_FILE="$(mktemp)"
+trap 'rm -f "$NOTES_FILE"' EXIT
 {
 	echo "## 定跡"
 	echo
@@ -123,17 +116,8 @@ NOTES_FILE="$(mktemp)"
 	echo "再現ではなくこの成果物を使う。"
 } >"$NOTES_FILE"
 
-echo "タグ: $TAG"
-echo "アセット: $ASSET_NAME (${POSITIONS}局面, $SIZE)"
-[[ -n "$BOOKGEN" ]] && echo "$BOOKGEN"
-echo
+log_info "タグ: $TAG"
+log_info "アセット: $ASSET_NAME (${POSITIONS}局面, $SIZE)"
+[[ -n "$BOOKGEN" ]] && log_info "$BOOKGEN"
 
-gh release create "$TAG" "$DB_PATH" \
-	--title "$TAG: ${ASSET_NAME} (${POSITIONS}局面)" \
-	--notes-file "$NOTES_FILE" \
-	--latest=false
-
-rm -f "$NOTES_FILE"
-
-echo
-echo "作成した: $(gh release view "$TAG" --json url --jq .url)"
+release_create "$TAG" "$TAG: ${ASSET_NAME} (${POSITIONS}局面)" "$NOTES_FILE" "$DB_PATH"

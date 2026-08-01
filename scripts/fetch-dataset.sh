@@ -6,7 +6,10 @@
 # 開発機を移すときはこれ1本で教師データを再現できる。
 set -euo pipefail
 
-REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=./env.sh
+source "${SCRIPT_DIR}/env.sh"
+
 RAW_DIR="${RAW_DIR:-${REPO_ROOT}/data/raw/hao_depth9}"
 TRAIN_DIR="${TRAIN_DIR:-${REPO_ROOT}/data/train}"
 JOBS="${JOBS:-4}"
@@ -78,7 +81,7 @@ cmd_download() {
 			names+=("$(file_name "$st" "$i")")
 		done
 	done
-	echo "対象 ${#names[@]} ファイル、並列 ${JOBS}、置き場 ${RAW_DIR}"
+	log_info "対象 ${#names[@]} ファイル、並列 ${JOBS}、置き場 ${RAW_DIR}"
 	printf '%s\n' "${names[@]}" \
 		| xargs -P "$JOBS" -I{} bash -c 'fetch_one "$@"' _ {} "$RAW_DIR"
 }
@@ -92,35 +95,34 @@ cmd_verify() {
 			path="${RAW_DIR}/${name}"
 			count=$((count + 1))
 			if [[ ! -f "$path" ]]; then
-				echo "欠落: $name" >&2
+				log_warn "欠落: $name"
 				bad=$((bad + 1))
 				continue
 			fi
 			size=$(wc -c <"$path")
 			if [[ "$size" -lt "$MIN_SIZE" ]]; then
-				echo "サイズ不足 ${size}B: $name" >&2
+				log_warn "サイズ不足 ${size}B: $name"
 				bad=$((bad + 1))
 			fi
 		done
 	done
-	echo "検査 ${count} ファイル、異常 ${bad} 件"
+	log_info "検査 ${count} ファイル、異常 ${bad} 件"
 	[[ "$bad" -eq 0 ]]
 }
 
 cmd_prepare() {
 	local psv="${REPO_ROOT}/target/release/psv"
 	if [[ ! -x "$psv" ]]; then
-		echo "エラー: $psv がない。先に cargo build --release を実行する" >&2
-		exit 1
+		die "${psv} がない。先に cargo build --release を実行する"
 	fi
 	mkdir -p "$TRAIN_DIR"
 
 	local valid_src
 	valid_src="${RAW_DIR}/$(file_name "$VALID_START_TIME" "$VALID_INDEX")"
-	echo "検証データを切り出す（${VALID_COUNT}局面）"
+	log_info "検証データを切り出す（${VALID_COUNT}局面）"
 	"$psv" head --in "$valid_src" --out "${TRAIN_DIR}/valid_385M.psv" --count "$VALID_COUNT"
 
-	echo "学習データをシャッフルする（検証データの供給元を除く253ファイル）"
+	log_info "学習データをシャッフルする（検証データの供給元を除く253ファイル）"
 	local files
 	files=$(find "$RAW_DIR" -name '*.bin' \
 		! -name "*start_time=${VALID_START_TIME}.thread_index=${VALID_INDEX}.bin" \
@@ -141,8 +143,12 @@ all)
 	cmd_verify
 	cmd_prepare
 	;;
+-h | --help)
+	usage
+	exit 0
+	;;
 *)
 	usage
-	exit 1
+	exit 2
 	;;
 esac
