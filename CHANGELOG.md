@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.27.9](https://github.com/kaz9120/himawari-rs/compare/v0.27.8...v0.27.9) (2026-08-01)
+
+
+### その他の変更
+
+* Rust版の学習器を削除する（ADR-0039をsuperseded） ([#167](https://github.com/kaz9120/himawari-rs/issues/167)) ([cf6bec5](https://github.com/kaz9120/himawari-rs/commit/cf6bec528d5ac465001e3ba715c669c0d580f00a))
+
 ## [0.27.8](https://github.com/kaz9120/himawari-rs/compare/v0.27.7...v0.27.8) (2026-08-01)
 
 
