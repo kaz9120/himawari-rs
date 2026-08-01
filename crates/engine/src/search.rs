@@ -180,8 +180,12 @@ const SEARCHED_LIST_CAPACITY: u32 = 32;
 /// この手数に達したら静かな手の生成をやめる（ADR-0109のG1）。
 /// 出典はやねうら王の `(3 + depth * depth) / (2 - improving)`
 /// （yaneuraou-search.cpp:3593）。
+/// 除数が実行時に決まると `udiv` が出るので、2で割る側だけシフトへ置き換える。
+/// `u32` の右シフトは切り捨て除算と完全に同値である（符号付きなら負の側で
+/// 丸めの向きが変わるため、この置き換えはできない）
 fn lmp_limit(depth: u32, improving: bool) -> u32 {
-    (3 + depth * depth) / (2 - u32::from(improving))
+    let base = 3 + depth * depth;
+    if improving { base } else { base >> 1 }
 }
 
 /// LMRのリダクション表の要素数。深さと手数の両方でこの表を引くので、
@@ -195,15 +199,17 @@ const REDUCTIONS_LEN: usize = 608;
 /// 積が1024倍の固定小数になるスケールはADR-0076で確認済み。
 static REDUCTIONS: std::sync::OnceLock<[i32; REDUCTIONS_LEN]> = std::sync::OnceLock::new();
 
-fn reductions(i: u32) -> i32 {
-    let t = REDUCTIONS.get_or_init(|| {
+/// リダクション表への参照を得る。`f64::ln` を含むのでconstにできず、
+/// 実行時に1回だけ作る。`Worker::new` が参照を受け取って持ち回るので、
+/// 指し手ごとに `OnceLock` の初期化済み判定を通ることはない
+fn reductions_table() -> &'static [i32; REDUCTIONS_LEN] {
+    REDUCTIONS.get_or_init(|| {
         let mut t = [0i32; REDUCTIONS_LEN];
         for (i, r) in t.iter_mut().enumerate().skip(1) {
             *r = (2763.0 / 128.0 * (i as f64).ln()) as i32;
         }
         t
-    });
-    t[(i as usize).min(REDUCTIONS_LEN - 1)]
+    })
 }
 
 /// スレッド間の共有状態（ADR-0020）。
@@ -405,6 +411,29 @@ struct StackEntry {
 /// Stackの前方余白。ss-6まで境界検査なしで参照するために置く。
 const STACK_OFFSET: usize = 7;
 
+/// Stackの要素数。前方の余白と、`ply + 2` まで書く後方の余裕を含む。
+/// 固定長にすることで、`stack[ply + STACK_OFFSET]` の境界検査が
+/// コンパイル時定数との比較になる
+const STACK_LEN: usize = MAX_PLY + 10;
+
+/// Stackの初期値。全plyをこれで埋める。
+const STACK_INIT: StackEntry = StackEntry {
+    current_move: Move::NONE,
+    excluded_move: Move::NONE,
+    static_eval: VALUE_NONE,
+    in_check: false,
+    // 指し手のないplyは番兵の面を指す
+    cont_base: ContinuationHistory::SENTINEL,
+    cont_corr_base: 0,
+    move_count: 0,
+    tt_hit: false,
+    tt_pv: false,
+    cutoff_cnt: 0,
+    reduction: 0,
+    stat_score: 0,
+    follow_pv: false,
+};
+
 /// 置換表から読んだ値（ADR-0022, 0024, 0125）。`probe_tt` が組み立て、
 /// TTカット・枝刈り・延長・リダクションが繰り返し読む。
 #[derive(Clone, Copy)]
@@ -468,7 +497,9 @@ pub struct Worker {
     pub hist: Histories,
     /// plyごとの探索状態（ADR-0109）。添字は `ply + STACK_OFFSET` で引く。
     /// 前方の余白により、ply 0でも1手前・2手前を境界検査なしで読める。
-    stack: Vec<StackEntry>,
+    /// 長さをコンパイル時定数にするため配列で持つ（ADR-0124）。`Vec` だと
+    /// 長さがヒープ上にあり、`&mut self` を通る呼び出しのたびに読み直す
+    stack: Box<[StackEntry; STACK_LEN]>,
     /// このイテレーションで到達した最大ply（seldepth。ADR-0086）。
     sel_depth: u32,
     /// このイテレーションのaspiration窓の幅（G2。yaneuraou-search.cpp:1708）。
@@ -516,6 +547,9 @@ pub struct Worker {
     /// `DrawValueBlack` / `DrawValueWhite` を歩の価値で換算した値で、
     /// `ThreadPool` が `set_draw_value` で入れる。既定は0（従来と同じ）
     draw_value_us: Value,
+    /// LMRのリダクション表への参照。`Worker::new` で1回だけ受け取る。
+    /// 表引きは指し手ごとに起きるので、そのたびに `OnceLock` を叩かない
+    reductions: &'static [i32; REDUCTIONS_LEN],
 }
 
 impl Worker {
@@ -535,25 +569,12 @@ impl Worker {
             pos,
             evaluator,
             hist,
-            stack: vec![
-                StackEntry {
-                    current_move: Move::NONE,
-                    excluded_move: Move::NONE,
-                    static_eval: VALUE_NONE,
-                    in_check: false,
-                    // 指し手のないplyは番兵の面を指す
-                    cont_base: ContinuationHistory::SENTINEL,
-                    cont_corr_base: 0,
-                    move_count: 0,
-                    tt_hit: false,
-                    tt_pv: false,
-                    cutoff_cnt: 0,
-                    reduction: 0,
-                    stat_score: 0,
-                    follow_pv: false,
-                };
-                MAX_PLY + 10
-            ],
+            // ヒープ上で作ってから配列へ移す。要素数はコンパイル時に
+            // 決まっているので、この変換が失敗することはない
+            stack: vec![STACK_INIT; STACK_LEN]
+                .into_boxed_slice()
+                .try_into()
+                .unwrap_or_else(|_| unreachable!("要素数はSTACK_LENで固定")),
             sel_depth: 0,
             // 0除算を避ける番兵。search_rootが毎回入れ直す
             root_delta: 1,
@@ -574,6 +595,7 @@ impl Worker {
             memory: MainMemory::default(),
             root_color,
             draw_value_us: VALUE_ZERO,
+            reductions: reductions_table(),
         }
     }
 
@@ -700,7 +722,9 @@ impl Worker {
     /// （root窓に近い）ほど削らない。
     #[inline]
     fn reduction(&self, improving: bool, depth: u32, move_count: u32, delta: Value) -> i32 {
-        let scale = reductions(depth) * reductions(move_count);
+        let t = self.reductions;
+        let scale = t[(depth as usize).min(REDUCTIONS_LEN - 1)]
+            * t[(move_count as usize).min(REDUCTIONS_LEN - 1)];
         scale - delta * 585 / self.root_delta + i32::from(!improving) * scale * 206 / 512 + 1133
     }
 
