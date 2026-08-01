@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.27.10](https://github.com/kaz9120/himawari-rs/compare/v0.27.9...v0.27.10) (2026-08-01)
+
+
+### その他の変更
+
+* 使われていないコードを消す ([#169](https://github.com/kaz9120/himawari-rs/issues/169)) ([45f5a17](https://github.com/kaz9120/himawari-rs/commit/45f5a17b2e1ae68972414e1b167fb06edc1973a0))
+
 ## [0.27.9](https://github.com/kaz9120/himawari-rs/compare/v0.27.8...v0.27.9) (2026-08-01)
 
 
