@@ -15,6 +15,7 @@ GitHub Issuesは使わない。設計判断は [ADR索引](adr/README.md)、
 |---|---|
 | エンジン | `target/release/himawari`（FT256ビルド） |
 | 評価関数 | `data/nets/halfkp_1900M_fact.hmwr.best`（valid loss 0.49513） |
+| 定跡 | `data/book/main.db`（540局面、深さ28、ply 13まで。[ADR-0121](adr/0121-book-scale-up.md)） |
 
 FT512は評価精度で上回る（valid loss 0.49374）が、NPSが0.65倍に落ちる代償を
 取り返せず不採択（[ADR-0067](adr/0067-ft-dimension-512.md)）。比較用に
@@ -28,6 +29,12 @@ FT512は評価精度で上回る（valid loss 0.49374）が、NPSが0.65倍に�
 参照実装（やねうら王）への追従は2026-08-01に一巡した。11群のうち10群が入り、
 単純加算で+525.5 Elo（[ADR-0109](adr/0109-reference-parity.md)〜[0119](adr/0119-g10-book.md)）。
 保留はsingularの多段延長と時間配分の分母の2件である。
+
+追従の直後に、機能を足さない整理を一巡させた（2026-08-01）。探索本体の分割
+（[ADR-0125](adr/0125-search-decomposition.md)）、開発スクリプトの3言語分割
+（[ADR-0122](adr/0122-tooling-language-split.md)）、長時間処理の停止と再開
+（[ADR-0123](adr/0123-stop-and-resume.md)）、挙動を変えない高速化で+2.71% NPS
+（[ADR-0124](adr/0124-hot-path-allocs.md)）である。
 
 **何が入ったかは[CHANGELOG.md](../CHANGELOG.md)、なぜそうしたかは
 [ADR索引](adr/README.md)にある。**
@@ -48,7 +55,20 @@ FT512は評価精度で上回る（valid loss 0.49374）が、NPSが0.65倍に�
 10+0.1では床が配分を支配する）である。floodgateは300+10なので、参照実装の既定値が
 本来想定する条件に近い。**実戦が次の測定の場になる。**
 
-### 2. 評価関数と探索を結合する
+### 2. 挙動を変えない高速化を積む
+
+[ADR-0124](adr/0124-hot-path-allocs.md)で3群を入れて+2.71% NPSを得た。残る候補は
+`Shared` のfalse sharing、`MovePicker` の候補手バッファ、`partial_insertion_sort`、
+`attackers_to` である。
+
+**1件ずつでは測れない。** 個々の候補は0.2〜0.7%で、NPSの測定誤差（±1.5%）に埋もれる。
+群でまとめて測る。false sharingは1スレッドでは効果がゼロなので、`Threads=4` 以上で
+測る別枠になる。
+
+NNUEのFT更新が25.2%でいちばん大きいが、そこを削る本命（FTのi8量子化）は評価値が
+変わる。下の候補にある「量子化の再検討」で扱い、SPRTで確かめる。
+
+### 3. 評価関数と探索を結合する
 
 多ヘッド出力（WDL・進行度・安定度）を学習し、時間管理・枝刈りの強度・contemptへ
 供給する（[ADR-0120](adr/0120-after-parity.md)）。
@@ -161,4 +181,3 @@ NNUE後の再測定に意味がある。
 | 大規模対局基盤 | SPRTの並列度向上、複数マシン分散 | 運用 |
 | floodgate参戦 | 実戦レーティングの定点観測。対人間系の弱点発見 | 運用 |
 | NPS回帰のCI監視 | ベンチ局面のNPSをCIで記録し、退行を検知 | 運用 |
-| 定跡の掘り下げ | ADR-0063の133局面を現行ネットで作り直す。選択方法と足切りは[ADR-0109](adr/0109-reference-parity.md)のG10で扱う | 運用 |
