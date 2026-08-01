@@ -109,13 +109,6 @@ impl Bitboard {
         Square::from_index(self.0.trailing_zeros() as u8)
     }
 
-    #[inline]
-    pub fn pop_lsb(&mut self) -> Square {
-        let sq = self.lsb();
-        self.0 &= self.0.wrapping_sub(1);
-        sq
-    }
-
     /// 段方向+1（先手視点で下）へのシフト。
     #[inline]
     pub const fn shift_down(self) -> Bitboard {

@@ -1326,7 +1326,6 @@ impl Worker {
     /// root_moves[pv_idx..]を探索する（上位の確定済みラインは除外）。
     /// 戻り値はfail-softのスコア。各root手のスコアとPVは `root_moves` へ
     /// 直接書く（S:4113-4165）。呼び出し側は探索のあとで並べ替えて先頭を読む
-    #[allow(clippy::too_many_arguments)]
     fn search_root(
         &mut self,
         depth: u32,
@@ -2376,7 +2375,6 @@ impl Worker {
     ///
     /// 深さの事後補正とIIRが `depth` を、NMPの前後の再計算が `improving` を
     /// 書き換える。刈らずに抜けたときだけ呼び出し側へ反映される。
-    #[allow(clippy::too_many_arguments)]
     fn prune_before_moves(
         &mut self,
         node: &NodeInfo,

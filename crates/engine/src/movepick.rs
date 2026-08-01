@@ -398,11 +398,6 @@ impl ContinuationHistory {
         i32::from(self.table[base + pc.index() * SQUARE_NB + to.index()])
     }
 
-    #[inline]
-    pub fn get_move(&self, base: usize, m: Move) -> i32 {
-        self.get(base, m.piece_after(), m.to())
-    }
-
     pub fn update(&mut self, base: usize, pc: Piece, to: Square, bonus: i32) {
         stats_update(
             &mut self.table[base + pc.index() * SQUARE_NB + to.index()],
