@@ -44,12 +44,17 @@ impl AccEntry {
 /// 探索スタックと同期するaccumulatorスタック。
 pub struct NnueState {
     entries: Vec<AccEntry>,
+    /// 全計算で使う特徴の置き場。ノードごとに確保し直さないため、
+    /// 容量を保ったまま使い回す（ADR-0124）
+    scratch: Vec<u32>,
 }
 
 impl NnueState {
     pub fn new() -> NnueState {
         NnueState {
             entries: vec![AccEntry::empty()],
+            // HalfKPで立つ特徴は玉以外の駒の数だけで、上限は38
+            scratch: Vec::with_capacity(64),
         }
     }
 
@@ -132,18 +137,24 @@ impl NnueState {
 
     /// 最上段を現局面から全計算する。
     fn refresh_top(&mut self, net: &NnueNetwork, pos: &Position, c: Color) {
-        let mut features = Vec::with_capacity(64);
+        // scratchとentriesを同時に借りられないので、いったん取り出して戻す。
+        // takeは空Vecとの交換なので確保は起きず、戻すときに容量が残る
+        let mut features = std::mem::take(&mut self.scratch);
+        features.clear();
         halfkp_active(pos, c, &mut features);
-        let top = self.entries.last_mut().expect("stack not empty");
-        let acc = &mut top.acc[c.index()];
-        for (o, a) in acc.iter_mut().enumerate() {
-            *a = net.ft_b[o];
+        {
+            let top = self.entries.last_mut().expect("stack not empty");
+            let acc = &mut top.acc[c.index()];
+            for (o, a) in acc.iter_mut().enumerate() {
+                *a = net.ft_b[o];
+            }
+            for &f in &features {
+                let base = f as usize * FT_OUT;
+                nnue_simd::ft_add(acc, &net.ft_w[base..base + FT_OUT]);
+            }
+            top.computed[c.index()] = true;
         }
-        for &f in &features {
-            let base = f as usize * FT_OUT;
-            nnue_simd::ft_add(acc, &net.ft_w[base..base + FT_OUT]);
-        }
-        top.computed[c.index()] = true;
+        self.scratch = features;
     }
 }
 
