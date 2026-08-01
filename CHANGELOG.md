@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.27.1](https://github.com/kaz9120/himawari-rs/compare/v0.27.0...v0.27.1) (2026-08-01)
+
+
+### その他の変更
+
+* 定跡を損失の小さい順に掘り、上限と再開を付ける（ADR-0121） ([#151](https://github.com/kaz9120/himawari-rs/issues/151)) ([b0d2f78](https://github.com/kaz9120/himawari-rs/commit/b0d2f786f31385189052497eb50ca52fe7684e97))
+
 ## [0.27.0](https://github.com/kaz9120/himawari-rs/compare/v0.26.0...v0.27.0) (2026-07-31)
 
 
