@@ -17,6 +17,84 @@ const MOVE_HORIZON: i64 = 160;
 /// 本エンジンはそのオプションを持たないので常に無効として扱う
 const PONDER_OPTIMUM_DIV: i64 = 4;
 
+/// 思考時間の伸縮（ADR-0109のG9。yaneuraou-search.cpp:1958-1996）。
+/// optimumを5係数の積で伸ばし縮めする。ADR-0059の3係数（falling /
+/// stability / effort）はこのうち3つに対応するので、置き換えである。
+///
+/// fallingEval（S:1972-1976）は評価の下落で時間を伸ばす。入力は2本で、
+/// 前回goの最善手の移動平均と4回前の反復のスコアである。前回goが
+/// ないときは番兵の `VALUE_INFINITE` が入り、上限に張り付く。参照実装が
+/// 「対局の初手にかかる時間に影響する」と書く意図的な挙動である
+const FALLING_BASE: f64 = 11.325;
+const FALLING_PREV_GO: f64 = 2.115;
+const FALLING_ITER: f64 = 0.987;
+const FALLING_MIN: f64 = 0.5688;
+const FALLING_MAX: f64 = 1.5698;
+/// timeReduction（S:1981-1983）は最善手が長く不変なら時間を縮める
+/// ロジスティック。中心は「最善手が最後に変わった深さ + 11.57」
+const TIME_REDUCTION_K: f64 = 0.5189;
+const TIME_REDUCTION_CENTER: f64 = 11.57;
+const TIME_REDUCTION_BASE: f64 = 0.723;
+const TIME_REDUCTION_NUM: f64 = 0.79;
+const TIME_REDUCTION_DEN: f64 = 1.104;
+/// reduction（S:1984-1985）は前回goのtimeReductionを持ち越して均す
+const REDUCTION_BASE: f64 = 1.455;
+const REDUCTION_SCALE: f64 = 2.2375;
+/// bestMoveInstability（S:1986）は最善手の入れ替わりで時間を伸ばす。
+/// 分母はスレッド数で、スレッド横断のbestMoveChangesを平均する
+const INSTABILITY_BASE: f64 = 1.04;
+const INSTABILITY_COEF: f64 = 1.8956;
+/// highBestMoveEffort（S:1969-1970, 1987）は最善手にノードが集中して
+/// いれば時間を縮める。閾値の2値で、10万分率で92425（92.4%）以上
+const EFFORT_MIN_DEPTH: u32 = 10;
+const EFFORT_THRESHOLD: u64 = 92_425;
+const EFFORT_SCALE: f64 = 0.666;
+/// 合法手が1手しかないときの上限[ms]（S:1995-1996）
+const SINGLE_MOVE_CAP_MS: f64 = 502.0;
+/// increaseDepthの判定比（S:2050-2051）。totalTimeのこの割合を超えて
+/// いれば、次の反復では実効深さを削って掘り直す
+const INCREASE_DEPTH_RATIO: f64 = 0.503;
+
+/// 反復の終わりに時間管理へ渡す探索の統計（ADR-0125。S:1961-2053の入力）。
+/// 5係数はすべてここから決まる。
+pub struct IterationStats {
+    /// 最善手にノードがどれだけ集中しているか（10万分率）。
+    /// 分子も分母もgo全体の累計である（S:1969-1970）
+    pub nodes_effort: u64,
+    /// 直近のroot探索の返り値（S:1438）。窓を外した回も含む
+    pub best_value: i32,
+    /// 前回goの最善手の `average_score`（S:1972-1976）。番兵の
+    /// `VALUE_INFINITE` が入るとfallingEvalが上限に張り付く
+    pub prev_go_average: i32,
+    /// 4反復前のスコア（S:1972-1976, 2055-2056）
+    pub iter_value: i32,
+    /// 最善手が最後に変わった深さ（S:1426）。timeReductionの中心になる
+    pub last_best_move_depth: u32,
+    /// 確定した最後のイテレーションの深さ
+    pub completed_depth: u32,
+    /// 前回goのtimeReduction（S:1984-1985）
+    pub prev_time_reduction: f64,
+    /// 全スレッドの最善手の入れ替わり回数（S:1952-1956）
+    pub tot_best_move_changes: f64,
+    /// ワーカーの総数。bestMoveInstabilityの分母になる
+    pub thread_count: usize,
+    /// root手が1手しかないか（S:1995-1996）
+    pub single_move: bool,
+}
+
+/// 反復の終わりに決まる時間の判断（ADR-0125。S:1961-2053）。
+pub struct IterationPlan {
+    /// 予算を使い切ったか。真なら探索を終える
+    pub budget_spent: bool,
+    /// 深さを1段上げる余裕があるか（S:2049-2051）。偽なら次の反復では
+    /// 実効深さを削って掘り直す。ponder中かどうかは呼び出し側が足す
+    pub has_depth_slack: bool,
+    /// 今回のtimeReduction（S:1981-1983）。次のgoへ持ち越す
+    pub time_reduction: f64,
+    /// 判定に使った経過時間[ms]。終了時刻の予約が読む
+    pub elapsed: i64,
+}
+
 /// goコマンドの探索制限。時間はミリ秒。
 #[derive(Clone, Default, Debug)]
 pub struct Limits {
@@ -312,6 +390,53 @@ impl TimeManager {
         };
         // 大きいほうを秒単位で切り上げ、startからの経過時間へ戻す
         self.search_end = self.round_up(t1.max(t2)) + ponderhit_offset;
+    }
+
+    /// 次の反復を回す時間があるか（G9。yaneuraou-search.cpp:1961-2053）。
+    /// optimumを5係数の積で伸ばし縮めし、経過時間と比べる。
+    ///
+    /// 停止条件を満たしてもここでは止めない。呼び出し側がponderの有無を
+    /// 見て、終了時刻を予約するか予約だけ控えるかを決める。
+    pub fn plan_next_iteration(&self, s: &IterationStats) -> IterationPlan {
+        // 評価が下がっているほど伸ばす（S:1972-1976）
+        let falling = ((FALLING_BASE
+            + FALLING_PREV_GO * f64::from(s.prev_go_average - s.best_value)
+            + FALLING_ITER * f64::from(s.iter_value - s.best_value))
+            / 100.0)
+            .clamp(FALLING_MIN, FALLING_MAX);
+        // 最善手が長く不変なら縮める（S:1980-1983）
+        let center = f64::from(s.last_best_move_depth) + TIME_REDUCTION_CENTER;
+        let time_reduction = TIME_REDUCTION_BASE
+            + TIME_REDUCTION_NUM
+                / (TIME_REDUCTION_DEN
+                    + (-TIME_REDUCTION_K * (f64::from(s.completed_depth) - center)).exp());
+        // 前回goのtimeReductionで均す（S:1984-1985）
+        let reduction =
+            (REDUCTION_BASE + s.prev_time_reduction) / (REDUCTION_SCALE * time_reduction);
+        // 最善手が揺れているほど伸ばす（S:1986）
+        let instability =
+            INSTABILITY_BASE + INSTABILITY_COEF * s.tot_best_move_changes / s.thread_count as f64;
+        // ノードが集中しているなら縮める（S:1987）
+        let high_effort =
+            if s.completed_depth >= EFFORT_MIN_DEPTH && s.nodes_effort >= EFFORT_THRESHOLD {
+                EFFORT_SCALE
+            } else {
+                1.0
+            };
+        let mut total_time =
+            self.optimum() as f64 * falling * reduction * instability * high_effort;
+        // 合法手が1手ならこれ以上考えても仕方がない（S:1995-1996）
+        if s.single_move {
+            total_time = total_time.min(SINGLE_MOVE_CAP_MS);
+        }
+        let elapsed = self.elapsed_ms();
+        IterationPlan {
+            budget_spent: (elapsed as f64) > total_time.min(self.maximum() as f64),
+            // 深さを1段上げる余裕はないが、まだ時間はある状態（S:2049-2051）
+            has_depth_slack: (elapsed as f64) <= total_time * INCREASE_DEPTH_RATIO,
+            time_reduction,
+            elapsed,
+        }
     }
 
     #[inline]
