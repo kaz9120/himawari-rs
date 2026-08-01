@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.27.4](https://github.com/kaz9120/himawari-rs/compare/v0.27.3...v0.27.4) (2026-08-01)
+
+
+### その他の変更
+
+* NNUEの全計算でヒープを確保しないようにする（ADR-0124、第1群） ([#156](https://github.com/kaz9120/himawari-rs/issues/156)) ([d46272a](https://github.com/kaz9120/himawari-rs/commit/d46272adc27223ef5c756598c1991dcbbfd1f835))
+
 ## [0.27.3](https://github.com/kaz9120/himawari-rs/compare/v0.27.2...v0.27.3) (2026-08-01)
 
 
