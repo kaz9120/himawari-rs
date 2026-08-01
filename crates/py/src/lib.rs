@@ -14,10 +14,16 @@ fn sigmoid(x: f32) -> f32 {
 
 /// 1レコードを (手番側特徴, 相手側特徴, 教師信号) に変換する。
 /// 展開に失敗した局面と、score_limitで除外した局面はNoneを返す。
+///
+/// `score_clamp` が正なら、評価値をその絶対値へ丸めてから教師信号にする。
+/// 教師データの9.8%は詰みスコア（±29000以上）で、`sigmoid(score/600)` は
+/// |score| >= 4144 で飽和する。丸めずに通すと教師信号が0か1に張り付き、
+/// モデルは有限の出力で届かない値を目指し続ける（ADR-0126）。
 fn extract_one(
     raw: &[u8; PSV_BYTES],
     lambda_: f32,
     score_limit: i16,
+    score_clamp: i16,
 ) -> Option<(Vec<u32>, Vec<u32>, f32)> {
     let rec = PackedSfenValue::from_bytes(raw);
     if score_limit > 0 && rec.score.abs() >= score_limit {
@@ -31,7 +37,12 @@ fn extract_one(
     halfkp_active(&pos, stm, &mut stm_feats);
     halfkp_active(&pos, stm.flip(), &mut opp_feats);
 
-    let p_score = sigmoid(f32::from(rec.score) / SIGMOID_SCALE);
+    let score = if score_clamp > 0 {
+        rec.score.clamp(-score_clamp, score_clamp)
+    } else {
+        rec.score
+    };
+    let p_score = sigmoid(f32::from(score) / SIGMOID_SCALE);
     let p_result = (f32::from(rec.game_result) + 1.0) / 2.0;
     let target = lambda_ * p_score + (1.0 - lambda_) * p_result;
 
@@ -39,11 +50,12 @@ fn extract_one(
 }
 
 #[pyfunction]
-#[pyo3(signature = (record, lambda_ = 0.7, score_limit = 0))]
+#[pyo3(signature = (record, lambda_ = 0.7, score_limit = 0, score_clamp = 0))]
 fn extract_features(
     record: &[u8],
     lambda_: f32,
     score_limit: i16,
+    score_clamp: i16,
 ) -> PyResult<Option<(Vec<u32>, Vec<u32>, f32)>> {
     if record.len() != PSV_BYTES {
         return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(format!(
@@ -52,7 +64,7 @@ fn extract_features(
         )));
     }
     let raw: &[u8; PSV_BYTES] = record.try_into().unwrap();
-    Ok(extract_one(raw, lambda_, score_limit))
+    Ok(extract_one(raw, lambda_, score_limit, score_clamp))
 }
 
 /// バッチ分のレコードをまとめてEmbeddingBag形式へ変換する（ADR-0065）。
@@ -68,12 +80,13 @@ type BatchArrays<'py> = (
 );
 
 #[pyfunction]
-#[pyo3(signature = (records, lambda_ = 0.7, score_limit = 0))]
+#[pyo3(signature = (records, lambda_ = 0.7, score_limit = 0, score_clamp = 0))]
 fn extract_batch<'py>(
     py: Python<'py>,
     records: &[u8],
     lambda_: f32,
     score_limit: i16,
+    score_clamp: i16,
 ) -> PyResult<BatchArrays<'py>> {
     if records.len() % PSV_BYTES != 0 {
         return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(format!(
@@ -87,7 +100,7 @@ fn extract_batch<'py>(
             .par_chunks_exact(PSV_BYTES)
             .map(|chunk| {
                 let raw: &[u8; PSV_BYTES] = chunk.try_into().unwrap();
-                extract_one(raw, lambda_, score_limit)
+                extract_one(raw, lambda_, score_limit, score_clamp)
             })
             .collect();
 

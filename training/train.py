@@ -56,7 +56,10 @@ def main():
     p.add_argument("--min-lr", type=float, default=1e-6)
     p.add_argument("--warmup-steps", type=int, default=100)
     p.add_argument("--lambda", type=float, default=0.7, dest="lambda_")
-    p.add_argument("--score-limit", type=int, default=0)
+    p.add_argument("--score-limit", type=int, default=0,
+                   help="この絶対値以上の評価値を持つ局面を学習から除外する（0=無効）")
+    p.add_argument("--score-clamp", type=int, default=0,
+                   help="評価値をこの絶対値へ丸めてから教師信号にする（0=無効）")
     p.add_argument("--workers", type=int, default=4)
     p.add_argument("--log-interval", type=int, default=100)
     p.add_argument("--valid-interval", type=int, default=2000)
@@ -98,11 +101,13 @@ def main():
         train_loader = PsvBatchLoader(
             args.data, args.batch, lambda_=args.lambda_,
             score_limit=args.score_limit, mmap=args.mmap, shuffle=True,
+            score_clamp=args.score_clamp,
         )
         data_n = train_loader.n
     else:
         train_ds = PsvDataset(
-            args.data, lambda_=args.lambda_, score_limit=args.score_limit, mmap=args.mmap
+            args.data, lambda_=args.lambda_, score_limit=args.score_limit,
+            mmap=args.mmap, score_clamp=args.score_clamp,
         )
         # macOSのstart methodはspawnで、workerごとにデータセットがpickle複製
         # される。数十GB規模ではOOMになるためforkを明示し、CoWで共有する
@@ -120,15 +125,15 @@ def main():
     valid_loader = None
     if args.valid:
         if args.batch_loader:
+            # validには score_limit も score_clamp も適用しない。
+            # 教師信号の作り方を変えると物差しが変わり、条件間で
+            # valid loss を比べられなくなる（ADR-0126）
             valid_loader = PsvBatchLoader(
-                args.valid, args.batch, lambda_=args.lambda_,
-                score_limit=args.score_limit, shuffle=False,
+                args.valid, args.batch, lambda_=args.lambda_, shuffle=False,
             )
             valid_n = valid_loader.n
         else:
-            valid_ds = PsvDataset(
-                args.valid, lambda_=args.lambda_, score_limit=args.score_limit
-            )
+            valid_ds = PsvDataset(args.valid, lambda_=args.lambda_)
             valid_loader = DataLoader(
                 valid_ds, batch_size=args.batch, shuffle=False,
                 num_workers=args.workers, collate_fn=collate_psv,

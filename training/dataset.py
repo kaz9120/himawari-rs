@@ -15,7 +15,7 @@ import himawari
 class PsvDataset(Dataset):
     """Memory-mapped PSV dataset with Rust feature extraction."""
 
-    def __init__(self, path, lambda_=0.7, score_limit=0, mmap=False):
+    def __init__(self, path, lambda_=0.7, score_limit=0, mmap=False, score_clamp=0):
         size = os.path.getsize(path)
         if size % 40 != 0:
             raise ValueError(f"ファイルサイズが40の倍数でない: {size}")
@@ -27,13 +27,16 @@ class PsvDataset(Dataset):
             self.data = np.fromfile(path, dtype=np.uint8).reshape(-1, 40)
         self.lambda_ = lambda_
         self.score_limit = score_limit
+        self.score_clamp = score_clamp
 
     def __len__(self):
         return len(self.data)
 
     def __getitem__(self, idx):
         record = bytes(self.data[idx])
-        result = himawari.extract_features(record, self.lambda_, self.score_limit)
+        result = himawari.extract_features(
+            record, self.lambda_, self.score_limit, self.score_clamp
+        )
         if result is None:
             return None
         stm_feats, opp_feats, target = result
@@ -52,7 +55,7 @@ class PsvBatchLoader:
     保たれる。全体の一様性は事前シャッフル済みのファイルで担保する。
     """
 
-    def __init__(self, path, batch, lambda_=0.7, score_limit=0, mmap=False,
+    def __init__(self, path, batch, lambda_=0.7, score_limit=0, mmap=False, score_clamp=0,
                  shuffle=True, chunk_positions=1 << 20, seed=0, prefetch=3):
         size = os.path.getsize(path)
         if size % 40 != 0:
@@ -61,6 +64,7 @@ class PsvBatchLoader:
         self.batch = batch
         self.lambda_ = lambda_
         self.score_limit = score_limit
+        self.score_clamp = score_clamp
         self.mmap = mmap
         self.shuffle = shuffle
         self.chunk = max(chunk_positions, batch)
@@ -103,7 +107,7 @@ class PsvBatchLoader:
 
     def _extract(self, raw):
         arrays = himawari.extract_batch(
-            raw.tobytes(), self.lambda_, self.score_limit
+            raw.tobytes(), self.lambda_, self.score_limit, self.score_clamp
         )
         if len(arrays[4]) == 0:
             return None
