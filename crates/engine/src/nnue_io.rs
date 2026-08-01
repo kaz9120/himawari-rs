@@ -12,14 +12,24 @@
 use std::io::{Read, Write};
 
 use crate::nnue::{
-    ARCH, CONCAT, FT_IN, FT_OUT, L1_OUT, L1_PAD, L2_OUT, NnueNetwork, pad_l2_weights,
+    ARCH, CONCAT, FT_IN, FT_OUT, L1_OUT, L1_PAD, L2_OUT, L2_PAD, L3_OUT, LAST_HIDDEN, NnueNetwork,
+    pad_rows,
 };
 
 const MAGIC: &[u8; 8] = b"HMWRNNUE";
-/// 現行のフォーマット版。隠れ層の2つの幅を別々に持つ（ADR-0127）。
-const FORMAT_VERSION: u32 = 3;
+/// 隠れ層を3つ持つ4層構成の版（ADR-0127）。
+const FORMAT_VERSION_DEEP: u32 = 4;
+/// 隠れ層2つの3層構成の版。隠れ層の幅を別々に持つ。
+const FORMAT_VERSION_TWO_HIDDEN: u32 = 3;
 /// 隠れ層の幅を1つしか持たない旧版（L1とL2が同じ構成に限り読める）。
 const FORMAT_VERSION_UNIFORM_HIDDEN: u32 = 2;
+
+/// 書き出しに使う版。層の数で決まる。
+const FORMAT_VERSION: u32 = if L3_OUT != 0 {
+    FORMAT_VERSION_DEEP
+} else {
+    FORMAT_VERSION_TWO_HIDDEN
+};
 
 /// FNV-1a 64bit。重み列の破損検出用。
 fn fnv1a(bytes: &[u8]) -> u64 {
@@ -48,17 +58,28 @@ fn weight_bytes(net: &NnueNetwork) -> Vec<u8> {
     for &x in &net.b3 {
         v.extend_from_slice(&x.to_le_bytes());
     }
-    // w3はL1_PAD幅で持つが、ゼロ埋め列はファイルに残さない
-    for row in net.w3.as_chunks::<L1_PAD>().0 {
-        for &x in &row[..L1_OUT] {
+    // 隠れ層はパディングした幅で持つが、ゼロ埋め列はファイルに残さない
+    push_rows(&mut v, &net.w3, L1_OUT, L1_PAD);
+    if L3_OUT != 0 {
+        for &x in &net.b4 {
+            v.extend_from_slice(&x.to_le_bytes());
+        }
+        push_rows(&mut v, &net.w4, L2_OUT, L2_PAD);
+    }
+    for &x in &net.w_out {
+        v.push(x as u8);
+    }
+    v.extend_from_slice(&net.b_out.to_le_bytes());
+    v
+}
+
+/// 行優先の重みを、ゼロ埋め列を落として書き出す。
+fn push_rows(v: &mut Vec<u8>, rows: &[i8], used: usize, stride: usize) {
+    for row in rows.chunks_exact(stride) {
+        for &x in &row[..used] {
             v.push(x as u8);
         }
     }
-    for &x in &net.w4 {
-        v.push(x as u8);
-    }
-    v.extend_from_slice(&net.b4.to_le_bytes());
-    v
 }
 
 /// 学習来歴つきで書き出す。
@@ -66,8 +87,11 @@ pub fn save(net: &NnueNetwork, lineage: &str, w: &mut impl Write) -> std::io::Re
     let body = weight_bytes(net);
     w.write_all(MAGIC)?;
     w.write_all(&FORMAT_VERSION.to_le_bytes())?;
-    for dim in [FT_IN as u32, FT_OUT as u32, L1_OUT as u32, L2_OUT as u32] {
-        w.write_all(&dim.to_le_bytes())?;
+    for dim in [FT_IN, FT_OUT, L1_OUT, L2_OUT] {
+        w.write_all(&(dim as u32).to_le_bytes())?;
+    }
+    if L3_OUT != 0 {
+        w.write_all(&(L3_OUT as u32).to_le_bytes())?;
     }
     let lb = lineage.as_bytes();
     w.write_all(&(lb.len() as u32).to_le_bytes())?;
@@ -148,8 +172,8 @@ impl<'a> Cursor<'a> {
     }
 }
 
-/// ファイルの構成（FT入力・FT出力・L1・L2）。
-type Dims = [usize; 4];
+/// ファイルの構成（FT入力・FT出力・L1・L2・L3）。L3は3層構成では0。
+type Dims = [usize; 5];
 
 /// ヘッダを読み、(構成, 学習来歴, 検証済みの重み列) を返す。
 fn read_header(r: &mut impl Read) -> Result<(Dims, String, Vec<u8>), String> {
@@ -160,17 +184,14 @@ fn read_header(r: &mut impl Read) -> Result<(Dims, String, Vec<u8>), String> {
         return Err("マジックが不一致（Himawari NNUE形式ではない）".to_string());
     }
     let version = read_u32(r)?;
+    let mut u = || read_u32(r).map(|v| v as usize);
     // 旧版は隠れ層の幅を1つしか書かない。L1とL2が同じとみなす
     let dims: Dims = match version {
-        FORMAT_VERSION => [
-            read_u32(r)? as usize,
-            read_u32(r)? as usize,
-            read_u32(r)? as usize,
-            read_u32(r)? as usize,
-        ],
+        FORMAT_VERSION_DEEP => [u()?, u()?, u()?, u()?, u()?],
+        FORMAT_VERSION_TWO_HIDDEN => [u()?, u()?, u()?, u()?, 0],
         FORMAT_VERSION_UNIFORM_HIDDEN => {
-            let d = [read_u32(r)?, read_u32(r)?, read_u32(r)?];
-            [d[0] as usize, d[1] as usize, d[2] as usize, d[2] as usize]
+            let d = [u()?, u()?, u()?];
+            [d[0], d[1], d[2], d[2], 0]
         }
         other => return Err(format!("未対応のフォーマット版: {other}")),
     };
@@ -199,7 +220,7 @@ fn read_header(r: &mut impl Read) -> Result<(Dims, String, Vec<u8>), String> {
 /// 読み込む。戻り値は (ネットワーク, 学習来歴)。
 pub fn load(r: &mut impl Read) -> Result<(NnueNetwork, String), String> {
     let (dims, lineage, body) = read_header(r)?;
-    let expect = [FT_IN, FT_OUT, L1_OUT, L2_OUT];
+    let expect = [FT_IN, FT_OUT, L1_OUT, L2_OUT, L3_OUT];
     if dims != expect {
         return Err(format!(
             "アーキテクチャ不一致: ファイル{dims:?} 実装{expect:?}"
@@ -212,9 +233,16 @@ pub fn load(r: &mut impl Read) -> Result<(NnueNetwork, String), String> {
     let b2 = cur.i32v(L1_OUT)?;
     let w2 = cur.i8v(L1_OUT * CONCAT)?;
     let b3 = cur.i32v(L2_OUT)?;
-    let w3 = pad_l2_weights(&cur.i8v(L2_OUT * L1_OUT)?);
-    let w4 = cur.i8v(L2_OUT)?;
-    let b4 = cur.i32v(1)?[0];
+    let w3 = pad_rows(&cur.i8v(L2_OUT * L1_OUT)?, L1_OUT, L1_PAD);
+    let (b4, w4) = if L3_OUT != 0 {
+        let b = cur.i32v(L3_OUT)?;
+        let w = pad_rows(&cur.i8v(L3_OUT * L2_OUT)?, L2_OUT, L2_PAD);
+        (b, w)
+    } else {
+        (Vec::new(), Vec::new())
+    };
+    let w_out = cur.i8v(LAST_HIDDEN)?;
+    let b_out = cur.i32v(1)?[0];
     cur.expect_end()?;
 
     Ok((
@@ -227,6 +255,8 @@ pub fn load(r: &mut impl Read) -> Result<(NnueNetwork, String), String> {
             b3,
             w4,
             b4,
+            w_out,
+            b_out,
         },
         lineage,
     ))
@@ -242,11 +272,18 @@ pub fn load(r: &mut impl Read) -> Result<(NnueNetwork, String), String> {
 /// 切り詰めるときは重みを捨てるので**評価値が変わる。** それでも重みの
 /// 大きさは学習済みのままなので、活性が飽和した乱数ネットよりは現実に
 /// 近い探索木になる。小さい構成を基準にして比べたいときに使う。
+///
+/// 3層のネットを4層構成へ読むと、足した層を恒等写像にする。活性は0..127で、
+/// 対角を64にすると `(64x) >> 6 == x` になるため、**層を足しても評価値が
+/// 変わらない。** 4層から3層へは落とせない。
 pub fn load_resized(r: &mut impl Read) -> Result<(NnueNetwork, String), String> {
     let (dims, lineage, body) = read_header(r)?;
-    let [ft_in, src_ft, src_l1, src_l2] = dims;
+    let [ft_in, src_ft, src_l1, src_l2, src_l3] = dims;
     if ft_in != FT_IN {
         return Err(format!("FT入力が違う: ファイル{ft_in} 実装{FT_IN}"));
+    }
+    if src_l3 > 0 && L3_OUT == 0 {
+        return Err("4層のネットを3層構成へは読めない".to_string());
     }
 
     /// 行優先の行列を、行数と列幅を合わせて写す。余りはゼロのまま。
@@ -288,9 +325,37 @@ pub fn load_resized(r: &mut impl Read) -> Result<(NnueNetwork, String), String> 
     let b3 = fit(cur.i32v(src_l2)?, L2_OUT);
     // 列幅はL1_PADだが、値を置くのはL1_OUTまで（残りは常にゼロ）
     let w3 = fit_rows(&cur.i8v(src_l2 * src_l1)?, src_l1, L2_OUT, L1_PAD, L1_OUT);
-    let w4 = fit(cur.i8v(src_l2)?, L2_OUT);
-    let b4 = cur.i32v(1)?[0];
+    let (src_b4, src_w4) = if src_l3 > 0 {
+        (cur.i32v(src_l3)?, cur.i8v(src_l3 * src_l2)?)
+    } else {
+        (Vec::new(), Vec::new())
+    };
+    let src_last = if src_l3 > 0 { src_l3 } else { src_l2 };
+    let src_w_out = cur.i8v(src_last)?;
+    let b_out = cur.i32v(1)?[0];
     cur.expect_end()?;
+
+    let (b4, w4) = match (src_l3, L3_OUT) {
+        (0, 0) => (Vec::new(), Vec::new()),
+        (0, _) => {
+            // 層を1つ足す。恒等写像にすれば評価値が変わらない
+            if L3_OUT < src_l2 {
+                return Err(format!(
+                    "L3({L3_OUT})が元のL2({src_l2})より狭いと、足す層を恒等写像にできない"
+                ));
+            }
+            let mut w = vec![0i8; L3_OUT * L2_PAD];
+            for i in 0..src_l2 {
+                w[i * L2_PAD + i] = 64;
+            }
+            (vec![0i32; L3_OUT], w)
+        }
+        (_, _) => (
+            fit(src_b4, L3_OUT),
+            fit_rows(&src_w4, src_l2, L3_OUT, L2_PAD, L2_OUT),
+        ),
+    };
+    let w_out = fit(src_w_out, LAST_HIDDEN);
 
     Ok((
         NnueNetwork {
@@ -302,6 +367,8 @@ pub fn load_resized(r: &mut impl Read) -> Result<(NnueNetwork, String), String> 
             b3,
             w4,
             b4,
+            w_out,
+            b_out,
         },
         format!("{lineage} / resized to {ARCH}"),
     ))
@@ -334,6 +401,11 @@ mod tests {
     /// 版2のファイル（隠れ層の幅が1つ）も読める。L1とL2が同じ構成に限る。
     #[test]
     fn version2_is_readable_when_hidden_widths_match() {
+        if L3_OUT != 0 {
+            // 4層構成は版2・版3のファイルを`load`では読まない（層の数が違う）。
+            // 層を足す変換は`load_resized`が担う
+            return;
+        }
         let net = NnueNetwork::random(123);
         let mut v3 = Vec::new();
         save(&net, "v2互換の検査", &mut v3).unwrap();

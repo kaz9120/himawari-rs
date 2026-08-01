@@ -16,20 +16,31 @@ def quantize(model: NnueModel) -> dict:
         b2 = model.l2.bias.detach().float()
         w3 = model.l3.weight.detach().float()
         b3 = model.l3.bias.detach().float()
-        w4 = model.l4.weight.detach().float().squeeze(0)
-        b4 = model.l4.bias.detach().float().item()
+        # 4層構成でだけ持つ隠れ層3（ADR-0127）
+        w4 = model.l4.weight.detach().float() if model.l4 is not None else None
+        b4 = model.l4.bias.detach().float() if model.l4 is not None else None
+        w_out = model.out.weight.detach().float().squeeze(0)
+        b_out = model.out.bias.detach().float().item()
 
     out_w_scale = SIGMOID_SCALE * FV_SCALE / 127.0
+
+    def hidden_w(w):
+        return (w * 64).round().clamp(-128, 127).to(torch.int8)
+
+    def hidden_b(b):
+        return (b * 64 * 127).round().to(torch.int32)
 
     return {
         "ft_w": (ft_w * 127).round().clamp(-32768, 32767).to(torch.int16),
         "ft_b": (ft_b * 127).round().clamp(-32768, 32767).to(torch.int16),
-        "w2": (w2 * 64).round().clamp(-128, 127).to(torch.int8),
-        "b2": (b2 * 64 * 127).round().to(torch.int32),
-        "w3": (w3 * 64).round().clamp(-128, 127).to(torch.int8),
-        "b3": (b3 * 64 * 127).round().to(torch.int32),
-        "w4": (w4 * out_w_scale).round().clamp(-128, 127).to(torch.int8),
-        "b4": round(b4 * SIGMOID_SCALE * FV_SCALE),
+        "w2": hidden_w(w2),
+        "b2": hidden_b(b2),
+        "w3": hidden_w(w3),
+        "b3": hidden_b(b3),
+        "w4": None if w4 is None else hidden_w(w4),
+        "b4": None if b4 is None else hidden_b(b4),
+        "w_out": (w_out * out_w_scale).round().clamp(-128, 127).to(torch.int8),
+        "b_out": round(b_out * SIGMOID_SCALE * FV_SCALE),
     }
 
 
@@ -44,6 +55,8 @@ def save_hmwr(model: NnueModel, lineage: str, path: str):
         q["b2"].tolist(),
         q["w3"].flatten().tolist(),
         q["b3"].tolist(),
-        q["w4"].tolist(),
-        q["b4"],
+        q["w_out"].tolist(),
+        q["b_out"],
+        None if q["w4"] is None else q["w4"].flatten().tolist(),
+        None if q["b4"] is None else q["b4"].tolist(),
     )

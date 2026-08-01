@@ -62,9 +62,9 @@ pub fn load_nn_bin(r: &mut impl Read) -> Result<(NnueNetwork, String), String> {
     let b2 = cur.i32v(L1_OUT)?;
     let w2 = cur.i8v(L1_OUT * CONCAT)?;
     let b3 = cur.i32v(L2_OUT)?;
-    let w3 = crate::nnue::pad_l2_weights(&cur.i8v(L2_OUT * L1_OUT)?);
-    let b4 = cur.i32v(1)?[0];
-    let w4 = cur.i8v(L2_OUT)?;
+    let w3 = crate::nnue::pad_rows(&cur.i8v(L2_OUT * L1_OUT)?, L1_OUT, crate::nnue::L1_PAD);
+    let b_out = cur.i32v(1)?[0];
+    let w_out = cur.i8v(L2_OUT)?;
     cur.expect_end()?;
 
     Ok((
@@ -75,8 +75,10 @@ pub fn load_nn_bin(r: &mut impl Read) -> Result<(NnueNetwork, String), String> {
             b2,
             w3,
             b3,
-            w4,
-            b4,
+            w4: Vec::new(),
+            b4: Vec::new(),
+            w_out,
+            b_out,
         },
         arch,
     ))
@@ -116,8 +118,8 @@ mod tests {
         for &x in &net.w3 {
             v.push(x as u8);
         }
-        v.extend(net.b4.to_le_bytes());
-        for &x in &net.w4 {
+        v.extend(net.b_out.to_le_bytes());
+        for &x in &net.w_out {
             v.push(x as u8);
         }
         v
@@ -136,8 +138,8 @@ mod tests {
         assert_eq!(net.b2, loaded.b2);
         assert_eq!(net.w3, loaded.w3);
         assert_eq!(net.b3, loaded.b3);
-        assert_eq!(net.w4, loaded.w4);
-        assert_eq!(net.b4, loaded.b4);
+        assert_eq!(net.w_out, loaded.w_out);
+        assert_eq!(net.b_out, loaded.b_out);
 
         let mut pos = Position::from_sfen(SFEN_STARTPOS).unwrap();
         for _ in 0..10 {

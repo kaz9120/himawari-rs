@@ -33,9 +33,16 @@ pub struct NnueNetwork {
     /// 常にゼロにする（入力側もゼロ埋めなので値には影響しない）。
     pub w3: Vec<i8>,
     pub b3: Vec<i32>,
+    /// 隠れ層3（`L3_OUT` が0の3層構成では空）。列幅は `L2_PAD`。
     pub w4: Vec<i8>,
-    pub b4: i32,
+    pub b4: Vec<i32>,
+    /// 出力層。入力は最後の隠れ層（4層なら`L3_OUT`、3層なら`L2_OUT`）。
+    pub w_out: Vec<i8>,
+    pub b_out: i32,
 }
+
+/// 出力層の入力次元。層を1つ挟むかで変わる。
+pub const LAST_HIDDEN: usize = if L3_OUT != 0 { L3_OUT } else { L2_OUT };
 
 impl NnueNetwork {
     /// テスト・開発用の乱数重み（xorshiftで再現可能）。
@@ -78,27 +85,25 @@ impl NnueNetwork {
             b2: r.i32v(L1_OUT),
             w3: r.i8_rows(L2_OUT, L1_OUT, L1_PAD),
             b3: r.i32v(L2_OUT),
-            w4: r.i8v(L2_OUT),
-            b4: 0,
+            w4: r.i8_rows(L3_OUT, L2_OUT, L2_PAD),
+            b4: r.i32v(L3_OUT),
+            w_out: r.i8v(LAST_HIDDEN),
+            b_out: 0,
         }
     }
 }
 
-/// 隠れ層2の重みを `L2_OUT × L1_OUT` から `L2_OUT × L1_PAD` へ広げ、
-/// 余った列をゼロで埋める。ファイルと学習側はL1_OUT幅で持ち、推論だけが
-/// SIMDの都合でL1_PAD幅を使う（ADR-0127）。
-pub fn pad_l2_weights(rows: &[i8]) -> Vec<i8> {
-    if L1_PAD == L1_OUT {
+/// 隠れ層の重みを `行数 × used` から `行数 × stride` へ広げ、余った列を
+/// ゼロで埋める。ファイルと学習側はゼロ埋めを持たず、推論だけがSIMDの
+/// 都合で広い幅を使う（ADR-0127）。
+pub fn pad_rows(rows: &[i8], used: usize, stride: usize) -> Vec<i8> {
+    if stride == used || rows.is_empty() {
         return rows.to_vec();
     }
-    let mut v = vec![0i8; L2_OUT * L1_PAD];
-    for (dst, src) in v
-        .as_chunks_mut::<L1_PAD>()
-        .0
-        .iter_mut()
-        .zip(rows.as_chunks::<L1_OUT>().0)
-    {
-        dst[..L1_OUT].copy_from_slice(src);
+    let count = rows.len() / used;
+    let mut v = vec![0i8; count * stride];
+    for (dst, src) in v.chunks_mut(stride).zip(rows.chunks_exact(used)) {
+        dst[..used].copy_from_slice(src);
     }
     v
 }
@@ -172,17 +177,28 @@ pub(crate) fn forward_hidden(net: &NnueNetwork, concat: &[u8; CONCAT]) -> Value 
         // 学習時のスケール（2^6）で割るのが標準
         *h = clip(sum >> 6);
     }
-    let mut h3 = [0u8; L2_OUT];
-    for (o, h) in h3.iter_mut().enumerate() {
+    let mut h3 = [0u8; L2_PAD];
+    for (o, h) in h3[..L2_OUT].iter_mut().enumerate() {
         let mut sum = net.b3[o];
         for (i, &x) in h2.iter().enumerate() {
             sum += i32::from(net.w3[o * L1_PAD + i]) * i32::from(x);
         }
         *h = clip(sum >> 6);
     }
-    let mut out = net.b4;
-    for (i, &x) in h3.iter().enumerate() {
-        out += i32::from(net.w4[i]) * i32::from(x);
+    // 4層構成でだけ層をもう1つ挟む。L3_OUTは定数なので分岐は消える
+    let mut h4 = [0u8; L3_OUT];
+    for (o, h) in h4.iter_mut().enumerate() {
+        let mut sum = net.b4[o];
+        for (i, &x) in h3.iter().enumerate() {
+            sum += i32::from(net.w4[o * L2_PAD + i]) * i32::from(x);
+        }
+        *h = clip(sum >> 6);
+    }
+    let last: &[u8] = if L3_OUT != 0 { &h4 } else { &h3[..L2_OUT] };
+
+    let mut out = net.b_out;
+    for (i, &x) in last.iter().enumerate() {
+        out += i32::from(net.w_out[i]) * i32::from(x);
     }
     out / FV_SCALE
 }

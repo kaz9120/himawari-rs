@@ -17,6 +17,9 @@ FT_IN = himawari.FT_IN
 FT_OUT = himawari.FT_OUT
 L1_OUT = himawari.L1_OUT
 L2_OUT = himawari.L2_OUT
+# 0なら3層。0でなければ隠れ層をもう1つ挟む（ADR-0127）
+L3_OUT = himawari.L3_OUT
+LAST_HIDDEN = L3_OUT if L3_OUT else L2_OUT
 ARCH = himawari.ARCH
 FE_END = FT_IN // 81
 CONCAT = FT_OUT * 2
@@ -52,7 +55,8 @@ class NnueModel(nn.Module):
         self.ft_bias = nn.Parameter(torch.full((FT_OUT,), 0.5))
         self.l2 = nn.Linear(CONCAT, L1_OUT)
         self.l3 = nn.Linear(L1_OUT, L2_OUT)
-        self.l4 = nn.Linear(L2_OUT, 1)
+        self.l4 = nn.Linear(L2_OUT, L3_OUT) if L3_OUT else None
+        self.out = nn.Linear(LAST_HIDDEN, 1)
         self._init_weights()
 
     def _init_weights(self):
@@ -63,8 +67,11 @@ class NnueModel(nn.Module):
         nn.init.zeros_(self.l2.bias)
         nn.init.uniform_(self.l3.weight, -0.3, 0.3)
         nn.init.zeros_(self.l3.bias)
-        nn.init.uniform_(self.l4.weight, -0.3, 0.3)
-        nn.init.zeros_(self.l4.bias)
+        if self.l4 is not None:
+            nn.init.uniform_(self.l4.weight, -0.3, 0.3)
+            nn.init.zeros_(self.l4.bias)
+        nn.init.uniform_(self.out.weight, -0.3, 0.3)
+        nn.init.zeros_(self.out.bias)
 
     def transform(self, idx, off):
         z = self.ft(idx, off)
@@ -84,15 +91,18 @@ class NnueModel(nn.Module):
         z_stm = self.transform(stm_idx, stm_off)
         z_opp = self.transform(opp_idx, opp_off)
         x = torch.cat([z_stm.clamp(0.0, 1.0), z_opp.clamp(0.0, 1.0)], dim=1)
-        h2 = self.l2(x).clamp(0.0, 1.0)
-        h3 = self.l3(h2).clamp(0.0, 1.0)
-        return self.l4(h3).squeeze(1)
+        h = self.l3(self.l2(x).clamp(0.0, 1.0)).clamp(0.0, 1.0)
+        if self.l4 is not None:
+            h = self.l4(h).clamp(0.0, 1.0)
+        return self.out(h).squeeze(1)
 
     def clip_weights(self):
         with torch.no_grad():
             self.l2.weight.clamp_(-HIDDEN_W_LIMIT, HIDDEN_W_LIMIT)
             self.l3.weight.clamp_(-HIDDEN_W_LIMIT, HIDDEN_W_LIMIT)
-            self.l4.weight.clamp_(-OUT_W_LIMIT, OUT_W_LIMIT)
+            if self.l4 is not None:
+                self.l4.weight.clamp_(-HIDDEN_W_LIMIT, HIDDEN_W_LIMIT)
+            self.out.weight.clamp_(-OUT_W_LIMIT, OUT_W_LIMIT)
 
 
 def loss_fn(output, target):
