@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.27.12](https://github.com/kaz9120/himawari-rs/compare/v0.27.11...v0.27.12) (2026-08-01)
+
+
+### ドキュメント
+
+* ネットワーク構造の探索を学習前のNPS計測から始める（ADR-0127） ([#173](https://github.com/kaz9120/himawari-rs/issues/173)) ([45f701b](https://github.com/kaz9120/himawari-rs/commit/45f701bbf7532c8a43f9b457bdd3512efc57da87))
+
 ## [0.27.11](https://github.com/kaz9120/himawari-rs/compare/v0.27.10...v0.27.11) (2026-08-01)
 
 
