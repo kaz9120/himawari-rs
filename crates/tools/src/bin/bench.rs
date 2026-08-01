@@ -41,6 +41,12 @@ struct Cli {
     #[arg(long, default_value_t = 19, value_parser = clap::value_parser!(u32).range(1..))]
     depth: u32,
 
+    /// 深さの代わりにノード数で打ち切る。評価関数が違うと同じ深さでも
+    /// 探索木の大きさが変わるため、評価関数をまたいで比べるときに使う
+    /// （ADR-0127）
+    #[arg(long, value_name = "ノード数", conflicts_with = "depth")]
+    nodes: Option<u64>,
+
     /// 1本を何周測るか
     #[arg(long, default_value_t = 3, value_parser = clap::value_parser!(u32).range(1..))]
     runs: u32,
@@ -97,12 +103,19 @@ fn targets(cli: &Cli) -> Result<Vec<Target>> {
 fn run(cli: &Cli) -> Result<()> {
     let targets = targets(cli)?;
 
-    println!(
-        "=== NPS計測: 深さ {}（局面3は {}）、{}周、1スレッド ===",
-        cli.depth,
-        depth_at(cli.depth, 2),
-        cli.runs
-    );
+    match cli.nodes {
+        Some(n) => println!(
+            "=== NPS計測: {}ノード、{}周、1スレッド ===",
+            thousands(n),
+            cli.runs
+        ),
+        None => println!(
+            "=== NPS計測: 深さ {}（局面3は {}）、{}周、1スレッド ===",
+            cli.depth,
+            depth_at(cli.depth, 2),
+            cli.runs
+        ),
+    }
     for t in &targets {
         println!("{} の評価関数: {}", basename(&t.bin), t.eval.display());
     }
@@ -152,9 +165,15 @@ fn measure(cli: &Cli, eval: &std::path::Path, engine: &std::path::Path) -> Resul
     let mut nodes = 0u64;
     let mut ms = 0u64;
     for (i, pos) in POSITIONS.iter().enumerate() {
-        let result = eng
-            .go_depth(&format!("position {pos}"), depth_at(cli.depth, i), timeout)
-            .or_bail()?;
+        let cmd = format!("position {pos}");
+        let result = match cli.nodes {
+            Some(n) => eng
+                .think(&cmd, &format!("go nodes {n}"), timeout)
+                .or_bail()?,
+            None => eng
+                .go_depth(&cmd, depth_at(cli.depth, i), timeout)
+                .or_bail()?,
+        };
         // 最後のinfo行がその局面の読み切り時点の累計
         nodes += result.last_info.nodes.unwrap_or(0);
         ms += result.last_info.time_ms.unwrap_or(0);

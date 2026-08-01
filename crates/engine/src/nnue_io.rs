@@ -11,7 +11,9 @@
 
 use std::io::{Read, Write};
 
-use crate::nnue::{CONCAT, FT_IN, FT_OUT, L1_OUT, L1_PAD, L2_OUT, NnueNetwork, pad_l2_weights};
+use crate::nnue::{
+    ARCH, CONCAT, FT_IN, FT_OUT, L1_OUT, L1_PAD, L2_OUT, NnueNetwork, pad_l2_weights,
+};
 
 const MAGIC: &[u8; 8] = b"HMWRNNUE";
 /// 現行のフォーマット版。隠れ層の2つの幅を別々に持つ（ADR-0127）。
@@ -146,8 +148,11 @@ impl<'a> Cursor<'a> {
     }
 }
 
-/// 読み込む。戻り値は (ネットワーク, 学習来歴)。
-pub fn load(r: &mut impl Read) -> Result<(NnueNetwork, String), String> {
+/// ファイルの構成（FT入力・FT出力・L1・L2）。
+type Dims = [usize; 4];
+
+/// ヘッダを読み、(構成, 学習来歴, 検証済みの重み列) を返す。
+fn read_header(r: &mut impl Read) -> Result<(Dims, String, Vec<u8>), String> {
     let mut magic = [0u8; 8];
     r.read_exact(&mut magic)
         .map_err(|e| format!("読み込み失敗: {e}"))?;
@@ -155,21 +160,20 @@ pub fn load(r: &mut impl Read) -> Result<(NnueNetwork, String), String> {
         return Err("マジックが不一致（Himawari NNUE形式ではない）".to_string());
     }
     let version = read_u32(r)?;
-    // 旧版は隠れ層の幅を1つしか書かない。L1とL2が同じ構成でだけ読める
-    let dims: Vec<u32> = match version {
-        FORMAT_VERSION => vec![read_u32(r)?, read_u32(r)?, read_u32(r)?, read_u32(r)?],
+    // 旧版は隠れ層の幅を1つしか書かない。L1とL2が同じとみなす
+    let dims: Dims = match version {
+        FORMAT_VERSION => [
+            read_u32(r)? as usize,
+            read_u32(r)? as usize,
+            read_u32(r)? as usize,
+            read_u32(r)? as usize,
+        ],
         FORMAT_VERSION_UNIFORM_HIDDEN => {
             let d = [read_u32(r)?, read_u32(r)?, read_u32(r)?];
-            vec![d[0], d[1], d[2], d[2]]
+            [d[0] as usize, d[1] as usize, d[2] as usize, d[2] as usize]
         }
         other => return Err(format!("未対応のフォーマット版: {other}")),
     };
-    let expect = [FT_IN as u32, FT_OUT as u32, L1_OUT as u32, L2_OUT as u32];
-    if dims != expect {
-        return Err(format!(
-            "アーキテクチャ不一致: ファイル{dims:?} 実装{expect:?}"
-        ));
-    }
     let llen = read_u32(r)? as usize;
     if llen > 4096 {
         return Err("学習来歴が長すぎる".to_string());
@@ -188,6 +192,18 @@ pub fn load(r: &mut impl Read) -> Result<(NnueNetwork, String), String> {
         .map_err(|e| format!("読み込み失敗: {e}"))?;
     if fnv1a(&body) != expect_hash {
         return Err("重みハッシュが不一致（ファイル破損）".to_string());
+    }
+    Ok((dims, lineage, body))
+}
+
+/// 読み込む。戻り値は (ネットワーク, 学習来歴)。
+pub fn load(r: &mut impl Read) -> Result<(NnueNetwork, String), String> {
+    let (dims, lineage, body) = read_header(r)?;
+    let expect = [FT_IN, FT_OUT, L1_OUT, L2_OUT];
+    if dims != expect {
+        return Err(format!(
+            "アーキテクチャ不一致: ファイル{dims:?} 実装{expect:?}"
+        ));
     }
 
     let mut cur = Cursor::new(&body);
@@ -213,6 +229,85 @@ pub fn load(r: &mut impl Read) -> Result<(NnueNetwork, String), String> {
             b4,
         },
         lineage,
+    ))
+}
+
+/// 小さい構成のファイルを読み、いまのビルド構成へゼロ埋めで広げる
+/// （ADR-0127）。
+///
+/// 足した次元の重みとバイアスをすべてゼロにすると、その出力はclipped
+/// ReLUで0になり、受け取る側の列もゼロなので積和に効かない。**評価値は
+/// 元のネットと完全に一致する。** 構成だけを変えて探索木を揃えられるので、
+/// 速度の差だけを取り出せる。
+pub fn load_expanding(r: &mut impl Read) -> Result<(NnueNetwork, String), String> {
+    let (dims, lineage, body) = read_header(r)?;
+    let [ft_in, src_ft, src_l1, src_l2] = dims;
+    if ft_in != FT_IN {
+        return Err(format!("FT入力が違う: ファイル{ft_in} 実装{FT_IN}"));
+    }
+    for (name, src, dst) in [
+        ("FT", src_ft, FT_OUT),
+        ("L1", src_l1, L1_OUT),
+        ("L2", src_l2, L2_OUT),
+    ] {
+        if src > dst {
+            return Err(format!(
+                "{name}を{src}から{dst}へ縮められない。広げる向きにだけ使える"
+            ));
+        }
+    }
+
+    /// 行優先の行列を、行数と列幅の両方を広げて写す。
+    fn expand_rows<T: Copy + Default>(
+        src: &[T],
+        src_cols: usize,
+        dst_rows: usize,
+        dst_cols: usize,
+    ) -> Vec<T> {
+        let mut v = vec![T::default(); dst_rows * dst_cols];
+        for (i, row) in src.chunks_exact(src_cols).enumerate() {
+            v[i * dst_cols..i * dst_cols + src_cols].copy_from_slice(row);
+        }
+        v
+    }
+
+    /// 末尾をゼロで埋めて長さを合わせる。
+    fn extend<T: Copy + Default>(mut src: Vec<T>, len: usize) -> Vec<T> {
+        src.resize(len, T::default());
+        src
+    }
+
+    let mut cur = Cursor::new(&body);
+    let ft_b = extend(cur.i16v(src_ft)?, FT_OUT);
+    let ft_w = expand_rows(&cur.i16v(FT_IN * src_ft)?, src_ft, FT_IN, FT_OUT);
+    let b2 = extend(cur.i32v(src_l1)?, L1_OUT);
+    // 隠れ層1の入力は2視点の連結なので、視点ごとに写す
+    let src_w2 = cur.i8v(src_l1 * src_ft * 2)?;
+    let mut w2 = vec![0i8; L1_OUT * CONCAT];
+    for (o, row) in src_w2.chunks_exact(src_ft * 2).enumerate() {
+        for half in 0..2 {
+            let dst = o * CONCAT + half * FT_OUT;
+            w2[dst..dst + src_ft].copy_from_slice(&row[half * src_ft..(half + 1) * src_ft]);
+        }
+    }
+    let b3 = extend(cur.i32v(src_l2)?, L2_OUT);
+    let w3 = expand_rows(&cur.i8v(src_l2 * src_l1)?, src_l1, L2_OUT, L1_PAD);
+    let w4 = extend(cur.i8v(src_l2)?, L2_OUT);
+    let b4 = cur.i32v(1)?[0];
+    cur.expect_end()?;
+
+    Ok((
+        NnueNetwork {
+            ft_w,
+            ft_b,
+            w2,
+            b2,
+            w3,
+            b3,
+            w4,
+            b4,
+        },
+        format!("{lineage} / expanded to {ARCH}"),
     ))
 }
 
