@@ -9,7 +9,7 @@ use himawari_core::{Color, DirtyPiece, PieceType, Position, Square, bonapiece};
 
 use crate::nnue::{CONCAT, FT_OUT, NnueNetwork, halfkp_active};
 use crate::nnue_simd;
-use crate::value::Value;
+use crate::value::{MAX_PLY, Value};
 
 /// 手駒の増減1件（キャプチャで増、駒打ちで減）。
 #[derive(Clone, Copy)]
@@ -23,6 +23,8 @@ struct HandDelta {
 
 struct AccEntry {
     /// 視点色（絶対色）ごとのFT accumulator。
+    /// `computed[c]` がfalseの間は中身が未定義で、誰も読まない。
+    /// pushで積み直すときにゼロ埋めしないのはこの不変条件による（ADR-0124）
     acc: [[i16; FT_OUT]; 2],
     computed: [bool; 2],
     /// この状態に至った手の差分。rootでは空。
@@ -41,9 +43,17 @@ impl AccEntry {
     }
 }
 
+/// 積める段数。rootが0段目で、探索は `ply >= MAX_PLY` で即座に返るため、
+/// 実際に積まれるのは最大 `MAX_PLY` 段になる。余白を足して越えを防ぐ。
+const MAX_ENTRIES: usize = MAX_PLY + 16;
+
 /// 探索スタックと同期するaccumulatorスタック。
 pub struct NnueState {
+    /// 起動時に `MAX_ENTRIES` ぶん確保し、以後は長さを変えない。
+    /// 有効なのは `0..=top` で、それより上は前回の残骸が残る（ADR-0124）
     entries: Vec<AccEntry>,
+    /// スタックトップの添字。
+    top: usize,
     /// 全計算で使う特徴の置き場。ノードごとに確保し直さないため、
     /// 容量を保ったまま使い回す（ADR-0124）
     scratch: Vec<u32>,
@@ -52,7 +62,10 @@ pub struct NnueState {
 impl NnueState {
     pub fn new() -> NnueState {
         NnueState {
-            entries: vec![AccEntry::empty()],
+            entries: std::iter::repeat_with(AccEntry::empty)
+                .take(MAX_ENTRIES)
+                .collect(),
+            top: 0,
             // HalfKPで立つ特徴は玉以外の駒の数だけで、上限は38
             scratch: Vec::with_capacity(64),
         }
@@ -60,25 +73,35 @@ impl NnueState {
 
     /// 探索の巻き戻しに備えてrootだけ残して初期化する。
     pub fn reset(&mut self) {
-        self.entries.truncate(1);
-        self.entries[0] = AccEntry::empty();
+        self.top = 0;
+        // accは書き戻さない。computedがfalseの間は読まれない
+        let root = &mut self.entries[0];
+        root.computed = [false, false];
+        root.dirty = DirtyPiece::default();
+        root.hand = None;
     }
 
     /// do_move直後のposで呼ぶ。差分材料だけ積む（計算はしない）。
     pub fn push(&mut self, pos: &Position) {
         let dirty = pos.state().dirty;
         let hand = hand_delta_of(pos, &dirty);
-        self.entries.push(AccEntry {
-            acc: [[0; FT_OUT]; 2],
-            computed: [false, false],
-            dirty,
-            hand,
-        });
+        self.top += 1;
+        debug_assert!(
+            self.top < MAX_ENTRIES,
+            "accumulatorスタックが溢れた: top={}",
+            self.top
+        );
+        // accは前段の残骸のまま残す。computedをfalseにするので、
+        // ensureが全上書きするまで読まれない（ADR-0124）
+        let e = &mut self.entries[self.top];
+        e.computed = [false, false];
+        e.dirty = dirty;
+        e.hand = hand;
     }
 
     pub fn pop(&mut self) {
-        debug_assert!(self.entries.len() > 1);
-        self.entries.pop();
+        debug_assert!(self.top > 0);
+        self.top -= 1;
     }
 
     /// 現局面の評価値。必要な視点だけ遡り差分または全計算で作る。
@@ -87,9 +110,10 @@ impl NnueState {
             self.ensure(net, pos, c);
         }
         let stm = pos.side_to_move();
-        let top = self.entries.last().expect("stack not empty");
+        let top = &self.entries[self.top];
         let mut concat = [0u8; CONCAT];
         for (half, c) in [(0usize, stm), (1, stm.flip())] {
+            debug_assert!(top.computed[c.index()], "未計算のaccを読もうとした");
             let acc = &top.acc[c.index()];
             nnue_simd::clip_to_u8(acc, &mut concat[half * FT_OUT..(half + 1) * FT_OUT]);
         }
@@ -98,7 +122,7 @@ impl NnueState {
 
     /// 視点cのaccumulatorを最上段に用意する。
     fn ensure(&mut self, net: &NnueNetwork, pos: &Position, c: Color) {
-        let top = self.entries.len() - 1;
+        let top = self.top;
         if self.entries[top].computed[c.index()] {
             return;
         }
@@ -124,9 +148,11 @@ impl NnueState {
                 let king = pos.king(c);
                 for j in s + 1..=top {
                     let (before, after) = self.entries.split_at_mut(j);
-                    let prev_acc = before[j - 1].acc[c.index()];
+                    let prev = &before[j - 1];
+                    debug_assert!(prev.computed[c.index()], "未計算のaccを読もうとした");
                     let e = &mut after[0];
-                    e.acc[c.index()] = prev_acc;
+                    // 借用が分かれているので、一時領域を挟まず直接写す
+                    e.acc[c.index()].copy_from_slice(&prev.acc[c.index()]);
                     apply_dirty(net, c, king, e);
                     e.computed[c.index()] = true;
                 }
@@ -143,11 +169,9 @@ impl NnueState {
         features.clear();
         halfkp_active(pos, c, &mut features);
         {
-            let top = self.entries.last_mut().expect("stack not empty");
+            let top = &mut self.entries[self.top];
             let acc = &mut top.acc[c.index()];
-            for (o, a) in acc.iter_mut().enumerate() {
-                *a = net.ft_b[o];
-            }
+            acc.copy_from_slice(&net.ft_b[..FT_OUT]);
             for &f in &features {
                 let base = f as usize * FT_OUT;
                 nnue_simd::ft_add(acc, &net.ft_w[base..base + FT_OUT]);
