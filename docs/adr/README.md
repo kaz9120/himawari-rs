@@ -138,6 +138,7 @@
 | [0121](0121-book-scale-up.md) | 定跡を損失の小さい順に掘り、上限と再開を付ける | - | proposed |
 | [0122](0122-tooling-language-split.md) | 開発スクリプトを役割で3言語に分ける | - | proposed |
 | [0123](0123-stop-and-resume.md) | 長時間走る処理は停止と再開ができること | - | proposed |
+| [0124](0124-hot-path-allocs.md) | 挙動を変えない高速化を群でまとめて測る | - | proposed |
 
 ## バックログ
 
