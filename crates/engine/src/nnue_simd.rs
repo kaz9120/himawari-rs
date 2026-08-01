@@ -8,7 +8,7 @@ use std::simd::Simd;
 use std::simd::cmp::SimdOrd;
 use std::simd::num::{SimdInt, SimdUint};
 
-use crate::nnue::{CONCAT, FT_OUT, HIDDEN, NnueNetwork};
+use crate::nnue::{CONCAT, FT_OUT, L1_OUT, L1_PAD, L2_OUT, NnueNetwork};
 use crate::value::Value;
 
 const I16_LANES: usize = 16;
@@ -193,9 +193,11 @@ fn affine_relu(w: &[i8], b: &[i32], x: &[u8], out: &mut [u8]) {
 
 /// 連結ベクトルから評価値まで（SIMD版）。
 pub fn forward_hidden(net: &NnueNetwork, concat: &[u8; CONCAT]) -> Value {
-    let mut h2 = [0u8; HIDDEN];
-    affine_relu(&net.w2, &net.b2, concat, &mut h2);
-    let mut h3 = [0u8; HIDDEN];
+    // 隠れ層2の入力はL1_PAD幅。L1_OUT以降はゼロのままで、
+    // w3の対応する列もゼロなので積和に効かない（ADR-0127）
+    let mut h2 = [0u8; L1_PAD];
+    affine_relu(&net.w2, &net.b2, concat, &mut h2[..L1_OUT]);
+    let mut h3 = [0u8; L2_OUT];
     affine_relu(&net.w3, &net.b3, &h2, &mut h3);
     // 最終層は1行なので4行同時の対象にならない
     let out = net.b4 + dot(&net.w4, &h3);

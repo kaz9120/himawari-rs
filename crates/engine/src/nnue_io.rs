@@ -5,13 +5,19 @@
 //! リトルエンディアンの重み列。アーキテクチャ不一致・ハッシュ
 //! 不一致は読み込みエラーにする（気づかず壊れたネットで
 //! 対局する事故を防ぐ）。
+//!
+//! 版3で隠れ層の幅を2つ（L1・L2）持つようにした（ADR-0127）。
+//! 版2は幅を1つしか書かないため、L1とL2が同じ構成でだけ読める。
 
 use std::io::{Read, Write};
 
-use crate::nnue::{CONCAT, FT_IN, FT_OUT, HIDDEN, NnueNetwork};
+use crate::nnue::{CONCAT, FT_IN, FT_OUT, L1_OUT, L1_PAD, L2_OUT, NnueNetwork, pad_l2_weights};
 
 const MAGIC: &[u8; 8] = b"HMWRNNUE";
-const FORMAT_VERSION: u32 = 2;
+/// 現行のフォーマット版。隠れ層の2つの幅を別々に持つ（ADR-0127）。
+const FORMAT_VERSION: u32 = 3;
+/// 隠れ層の幅を1つしか持たない旧版（L1とL2が同じ構成に限り読める）。
+const FORMAT_VERSION_UNIFORM_HIDDEN: u32 = 2;
 
 /// FNV-1a 64bit。重み列の破損検出用。
 fn fnv1a(bytes: &[u8]) -> u64 {
@@ -40,8 +46,11 @@ fn weight_bytes(net: &NnueNetwork) -> Vec<u8> {
     for &x in &net.b3 {
         v.extend_from_slice(&x.to_le_bytes());
     }
-    for &x in &net.w3 {
-        v.push(x as u8);
+    // w3はL1_PAD幅で持つが、ゼロ埋め列はファイルに残さない
+    for row in net.w3.as_chunks::<L1_PAD>().0 {
+        for &x in &row[..L1_OUT] {
+            v.push(x as u8);
+        }
     }
     for &x in &net.w4 {
         v.push(x as u8);
@@ -55,7 +64,7 @@ pub fn save(net: &NnueNetwork, lineage: &str, w: &mut impl Write) -> std::io::Re
     let body = weight_bytes(net);
     w.write_all(MAGIC)?;
     w.write_all(&FORMAT_VERSION.to_le_bytes())?;
-    for dim in [FT_IN as u32, FT_OUT as u32, HIDDEN as u32] {
+    for dim in [FT_IN as u32, FT_OUT as u32, L1_OUT as u32, L2_OUT as u32] {
         w.write_all(&dim.to_le_bytes())?;
     }
     let lb = lineage.as_bytes();
@@ -146,11 +155,16 @@ pub fn load(r: &mut impl Read) -> Result<(NnueNetwork, String), String> {
         return Err("マジックが不一致（Himawari NNUE形式ではない）".to_string());
     }
     let version = read_u32(r)?;
-    if version != FORMAT_VERSION {
-        return Err(format!("未対応のフォーマット版: {version}"));
-    }
-    let dims = [read_u32(r)?, read_u32(r)?, read_u32(r)?];
-    let expect = [FT_IN as u32, FT_OUT as u32, HIDDEN as u32];
+    // 旧版は隠れ層の幅を1つしか書かない。L1とL2が同じ構成でだけ読める
+    let dims: Vec<u32> = match version {
+        FORMAT_VERSION => vec![read_u32(r)?, read_u32(r)?, read_u32(r)?, read_u32(r)?],
+        FORMAT_VERSION_UNIFORM_HIDDEN => {
+            let d = [read_u32(r)?, read_u32(r)?, read_u32(r)?];
+            vec![d[0], d[1], d[2], d[2]]
+        }
+        other => return Err(format!("未対応のフォーマット版: {other}")),
+    };
+    let expect = [FT_IN as u32, FT_OUT as u32, L1_OUT as u32, L2_OUT as u32];
     if dims != expect {
         return Err(format!(
             "アーキテクチャ不一致: ファイル{dims:?} 実装{expect:?}"
@@ -179,11 +193,11 @@ pub fn load(r: &mut impl Read) -> Result<(NnueNetwork, String), String> {
     let mut cur = Cursor::new(&body);
     let ft_b = cur.i16v(FT_OUT)?;
     let ft_w = cur.i16v(FT_IN * FT_OUT)?;
-    let b2 = cur.i32v(HIDDEN)?;
-    let w2 = cur.i8v(HIDDEN * CONCAT)?;
-    let b3 = cur.i32v(HIDDEN)?;
-    let w3 = cur.i8v(HIDDEN * HIDDEN)?;
-    let w4 = cur.i8v(HIDDEN)?;
+    let b2 = cur.i32v(L1_OUT)?;
+    let w2 = cur.i8v(L1_OUT * CONCAT)?;
+    let b3 = cur.i32v(L2_OUT)?;
+    let w3 = pad_l2_weights(&cur.i8v(L2_OUT * L1_OUT)?);
+    let w4 = cur.i8v(L2_OUT)?;
     let b4 = cur.i32v(1)?[0];
     cur.expect_end()?;
 
@@ -221,6 +235,33 @@ mod tests {
         assert_eq!(net.ft_w, loaded.ft_w);
         assert_eq!(net.w4, loaded.w4);
         assert_eq!(net.b4, loaded.b4);
+        // 隠れ層2はL1_PAD幅のまま往復する（ゼロ埋め列も含めて一致）
+        assert_eq!(net.w3, loaded.w3);
+        assert_eq!(net.w3.len(), crate::nnue::L2_OUT * L1_PAD);
+    }
+
+    /// 版2のファイル（隠れ層の幅が1つ）も読める。L1とL2が同じ構成に限る。
+    #[test]
+    fn version2_is_readable_when_hidden_widths_match() {
+        let net = NnueNetwork::random(123);
+        let mut v3 = Vec::new();
+        save(&net, "v2互換の検査", &mut v3).unwrap();
+        // 版3のヘッダから版番号とL2の次元を落として版2の並びにする
+        let mut v2 = Vec::new();
+        v2.extend_from_slice(&v3[..8]);
+        v2.extend_from_slice(&FORMAT_VERSION_UNIFORM_HIDDEN.to_le_bytes());
+        v2.extend_from_slice(&v3[12..24]); // FT_IN・FT_OUT・L1_OUT
+        v2.extend_from_slice(&v3[28..]); // L2_OUTを飛ばして以降すべて
+
+        let result = load(&mut v2.as_slice());
+        if L1_OUT == L2_OUT {
+            let (loaded, lineage) = result.unwrap();
+            assert_eq!(lineage, "v2互換の検査");
+            assert_eq!(net.ft_w, loaded.ft_w);
+            assert_eq!(net.w3, loaded.w3);
+        } else {
+            assert!(result.is_err(), "幅が違う構成で版2を受け入れてはいけない");
+        }
     }
 
     /// ヘッダ・重みの破損を検出してエラーになる。

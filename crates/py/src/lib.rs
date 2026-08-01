@@ -3,7 +3,7 @@ use pyo3::prelude::*;
 use rayon::prelude::*;
 
 use himawari_core::packed_sfen::{PSV_BYTES, PackedSfenValue, unpack};
-use himawari_engine::nnue::{FT_IN, FT_OUT, HIDDEN, NnueNetwork, halfkp_active};
+use himawari_engine::nnue::{ARCH, FT_IN, FT_OUT, L1_OUT, L2_OUT, NnueNetwork, halfkp_active};
 use himawari_engine::nnue_io;
 
 const SIGMOID_SCALE: f32 = 600.0;
@@ -130,6 +130,17 @@ fn extract_batch<'py>(
     ))
 }
 
+/// 学習側が渡す重みの長さを検査する。次元の取り違えは、書けてしまうと
+/// 読み込み時のバイト数不一致まで気づけない（ADR-0127）。
+fn check_len(name: &str, got: usize, want: usize) -> PyResult<()> {
+    if got != want {
+        return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(format!(
+            "{name}の要素数が合わない: {got}（このビルドは{ARCH}なので{want}）"
+        )));
+    }
+    Ok(())
+}
+
 #[pyfunction]
 #[pyo3(signature = (path, lineage, ft_w, ft_b, w2, b2, w3, b3, w4, b4))]
 #[allow(clippy::too_many_arguments)]
@@ -145,12 +156,20 @@ fn save_hmwr(
     w4: Vec<i8>,
     b4: i32,
 ) -> PyResult<()> {
+    check_len("ft_w", ft_w.len(), FT_IN * FT_OUT)?;
+    check_len("ft_b", ft_b.len(), FT_OUT)?;
+    check_len("w2", w2.len(), L1_OUT * FT_OUT * 2)?;
+    check_len("b2", b2.len(), L1_OUT)?;
+    check_len("w3", w3.len(), L2_OUT * L1_OUT)?;
+    check_len("b3", b3.len(), L2_OUT)?;
+    check_len("w4", w4.len(), L2_OUT)?;
     let net = NnueNetwork {
         ft_w,
         ft_b,
         w2,
         b2,
-        w3,
+        // 学習側はパディングを持たない。推論の幅へ広げる
+        w3: himawari_engine::nnue::pad_l2_weights(&w3),
         b3,
         w4,
         b4,
@@ -169,6 +188,8 @@ fn himawari(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(save_hmwr, m)?)?;
     m.add("FT_IN", FT_IN)?;
     m.add("FT_OUT", FT_OUT)?;
-    m.add("HIDDEN", HIDDEN)?;
+    m.add("L1_OUT", L1_OUT)?;
+    m.add("L2_OUT", L2_OUT)?;
+    m.add("ARCH", ARCH)?;
     Ok(())
 }

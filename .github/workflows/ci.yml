@@ -19,9 +19,9 @@ jobs:
       - run: cargo test --workspace
       # perft既知値の照合（debugではignoreされる。ADR-0006/0018）
       - run: cargo test --workspace --release
-      # ft512 featureは既定のビルドに入らない。READMEのビルド手順と
-      # training/model.pyが依存するので、コンパイルだけ確認する
-      - run: cargo check --workspace --features himawari-engine/ft512
+      # 既定以外のネットワーク構成（ADR-0127）。L1をパディングする経路と
+      # FTを太らせた経路が壊れていないことを、コンパイルとテストで確認する
+      - run: HIMAWARI_ARCH=512x16x64 cargo test --workspace
 
   # NNUE推論のAVX2経路を検証する（ADR-0099）。既定のx86-64ターゲットは
   # SSE2までで、上のジョブではAVX2経路がコンパイルされない

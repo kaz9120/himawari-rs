@@ -9,12 +9,15 @@ import torch.nn.functional as F
 
 import himawari
 
-# 次元はRust側のビルドから読む（ADR-0067）。ft512 featureでビルドした
-# himawariモジュールを入れれば、学習側も自動で512になる。
-# 定数を二重に持たないので、推論と学習の取り違えが起きない
+# 次元はRust側のビルドから読む（ADR-0067・ADR-0127）。
+# HIMAWARI_ARCH を指定してビルドしたhimawariモジュールを入れれば、
+# 学習側も同じ構成になる。定数を二重に持たないので、推論と学習の
+# 取り違えが起きない
 FT_IN = himawari.FT_IN
 FT_OUT = himawari.FT_OUT
-HIDDEN = himawari.HIDDEN
+L1_OUT = himawari.L1_OUT
+L2_OUT = himawari.L2_OUT
+ARCH = himawari.ARCH
 FE_END = FT_IN // 81
 CONCAT = FT_OUT * 2
 
@@ -47,9 +50,9 @@ class NnueModel(nn.Module):
             else None
         )
         self.ft_bias = nn.Parameter(torch.full((FT_OUT,), 0.5))
-        self.l2 = nn.Linear(CONCAT, HIDDEN)
-        self.l3 = nn.Linear(HIDDEN, HIDDEN)
-        self.l4 = nn.Linear(HIDDEN, 1)
+        self.l2 = nn.Linear(CONCAT, L1_OUT)
+        self.l3 = nn.Linear(L1_OUT, L2_OUT)
+        self.l4 = nn.Linear(L2_OUT, 1)
         self._init_weights()
 
     def _init_weights(self):
