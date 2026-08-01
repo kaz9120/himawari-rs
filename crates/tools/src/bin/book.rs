@@ -10,6 +10,7 @@
 //!   book gen --out <path> [--eval <hmwr>] [--ply 24] [--width 4]
 //!            [--depth 24] [--hash 256] [--threads N]
 //!            [--max-positions 2000] [--margin 100] [--save-every 25]
+//!            [--stop-file <path>]
 //!
 //! --ply は展開する手数、--width は各局面で探索する候補手数。
 //! 先手番・後手番の両方を含める。相手の手を経由しないと自分の手番の
@@ -23,10 +24,15 @@
 //! 長時間走るので --save-every 局面ごとに書き出す。出力ファイルが既に
 //! あれば読み込んで再開する。中断しても、そこまでの定跡はそのまま使える。
 //!
+//! 途中で止めるときは停止ファイルを置く（ADR-0123）。次の局面へ進む前に
+//! 書き出して終わるので、探索中の1局面ぶんも失わない。
+//!
+//!   touch data/book/main.db.stop
+//!
 //! 探索はThreadPool経由でLazy SMP（ADR-0031）を使う。置換表は局面を
-//! またいで再利用する。BFSで親から子へ展開するため、親の探索で読んだ
-//! 子局面の情報がそのまま効く。TTのエントリは深さ付きなので、浅い探索
-//! の結果が深い探索に流用されることはない。
+//! またいで再利用する。親から子へ展開するので、親の探索で読んだ子局面の
+//! 情報がそのまま効く。TTのエントリは深さ付きなので、浅い探索の結果が
+//! 深い探索に流用されることはない。
 
 use std::collections::{BinaryHeap, HashMap, HashSet};
 use std::io::Write;
@@ -34,6 +40,7 @@ use std::sync::{Arc, Mutex};
 
 use himawari_core::{Position, SFEN_STARTPOS};
 use himawari_engine::{EngineOptions, Limits, ThreadPool};
+use himawari_tools::stop_file::StopFile;
 
 struct Config {
     out: String,
@@ -46,6 +53,8 @@ struct Config {
     max_positions: usize,
     margin: i32,
     save_every: usize,
+    /// 停止ファイルのパス。省略すると `<out>.stop`（ADR-0123）
+    stop_file: Option<String>,
 }
 
 /// 1局面ぶんの候補手。(指し手, 評価値, 予想応手) を評価値の降順で持つ。
@@ -290,6 +299,13 @@ fn generate(cfg: &Config) -> std::io::Result<()> {
         eprintln!("再開: {} から {resumed}局面を読み込みました", cfg.out);
     }
 
+    let stop = match &cfg.stop_file {
+        Some(p) => StopFile::at(std::path::PathBuf::from(p)),
+        None => StopFile::beside(std::path::Path::new(&cfg.out)),
+    };
+    stop.clear_stale();
+    eprintln!("止めるには: touch {}", stop.path().display());
+
     let root = Position::from_sfen(SFEN_STARTPOS).expect("startpos");
     let mut queue: BinaryHeap<Task> = BinaryHeap::new();
     let mut seq = 0usize;
@@ -302,10 +318,17 @@ fn generate(cfg: &Config) -> std::io::Result<()> {
     let mut visited: HashSet<String> = HashSet::new();
     let started = std::time::Instant::now();
     let mut searched = 0usize;
+    let mut stopped = false;
 
     while let Some(task) = queue.pop() {
         if task.ply >= cfg.ply || book.len() >= cfg.max_positions {
             continue;
+        }
+        // 1局面に入る前に見る。探索の途中では止めない（ADR-0123）
+        if stop.requested() {
+            eprintln!("停止ファイルを見つけた: {}", stop.path().display());
+            stopped = true;
+            break;
         }
         let key = book_key(&task.pos);
         if !visited.insert(key.clone()) {
@@ -365,6 +388,11 @@ fn generate(cfg: &Config) -> std::io::Result<()> {
         book.len(),
         started.elapsed().as_secs()
     );
+    if stopped {
+        // 消しておかないと、再開したつもりの次回が何もせずに終わる
+        stop.consume();
+        eprintln!("停止した。同じコマンドで再開できる");
+    }
     Ok(())
 }
 
@@ -399,6 +427,7 @@ fn main() {
         max_positions: 2000,
         margin: 100,
         save_every: 25,
+        stop_file: None,
     };
     let mut i = 1;
     while i < args.len() {
@@ -415,6 +444,7 @@ fn main() {
                 cfg.max_positions = val.parse::<usize>().unwrap_or(cfg.max_positions).max(1);
             }
             "--margin" => cfg.margin = val.parse().unwrap_or(cfg.margin),
+            "--stop-file" => cfg.stop_file = Some(val),
             "--save-every" => {
                 cfg.save_every = val.parse::<usize>().unwrap_or(cfg.save_every).max(1);
             }

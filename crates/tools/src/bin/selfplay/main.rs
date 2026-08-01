@@ -32,6 +32,7 @@ use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 
 use himawari_core::{Color, Position, SFEN_STARTPOS};
+use himawari_tools::stop_file::StopFile;
 use himawari_tools::usi_engine::UsiEngine;
 
 use game::{GameConfig, GameRecord, TimeControl, play_game};
@@ -565,6 +566,33 @@ fn main() {
     let counter = Arc::new(AtomicU64::new(start_pair));
     let failed = Arc::new(AtomicBool::new(false));
 
+    // 停止ファイルの監視（ADR-0123）。SPRTは数時間かかるので、判定を待たずに
+    // 止めたいことがある。全ワーカーが毎ペア見るとファイルシステムを叩きすぎる
+    // ため、1本のスレッドが定期的に見て既存の停止フラグへ流す。走行中の対局は
+    // 最後まで指してから終わる
+    let stop_file = Arc::new(StopFile::beside(std::path::Path::new(&cfg.out)));
+    stop_file.clear_stale();
+    eprintln!("止めるには: touch {}", stop_file.path().display());
+    let stopped_by_file = Arc::new(AtomicBool::new(false));
+    let watcher = {
+        let (stop, stop_file, stopped_by_file) = (
+            Arc::clone(&stop),
+            Arc::clone(&stop_file),
+            Arc::clone(&stopped_by_file),
+        );
+        std::thread::spawn(move || {
+            while !stop.load(Ordering::Relaxed) {
+                if stop_file.requested() {
+                    eprintln!("停止ファイルを見つけた。走行中の対局を終えて止まる");
+                    stopped_by_file.store(true, Ordering::Relaxed);
+                    stop.store(true, Ordering::Relaxed);
+                    break;
+                }
+                std::thread::sleep(std::time::Duration::from_secs(2));
+            }
+        })
+    };
+
     let handles: Vec<_> = (0..cfg.concurrency.max(1))
         .map(|_| {
             let (cfg, stop, counter, agg, failed) = (
@@ -585,6 +613,13 @@ fn main() {
         .collect();
     for h in handles {
         let _ = h.join();
+    }
+    // ワーカーが尽きたら監視も畳む。stopは立っているので次の周回で抜ける
+    stop.store(true, Ordering::Relaxed);
+    let _ = watcher.join();
+    if stopped_by_file.load(Ordering::Relaxed) {
+        // 消しておかないと、--resumeで再開したつもりの次回が即終了する
+        stop_file.consume();
     }
 
     let a = agg.lock().expect("agg lock");
