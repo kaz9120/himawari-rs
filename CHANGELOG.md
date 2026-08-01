@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.27.5](https://github.com/kaz9120/himawari-rs/compare/v0.27.4...v0.27.5) (2026-08-01)
+
+
+### その他の変更
+
+* リリースの作成を既定でやめ、--applyで明示させる（ADR-0122） ([#159](https://github.com/kaz9120/himawari-rs/issues/159)) ([5028f77](https://github.com/kaz9120/himawari-rs/commit/5028f77361635105e182a59be955708882ecaea7))
+
 ## [0.27.4](https://github.com/kaz9120/himawari-rs/compare/v0.27.3...v0.27.4) (2026-08-01)
 
 
