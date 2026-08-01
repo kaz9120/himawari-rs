@@ -134,6 +134,29 @@ require_command() {
 # スクリプトごとに違う。無理に1本へまとめず、ここでは骨格だけを持つ
 # （docs/adr/0122-tooling-language-split.md）。
 
+# 引数列から --apply を抜き取る。あれば RELEASE_APPLY=1 を立て、
+# 残りを配列 RELEASE_ARGS へ入れる。呼び出し側はこう受ける。
+#
+#   release_take_apply "$@"
+#   set -- ${RELEASE_ARGS[@]+"${RELEASE_ARGS[@]}"}
+#
+# 配列を戻り値で返せないのでグローバルを使う。macOSの /bin/bash は
+# 3.2 で、mapfile も連想配列もない。CIはLinux（bash 5）なので、
+# 4以降の機能を使うとCIだけ通ってローカルで落ちる
+release_take_apply() {
+	RELEASE_APPLY="${RELEASE_APPLY:-0}"
+	RELEASE_ARGS=()
+	local arg
+	for arg in "$@"; do
+		if [[ "$arg" == "--apply" ]]; then
+			RELEASE_APPLY=1
+		else
+			RELEASE_ARGS+=("$arg")
+		fi
+	done
+	export RELEASE_APPLY
+}
+
 release_validate_version() {
 	local version="$1"
 	if ! [[ "$version" =~ ^[0-9]+$ ]]; then
@@ -155,17 +178,20 @@ release_file_size() {
 }
 
 # タグ・タイトル・ノートファイル・アセット（複数可）からリリースを作る。
-# 作成後にURLを表示するところまで含む。
 #
-# RELEASE_DRY_RUN=1 なら実行せず、走るはずのコマンドとノート本文を出す。
+# 既定では作らない。走るはずのコマンドとノート本文を出して終わる。
+# 実際に作るには --apply を渡すか RELEASE_APPLY=1 を立てる。
+#
 # リリースの作成は外から見える操作で、消しても「あった」ことは残る。
-# 動作確認のつもりで本物を作ってしまう事故を防ぐための逃げ道である
-# （2026-08-01に book-v99999 を実際に作り、直後に削除した）。
+# 2026-08-01に、動作確認のつもりで book-v99999 を本当に作ってしまった
+# （直後に削除）。**予行演習を既定にすれば、思い出さなくても事故が起きない。**
+# 忘れて困るのは「作ったつもりが作られていない」ときだけで、そちらは
+# 出力を見れば分かる。
 release_create() {
 	local tag="$1" title="$2" notes_file="$3"
 	shift 3
-	if [[ "${RELEASE_DRY_RUN:-0}" == "1" ]]; then
-		log_warn "RELEASE_DRY_RUN=1 のため作成しない"
+	if [[ "${RELEASE_APPLY:-0}" != "1" ]]; then
+		log_warn "予行演習のため作成しない。実行するには --apply を付ける"
 		log_info "gh release create ${tag} $* --title ${title} --notes-file ${notes_file} --latest=false"
 		log_info "--- ノート本文 ---"
 		cat "$notes_file"

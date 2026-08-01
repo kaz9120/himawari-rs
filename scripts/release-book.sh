@@ -23,6 +23,10 @@ genログを渡すと、生成条件（ply/width/depth/threads）と使用ネッ
 
 タグは book-v<バージョン番号> になる。エンジン本体（v0.7.x）や
 ネット（net-v<N>）とは別系統で、--latest=false で作る。
+既定では作らない。走るはずのコマンドとリリースノートを出して終わる。
+実際に作るには --apply を付ける。リリースは消しても「あった」ことが残る
+ため、明示したときだけ作る（ADR-0122）。
+
 USAGE
 }
 
@@ -30,6 +34,10 @@ if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
 	usage
 	exit 0
 fi
+
+# --apply を抜いてから位置引数を読む。既定は予行演習（ADR-0122）
+release_take_apply "$@"
+set -- ${RELEASE_ARGS[@]+"${RELEASE_ARGS[@]}"}
 
 if [[ $# -lt 2 ]]; then
 	usage
