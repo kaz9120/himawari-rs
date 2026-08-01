@@ -1,7 +1,8 @@
 //! 評価関数インターフェース（ADR-0023）。
 //!
-//! enumディスパッチ。駒割＋tempoのMaterialと、NNUE（2塔構成、
-//! ADR-0034）。push/popはdo_move/undo_moveと対で呼ぶ契約。
+//! enumディスパッチ。駒割＋tempoのMaterialと、NNUE（ADR-0034）。
+//! NNUEはADR-0045で利き塔を除去し、純粋HalfKP構成にした。
+//! push/popはdo_move/undo_moveと対で呼ぶ契約。
 
 use std::sync::Arc;
 

@@ -3,10 +3,7 @@
 import torch
 
 import himawari
-from model import (
-    FT_IN, FT_OUT, HIDDEN, CONCAT,
-    SIGMOID_SCALE, FV_SCALE, NnueModel,
-)
+from model import SIGMOID_SCALE, FV_SCALE, NnueModel
 
 
 def quantize(model: NnueModel) -> dict:
@@ -50,19 +47,3 @@ def save_hmwr(model: NnueModel, lineage: str, path: str):
         q["w4"].tolist(),
         q["b4"],
     )
-
-
-def load_hmwr(path: str) -> tuple[dict, str]:
-    """Load .hmwr file via Rust. Returns (quantized_dict, lineage)."""
-    d = himawari.load_hmwr(path)
-    lineage = d["lineage"]
-    return {
-        "ft_w": torch.tensor(d["ft_w"], dtype=torch.int16).reshape(FT_IN, FT_OUT),
-        "ft_b": torch.tensor(d["ft_b"], dtype=torch.int16),
-        "w2": torch.tensor(d["w2"], dtype=torch.int8).reshape(HIDDEN, CONCAT),
-        "b2": torch.tensor(d["b2"], dtype=torch.int32),
-        "w3": torch.tensor(d["w3"], dtype=torch.int8).reshape(HIDDEN, HIDDEN),
-        "b3": torch.tensor(d["b3"], dtype=torch.int32),
-        "w4": torch.tensor(d["w4"], dtype=torch.int8),
-        "b4": d["b4"],
-    }, lineage

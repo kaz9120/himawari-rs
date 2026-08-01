@@ -149,32 +149,11 @@ fn save_hmwr(
     Ok(())
 }
 
-#[pyfunction]
-fn load_hmwr(py: Python<'_>, path: &str) -> PyResult<PyObject> {
-    let mut f = std::fs::File::open(path)
-        .map_err(|e| PyErr::new::<pyo3::exceptions::PyIOError, _>(e.to_string()))?;
-    let (net, lineage) =
-        nnue_io::load(&mut f).map_err(|e| PyErr::new::<pyo3::exceptions::PyValueError, _>(e))?;
-
-    let dict = pyo3::types::PyDict::new(py);
-    dict.set_item("ft_w", net.ft_w)?;
-    dict.set_item("ft_b", net.ft_b)?;
-    dict.set_item("w2", net.w2)?;
-    dict.set_item("b2", net.b2)?;
-    dict.set_item("w3", net.w3)?;
-    dict.set_item("b3", net.b3)?;
-    dict.set_item("w4", net.w4)?;
-    dict.set_item("b4", net.b4)?;
-    dict.set_item("lineage", lineage)?;
-    Ok(dict.into())
-}
-
 #[pymodule]
 fn himawari(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(extract_features, m)?)?;
     m.add_function(wrap_pyfunction!(extract_batch, m)?)?;
     m.add_function(wrap_pyfunction!(save_hmwr, m)?)?;
-    m.add_function(wrap_pyfunction!(load_hmwr, m)?)?;
     m.add("FT_IN", FT_IN)?;
     m.add("FT_OUT", FT_OUT)?;
     m.add("HIDDEN", HIDDEN)?;

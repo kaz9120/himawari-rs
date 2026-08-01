@@ -397,7 +397,6 @@ fn record_game(agg: &mut Aggregate, rec: &GameRecord, candidate_color: Color) {
     agg.wdl[idx] += 1;
 }
 
-#[allow(clippy::too_many_arguments)]
 fn worker(
     cfg: &Config,
     stop: &AtomicBool,
