@@ -140,6 +140,7 @@
 | [0123](0123-stop-and-resume.md) | 長時間走る処理は停止と再開ができること | - | proposed |
 | [0124](0124-hot-path-allocs.md) | 挙動を変えない高速化を群でまとめて測る | - | proposed |
 | [0125](0125-search-decomposition.md) | 探索本体を責務ごとに切り出す | - | proposed |
+| [0126](0126-mate-score-in-training.md) | 教師データの詰みスコアは素通しのままにする | - | accepted |
 
 ## バックログ
 
