@@ -1,6 +1,6 @@
 # 0128: 3つ以上の候補は総当たりリーグ戦で順位づける
 
-- Status: proposed
+- Status: accepted
 - Date: 2026-08-01
 - 関連ADR: [0027](0027-sprt-framework.md), [0028](0028-pruning-extensions.md), [0089](0089-improvement-criteria.md), [0122](0122-tooling-language-split.md), [0127](0127-net-shape-bench.md)
 

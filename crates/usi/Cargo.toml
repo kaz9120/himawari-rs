@@ -9,10 +9,6 @@ license.workspace = true
 name = "himawari"
 path = "src/main.rs"
 
-[features]
-# FTの出力次元を512にする（ADR-0067）
-ft512 = ["himawari-engine/ft512"]
-
 [dependencies]
 himawari-core = { path = "../core" }
 himawari-engine = { path = "../engine" }

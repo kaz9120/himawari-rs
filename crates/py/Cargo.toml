@@ -8,10 +8,6 @@ license.workspace = true
 name = "himawari"
 crate-type = ["cdylib"]
 
-[features]
-# FTの出力次元を512にする（ADR-0067）
-ft512 = ["himawari-engine/ft512"]
-
 [dependencies]
 pyo3 = { version = "0.24", features = ["extension-module"] }
 numpy = "0.24"

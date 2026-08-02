@@ -14,11 +14,13 @@
 
 use std::io::Read;
 
-use crate::nnue::{CONCAT, FT_IN, FT_OUT, HIDDEN, NnueNetwork};
+use crate::nnue::{ARCH, CONCAT, FT_IN, FT_OUT, L1_OUT, L2_OUT, NnueNetwork};
 use crate::nnue_io::Cursor;
 
 /// 標準NNUEのフォーマットバージョン（Stockfish系・やねうら王共通）。
 const NN_BIN_VERSION: u32 = 0x7AF3_2F16;
+/// nn.binが前提とするネットワーク構成。
+const NN_BIN_ARCH: &str = "256x32x32";
 /// nn.binを読み込む。戻り値は (ネットワーク, アーキテクチャ文字列)。
 /// ハッシュ値は検証しない（構成の不一致は次元とバイト数の照合で
 /// 検出し、重みの正しさは外部のevaluate値照合で確認する）。
@@ -44,10 +46,11 @@ pub fn load_nn_bin(r: &mut impl Read) -> Result<(NnueNetwork, String), String> {
     if !arch.contains("HalfKP") {
         return Err(format!("HalfKPネットではない: {arch}"));
     }
-    // nn.binのFT次元は256で固定である（ADR-0067）
-    if FT_OUT != 256 {
+    // nn.binの構造は256x32x32で固定である（ADR-0067・ADR-0127）
+    if !cfg!(arch_default) {
         return Err(format!(
-            "nn.binはFT 256専用。このビルドはFT {FT_OUT}（ADR-0067）"
+            "nn.binは{}専用。このビルドは{ARCH}（ADR-0127）",
+            NN_BIN_ARCH
         ));
     }
 
@@ -56,12 +59,12 @@ pub fn load_nn_bin(r: &mut impl Read) -> Result<(NnueNetwork, String), String> {
     let ft_w = cur.i16v(FT_IN * FT_OUT)?;
 
     let _net_hash = cur.u32()?;
-    let b2 = cur.i32v(HIDDEN)?;
-    let w2 = cur.i8v(HIDDEN * CONCAT)?;
-    let b3 = cur.i32v(HIDDEN)?;
-    let w3 = cur.i8v(HIDDEN * HIDDEN)?;
-    let b4 = cur.i32v(1)?[0];
-    let w4 = cur.i8v(HIDDEN)?;
+    let b2 = cur.i32v(L1_OUT)?;
+    let w2 = cur.i8v(L1_OUT * CONCAT)?;
+    let b3 = cur.i32v(L2_OUT)?;
+    let w3 = crate::nnue::pad_rows(&cur.i8v(L2_OUT * L1_OUT)?, L1_OUT, crate::nnue::L1_PAD);
+    let b_out = cur.i32v(1)?[0];
+    let w_out = cur.i8v(L2_OUT)?;
     cur.expect_end()?;
 
     Ok((
@@ -72,15 +75,17 @@ pub fn load_nn_bin(r: &mut impl Read) -> Result<(NnueNetwork, String), String> {
             b2,
             w3,
             b3,
-            w4,
-            b4,
+            w4: Vec::new(),
+            b4: Vec::new(),
+            w_out,
+            b_out,
         },
         arch,
     ))
 }
 
-// テストは256のnn.binを組み立てるため、512ビルドでは回さない
-#[cfg(all(test, not(feature = "ft512")))]
+// テストは256x32x32のnn.binを組み立てるため、他の構成では回さない
+#[cfg(all(test, arch_default))]
 mod tests {
     use super::*;
     use crate::nnue::evaluate_scalar;
@@ -113,8 +118,8 @@ mod tests {
         for &x in &net.w3 {
             v.push(x as u8);
         }
-        v.extend(net.b4.to_le_bytes());
-        for &x in &net.w4 {
+        v.extend(net.b_out.to_le_bytes());
+        for &x in &net.w_out {
             v.push(x as u8);
         }
         v
@@ -133,8 +138,8 @@ mod tests {
         assert_eq!(net.b2, loaded.b2);
         assert_eq!(net.w3, loaded.w3);
         assert_eq!(net.b3, loaded.b3);
-        assert_eq!(net.w4, loaded.w4);
-        assert_eq!(net.b4, loaded.b4);
+        assert_eq!(net.w_out, loaded.w_out);
+        assert_eq!(net.b_out, loaded.b_out);
 
         let mut pos = Position::from_sfen(SFEN_STARTPOS).unwrap();
         for _ in 0..10 {

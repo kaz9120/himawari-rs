@@ -3,7 +3,10 @@ use pyo3::prelude::*;
 use rayon::prelude::*;
 
 use himawari_core::packed_sfen::{PSV_BYTES, PackedSfenValue, unpack};
-use himawari_engine::nnue::{FT_IN, FT_OUT, HIDDEN, NnueNetwork, halfkp_active};
+use himawari_engine::nnue::{
+    ARCH, FT_IN, FT_OUT, L1_OUT, L1_PAD, L2_OUT, L2_PAD, L3_OUT, LAST_HIDDEN, NnueNetwork,
+    halfkp_active,
+};
 use himawari_engine::nnue_io;
 
 const SIGMOID_SCALE: f32 = 600.0;
@@ -130,8 +133,19 @@ fn extract_batch<'py>(
     ))
 }
 
+/// 学習側が渡す重みの長さを検査する。次元の取り違えは、書けてしまうと
+/// 読み込み時のバイト数不一致まで気づけない（ADR-0127）。
+fn check_len(name: &str, got: usize, want: usize) -> PyResult<()> {
+    if got != want {
+        return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(format!(
+            "{name}の要素数が合わない: {got}（このビルドは{ARCH}なので{want}）"
+        )));
+    }
+    Ok(())
+}
+
 #[pyfunction]
-#[pyo3(signature = (path, lineage, ft_w, ft_b, w2, b2, w3, b3, w4, b4))]
+#[pyo3(signature = (path, lineage, ft_w, ft_b, w2, b2, w3, b3, w_out, b_out, w4=None, b4=None))]
 #[allow(clippy::too_many_arguments)]
 fn save_hmwr(
     path: &str,
@@ -142,18 +156,47 @@ fn save_hmwr(
     b2: Vec<i32>,
     w3: Vec<i8>,
     b3: Vec<i32>,
-    w4: Vec<i8>,
-    b4: i32,
+    w_out: Vec<i8>,
+    b_out: i32,
+    // 4層構成でだけ渡す隠れ層3
+    w4: Option<Vec<i8>>,
+    b4: Option<Vec<i32>>,
 ) -> PyResult<()> {
+    check_len("ft_w", ft_w.len(), FT_IN * FT_OUT)?;
+    check_len("ft_b", ft_b.len(), FT_OUT)?;
+    check_len("w2", w2.len(), L1_OUT * FT_OUT * 2)?;
+    check_len("b2", b2.len(), L1_OUT)?;
+    check_len("w3", w3.len(), L2_OUT * L1_OUT)?;
+    check_len("b3", b3.len(), L2_OUT)?;
+    check_len("w_out", w_out.len(), LAST_HIDDEN)?;
+    let (w4, b4) = match (w4, b4) {
+        (Some(w), Some(b)) => {
+            check_len("w4", w.len(), L3_OUT * L2_OUT)?;
+            check_len("b4", b.len(), L3_OUT)?;
+            (himawari_engine::nnue::pad_rows(&w, L2_OUT, L2_PAD), b)
+        }
+        (None, None) => {
+            check_len("w4", 0, L3_OUT * L2_OUT)?;
+            (Vec::new(), Vec::new())
+        }
+        _ => {
+            return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
+                "w4とb4は両方渡すか、両方省く",
+            ));
+        }
+    };
     let net = NnueNetwork {
         ft_w,
         ft_b,
         w2,
         b2,
-        w3,
+        // 学習側はパディングを持たない。推論の幅へ広げる
+        w3: himawari_engine::nnue::pad_rows(&w3, L1_OUT, L1_PAD),
         b3,
         w4,
         b4,
+        w_out,
+        b_out,
     };
     let mut f = std::fs::File::create(path)
         .map_err(|e| PyErr::new::<pyo3::exceptions::PyIOError, _>(e.to_string()))?;
@@ -169,6 +212,9 @@ fn himawari(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(save_hmwr, m)?)?;
     m.add("FT_IN", FT_IN)?;
     m.add("FT_OUT", FT_OUT)?;
-    m.add("HIDDEN", HIDDEN)?;
+    m.add("L1_OUT", L1_OUT)?;
+    m.add("L2_OUT", L2_OUT)?;
+    m.add("L3_OUT", L3_OUT)?;
+    m.add("ARCH", ARCH)?;
     Ok(())
 }

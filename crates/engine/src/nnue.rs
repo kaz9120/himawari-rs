@@ -1,22 +1,21 @@
 //! NNUE推論の骨格（ADR-0034〜0036）。
 //!
-//! HalfKPの差分FT（256×2視点）を連結し、32→32→1で評価値を出す。
-//! 本モジュールはスカラー基準実装（正解器）。accumulator差分と
-//! SIMDはこの実装との完全一致を要求する形で後から積む。
+//! HalfKPの差分FT（片視点FT_OUT次元×2視点）を連結し、
+//! L1_OUT→L2_OUT→1で評価値を出す。本モジュールはスカラー基準実装
+//! （正解器）。accumulator差分とSIMDはこの実装との完全一致を要求する
+//! 形で後から積む。
+//!
+//! 次元は `build.rs` が環境変数 `HIMAWARI_ARCH` から生成する（ADR-0127）。
 
 use himawari_core::{Color, PieceType, Position, Square, bonapiece};
 
 use crate::value::Value;
 
-/// FT出力次元（片視点）。
-/// FTの出力次元。`ft512` featureで512へ切り替える（ADR-0067）。
-#[cfg(not(feature = "ft512"))]
-pub const FT_OUT: usize = 256;
-#[cfg(feature = "ft512")]
-pub const FT_OUT: usize = 512;
+// FT_OUT・L1_OUT・L2_OUT・L1_PAD・ARCH を定義する。
+include!(concat!(env!("OUT_DIR"), "/arch.rs"));
+
 /// 隠れ層の入力次元（FT両視点）。
 pub const CONCAT: usize = FT_OUT * 2;
-pub const HIDDEN: usize = 32;
 /// 評価値スケール（ADR-0036）。
 pub const FV_SCALE: i32 = 16;
 /// HalfKP特徴の総数。
@@ -27,14 +26,23 @@ pub struct NnueNetwork {
     /// FT重み。列優先: `ft_w[feature * FT_OUT + o]`。
     pub ft_w: Vec<i16>,
     pub ft_b: Vec<i16>,
-    /// 隠れ層。行優先: `w2[row * CONCAT + i]`。
+    /// 隠れ層1。行優先: `w2[row * CONCAT + i]`。
     pub w2: Vec<i8>,
     pub b2: Vec<i32>,
+    /// 隠れ層2。行優先だが列幅は `L1_PAD` で、`L1_OUT` 以降の列は
+    /// 常にゼロにする（入力側もゼロ埋めなので値には影響しない）。
     pub w3: Vec<i8>,
     pub b3: Vec<i32>,
+    /// 隠れ層3（`L3_OUT` が0の3層構成では空）。列幅は `L2_PAD`。
     pub w4: Vec<i8>,
-    pub b4: i32,
+    pub b4: Vec<i32>,
+    /// 出力層。入力は最後の隠れ層（4層なら`L3_OUT`、3層なら`L2_OUT`）。
+    pub w_out: Vec<i8>,
+    pub b_out: i32,
 }
+
+/// 出力層の入力次元。層を1つ挟むかで変わる。
+pub const LAST_HIDDEN: usize = if L3_OUT != 0 { L3_OUT } else { L2_OUT };
 
 impl NnueNetwork {
     /// テスト・開発用の乱数重み（xorshiftで再現可能）。
@@ -55,6 +63,16 @@ impl NnueNetwork {
             fn i8v(&mut self, n: usize) -> Vec<i8> {
                 (0..n).map(|_| (self.next() % 64 - 32) as i8).collect()
             }
+            /// 行ごとに `used` 列だけ埋め、残りをゼロにした行優先の行列。
+            fn i8_rows(&mut self, rows: usize, used: usize, stride: usize) -> Vec<i8> {
+                let mut v = vec![0i8; rows * stride];
+                for row in 0..rows {
+                    for x in &mut v[row * stride..row * stride + used] {
+                        *x = (self.next() % 64 - 32) as i8;
+                    }
+                }
+                v
+            }
             fn i32v(&mut self, n: usize) -> Vec<i32> {
                 (0..n).map(|_| (self.next() % 4096 - 2048) as i32).collect()
             }
@@ -63,14 +81,31 @@ impl NnueNetwork {
         NnueNetwork {
             ft_w: r.i16v(FT_IN * FT_OUT, 32),
             ft_b: r.i16v(FT_OUT, 128),
-            w2: r.i8v(HIDDEN * CONCAT),
-            b2: r.i32v(HIDDEN),
-            w3: r.i8v(HIDDEN * HIDDEN),
-            b3: r.i32v(HIDDEN),
-            w4: r.i8v(HIDDEN),
-            b4: 0,
+            w2: r.i8v(L1_OUT * CONCAT),
+            b2: r.i32v(L1_OUT),
+            w3: r.i8_rows(L2_OUT, L1_OUT, L1_PAD),
+            b3: r.i32v(L2_OUT),
+            w4: r.i8_rows(L3_OUT, L2_OUT, L2_PAD),
+            b4: r.i32v(L3_OUT),
+            w_out: r.i8v(LAST_HIDDEN),
+            b_out: 0,
         }
     }
+}
+
+/// 隠れ層の重みを `行数 × used` から `行数 × stride` へ広げ、余った列を
+/// ゼロで埋める。ファイルと学習側はゼロ埋めを持たず、推論だけがSIMDの
+/// 都合で広い幅を使う（ADR-0127）。
+pub fn pad_rows(rows: &[i8], used: usize, stride: usize) -> Vec<i8> {
+    if stride == used || rows.is_empty() {
+        return rows.to_vec();
+    }
+    let count = rows.len() / used;
+    let mut v = vec![0i8; count * stride];
+    for (dst, src) in v.chunks_mut(stride).zip(rows.chunks_exact(used)) {
+        dst[..used].copy_from_slice(src);
+    }
+    v
 }
 
 /// 視点cのHalfKP活性特徴（玉以外の盤上駒＋両者の持ち駒）を列挙する。
@@ -132,8 +167,9 @@ pub fn evaluate_scalar(net: &NnueNetwork, pos: &Position) -> Value {
 
 /// 連結ベクトルから評価値まで（隠れ層はi8×u8の積和、ADR-0036）。
 pub(crate) fn forward_hidden(net: &NnueNetwork, concat: &[u8; CONCAT]) -> Value {
-    let mut h2 = [0u8; HIDDEN];
-    for (o, h) in h2.iter_mut().enumerate() {
+    // 隠れ層2の入力はL1_PAD幅で、L1_OUT以降はゼロのまま渡す
+    let mut h2 = [0u8; L1_PAD];
+    for (o, h) in h2[..L1_OUT].iter_mut().enumerate() {
         let mut sum = net.b2[o];
         for (i, &x) in concat.iter().enumerate() {
             sum += i32::from(net.w2[o * CONCAT + i]) * i32::from(x);
@@ -141,17 +177,28 @@ pub(crate) fn forward_hidden(net: &NnueNetwork, concat: &[u8; CONCAT]) -> Value 
         // 学習時のスケール（2^6）で割るのが標準
         *h = clip(sum >> 6);
     }
-    let mut h3 = [0u8; HIDDEN];
-    for (o, h) in h3.iter_mut().enumerate() {
+    let mut h3 = [0u8; L2_PAD];
+    for (o, h) in h3[..L2_OUT].iter_mut().enumerate() {
         let mut sum = net.b3[o];
         for (i, &x) in h2.iter().enumerate() {
-            sum += i32::from(net.w3[o * HIDDEN + i]) * i32::from(x);
+            sum += i32::from(net.w3[o * L1_PAD + i]) * i32::from(x);
         }
         *h = clip(sum >> 6);
     }
-    let mut out = net.b4;
-    for (i, &x) in h3.iter().enumerate() {
-        out += i32::from(net.w4[i]) * i32::from(x);
+    // 4層構成でだけ層をもう1つ挟む。L3_OUTは定数なので分岐は消える
+    let mut h4 = [0u8; L3_OUT];
+    for (o, h) in h4.iter_mut().enumerate() {
+        let mut sum = net.b4[o];
+        for (i, &x) in h3.iter().enumerate() {
+            sum += i32::from(net.w4[o * L2_PAD + i]) * i32::from(x);
+        }
+        *h = clip(sum >> 6);
+    }
+    let last: &[u8] = if L3_OUT != 0 { &h4 } else { &h3[..L2_OUT] };
+
+    let mut out = net.b_out;
+    for (i, &x) in last.iter().enumerate() {
+        out += i32::from(net.w_out[i]) * i32::from(x);
     }
     out / FV_SCALE
 }

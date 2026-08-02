@@ -8,7 +8,7 @@ use std::simd::Simd;
 use std::simd::cmp::SimdOrd;
 use std::simd::num::{SimdInt, SimdUint};
 
-use crate::nnue::{CONCAT, FT_OUT, HIDDEN, NnueNetwork};
+use crate::nnue::{CONCAT, FT_OUT, L1_OUT, L1_PAD, L2_OUT, L2_PAD, L3_OUT, NnueNetwork};
 use crate::value::Value;
 
 const I16_LANES: usize = 16;
@@ -193,12 +193,22 @@ fn affine_relu(w: &[i8], b: &[i32], x: &[u8], out: &mut [u8]) {
 
 /// 連結ベクトルから評価値まで（SIMD版）。
 pub fn forward_hidden(net: &NnueNetwork, concat: &[u8; CONCAT]) -> Value {
-    let mut h2 = [0u8; HIDDEN];
-    affine_relu(&net.w2, &net.b2, concat, &mut h2);
-    let mut h3 = [0u8; HIDDEN];
-    affine_relu(&net.w3, &net.b3, &h2, &mut h3);
-    // 最終層は1行なので4行同時の対象にならない
-    let out = net.b4 + dot(&net.w4, &h3);
+    // 次の層の入力はパディングした幅で渡す。実次元より後ろはゼロのままで、
+    // 重みの対応する列もゼロなので積和に効かない（ADR-0127）
+    let mut h2 = [0u8; L1_PAD];
+    affine_relu(&net.w2, &net.b2, concat, &mut h2[..L1_OUT]);
+    let mut h3 = [0u8; L2_PAD];
+    affine_relu(&net.w3, &net.b3, &h2, &mut h3[..L2_OUT]);
+    // 4層構成でだけ層をもう1つ挟む。L3_OUTは定数なので分岐は消える
+    let mut h4 = [0u8; L3_OUT];
+    let last: &[u8] = if L3_OUT != 0 {
+        affine_relu(&net.w4, &net.b4, &h3, &mut h4);
+        &h4
+    } else {
+        &h3[..L2_OUT]
+    };
+    // 出力層は1行なので4行同時の対象にならない
+    let out = net.b_out + dot(&net.w_out, last);
     out / crate::nnue::FV_SCALE
 }
 
