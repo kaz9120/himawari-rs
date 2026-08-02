@@ -197,16 +197,16 @@ def main():
     dense_params = [
         model.ft_bias,
         model.l2.weight, model.l2.bias,
-        model.l3.weight, model.l3.bias,
         model.out.weight, model.out.bias,
     ]
+    # 隠れ層は構成によって数が変わる（ADR-0127）
+    for layer in (model.l3, model.l4):
+        if layer is not None:
+            dense_params.extend([layer.weight, layer.bias])
     # 補助ヘッドも学習する。書き出し時に捨てるので推論には出てこない
     for head in (model.policy_from, model.policy_to, model.pretrain_value):
         if head is not None:
             dense_params.extend([head.weight, head.bias])
-    # 4層構成でだけ持つ隠れ層3（ADR-0127）
-    if model.l4 is not None:
-        dense_params.extend([model.l4.weight, model.l4.bias])
     ft_params = [model.ft.weight]
     if model.ft_p is not None:
         ft_params.append(model.ft_p.weight)

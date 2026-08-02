@@ -17,8 +17,8 @@ def quantize(model: NnueModel) -> dict:
         ft_b = model.ft_bias.detach().float()
         w2 = model.l2.weight.detach().float()
         b2 = model.l2.bias.detach().float()
-        w3 = model.l3.weight.detach().float()
-        b3 = model.l3.bias.detach().float()
+        w3 = model.l3.weight.detach().float() if model.l3 is not None else None
+        b3 = model.l3.bias.detach().float() if model.l3 is not None else None
         # 4層構成でだけ持つ隠れ層3（ADR-0127）
         w4 = model.l4.weight.detach().float() if model.l4 is not None else None
         b4 = model.l4.bias.detach().float() if model.l4 is not None else None
@@ -38,8 +38,8 @@ def quantize(model: NnueModel) -> dict:
         "ft_b": (ft_b * 127).round().clamp(-32768, 32767).to(torch.int16),
         "w2": hidden_w(w2),
         "b2": hidden_b(b2),
-        "w3": hidden_w(w3),
-        "b3": hidden_b(b3),
+        "w3": None if w3 is None else hidden_w(w3),
+        "b3": None if b3 is None else hidden_b(b3),
         "w4": None if w4 is None else hidden_w(w4),
         "b4": None if b4 is None else hidden_b(b4),
         "w_out": (w_out * out_w_scale).round().clamp(-128, 127).to(torch.int8),
@@ -75,8 +75,9 @@ def load_into(model: NnueModel, path: str, freeze_ft: bool = False) -> str:
         if same_shape:
             model.l2.weight.copy_(as_tensor("w2", L1_OUT, CONCAT))
             model.l2.bias.copy_(as_tensor("b2", L1_OUT))
-            model.l3.weight.copy_(as_tensor("w3", L2_OUT, L1_OUT))
-            model.l3.bias.copy_(as_tensor("b3", L2_OUT))
+            if model.l3 is not None:
+                model.l3.weight.copy_(as_tensor("w3", L2_OUT, L1_OUT))
+                model.l3.bias.copy_(as_tensor("b3", L2_OUT))
             if model.l4 is not None:
                 model.l4.weight.copy_(as_tensor("w4", L3_OUT, L2_OUT))
                 model.l4.bias.copy_(as_tensor("b4", L3_OUT))
@@ -105,8 +106,8 @@ def save_hmwr(model: NnueModel, lineage: str, path: str):
         q["ft_b"].tolist(),
         q["w2"].flatten().tolist(),
         q["b2"].tolist(),
-        q["w3"].flatten().tolist(),
-        q["b3"].tolist(),
+        [] if q["w3"] is None else q["w3"].flatten().tolist(),
+        [] if q["b3"] is None else q["b3"].tolist(),
         q["w_out"].tolist(),
         q["b_out"],
         None if q["w4"] is None else q["w4"].flatten().tolist(),

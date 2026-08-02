@@ -15,8 +15,8 @@ usage() {
 使い方:
   scripts/build-shapes.sh [--from <元ネット> [--tag <名前>]] <構成> [構成...]
 
-構成は <FT>x<L1>x<L2>[x<L3>]（例 512x16x32、256x32x32x32）。
-L3を書くと隠れ層が1つ増えて4層になる。
+構成は <FT>x<L1>[x<L2>[x<L3>]]（例 256x16、512x16x32）。
+要素の数が層の数を決める。256x16 なら隠れ層1つ。
 
 構成ごとにエンジン data/bin/shape-<構成> と、評価ファイル
 data/nets/<名前>-<構成>.hmwr を作る。既定の名前は shape。
@@ -77,8 +77,8 @@ log_info "RUSTFLAGS: ${RUSTFLAGS_NATIVE}"
 [[ -n "$FROM" ]] && log_info "元ネット: ${FROM}（各構成へ広げる）"
 
 for spec in "$@"; do
-	if [[ ! "$spec" =~ ^[0-9]+x[0-9]+x[0-9]+(x[0-9]+)?$ ]]; then
-		die "構成の書き方が違う: ${spec}（<FT>x<L1>x<L2>[x<L3>]）"
+	if [[ ! "$spec" =~ ^[0-9]+x[0-9]+(x[0-9]+){0,2}$ ]]; then
+		die "構成の書き方が違う: ${spec}（<FT>x<L1>[x<L2>[x<L3>]]）"
 	fi
 	bin="data/bin/shape-${spec}"
 	net="data/nets/${TAG}-${spec}.hmwr"

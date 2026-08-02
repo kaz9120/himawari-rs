@@ -42,7 +42,13 @@ pub struct NnueNetwork {
 }
 
 /// 出力層の入力次元。層を1つ挟むかで変わる。
-pub const LAST_HIDDEN: usize = if L3_OUT != 0 { L3_OUT } else { L2_OUT };
+pub const LAST_HIDDEN: usize = if L3_OUT != 0 {
+    L3_OUT
+} else if L2_OUT != 0 {
+    L2_OUT
+} else {
+    L1_OUT
+};
 
 impl NnueNetwork {
     /// テスト・開発用の乱数重み（xorshiftで再現可能）。
@@ -221,6 +227,7 @@ pub(crate) fn forward_hidden(net: &NnueNetwork, concat: &[u8; CONCAT]) -> Value 
         // 学習時のスケール（2^6）で割るのが標準
         *h = clip(sum >> 6);
     }
+    // 隠れ層は書いたぶんだけ挟む。次元は定数なので使わない分岐は消える
     let mut h3 = [0u8; L2_PAD];
     for (o, h) in h3[..L2_OUT].iter_mut().enumerate() {
         let mut sum = net.b3[o];
@@ -229,7 +236,6 @@ pub(crate) fn forward_hidden(net: &NnueNetwork, concat: &[u8; CONCAT]) -> Value 
         }
         *h = clip(sum >> 6);
     }
-    // 4層構成でだけ層をもう1つ挟む。L3_OUTは定数なので分岐は消える
     let mut h4 = [0u8; L3_OUT];
     for (o, h) in h4.iter_mut().enumerate() {
         let mut sum = net.b4[o];
@@ -238,7 +244,13 @@ pub(crate) fn forward_hidden(net: &NnueNetwork, concat: &[u8; CONCAT]) -> Value 
         }
         *h = clip(sum >> 6);
     }
-    let last: &[u8] = if L3_OUT != 0 { &h4 } else { &h3[..L2_OUT] };
+    let last: &[u8] = if L3_OUT != 0 {
+        &h4
+    } else if L2_OUT != 0 {
+        &h3[..L2_OUT]
+    } else {
+        &h2[..L1_OUT]
+    };
 
     let mut out = net.b_out;
     for (i, &x) in last.iter().enumerate() {

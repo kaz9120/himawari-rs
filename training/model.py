@@ -19,7 +19,7 @@ L1_OUT = himawari.L1_OUT
 L2_OUT = himawari.L2_OUT
 # 0なら3層。0でなければ隠れ層をもう1つ挟む（ADR-0127）
 L3_OUT = himawari.L3_OUT
-LAST_HIDDEN = L3_OUT if L3_OUT else L2_OUT
+LAST_HIDDEN = L3_OUT or L2_OUT or L1_OUT
 # 補助ヘッドの分類クラス数（ADR-0129）。fromは盤上81マス＋打つ駒7種
 MOVE_FROM_CLASSES = himawari.MOVE_FROM_CLASSES
 MOVE_TO_CLASSES = himawari.MOVE_TO_CLASSES
@@ -57,7 +57,8 @@ class NnueModel(nn.Module):
         )
         self.ft_bias = nn.Parameter(torch.full((FT_OUT,), 0.5))
         self.l2 = nn.Linear(CONCAT, L1_OUT)
-        self.l3 = nn.Linear(L1_OUT, L2_OUT)
+        # 隠れ層は書いたぶんだけ持つ（ADR-0127）。L2_OUT=0 なら隠れ層1つ
+        self.l3 = nn.Linear(L1_OUT, L2_OUT) if L2_OUT else None
         self.l4 = nn.Linear(L2_OUT, L3_OUT) if L3_OUT else None
         self.out = nn.Linear(LAST_HIDDEN, 1)
         # 補助ヘッド（ADR-0129）。FT出力からの線形1層に限る。深くすると
@@ -76,8 +77,9 @@ class NnueModel(nn.Module):
             nn.init.zeros_(self.ft_p.weight)
         nn.init.uniform_(self.l2.weight, -0.1, 0.1)
         nn.init.zeros_(self.l2.bias)
-        nn.init.uniform_(self.l3.weight, -0.3, 0.3)
-        nn.init.zeros_(self.l3.bias)
+        if self.l3 is not None:
+            nn.init.uniform_(self.l3.weight, -0.3, 0.3)
+            nn.init.zeros_(self.l3.bias)
         if self.l4 is not None:
             nn.init.uniform_(self.l4.weight, -0.3, 0.3)
             nn.init.zeros_(self.l4.bias)
@@ -115,9 +117,10 @@ class NnueModel(nn.Module):
         """
         if self.pretrain_value is not None:
             return self.pretrain_value(x).squeeze(1)
-        h = self.l3(self.l2(x).clamp(0.0, 1.0)).clamp(0.0, 1.0)
-        if self.l4 is not None:
-            h = self.l4(h).clamp(0.0, 1.0)
+        h = self.l2(x).clamp(0.0, 1.0)
+        for layer in (self.l3, self.l4):
+            if layer is not None:
+                h = layer(h).clamp(0.0, 1.0)
         return self.out(h).squeeze(1)
 
     def forward(self, stm_idx, stm_off, opp_idx, opp_off):
@@ -126,7 +129,8 @@ class NnueModel(nn.Module):
     def clip_weights(self):
         with torch.no_grad():
             self.l2.weight.clamp_(-HIDDEN_W_LIMIT, HIDDEN_W_LIMIT)
-            self.l3.weight.clamp_(-HIDDEN_W_LIMIT, HIDDEN_W_LIMIT)
+            if self.l3 is not None:
+                self.l3.weight.clamp_(-HIDDEN_W_LIMIT, HIDDEN_W_LIMIT)
             if self.l4 is not None:
                 self.l4.weight.clamp_(-HIDDEN_W_LIMIT, HIDDEN_W_LIMIT)
             self.out.weight.clamp_(-OUT_W_LIMIT, OUT_W_LIMIT)
