@@ -5,13 +5,16 @@
 //! ここでは固定局数で総当たりし、勝敗表からレーティングを推定する。
 //!
 //! 使い方:
-//!   league <名前>=<バイナリ>[:<評価ファイル>] ... [--pairs N] [--tc 10+0.1]
-//!          [--openings <file>] [--concurrency N] [--hash MB]
-//!          [--adjudicate CP,PLIES] [--max-moves N] [--anchor <名前>]
-//!          [--out <path>]
+//!   league <名前>=<バイナリ>[:<評価ファイル>] ... [--pairs N]
+//!          [--tc 10+0.1 | --nodes N] [--openings <file>] [--concurrency N]
+//!          [--hash MB] [--adjudicate CP,PLIES] [--max-moves N]
+//!          [--anchor <名前>] [--out <path>]
 //!
 //! 1カード（参加者の組）につき `--pairs` 回の先後入れ替えペアを消化する。
 //! 対局数は 参加者数×(参加者数-1)/2 × pairs × 2 になる。
+//!
+//! `--nodes` を使うと1手あたりのノード数で戦う。速い構成の得が消えるので、
+//! 評価関数の質だけを比べられる（ADR-0127）。
 
 use std::io::Write;
 use std::path::PathBuf;
@@ -51,6 +54,11 @@ struct Cli {
     /// 持ち時間 `<秒>+<増分秒>`
     #[arg(long, default_value = "10+0.1")]
     tc: String,
+
+    /// 持ち時間の代わりに1手あたりのノード数で戦う。速い構成の得が
+    /// 消えるので、評価関数の質だけを比べられる（ADR-0127）
+    #[arg(long, value_name = "ノード数")]
+    nodes: Option<u64>,
 
     /// 開始局面集（1行1SFEN、#はコメント）。省略時は平手初期局面
     #[arg(long, value_name = "パス")]
@@ -327,7 +335,11 @@ fn run(cli: &Cli) -> Result<()> {
     let players = parse_participants(&cli.participants)?;
     let openings = load_openings(&cli.openings)?;
     let game_cfg = GameConfig {
-        tc: parse_tc(&cli.tc)?,
+        // ノード数を指定したら持ち時間を使わない。速度差を消して測る
+        tc: match cli.nodes {
+            Some(n) => TimeControl::Nodes(n),
+            None => parse_tc(&cli.tc)?,
+        },
         max_moves: cli.max_moves,
         adjudicate: parse_adjudicate(&cli.adjudicate)?,
     };
@@ -337,12 +349,15 @@ fn run(cli: &Cli) -> Result<()> {
         .flat_map(|i| (i + 1..n).map(move |j| (i, j)))
         .collect();
 
+    let condition = match cli.nodes {
+        Some(n) => format!("{n}ノード/手"),
+        None => cli.tc.clone(),
+    };
     println!(
-        "=== リーグ戦: {n}人、{}カード、1カード{}ペア（{}局）、{} ===",
+        "=== リーグ戦: {n}人、{}カード、1カード{}ペア（{}局）、{condition} ===",
         cards.len(),
         cli.pairs,
         cards.len() * cli.pairs as usize * 2,
-        cli.tc
     );
     for p in &players {
         println!(
