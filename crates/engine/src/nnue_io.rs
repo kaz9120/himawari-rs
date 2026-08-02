@@ -55,11 +55,14 @@ fn weight_bytes(net: &NnueNetwork) -> Vec<u8> {
     for &x in &net.w2 {
         v.push(x as u8);
     }
-    for &x in &net.b3 {
-        v.extend_from_slice(&x.to_le_bytes());
+    // 隠れ層はパディングした幅で持つが、ゼロ埋め列はファイルに残さない。
+    // 書かなかった層は重みを持たない
+    if L2_OUT != 0 {
+        for &x in &net.b3 {
+            v.extend_from_slice(&x.to_le_bytes());
+        }
+        push_rows(&mut v, &net.w3, L1_OUT, L1_PAD);
     }
-    // 隠れ層はパディングした幅で持つが、ゼロ埋め列はファイルに残さない
-    push_rows(&mut v, &net.w3, L1_OUT, L1_PAD);
     if L3_OUT != 0 {
         for &x in &net.b4 {
             v.extend_from_slice(&x.to_le_bytes());
@@ -232,8 +235,13 @@ pub fn load(r: &mut impl Read) -> Result<(NnueNetwork, String), String> {
     let ft_w = cur.i16v(FT_IN * FT_OUT)?;
     let b2 = cur.i32v(L1_OUT)?;
     let w2 = cur.i8v(L1_OUT * CONCAT)?;
-    let b3 = cur.i32v(L2_OUT)?;
-    let w3 = pad_rows(&cur.i8v(L2_OUT * L1_OUT)?, L1_OUT, L1_PAD);
+    let (b3, w3) = if L2_OUT != 0 {
+        let b = cur.i32v(L2_OUT)?;
+        let w = pad_rows(&cur.i8v(L2_OUT * L1_OUT)?, L1_OUT, L1_PAD);
+        (b, w)
+    } else {
+        (Vec::new(), Vec::new())
+    };
     let (b4, w4) = if L3_OUT != 0 {
         let b = cur.i32v(L3_OUT)?;
         let w = pad_rows(&cur.i8v(L3_OUT * L2_OUT)?, L2_OUT, L2_PAD);
@@ -269,21 +277,33 @@ pub fn load(r: &mut impl Read) -> Result<(NnueNetwork, String), String> {
 /// 受け取る側の列もゼロなので積和に効かない。構成だけを変えて探索木を
 /// 揃えられるので、速度の差だけを取り出せる。
 ///
-/// 切り詰めるときは重みを捨てるので**評価値が変わる。** それでも重みの
-/// 大きさは学習済みのままなので、活性が飽和した乱数ネットよりは現実に
-/// 近い探索木になる。小さい構成を基準にして比べたいときに使う。
+/// 切り詰めるときは重みを捨てるので**評価値が変わる。** 幅を削る場合も、
+/// 隠れ層を丸ごと減らす場合も同じである。それでも重みの大きさは学習済みの
+/// ままなので、活性が飽和した乱数ネットよりは現実に近い探索木になる。
+/// 小さい構成を基準にして比べたいときに使う。
 ///
 /// 3層のネットを4層構成へ読むと、足した層を恒等写像にする。活性は0..127で、
 /// 対角を64にすると `(64x) >> 6 == x` になるため、**層を足しても評価値が
 /// 変わらない。** 4層から3層へは落とせない。
+///
+/// **継続学習の初期値には、このままでは使えない**（ADR-0130）。広げた次元と、
+/// それを受ける次の層の列が両方ゼロなので、互いの勾配がゼロで固定し合う。
+/// 学習を続けるなら、どちらか片方へ微小な乱数を入れて対称性を破ること。
+/// ここでゼロ埋めを崩さないのは、速度計測が「評価値を1ビットも変えない」
+/// ことを要件にしているためである。
 pub fn load_resized(r: &mut impl Read) -> Result<(NnueNetwork, String), String> {
+    load_resized_with_dims(r).map(|(net, lineage, _)| (net, lineage))
+}
+
+/// `load_resized` に、元ファイルの構成 `[FT_IN, FT, L1, L2, L3]` を添えて返す。
+/// 学習側が「後段の層を初期値に使ってよいか」を判断するのに要る（ADR-0130）。
+pub fn load_resized_with_dims(
+    r: &mut impl Read,
+) -> Result<(NnueNetwork, String, [usize; 5]), String> {
     let (dims, lineage, body) = read_header(r)?;
     let [ft_in, src_ft, src_l1, src_l2, src_l3] = dims;
     if ft_in != FT_IN {
         return Err(format!("FT入力が違う: ファイル{ft_in} 実装{FT_IN}"));
-    }
-    if src_l3 > 0 && L3_OUT == 0 {
-        return Err("4層のネットを3層構成へは読めない".to_string());
     }
 
     /// 行優先の行列を、行数と列幅を合わせて写す。余りはゼロのまま。
@@ -322,33 +342,65 @@ pub fn load_resized(r: &mut impl Read) -> Result<(NnueNetwork, String), String> 
             w2[dst..dst + ft_cols].copy_from_slice(&row[half * src_ft..half * src_ft + ft_cols]);
         }
     }
-    let b3 = fit(cur.i32v(src_l2)?, L2_OUT);
-    // 列幅はL1_PADだが、値を置くのはL1_OUTまで（残りは常にゼロ）
-    let w3 = fit_rows(&cur.i8v(src_l2 * src_l1)?, src_l1, L2_OUT, L1_PAD, L1_OUT);
-    let (src_b4, src_w4) = if src_l3 > 0 {
+
+    let (src_b3, src_w3) = if src_l2 != 0 {
+        (cur.i32v(src_l2)?, cur.i8v(src_l2 * src_l1)?)
+    } else {
+        (Vec::new(), Vec::new())
+    };
+    let (src_b4, src_w4) = if src_l3 != 0 {
         (cur.i32v(src_l3)?, cur.i8v(src_l3 * src_l2)?)
     } else {
         (Vec::new(), Vec::new())
     };
-    let src_last = if src_l3 > 0 { src_l3 } else { src_l2 };
+    // 最後の隠れ層は層数で変わる。ここを取り違えると読み残しが出る
+    let src_last = if src_l3 != 0 {
+        src_l3
+    } else if src_l2 != 0 {
+        src_l2
+    } else {
+        src_l1
+    };
     let src_w_out = cur.i8v(src_last)?;
     let b_out = cur.i32v(1)?[0];
     cur.expect_end()?;
 
-    let (b4, w4) = match (src_l3, L3_OUT) {
-        (0, 0) => (Vec::new(), Vec::new()),
+    /// 足した層を恒等写像にする。活性は0..127で、対角を64にすると
+    /// `(64x) >> 6` が `x` に戻るため、層を足しても評価値が変わらない。
+    fn identity(rows: usize, stride: usize, keep: usize) -> Vec<i8> {
+        let mut w = vec![0i8; rows * stride];
+        for i in 0..keep {
+            w[i * stride + i] = 64;
+        }
+        w
+    }
+
+    let (b3, w3) = match (src_l2, L2_OUT) {
+        // 層を減らす向きは、その層の重みを捨てる。幅の切り詰めと同じで
+        // 評価値は変わるが、同じ元から作った系列の中では比べられる
+        (_, 0) => (Vec::new(), Vec::new()),
         (0, _) => {
-            // 層を1つ足す。恒等写像にすれば評価値が変わらない
+            if L2_OUT < src_l1 {
+                return Err(format!(
+                    "L2({L2_OUT})が元のL1({src_l1})より狭いと、足す層を恒等写像にできない"
+                ));
+            }
+            (vec![0i32; L2_OUT], identity(L2_OUT, L1_PAD, src_l1))
+        }
+        (_, _) => (
+            fit(src_b3, L2_OUT),
+            fit_rows(&src_w3, src_l1, L2_OUT, L1_PAD, L1_OUT),
+        ),
+    };
+    let (b4, w4) = match (src_l3, L3_OUT) {
+        (_, 0) => (Vec::new(), Vec::new()),
+        (0, _) => {
             if L3_OUT < src_l2 {
                 return Err(format!(
                     "L3({L3_OUT})が元のL2({src_l2})より狭いと、足す層を恒等写像にできない"
                 ));
             }
-            let mut w = vec![0i8; L3_OUT * L2_PAD];
-            for i in 0..src_l2 {
-                w[i * L2_PAD + i] = 64;
-            }
-            (vec![0i32; L3_OUT], w)
+            (vec![0i32; L3_OUT], identity(L3_OUT, L2_PAD, src_l2))
         }
         (_, _) => (
             fit(src_b4, L3_OUT),
@@ -371,6 +423,7 @@ pub fn load_resized(r: &mut impl Read) -> Result<(NnueNetwork, String), String> 
             b_out,
         },
         format!("{lineage} / resized to {ARCH}"),
+        dims,
     ))
 }
 
@@ -396,6 +449,18 @@ mod tests {
         // 隠れ層2はL1_PAD幅のまま往復する（ゼロ埋め列も含めて一致）
         assert_eq!(net.w3, loaded.w3);
         assert_eq!(net.w3.len(), crate::nnue::L2_OUT * L1_PAD);
+    }
+
+    /// resizeは元ファイルの構成を返す。学習側が「後段を初期値に使ってよいか」を
+    /// 判断するのに要る（ADR-0130）。
+    #[test]
+    fn resized_reports_source_dims() {
+        let net = NnueNetwork::random(31);
+        let mut buf = Vec::new();
+        save(&net, "dims test", &mut buf).unwrap();
+        let (_, lineage, dims) = load_resized_with_dims(&mut buf.as_slice()).unwrap();
+        assert_eq!(dims, [FT_IN, FT_OUT, L1_OUT, L2_OUT, L3_OUT]);
+        assert!(lineage.contains("resized to"), "来歴に変換の跡が残る");
     }
 
     /// 版2のファイル（隠れ層の幅が1つ）も読める。L1とL2が同じ構成に限る。

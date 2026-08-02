@@ -197,15 +197,19 @@ pub fn forward_hidden(net: &NnueNetwork, concat: &[u8; CONCAT]) -> Value {
     // 重みの対応する列もゼロなので積和に効かない（ADR-0127）
     let mut h2 = [0u8; L1_PAD];
     affine_relu(&net.w2, &net.b2, concat, &mut h2[..L1_OUT]);
+    // 隠れ層は書いたぶんだけ挟む。次元は定数なので使わない分岐は消える
     let mut h3 = [0u8; L2_PAD];
-    affine_relu(&net.w3, &net.b3, &h2, &mut h3[..L2_OUT]);
-    // 4層構成でだけ層をもう1つ挟む。L3_OUTは定数なので分岐は消える
     let mut h4 = [0u8; L3_OUT];
-    let last: &[u8] = if L3_OUT != 0 {
-        affine_relu(&net.w4, &net.b4, &h3, &mut h4);
-        &h4
+    let last: &[u8] = if L2_OUT == 0 {
+        &h2[..L1_OUT]
     } else {
-        &h3[..L2_OUT]
+        affine_relu(&net.w3, &net.b3, &h2, &mut h3[..L2_OUT]);
+        if L3_OUT != 0 {
+            affine_relu(&net.w4, &net.b4, &h3, &mut h4);
+            &h4
+        } else {
+            &h3[..L2_OUT]
+        }
     };
     // 出力層は1行なので4行同時の対象にならない
     let out = net.b_out + dot(&net.w_out, last);

@@ -143,6 +143,8 @@
 | [0126](0126-mate-score-in-training.md) | 教師データの詰みスコアは素通しのままにする | - | accepted |
 | [0127](0127-net-shape-bench.md) | ネットワーク構造の探索は学習前の速度計測から始める | - | accepted |
 | [0128](0128-round-robin-league.md) | 3つ以上の候補は総当たりリーグ戦で順位づける | - | accepted |
+| [0129](0129-auxiliary-heads.md) | 学習時だけの補助ヘッドでFTの表現を厚くする | - | proposed |
+| [0130](0130-freeze-ft.md) | FTを固定して、後段の実験を一桁速くする | - | proposed |
 
 ## バックログ
 

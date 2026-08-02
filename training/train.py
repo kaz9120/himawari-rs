@@ -9,6 +9,7 @@ import sys
 import time
 
 import torch
+import torch.nn.functional as F
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 
@@ -35,7 +36,7 @@ def validate(model, valid_loader, device):
             if batch is None:
                 continue
             stm_i, stm_o, opp_i, opp_o, targets = [
-                x.to(device) for x in batch
+                x.to(device) for x in batch[:5]
             ]
             out = model(stm_i, stm_o, opp_i, opp_o)
             loss = loss_fn(out, targets)
@@ -72,6 +73,31 @@ def main():
     p.add_argument("--name", default="", help="Experiment name for registry")
     p.add_argument("--notes", default="", help="Notes for registry")
     p.add_argument("--device", default="cpu")
+    p.add_argument(
+        "--lambda-move",
+        type=float,
+        default=0.0,
+        dest="lambda_move",
+        help="指し手を当てる補助ヘッドの重み（ADR-0129）。0で無効。"
+             "書き出し時にヘッドは捨てるので推論は変わらない",
+    )
+    p.add_argument(
+        "--pretrain",
+        action="store_true",
+        help="FT事前学習モード（ADR-0129）。評価値ヘッドも線形1層にして、"
+             "すべての仕事をFTへ押し込む。成果物はFTだけで、後段は捨てる",
+    )
+    p.add_argument(
+        "--init-net",
+        help="既存の.hmwrを初期値に読む。FTは常に読み、後段は形が一致する層だけ"
+             "読む（ADR-0130）",
+    )
+    p.add_argument(
+        "--freeze-ft",
+        action="store_true",
+        help="FTを更新しない。後段の候補を絞るときに使う（ADR-0130）。"
+             "採用の判断には使わない",
+    )
     p.add_argument(
         "--seed",
         type=int,
@@ -155,34 +181,58 @@ def main():
         print(f"検証データ: {valid_n}局面", file=sys.stderr)
 
     model = NnueModel(
-        sparse_ft=not args.dense_ft, factorized=args.factorized
+        sparse_ft=not args.dense_ft,
+        factorized=args.factorized,
+        policy=args.lambda_move > 0,
+        pretrain=args.pretrain,
     ).to(device)
+
+    if args.init_net:
+        from quantize import load_into
+        print(f"初期値: {load_into(model, args.init_net, args.freeze_ft)}",
+              file=sys.stderr)
+    elif args.freeze_ft:
+        p.error("--freeze-ft には --init-net が要る（凍結する重みがない）")
 
     dense_params = [
         model.ft_bias,
         model.l2.weight, model.l2.bias,
-        model.l3.weight, model.l3.bias,
         model.out.weight, model.out.bias,
     ]
-    # 4層構成でだけ持つ隠れ層3（ADR-0127）
-    if model.l4 is not None:
-        dense_params.extend([model.l4.weight, model.l4.bias])
+    # 隠れ層は構成によって数が変わる（ADR-0127）
+    for layer in (model.l3, model.l4):
+        if layer is not None:
+            dense_params.extend([layer.weight, layer.bias])
+    # 補助ヘッドも学習する。書き出し時に捨てるので推論には出てこない
+    for head in (model.policy_from, model.policy_to, model.pretrain_value):
+        if head is not None:
+            dense_params.extend([head.weight, head.bias])
     ft_params = [model.ft.weight]
     if model.ft_p is not None:
         ft_params.append(model.ft_p.weight)
+    # 凍結した重みは更新対象から外す。残すとoptimizerが空の勾配を扱う
+    dense_params = [t for t in dense_params if t.requires_grad]
+    ft_params = [t for t in ft_params if t.requires_grad]
     lr_fn = lambda step: lr_lambda(
         step, args.warmup_steps, total_steps, args.min_lr, args.peak_lr,
     )
     optimizer_dense = torch.optim.Adam(dense_params, lr=args.peak_lr)
     # FT勾配をdenseにするとMPSへ載せられる。更新則はSparseAdamと
     # 同じ「出現した行だけ動かす」を保つ（ADR-0064）
+    # FTを凍結すると更新対象が空になる。optimizerは作らない（ADR-0130）
     optimizer_ft = (
-        MaskedAdam(ft_params, lr=args.peak_lr)
+        None
+        if not ft_params
+        else MaskedAdam(ft_params, lr=args.peak_lr)
         if args.dense_ft
         else torch.optim.SparseAdam(ft_params, lr=args.peak_lr)
     )
     scheduler_dense = torch.optim.lr_scheduler.LambdaLR(optimizer_dense, lr_lambda=lr_fn)
-    scheduler_ft = torch.optim.lr_scheduler.LambdaLR(optimizer_ft, lr_lambda=lr_fn)
+    scheduler_ft = (
+        None
+        if optimizer_ft is None
+        else torch.optim.lr_scheduler.LambdaLR(optimizer_ft, lr_lambda=lr_fn)
+    )
 
     step = 0
     start_epoch = 0
@@ -195,9 +245,11 @@ def main():
         ckpt = torch.load(args.resume, map_location=device, weights_only=False)
         model.load_state_dict(ckpt["model"])
         optimizer_dense.load_state_dict(ckpt["optimizer_dense"])
-        optimizer_ft.load_state_dict(ckpt["optimizer_ft"])
+        if optimizer_ft is not None and ckpt["optimizer_ft"] is not None:
+            optimizer_ft.load_state_dict(ckpt["optimizer_ft"])
         scheduler_dense.load_state_dict(ckpt["scheduler_dense"])
-        scheduler_ft.load_state_dict(ckpt["scheduler_ft"])
+        if scheduler_ft is not None and ckpt["scheduler_ft"] is not None:
+            scheduler_ft.load_state_dict(ckpt["scheduler_ft"])
         step = ckpt["step"]
         start_epoch = ckpt["epoch"]
         best_valid = ckpt.get("best_valid", float("inf"))
@@ -232,30 +284,51 @@ def main():
 
     model.train()
     for epoch in range(start_epoch, args.epochs):
+        move_hits = 0
+        move_total = 0
         for batch in train_loader:
             if batch is None:
                 continue
 
-            stm_i, stm_o, opp_i, opp_o, targets = [
+            stm_i, stm_o, opp_i, opp_o, targets, mv_from, mv_to = [
                 x.to(device) for x in batch
             ]
             n = targets.size(0)
 
             optimizer_dense.zero_grad()
-            optimizer_ft.zero_grad()
-            out = model(stm_i, stm_o, opp_i, opp_o)
+            if optimizer_ft is not None:
+                optimizer_ft.zero_grad()
+            x = model.transform_both(stm_i, stm_o, opp_i, opp_o)
+            out = model.value(x)
             loss = loss_fn(out, targets)
+            # ログとvalidに載せるのは評価値の損失だけにする。合計を載せると
+            # λを変えるたびに物差しが動き、過去の学習と比べられなくなる
+            value_loss = loss.detach()
+            if model.policy_from is not None:
+                # ラベルが取れなかった局面は-1で、ignore_indexが落とす
+                lf = model.policy_from(x)
+                lt = model.policy_to(x)
+                move_loss = F.cross_entropy(lf, mv_from, ignore_index=-1) + \
+                    F.cross_entropy(lt, mv_to, ignore_index=-1)
+                loss = loss + args.lambda_move * move_loss
+                valid_mv = mv_to >= 0
+                if valid_mv.any():
+                    hit = ((lf.argmax(1) == mv_from) & (lt.argmax(1) == mv_to) & valid_mv)
+                    move_hits += int(hit.sum())
+                    move_total += int(valid_mv.sum())
             loss.backward()
             optimizer_dense.step()
-            optimizer_ft.step()
+            if optimizer_ft is not None:
+                optimizer_ft.step()
             scheduler_dense.step()
-            scheduler_ft.step()
+            if scheduler_ft is not None:
+                scheduler_ft.step()
             model.clip_weights()
 
             step += 1
             samples_done += n
             samples_log += n
-            loss_acc += loss.item() * n
+            loss_acc += value_loss.item() * n
             loss_n += n
 
             if step % args.log_interval == 0:
@@ -263,9 +336,18 @@ def main():
                 sps = samples_log / max(elapsed, 1e-6)
                 avg_loss = loss_acc / max(loss_n, 1)
                 current_lr = scheduler_dense.get_last_lr()[0]
+                # 指し手の的中率。表現が厚くなったかを直接は測れないので、
+                # 少なくとも「指し手を学べているか」を見る（ADR-0129）
+                hit_rate = (
+                    f" move {100.0 * move_hits / move_total:.1f}%"
+                    if move_total
+                    else ""
+                )
+                move_hits = 0
+                move_total = 0
                 print(
                     f"step {step} samples {samples_done} "
-                    f"loss {avg_loss:.5f} lr {current_lr:.6f} "
+                    f"loss {avg_loss:.5f} lr {current_lr:.6f}{hit_rate} "
                     f"({sps:.0f} samples/s)",
                     file=sys.stderr,
                 )
@@ -389,9 +471,9 @@ def _save_checkpoint(model, optimizer_dense, optimizer_ft,
     torch.save({
         "model": model.state_dict(),
         "optimizer_dense": optimizer_dense.state_dict(),
-        "optimizer_ft": optimizer_ft.state_dict(),
+        "optimizer_ft": None if optimizer_ft is None else optimizer_ft.state_dict(),
         "scheduler_dense": scheduler_dense.state_dict(),
-        "scheduler_ft": scheduler_ft.state_dict(),
+        "scheduler_ft": None if scheduler_ft is None else scheduler_ft.state_dict(),
         "step": step,
         "epoch": epoch,
         "best_valid": best_valid,

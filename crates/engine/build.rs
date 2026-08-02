@@ -1,7 +1,13 @@
 //! ネットワーク構造の次元をビルド時に決める（ADR-0127）。
 //!
-//! 環境変数 `HIMAWARI_ARCH` に `<FT>x<L1>x<L2>[x<L3>]` を渡すと、その構成で
-//! ビルドする。L3を書くと隠れ層が1つ増えて4層になる。省略すると既定構成。
+//! 環境変数 `HIMAWARI_ARCH` に次元を `x` で区切って渡すと、その構成でビルドする。
+//! 要素の数が層の数を決める。
+//!
+//! ```text
+//! 256x16           FT→16→1          （隠れ層1つ）
+//! 256x32x32        FT→32→32→1       （隠れ層2つ。既定）
+//! 256x32x32x32     FT→32→32→32→1    （隠れ層3つ）
+//! ```
 //!
 //! featureで持つと構成の数だけfeatureが要り、組み合わせが積で増える。
 //! 1つの文字列で受ければ構成を足すのにコード変更が要らない。
@@ -28,8 +34,9 @@ const MAX_DIM: usize = 4096;
 struct Arch {
     ft: usize,
     l1: usize,
+    /// 隠れ層1つの構成では0。0なら隠れ層1から出力へ直結する。
     l2: usize,
-    /// 3層構成では0。0でなければ隠れ層をもう1つ挟む。
+    /// 隠れ層2つ以下の構成では0。
     l3: usize,
 }
 
@@ -40,11 +47,13 @@ fn parse(spec: &str) -> Result<Arch, String> {
             .map_err(|_| format!("{name}が整数でない: {s}"))
     };
     let (ft, l1, l2, l3) = match parts.as_slice() {
+        [ft, l1] => (*ft, *l1, "0", "0"),
         [ft, l1, l2] => (*ft, *l1, *l2, "0"),
         [ft, l1, l2, l3] => (*ft, *l1, *l2, *l3),
         _ => {
             return Err(format!(
-                "`<FT>x<L1>x<L2>[x<L3>]` の形で書く（例 512x16x32）。渡された値: {spec}"
+                "`<FT>x<L1>[x<L2>[x<L3>]]` の形で書く（例 256x16、512x16x32）。\
+                 渡された値: {spec}"
             ));
         }
     };
@@ -68,10 +77,28 @@ fn validate(a: &Arch) -> Result<(), String> {
     };
     check("FT", a.ft, FT_MULTIPLE)?;
     check("L1", a.l1, L1_MULTIPLE)?;
-    check("L2", a.l2, L2_MULTIPLE)?;
-    // L3は書かなければ0で、そのときは3層のまま
+    // 書かなかった層は0で、そのぶん層が減る
+    if a.l2 != 0 {
+        check("L2", a.l2, L2_MULTIPLE)?;
+    }
     if a.l3 != 0 {
         check("L3", a.l3, L3_MULTIPLE)?;
+    }
+    if a.l2 == 0 && a.l3 != 0 {
+        return Err("L2を書かずにL3だけ書くことはできない".to_string());
+    }
+    // 最後の隠れ層は8レーンの内積で畳むので、8の倍数が要る
+    let last = if a.l3 != 0 {
+        a.l3
+    } else if a.l2 != 0 {
+        a.l2
+    } else {
+        a.l1
+    };
+    if !last.is_multiple_of(L2_MULTIPLE) {
+        return Err(format!(
+            "最後の隠れ層は{L2_MULTIPLE}の倍数にする（{last}が渡された）"
+        ));
     }
     Ok(())
 }
@@ -96,7 +123,11 @@ fn main() {
     writeln!(src, "pub const FT_OUT: usize = {};", arch.ft).unwrap();
     writeln!(src, "/// 隠れ層1の出力次元。").unwrap();
     writeln!(src, "pub const L1_OUT: usize = {};", arch.l1).unwrap();
-    writeln!(src, "/// 隠れ層2の出力次元。").unwrap();
+    writeln!(
+        src,
+        "/// 隠れ層2の出力次元。0なら隠れ層1から出力へ直結する。"
+    )
+    .unwrap();
     writeln!(src, "pub const L2_OUT: usize = {};", arch.l2).unwrap();
     writeln!(
         src,
@@ -111,13 +142,13 @@ fn main() {
          /// 8レーンの内積で畳むので切り上げない。"
     )
     .unwrap();
-    writeln!(
-        src,
-        "pub const L1_PAD: usize = {};",
+    let l1_pad = if arch.l2 == 0 {
+        arch.l1
+    } else {
         arch.l1.next_multiple_of(PAD_MULTIPLE)
-    )
-    .unwrap();
-    // L2の出力を次の層へ渡すのは4層構成のときだけ。3層では内積で畳むので
+    };
+    writeln!(src, "pub const L1_PAD: usize = {l1_pad};").unwrap();
+    // 次の層へ渡すぶんだけ切り上げる。最後の隠れ層は内積で畳むので
     // 切り上げない（余分なゼロ列を持たない）
     let l2_pad = if arch.l3 == 0 {
         arch.l2
