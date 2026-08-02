@@ -276,6 +276,12 @@ pub fn load(r: &mut impl Read) -> Result<(NnueNetwork, String), String> {
 /// 3層のネットを4層構成へ読むと、足した層を恒等写像にする。活性は0..127で、
 /// 対角を64にすると `(64x) >> 6 == x` になるため、**層を足しても評価値が
 /// 変わらない。** 4層から3層へは落とせない。
+///
+/// **継続学習の初期値には、このままでは使えない**（ADR-0130）。広げた次元と、
+/// それを受ける次の層の列が両方ゼロなので、互いの勾配がゼロで固定し合う。
+/// 学習を続けるなら、どちらか片方へ微小な乱数を入れて対称性を破ること。
+/// ここでゼロ埋めを崩さないのは、速度計測が「評価値を1ビットも変えない」
+/// ことを要件にしているためである。
 pub fn load_resized(r: &mut impl Read) -> Result<(NnueNetwork, String), String> {
     let (dims, lineage, body) = read_header(r)?;
     let [ft_in, src_ft, src_l1, src_l2, src_l3] = dims;
