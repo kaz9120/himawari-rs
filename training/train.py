@@ -73,6 +73,17 @@ def main():
     p.add_argument("--notes", default="", help="Notes for registry")
     p.add_argument("--device", default="cpu")
     p.add_argument(
+        "--init-net",
+        help="既存の.hmwrを初期値に読む。FTは常に読み、後段は形が一致する層だけ"
+             "読む（ADR-0130）",
+    )
+    p.add_argument(
+        "--freeze-ft",
+        action="store_true",
+        help="FTを更新しない。後段の候補を絞るときに使う（ADR-0130）。"
+             "採用の判断には使わない",
+    )
+    p.add_argument(
         "--seed",
         type=int,
         help="モデル初期化とデータ順序の乱数種。指定しないとPyTorchが実行ごとに"
@@ -158,6 +169,13 @@ def main():
         sparse_ft=not args.dense_ft, factorized=args.factorized
     ).to(device)
 
+    if args.init_net:
+        from quantize import load_into
+        print(f"初期値: {load_into(model, args.init_net, args.freeze_ft)}",
+              file=sys.stderr)
+    elif args.freeze_ft:
+        p.error("--freeze-ft には --init-net が要る（凍結する重みがない）")
+
     dense_params = [
         model.ft_bias,
         model.l2.weight, model.l2.bias,
@@ -170,6 +188,9 @@ def main():
     ft_params = [model.ft.weight]
     if model.ft_p is not None:
         ft_params.append(model.ft_p.weight)
+    # 凍結した重みは更新対象から外す。残すとoptimizerが空の勾配を扱う
+    dense_params = [t for t in dense_params if t.requires_grad]
+    ft_params = [t for t in ft_params if t.requires_grad]
     lr_fn = lambda step: lr_lambda(
         step, args.warmup_steps, total_steps, args.min_lr, args.peak_lr,
     )

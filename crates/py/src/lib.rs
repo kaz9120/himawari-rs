@@ -1,5 +1,6 @@
 use numpy::{IntoPyArray, PyArray1};
 use pyo3::prelude::*;
+use pyo3::types::PyDict;
 use rayon::prelude::*;
 
 use himawari_core::packed_sfen::{PSV_BYTES, PackedSfenValue, unpack};
@@ -10,6 +11,8 @@ use himawari_engine::nnue::{
 use himawari_engine::nnue_io;
 
 const SIGMOID_SCALE: f32 = 600.0;
+/// 評価値スケール（ADR-0036）。量子化を戻すのに使う
+const FV_SCALE: i32 = 16;
 
 fn sigmoid(x: f32) -> f32 {
     1.0 / (1.0 + (-x).exp())
@@ -205,11 +208,75 @@ fn save_hmwr(
     Ok(())
 }
 
+/// `.hmwr` を読み、学習側が使うf32の重みへ戻す（ADR-0130）。
+///
+/// 量子化の逆変換なので、元のf32とは丸めのぶんだけ違う。凍結して使う
+/// ぶんには差が動かないので影響しない。構成が違うファイルはいまの
+/// ビルド構成へ合わせて読む（`makenet --resize` と同じ扱い）。
+///
+/// 戻り値の `src_arch` は元ファイルの構成で、後段の層を初期値に使ってよいかを
+/// 学習側が判断するために返す。
+#[pyfunction]
+fn load_hmwr<'py>(py: Python<'py>, path: &str) -> PyResult<Bound<'py, PyDict>> {
+    let mut f = std::fs::File::open(path)
+        .map_err(|e| PyErr::new::<pyo3::exceptions::PyIOError, _>(e.to_string()))?;
+    let (net, lineage, src) = nnue_io::load_resized_with_dims(&mut f)
+        .map_err(|e| PyErr::new::<pyo3::exceptions::PyValueError, _>(e))?;
+
+    let out_w_scale = SIGMOID_SCALE * FV_SCALE as f32 / 127.0;
+    let f32v =
+        |v: &[i8], scale: f32| -> Vec<f32> { v.iter().map(|&x| f32::from(x) / scale).collect() };
+
+    let d = PyDict::new(py);
+    d.set_item(
+        "ft_w",
+        net.ft_w
+            .iter()
+            .map(|&x| f32::from(x) / 127.0)
+            .collect::<Vec<f32>>()
+            .into_pyarray(py),
+    )?;
+    d.set_item(
+        "ft_b",
+        net.ft_b
+            .iter()
+            .map(|&x| f32::from(x) / 127.0)
+            .collect::<Vec<f32>>()
+            .into_pyarray(py),
+    )?;
+    d.set_item("w2", f32v(&net.w2, 64.0).into_pyarray(py))?;
+    d.set_item("w3", unpad(&net.w3, L1_OUT, L1_PAD, 64.0).into_pyarray(py))?;
+    d.set_item("w4", unpad(&net.w4, L2_OUT, L2_PAD, 64.0).into_pyarray(py))?;
+    d.set_item("w_out", f32v(&net.w_out, out_w_scale).into_pyarray(py))?;
+    for (key, v) in [("b2", &net.b2), ("b3", &net.b3), ("b4", &net.b4)] {
+        let scaled: Vec<f32> = v.iter().map(|&x| x as f32 / (64.0 * 127.0)).collect();
+        d.set_item(key, scaled.into_pyarray(py))?;
+    }
+    d.set_item(
+        "b_out",
+        net.b_out as f32 / (SIGMOID_SCALE * FV_SCALE as f32),
+    )?;
+    d.set_item("lineage", lineage)?;
+    d.set_item(
+        "src_arch",
+        format!("{}x{}x{}x{}", src[1], src[2], src[3], src[4]),
+    )?;
+    Ok(d)
+}
+
+/// ゼロ埋め列を落としてf32へ戻す。学習側はパディングを持たない。
+fn unpad(rows: &[i8], used: usize, stride: usize, scale: f32) -> Vec<f32> {
+    rows.chunks_exact(stride.max(1))
+        .flat_map(|row| row[..used].iter().map(|&x| f32::from(x) / scale))
+        .collect()
+}
+
 #[pymodule]
 fn himawari(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(extract_features, m)?)?;
     m.add_function(wrap_pyfunction!(extract_batch, m)?)?;
     m.add_function(wrap_pyfunction!(save_hmwr, m)?)?;
+    m.add_function(wrap_pyfunction!(load_hmwr, m)?)?;
     m.add("FT_IN", FT_IN)?;
     m.add("FT_OUT", FT_OUT)?;
     m.add("L1_OUT", L1_OUT)?;

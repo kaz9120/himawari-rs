@@ -283,6 +283,14 @@ pub fn load(r: &mut impl Read) -> Result<(NnueNetwork, String), String> {
 /// ここでゼロ埋めを崩さないのは、速度計測が「評価値を1ビットも変えない」
 /// ことを要件にしているためである。
 pub fn load_resized(r: &mut impl Read) -> Result<(NnueNetwork, String), String> {
+    load_resized_with_dims(r).map(|(net, lineage, _)| (net, lineage))
+}
+
+/// `load_resized` に、元ファイルの構成 `[FT_IN, FT, L1, L2, L3]` を添えて返す。
+/// 学習側が「後段の層を初期値に使ってよいか」を判断するのに要る（ADR-0130）。
+pub fn load_resized_with_dims(
+    r: &mut impl Read,
+) -> Result<(NnueNetwork, String, [usize; 5]), String> {
     let (dims, lineage, body) = read_header(r)?;
     let [ft_in, src_ft, src_l1, src_l2, src_l3] = dims;
     if ft_in != FT_IN {
@@ -377,6 +385,7 @@ pub fn load_resized(r: &mut impl Read) -> Result<(NnueNetwork, String), String> 
             b_out,
         },
         format!("{lineage} / resized to {ARCH}"),
+        dims,
     ))
 }
 
@@ -402,6 +411,18 @@ mod tests {
         // 隠れ層2はL1_PAD幅のまま往復する（ゼロ埋め列も含めて一致）
         assert_eq!(net.w3, loaded.w3);
         assert_eq!(net.w3.len(), crate::nnue::L2_OUT * L1_PAD);
+    }
+
+    /// resizeは元ファイルの構成を返す。学習側が「後段を初期値に使ってよいか」を
+    /// 判断するのに要る（ADR-0130）。
+    #[test]
+    fn resized_reports_source_dims() {
+        let net = NnueNetwork::random(31);
+        let mut buf = Vec::new();
+        save(&net, "dims test", &mut buf).unwrap();
+        let (_, lineage, dims) = load_resized_with_dims(&mut buf.as_slice()).unwrap();
+        assert_eq!(dims, [FT_IN, FT_OUT, L1_OUT, L2_OUT, L3_OUT]);
+        assert!(lineage.contains("resized to"), "来歴に変換の跡が残る");
     }
 
     /// 版2のファイル（隠れ層の幅が1つ）も読める。L1とL2が同じ構成に限る。
