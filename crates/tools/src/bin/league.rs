@@ -169,11 +169,12 @@ fn load_openings(path: &Option<PathBuf>) -> Result<Vec<String>> {
     };
     let text = std::fs::read_to_string(path)
         .map_err(|e| anyhow::anyhow!("開始局面集を読めない {}: {e}", path.display()))?;
+    // 行頭の「sfen 」は配布ファイルで一般的なので剥がして受け入れる
     let v: Vec<String> = text
         .lines()
         .map(str::trim)
         .filter(|l| !l.is_empty() && !l.starts_with('#'))
-        .map(str::to_string)
+        .map(|l| l.strip_prefix("sfen ").unwrap_or(l).to_string())
         .collect();
     if v.is_empty() {
         bail!("開始局面集が空: {}", path.display());
@@ -564,6 +565,26 @@ mod tests {
             "b=/bin/cat:/bin/ls".to_string(),
         ];
         assert_eq!(parse_participants(&ok).unwrap().len(), 2);
+    }
+
+    /// 開始局面集は行頭の「sfen 」を剥がして読む。剥がさないと
+    /// `Position::from_sfen` が段の数を数え違える。
+    #[test]
+    fn openings_drop_the_sfen_prefix() {
+        let dir = std::env::temp_dir().join("himawari-league-openings");
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("openings.txt");
+        std::fs::write(
+            &path,
+            "# コメント\nsfen lnsgkgsnl/1r5b1/ppppppppp/9/9/9/PPPPPPPPP/1B5R1/LNSGKGSNL b - 1\n\nlnsgkgsnl/1r5b1/ppppppppp/9/9/9/PPPPPPPPP/1B5R1/LNSGKGSNL w - 2\n",
+        )
+        .unwrap();
+        let v = load_openings(&Some(path)).unwrap();
+        assert_eq!(v.len(), 2, "コメントと空行を落とす");
+        for sfen in &v {
+            assert!(!sfen.starts_with("sfen "), "前置きが残っている: {sfen}");
+            himawari_core::Position::from_sfen(sfen).expect("SFENとして読めること");
+        }
     }
 
     #[test]
