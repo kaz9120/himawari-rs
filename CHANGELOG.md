@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.27.13](https://github.com/kaz9120/himawari-rs/compare/v0.27.12...v0.27.13) (2026-08-02)
+
+
+### 内部
+
+* 総当たりリーグ戦で複数候補の順位を出せるようにする（ADR-0128） ([#176](https://github.com/kaz9120/himawari-rs/issues/176)) ([8dca05f](https://github.com/kaz9120/himawari-rs/commit/8dca05f2d9891b52e70beb203648dab6cadf45e8))
+
 ## [0.27.12](https://github.com/kaz9120/himawari-rs/compare/v0.27.11...v0.27.12) (2026-08-01)
 
 
