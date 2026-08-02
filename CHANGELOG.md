@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.27.15](https://github.com/kaz9120/himawari-rs/compare/v0.27.14...v0.27.15) (2026-08-02)
+
+
+### 内部
+
+* FTの表現を厚くする試みと、後段を削って速くする結果（ADR-0127・0129・0130） ([#179](https://github.com/kaz9120/himawari-rs/issues/179)) ([139e5f6](https://github.com/kaz9120/himawari-rs/commit/139e5f6081b23aeedec8654e77eb3e5e96f6adad))
+
 ## [0.27.14](https://github.com/kaz9120/himawari-rs/compare/v0.27.13...v0.27.14) (2026-08-02)
 
 
