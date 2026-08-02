@@ -4,6 +4,7 @@
 //! `selfplay` が、エンジンクライアントと検証局面をここで共有する。
 //! かつて3本のshellが同じ起動処理を各自に持ち、後始末を落としていた。
 
+pub mod game;
 pub mod positions;
 pub mod stop_file;
 pub mod usi_engine;

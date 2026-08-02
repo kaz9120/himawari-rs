@@ -141,7 +141,8 @@
 | [0124](0124-hot-path-allocs.md) | 挙動を変えない高速化を群でまとめて測る | - | proposed |
 | [0125](0125-search-decomposition.md) | 探索本体を責務ごとに切り出す | - | proposed |
 | [0126](0126-mate-score-in-training.md) | 教師データの詰みスコアは素通しのままにする | - | accepted |
-| [0127](0127-net-shape-bench.md) | ネットワーク構造の探索は学習前のNPS計測から始める | - | proposed |
+| [0127](0127-net-shape-bench.md) | ネットワーク構造の探索は学習前の速度計測から始める | - | proposed |
+| [0128](0128-round-robin-league.md) | 3つ以上の候補は総当たりリーグ戦で順位づける | - | proposed |
 
 ## バックログ
 
