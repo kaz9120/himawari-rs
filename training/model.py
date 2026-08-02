@@ -20,6 +20,9 @@ L2_OUT = himawari.L2_OUT
 # 0なら3層。0でなければ隠れ層をもう1つ挟む（ADR-0127）
 L3_OUT = himawari.L3_OUT
 LAST_HIDDEN = L3_OUT if L3_OUT else L2_OUT
+# 補助ヘッドの分類クラス数（ADR-0129）。fromは盤上81マス＋打つ駒7種
+MOVE_FROM_CLASSES = himawari.MOVE_FROM_CLASSES
+MOVE_TO_CLASSES = himawari.MOVE_TO_CLASSES
 ARCH = himawari.ARCH
 FE_END = FT_IN // 81
 CONCAT = FT_OUT * 2
@@ -44,7 +47,7 @@ class NnueModel(nn.Module):
     推論側の構造は変わらない。重みは書き出し時に畳み込む。
     """
 
-    def __init__(self, sparse_ft=True, factorized=False):
+    def __init__(self, sparse_ft=True, factorized=False, policy=False):
         super().__init__()
         self.ft = nn.EmbeddingBag(FT_IN, FT_OUT, mode="sum", sparse=sparse_ft)
         self.ft_p = (
@@ -57,6 +60,10 @@ class NnueModel(nn.Module):
         self.l3 = nn.Linear(L1_OUT, L2_OUT)
         self.l4 = nn.Linear(L2_OUT, L3_OUT) if L3_OUT else None
         self.out = nn.Linear(LAST_HIDDEN, 1)
+        # 補助ヘッド（ADR-0129）。FT出力からの線形1層に限る。深くすると
+        # ヘッド自身がタスクを解いてしまい、FTへ表現を押し込む圧力が弱まる
+        self.policy_from = nn.Linear(CONCAT, MOVE_FROM_CLASSES) if policy else None
+        self.policy_to = nn.Linear(CONCAT, MOVE_TO_CLASSES) if policy else None
         self._init_weights()
 
     def _init_weights(self):
@@ -72,6 +79,10 @@ class NnueModel(nn.Module):
             nn.init.zeros_(self.l4.bias)
         nn.init.uniform_(self.out.weight, -0.3, 0.3)
         nn.init.zeros_(self.out.bias)
+        for head in (self.policy_from, self.policy_to):
+            if head is not None:
+                nn.init.uniform_(head.weight, -0.05, 0.05)
+                nn.init.zeros_(head.bias)
 
     def transform(self, idx, off):
         z = self.ft(idx, off)
@@ -87,14 +98,21 @@ class NnueModel(nn.Module):
         virtual = self.ft_p.weight.detach().float()
         return (w.view(81, FE_END, FT_OUT) + virtual.unsqueeze(0)).view(FT_IN, FT_OUT)
 
-    def forward(self, stm_idx, stm_off, opp_idx, opp_off):
+    def transform_both(self, stm_idx, stm_off, opp_idx, opp_off):
+        """FT出力を2視点ぶん連結して返す。補助ヘッドもここから生やす。"""
         z_stm = self.transform(stm_idx, stm_off)
         z_opp = self.transform(opp_idx, opp_off)
-        x = torch.cat([z_stm.clamp(0.0, 1.0), z_opp.clamp(0.0, 1.0)], dim=1)
+        return torch.cat([z_stm.clamp(0.0, 1.0), z_opp.clamp(0.0, 1.0)], dim=1)
+
+    def value(self, x):
+        """FT出力の連結から評価値を出す（推論と同じ経路）。"""
         h = self.l3(self.l2(x).clamp(0.0, 1.0)).clamp(0.0, 1.0)
         if self.l4 is not None:
             h = self.l4(h).clamp(0.0, 1.0)
         return self.out(h).squeeze(1)
+
+    def forward(self, stm_idx, stm_off, opp_idx, opp_off):
+        return self.value(self.transform_both(stm_idx, stm_off, opp_idx, opp_off))
 
     def clip_weights(self):
         with torch.no_grad():
