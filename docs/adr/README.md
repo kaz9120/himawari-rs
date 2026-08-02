@@ -145,6 +145,7 @@
 | [0128](0128-round-robin-league.md) | 3つ以上の候補は総当たりリーグ戦で順位づける | - | accepted |
 | [0129](0129-auxiliary-heads.md) | 学習時だけの補助ヘッドでFTの表現を厚くする | - | proposed |
 | [0130](0130-freeze-ft.md) | FTを固定して、後段の実験を一桁速くする | - | proposed |
+| [0131](0131-frozen-ft-light-head.md) | 良いFTを凍結して軽量ヘッドを載せる作り方を、本番規模で確かめる | - | proposed |
 
 ## バックログ
 
