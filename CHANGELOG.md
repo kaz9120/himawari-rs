@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.27.14](https://github.com/kaz9120/himawari-rs/compare/v0.27.13...v0.27.14) (2026-08-02)
+
+
+### 内部
+
+* ネットワーク構成8種を測り、現行構成の維持を決める（ADR-0127） ([#175](https://github.com/kaz9120/himawari-rs/issues/175)) ([ba75220](https://github.com/kaz9120/himawari-rs/commit/ba75220bef2f785ceb9f08b24634c8b24a5eae86))
+
 ## [0.27.13](https://github.com/kaz9120/himawari-rs/compare/v0.27.12...v0.27.13) (2026-08-02)
 
 
