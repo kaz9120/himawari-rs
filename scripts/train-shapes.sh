@@ -15,7 +15,7 @@ usage() {
 使い方:
   scripts/train-shapes.sh <構成> [構成...]
 
-構成は <FT>x<L1>x<L2>[x<L3>]（例 512x16x32、256x32x32x32）。
+構成は <FT>x<L1>[x<L2>[x<L3>]]（例 256x16、512x16x32）。
 1構成あたり3億局面で50〜100分かかる。
 
 構成ごとに次を作る。
@@ -28,6 +28,10 @@ usage() {
   SHAPE_VALID_DATA  既定 data/train/valid_385M.psv
   SHAPE_SEED        既定 0。同じ構成を別の種で回すと、条件の差と初期値の
                     差を切り分けられる（ADR-0127）
+  SHAPE_INIT_NET    既存の.hmwrを初期値に読む（ADR-0130）。FTは常に読み、
+                    後段は形が一致する層だけ読む
+  SHAPE_FREEZE_FT   1ならFTを凍結する。後段の候補を絞るときに使う。
+                    採用の判断には使わない
 USAGE
 }
 
@@ -46,6 +50,14 @@ cd "$REPO_ROOT"
 DATA="${SHAPE_TRAIN_DATA:-data/train/train_300M.psv}"
 VALID="${SHAPE_VALID_DATA:-data/train/valid_385M.psv}"
 SEED="${SHAPE_SEED:-0}"
+INIT_NET="${SHAPE_INIT_NET:-}"
+FREEZE_FT="${SHAPE_FREEZE_FT:-}"
+INIT_ARGS=()
+if [[ -n "$INIT_NET" ]]; then
+	[[ -f "$INIT_NET" ]] || die "初期値のネットがない: ${INIT_NET}"
+	INIT_ARGS+=(--init-net "$INIT_NET")
+	[[ -n "$FREEZE_FT" ]] && INIT_ARGS+=(--freeze-ft)
+fi
 [[ -f "$DATA" ]] || die "学習データがない: ${DATA}"
 [[ -f "$VALID" ]] || die "検証データがない: ${VALID}"
 mkdir -p training/runs/net_shape data/nets
@@ -57,8 +69,8 @@ log_info "学習データ: ${DATA}"
 log_info "検証データ: ${VALID}"
 
 for spec in "$@"; do
-	if [[ ! "$spec" =~ ^[0-9]+x[0-9]+x[0-9]+(x[0-9]+)?$ ]]; then
-		die "構成の書き方が違う: ${spec}（<FT>x<L1>x<L2>[x<L3>]）"
+	if [[ ! "$spec" =~ ^[0-9]+x[0-9]+(x[0-9]+){0,2}$ ]]; then
+		die "構成の書き方が違う: ${spec}（<FT>x<L1>[x<L2>[x<L3>]]）"
 	fi
 
 	log_info "PyO3拡張をビルド: ${spec}"
@@ -66,7 +78,10 @@ for spec in "$@"; do
 	# 入れているので、wheelを作って入れ替える
 	HIMAWARI_ARCH="$spec" CARGO_TARGET_DIR="target/shape/${spec}" \
 		maturin build --release --quiet -m crates/py/Cargo.toml --out "$WHEEL_DIR"
-	python3 -m pip install --force-reinstall --no-deps --quiet "$WHEEL_DIR"/*.whl
+	# release-pleaseがバージョンを上げると古いwheelが残る。*.whl だと
+	# 複数のバージョンにマッチしてpipが解決に失敗するので、最新だけ渡す
+	python3 -m pip install --force-reinstall --no-deps --quiet \
+		"$(ls -t "$WHEEL_DIR"/*.whl | head -1)"
 
 	# 学習側と推論側で次元が食い違ったまま20分回すのを防ぐ
 	got="$(python3 -c 'import himawari; print(himawari.ARCH)')"
@@ -75,6 +90,7 @@ for spec in "$@"; do
 	log_info "学習: ${spec}"
 	# 条件はADR-0126の詰みスコア実験と揃える。差が構成だけから出るようにする
 	python3 training/train.py \
+		"${INIT_ARGS[@]+"${INIT_ARGS[@]}"}" \
 		--data "$DATA" \
 		--valid "$VALID" \
 		--out "data/nets/train-${spec}-s${SEED}.hmwr" \
