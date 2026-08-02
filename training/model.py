@@ -47,7 +47,7 @@ class NnueModel(nn.Module):
     推論側の構造は変わらない。重みは書き出し時に畳み込む。
     """
 
-    def __init__(self, sparse_ft=True, factorized=False, policy=False):
+    def __init__(self, sparse_ft=True, factorized=False, policy=False, pretrain=False):
         super().__init__()
         self.ft = nn.EmbeddingBag(FT_IN, FT_OUT, mode="sum", sparse=sparse_ft)
         self.ft_p = (
@@ -64,6 +64,10 @@ class NnueModel(nn.Module):
         # ヘッド自身がタスクを解いてしまい、FTへ表現を押し込む圧力が弱まる
         self.policy_from = nn.Linear(CONCAT, MOVE_FROM_CLASSES) if policy else None
         self.policy_to = nn.Linear(CONCAT, MOVE_TO_CLASSES) if policy else None
+        # FT事前学習では評価値ヘッドも線形1層にする（ADR-0129）。深い
+        # ヘッドはタスクを自分で解いてしまい、FTへ表現を押し込む圧力が
+        # 弱まる。評価値を当てる圧力自体は残す
+        self.pretrain_value = nn.Linear(CONCAT, 1) if pretrain else None
         self._init_weights()
 
     def _init_weights(self):
@@ -79,7 +83,7 @@ class NnueModel(nn.Module):
             nn.init.zeros_(self.l4.bias)
         nn.init.uniform_(self.out.weight, -0.3, 0.3)
         nn.init.zeros_(self.out.bias)
-        for head in (self.policy_from, self.policy_to):
+        for head in (self.policy_from, self.policy_to, self.pretrain_value):
             if head is not None:
                 nn.init.uniform_(head.weight, -0.05, 0.05)
                 nn.init.zeros_(head.bias)
@@ -105,7 +109,12 @@ class NnueModel(nn.Module):
         return torch.cat([z_stm.clamp(0.0, 1.0), z_opp.clamp(0.0, 1.0)], dim=1)
 
     def value(self, x):
-        """FT出力の連結から評価値を出す（推論と同じ経路）。"""
+        """FT出力の連結から評価値を出す（推論と同じ経路）。
+
+        事前学習中は線形1層で代替する。この層は書き出しに載らない。
+        """
+        if self.pretrain_value is not None:
+            return self.pretrain_value(x).squeeze(1)
         h = self.l3(self.l2(x).clamp(0.0, 1.0)).clamp(0.0, 1.0)
         if self.l4 is not None:
             h = self.l4(h).clamp(0.0, 1.0)

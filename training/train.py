@@ -82,6 +82,12 @@ def main():
              "書き出し時にヘッドは捨てるので推論は変わらない",
     )
     p.add_argument(
+        "--pretrain",
+        action="store_true",
+        help="FT事前学習モード（ADR-0129）。評価値ヘッドも線形1層にして、"
+             "すべての仕事をFTへ押し込む。成果物はFTだけで、後段は捨てる",
+    )
+    p.add_argument(
         "--init-net",
         help="既存の.hmwrを初期値に読む。FTは常に読み、後段は形が一致する層だけ"
              "読む（ADR-0130）",
@@ -178,6 +184,7 @@ def main():
         sparse_ft=not args.dense_ft,
         factorized=args.factorized,
         policy=args.lambda_move > 0,
+        pretrain=args.pretrain,
     ).to(device)
 
     if args.init_net:
@@ -194,7 +201,7 @@ def main():
         model.out.weight, model.out.bias,
     ]
     # 補助ヘッドも学習する。書き出し時に捨てるので推論には出てこない
-    for head in (model.policy_from, model.policy_to):
+    for head in (model.policy_from, model.policy_to, model.pretrain_value):
         if head is not None:
             dense_params.extend([head.weight, head.bias])
     # 4層構成でだけ持つ隠れ層3（ADR-0127）
@@ -212,13 +219,20 @@ def main():
     optimizer_dense = torch.optim.Adam(dense_params, lr=args.peak_lr)
     # FT勾配をdenseにするとMPSへ載せられる。更新則はSparseAdamと
     # 同じ「出現した行だけ動かす」を保つ（ADR-0064）
+    # FTを凍結すると更新対象が空になる。optimizerは作らない（ADR-0130）
     optimizer_ft = (
-        MaskedAdam(ft_params, lr=args.peak_lr)
+        None
+        if not ft_params
+        else MaskedAdam(ft_params, lr=args.peak_lr)
         if args.dense_ft
         else torch.optim.SparseAdam(ft_params, lr=args.peak_lr)
     )
     scheduler_dense = torch.optim.lr_scheduler.LambdaLR(optimizer_dense, lr_lambda=lr_fn)
-    scheduler_ft = torch.optim.lr_scheduler.LambdaLR(optimizer_ft, lr_lambda=lr_fn)
+    scheduler_ft = (
+        None
+        if optimizer_ft is None
+        else torch.optim.lr_scheduler.LambdaLR(optimizer_ft, lr_lambda=lr_fn)
+    )
 
     step = 0
     start_epoch = 0
@@ -231,9 +245,11 @@ def main():
         ckpt = torch.load(args.resume, map_location=device, weights_only=False)
         model.load_state_dict(ckpt["model"])
         optimizer_dense.load_state_dict(ckpt["optimizer_dense"])
-        optimizer_ft.load_state_dict(ckpt["optimizer_ft"])
+        if optimizer_ft is not None and ckpt["optimizer_ft"] is not None:
+            optimizer_ft.load_state_dict(ckpt["optimizer_ft"])
         scheduler_dense.load_state_dict(ckpt["scheduler_dense"])
-        scheduler_ft.load_state_dict(ckpt["scheduler_ft"])
+        if scheduler_ft is not None and ckpt["scheduler_ft"] is not None:
+            scheduler_ft.load_state_dict(ckpt["scheduler_ft"])
         step = ckpt["step"]
         start_epoch = ckpt["epoch"]
         best_valid = ckpt.get("best_valid", float("inf"))
@@ -280,7 +296,8 @@ def main():
             n = targets.size(0)
 
             optimizer_dense.zero_grad()
-            optimizer_ft.zero_grad()
+            if optimizer_ft is not None:
+                optimizer_ft.zero_grad()
             x = model.transform_both(stm_i, stm_o, opp_i, opp_o)
             out = model.value(x)
             loss = loss_fn(out, targets)
@@ -301,9 +318,11 @@ def main():
                     move_total += int(valid_mv.sum())
             loss.backward()
             optimizer_dense.step()
-            optimizer_ft.step()
+            if optimizer_ft is not None:
+                optimizer_ft.step()
             scheduler_dense.step()
-            scheduler_ft.step()
+            if scheduler_ft is not None:
+                scheduler_ft.step()
             model.clip_weights()
 
             step += 1
@@ -452,9 +471,9 @@ def _save_checkpoint(model, optimizer_dense, optimizer_ft,
     torch.save({
         "model": model.state_dict(),
         "optimizer_dense": optimizer_dense.state_dict(),
-        "optimizer_ft": optimizer_ft.state_dict(),
+        "optimizer_ft": None if optimizer_ft is None else optimizer_ft.state_dict(),
         "scheduler_dense": scheduler_dense.state_dict(),
-        "scheduler_ft": scheduler_ft.state_dict(),
+        "scheduler_ft": None if scheduler_ft is None else scheduler_ft.state_dict(),
         "step": step,
         "epoch": epoch,
         "best_valid": best_valid,
