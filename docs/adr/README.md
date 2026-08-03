@@ -146,6 +146,7 @@
 | [0129](0129-auxiliary-heads.md) | 学習時だけの補助ヘッドでFTの表現を厚くする | - | proposed |
 | [0130](0130-freeze-ft.md) | FTを固定して、後段の実験を一桁速くする | - | proposed |
 | [0131](0131-frozen-ft-light-head.md) | 良いFTを凍結して軽量ヘッドを載せる作り方を、本番規模で確かめる | - | proposed |
+| [0132](0132-ft-distillation.md) | 太いFTの表現を、細いFTへ蒸留する | - | proposed |
 
 ## バックログ
 
