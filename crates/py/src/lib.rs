@@ -290,6 +290,38 @@ fn load_hmwr<'py>(py: Python<'py>, path: &str) -> PyResult<Bound<'py, PyDict>> {
     Ok(d)
 }
 
+/// `.hmwr` のFTだけを、元ファイルの次元のまま読む（ADR-0132）。
+///
+/// `load_hmwr` はいまのビルド構成へ合わせて読むので、FT256の拡張から
+/// FT768のネットを読むとFTが256へ切り詰められる。表現蒸留は太いFTの
+/// 出力そのものを教師にするため、切り詰めない口が要る。
+///
+/// 戻り値の `ft_out` が元ファイルのFT幅で、`ft_w` はその幅で並ぶ。
+/// 後段は読まない。教師に使うのはFTだけである。
+#[pyfunction]
+fn load_hmwr_ft<'py>(py: Python<'py>, path: &str) -> PyResult<Bound<'py, PyDict>> {
+    let mut f = std::fs::File::open(path)
+        .map_err(|e| PyErr::new::<pyo3::exceptions::PyIOError, _>(e.to_string()))?;
+    let (ft_w, ft_b, src) =
+        nnue_io::load_ft(&mut f).map_err(|e| PyErr::new::<pyo3::exceptions::PyValueError, _>(e))?;
+
+    let dequant = |v: &[i16]| -> Vec<f32> {
+        v.iter()
+            .map(|&x| f32::from(x) / 127.0)
+            .collect::<Vec<f32>>()
+    };
+
+    let d = PyDict::new(py);
+    d.set_item("ft_w", dequant(&ft_w).into_pyarray(py))?;
+    d.set_item("ft_b", dequant(&ft_b).into_pyarray(py))?;
+    d.set_item("ft_out", src[1])?;
+    d.set_item(
+        "src_arch",
+        format!("{}x{}x{}x{}", src[1], src[2], src[3], src[4]),
+    )?;
+    Ok(d)
+}
+
 /// ゼロ埋め列を落としてf32へ戻す。学習側はパディングを持たない。
 fn unpad(rows: &[i8], used: usize, stride: usize, scale: f32) -> Vec<f32> {
     rows.chunks_exact(stride.max(1))
@@ -303,6 +335,7 @@ fn himawari(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(extract_batch, m)?)?;
     m.add_function(wrap_pyfunction!(save_hmwr, m)?)?;
     m.add_function(wrap_pyfunction!(load_hmwr, m)?)?;
+    m.add_function(wrap_pyfunction!(load_hmwr_ft, m)?)?;
     m.add("FT_IN", FT_IN)?;
     m.add("FT_OUT", FT_OUT)?;
     m.add("L1_OUT", L1_OUT)?;
