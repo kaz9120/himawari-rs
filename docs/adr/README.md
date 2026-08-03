@@ -148,6 +148,7 @@
 | [0131](0131-frozen-ft-light-head.md) | 良いFTを凍結して軽量ヘッドを載せる作り方を、本番規模で確かめる | - | proposed |
 | [0132](0132-ft-distillation.md) | 太いFTの表現を、細いFTへ蒸留する | - | proposed |
 | [0133](0133-effect-pretraining.md) | 利き予測でFTを自己教師あり事前学習する | - | proposed |
+| [0134](0134-head-capacity.md) | 後段の容量が壁かを、上向きに振って確かめる | - | proposed |
 
 ## バックログ
 
