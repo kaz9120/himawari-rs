@@ -44,6 +44,11 @@ usage() {
                     的にして、細いFTへ表現を写す。読むのはFTだけ
   SHAPE_LAMBDA_DISTILL
                     蒸留損失の重み。既定は train.py の 0.0。0.01以下から振る
+  SHAPE_EFFECT_HEAD 利き予測ヘッドを付けてFTを事前学習する（ADR-0133）。
+                    linear（線形1層）か mlp（中間256の2層）。SHAPE_LAMBDA_EFFECT
+                    と対で渡す
+  SHAPE_LAMBDA_EFFECT
+                    利き損失の重み。λ×利き損失÷value損失 の割合で決める
 USAGE
 }
 
@@ -86,6 +91,13 @@ if [[ -n "$DISTILL_NET" ]]; then
 		DISTILL_ARGS+=(--lambda-distill "$LAMBDA_DISTILL")
 	fi
 fi
+EFFECT_HEAD="${SHAPE_EFFECT_HEAD:-}"
+LAMBDA_EFFECT="${SHAPE_LAMBDA_EFFECT:-}"
+EFFECT_ARGS=()
+if [[ -n "$EFFECT_HEAD" ]]; then
+	[[ -n "$LAMBDA_EFFECT" ]] || die "SHAPE_EFFECT_HEAD には SHAPE_LAMBDA_EFFECT が要る"
+	EFFECT_ARGS+=(--effect-head "$EFFECT_HEAD" --lambda-effect "$LAMBDA_EFFECT")
+fi
 [[ -f "$DATA" ]] || die "学習データがない: ${DATA}"
 [[ -f "$VALID" ]] || die "検証データがない: ${VALID}"
 mkdir -p training/runs/net_shape data/nets
@@ -101,6 +113,9 @@ if [[ -n "$INIT_NET" ]]; then
 fi
 if [[ -n "$DISTILL_NET" ]]; then
 	log_info "蒸留の教師: ${DISTILL_NET}${LAMBDA_DISTILL:+（λ=${LAMBDA_DISTILL}）}"
+fi
+if [[ -n "$EFFECT_HEAD" ]]; then
+	log_info "利き予測: ${EFFECT_HEAD}ヘッド（λ=${LAMBDA_EFFECT}）"
 fi
 
 for spec in "$@"; do
@@ -128,6 +143,7 @@ for spec in "$@"; do
 		"${INIT_ARGS[@]+"${INIT_ARGS[@]}"}" \
 		"${MMAP_ARGS[@]+"${MMAP_ARGS[@]}"}" \
 		"${DISTILL_ARGS[@]+"${DISTILL_ARGS[@]}"}" \
+		"${EFFECT_ARGS[@]+"${EFFECT_ARGS[@]}"}" \
 		--data "$DATA" \
 		--valid "$VALID" \
 		--out "data/nets/${TAG}-${spec}-s${SEED}.hmwr" \
@@ -137,7 +153,7 @@ for spec in "$@"; do
 		--log-file "training/runs/net_shape/${TAG}-${spec}-s${SEED}.tsv" \
 		--registry training/runs/registry.tsv \
 		--name "${TAG}_${spec}_s${SEED}" \
-		--notes "ネットワーク構成の比較（ADR-0127）: ${spec}、seed ${SEED}、${DATA}${INIT_NET:+、init ${INIT_NET}}${FREEZE_FT:+、FT凍結}${DISTILL_NET:+、蒸留 ${DISTILL_NET} λ=${LAMBDA_DISTILL:-既定}}"
+		--notes "ネットワーク構成の比較（ADR-0127）: ${spec}、seed ${SEED}、${DATA}${INIT_NET:+、init ${INIT_NET}}${FREEZE_FT:+、FT凍結}${DISTILL_NET:+、蒸留 ${DISTILL_NET} λ=${LAMBDA_DISTILL:-既定}}${EFFECT_HEAD:+、利き ${EFFECT_HEAD} λ=${LAMBDA_EFFECT}}"
 done
 
 log_step "完了"

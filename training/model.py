@@ -23,6 +23,14 @@ LAST_HIDDEN = L3_OUT or L2_OUT or L1_OUT
 # 補助ヘッドの分類クラス数（ADR-0129）。fromは盤上81マス＋打つ駒7種
 MOVE_FROM_CLASSES = himawari.MOVE_FROM_CLASSES
 MOVE_TO_CLASSES = himawari.MOVE_TO_CLASSES
+# 利きラベル1本の長さ（ADR-0133）。手番側81升＋相手側81升
+EFFECT_LEN = himawari.EFFECT_LEN
+# 利きヘッドの出力次元。短い利きと長い利きを続けて並べる
+EFFECT_OUT = EFFECT_LEN * 2
+# 2層MLPヘッドの中間の幅
+EFFECT_MLP_HIDDEN = 256
+# 利き数の正規化に使う。1升に8枚も利いていれば十分に多い
+EFFECT_SCALE = 8.0
 ARCH = himawari.ARCH
 FE_END = FT_IN // 81
 CONCAT = FT_OUT * 2
@@ -48,7 +56,7 @@ class NnueModel(nn.Module):
     """
 
     def __init__(self, sparse_ft=True, factorized=False, policy=False,
-                 pretrain=False, distill_out=0):
+                 pretrain=False, distill_out=0, effect_head=None):
         super().__init__()
         self.ft = nn.EmbeddingBag(FT_IN, FT_OUT, mode="sum", sparse=sparse_ft)
         self.ft_p = (
@@ -75,7 +83,27 @@ class NnueModel(nn.Module):
         # しまうとFTへ表現を押し込む圧力が弱まるためである。
         # 書き出しには載らないので推論は変わらない
         self.distill = nn.Linear(CONCAT, distill_out) if distill_out else None
+        # 利き予測ヘッド（ADR-0133）。FT出力から升ごとの利き数を当てる。
+        # 線形1層と2層MLPのどちらが良い表現を作るかは決め打たず、比較軸に
+        # する。深いヘッドは遮りの論理積を自分で計算できてしまう一方、
+        # SimCLRは非線形の写像のほうが良い表現になると報告している。
+        # このヘッドも書き出しには載らないので推論は変わらない
+        self.effect = self._build_effect_head(effect_head)
         self._init_weights()
+
+    @staticmethod
+    def _build_effect_head(kind):
+        if kind is None:
+            return None
+        if kind == "linear":
+            return nn.Linear(CONCAT, EFFECT_OUT)
+        if kind == "mlp":
+            return nn.Sequential(
+                nn.Linear(CONCAT, EFFECT_MLP_HIDDEN),
+                nn.ReLU(),
+                nn.Linear(EFFECT_MLP_HIDDEN, EFFECT_OUT),
+            )
+        raise ValueError(f"利きヘッドの種類が不明: {kind}")
 
     def _init_weights(self):
         nn.init.uniform_(self.ft.weight, -0.05, 0.05)
@@ -91,8 +119,12 @@ class NnueModel(nn.Module):
             nn.init.zeros_(self.l4.bias)
         nn.init.uniform_(self.out.weight, -0.3, 0.3)
         nn.init.zeros_(self.out.bias)
-        for head in (self.policy_from, self.policy_to, self.pretrain_value,
-                     self.distill):
+        heads = [self.policy_from, self.policy_to, self.pretrain_value,
+                 self.distill]
+        # 利きヘッドはMLPのこともある。線形層を取り出して同じ初期化を当てる
+        if self.effect is not None:
+            heads.extend(m for m in self.effect.modules() if isinstance(m, nn.Linear))
+        for head in heads:
             if head is not None:
                 nn.init.uniform_(head.weight, -0.05, 0.05)
                 nn.init.zeros_(head.bias)
@@ -145,3 +177,19 @@ class NnueModel(nn.Module):
 
 def loss_fn(output, target):
     return F.binary_cross_entropy_with_logits(output, target)
+
+
+def effect_loss_fn(pred, eff_short, eff_long):
+    """利き数の回帰損失を、短い利きと長い利きに分けて返す（ADR-0133）。
+
+    ラベルは升ごとの利き数（u8）で、EFFECT_SCALEで割って正規化してから
+    当てる。損失は升ごとのMSEである。
+
+    短い利きは加法で解けるので、ほぼ0まで落ちるはずである。落ちなければ
+    実装かλがおかしい。長い利きは遮りが絡んで加法では書けず、こちらが
+    FTの容量を測る本体になる。だから2つを混ぜずに返す。
+    """
+    target = torch.cat([eff_short, eff_long], dim=1).float() / EFFECT_SCALE
+    short_loss = F.mse_loss(pred[:, :EFFECT_LEN], target[:, :EFFECT_LEN])
+    long_loss = F.mse_loss(pred[:, EFFECT_LEN:], target[:, EFFECT_LEN:])
+    return short_loss, long_loss

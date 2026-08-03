@@ -15,7 +15,7 @@ from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 
 import himawari
-from model import FT_IN, NnueModel, loss_fn
+from model import EFFECT_LEN, FT_IN, NnueModel, effect_loss_fn, loss_fn
 from optim import MaskedAdam
 from dataset import PsvBatchLoader, PsvDataset, collate_psv
 from quantize import save_hmwr
@@ -137,6 +137,22 @@ def main():
              "捨てるので推論は変わらない",
     )
     p.add_argument(
+        "--effect-head",
+        dest="effect_head",
+        choices=["linear", "mlp"],
+        help="利き予測ヘッドを付けてFTを事前学習する（ADR-0133）。linearは線形1層、"
+             "mlpは中間256の2層。どちらが良い表現を作るかは比較軸で、決め打たない。"
+             "ヘッドは書き出し時に捨てるので推論は変わらない",
+    )
+    p.add_argument(
+        "--lambda-effect",
+        type=float,
+        default=0.0,
+        dest="lambda_effect",
+        help="利き予測の重み（ADR-0133）。--effect-head と対で渡す。"
+             "λは値ではなく λ×利き損失÷value損失 の割合で決める",
+    )
+    p.add_argument(
         "--init-net",
         help="既存の.hmwrを初期値に読む。FTは常に読み、後段は形が一致する層だけ"
              "読む（ADR-0130）",
@@ -175,6 +191,14 @@ def main():
     )
     args = p.parse_args()
 
+    # 利き予測はヘッドと重みが対で要る（ADR-0133）。片方だけ渡すと、的の
+    # ないヘッドを持つか、学習に効かないラベルを抽出し続けることになる
+    if args.lambda_effect > 0 and args.effect_head is None:
+        p.error("--lambda-effect には --effect-head が要る（ヘッドがない）")
+    if args.effect_head is not None and args.lambda_effect <= 0:
+        p.error("--effect-head には正の --lambda-effect が要る（重み0では学べない）")
+    use_effect = args.effect_head is not None
+
     device = torch.device(args.device)
     print(f"Device: {device}", file=sys.stderr)
 
@@ -189,6 +213,7 @@ def main():
             args.data, args.batch, lambda_=args.lambda_,
             score_limit=args.score_limit, mmap=args.mmap, shuffle=True,
             score_clamp=args.score_clamp, seed=args.seed or 0,
+            effect=use_effect,
         )
         data_n = train_loader.n
     else:
@@ -248,12 +273,19 @@ def main():
     elif args.lambda_distill > 0:
         p.error("--lambda-distill には --distill-net が要る（教師がない）")
 
+    if use_effect:
+        print(
+            f"利き予測: {args.effect_head}ヘッド（λ={args.lambda_effect}）",
+            file=sys.stderr,
+        )
+
     model = NnueModel(
         sparse_ft=not args.dense_ft,
         factorized=args.factorized,
         policy=args.lambda_move > 0,
         pretrain=args.pretrain,
         distill_out=distill_out,
+        effect_head=args.effect_head,
     ).to(device)
 
     if args.init_net:
@@ -278,6 +310,9 @@ def main():
                  model.distill):
         if head is not None:
             dense_params.extend([head.weight, head.bias])
+    # 利きヘッドはMLPのこともあるので、パラメータをまとめて足す（ADR-0133）
+    if model.effect is not None:
+        dense_params.extend(model.effect.parameters())
     ft_params = [model.ft.weight]
     if model.ft_p is not None:
         ft_params.append(model.ft_p.weight)
@@ -351,6 +386,9 @@ def main():
     loss_n = 0
     distill_acc = 0.0
     distill_n = 0
+    eff_short_acc = 0.0
+    eff_long_acc = 0.0
+    effect_n = 0
     samples_log = 0
     samples_done = step * args.batch
     early_stopped = False
@@ -398,6 +436,20 @@ def main():
                 loss = loss + args.lambda_distill * distill_loss
                 distill_acc += distill_loss.item() * n
                 distill_n += n
+            if model.effect is not None:
+                # 升ごとの利き数を当てる（ADR-0133）。短い利きは加法で解ける
+                # ので、健全性チェックとして別々にログへ出す
+                short_loss, long_loss = effect_loss_fn(
+                    model.effect(x),
+                    eff_short.view(n, EFFECT_LEN),
+                    eff_long.view(n, EFFECT_LEN),
+                )
+                # 出力数が同じなので、平均は324次元全体のMSEに等しい
+                effect_loss = 0.5 * (short_loss + long_loss)
+                loss = loss + args.lambda_effect * effect_loss
+                eff_short_acc += short_loss.item() * n
+                eff_long_acc += long_loss.item() * n
+                effect_n += n
             loss.backward()
             optimizer_dense.step()
             if optimizer_ft is not None:
@@ -431,10 +483,19 @@ def main():
                 # 掛けたあとの値ではλを変えるたびに物差しが動く（ADR-0132）
                 avg_distill = distill_acc / max(distill_n, 1)
                 distill_str = f" distill {avg_distill:.5f}" if distill_n else ""
+                # 利きは長短を別々に出す（ADR-0133）。短いほうが落ちなければ
+                # 実装かλがおかしい。λを掛ける前の値を出すのは蒸留と同じ
+                avg_eff_short = eff_short_acc / max(effect_n, 1)
+                avg_eff_long = eff_long_acc / max(effect_n, 1)
+                effect_str = (
+                    f" effect short {avg_eff_short:.5f} long {avg_eff_long:.5f}"
+                    if effect_n
+                    else ""
+                )
                 print(
                     f"step {step} samples {samples_done} "
                     f"loss {avg_loss:.5f} lr {current_lr:.6f}"
-                    f"{hit_rate}{distill_str} "
+                    f"{hit_rate}{distill_str}{effect_str} "
                     f"({sps:.0f} samples/s)",
                     file=sys.stderr,
                 )
@@ -444,6 +505,9 @@ def main():
                     writer.add_scalar("train/sps", sps, step)
                     if distill_n:
                         writer.add_scalar("train/distill", avg_distill, step)
+                    if effect_n:
+                        writer.add_scalar("train/effect_short", avg_eff_short, step)
+                        writer.add_scalar("train/effect_long", avg_eff_long, step)
                 if log_file:
                     total_elapsed = time.time() - t0
                     log_file.write(
@@ -456,6 +520,9 @@ def main():
                 loss_n = 0
                 distill_acc = 0.0
                 distill_n = 0
+                eff_short_acc = 0.0
+                eff_long_acc = 0.0
+                effect_n = 0
                 t_log = time.time()
                 samples_log = 0
 
