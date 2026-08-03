@@ -47,6 +47,8 @@ usage() {
   SHAPE_EFFECT_HEAD 利き予測ヘッドを付けてFTを事前学習する（ADR-0133）。
                     linear（線形1層）か mlp（中間256の2層）。SHAPE_LAMBDA_EFFECT
                     と対で渡す
+  SHAPE_PEAK_LR     ピーク学習率。既定は train.py の 0.001。事前学習した表現が
+                    序盤で壊れるのを避けたいとき下げる（ADR-0133）
   SHAPE_LAMBDA_VALUE
                     評価値損失の重み。0にすると評価値を切り、利き予測だけで
                     FTを事前学習する（ADR-0133の第1段階）
@@ -97,6 +99,7 @@ if [[ -n "$DISTILL_NET" ]]; then
 		DISTILL_ARGS+=(--lambda-distill "$LAMBDA_DISTILL")
 	fi
 fi
+PEAK_LR="${SHAPE_PEAK_LR:-}"
 LAMBDA_VALUE="${SHAPE_LAMBDA_VALUE:-}"
 EFFECT_HEAD="${SHAPE_EFFECT_HEAD:-}"
 LAMBDA_EFFECT="${SHAPE_LAMBDA_EFFECT:-}"
@@ -107,6 +110,9 @@ if [[ -n "$EFFECT_HEAD" ]]; then
 fi
 if [[ -n "$LAMBDA_VALUE" ]]; then
 	EFFECT_ARGS+=(--lambda-value "$LAMBDA_VALUE")
+fi
+if [[ -n "$PEAK_LR" ]]; then
+	EFFECT_ARGS+=(--peak-lr "$PEAK_LR")
 fi
 GENERATE="${SHAPE_GENERATE:-}"
 DATA_ARGS=()
