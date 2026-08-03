@@ -147,6 +147,7 @@
 | [0130](0130-freeze-ft.md) | FTを固定して、後段の実験を一桁速くする | - | proposed |
 | [0131](0131-frozen-ft-light-head.md) | 良いFTを凍結して軽量ヘッドを載せる作り方を、本番規模で確かめる | - | proposed |
 | [0132](0132-ft-distillation.md) | 太いFTの表現を、細いFTへ蒸留する | - | proposed |
+| [0133](0133-effect-pretraining.md) | 利き予測でFTを自己教師あり事前学習する | - | proposed |
 
 ## バックログ
 
