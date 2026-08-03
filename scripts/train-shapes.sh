@@ -47,8 +47,14 @@ usage() {
   SHAPE_EFFECT_HEAD 利き予測ヘッドを付けてFTを事前学習する（ADR-0133）。
                     linear（線形1層）か mlp（中間256の2層）。SHAPE_LAMBDA_EFFECT
                     と対で渡す
+  SHAPE_LAMBDA_VALUE
+                    評価値損失の重み。0にすると評価値を切り、利き予測だけで
+                    FTを事前学習する（ADR-0133の第1段階）
   SHAPE_LAMBDA_EFFECT
                     利き損失の重み。λ×利き損失÷value損失 の割合で決める
+  SHAPE_GENERATE    教師データの代わりに局面をその場で作る（ADR-0133）。値は
+                    1エポックあたりの局面数。SHAPE_TRAIN_DATA・SHAPE_VALID_DATA
+                    は使わない。生成した局面は使い捨てなので検証集合が要らない
 USAGE
 }
 
@@ -91,6 +97,7 @@ if [[ -n "$DISTILL_NET" ]]; then
 		DISTILL_ARGS+=(--lambda-distill "$LAMBDA_DISTILL")
 	fi
 fi
+LAMBDA_VALUE="${SHAPE_LAMBDA_VALUE:-}"
 EFFECT_HEAD="${SHAPE_EFFECT_HEAD:-}"
 LAMBDA_EFFECT="${SHAPE_LAMBDA_EFFECT:-}"
 EFFECT_ARGS=()
@@ -98,15 +105,33 @@ if [[ -n "$EFFECT_HEAD" ]]; then
 	[[ -n "$LAMBDA_EFFECT" ]] || die "SHAPE_EFFECT_HEAD には SHAPE_LAMBDA_EFFECT が要る"
 	EFFECT_ARGS+=(--effect-head "$EFFECT_HEAD" --lambda-effect "$LAMBDA_EFFECT")
 fi
-[[ -f "$DATA" ]] || die "学習データがない: ${DATA}"
-[[ -f "$VALID" ]] || die "検証データがない: ${VALID}"
+if [[ -n "$LAMBDA_VALUE" ]]; then
+	EFFECT_ARGS+=(--lambda-value "$LAMBDA_VALUE")
+fi
+GENERATE="${SHAPE_GENERATE:-}"
+DATA_ARGS=()
+if [[ -n "$GENERATE" ]]; then
+	# 局面をその場で作るので教師データを読まない。使い捨ての生成では
+	# 訓練損失がそのまま未見データの損失になり、検証集合も要らない
+	DATA_ARGS+=(--generate "$GENERATE")
+	SRC_DESC="生成${GENERATE}局面"
+else
+	[[ -f "$DATA" ]] || die "学習データがない: ${DATA}"
+	[[ -f "$VALID" ]] || die "検証データがない: ${VALID}"
+	DATA_ARGS+=(--data "$DATA" --valid "$VALID")
+	SRC_DESC="$DATA"
+fi
 mkdir -p training/runs/net_shape data/nets
 # wheelの名前は構成によらず同じなので、同じ場所へ上書きされる
 WHEEL_DIR="${REPO_ROOT}/target/wheels-shape"
 
 log_step "構成ごとの学習（${#@}件）"
-log_info "学習データ: ${DATA}"
-log_info "検証データ: ${VALID}"
+if [[ -n "$GENERATE" ]]; then
+	log_info "学習データ: 生成（1エポック${GENERATE}局面）"
+else
+	log_info "学習データ: ${DATA}"
+	log_info "検証データ: ${VALID}"
+fi
 log_info "デバイス: ${DEVICE}、札: ${TAG}、種: ${SEED}"
 if [[ -n "$INIT_NET" ]]; then
 	log_info "初期値: ${INIT_NET}${FREEZE_FT:+（FT凍結）}"
@@ -115,6 +140,7 @@ if [[ -n "$DISTILL_NET" ]]; then
 	log_info "蒸留の教師: ${DISTILL_NET}${LAMBDA_DISTILL:+（λ=${LAMBDA_DISTILL}）}"
 fi
 if [[ -n "$EFFECT_HEAD" ]]; then
+	log_info "評価値の重み: ${LAMBDA_VALUE:-既定}"
 	log_info "利き予測: ${EFFECT_HEAD}ヘッド（λ=${LAMBDA_EFFECT}）"
 fi
 
@@ -144,8 +170,7 @@ for spec in "$@"; do
 		"${MMAP_ARGS[@]+"${MMAP_ARGS[@]}"}" \
 		"${DISTILL_ARGS[@]+"${DISTILL_ARGS[@]}"}" \
 		"${EFFECT_ARGS[@]+"${EFFECT_ARGS[@]}"}" \
-		--data "$DATA" \
-		--valid "$VALID" \
+		"${DATA_ARGS[@]}" \
 		--out "data/nets/${TAG}-${spec}-s${SEED}.hmwr" \
 		--batch-loader --dense-ft --factorized \
 		--device "$DEVICE" \
@@ -153,7 +178,7 @@ for spec in "$@"; do
 		--log-file "training/runs/net_shape/${TAG}-${spec}-s${SEED}.tsv" \
 		--registry training/runs/registry.tsv \
 		--name "${TAG}_${spec}_s${SEED}" \
-		--notes "ネットワーク構成の比較（ADR-0127）: ${spec}、seed ${SEED}、${DATA}${INIT_NET:+、init ${INIT_NET}}${FREEZE_FT:+、FT凍結}${DISTILL_NET:+、蒸留 ${DISTILL_NET} λ=${LAMBDA_DISTILL:-既定}}${EFFECT_HEAD:+、利き ${EFFECT_HEAD} λ=${LAMBDA_EFFECT}}"
+		--notes "ネットワーク構成の比較（ADR-0127）: ${spec}、seed ${SEED}、${SRC_DESC}${INIT_NET:+、init ${INIT_NET}}${FREEZE_FT:+、FT凍結}${DISTILL_NET:+、蒸留 ${DISTILL_NET} λ=${LAMBDA_DISTILL:-既定}}${EFFECT_HEAD:+、利き ${EFFECT_HEAD} λ=${LAMBDA_EFFECT}}"
 done
 
 log_step "完了"

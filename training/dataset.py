@@ -141,6 +141,71 @@ class PsvBatchLoader:
             yield item
 
 
+class GeneratedBatchLoader:
+    """局面をその場で作り、利きラベルを付けて返す（ADR-0133）。
+
+    利き予測は決定的な構造タスクで、的は局面の分布に依存しない。だから
+    教師データファイルが要らない。**生成した局面を使い捨てにすれば同じ
+    局面は二度と出ず、訓練損失がそのまま未見データの損失になる。**
+    過学習が構造的に起こらないので、別の検証集合を持つ意味がない。
+
+    バッチの形は `PsvBatchLoader` と同じ9本で、`.n` に1エポックの局面数を
+    持つ。評価値の的はないので targets は0.5、指し手ラベルは-1で埋まる。
+    `--lambda-value 0` で使う前提である。
+
+    生成はRust側がGILを解放して並列に行う。prefetchスレッドで先回りさせ、
+    GPU計算と重ねるのは `PsvBatchLoader` と同じ。
+    """
+
+    #: SplitMix64と同じ攪拌定数。種を通し番号から散らすのに使う
+    _GAMMA = 0x9E3779B97F4A7C15
+    _MASK = (1 << 64) - 1
+
+    def __init__(self, n, batch, seed=0, max_plies=256, prefetch=3):
+        self.n = n
+        self.batch = batch
+        self.seed = seed
+        self.max_plies = max_plies
+        self.prefetch = prefetch
+        self.epoch = 0
+        # バッチの通し番号。エポックをまたいで進めるので、同じ乱数列は
+        # 二度使わない。序盤の数手だけは playout の作りから必ず重なる
+        self.cursor = 0
+
+    def __len__(self):
+        return math.ceil(self.n / self.batch)
+
+    def _next_seed(self):
+        z = (self.seed + (self.cursor + 1) * self._GAMMA) & self._MASK
+        self.cursor += 1
+        return z
+
+    def __iter__(self):
+        self.epoch += 1
+        q = queue.Queue(maxsize=self.prefetch)
+        sizes = [min(self.batch, self.n - s) for s in range(0, self.n, self.batch)]
+        seeds = [self._next_seed() for _ in sizes]
+
+        def produce():
+            try:
+                for size, seed in zip(sizes, seeds):
+                    arrays = himawari.generate_batch(size, seed, self.max_plies)
+                    q.put(tuple(torch.from_numpy(a) for a in arrays))
+            except Exception as e:  # 生産側の例外を消費側へ伝える
+                q.put(e)
+            q.put(None)
+
+        t = threading.Thread(target=produce, daemon=True)
+        t.start()
+        while True:
+            item = q.get()
+            if item is None:
+                break
+            if isinstance(item, Exception):
+                raise item
+            yield item
+
+
 def collate_psv(batch):
     """Collate variable-length feature lists into EmbeddingBag format."""
     batch = [b for b in batch if b is not None]

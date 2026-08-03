@@ -17,7 +17,7 @@ from torch.utils.tensorboard import SummaryWriter
 import himawari
 from model import EFFECT_LEN, EFFECT_SCALE, FT_IN, NnueModel, effect_loss_fn, loss_fn
 from optim import MaskedAdam
-from dataset import PsvBatchLoader, PsvDataset, collate_psv
+from dataset import GeneratedBatchLoader, PsvBatchLoader, PsvDataset, collate_psv
 from quantize import save_hmwr
 
 
@@ -82,7 +82,14 @@ def validate(model, valid_loader, device):
 
 def main():
     p = argparse.ArgumentParser(description="NNUE trainer v2")
-    p.add_argument("--data", required=True, help="Training PSV file")
+    p.add_argument("--data", help="Training PSV file")
+    p.add_argument(
+        "--generate",
+        type=int,
+        help="教師データの代わりに局面をその場で作る（ADR-0133）。値は1エポック"
+             "あたりの局面数。初期局面からランダムに指して局面を集め、利きラベルを"
+             "その場で計算する。--data の代わりに使い、--lambda-value 0 と組む",
+    )
     p.add_argument("--valid", help="Validation PSV file")
     p.add_argument("--out", required=True, help="Output .hmwr path")
     p.add_argument("--epochs", type=int, default=1)
@@ -210,6 +217,26 @@ def main():
         p.error("--lambda-value 0 には別の的が要る（--effect-head を渡す）")
     use_effect = args.effect_head is not None
 
+    # 局面の出どころは1つに決める（ADR-0133）。両方渡せるとどちらで学習した
+    # のか記録から読めなくなる
+    if args.data and args.generate:
+        p.error("--data と --generate は同時に使えない（局面の出どころは1つ）")
+    if not args.data and not args.generate:
+        p.error("--data か --generate のどちらかが要る")
+    if args.generate:
+        if args.generate <= 0:
+            p.error("--generate は正の局面数が要る")
+        # 生成した局面に評価値の的はない。targetsは0.5で埋まるので、
+        # λ_value>0 のまま回すと定数を当てるだけの学習になる
+        if args.lambda_value > 0:
+            p.error("--generate には --lambda-value 0 が要る（評価値の的がない）")
+        # --valid は要求しない。**生成した局面は使い捨てで、同じ局面が
+        # 二度と出ない。** 訓練損失がそのまま未見データの損失になるので、
+        # 別の検証集合を持つ意味がない（ADR-0133）
+        if args.valid:
+            print("--generate では訓練損失が未見データの損失になる。"
+                  "--valid は補助的な物差しにしかならない", file=sys.stderr)
+
     device = torch.device(args.device)
     print(f"Device: {device}", file=sys.stderr)
 
@@ -219,7 +246,13 @@ def main():
         torch.manual_seed(args.seed)
         print(f"Seed: {args.seed}", file=sys.stderr)
 
-    if args.batch_loader:
+    if args.generate:
+        # 抽出ではなく生成。バッチの形は PsvBatchLoader と同じ9本になる
+        train_loader = GeneratedBatchLoader(
+            args.generate, args.batch, seed=args.seed or 0,
+        )
+        data_n = train_loader.n
+    elif args.batch_loader:
         train_loader = PsvBatchLoader(
             args.data, args.batch, lambda_=args.lambda_,
             score_limit=args.score_limit, mmap=args.mmap, shuffle=True,
@@ -242,6 +275,8 @@ def main():
             multiprocessing_context=mp_ctx,
         )
         data_n = len(train_ds)
+    # 系譜と実験台帳へ書く局面の出どころ。生成にはファイル名がない
+    data_desc = args.data if args.data else "generated"
     steps_per_epoch = math.ceil(data_n / args.batch)
     total_steps = args.epochs * steps_per_epoch
 
@@ -577,7 +612,7 @@ def main():
                     no_improve = 0
                     best_path = f"{args.out}.best"
                     lineage = (
-                        f"train-v2-pytorch data={args.data} n={data_n} "
+                        f"train-v2-pytorch data={data_desc} n={data_n} "
                         f"step={step} valid_loss={vl:.5f} "
                         f"batch={args.batch} peak_lr={args.peak_lr} "
                         f"lambda={args.lambda_}"
@@ -636,7 +671,7 @@ def main():
     )
 
     lineage = (
-        f"train-v2-pytorch data={args.data} n={data_n} "
+        f"train-v2-pytorch data={data_desc} n={data_n} "
         f"epochs={args.epochs} batch={args.batch} "
         f"peak_lr={args.peak_lr} min_lr={args.min_lr} "
         f"warmup={args.warmup_steps} lambda={args.lambda_} "
@@ -686,7 +721,7 @@ def _append_registry(args, data_n, step, total_steps,
         import datetime
         w.writerow([
             datetime.datetime.now().isoformat(timespec="seconds"),
-            args.name, args.data, data_n, args.epochs, args.batch,
+            args.name, data_desc, data_n, args.epochs, args.batch,
             args.peak_lr, args.min_lr, args.warmup_steps, args.lambda_,
             best_step, f"{best_valid:.5f}", f"{final_valid:.5f}",
             total_steps, f"{elapsed:.0f}", args.notes,

@@ -7,9 +7,11 @@ use himawari_core::packed_sfen::{PSV_BYTES, PackedSfenValue, unpack};
 
 use himawari_engine::nnue::{
     ARCH, EFFECT_LEN, FT_IN, FT_OUT, L1_OUT, L1_PAD, L2_OUT, L2_PAD, L3_OUT, LAST_HIDDEN,
-    MOVE_FROM_CLASSES, MOVE_TO_CLASSES, NnueNetwork, effect_labels, halfkp_active, move_labels,
+    MOVE_FROM_CLASSES, MOVE_NONE, MOVE_TO_CLASSES, NnueNetwork, effect_labels, halfkp_active,
+    move_labels,
 };
 use himawari_engine::nnue_io;
+use himawari_engine::posgen::{chunk_specs, generate_chunk};
 
 const SIGMOID_SCALE: f32 = 600.0;
 /// 評価値スケール（ADR-0036）。量子化を戻すのに使う
@@ -173,6 +175,77 @@ fn extract_batch<'py>(
                     eff_long.extend_from_slice(&long);
                 }
             }
+            (
+                stm_idx, stm_off, opp_idx, opp_off, targets, mv_from, mv_to, eff_short, eff_long,
+            )
+        });
+
+    Ok((
+        stm_idx.into_pyarray(py),
+        stm_off.into_pyarray(py),
+        opp_idx.into_pyarray(py),
+        opp_off.into_pyarray(py),
+        targets.into_pyarray(py),
+        mv_from.into_pyarray(py),
+        mv_to.into_pyarray(py),
+        eff_short.into_pyarray(py),
+        eff_long.into_pyarray(py),
+    ))
+}
+
+/// 局面をその場で作り、`extract_batch` と同じ9本の配列で返す（ADR-0133）。
+///
+/// 利き予測は決定的な構造タスクなので、的は局面の分布に依存しない。教師
+/// データファイルが要らず、**生成した局面を使い捨てにすれば同じ局面は
+/// 二度と出ない。** 訓練損失がそのまま未見データの損失になる。
+///
+/// 利きラベルは常に計算する。この関数は利き予測のためにあり、切る意味がない。
+/// 評価値の的はないので `targets` は0.5で埋め、指し手ラベルは無効値にする。
+/// **`--lambda-value 0` で使う前提である。**
+///
+/// 並列化の単位は `GEN_CHUNK` 局面の塊で、塊ごとの種は `seed` から決定的に
+/// 導く。結果を塊の順で連結するので、同じ `seed` からは並列度によらず
+/// 同じ局面列が出る。
+#[pyfunction]
+#[pyo3(signature = (count, seed, max_plies = 256))]
+fn generate_batch<'py>(
+    py: Python<'py>,
+    count: usize,
+    seed: u64,
+    max_plies: u16,
+) -> PyResult<BatchArrays<'py>> {
+    if max_plies == 0 {
+        return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
+            "max_pliesは1以上が要る（0では局面を作れない）",
+        ));
+    }
+
+    let (stm_idx, stm_off, opp_idx, opp_off, targets, mv_from, mv_to, eff_short, eff_long) = py
+        .allow_threads(|| {
+            let chunks: Vec<_> = chunk_specs(count, seed)
+                .into_par_iter()
+                .map(|(s, c)| generate_chunk(s, c, max_plies))
+                .collect();
+
+            let mut stm_idx: Vec<i64> = Vec::with_capacity(count * 38);
+            let mut opp_idx: Vec<i64> = Vec::with_capacity(count * 38);
+            let mut stm_off: Vec<i64> = Vec::with_capacity(count);
+            let mut opp_off: Vec<i64> = Vec::with_capacity(count);
+            let mut eff_short: Vec<u8> = Vec::with_capacity(count * EFFECT_LEN);
+            let mut eff_long: Vec<u8> = Vec::with_capacity(count * EFFECT_LEN);
+
+            for s in chunks.into_iter().flatten() {
+                stm_off.push(stm_idx.len() as i64);
+                opp_off.push(opp_idx.len() as i64);
+                stm_idx.extend(s.stm.iter().map(|&x| i64::from(x)));
+                opp_idx.extend(s.opp.iter().map(|&x| i64::from(x)));
+                eff_short.extend_from_slice(&s.short);
+                eff_long.extend_from_slice(&s.long);
+            }
+            // 評価値の的はない。0.5は勝率50%で、λ_value=0なら勾配へ効かない
+            let targets = vec![0.5f32; count];
+            let mv_from = vec![MOVE_NONE; count];
+            let mv_to = vec![MOVE_NONE; count];
             (
                 stm_idx, stm_off, opp_idx, opp_off, targets, mv_from, mv_to, eff_short, eff_long,
             )
@@ -362,6 +435,7 @@ fn unpad(rows: &[i8], used: usize, stride: usize, scale: f32) -> Vec<f32> {
 fn himawari(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(extract_features, m)?)?;
     m.add_function(wrap_pyfunction!(extract_batch, m)?)?;
+    m.add_function(wrap_pyfunction!(generate_batch, m)?)?;
     m.add_function(wrap_pyfunction!(save_hmwr, m)?)?;
     m.add_function(wrap_pyfunction!(load_hmwr, m)?)?;
     m.add_function(wrap_pyfunction!(load_hmwr_ft, m)?)?;
