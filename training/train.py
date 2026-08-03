@@ -15,7 +15,7 @@ from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 
 import himawari
-from model import EFFECT_LEN, FT_IN, NnueModel, effect_loss_fn, loss_fn
+from model import EFFECT_LEN, EFFECT_SCALE, FT_IN, NnueModel, effect_loss_fn, loss_fn
 from optim import MaskedAdam
 from dataset import PsvBatchLoader, PsvDataset, collate_psv
 from quantize import save_hmwr
@@ -145,6 +145,15 @@ def main():
              "ヘッドは書き出し時に捨てるので推論は変わらない",
     )
     p.add_argument(
+        "--lambda-value",
+        type=float,
+        default=1.0,
+        dest="lambda_value",
+        help="評価値損失の重み（ADR-0133）。0にすると評価値を使わずに学習する。"
+             "利き予測だけでFTを事前学習する第1段階で使う。書き出したネットの"
+             "後段は意味を持たないので、--init-net で読み直して第2段階を回す",
+    )
+    p.add_argument(
         "--lambda-effect",
         type=float,
         default=0.0,
@@ -197,6 +206,8 @@ def main():
         p.error("--lambda-effect には --effect-head が要る（ヘッドがない）")
     if args.effect_head is not None and args.lambda_effect <= 0:
         p.error("--effect-head には正の --lambda-effect が要る（重み0では学べない）")
+    if args.lambda_value <= 0 and args.effect_head is None:
+        p.error("--lambda-value 0 には別の的が要る（--effect-head を渡す）")
     use_effect = args.effect_head is not None
 
     device = torch.device(args.device)
@@ -388,6 +399,8 @@ def main():
     distill_n = 0
     eff_short_acc = 0.0
     eff_long_acc = 0.0
+    eff_short_base = 0.0
+    eff_long_base = 0.0
     effect_n = 0
     samples_log = 0
     samples_done = step * args.batch
@@ -411,10 +424,13 @@ def main():
                 optimizer_ft.zero_grad()
             x = model.transform_both(stm_i, stm_o, opp_i, opp_o)
             out = model.value(x)
-            loss = loss_fn(out, targets)
             # ログとvalidに載せるのは評価値の損失だけにする。合計を載せると
             # λを変えるたびに物差しが動き、過去の学習と比べられなくなる
-            value_loss = loss.detach()
+            value_loss = loss_fn(out, targets)
+            # 第1段階（利き予測だけでFTを事前学習する）ではλ_value=0にして
+            # 評価値を切る。ログには測るだけの値として残す（ADR-0133）
+            loss = args.lambda_value * value_loss
+            value_loss = value_loss.detach()
             if model.policy_from is not None:
                 # ラベルが取れなかった局面は-1で、ignore_indexが落とす
                 lf = model.policy_from(x)
@@ -449,6 +465,17 @@ def main():
                 loss = loss + args.lambda_effect * effect_loss
                 eff_short_acc += short_loss.item() * n
                 eff_long_acc += long_loss.item() * n
+                # 自明解（全部0と答える）のMSEを一緒に測る。長い利きは
+                # 88%の升がゼロなので、基準なしでは損失の大小を読めない。
+                # 学習が自明解を下回っているかだけが意味のある判定になる
+                with torch.no_grad():
+                    scale = EFFECT_SCALE * EFFECT_SCALE
+                    eff_short_base += (
+                        eff_short.float().pow(2).mean().item() / scale * n
+                    )
+                    eff_long_base += (
+                        eff_long.float().pow(2).mean().item() / scale * n
+                    )
                 effect_n += n
             loss.backward()
             optimizer_dense.step()
@@ -487,8 +514,11 @@ def main():
                 # 実装かλがおかしい。λを掛ける前の値を出すのは蒸留と同じ
                 avg_eff_short = eff_short_acc / max(effect_n, 1)
                 avg_eff_long = eff_long_acc / max(effect_n, 1)
+                base_s = eff_short_base / max(effect_n, 1)
+                base_l = eff_long_base / max(effect_n, 1)
                 effect_str = (
-                    f" effect short {avg_eff_short:.5f} long {avg_eff_long:.5f}"
+                    f" effect short {avg_eff_short:.5f}/{base_s:.5f}"
+                    f" long {avg_eff_long:.5f}/{base_l:.5f}"
                     if effect_n
                     else ""
                 )
@@ -522,6 +552,8 @@ def main():
                 distill_n = 0
                 eff_short_acc = 0.0
                 eff_long_acc = 0.0
+                eff_short_base = 0.0
+                eff_long_base = 0.0
                 effect_n = 0
                 t_log = time.time()
                 samples_log = 0
