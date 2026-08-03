@@ -681,7 +681,7 @@ def main():
     print(f"{args.out} を書き出しました", file=sys.stderr)
 
     if args.registry:
-        _append_registry(args, data_n, step, total_steps,
+        _append_registry(args, data_desc, data_n, step, total_steps,
                          best_step, best_valid, final_valid, elapsed_total)
 
     if writer:
@@ -707,7 +707,7 @@ def _save_checkpoint(model, optimizer_dense, optimizer_ft,
     }, path)
 
 
-def _append_registry(args, data_n, step, total_steps,
+def _append_registry(args, data_desc, data_n, step, total_steps,
                      best_step, best_valid, final_valid, elapsed):
     is_new = not os.path.exists(args.registry)
     with open(args.registry, "a", newline="") as f:
