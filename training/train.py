@@ -9,11 +9,13 @@ import sys
 import time
 
 import torch
+import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 
-from model import NnueModel, loss_fn
+import himawari
+from model import FT_IN, NnueModel, loss_fn
 from optim import MaskedAdam
 from dataset import PsvBatchLoader, PsvDataset, collate_psv
 from quantize import save_hmwr
@@ -25,6 +27,38 @@ def lr_lambda(step, warmup_steps, total_steps, min_lr, peak_lr):
     progress = (step - warmup_steps) / max(total_steps - warmup_steps, 1)
     ratio = min_lr / peak_lr
     return ratio + (1.0 - ratio) * 0.5 * (1.0 + math.cos(math.pi * progress))
+
+
+def load_teacher(path, device):
+    """蒸留の教師からFTだけを読む（ADR-0132）。
+
+    戻り値は (埋め込み, バイアス, FT幅, 元ファイルの構成)。生の次元で読む
+    ため `load_hmwr_ft` を使う。`load_hmwr` はいまのビルド構成へ合わせるので、
+    FT256の拡張からFT768の教師を読むとFTが切り詰められる。
+
+    教師は更新しない。すべて requires_grad=False にし、optimizerへも渡さない。
+    """
+    w = himawari.load_hmwr_ft(path)
+    ft_out = w["ft_out"]
+    ft = nn.EmbeddingBag(FT_IN, ft_out, mode="sum", sparse=False)
+    with torch.no_grad():
+        ft.weight.copy_(torch.from_numpy(w["ft_w"]).float().view(FT_IN, ft_out))
+    ft.weight.requires_grad_(False)
+    bias = torch.from_numpy(w["ft_b"]).float().view(ft_out)
+    bias.requires_grad_(False)
+    return ft.to(device), bias.to(device), ft_out, w["src_arch"]
+
+
+def teacher_repr(ft, bias, stm_i, stm_o, opp_i, opp_o):
+    """教師のFT出力を2視点ぶん連結して返す（ADR-0132）。
+
+    生徒の `transform_both` と同じ計算をする。後段が実際に見るのは
+    clamp後の値なので、教師側も同じくclampしてから的にする。
+    """
+    with torch.no_grad():
+        z_stm = (ft(stm_i, stm_o) + bias).clamp(0.0, 1.0)
+        z_opp = (ft(opp_i, opp_o) + bias).clamp(0.0, 1.0)
+        return torch.cat([z_stm, z_opp], dim=1)
 
 
 def validate(model, valid_loader, device):
@@ -86,6 +120,21 @@ def main():
         action="store_true",
         help="FT事前学習モード（ADR-0129）。評価値ヘッドも線形1層にして、"
              "すべての仕事をFTへ押し込む。成果物はFTだけで、後段は捨てる",
+    )
+    p.add_argument(
+        "--distill-net",
+        dest="distill_net",
+        help="表現蒸留の教師にする.hmwr（ADR-0132）。指定すると蒸留を有効にする。"
+             "太いFTの出力を的にして、細いFTへ表現を写す。読むのはFTだけで、"
+             "教師の後段は使わない",
+    )
+    p.add_argument(
+        "--lambda-distill",
+        type=float,
+        default=0.0,
+        dest="lambda_distill",
+        help="表現蒸留の重み（ADR-0132）。0.01以下から振る。写像は書き出し時に"
+             "捨てるので推論は変わらない",
     )
     p.add_argument(
         "--init-net",
@@ -180,11 +229,31 @@ def main():
             valid_n = len(valid_ds)
         print(f"検証データ: {valid_n}局面", file=sys.stderr)
 
+    # 教師はモデルより先に読む。写像の出力幅が教師のFT幅で決まる（ADR-0132）
+    teacher_ft = None
+    teacher_bias = None
+    distill_out = 0
+    if args.distill_net:
+        teacher_ft, teacher_bias, teacher_out, teacher_arch = load_teacher(
+            args.distill_net, device,
+        )
+        # 2視点の連結なので写像の出力は教師のFT幅の2倍になる
+        distill_out = teacher_out * 2
+        print(
+            f"蒸留の教師: {args.distill_net} (構成 {teacher_arch}、"
+            f"ft_out={teacher_out}、写像 {distill_out}次元、"
+            f"λ={args.lambda_distill})",
+            file=sys.stderr,
+        )
+    elif args.lambda_distill > 0:
+        p.error("--lambda-distill には --distill-net が要る（教師がない）")
+
     model = NnueModel(
         sparse_ft=not args.dense_ft,
         factorized=args.factorized,
         policy=args.lambda_move > 0,
         pretrain=args.pretrain,
+        distill_out=distill_out,
     ).to(device)
 
     if args.init_net:
@@ -203,8 +272,10 @@ def main():
     for layer in (model.l3, model.l4):
         if layer is not None:
             dense_params.extend([layer.weight, layer.bias])
-    # 補助ヘッドも学習する。書き出し時に捨てるので推論には出てこない
-    for head in (model.policy_from, model.policy_to, model.pretrain_value):
+    # 補助ヘッドも学習する。書き出し時に捨てるので推論には出てこない。
+    # 蒸留の写像も同じ扱いにする（ADR-0132）
+    for head in (model.policy_from, model.policy_to, model.pretrain_value,
+                 model.distill):
         if head is not None:
             dense_params.extend([head.weight, head.bias])
     ft_params = [model.ft.weight]
@@ -278,6 +349,8 @@ def main():
     t_log = time.time()
     loss_acc = 0.0
     loss_n = 0
+    distill_acc = 0.0
+    distill_n = 0
     samples_log = 0
     samples_done = step * args.batch
     early_stopped = False
@@ -316,6 +389,15 @@ def main():
                     hit = ((lf.argmax(1) == mv_from) & (lt.argmax(1) == mv_to) & valid_mv)
                     move_hits += int(hit.sum())
                     move_total += int(valid_mv.sum())
+            if teacher_ft is not None:
+                # 教師のFT出力へ、生徒のFT出力からの線形写像を当てる（ADR-0132）
+                t_repr = teacher_repr(
+                    teacher_ft, teacher_bias, stm_i, stm_o, opp_i, opp_o,
+                )
+                distill_loss = F.mse_loss(model.distill(x), t_repr)
+                loss = loss + args.lambda_distill * distill_loss
+                distill_acc += distill_loss.item() * n
+                distill_n += n
             loss.backward()
             optimizer_dense.step()
             if optimizer_ft is not None:
@@ -345,9 +427,14 @@ def main():
                 )
                 move_hits = 0
                 move_total = 0
+                # 教師のFT出力との二乗誤差。λを掛ける前の値を出す。
+                # 掛けたあとの値ではλを変えるたびに物差しが動く（ADR-0132）
+                avg_distill = distill_acc / max(distill_n, 1)
+                distill_str = f" distill {avg_distill:.5f}" if distill_n else ""
                 print(
                     f"step {step} samples {samples_done} "
-                    f"loss {avg_loss:.5f} lr {current_lr:.6f}{hit_rate} "
+                    f"loss {avg_loss:.5f} lr {current_lr:.6f}"
+                    f"{hit_rate}{distill_str} "
                     f"({sps:.0f} samples/s)",
                     file=sys.stderr,
                 )
@@ -355,6 +442,8 @@ def main():
                     writer.add_scalar("train/loss", avg_loss, step)
                     writer.add_scalar("train/lr", current_lr, step)
                     writer.add_scalar("train/sps", sps, step)
+                    if distill_n:
+                        writer.add_scalar("train/distill", avg_distill, step)
                 if log_file:
                     total_elapsed = time.time() - t0
                     log_file.write(
@@ -365,6 +454,8 @@ def main():
                     log_file.flush()
                 loss_acc = 0.0
                 loss_n = 0
+                distill_acc = 0.0
+                distill_n = 0
                 t_log = time.time()
                 samples_log = 0
 

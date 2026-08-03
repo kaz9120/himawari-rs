@@ -47,7 +47,8 @@ class NnueModel(nn.Module):
     推論側の構造は変わらない。重みは書き出し時に畳み込む。
     """
 
-    def __init__(self, sparse_ft=True, factorized=False, policy=False, pretrain=False):
+    def __init__(self, sparse_ft=True, factorized=False, policy=False,
+                 pretrain=False, distill_out=0):
         super().__init__()
         self.ft = nn.EmbeddingBag(FT_IN, FT_OUT, mode="sum", sparse=sparse_ft)
         self.ft_p = (
@@ -69,6 +70,11 @@ class NnueModel(nn.Module):
         # ヘッドはタスクを自分で解いてしまい、FTへ表現を押し込む圧力が
         # 弱まる。評価値を当てる圧力自体は残す
         self.pretrain_value = nn.Linear(CONCAT, 1) if pretrain else None
+        # 表現蒸留の写像（ADR-0132）。生徒のFT出力から教師のFT出力へ当てる。
+        # 線形1層に限るのは補助ヘッドと同じ理由で、写像自身が圧縮を解いて
+        # しまうとFTへ表現を押し込む圧力が弱まるためである。
+        # 書き出しには載らないので推論は変わらない
+        self.distill = nn.Linear(CONCAT, distill_out) if distill_out else None
         self._init_weights()
 
     def _init_weights(self):
@@ -85,7 +91,8 @@ class NnueModel(nn.Module):
             nn.init.zeros_(self.l4.bias)
         nn.init.uniform_(self.out.weight, -0.3, 0.3)
         nn.init.zeros_(self.out.bias)
-        for head in (self.policy_from, self.policy_to, self.pretrain_value):
+        for head in (self.policy_from, self.policy_to, self.pretrain_value,
+                     self.distill):
             if head is not None:
                 nn.init.uniform_(head.weight, -0.05, 0.05)
                 nn.init.zeros_(head.bias)

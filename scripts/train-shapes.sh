@@ -40,6 +40,10 @@ usage() {
                     後段は形が一致する層だけ読む
   SHAPE_FREEZE_FT   1ならFTを凍結する。後段の候補を絞るときに使う。
                     採用の判断には使わない
+  SHAPE_DISTILL_NET 表現蒸留の教師にする.hmwr（ADR-0132）。太いFTの出力を
+                    的にして、細いFTへ表現を写す。読むのはFTだけ
+  SHAPE_LAMBDA_DISTILL
+                    蒸留損失の重み。既定は train.py の 0.0。0.01以下から振る
 USAGE
 }
 
@@ -72,6 +76,16 @@ if [[ -n "$INIT_NET" ]]; then
 	INIT_ARGS+=(--init-net "$INIT_NET")
 	[[ -n "$FREEZE_FT" ]] && INIT_ARGS+=(--freeze-ft)
 fi
+DISTILL_NET="${SHAPE_DISTILL_NET:-}"
+LAMBDA_DISTILL="${SHAPE_LAMBDA_DISTILL:-}"
+DISTILL_ARGS=()
+if [[ -n "$DISTILL_NET" ]]; then
+	[[ -f "$DISTILL_NET" ]] || die "蒸留の教師がない: ${DISTILL_NET}"
+	DISTILL_ARGS+=(--distill-net "$DISTILL_NET")
+	if [[ -n "$LAMBDA_DISTILL" ]]; then
+		DISTILL_ARGS+=(--lambda-distill "$LAMBDA_DISTILL")
+	fi
+fi
 [[ -f "$DATA" ]] || die "学習データがない: ${DATA}"
 [[ -f "$VALID" ]] || die "検証データがない: ${VALID}"
 mkdir -p training/runs/net_shape data/nets
@@ -84,6 +98,9 @@ log_info "検証データ: ${VALID}"
 log_info "デバイス: ${DEVICE}、札: ${TAG}、種: ${SEED}"
 if [[ -n "$INIT_NET" ]]; then
 	log_info "初期値: ${INIT_NET}${FREEZE_FT:+（FT凍結）}"
+fi
+if [[ -n "$DISTILL_NET" ]]; then
+	log_info "蒸留の教師: ${DISTILL_NET}${LAMBDA_DISTILL:+（λ=${LAMBDA_DISTILL}）}"
 fi
 
 for spec in "$@"; do
@@ -110,6 +127,7 @@ for spec in "$@"; do
 	python3 training/train.py \
 		"${INIT_ARGS[@]+"${INIT_ARGS[@]}"}" \
 		"${MMAP_ARGS[@]+"${MMAP_ARGS[@]}"}" \
+		"${DISTILL_ARGS[@]+"${DISTILL_ARGS[@]}"}" \
 		--data "$DATA" \
 		--valid "$VALID" \
 		--out "data/nets/${TAG}-${spec}-s${SEED}.hmwr" \
@@ -119,7 +137,7 @@ for spec in "$@"; do
 		--log-file "training/runs/net_shape/${TAG}-${spec}-s${SEED}.tsv" \
 		--registry training/runs/registry.tsv \
 		--name "${TAG}_${spec}_s${SEED}" \
-		--notes "ネットワーク構成の比較（ADR-0127）: ${spec}、seed ${SEED}、${DATA}${INIT_NET:+、init ${INIT_NET}}${FREEZE_FT:+、FT凍結}"
+		--notes "ネットワーク構成の比較（ADR-0127）: ${spec}、seed ${SEED}、${DATA}${INIT_NET:+、init ${INIT_NET}}${FREEZE_FT:+、FT凍結}${DISTILL_NET:+、蒸留 ${DISTILL_NET} λ=${LAMBDA_DISTILL:-既定}}"
 done
 
 log_step "完了"
