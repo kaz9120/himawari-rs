@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.27.16](https://github.com/kaz9120/himawari-rs/compare/v0.27.15...v0.27.16) (2026-08-03)
+
+
+### 内部
+
+* FT表現学習の測定基盤と、256x16の棄却（ADR-0131・0132・0133） ([#181](https://github.com/kaz9120/himawari-rs/issues/181)) ([f876075](https://github.com/kaz9120/himawari-rs/commit/f8760752b678fdef6aa1bf7616459a95681c775c))
+
 ## [0.27.15](https://github.com/kaz9120/himawari-rs/compare/v0.27.14...v0.27.15) (2026-08-02)
 
 
