@@ -56,7 +56,7 @@ class PsvBatchLoader:
     """
 
     def __init__(self, path, batch, lambda_=0.7, score_limit=0, mmap=False, score_clamp=0,
-                 shuffle=True, chunk_positions=1 << 20, seed=0, prefetch=3):
+                 shuffle=True, chunk_positions=1 << 20, seed=0, prefetch=3, effect=False):
         size = os.path.getsize(path)
         if size % 40 != 0:
             raise ValueError(f"ファイルサイズが40の倍数でない: {size}")
@@ -66,6 +66,9 @@ class PsvBatchLoader:
         self.score_limit = score_limit
         self.score_clamp = score_clamp
         self.mmap = mmap
+        # 利きラベル（ADR-0133）。使わないときは抽出させない。長さ0の
+        # 配列が返るので、受け取り側の分解は9本のままでよい
+        self.effect = effect
         self.shuffle = shuffle
         self.chunk = max(chunk_positions, batch)
         self.seed = seed
@@ -107,7 +110,8 @@ class PsvBatchLoader:
 
     def _extract(self, raw):
         arrays = himawari.extract_batch(
-            raw.tobytes(), self.lambda_, self.score_limit, self.score_clamp
+            raw.tobytes(), self.lambda_, self.score_limit, self.score_clamp,
+            self.effect,
         )
         if len(arrays[4]) == 0:
             return None

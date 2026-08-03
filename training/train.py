@@ -363,9 +363,9 @@ def main():
             if batch is None:
                 continue
 
-            stm_i, stm_o, opp_i, opp_o, targets, mv_from, mv_to = [
-                x.to(device) for x in batch
-            ]
+            # 末尾2本は利きラベル（ADR-0133）。抽出させていなければ空で来る
+            stm_i, stm_o, opp_i, opp_o, targets, mv_from, mv_to, \
+                eff_short, eff_long = [x.to(device) for x in batch]
             n = targets.size(0)
 
             optimizer_dense.zero_grad()
