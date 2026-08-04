@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.27.17](https://github.com/kaz9120/himawari-rs/compare/v0.27.16...v0.27.17) (2026-08-04)
+
+
+### 内部
+
+* 利き予測の事前学習と、後段容量の測定（ADR-0133・0134） ([#183](https://github.com/kaz9120/himawari-rs/issues/183)) ([ebc0b5d](https://github.com/kaz9120/himawari-rs/commit/ebc0b5d3f9db82dc5c6521b74b0c1b3e93379a94))
+
 ## [0.27.16](https://github.com/kaz9120/himawari-rs/compare/v0.27.15...v0.27.16) (2026-08-03)
 
 
