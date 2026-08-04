@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.27.20](https://github.com/kaz9120/himawari-rs/compare/v0.27.19...v0.27.20) (2026-08-04)
+
+
+### ドキュメント
+
+* ADR-0139をrejectedで閉じる ([#189](https://github.com/kaz9120/himawari-rs/issues/189)) ([6c24a11](https://github.com/kaz9120/himawari-rs/commit/6c24a1133148ff2a8a1bda4c26726131f931d206))
+
 ## [0.27.19](https://github.com/kaz9120/himawari-rs/compare/v0.27.18...v0.27.19) (2026-08-04)
 
 
