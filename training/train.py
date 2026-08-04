@@ -15,9 +15,9 @@ from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 
 import himawari
-from model import FT_IN, NnueModel, loss_fn
+from model import EFFECT_LEN, EFFECT_SCALE, FT_IN, NnueModel, effect_loss_fn, loss_fn
 from optim import MaskedAdam
-from dataset import PsvBatchLoader, PsvDataset, collate_psv
+from dataset import GeneratedBatchLoader, PsvBatchLoader, PsvDataset, collate_psv
 from quantize import save_hmwr
 
 
@@ -82,7 +82,14 @@ def validate(model, valid_loader, device):
 
 def main():
     p = argparse.ArgumentParser(description="NNUE trainer v2")
-    p.add_argument("--data", required=True, help="Training PSV file")
+    p.add_argument("--data", help="Training PSV file")
+    p.add_argument(
+        "--generate",
+        type=int,
+        help="教師データの代わりに局面をその場で作る（ADR-0133）。値は1エポック"
+             "あたりの局面数。初期局面からランダムに指して局面を集め、利きラベルを"
+             "その場で計算する。--data の代わりに使い、--lambda-value 0 と組む",
+    )
     p.add_argument("--valid", help="Validation PSV file")
     p.add_argument("--out", required=True, help="Output .hmwr path")
     p.add_argument("--epochs", type=int, default=1)
@@ -137,6 +144,31 @@ def main():
              "捨てるので推論は変わらない",
     )
     p.add_argument(
+        "--effect-head",
+        dest="effect_head",
+        choices=["linear", "mlp"],
+        help="利き予測ヘッドを付けてFTを事前学習する（ADR-0133）。linearは線形1層、"
+             "mlpは中間256の2層。どちらが良い表現を作るかは比較軸で、決め打たない。"
+             "ヘッドは書き出し時に捨てるので推論は変わらない",
+    )
+    p.add_argument(
+        "--lambda-value",
+        type=float,
+        default=1.0,
+        dest="lambda_value",
+        help="評価値損失の重み（ADR-0133）。0にすると評価値を使わずに学習する。"
+             "利き予測だけでFTを事前学習する第1段階で使う。書き出したネットの"
+             "後段は意味を持たないので、--init-net で読み直して第2段階を回す",
+    )
+    p.add_argument(
+        "--lambda-effect",
+        type=float,
+        default=0.0,
+        dest="lambda_effect",
+        help="利き予測の重み（ADR-0133）。--effect-head と対で渡す。"
+             "λは値ではなく λ×利き損失÷value損失 の割合で決める",
+    )
+    p.add_argument(
         "--init-net",
         help="既存の.hmwrを初期値に読む。FTは常に読み、後段は形が一致する層だけ"
              "読む（ADR-0130）",
@@ -175,6 +207,36 @@ def main():
     )
     args = p.parse_args()
 
+    # 利き予測はヘッドと重みが対で要る（ADR-0133）。片方だけ渡すと、的の
+    # ないヘッドを持つか、学習に効かないラベルを抽出し続けることになる
+    if args.lambda_effect > 0 and args.effect_head is None:
+        p.error("--lambda-effect には --effect-head が要る（ヘッドがない）")
+    if args.effect_head is not None and args.lambda_effect <= 0:
+        p.error("--effect-head には正の --lambda-effect が要る（重み0では学べない）")
+    if args.lambda_value <= 0 and args.effect_head is None:
+        p.error("--lambda-value 0 には別の的が要る（--effect-head を渡す）")
+    use_effect = args.effect_head is not None
+
+    # 局面の出どころは1つに決める（ADR-0133）。両方渡せるとどちらで学習した
+    # のか記録から読めなくなる
+    if args.data and args.generate:
+        p.error("--data と --generate は同時に使えない（局面の出どころは1つ）")
+    if not args.data and not args.generate:
+        p.error("--data か --generate のどちらかが要る")
+    if args.generate:
+        if args.generate <= 0:
+            p.error("--generate は正の局面数が要る")
+        # 生成した局面に評価値の的はない。targetsは0.5で埋まるので、
+        # λ_value>0 のまま回すと定数を当てるだけの学習になる
+        if args.lambda_value > 0:
+            p.error("--generate には --lambda-value 0 が要る（評価値の的がない）")
+        # --valid は要求しない。**生成した局面は使い捨てで、同じ局面が
+        # 二度と出ない。** 訓練損失がそのまま未見データの損失になるので、
+        # 別の検証集合を持つ意味がない（ADR-0133）
+        if args.valid:
+            print("--generate では訓練損失が未見データの損失になる。"
+                  "--valid は補助的な物差しにしかならない", file=sys.stderr)
+
     device = torch.device(args.device)
     print(f"Device: {device}", file=sys.stderr)
 
@@ -184,11 +246,18 @@ def main():
         torch.manual_seed(args.seed)
         print(f"Seed: {args.seed}", file=sys.stderr)
 
-    if args.batch_loader:
+    if args.generate:
+        # 抽出ではなく生成。バッチの形は PsvBatchLoader と同じ9本になる
+        train_loader = GeneratedBatchLoader(
+            args.generate, args.batch, seed=args.seed or 0,
+        )
+        data_n = train_loader.n
+    elif args.batch_loader:
         train_loader = PsvBatchLoader(
             args.data, args.batch, lambda_=args.lambda_,
             score_limit=args.score_limit, mmap=args.mmap, shuffle=True,
             score_clamp=args.score_clamp, seed=args.seed or 0,
+            effect=use_effect,
         )
         data_n = train_loader.n
     else:
@@ -206,6 +275,8 @@ def main():
             multiprocessing_context=mp_ctx,
         )
         data_n = len(train_ds)
+    # 系譜と実験台帳へ書く局面の出どころ。生成にはファイル名がない
+    data_desc = args.data if args.data else "generated"
     steps_per_epoch = math.ceil(data_n / args.batch)
     total_steps = args.epochs * steps_per_epoch
 
@@ -248,12 +319,19 @@ def main():
     elif args.lambda_distill > 0:
         p.error("--lambda-distill には --distill-net が要る（教師がない）")
 
+    if use_effect:
+        print(
+            f"利き予測: {args.effect_head}ヘッド（λ={args.lambda_effect}）",
+            file=sys.stderr,
+        )
+
     model = NnueModel(
         sparse_ft=not args.dense_ft,
         factorized=args.factorized,
         policy=args.lambda_move > 0,
         pretrain=args.pretrain,
         distill_out=distill_out,
+        effect_head=args.effect_head,
     ).to(device)
 
     if args.init_net:
@@ -278,6 +356,9 @@ def main():
                  model.distill):
         if head is not None:
             dense_params.extend([head.weight, head.bias])
+    # 利きヘッドはMLPのこともあるので、パラメータをまとめて足す（ADR-0133）
+    if model.effect is not None:
+        dense_params.extend(model.effect.parameters())
     ft_params = [model.ft.weight]
     if model.ft_p is not None:
         ft_params.append(model.ft_p.weight)
@@ -351,6 +432,11 @@ def main():
     loss_n = 0
     distill_acc = 0.0
     distill_n = 0
+    eff_short_acc = 0.0
+    eff_long_acc = 0.0
+    eff_short_base = 0.0
+    eff_long_base = 0.0
+    effect_n = 0
     samples_log = 0
     samples_done = step * args.batch
     early_stopped = False
@@ -363,9 +449,9 @@ def main():
             if batch is None:
                 continue
 
-            stm_i, stm_o, opp_i, opp_o, targets, mv_from, mv_to = [
-                x.to(device) for x in batch
-            ]
+            # 末尾2本は利きラベル（ADR-0133）。抽出させていなければ空で来る
+            stm_i, stm_o, opp_i, opp_o, targets, mv_from, mv_to, \
+                eff_short, eff_long = [x.to(device) for x in batch]
             n = targets.size(0)
 
             optimizer_dense.zero_grad()
@@ -373,10 +459,13 @@ def main():
                 optimizer_ft.zero_grad()
             x = model.transform_both(stm_i, stm_o, opp_i, opp_o)
             out = model.value(x)
-            loss = loss_fn(out, targets)
             # ログとvalidに載せるのは評価値の損失だけにする。合計を載せると
             # λを変えるたびに物差しが動き、過去の学習と比べられなくなる
-            value_loss = loss.detach()
+            value_loss = loss_fn(out, targets)
+            # 第1段階（利き予測だけでFTを事前学習する）ではλ_value=0にして
+            # 評価値を切る。ログには測るだけの値として残す（ADR-0133）
+            loss = args.lambda_value * value_loss
+            value_loss = value_loss.detach()
             if model.policy_from is not None:
                 # ラベルが取れなかった局面は-1で、ignore_indexが落とす
                 lf = model.policy_from(x)
@@ -398,6 +487,31 @@ def main():
                 loss = loss + args.lambda_distill * distill_loss
                 distill_acc += distill_loss.item() * n
                 distill_n += n
+            if model.effect is not None:
+                # 升ごとの利き数を当てる（ADR-0133）。短い利きは加法で解ける
+                # ので、健全性チェックとして別々にログへ出す
+                short_loss, long_loss = effect_loss_fn(
+                    model.effect(x),
+                    eff_short.view(n, EFFECT_LEN),
+                    eff_long.view(n, EFFECT_LEN),
+                )
+                # 出力数が同じなので、平均は324次元全体のMSEに等しい
+                effect_loss = 0.5 * (short_loss + long_loss)
+                loss = loss + args.lambda_effect * effect_loss
+                eff_short_acc += short_loss.item() * n
+                eff_long_acc += long_loss.item() * n
+                # 自明解（全部0と答える）のMSEを一緒に測る。長い利きは
+                # 88%の升がゼロなので、基準なしでは損失の大小を読めない。
+                # 学習が自明解を下回っているかだけが意味のある判定になる
+                with torch.no_grad():
+                    scale = EFFECT_SCALE * EFFECT_SCALE
+                    eff_short_base += (
+                        eff_short.float().pow(2).mean().item() / scale * n
+                    )
+                    eff_long_base += (
+                        eff_long.float().pow(2).mean().item() / scale * n
+                    )
+                effect_n += n
             loss.backward()
             optimizer_dense.step()
             if optimizer_ft is not None:
@@ -431,10 +545,22 @@ def main():
                 # 掛けたあとの値ではλを変えるたびに物差しが動く（ADR-0132）
                 avg_distill = distill_acc / max(distill_n, 1)
                 distill_str = f" distill {avg_distill:.5f}" if distill_n else ""
+                # 利きは長短を別々に出す（ADR-0133）。短いほうが落ちなければ
+                # 実装かλがおかしい。λを掛ける前の値を出すのは蒸留と同じ
+                avg_eff_short = eff_short_acc / max(effect_n, 1)
+                avg_eff_long = eff_long_acc / max(effect_n, 1)
+                base_s = eff_short_base / max(effect_n, 1)
+                base_l = eff_long_base / max(effect_n, 1)
+                effect_str = (
+                    f" effect short {avg_eff_short:.5f}/{base_s:.5f}"
+                    f" long {avg_eff_long:.5f}/{base_l:.5f}"
+                    if effect_n
+                    else ""
+                )
                 print(
                     f"step {step} samples {samples_done} "
                     f"loss {avg_loss:.5f} lr {current_lr:.6f}"
-                    f"{hit_rate}{distill_str} "
+                    f"{hit_rate}{distill_str}{effect_str} "
                     f"({sps:.0f} samples/s)",
                     file=sys.stderr,
                 )
@@ -444,6 +570,9 @@ def main():
                     writer.add_scalar("train/sps", sps, step)
                     if distill_n:
                         writer.add_scalar("train/distill", avg_distill, step)
+                    if effect_n:
+                        writer.add_scalar("train/effect_short", avg_eff_short, step)
+                        writer.add_scalar("train/effect_long", avg_eff_long, step)
                 if log_file:
                     total_elapsed = time.time() - t0
                     log_file.write(
@@ -456,6 +585,11 @@ def main():
                 loss_n = 0
                 distill_acc = 0.0
                 distill_n = 0
+                eff_short_acc = 0.0
+                eff_long_acc = 0.0
+                eff_short_base = 0.0
+                eff_long_base = 0.0
+                effect_n = 0
                 t_log = time.time()
                 samples_log = 0
 
@@ -478,7 +612,7 @@ def main():
                     no_improve = 0
                     best_path = f"{args.out}.best"
                     lineage = (
-                        f"train-v2-pytorch data={args.data} n={data_n} "
+                        f"train-v2-pytorch data={data_desc} n={data_n} "
                         f"step={step} valid_loss={vl:.5f} "
                         f"batch={args.batch} peak_lr={args.peak_lr} "
                         f"lambda={args.lambda_}"
@@ -537,7 +671,7 @@ def main():
     )
 
     lineage = (
-        f"train-v2-pytorch data={args.data} n={data_n} "
+        f"train-v2-pytorch data={data_desc} n={data_n} "
         f"epochs={args.epochs} batch={args.batch} "
         f"peak_lr={args.peak_lr} min_lr={args.min_lr} "
         f"warmup={args.warmup_steps} lambda={args.lambda_} "
@@ -547,7 +681,7 @@ def main():
     print(f"{args.out} を書き出しました", file=sys.stderr)
 
     if args.registry:
-        _append_registry(args, data_n, step, total_steps,
+        _append_registry(args, data_desc, data_n, step, total_steps,
                          best_step, best_valid, final_valid, elapsed_total)
 
     if writer:
@@ -573,7 +707,7 @@ def _save_checkpoint(model, optimizer_dense, optimizer_ft,
     }, path)
 
 
-def _append_registry(args, data_n, step, total_steps,
+def _append_registry(args, data_desc, data_n, step, total_steps,
                      best_step, best_valid, final_valid, elapsed):
     is_new = not os.path.exists(args.registry)
     with open(args.registry, "a", newline="") as f:
@@ -587,7 +721,7 @@ def _append_registry(args, data_n, step, total_steps,
         import datetime
         w.writerow([
             datetime.datetime.now().isoformat(timespec="seconds"),
-            args.name, args.data, data_n, args.epochs, args.batch,
+            args.name, data_desc, data_n, args.epochs, args.batch,
             args.peak_lr, args.min_lr, args.warmup_steps, args.lambda_,
             best_step, f"{best_valid:.5f}", f"{final_valid:.5f}",
             total_steps, f"{elapsed:.0f}", args.notes,

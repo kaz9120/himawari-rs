@@ -6,10 +6,12 @@ use rayon::prelude::*;
 use himawari_core::packed_sfen::{PSV_BYTES, PackedSfenValue, unpack};
 
 use himawari_engine::nnue::{
-    ARCH, FT_IN, FT_OUT, L1_OUT, L1_PAD, L2_OUT, L2_PAD, L3_OUT, LAST_HIDDEN, MOVE_FROM_CLASSES,
-    MOVE_TO_CLASSES, NnueNetwork, halfkp_active, move_labels,
+    ARCH, EFFECT_LEN, FT_IN, FT_OUT, L1_OUT, L1_PAD, L2_OUT, L2_PAD, L3_OUT, LAST_HIDDEN,
+    MOVE_FROM_CLASSES, MOVE_NONE, MOVE_TO_CLASSES, NnueNetwork, effect_labels, halfkp_active,
+    move_labels,
 };
 use himawari_engine::nnue_io;
+use himawari_engine::posgen::{chunk_specs, generate_chunk};
 
 const SIGMOID_SCALE: f32 = 600.0;
 /// 評価値スケール（ADR-0036）。量子化を戻すのに使う
@@ -20,12 +22,14 @@ fn sigmoid(x: f32) -> f32 {
 }
 
 /// 1レコードの抽出結果。指し手ラベルは補助ヘッド用（ADR-0129）。
+/// 利きラベルは事前学習用で、要求されたときだけ入る（ADR-0133）。
 struct Sample {
     stm: Vec<u32>,
     opp: Vec<u32>,
     target: f32,
     move_from: i64,
     move_to: i64,
+    effect: Option<([u8; EFFECT_LEN], [u8; EFFECT_LEN])>,
 }
 
 /// 1レコードを特徴・教師信号・指し手ラベルに変換する。
@@ -35,11 +39,15 @@ struct Sample {
 /// 教師データの9.8%は詰みスコア（±29000以上）で、`sigmoid(score/600)` は
 /// |score| >= 4144 で飽和する。丸めずに通すと教師信号が0か1に張り付き、
 /// モデルは有限の出力で届かない値を目指し続ける（ADR-0126）。
+///
+/// `effect` が真のときだけ利きラベルを計算する（ADR-0133）。利きを使わない
+/// 学習に計算の費用を払わせない。
 fn extract_one(
     raw: &[u8; PSV_BYTES],
     lambda_: f32,
     score_limit: i16,
     score_clamp: i16,
+    effect: bool,
 ) -> Option<Sample> {
     let rec = PackedSfenValue::from_bytes(raw);
     if score_limit > 0 && rec.score.abs() >= score_limit {
@@ -62,6 +70,8 @@ fn extract_one(
     let p_result = (f32::from(rec.game_result) + 1.0) / 2.0;
     let target = lambda_ * p_score + (1.0 - lambda_) * p_result;
     let (move_from, move_to) = move_labels(rec.move16, stm);
+    // posが生きているあいだに計算する。展開し直すと局面を2度作ることになる
+    let effect = effect.then(|| effect_labels(&pos));
 
     Some(Sample {
         stm: stm_feats,
@@ -69,6 +79,7 @@ fn extract_one(
         target,
         move_from,
         move_to,
+        effect,
     })
 }
 
@@ -87,14 +98,19 @@ fn extract_features(
         )));
     }
     let raw: &[u8; PSV_BYTES] = record.try_into().unwrap();
-    Ok(extract_one(raw, lambda_, score_limit, score_clamp).map(|s| (s.stm, s.opp, s.target)))
+    Ok(
+        extract_one(raw, lambda_, score_limit, score_clamp, false)
+            .map(|s| (s.stm, s.opp, s.target)),
+    )
 }
 
 /// バッチ分のレコードをまとめてEmbeddingBag形式へ変換する（ADR-0065）。
 ///
-/// 戻り値は `(stm_idx, stm_off, opp_idx, opp_off, targets, move_from, move_to)`
-/// の7本。末尾2本は補助ヘッド用の指し手ラベルで、取れなかった局面は-1になる
-/// （ADR-0129）。抽出はrayonで並列に行い、その間GILを解放する。
+/// 戻り値は `(stm_idx, stm_off, opp_idx, opp_off, targets, move_from, move_to,
+/// eff_short, eff_long)` の9本。`move_from`・`move_to` は補助ヘッド用の指し手
+/// ラベルで、取れなかった局面は-1になる（ADR-0129）。末尾2本は利き数の
+/// ラベルで、1局面あたり `EFFECT_LEN` 個ずつ並ぶ（ADR-0133）。`effect` が
+/// 偽なら長さ0で返る。抽出はrayonで並列に行い、その間GILを解放する。
 type BatchArrays<'py> = (
     Bound<'py, PyArray1<i64>>,
     Bound<'py, PyArray1<i64>>,
@@ -103,16 +119,19 @@ type BatchArrays<'py> = (
     Bound<'py, PyArray1<f32>>,
     Bound<'py, PyArray1<i64>>,
     Bound<'py, PyArray1<i64>>,
+    Bound<'py, PyArray1<u8>>,
+    Bound<'py, PyArray1<u8>>,
 );
 
 #[pyfunction]
-#[pyo3(signature = (records, lambda_ = 0.7, score_limit = 0, score_clamp = 0))]
+#[pyo3(signature = (records, lambda_ = 0.7, score_limit = 0, score_clamp = 0, effect = false))]
 fn extract_batch<'py>(
     py: Python<'py>,
     records: &[u8],
     lambda_: f32,
     score_limit: i16,
     score_clamp: i16,
+    effect: bool,
 ) -> PyResult<BatchArrays<'py>> {
     if records.len() % PSV_BYTES != 0 {
         return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(format!(
@@ -121,35 +140,45 @@ fn extract_batch<'py>(
         )));
     }
 
-    let (stm_idx, stm_off, opp_idx, opp_off, targets, mv_from, mv_to) = py.allow_threads(|| {
-        let per: Vec<Option<Sample>> = records
-            .par_chunks_exact(PSV_BYTES)
-            .map(|chunk| {
-                let raw: &[u8; PSV_BYTES] = chunk.try_into().unwrap();
-                extract_one(raw, lambda_, score_limit, score_clamp)
-            })
-            .collect();
+    let (stm_idx, stm_off, opp_idx, opp_off, targets, mv_from, mv_to, eff_short, eff_long) = py
+        .allow_threads(|| {
+            let per: Vec<Option<Sample>> = records
+                .par_chunks_exact(PSV_BYTES)
+                .map(|chunk| {
+                    let raw: &[u8; PSV_BYTES] = chunk.try_into().unwrap();
+                    extract_one(raw, lambda_, score_limit, score_clamp, effect)
+                })
+                .collect();
 
-        let n = per.len();
-        let mut stm_idx: Vec<i64> = Vec::with_capacity(n * 40);
-        let mut opp_idx: Vec<i64> = Vec::with_capacity(n * 40);
-        let mut stm_off: Vec<i64> = Vec::with_capacity(n);
-        let mut opp_off: Vec<i64> = Vec::with_capacity(n);
-        let mut targets: Vec<f32> = Vec::with_capacity(n);
-        let mut mv_from: Vec<i64> = Vec::with_capacity(n);
-        let mut mv_to: Vec<i64> = Vec::with_capacity(n);
+            let n = per.len();
+            let mut stm_idx: Vec<i64> = Vec::with_capacity(n * 40);
+            let mut opp_idx: Vec<i64> = Vec::with_capacity(n * 40);
+            let mut stm_off: Vec<i64> = Vec::with_capacity(n);
+            let mut opp_off: Vec<i64> = Vec::with_capacity(n);
+            let mut targets: Vec<f32> = Vec::with_capacity(n);
+            let mut mv_from: Vec<i64> = Vec::with_capacity(n);
+            let mut mv_to: Vec<i64> = Vec::with_capacity(n);
+            let eff_cap = if effect { n * EFFECT_LEN } else { 0 };
+            let mut eff_short: Vec<u8> = Vec::with_capacity(eff_cap);
+            let mut eff_long: Vec<u8> = Vec::with_capacity(eff_cap);
 
-        for s in per.into_iter().flatten() {
-            stm_off.push(stm_idx.len() as i64);
-            opp_off.push(opp_idx.len() as i64);
-            stm_idx.extend(s.stm.iter().map(|&x| i64::from(x)));
-            opp_idx.extend(s.opp.iter().map(|&x| i64::from(x)));
-            targets.push(s.target);
-            mv_from.push(s.move_from);
-            mv_to.push(s.move_to);
-        }
-        (stm_idx, stm_off, opp_idx, opp_off, targets, mv_from, mv_to)
-    });
+            for s in per.into_iter().flatten() {
+                stm_off.push(stm_idx.len() as i64);
+                opp_off.push(opp_idx.len() as i64);
+                stm_idx.extend(s.stm.iter().map(|&x| i64::from(x)));
+                opp_idx.extend(s.opp.iter().map(|&x| i64::from(x)));
+                targets.push(s.target);
+                mv_from.push(s.move_from);
+                mv_to.push(s.move_to);
+                if let Some((short, long)) = s.effect {
+                    eff_short.extend_from_slice(&short);
+                    eff_long.extend_from_slice(&long);
+                }
+            }
+            (
+                stm_idx, stm_off, opp_idx, opp_off, targets, mv_from, mv_to, eff_short, eff_long,
+            )
+        });
 
     Ok((
         stm_idx.into_pyarray(py),
@@ -159,6 +188,79 @@ fn extract_batch<'py>(
         targets.into_pyarray(py),
         mv_from.into_pyarray(py),
         mv_to.into_pyarray(py),
+        eff_short.into_pyarray(py),
+        eff_long.into_pyarray(py),
+    ))
+}
+
+/// 局面をその場で作り、`extract_batch` と同じ9本の配列で返す（ADR-0133）。
+///
+/// 利き予測は決定的な構造タスクなので、的は局面の分布に依存しない。教師
+/// データファイルが要らず、**生成した局面を使い捨てにすれば同じ局面は
+/// 二度と出ない。** 訓練損失がそのまま未見データの損失になる。
+///
+/// 利きラベルは常に計算する。この関数は利き予測のためにあり、切る意味がない。
+/// 評価値の的はないので `targets` は0.5で埋め、指し手ラベルは無効値にする。
+/// **`--lambda-value 0` で使う前提である。**
+///
+/// 並列化の単位は `GEN_CHUNK` 局面の塊で、塊ごとの種は `seed` から決定的に
+/// 導く。結果を塊の順で連結するので、同じ `seed` からは並列度によらず
+/// 同じ局面列が出る。
+#[pyfunction]
+#[pyo3(signature = (count, seed, max_plies = 256))]
+fn generate_batch<'py>(
+    py: Python<'py>,
+    count: usize,
+    seed: u64,
+    max_plies: u16,
+) -> PyResult<BatchArrays<'py>> {
+    if max_plies == 0 {
+        return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
+            "max_pliesは1以上が要る（0では局面を作れない）",
+        ));
+    }
+
+    let (stm_idx, stm_off, opp_idx, opp_off, targets, mv_from, mv_to, eff_short, eff_long) = py
+        .allow_threads(|| {
+            let chunks: Vec<_> = chunk_specs(count, seed)
+                .into_par_iter()
+                .map(|(s, c)| generate_chunk(s, c, max_plies))
+                .collect();
+
+            let mut stm_idx: Vec<i64> = Vec::with_capacity(count * 38);
+            let mut opp_idx: Vec<i64> = Vec::with_capacity(count * 38);
+            let mut stm_off: Vec<i64> = Vec::with_capacity(count);
+            let mut opp_off: Vec<i64> = Vec::with_capacity(count);
+            let mut eff_short: Vec<u8> = Vec::with_capacity(count * EFFECT_LEN);
+            let mut eff_long: Vec<u8> = Vec::with_capacity(count * EFFECT_LEN);
+
+            for s in chunks.into_iter().flatten() {
+                stm_off.push(stm_idx.len() as i64);
+                opp_off.push(opp_idx.len() as i64);
+                stm_idx.extend(s.stm.iter().map(|&x| i64::from(x)));
+                opp_idx.extend(s.opp.iter().map(|&x| i64::from(x)));
+                eff_short.extend_from_slice(&s.short);
+                eff_long.extend_from_slice(&s.long);
+            }
+            // 評価値の的はない。0.5は勝率50%で、λ_value=0なら勾配へ効かない
+            let targets = vec![0.5f32; count];
+            let mv_from = vec![MOVE_NONE; count];
+            let mv_to = vec![MOVE_NONE; count];
+            (
+                stm_idx, stm_off, opp_idx, opp_off, targets, mv_from, mv_to, eff_short, eff_long,
+            )
+        });
+
+    Ok((
+        stm_idx.into_pyarray(py),
+        stm_off.into_pyarray(py),
+        opp_idx.into_pyarray(py),
+        opp_off.into_pyarray(py),
+        targets.into_pyarray(py),
+        mv_from.into_pyarray(py),
+        mv_to.into_pyarray(py),
+        eff_short.into_pyarray(py),
+        eff_long.into_pyarray(py),
     ))
 }
 
@@ -333,6 +435,7 @@ fn unpad(rows: &[i8], used: usize, stride: usize, scale: f32) -> Vec<f32> {
 fn himawari(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(extract_features, m)?)?;
     m.add_function(wrap_pyfunction!(extract_batch, m)?)?;
+    m.add_function(wrap_pyfunction!(generate_batch, m)?)?;
     m.add_function(wrap_pyfunction!(save_hmwr, m)?)?;
     m.add_function(wrap_pyfunction!(load_hmwr, m)?)?;
     m.add_function(wrap_pyfunction!(load_hmwr_ft, m)?)?;
@@ -344,5 +447,6 @@ fn himawari(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add("ARCH", ARCH)?;
     m.add("MOVE_FROM_CLASSES", MOVE_FROM_CLASSES)?;
     m.add("MOVE_TO_CLASSES", MOVE_TO_CLASSES)?;
+    m.add("EFFECT_LEN", EFFECT_LEN)?;
     Ok(())
 }

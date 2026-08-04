@@ -56,7 +56,7 @@ class PsvBatchLoader:
     """
 
     def __init__(self, path, batch, lambda_=0.7, score_limit=0, mmap=False, score_clamp=0,
-                 shuffle=True, chunk_positions=1 << 20, seed=0, prefetch=3):
+                 shuffle=True, chunk_positions=1 << 20, seed=0, prefetch=3, effect=False):
         size = os.path.getsize(path)
         if size % 40 != 0:
             raise ValueError(f"ファイルサイズが40の倍数でない: {size}")
@@ -66,6 +66,9 @@ class PsvBatchLoader:
         self.score_limit = score_limit
         self.score_clamp = score_clamp
         self.mmap = mmap
+        # 利きラベル（ADR-0133）。使わないときは抽出させない。長さ0の
+        # 配列が返るので、受け取り側の分解は9本のままでよい
+        self.effect = effect
         self.shuffle = shuffle
         self.chunk = max(chunk_positions, batch)
         self.seed = seed
@@ -107,7 +110,8 @@ class PsvBatchLoader:
 
     def _extract(self, raw):
         arrays = himawari.extract_batch(
-            raw.tobytes(), self.lambda_, self.score_limit, self.score_clamp
+            raw.tobytes(), self.lambda_, self.score_limit, self.score_clamp,
+            self.effect,
         )
         if len(arrays[4]) == 0:
             return None
@@ -122,6 +126,71 @@ class PsvBatchLoader:
             try:
                 for raw in self._raw_batches(rng):
                     q.put(self._extract(raw))
+            except Exception as e:  # 生産側の例外を消費側へ伝える
+                q.put(e)
+            q.put(None)
+
+        t = threading.Thread(target=produce, daemon=True)
+        t.start()
+        while True:
+            item = q.get()
+            if item is None:
+                break
+            if isinstance(item, Exception):
+                raise item
+            yield item
+
+
+class GeneratedBatchLoader:
+    """局面をその場で作り、利きラベルを付けて返す（ADR-0133）。
+
+    利き予測は決定的な構造タスクで、的は局面の分布に依存しない。だから
+    教師データファイルが要らない。**生成した局面を使い捨てにすれば同じ
+    局面は二度と出ず、訓練損失がそのまま未見データの損失になる。**
+    過学習が構造的に起こらないので、別の検証集合を持つ意味がない。
+
+    バッチの形は `PsvBatchLoader` と同じ9本で、`.n` に1エポックの局面数を
+    持つ。評価値の的はないので targets は0.5、指し手ラベルは-1で埋まる。
+    `--lambda-value 0` で使う前提である。
+
+    生成はRust側がGILを解放して並列に行う。prefetchスレッドで先回りさせ、
+    GPU計算と重ねるのは `PsvBatchLoader` と同じ。
+    """
+
+    #: SplitMix64と同じ攪拌定数。種を通し番号から散らすのに使う
+    _GAMMA = 0x9E3779B97F4A7C15
+    _MASK = (1 << 64) - 1
+
+    def __init__(self, n, batch, seed=0, max_plies=256, prefetch=3):
+        self.n = n
+        self.batch = batch
+        self.seed = seed
+        self.max_plies = max_plies
+        self.prefetch = prefetch
+        self.epoch = 0
+        # バッチの通し番号。エポックをまたいで進めるので、同じ乱数列は
+        # 二度使わない。序盤の数手だけは playout の作りから必ず重なる
+        self.cursor = 0
+
+    def __len__(self):
+        return math.ceil(self.n / self.batch)
+
+    def _next_seed(self):
+        z = (self.seed + (self.cursor + 1) * self._GAMMA) & self._MASK
+        self.cursor += 1
+        return z
+
+    def __iter__(self):
+        self.epoch += 1
+        q = queue.Queue(maxsize=self.prefetch)
+        sizes = [min(self.batch, self.n - s) for s in range(0, self.n, self.batch)]
+        seeds = [self._next_seed() for _ in sizes]
+
+        def produce():
+            try:
+                for size, seed in zip(sizes, seeds):
+                    arrays = himawari.generate_batch(size, seed, self.max_plies)
+                    q.put(tuple(torch.from_numpy(a) for a in arrays))
             except Exception as e:  # 生産側の例外を消費側へ伝える
                 q.put(e)
             q.put(None)
