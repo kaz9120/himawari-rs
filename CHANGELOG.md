@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.27.21](https://github.com/kaz9120/himawari-rs/compare/v0.27.20...v0.27.21) (2026-08-04)
+
+
+### ドキュメント
+
+* 優勢時の頓死の観察をROADMAPの候補へ記録する ([#191](https://github.com/kaz9120/himawari-rs/issues/191)) ([fb029da](https://github.com/kaz9120/himawari-rs/commit/fb029da66b3a3f78b7020eecb2d361dcc7d42191))
+
 ## [0.27.20](https://github.com/kaz9120/himawari-rs/compare/v0.27.19...v0.27.20) (2026-08-04)
 
 
