@@ -149,6 +149,16 @@
 | [0132](0132-ft-distillation.md) | 太いFTの表現を、細いFTへ蒸留する | - | proposed |
 | [0133](0133-effect-pretraining.md) | 利き予測でFTを自己教師あり事前学習する | - | proposed |
 | [0134](0134-head-capacity.md) | 後段の容量が壁かを、上向きに振って確かめる | - | proposed |
+| [0135](0135-teacher-data-3b.md) | 教師データを29.9億局面へ広げる | - | proposed |
+| [0136](0136-quiet-teacher-positions.md) | 教師局面をqsearchの静止局面へ置き換えて学習する | - | proposed |
+| [0137](0137-output-buckets.md) | 出力層を盤上駒数バケットで分岐する（output bucket） | - | proposed |
+| [0138](0138-ft-i8-quantization.md) | FT重みをi8へ量子化して更新帯域を半減する | - | proposed |
+| [0139](0139-mate1ply-in-search-retry.md) | mate_1plyを通常探索へ入れ直す | - | proposed |
+| [0140](0140-king-line-features.md) | 玉ライン特徴をHalfKPへ追加する | - | proposed |
+| [0141](0141-singular-rate-calibration.md) | singular率を設計点へ較正し、多段延長を再訪する | - | proposed |
+| [0142](0142-dfpn-mate-search.md) | df-pnの詰み探索をrootへ並走させる | - | proposed |
+| [0143](0143-spsa-tuning.md) | 探索定数をSPSAで一括チューニングする | - | proposed |
+| [0144](0144-selfplay-teacher-loop.md) | 自前gensfenで教師データの世代ループを始める | - | proposed |
 
 ## バックログ
 
@@ -158,13 +168,9 @@
 
 | 決定事項 | 主要論点 |
 |---|---|
-| df-pn詰み探索 | 長手数詰み。mate1ply（[ADR-0029](0029-mate-search.md)）の後段。任意 |
 | nnueクレート分離の要否 | ADR-0002の当初計画はnnue独立クレート。現状はengine内実装。学習器との共有範囲を見てから判断 |
 | 新特徴量の設計 | 差分計算可能な特徴量の探索。LLM技術（attention等）の局所適用 |
 | 出力ヘッド設計 | WDL・進行度・安定度の多ヘッド化。時間管理・枝刈り強度・contemptへの供給 |
-| output bucket | 局面フェーズで最終層を分岐する。将棋は取った駒が持ち駒になり総数が減らないため、手数や盤上駒数など別の指標設計が要る（[ADR-0067](0067-ft-dimension-512.md)） |
-| gensfen設計 | 開始局面多様化、勝敗ラベル。持将棋は24点法で裁定（2028年選手権から27点法→24点法へ変更予定） |
 | 宣言勝ちの24点法対応 | ADR-0030は27点法（CSA）。24点法モードを追加しUSIオプションで切替 |
-| RL世代ループ | 自己対局RL、gensfen自前生成、世代ループ |
 
 | NPS回帰のCI監視 | ベンチ局面のNPSをCIで記録し退行を検知する。評価関数を固定した以上、探索改善の安全網になる |
