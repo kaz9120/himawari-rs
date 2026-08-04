@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.27.19](https://github.com/kaz9120/himawari-rs/compare/v0.27.18...v0.27.19) (2026-08-04)
+
+
+### 内部
+
+* hao_depth9の第3グループを取得し、教師データを30.0億へ広げる（ADR-0135） ([#187](https://github.com/kaz9120/himawari-rs/issues/187)) ([6096f29](https://github.com/kaz9120/himawari-rs/commit/6096f295a4f2ba5cf56f5f802d1106d0d4c64f64))
+
 ## [0.27.18](https://github.com/kaz9120/himawari-rs/compare/v0.27.17...v0.27.18) (2026-08-04)
 
 
