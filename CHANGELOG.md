@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.27.18](https://github.com/kaz9120/himawari-rs/compare/v0.27.17...v0.27.18) (2026-08-04)
+
+
+### ドキュメント
+
+* 棋力向上アイデア10件のADRを起草する（ADR-0135〜0144） ([#185](https://github.com/kaz9120/himawari-rs/issues/185)) ([4660f50](https://github.com/kaz9120/himawari-rs/commit/4660f504c2445818f4900ad3a09ddaca1ad20bf7))
+
 ## [0.27.17](https://github.com/kaz9120/himawari-rs/compare/v0.27.16...v0.27.17) (2026-08-04)
 
 
