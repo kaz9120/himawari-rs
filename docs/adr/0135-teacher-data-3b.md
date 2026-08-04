@@ -1,6 +1,6 @@
 # 0135: 教師データを29.9億局面へ広げる
 
-- Status: proposed
+- Status: accepted
 - Date: 2026-08-04
 - 関連ADR: [0028](0028-pruning-extensions.md), [0065](0065-large-scale-dataloader.md), [0127](0127-net-shape-bench.md), [0131](0131-frozen-ft-light-head.md), [0134](0134-head-capacity.md), [0136](0136-quiet-teacher-positions.md), [0140](0140-king-line-features.md), [0144](0144-selfplay-teacher-loop.md)
 
@@ -65,6 +65,16 @@ log-linear仮定で1.5倍の外挿は−0.004前後になり、判別限界0.001
 「データも律速でない」ことの測定として記録する。その場合、残る手段は
 特徴設計（[ADR-0140](0140-king-line-features.md)）と教師信号の変更
 （[ADR-0136](0136-quiet-teacher-positions.md)）に絞られる。
+
+## 実施記録（2026-08-04）
+
+工程1（取得）を終えた。`scripts/fetch-dataset.sh` の `START_TIMES` へ
+第3グループを足し、127ファイル・37.3GBを取得した。`verify` は381ファイル
+すべてで異常0件である。合計は381ファイル・112GB・約30.0億局面になった。
+
+DATASETS.mdの規模の記述もこの実測へ合わせた。取得済みの表は
+2026-07-26時点で「254ファイル・77GB・19.9億」としていたが、
+実測は1グループあたり約37GB・約10.0億だった。
 
 ## Consequences
 

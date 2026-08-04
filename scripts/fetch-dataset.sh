@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # 教師データの取得と前処理（DATASETS.md の手順をスクリプト化）。
 #
-# nodchip/shogi_hao_depth9 から254ファイル（約77GB・約19.9億局面）を
-# 取得し、train_1900M.psv と valid_385M.psv を作る。
+# nodchip/shogi_hao_depth9 から381ファイル（約116GB・約29.9億局面）を
+# 取得し、train_2990M.psv と valid_385M.psv を作る。
 # 開発機を移すときはこれ1本で教師データを再現できる。
 set -euo pipefail
 
@@ -16,7 +16,8 @@ JOBS="${JOBS:-4}"
 
 BASE_URL="https://huggingface.co/datasets/nodchip/shogi_hao_depth9/resolve/main"
 PREFIX="kifu.tag=train.depth=9.num_positions=1000000000"
-START_TIMES=(1695340981 1695606850)
+# 第3グループ1695872823はADR-0135で追加した（19.9億→29.9億）
+START_TIMES=(1695340981 1695606850 1695872823)
 # 検証データの供給元。学習データからは除く（対局単位で分離するため）
 VALID_START_TIME=1695340981
 VALID_INDEX=023
@@ -27,9 +28,9 @@ MIN_SIZE=$((100 * 1024 * 1024))
 usage() {
 	cat <<'USAGE'
 使い方:
-  scripts/fetch-dataset.sh download   HuggingFaceから254ファイルを取得する
+  scripts/fetch-dataset.sh download   HuggingFaceから381ファイルを取得する
   scripts/fetch-dataset.sh verify     取得済みファイルのサイズを検査する
-  scripts/fetch-dataset.sh prepare    train_1900M.psv と valid_385M.psv を作る
+  scripts/fetch-dataset.sh prepare    train_2990M.psv と valid_385M.psv を作る
   scripts/fetch-dataset.sh all        download → verify → prepare
 
 環境変数:
@@ -41,7 +42,7 @@ download は再実行できる。妥当なサイズのファイルは飛ばす�
 prepare には psv ツールが要る（cargo build --release）。
 
 所要の目安: download は回線次第、prepare のシャッフルは約3分。
-必要な空き容量は raw 77GB + train 80GB で約160GB。
+必要な空き容量は raw 116GB + train 120GB で約236GB。
 USAGE
 }
 
@@ -127,11 +128,11 @@ cmd_prepare() {
 	files=$(find "$RAW_DIR" -name '*.bin' \
 		! -name "*start_time=${VALID_START_TIME}.thread_index=${VALID_INDEX}.bin" \
 		| sort | paste -sd, -)
-	"$psv" shuffle --in "$files" --out "${TRAIN_DIR}/train_1900M.psv" --seed 42
+	"$psv" shuffle --in "$files" --out "${TRAIN_DIR}/train_2990M.psv" --seed 42
 
 	echo
-	"$psv" stats --in "${TRAIN_DIR}/train_1900M.psv" --limit 1 || true
-	ls -lh "${TRAIN_DIR}/train_1900M.psv" "${TRAIN_DIR}/valid_385M.psv"
+	"$psv" stats --in "${TRAIN_DIR}/train_2990M.psv" --limit 1 || true
+	ls -lh "${TRAIN_DIR}/train_2990M.psv" "${TRAIN_DIR}/valid_385M.psv"
 }
 
 case "${1:-}" in
