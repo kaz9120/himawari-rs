@@ -305,7 +305,7 @@ fn quiet(input: &str, output: &str, limit: u64, max_plies: usize, hash_mb: usize
     let (mut n, mut replaced, mut failed) = (0u64, 0u64, 0u64);
     let mut moved_plies = 0u64;
     // 教師のscoreと静的評価の乖離。静止化でこれが縮むかが本質である
-    let mut gaps: Vec<(u32, u32)> = Vec::new();
+    let mut gaps: Vec<(u32, u32, u8)> = Vec::new();
     let start = std::time::Instant::now();
     while n < limit && r.read_exact(&mut buf).is_ok() {
         let mut rec = PackedSfenValue::from_bytes(&buf);
@@ -332,6 +332,7 @@ fn quiet(input: &str, output: &str, limit: u64, max_plies: usize, hash_mb: usize
             gaps.push((
                 (before - score).unsigned_abs(),
                 (after - score).unsigned_abs(),
+                plies.min(7) as u8,
             ));
         }
         if plies > 0 {
@@ -373,27 +374,36 @@ fn quiet(input: &str, output: &str, limit: u64, max_plies: usize, hash_mb: usize
         println!("|静的評価-score| : 標本なし");
     } else {
         let k = gaps.len();
-        let mean = |f: fn(&(u32, u32)) -> u32| {
-            gaps.iter().map(|g| u64::from(f(g))).sum::<u64>() as f64 / k as f64
+        let stat = |sel: &dyn Fn(&(u32, u32, u8)) -> bool| {
+            let v: Vec<&(u32, u32, u8)> = gaps.iter().filter(|g| sel(g)).collect();
+            if v.is_empty() {
+                return None;
+            }
+            let m = v.len();
+            let mut b: Vec<u32> = v.iter().map(|g| g.0).collect();
+            let mut a: Vec<u32> = v.iter().map(|g| g.1).collect();
+            b.sort_unstable();
+            a.sort_unstable();
+            let closer = v.iter().filter(|g| g.1 < g.0).count();
+            Some((m, b[m / 2], a[m / 2], closer as f64 * 100.0 / m as f64))
         };
-        let median = |f: fn(&(u32, u32)) -> u32| {
-            let mut v: Vec<u32> = gaps.iter().map(f).collect();
-            v.sort_unstable();
-            v[k / 2]
-        };
-        let closer = gaps.iter().filter(|g| g.1 < g.0).count();
         println!("--- 置換した局面のうち |score| <= 2000 の {k} 件 ---");
-        println!(
-            "|静的評価-score| : 平均 {:.1} → {:.1}  中央値 {} → {}",
-            mean(|g| g.0),
-            mean(|g| g.1),
-            median(|g| g.0),
-            median(|g| g.1)
-        );
-        println!(
-            "scoreに近づいた  : {closer} ({:.1}%)",
-            closer as f64 * 100.0 / k as f64
-        );
+        println!("| 進み手数 | 件数 | |評価-score| 中央値 前→後 | 近づいた |");
+        println!("|---|---|---|---|");
+        if let Some((m, bm, am, c)) = stat(&|_| true) {
+            println!("| 全体 | {m} | {bm} → {am} | {c:.1}% |");
+        }
+        for p in 1..=5u8 {
+            let label = if p == 5 { "5手以上" } else { "" };
+            let sel = |g: &(u32, u32, u8)| if p == 5 { g.2 >= 5 } else { g.2 == p };
+            if let Some((m, bm, am, c)) = stat(&sel) {
+                if label.is_empty() {
+                    println!("| {p}手 | {m} | {bm} → {am} | {c:.1}% |");
+                } else {
+                    println!("| {label} | {m} | {bm} → {am} | {c:.1}% |");
+                }
+            }
+        }
     }
     println!(
         "所要          : {sec:.1}秒（{:.0}局面/秒）",
