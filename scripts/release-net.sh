@@ -58,12 +58,25 @@ TAG="net-v${VERSION}"
 release_check_prereqs "$TAG"
 
 # ヘッダからlineageを読む（ADR-0037の形式）。
-#   magic 8B / version 4B / dims 12B / lineage長 4B / lineage / hash 8B / body
-LLEN=$(od -An -tu4 -j24 -N4 "$NET_PATH" | tr -d ' ')
+#   magic 8B / version 4B / dims / lineage長 4B / lineage / hash 8B / body
+#
+# 寸法の個数は版で変わる（nnue_io.rsの `dims`）。版2は3つ、版3は4つ、
+# 版4は5つである。ADR-0127が版3を入れるまで版2しかなく、ここは24/28の
+# 決め打ちだった。版3のネットでは4つ目の寸法をlineage長として読んでしまう。
+NET_VERSION=$(od -An -tu4 -j8 -N4 "$NET_PATH" | tr -d ' ')
+case "$NET_VERSION" in
+2) NDIMS=3 ;;
+3) NDIMS=4 ;;
+4) NDIMS=5 ;;
+*) die "未対応のフォーマット版: ${NET_VERSION}（Himawari NNUE形式か確認する）" ;;
+esac
+LLEN_OFF=$((12 + NDIMS * 4))
+LINEAGE_OFF=$((LLEN_OFF + 4))
+LLEN=$(od -An -tu4 -j"$LLEN_OFF" -N4 "$NET_PATH" | tr -d ' ')
 if [[ -z "$LLEN" || "$LLEN" -gt 4096 ]]; then
 	die "lineage長が読めない（Himawari NNUE形式か確認する）"
 fi
-LINEAGE=$(dd if="$NET_PATH" bs=1 skip=28 count="$LLEN" 2>/dev/null)
+LINEAGE=$(dd if="$NET_PATH" bs=1 skip="$LINEAGE_OFF" count="$LLEN" 2>/dev/null)
 
 ASSET_NAME="$(basename "$NET_PATH")"
 ASSET_NAME="${ASSET_NAME%.best}"
@@ -104,7 +117,7 @@ trap 'rm -rf "$TMP_ASSET_DIR"; rm -f "$NOTES_FILE"' EXIT
 	echo
 	echo "USIオプション \`EvalFile\` にパスを指定する。"
 	echo
-	echo "計測の詳細は [RESULTS.md](../blob/main/docs/RESULTS.md) を参照。"
+	echo "計測の詳細は [ADR索引](../blob/main/docs/adr/README.md) を参照。"
 } >"$NOTES_FILE"
 
 log_info "タグ: $TAG"
