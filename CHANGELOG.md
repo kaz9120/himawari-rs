@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.28.3](https://github.com/kaz9120/himawari-rs/compare/v0.28.2...v0.28.3) (2026-08-05)
+
+
+### 内部
+
+* FT重みのクリップ制約と、量子化スケールのリーグ戦（ADR-0138） ([#200](https://github.com/kaz9120/himawari-rs/issues/200)) ([bb452c6](https://github.com/kaz9120/himawari-rs/commit/bb452c61aca2e0176a0563a4010fde691a94a908))
+
 ## [0.28.2](https://github.com/kaz9120/himawari-rs/compare/v0.28.1...v0.28.2) (2026-08-05)
 
 
