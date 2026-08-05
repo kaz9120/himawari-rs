@@ -56,7 +56,7 @@ pub fn load_nn_bin(r: &mut impl Read) -> Result<(NnueNetwork, String), String> {
 
     let _ft_hash = cur.u32()?;
     let ft_b = cur.i16v(FT_OUT)?;
-    let ft_w = cur.i16v(FT_IN * FT_OUT)?;
+    let ft_w = crate::nnue::ft_w_from_i16(cur.i16v(FT_IN * FT_OUT)?)?;
 
     let _net_hash = cur.u32()?;
     let b2 = cur.i32v(L1_OUT)?;
@@ -102,8 +102,12 @@ mod tests {
         for &x in &net.ft_b {
             v.extend(x.to_le_bytes());
         }
+        // やねうら王形式のFT重みは常にi16である。こちらの格納型が
+        // i8でも、書き出しは16bitへ広げる（ADR-0138）。既定ビルドでは
+        // 型が同じで変換が恒等になるが、i8ビルドでは必要である
+        #[allow(clippy::useless_conversion)]
         for &x in &net.ft_w {
-            v.extend(x.to_le_bytes());
+            v.extend(i16::from(x).to_le_bytes());
         }
         v.extend(0u32.to_le_bytes()); // ネットワークヘッダ
         for &x in &net.b2 {

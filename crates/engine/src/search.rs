@@ -970,6 +970,61 @@ impl Worker {
     }
 
     /// 反復深化。各イテレーション完了時にon_iterを呼ぶ。
+    /// 局面を差し替え、plyごとの状態を初期化する（ADR-0136）。
+    ///
+    /// 前処理ツールがWorkerを使い回すために要る。局面ごとに `new` を呼ぶと
+    /// history一式（数MB）を毎回確保することになり、実測で679局面/秒まで
+    /// 落ちた。**スタックを戻すのは結果を処理順に依存させないためである。**
+    /// historyは持ち越すが、これは同じ対局を続けて読むときと同じ状況で、
+    /// 手順の再現性を壊さない。
+    pub fn set_position(&mut self, pos: Position) {
+        self.root_color = pos.side_to_move();
+        self.pos = pos;
+        // accumulatorのスタックを捨てる。前の局面の計算済みフラグが
+        // 残っていると、全く別の局面の評価値をそのまま読んでしまう
+        self.evaluator.new_search(&self.pos);
+        self.stack.fill(STACK_INIT);
+        self.sel_depth = 0;
+        self.root_delta = 1;
+        self.root_depth = 0;
+        self.nmp_min_ply = 0;
+        self.last_iteration_pv.clear();
+    }
+
+    /// 静止探索を1回走らせ、到達した静止局面まで `self.pos` を進める
+    /// （ADR-0136）。戻り値は進めた手数である。
+    ///
+    /// 教師局面をqsearchのPV葉へ置き換える前処理が使う。**探索の内側は
+    /// 変えない。** qsearchは最善手を置換表へ書くので、置換表を辿れば
+    /// PVを再構成できる。qsearchにPV収集を足すと、全ての葉で費用を払う
+    /// ことになるため採らない。
+    ///
+    /// 打ち切りは `max_plies` で行う。置換表の衝突で手が繋がり続ける場合と、
+    /// 千日手のような循環に備える。
+    pub fn walk_to_quiet(&mut self, max_plies: usize) -> usize {
+        let mut plies = 0;
+        while plies < max_plies {
+            self.stack[STACK_OFFSET].in_check = self.pos.in_check();
+            self.qsearch(-VALUE_INFINITE, VALUE_INFINITE, 0, true);
+            let key = self.pos.key();
+            let Some(data) = self.shared.tt.probe(key) else {
+                break;
+            };
+            let Some(m) = self.pos.to_move(data.mv) else {
+                break;
+            };
+            if !self.pos.pseudo_legal(m) || !self.pos.is_legal(m) {
+                break;
+            }
+            self.pos.do_move(m);
+            // do_moveとpushは対で行う（探索本体と同じ作法）。
+            // 欠かすとaccumulatorが1手前のまま計算済みとして読まれる
+            self.evaluator.push(&self.pos);
+            plies += 1;
+        }
+        plies
+    }
+
     pub fn iterate(&mut self, on_info: &mut dyn FnMut(SearchInfo)) -> SearchResult {
         // 入玉宣言勝ち（ADR-0030）: 成立していれば探索せず宣言する
         if self.pos.can_declare_win() {

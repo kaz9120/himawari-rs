@@ -106,7 +106,16 @@ fn validate(a: &Arch) -> Result<(), String> {
 fn main() {
     println!("cargo::rerun-if-changed=build.rs");
     println!("cargo::rerun-if-env-changed=HIMAWARI_ARCH");
+    println!("cargo::rerun-if-env-changed=HIMAWARI_FT_I8");
     println!("cargo::rustc-check-cfg=cfg(arch_default)");
+    println!("cargo::rustc-check-cfg=cfg(ft_i8)");
+
+    // FT重みの格納型（ADR-0138）。既定はi16で、1を渡すとi8になる。
+    // 実行時分岐は入れずビルド時に決める。ネットのファイル形式も版で分かれる
+    let ft_i8 = std::env::var("HIMAWARI_FT_I8").is_ok_and(|v| v == "1");
+    if ft_i8 {
+        println!("cargo::rustc-cfg=ft_i8");
+    }
 
     let spec = std::env::var("HIMAWARI_ARCH").unwrap_or_else(|_| DEFAULT_ARCH.to_string());
     let arch = parse(&spec).unwrap_or_else(|e| panic!("HIMAWARI_ARCH: {e}"));
@@ -119,6 +128,12 @@ fn main() {
     }
 
     let mut src = String::new();
+    writeln!(
+        src,
+        "/// FT重みをi8で格納するか（ADR-0138）。build.rsが生成する。"
+    )
+    .unwrap();
+    writeln!(src, "pub const FT_I8: bool = {ft_i8};").unwrap();
     writeln!(src, "/// FT出力次元（片視点）。build.rsが生成する。").unwrap();
     writeln!(src, "pub const FT_OUT: usize = {};", arch.ft).unwrap();
     writeln!(src, "/// 隠れ層1の出力次元。").unwrap();
