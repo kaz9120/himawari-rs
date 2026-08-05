@@ -165,6 +165,22 @@ class NnueModel(nn.Module):
     def forward(self, stm_idx, stm_off, opp_idx, opp_off):
         return self.value(self.transform_both(stm_idx, stm_off, opp_idx, opp_off))
 
+    def clip_ft_weights(self, limit=1.0):
+        """畳み込み後のFT重みを±limitへ収める（ADR-0138）。
+
+        書き出しに使うのは `folded_ft_weight()` の値なので、制約は畳み込み後に
+        掛ける必要がある。超過分は実特徴側（`ft`）から引く。仮想特徴（`ft_p`）は
+        81の玉位置で共有されるため、そちらを動かすと無関係な升へ波及する。
+
+        i8で格納すると量子化値が±127に収まらない重みは飽和する。飽和は
+        0.055%（1800個に1個）でも-59.3 Eloになる（ADR-0138のリーグ戦）。
+        一方、飽和がなければ刻みを5倍粗くしても差が出ない。**効くのは
+        飽和の有無であって刻みの細かさではない。**
+        """
+        with torch.no_grad():
+            folded = self.folded_ft_weight()
+            self.ft.weight.sub_(folded - folded.clamp(-limit, limit))
+
     def clip_weights(self):
         with torch.no_grad():
             self.l2.weight.clamp_(-HIDDEN_W_LIMIT, HIDDEN_W_LIMIT)

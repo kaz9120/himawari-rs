@@ -180,6 +180,21 @@ def main():
              "採用の判断には使わない",
     )
     p.add_argument(
+        "--ft-clip",
+        type=float,
+        default=0.0,
+        help="畳み込み後のFT重みをこの絶対値へ収める（ADR-0138。0=無効）。"
+             "i8で格納するとき飽和させないための制約で、量子化スケール127に"
+             "対しては1.0を指定する",
+    )
+    p.add_argument(
+        "--ft-clip-interval",
+        type=int,
+        default=50,
+        help="FT重みの射影を何ステップおきに行うか（ADR-0138）。毎ステップは"
+             "重すぎる。検証と書き出しの直前はこの設定に関係なく必ず射影する",
+    )
+    p.add_argument(
         "--seed",
         type=int,
         help="モデル初期化とデータ順序の乱数種。指定しないとPyTorchが実行ごとに"
@@ -520,6 +535,8 @@ def main():
             if scheduler_ft is not None:
                 scheduler_ft.step()
             model.clip_weights()
+            if args.ft_clip > 0 and step % args.ft_clip_interval == 0:
+                model.clip_ft_weights(args.ft_clip)
 
             step += 1
             samples_done += n
@@ -594,6 +611,9 @@ def main():
                 samples_log = 0
 
             if valid_loader and step % args.valid_interval == 0:
+                # 検証と書き出しは制約を満たした状態で行う（ADR-0138）
+                if args.ft_clip > 0:
+                    model.clip_ft_weights(args.ft_clip)
                 vl = validate(model, valid_loader, device)
                 print(f"  valid loss {vl:.5f}", file=sys.stderr)
                 if writer:
