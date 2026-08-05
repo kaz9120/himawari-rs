@@ -162,17 +162,6 @@ impl<'a> Cursor<'a> {
         self.take(n)
     }
 
-    /// FT重み列を格納型に合わせて読む（ADR-0138）。
-    #[cfg(not(ft_i8))]
-    pub(crate) fn ft_wv(&mut self, n: usize) -> Result<Vec<crate::nnue::FtWeight>, String> {
-        self.i16v(n)
-    }
-
-    #[cfg(ft_i8)]
-    pub(crate) fn ft_wv(&mut self, n: usize) -> Result<Vec<crate::nnue::FtWeight>, String> {
-        Ok(self.take(n)?.iter().map(|&b| b as i8).collect())
-    }
-
     pub(crate) fn i16v(&mut self, n: usize) -> Result<Vec<i16>, String> {
         Ok(self
             .take(n * 2)?
@@ -545,6 +534,8 @@ mod tests {
         for &x in &net.ft_b {
             body.extend_from_slice(&x.to_le_bytes());
         }
+        // 既定ビルドでは型が同じで変換が恒等になるが、i8ビルドでは必要
+        #[allow(clippy::useless_conversion)]
         for &x in &net.ft_w {
             body.extend_from_slice(&i16::from(x).to_le_bytes());
         }

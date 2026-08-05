@@ -269,17 +269,21 @@ mod tests {
         let mut a = [i16::MAX - 3; FT_OUT];
         let mut b = a;
         let w = &net.ft_w[..FT_OUT];
-        ft_add(&mut a, w);
-        // 重みの格納型はビルドで変わる（ADR-0138）。参照側はi16へ揃える
-        for (x, &wv) in b.iter_mut().zip(w) {
-            *x = x.wrapping_add(i16::from(wv));
+        // 重みの格納型はビルドで変わる（ADR-0138）。参照側はi16へ揃える。
+        // 既定ビルドでは型が同じで変換が恒等になるが、i8ビルドでは必要
+        #[allow(clippy::useless_conversion)]
+        {
+            ft_add(&mut a, w);
+            for (x, &wv) in b.iter_mut().zip(w) {
+                *x = x.wrapping_add(i16::from(wv));
+            }
+            assert_eq!(a, b);
+            ft_sub(&mut a, w);
+            for (x, &wv) in b.iter_mut().zip(w) {
+                *x = x.wrapping_sub(i16::from(wv));
+            }
+            assert_eq!(a, b);
         }
-        assert_eq!(a, b);
-        ft_sub(&mut a, w);
-        for (x, &wv) in b.iter_mut().zip(w) {
-            *x = x.wrapping_sub(i16::from(wv));
-        }
-        assert_eq!(a, b);
         // dot: スカラー積和一致
         let x: Vec<u8> = (0..CONCAT).map(|i| (i % 128) as u8).collect();
         let w8 = &net.w2[..CONCAT];

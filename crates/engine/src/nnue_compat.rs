@@ -103,7 +103,9 @@ mod tests {
             v.extend(x.to_le_bytes());
         }
         // やねうら王形式のFT重みは常にi16である。こちらの格納型が
-        // i8でも、書き出しは16bitへ広げる（ADR-0138）
+        // i8でも、書き出しは16bitへ広げる（ADR-0138）。既定ビルドでは
+        // 型が同じで変換が恒等になるが、i8ビルドでは必要である
+        #[allow(clippy::useless_conversion)]
         for &x in &net.ft_w {
             v.extend(i16::from(x).to_le_bytes());
         }
