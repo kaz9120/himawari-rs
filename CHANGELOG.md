@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.29.0](https://github.com/kaz9120/himawari-rs/compare/v0.28.3...v0.29.0) (2026-08-05)
+
+
+### 棋力向上
+
+* FT重みのi8格納と、教師局面の静止化ツール（ADR-0138・0136） ([#202](https://github.com/kaz9120/himawari-rs/issues/202)) ([c166c9a](https://github.com/kaz9120/himawari-rs/commit/c166c9abb86aaa772586030b801c103836225165))
+
 ## [0.28.3](https://github.com/kaz9120/himawari-rs/compare/v0.28.2...v0.28.3) (2026-08-05)
 
 
