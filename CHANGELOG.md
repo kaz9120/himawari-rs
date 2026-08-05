@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.28.0](https://github.com/kaz9120/himawari-rs/compare/v0.27.21...v0.28.0) (2026-08-05)
+
+
+### 棋力向上
+
+* 教師データを29.9億へ広げたネットを採用する（+24.8 Elo、ADR-0135） ([#193](https://github.com/kaz9120/himawari-rs/issues/193)) ([d69df91](https://github.com/kaz9120/himawari-rs/commit/d69df91f23469dd9c1f8588cd2c2d72b74a46453))
+
+
+### その他の変更
+
+* release-net.shが版3以降のネットの学習来歴を読めないのを直す ([#194](https://github.com/kaz9120/himawari-rs/issues/194)) ([aec29b3](https://github.com/kaz9120/himawari-rs/commit/aec29b316c70558592e169e3f447d36ecbcac5c9))
+
 ## [0.27.21](https://github.com/kaz9120/himawari-rs/compare/v0.27.20...v0.27.21) (2026-08-04)
 
 
