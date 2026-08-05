@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.28.1](https://github.com/kaz9120/himawari-rs/compare/v0.28.0...v0.28.1) (2026-08-05)
+
+
+### その他の変更
+
+* env.shの既定の評価関数を現行のhalfkp_2990M_factへ揃える ([#196](https://github.com/kaz9120/himawari-rs/issues/196)) ([9ec4d92](https://github.com/kaz9120/himawari-rs/commit/9ec4d92c42427e374b031d75967217d99e87749d))
+
 ## [0.28.0](https://github.com/kaz9120/himawari-rs/compare/v0.27.21...v0.28.0) (2026-08-05)
 
 
