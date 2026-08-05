@@ -13,7 +13,13 @@ use crate::value::Value;
 
 const I16_LANES: usize = 16;
 
+/// FT重みをi8で持つときの1回あたりのレーン数（ADR-0138）。
+/// 読み出しが半分になり、1命令で扱える要素が倍になる。
+#[cfg(ft_i8)]
+const FT_I8_LANES: usize = 32;
+
 /// acc += 重み列（i16、ラップ加算）。
+#[cfg(not(ft_i8))]
 pub fn ft_add(acc: &mut [i16; FT_OUT], w: &[i16]) {
     debug_assert_eq!(w.len(), FT_OUT);
     for (a, wc) in acc
@@ -27,6 +33,7 @@ pub fn ft_add(acc: &mut [i16; FT_OUT], w: &[i16]) {
 }
 
 /// acc -= 重み列（i16、ラップ減算）。
+#[cfg(not(ft_i8))]
 pub fn ft_sub(acc: &mut [i16; FT_OUT], w: &[i16]) {
     debug_assert_eq!(w.len(), FT_OUT);
     for (a, wc) in acc
@@ -36,6 +43,39 @@ pub fn ft_sub(acc: &mut [i16; FT_OUT], w: &[i16]) {
         .zip(w.as_chunks::<I16_LANES>().0)
     {
         *a = (Simd::from_array(*a) - Simd::from_array(*wc)).to_array();
+    }
+}
+
+/// acc += 重み列（i8を符号拡張してから加算。ADR-0138）。
+///
+/// accumulatorはi16のままなので、加算の飽和は新たに起こらない。
+/// 変わるのは重みの読み出し幅だけである。
+#[cfg(ft_i8)]
+pub fn ft_add(acc: &mut [i16; FT_OUT], w: &[i8]) {
+    debug_assert_eq!(w.len(), FT_OUT);
+    for (a, wc) in acc
+        .as_chunks_mut::<FT_I8_LANES>()
+        .0
+        .iter_mut()
+        .zip(w.as_chunks::<FT_I8_LANES>().0)
+    {
+        let wide: Simd<i16, FT_I8_LANES> = Simd::<i8, FT_I8_LANES>::from_array(*wc).cast();
+        *a = (Simd::from_array(*a) + wide).to_array();
+    }
+}
+
+/// acc -= 重み列（i8を符号拡張してから減算。ADR-0138）。
+#[cfg(ft_i8)]
+pub fn ft_sub(acc: &mut [i16; FT_OUT], w: &[i8]) {
+    debug_assert_eq!(w.len(), FT_OUT);
+    for (a, wc) in acc
+        .as_chunks_mut::<FT_I8_LANES>()
+        .0
+        .iter_mut()
+        .zip(w.as_chunks::<FT_I8_LANES>().0)
+    {
+        let wide: Simd<i16, FT_I8_LANES> = Simd::<i8, FT_I8_LANES>::from_array(*wc).cast();
+        *a = (Simd::from_array(*a) - wide).to_array();
     }
 }
 
@@ -230,13 +270,14 @@ mod tests {
         let mut b = a;
         let w = &net.ft_w[..FT_OUT];
         ft_add(&mut a, w);
+        // 重みの格納型はビルドで変わる（ADR-0138）。参照側はi16へ揃える
         for (x, &wv) in b.iter_mut().zip(w) {
-            *x = x.wrapping_add(wv);
+            *x = x.wrapping_add(i16::from(wv));
         }
         assert_eq!(a, b);
         ft_sub(&mut a, w);
         for (x, &wv) in b.iter_mut().zip(w) {
-            *x = x.wrapping_sub(wv);
+            *x = x.wrapping_sub(i16::from(wv));
         }
         assert_eq!(a, b);
         // dot: スカラー積和一致

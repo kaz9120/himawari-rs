@@ -12,8 +12,8 @@
 use std::io::{Read, Write};
 
 use crate::nnue::{
-    ARCH, CONCAT, FT_IN, FT_OUT, L1_OUT, L1_PAD, L2_OUT, L2_PAD, L3_OUT, LAST_HIDDEN, NnueNetwork,
-    pad_rows,
+    ARCH, CONCAT, FT_I8, FT_IN, FT_OUT, FtWeight, L1_OUT, L1_PAD, L2_OUT, L2_PAD, L3_OUT,
+    LAST_HIDDEN, NnueNetwork, ft_w_from_i16, pad_rows,
 };
 
 const MAGIC: &[u8; 8] = b"HMWRNNUE";
@@ -23,13 +23,33 @@ const FORMAT_VERSION_DEEP: u32 = 4;
 const FORMAT_VERSION_TWO_HIDDEN: u32 = 3;
 /// 隠れ層の幅を1つしか持たない旧版（L1とL2が同じ構成に限り読める）。
 const FORMAT_VERSION_UNIFORM_HIDDEN: u32 = 2;
+/// FT重みをi8で格納する版（ADR-0138）。寸法の並びは版3・版4と同じで、
+/// 違いはFT重み1つあたりのバイト数だけである。
+const FORMAT_VERSION_TWO_HIDDEN_I8: u32 = 5;
+const FORMAT_VERSION_DEEP_I8: u32 = 6;
 
-/// 書き出しに使う版。層の数で決まる。
-const FORMAT_VERSION: u32 = if L3_OUT != 0 {
-    FORMAT_VERSION_DEEP
-} else {
-    FORMAT_VERSION_TWO_HIDDEN
+/// 書き出しに使う版。層の数とFT重みの型で決まる。
+const FORMAT_VERSION: u32 = match (L3_OUT != 0, FT_I8) {
+    (false, false) => FORMAT_VERSION_TWO_HIDDEN,
+    (true, false) => FORMAT_VERSION_DEEP,
+    (false, true) => FORMAT_VERSION_TWO_HIDDEN_I8,
+    (true, true) => FORMAT_VERSION_DEEP_I8,
 };
+
+/// FT重み列をi16として読む。ファイルの版で1要素のバイト数が変わる
+/// （ADR-0138）。呼び出し側の計算はi16で行い、格納型への変換は最後にする。
+fn read_ft_i16(cur: &mut Cursor<'_>, version: u32, n: usize) -> Result<Vec<i16>, String> {
+    if version_is_ft_i8(version) {
+        Ok(cur.i8v(n)?.into_iter().map(i16::from).collect())
+    } else {
+        cur.i16v(n)
+    }
+}
+
+/// その版がFT重みをi8で持つか。
+const fn version_is_ft_i8(v: u32) -> bool {
+    matches!(v, FORMAT_VERSION_TWO_HIDDEN_I8 | FORMAT_VERSION_DEEP_I8)
+}
 
 /// FNV-1a 64bit。重み列の破損検出用。
 fn fnv1a(bytes: &[u8]) -> u64 {
@@ -49,6 +69,7 @@ fn weight_bytes(net: &NnueNetwork) -> Vec<u8> {
     for &x in &net.ft_w {
         v.extend_from_slice(&x.to_le_bytes());
     }
+
     for &x in &net.b2 {
         v.extend_from_slice(&x.to_le_bytes());
     }
@@ -141,6 +162,17 @@ impl<'a> Cursor<'a> {
         self.take(n)
     }
 
+    /// FT重み列を格納型に合わせて読む（ADR-0138）。
+    #[cfg(not(ft_i8))]
+    pub(crate) fn ft_wv(&mut self, n: usize) -> Result<Vec<crate::nnue::FtWeight>, String> {
+        self.i16v(n)
+    }
+
+    #[cfg(ft_i8)]
+    pub(crate) fn ft_wv(&mut self, n: usize) -> Result<Vec<crate::nnue::FtWeight>, String> {
+        Ok(self.take(n)?.iter().map(|&b| b as i8).collect())
+    }
+
     pub(crate) fn i16v(&mut self, n: usize) -> Result<Vec<i16>, String> {
         Ok(self
             .take(n * 2)?
@@ -179,7 +211,7 @@ impl<'a> Cursor<'a> {
 type Dims = [usize; 5];
 
 /// ヘッダを読み、(構成, 学習来歴, 検証済みの重み列) を返す。
-fn read_header(r: &mut impl Read) -> Result<(Dims, String, Vec<u8>), String> {
+fn read_header(r: &mut impl Read) -> Result<(u32, Dims, String, Vec<u8>), String> {
     let mut magic = [0u8; 8];
     r.read_exact(&mut magic)
         .map_err(|e| format!("読み込み失敗: {e}"))?;
@@ -190,8 +222,8 @@ fn read_header(r: &mut impl Read) -> Result<(Dims, String, Vec<u8>), String> {
     let mut u = || read_u32(r).map(|v| v as usize);
     // 旧版は隠れ層の幅を1つしか書かない。L1とL2が同じとみなす
     let dims: Dims = match version {
-        FORMAT_VERSION_DEEP => [u()?, u()?, u()?, u()?, u()?],
-        FORMAT_VERSION_TWO_HIDDEN => [u()?, u()?, u()?, u()?, 0],
+        FORMAT_VERSION_DEEP | FORMAT_VERSION_DEEP_I8 => [u()?, u()?, u()?, u()?, u()?],
+        FORMAT_VERSION_TWO_HIDDEN | FORMAT_VERSION_TWO_HIDDEN_I8 => [u()?, u()?, u()?, u()?, 0],
         FORMAT_VERSION_UNIFORM_HIDDEN => {
             let d = [u()?, u()?, u()?];
             [d[0], d[1], d[2], d[2], 0]
@@ -217,12 +249,12 @@ fn read_header(r: &mut impl Read) -> Result<(Dims, String, Vec<u8>), String> {
     if fnv1a(&body) != expect_hash {
         return Err("重みハッシュが不一致（ファイル破損）".to_string());
     }
-    Ok((dims, lineage, body))
+    Ok((version, dims, lineage, body))
 }
 
 /// 読み込む。戻り値は (ネットワーク, 学習来歴)。
 pub fn load(r: &mut impl Read) -> Result<(NnueNetwork, String), String> {
-    let (dims, lineage, body) = read_header(r)?;
+    let (version, dims, lineage, body) = read_header(r)?;
     let expect = [FT_IN, FT_OUT, L1_OUT, L2_OUT, L3_OUT];
     if dims != expect {
         return Err(format!(
@@ -232,7 +264,15 @@ pub fn load(r: &mut impl Read) -> Result<(NnueNetwork, String), String> {
 
     let mut cur = Cursor::new(&body);
     let ft_b = cur.i16v(FT_OUT)?;
-    let ft_w = cur.i16v(FT_IN * FT_OUT)?;
+    // FT重みの型はファイルの版とビルドで別々に決まる（ADR-0138）。
+    // 型が違っても読めるようにするが、i8へ落とすときは範囲を検査する。
+    // 黙って切り詰めると、飽和したネットで気づかず対局してしまう
+    let n = FT_IN * FT_OUT;
+    let ft_w = if version_is_ft_i8(version) {
+        cur.i8v(n)?.into_iter().map(|x| x as FtWeight).collect()
+    } else {
+        ft_w_from_i16(cur.i16v(n)?)?
+    };
     let b2 = cur.i32v(L1_OUT)?;
     let w2 = cur.i8v(L1_OUT * CONCAT)?;
     let (b3, w3) = if L2_OUT != 0 {
@@ -300,7 +340,7 @@ pub fn load_resized(r: &mut impl Read) -> Result<(NnueNetwork, String), String> 
 pub fn load_resized_with_dims(
     r: &mut impl Read,
 ) -> Result<(NnueNetwork, String, [usize; 5]), String> {
-    let (dims, lineage, body) = read_header(r)?;
+    let (version, dims, lineage, body) = read_header(r)?;
     let [ft_in, src_ft, src_l1, src_l2, src_l3] = dims;
     if ft_in != FT_IN {
         return Err(format!("FT入力が違う: ファイル{ft_in} 実装{FT_IN}"));
@@ -330,7 +370,13 @@ pub fn load_resized_with_dims(
 
     let mut cur = Cursor::new(&body);
     let ft_b = fit(cur.i16v(src_ft)?, FT_OUT);
-    let ft_w = fit_rows(&cur.i16v(FT_IN * src_ft)?, src_ft, FT_IN, FT_OUT, FT_OUT);
+    let ft_w = ft_w_from_i16(fit_rows(
+        &read_ft_i16(&mut cur, version, FT_IN * src_ft)?,
+        src_ft,
+        FT_IN,
+        FT_OUT,
+        FT_OUT,
+    ))?;
     let b2 = fit(cur.i32v(src_l1)?, L1_OUT);
     // 隠れ層1の入力は2視点の連結なので、視点ごとに写す
     let src_w2 = cur.i8v(src_l1 * src_ft * 2)?;
@@ -436,7 +482,7 @@ pub fn load_resized_with_dims(
 /// 戻り値は (ft_w, ft_b, 構成)。`ft_w` の長さは `FT_IN * 構成[1]` になる。
 /// 後段は読まない。教師に使うのはFTだけで、読み残しがあっても正常とみなす。
 pub fn load_ft(r: &mut impl Read) -> Result<(Vec<i16>, Vec<i16>, Dims), String> {
-    let (dims, _, body) = read_header(r)?;
+    let (version, dims, _, body) = read_header(r)?;
     let [ft_in, src_ft, ..] = dims;
     // FT入力は特徴の定義そのもので、次元を合わせて済む話ではない
     if ft_in != FT_IN {
@@ -444,7 +490,7 @@ pub fn load_ft(r: &mut impl Read) -> Result<(Vec<i16>, Vec<i16>, Dims), String> 
     }
     let mut cur = Cursor::new(&body);
     let ft_b = cur.i16v(src_ft)?;
-    let ft_w = cur.i16v(FT_IN * src_ft)?;
+    let ft_w = read_ft_i16(&mut cur, version, FT_IN * src_ft)?;
     Ok((ft_w, ft_b, dims))
 }
 
@@ -493,14 +539,29 @@ mod tests {
             return;
         }
         let net = NnueNetwork::random(123);
-        let mut v3 = Vec::new();
-        save(&net, "v2互換の検査", &mut v3).unwrap();
-        // 版3のヘッダから版番号とL2の次元を落として版2の並びにする
+        // 版2の本体はFT重みを常にi16で持つ。i8のビルドでも16bitへ広げて
+        // 組み立てる（ADR-0138）。バイト列の切り貼りでは並びが合わない
+        let mut body = Vec::new();
+        for &x in &net.ft_b {
+            body.extend_from_slice(&x.to_le_bytes());
+        }
+        for &x in &net.ft_w {
+            body.extend_from_slice(&i16::from(x).to_le_bytes());
+        }
+        let ft_bytes = FT_OUT * 2 + net.ft_w.len() * std::mem::size_of::<FtWeight>();
+        body.extend_from_slice(&weight_bytes(&net)[ft_bytes..]);
+
+        let lineage = "v2互換の検査";
         let mut v2 = Vec::new();
-        v2.extend_from_slice(&v3[..8]);
+        v2.extend_from_slice(MAGIC);
         v2.extend_from_slice(&FORMAT_VERSION_UNIFORM_HIDDEN.to_le_bytes());
-        v2.extend_from_slice(&v3[12..24]); // FT_IN・FT_OUT・L1_OUT
-        v2.extend_from_slice(&v3[28..]); // L2_OUTを飛ばして以降すべて
+        for d in [FT_IN, FT_OUT, L1_OUT] {
+            v2.extend_from_slice(&(d as u32).to_le_bytes());
+        }
+        v2.extend_from_slice(&(lineage.len() as u32).to_le_bytes());
+        v2.extend_from_slice(lineage.as_bytes());
+        v2.extend_from_slice(&fnv1a(&body).to_le_bytes());
+        v2.extend_from_slice(&body);
 
         let result = load(&mut v2.as_slice());
         if L1_OUT == L2_OUT {
@@ -519,11 +580,13 @@ mod tests {
     /// ここで組み立てる。後段はダミーのバイト列にする。`load_ft` が
     /// そこを読まないことも同時に確かめられる。
     fn synth_ft_file(ft_in: usize, src_ft: usize, seed: i16) -> (Vec<u8>, Vec<i16>, Vec<i16>) {
+        // FT重みはi8のビルドでも読めるよう±127に収める（ADR-0138）。
+        // バイアスはどちらのビルドでもi16なので範囲を絞らない
         let ft_b: Vec<i16> = (0..src_ft)
             .map(|i| (i as i16).wrapping_mul(7).wrapping_add(seed))
             .collect();
         let ft_w: Vec<i16> = (0..ft_in * src_ft)
-            .map(|i| (i as i16).wrapping_mul(3).wrapping_sub(seed))
+            .map(|i| ((i as i16).wrapping_mul(3).wrapping_sub(seed)).rem_euclid(255) - 127)
             .collect();
 
         let mut body = Vec::new();
