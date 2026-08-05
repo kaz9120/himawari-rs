@@ -5,6 +5,8 @@
 //!   psv dump    --in file [--limit N]          SFENと教師信号を1行ずつ表示
 //!   psv head    --in file --out file --count N [--skip M]   部分抽出
 //!   psv shuffle --in file[,file...] --out file [--seed N] [--tmp DIR]  全体シャッフル
+//!   psv quiet   --in file --out file [--limit N] [--max-plies N] [--hash MB]
+//!                                              qsearchのPV葉へ置き換える（ADR-0136）
 //!
 //! shuffleは2パスのバケット法で動く（ADR-0065）。メモリ使用量は
 //! バケット1個分（2GB）に収まるため、入力サイズの制限はない。
@@ -12,7 +14,13 @@
 
 use std::io::{BufWriter, Read, Seek, SeekFrom, Write};
 
-use himawari_core::packed_sfen::{PSV_BYTES, PackedSfenValue, unpack_sfen};
+use std::sync::Arc;
+
+use himawari_core::packed_sfen::{PSV_BYTES, PackedSfenValue, pack, unpack, unpack_sfen};
+use himawari_engine::eval::Evaluator;
+use himawari_engine::movepick::Histories;
+use himawari_engine::search::{Shared, Worker};
+use himawari_engine::timeman::{Limits, TimeManager, TimeOptions};
 
 fn die(msg: &str) -> ! {
     eprintln!("{msg}");
@@ -251,10 +259,152 @@ fn shuffle(inputs: &[&str], output: &str, seed: u64, tmp_dir: Option<&str>) {
     println!("{written}局面をシャッフルして{output}へ書き出しました (seed={seed})");
 }
 
+/// 教師局面をqsearchのPV葉へ置き換える（ADR-0136）。
+///
+/// 評価関数が探索中に見るのは静止局面である。ところがhao_depth9は
+/// qsearch PV葉への置換なしで配られており、駒の取り合いの途中の局面へ
+/// 取り合いが収束した後の探索値が付いている。この不整合を消す。
+///
+/// score・result・plyは元のまま残す（SF系の前処理と同じ扱い）。
+fn quiet(input: &str, output: &str, limit: u64, max_plies: usize, hash_mb: usize, eval: &str) {
+    let mut r = open_reader(input);
+    let mut w = BufWriter::new(
+        std::fs::File::create(output)
+            .unwrap_or_else(|e| die(&format!("作れません: {output}: {e}"))),
+    );
+    let shared = Arc::new(Shared::new(hash_mb));
+    let mut f = std::fs::File::open(eval)
+        .unwrap_or_else(|e| die(&format!("評価関数を開けません: {eval}: {e}")));
+    let (net, _lineage) = himawari_engine::nnue_io::load(&mut f)
+        .unwrap_or_else(|e| die(&format!("評価関数を読めません: {eval}: {e}")));
+    let net = Arc::new(net);
+
+    // Workerは1つ作って使い回す。局面ごとに作るとhistory一式の確保が
+    // 律速になり、実測で679局面/秒まで落ちた
+    let limits = Limits::default();
+    let start_pos = himawari_core::Position::from_sfen(himawari_core::SFEN_STARTPOS)
+        .unwrap_or_else(|e| die(&format!("初期局面を作れません: {e:?}")));
+    let tm = TimeManager::new(
+        &limits,
+        start_pos.side_to_move(),
+        start_pos.game_ply(),
+        &TimeOptions::default(),
+    );
+    let mut worker = Worker::new(
+        start_pos,
+        Arc::clone(&shared),
+        limits,
+        tm,
+        0,
+        1,
+        Evaluator::nnue(Arc::clone(&net)),
+        Histories::default(),
+    );
+
+    let mut buf = [0u8; PSV_BYTES];
+    let (mut n, mut replaced, mut failed) = (0u64, 0u64, 0u64);
+    let mut moved_plies = 0u64;
+    // 教師のscoreと静的評価の乖離。静止化でこれが縮むかが本質である
+    let mut gaps: Vec<(u32, u32)> = Vec::new();
+    let start = std::time::Instant::now();
+    while n < limit && r.read_exact(&mut buf).is_ok() {
+        let mut rec = PackedSfenValue::from_bytes(&buf);
+        let Ok(pos) = unpack(&rec.sfen, rec.game_ply) else {
+            failed += 1;
+            n += 1;
+            continue;
+        };
+        worker.set_position(pos);
+        // 置換前の静的評価。教師のscoreは元局面の手番から見た値である
+        let before = worker.evaluator.evaluate(&worker.pos);
+        let plies = worker.walk_to_quiet(max_plies);
+        // 葉の手番が反転していたら符号を戻す
+        let after_raw = worker.evaluator.evaluate(&worker.pos);
+        let after = if plies % 2 == 1 {
+            -after_raw
+        } else {
+            after_raw
+        };
+        let score = i32::from(rec.score);
+        // 詰みスコア（±30000近傍）は乖離を支配するので統計から外す。
+        // 置換していない局面は前後で同値なので、これも外す
+        if plies > 0 && score.abs() <= 2000 {
+            gaps.push((
+                (before - score).unsigned_abs(),
+                (after - score).unsigned_abs(),
+            ));
+        }
+        if plies > 0 {
+            match pack(&worker.pos) {
+                Ok(packed) => {
+                    rec.sfen = packed;
+                    replaced += 1;
+                    moved_plies += plies as u64;
+                }
+                Err(_) => failed += 1,
+            }
+        }
+        w.write_all(&rec.to_bytes())
+            .unwrap_or_else(|e| die(&format!("書けません: {e}")));
+        n += 1;
+        if n % 100_000 == 0 {
+            let sec = start.elapsed().as_secs_f64();
+            eprintln!(
+                "{n}局面 置換{replaced} ({:.1}%) {:.0}局面/秒",
+                replaced as f64 * 100.0 / n as f64,
+                n as f64 / sec
+            );
+        }
+    }
+    w.flush()
+        .unwrap_or_else(|e| die(&format!("書けません: {e}")));
+    let sec = start.elapsed().as_secs_f64();
+    println!("局面数        : {n}");
+    println!(
+        "置換率        : {replaced} ({:.2}%)",
+        replaced as f64 * 100.0 / n.max(1) as f64
+    );
+    println!(
+        "平均の進み手数: {:.2}（置換したものだけ）",
+        moved_plies as f64 / replaced.max(1) as f64
+    );
+    println!("復元失敗      : {failed}");
+    if gaps.is_empty() {
+        println!("|静的評価-score| : 標本なし");
+    } else {
+        let k = gaps.len();
+        let mean = |f: fn(&(u32, u32)) -> u32| {
+            gaps.iter().map(|g| u64::from(f(g))).sum::<u64>() as f64 / k as f64
+        };
+        let median = |f: fn(&(u32, u32)) -> u32| {
+            let mut v: Vec<u32> = gaps.iter().map(f).collect();
+            v.sort_unstable();
+            v[k / 2]
+        };
+        let closer = gaps.iter().filter(|g| g.1 < g.0).count();
+        println!("--- 置換した局面のうち |score| <= 2000 の {k} 件 ---");
+        println!(
+            "|静的評価-score| : 平均 {:.1} → {:.1}  中央値 {} → {}",
+            mean(|g| g.0),
+            mean(|g| g.1),
+            median(|g| g.0),
+            median(|g| g.1)
+        );
+        println!(
+            "scoreに近づいた  : {closer} ({:.1}%)",
+            closer as f64 * 100.0 / k as f64
+        );
+    }
+    println!(
+        "所要          : {sec:.1}秒（{:.0}局面/秒）",
+        n as f64 / sec.max(1e-9)
+    );
+}
+
 fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
     let Some(cmd) = args.first() else {
-        die("サブコマンドが必要です: stats / dump / head / shuffle");
+        die("サブコマンドが必要です: stats / dump / head / shuffle / quiet");
     };
     let rest = &args[1..];
     let input = arg_value(rest, "--in");
@@ -297,6 +447,28 @@ fn main() {
                 &output.unwrap_or_else(|| die("--out が必要です")),
                 seed,
                 tmp.as_deref(),
+            );
+        }
+        "quiet" => {
+            let limit = arg_value(rest, "--limit")
+                .map(|s| s.parse().unwrap_or(u64::MAX))
+                .unwrap_or(u64::MAX);
+            let max_plies = arg_value(rest, "--max-plies")
+                .map(|s| s.parse().unwrap_or(16))
+                .unwrap_or(16);
+            let hash_mb = arg_value(rest, "--hash")
+                .map(|s| s.parse().unwrap_or(64))
+                .unwrap_or(64);
+            let eval = arg_value(rest, "--eval-file")
+                .or_else(|| std::env::var("EVAL_FILE").ok())
+                .unwrap_or_else(|| die("--eval-file か EVAL_FILE が必要です"));
+            quiet(
+                &input.unwrap_or_else(|| die("--in が必要です")),
+                &output.unwrap_or_else(|| die("--out が必要です")),
+                limit,
+                max_plies,
+                hash_mb,
+                &eval,
             );
         }
         other => die(&format!("不明なサブコマンド: {other}")),
