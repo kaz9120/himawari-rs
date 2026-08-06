@@ -265,7 +265,8 @@ fn shuffle(inputs: &[&str], output: &str, seed: u64, tmp_dir: Option<&str>) {
 /// qsearch PV葉への置換なしで配られており、駒の取り合いの途中の局面へ
 /// 取り合いが収束した後の探索値が付いている。この不整合を消す。
 ///
-/// score・result・plyは元のまま残す（SF系の前処理と同じ扱い）。
+/// 評価値と勝敗は元の値を保つ。ただしどちらも手番視点なので、奇数手
+/// 進めたときは符号を戻す。手数は進めた分を足し、PVの初手は捨てる。
 fn quiet(input: &str, output: &str, limit: u64, max_plies: usize, hash_mb: usize, eval: &str) {
     let mut r = open_reader(input);
     let mut w = BufWriter::new(
@@ -339,6 +340,16 @@ fn quiet(input: &str, output: &str, limit: u64, max_plies: usize, hash_mb: usize
             match pack(&worker.pos) {
                 Ok(packed) => {
                     rec.sfen = packed;
+                    // score・game_resultはどちらも手番視点である。奇数手
+                    // 進めると手番が入れ替わるので、符号を戻さないと
+                    // ラベルが逆になる
+                    if plies % 2 == 1 {
+                        rec.score = rec.score.saturating_neg();
+                        rec.game_result = -rec.game_result;
+                    }
+                    rec.game_ply = rec.game_ply.saturating_add(plies as u16);
+                    // PVの初手は元局面のものである。葉では指せないので捨てる
+                    rec.move16 = 0;
                     replaced += 1;
                     moved_plies += plies as u64;
                 }
