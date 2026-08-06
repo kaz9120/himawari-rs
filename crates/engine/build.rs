@@ -110,9 +110,12 @@ fn main() {
     println!("cargo::rustc-check-cfg=cfg(arch_default)");
     println!("cargo::rustc-check-cfg=cfg(ft_i8)");
 
-    // FT重みの格納型（ADR-0138）。既定はi16で、1を渡すとi8になる。
-    // 実行時分岐は入れずビルド時に決める。ネットのファイル形式も版で分かれる
-    let ft_i8 = std::env::var("HIMAWARI_FT_I8").is_ok_and(|v| v == "1");
+    // FT重みの格納型（ADR-0138）。**既定はi8である。** 0を渡すとi16に戻る。
+    // 実行時分岐は入れずビルド時に決める。ネットのファイル形式も版で分かれる。
+    //
+    // i8のビルドは、飽和する重みを持つネットを読み込めない（範囲検査で
+    // エラーにする）。--ft-clip を付けて学習したネットが要る
+    let ft_i8 = std::env::var("HIMAWARI_FT_I8").map_or(true, |v| v != "0");
     if ft_i8 {
         println!("cargo::rustc-cfg=ft_i8");
     }

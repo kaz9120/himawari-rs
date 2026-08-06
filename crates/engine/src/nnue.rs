@@ -35,7 +35,7 @@ pub type FtWeight = i8;
 /// i8のビルドでは範囲を確かめる。**黙って切り詰めない。** 飽和は
 /// 0.055%でも−59.3 Eloになる（ADR-0138のリーグ戦）ので、気づかず
 /// 壊れたネットで対局する事故のほうが高くつく。
-pub(crate) fn ft_w_from_i16(v: Vec<i16>) -> Result<Vec<FtWeight>, String> {
+pub fn ft_w_from_i16(v: Vec<i16>) -> Result<Vec<FtWeight>, String> {
     #[cfg(not(ft_i8))]
     {
         Ok(v)
