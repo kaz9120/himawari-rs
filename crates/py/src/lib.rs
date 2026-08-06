@@ -294,6 +294,10 @@ fn save_hmwr(
     b4: Option<Vec<i32>>,
 ) -> PyResult<()> {
     check_len("ft_w", ft_w.len(), FT_IN * FT_OUT)?;
+    // 学習側は常にi16で渡す。i8ビルドでは範囲検査を通してから格納する
+    // （ADR-0138）。飽和する重みは黙って切り詰めずエラーにする
+    let ft_w = himawari_engine::nnue::ft_w_from_i16(ft_w)
+        .map_err(pyo3::exceptions::PyValueError::new_err)?;
     check_len("ft_b", ft_b.len(), FT_OUT)?;
     check_len("w2", w2.len(), L1_OUT * FT_OUT * 2)?;
     check_len("b2", b2.len(), L1_OUT)?;
