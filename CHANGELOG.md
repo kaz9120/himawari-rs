@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.30.0](https://github.com/kaz9120/himawari-rs/compare/v0.29.0...v0.30.0) (2026-08-06)
+
+
+### 棋力向上
+
+* FT重みi8ビルドとクリップ済みネットを現行構成にする（+29.8 Elo、ADR-0138） ([#204](https://github.com/kaz9120/himawari-rs/issues/204)) ([6408d37](https://github.com/kaz9120/himawari-rs/commit/6408d379e2529f5fd03026c14420cb175c211437))
+
 ## [0.29.0](https://github.com/kaz9120/himawari-rs/compare/v0.28.3...v0.29.0) (2026-08-05)
 
 
