@@ -13,8 +13,8 @@ GitHub Issuesは使わない。設計判断は [ADR索引](adr/README.md)、
 
 | 項目 | 実体 |
 |---|---|
-| エンジン | `target/release/himawari`（FT256ビルド） |
-| 評価関数 | `data/nets/halfkp_2990M_fact.hmwr.best`（valid loss 0.49311） |
+| エンジン | `target/release/himawari`（FT256、FT重みi8ビルド。[ADR-0138](adr/0138-ft-i8-quantization.md)） |
+| 評価関数 | `data/nets/halfkp_2990M_ftclip.hmwr.best`（valid loss 0.49433、FT重みクリップ済み） |
 | 定跡 | `data/book/main.db`（540局面、深さ28、ply 13まで。[ADR-0121](adr/0121-book-scale-up.md)） |
 
 FT512は評価精度で上回る（valid loss 0.49374）が、NPSの代償を取り返せず不採択
@@ -239,7 +239,7 @@ NNUE後の再測定に意味がある。
 |---|---|---|
 | 入玉局面の評価精度を測る | 教師データ（hao_depth9）は他エンジン由来で入玉が薄い。ただし実戦で問題が出た証拠はまだない | 実測 |
 | 評価値のクランプ | 現状は±31871で実質無制限。外挿された極端な値がそのまま出る。2026-08-05のfloodgate戦で、詰まされる3手前から+1698→+5449→+6104と外挿しながら1手詰めを見落として投了した。この値域では枝刈りのマージンが通常の評価値域を前提にしているので、詰ます手ごと刈る筋を疑っている。**[ADR-0138](adr/0138-ft-i8-quantization.md)で関連する観測が出た。** FT重みに上限を掛けて学習したネットが、valid lossは0.0012悪いのに対局で大きく勝った（切り分け中） | 要検討 |
-| FT重みのクリップ制約を棋力向上として測る | [ADR-0138](adr/0138-ft-i8-quantization.md)がi8の前提として入れた `--ft-clip` が、量子化と無関係に効いている可能性がある。同一ビルドで `halfkp_2990M_ftclip` 対 `halfkp_2990M_fact` を測るのが起点。**次に着手する項目である**（2026-08-06） | SPRT |
+| i8とクリップ制約の内訳を切り分ける | [ADR-0138](adr/0138-ft-i8-quantization.md)の+29.8 Eloの出どころ。見積もりではi8の寄与は+1.3で、残りはクリップ制約つき学習から来ている。**採択済みの構成を崩す話ではなく、次の投資判断の材料である。** クリップが本体ならFT768へi8を持ち込む価値は薄い。同一ビルドで `halfkp_2990M_ftclip` 対 `halfkp_2990M_fact` を測る | SPRT |
 
 ### 学習
 
