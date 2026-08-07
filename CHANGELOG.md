@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.30.1](https://github.com/kaz9120/himawari-rs/compare/v0.30.0...v0.30.1) (2026-08-07)
+
+
+### その他の変更
+
+* psv quietの符号バグを直し、教師局面の静止化を3億局面で測る（ADR-0136） ([#206](https://github.com/kaz9120/himawari-rs/issues/206)) ([37ecc24](https://github.com/kaz9120/himawari-rs/commit/37ecc24285db7df7123d8b8b673470729abb9e99))
+
 ## [0.30.0](https://github.com/kaz9120/himawari-rs/compare/v0.29.0...v0.30.0) (2026-08-06)
 
 
