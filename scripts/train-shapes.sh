@@ -49,6 +49,10 @@ usage() {
                     と対で渡す
   SHAPE_PEAK_LR     ピーク学習率。既定は train.py の 0.001。事前学習した表現が
                     序盤で壊れるのを避けたいとき下げる（ADR-0133）
+  SHAPE_FT_CLIP     畳み込み後のFT重みを収める絶対値。既定1.0（ADR-0138）。
+                    FT重みはi8で格納するので、制約なしで学習すると書き出しが
+                    失敗する。0を渡すと制約を外せるが、その場合は書き出せる
+                    ところまでしか学習できない
   SHAPE_LAMBDA_VALUE
                     評価値損失の重み。0にすると評価値を切り、利き予測だけで
                     FTを事前学習する（ADR-0133の第1段階）
@@ -114,6 +118,14 @@ fi
 if [[ -n "$PEAK_LR" ]]; then
 	EFFECT_ARGS+=(--peak-lr "$PEAK_LR")
 fi
+# FT重みはi8で格納する（ADR-0138）。制約なしで学習すると、重みが育った
+# ところで書き出しが ValueError で落ちる。本番の学習レシピと同じ1.0を既定に
+# 置き、過去の測定と条件を揃えたいときだけ0で外す
+FT_CLIP="${SHAPE_FT_CLIP:-1.0}"
+CLIP_ARGS=()
+if [[ "$FT_CLIP" != "0" && "$FT_CLIP" != "0.0" ]]; then
+	CLIP_ARGS+=(--ft-clip "$FT_CLIP")
+fi
 GENERATE="${SHAPE_GENERATE:-}"
 DATA_ARGS=()
 if [[ -n "$GENERATE" ]]; then
@@ -138,7 +150,7 @@ else
 	log_info "学習データ: ${DATA}"
 	log_info "検証データ: ${VALID}"
 fi
-log_info "デバイス: ${DEVICE}、札: ${TAG}、種: ${SEED}"
+log_info "デバイス: ${DEVICE}、札: ${TAG}、種: ${SEED}、FTクリップ: ${FT_CLIP}"
 if [[ -n "$INIT_NET" ]]; then
 	log_info "初期値: ${INIT_NET}${FREEZE_FT:+（FT凍結）}"
 fi
@@ -176,6 +188,7 @@ for spec in "$@"; do
 		"${MMAP_ARGS[@]+"${MMAP_ARGS[@]}"}" \
 		"${DISTILL_ARGS[@]+"${DISTILL_ARGS[@]}"}" \
 		"${EFFECT_ARGS[@]+"${EFFECT_ARGS[@]}"}" \
+		"${CLIP_ARGS[@]+"${CLIP_ARGS[@]}"}" \
 		"${DATA_ARGS[@]}" \
 		--out "data/nets/${TAG}-${spec}-s${SEED}.hmwr" \
 		--batch-loader --dense-ft --factorized \
@@ -184,7 +197,7 @@ for spec in "$@"; do
 		--log-file "training/runs/net_shape/${TAG}-${spec}-s${SEED}.tsv" \
 		--registry training/runs/registry.tsv \
 		--name "${TAG}_${spec}_s${SEED}" \
-		--notes "ネットワーク構成の比較（ADR-0127）: ${spec}、seed ${SEED}、${SRC_DESC}${INIT_NET:+、init ${INIT_NET}}${FREEZE_FT:+、FT凍結}${DISTILL_NET:+、蒸留 ${DISTILL_NET} λ=${LAMBDA_DISTILL:-既定}}${EFFECT_HEAD:+、利き ${EFFECT_HEAD} λ=${LAMBDA_EFFECT}}"
+		--notes "ネットワーク構成の比較（ADR-0127）: ${spec}、seed ${SEED}、${SRC_DESC}、FTクリップ ${FT_CLIP}${INIT_NET:+、init ${INIT_NET}}${FREEZE_FT:+、FT凍結}${DISTILL_NET:+、蒸留 ${DISTILL_NET} λ=${LAMBDA_DISTILL:-既定}}${EFFECT_HEAD:+、利き ${EFFECT_HEAD} λ=${LAMBDA_EFFECT}}"
 done
 
 log_step "完了"

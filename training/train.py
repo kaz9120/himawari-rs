@@ -91,7 +91,7 @@ def main():
              "その場で計算する。--data の代わりに使い、--lambda-value 0 と組む",
     )
     p.add_argument("--valid", help="Validation PSV file")
-    p.add_argument("--out", required=True, help="Output .hmwr path")
+    p.add_argument("--out", help="Output .hmwr path（--eval-only 以外では必須）")
     p.add_argument("--epochs", type=int, default=1)
     p.add_argument("--batch", type=int, default=16384)
     p.add_argument("--peak-lr", type=float, default=1e-3)
@@ -188,6 +188,13 @@ def main():
              "対しては1.0を指定する",
     )
     p.add_argument(
+        "--eval-only",
+        action="store_true",
+        help="学習せず、--init-net で読んだネットの検証損失だけを出す"
+             "（ADR-0136）。教師データの土俵を変えて同じネットを測るときに使う。"
+             "読むのは量子化済みの.hmwrなので、学習中に出る値とは丸めのぶん違う",
+    )
+    p.add_argument(
         "--ft-clip-interval",
         type=int,
         default=50,
@@ -236,8 +243,16 @@ def main():
     # のか記録から読めなくなる
     if args.data and args.generate:
         p.error("--data と --generate は同時に使えない（局面の出どころは1つ）")
-    if not args.data and not args.generate:
+    if args.eval_only:
+        # 測るだけなので教師データは要らない。読むネットと物差しが要る
+        if not args.init_net:
+            p.error("--eval-only には --init-net が要る（測るネットがない）")
+        if not args.valid:
+            p.error("--eval-only には --valid が要る（物差しがない）")
+    elif not args.data and not args.generate:
         p.error("--data か --generate のどちらかが要る")
+    if not args.eval_only and not args.out:
+        p.error("--out が要る")
     if args.generate:
         if args.generate <= 0:
             p.error("--generate は正の局面数が要る")
@@ -261,7 +276,10 @@ def main():
         torch.manual_seed(args.seed)
         print(f"Seed: {args.seed}", file=sys.stderr)
 
-    if args.generate:
+    if args.eval_only:
+        train_loader = None
+        data_n = 0
+    elif args.generate:
         # 抽出ではなく生成。バッチの形は PsvBatchLoader と同じ9本になる
         train_loader = GeneratedBatchLoader(
             args.generate, args.batch, seed=args.seed or 0,
@@ -355,6 +373,11 @@ def main():
               file=sys.stderr)
     elif args.freeze_ft:
         p.error("--freeze-ft には --init-net が要る（凍結する重みがない）")
+
+    if args.eval_only:
+        vl = validate(model, valid_loader, device)
+        print(f"{args.init_net}\t{args.valid}\t{vl:.5f}")
+        return
 
     dense_params = [
         model.ft_bias,
