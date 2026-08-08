@@ -15,7 +15,7 @@ GitHub Issuesは使わない。設計判断は [ADR索引](adr/README.md)、
 |---|---|
 | エンジン | `target/release/himawari`（FT256、FT重みi8ビルド。[ADR-0138](adr/0138-ft-i8-quantization.md)） |
 | 評価関数 | `data/nets/halfkp_2990M_q1.hmwr.best`（FT重みクリップ済み、教師局面を静止化。[ADR-0136](adr/0136-quiet-teacher-positions.md)） |
-| 定跡 | `data/book/main.db`（540局面、深さ28、ply 13まで。[ADR-0121](adr/0121-book-scale-up.md)） |
+| 定跡 | `data/book/main.db`（1200局面、深さ28。相手の初手30通りを網羅。[ADR-0146](adr/0146-book-full-width-opening.md)） |
 
 FT512は評価精度で上回る（valid loss 0.49374）が、NPSの代償を取り返せず不採択
 （[ADR-0067](adr/0067-ft-dimension-512.md)）。比較用に `data/bin/himawari-ft512` と
@@ -37,6 +37,11 @@ ADR-0127が足切りで得た+56.0 Elo は、19.9億局面で測り直すと−7
 **リーグ戦の推定は公称の区間より広くぶれる。** ±27.7と報告した推定が再測定と60 Elo
 ずれた例がある。単独の数字で採否を決めない。最終ゲートはSPRT
 （[ADR-0028](adr/0028-pruning-extensions.md)）。
+
+**定跡は2026-08-08にply 1を全網羅した**（[ADR-0146](adr/0146-book-full-width-opening.md)、
+book-v3）。相手の初手が定跡に入っている確率は3.3%から100%になった。それまでは
+初手7六歩だけを持っており、後手番で相手がほかを指すと2手目から自力で考えていた。
+網羅の度合いは `book stats` で数える。
 
 **valid lossでネットを選べない場面がある。** 教師データの分布を変える実験では、
 物差しも一緒に動く。静止化した教師で学習したネットは、非静止の検証集合で0.0285
