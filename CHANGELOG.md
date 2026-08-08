@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.31.1](https://github.com/kaz9120/himawari-rs/compare/v0.31.0...v0.31.1) (2026-08-08)
+
+
+### その他の変更
+
+* release-net.shがフォーマット版5・6のネットを読めないのを直す ([#210](https://github.com/kaz9120/himawari-rs/issues/210)) ([a1f8137](https://github.com/kaz9120/himawari-rs/commit/a1f8137b95259efc317cecf1500a35561cd69c5e))
+
 ## [0.31.0](https://github.com/kaz9120/himawari-rs/compare/v0.30.1...v0.31.0) (2026-08-08)
 
 
