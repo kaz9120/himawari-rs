@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.33.2](https://github.com/kaz9120/himawari-rs/compare/v0.33.1...v0.33.2) (2026-08-08)
+
+
+### その他の変更
+
+* 定跡の網羅率を数え、利きテーブルの常時更新を見送る（ADR-0146・0148） ([#220](https://github.com/kaz9120/himawari-rs/issues/220)) ([3158893](https://github.com/kaz9120/himawari-rs/commit/315889303ee0921f78a90ca29f4771628bb080f0))
+
 ## [0.33.1](https://github.com/kaz9120/himawari-rs/compare/v0.33.0...v0.33.1) (2026-08-08)
 
 
