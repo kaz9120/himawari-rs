@@ -35,6 +35,7 @@ training/runs/registry.tsv へ積む。
 環境変数で変えられる。
   TRAIN_INIT_CKPT  f32チェックポイントから継続学習する（ADR-0145）
   TRAIN_PEAK_LR    継続学習では1e-4が既定（ADR-0145）
+  TRAIN_WARMUP     継続学習のwarmupステップ数。既定は総ステップの4%
   TRAIN_DEVICE     既定 cpu
   TRAIN_SEED       既定 0
   TRAIN_NOTES      台帳へ書く備考
@@ -59,6 +60,13 @@ cd "$REPO_ROOT"
 require_file "$DATA" "学習データ"
 require_file "$VALID" "検証データ"
 
+# PSVは1局面40バイト固定（ADR-0038）
+psv_positions() {
+	local bytes
+	bytes=$(wc -c <"$1" | tr -d ' ')
+	printf '%s' $((bytes / 40))
+}
+
 INIT_ARGS=()
 PEAK_LR="${TRAIN_PEAK_LR:-}"
 if [[ -n "${TRAIN_INIT_CKPT:-}" ]]; then
@@ -66,8 +74,17 @@ if [[ -n "${TRAIN_INIT_CKPT:-}" ]]; then
 	INIT_ARGS+=(--init-checkpoint "$TRAIN_INIT_CKPT")
 	# 前世代の表現を壊さない幅。3e-4では壊れる（ADR-0145）
 	PEAK_LR="${PEAK_LR:-1e-4}"
-	# 継続学習は総ステップが短い。warmupが既定の100だと割合が大きすぎる
-	INIT_ARGS+=(--warmup-steps 20 --valid-interval 100)
+	# warmupは総ステップの4%にする。固定値だと規模で意味が変わり、824万局面
+	# （503ステップ）で決めた20は1億局面（6,100ステップ）では0.3%になる。
+	# 学習率を上げきるまでの区間が短いほど前世代の表現が壊れやすい
+	steps=$(( $(psv_positions "$DATA") / 16384 ))
+	warmup="${TRAIN_WARMUP:-$(( steps * 4 / 100 ))}"
+	[[ "$warmup" -lt 20 ]] && warmup=20
+	# 検証はステップ数に対して細かすぎない間隔にする
+	vint=$(( steps / 20 ))
+	[[ "$vint" -lt 50 ]] && vint=50
+	log_info "総ステップ ${steps}、warmup ${warmup}、検証間隔 ${vint}"
+	INIT_ARGS+=(--warmup-steps "$warmup" --valid-interval "$vint")
 fi
 LR_ARGS=()
 if [[ -n "$PEAK_LR" ]]; then
