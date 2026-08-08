@@ -7,6 +7,9 @@
 //! 小さい順に掘る（`Task` を参照）。実戦で現れやすい変化から深くなる。
 //!
 //! 使い方:
+//!   book gen     定跡を掘り広げる（新しい局面を足す）
+//!   book refresh 定跡が持つ局面はそのままに、指し手と評価値を引き直す
+//!
 //!   book gen --out <path> [--eval <hmwr>] [--ply 24] [--width 4]
 //!            [--full-ply 0] [--depth 24] [--hash 256] [--threads N]
 //!            [--max-positions 2000] [--margin 100] [--save-every 25]
@@ -35,6 +38,15 @@
 //! 書き出して終わるので、探索中の1局面ぶんも失わない。
 //!
 //!   touch data/book/main.db.stop
+//!
+//! refreshは評価関数の世代が変わったときに使う（ADR-0146）。掘り直すのは
+//! 高くつくので、局面の集合を変えずに中身だけ新しいネットで引き直す。
+//!
+//!   book refresh --out data/book/main.db --eval <新しいhmwr> [--depth 28]
+//!
+//! 定跡を広げるのは gen を条件を変えて再実行する。出力ファイルがあれば
+//! 読んで再開するので、--max-positions を増やせば続きから掘り、
+//! --full-ply を上げれば浅い層の幅が広がる。
 //!
 //! 探索はThreadPool経由でLazy SMP（ADR-0031）を使う。置換表は局面を
 //! またいで再利用する。親から子へ展開するので、親の探索で読んだ子局面の
@@ -276,21 +288,9 @@ fn search_lines(pos: &Position, cfg: &Config, pool: &ThreadPool, sink: &Sink) ->
 
 type Sink = Arc<Mutex<Vec<String>>>;
 
-fn generate(cfg: &Config) -> std::io::Result<()> {
-    // 生成条件をログの先頭に残す（ADR-0082）。定跡は非決定的に生成され、
-    // 評価関数にも依存するため、どの設定で作ったかを後から追えないと
-    // 作り直しの判断ができない
-    eprintln!(
-        "BookGen: ply={} width={} full_ply={} depth={} threads={} hash={}MB max={} margin={}",
-        cfg.ply,
-        cfg.width,
-        cfg.full_ply,
-        cfg.depth,
-        cfg.threads,
-        cfg.hash_mb,
-        cfg.max_positions,
-        cfg.margin
-    );
+/// 評価関数を読み、探索用のスレッドプールとinfo行の受け皿を作る。
+/// genとrefreshで同じ手順を使う。
+fn make_pool(cfg: &Config) -> std::io::Result<(ThreadPool, Sink)> {
     let eval = if cfg.eval.is_empty() {
         None
     } else {
@@ -309,7 +309,106 @@ fn generate(cfg: &Config) -> std::io::Result<()> {
             }
         })
     };
-    let pool = ThreadPool::new(cfg.hash_mb, cfg.threads, eval, on_line);
+    Ok((
+        ThreadPool::new(cfg.hash_mb, cfg.threads, eval, on_line),
+        sink,
+    ))
+}
+
+/// 定跡が持つ局面はそのままに、指し手と評価値だけを引き直す（ADR-0146）。
+///
+/// 評価関数の世代が変わると、古い定跡は前の世代の判断を持ち続ける。掘り直す
+/// のは高くつくので、局面の集合を変えずに中身だけ更新する経路を分けている。
+///
+/// 途中で止めても定跡は壊れない。読んだ定跡をそのまま土台にして上書きするので、
+/// 更新できなかった局面は前の値のまま残る。
+fn refresh(cfg: &Config) -> std::io::Result<()> {
+    eprintln!(
+        "BookRefresh: width={} depth={} threads={} hash={}MB margin={}",
+        cfg.width, cfg.depth, cfg.threads, cfg.hash_mb, cfg.margin
+    );
+    let (pool, sink) = make_pool(cfg)?;
+    let mut book = Book::load(&cfg.out)?;
+    let total = book.len();
+    if total == 0 {
+        pool.quit();
+        eprintln!("{} に定跡がない", cfg.out);
+        return Ok(());
+    }
+    eprintln!("{}局面を引き直す", total);
+
+    let stop = match &cfg.stop_file {
+        Some(p) => StopFile::at(std::path::PathBuf::from(p)),
+        None => StopFile::beside(std::path::Path::new(&cfg.out)),
+    };
+    stop.clear_stale();
+    eprintln!("止めるには: touch {}", stop.path().display());
+
+    let keys = book.order.clone();
+    let started = std::time::Instant::now();
+    let mut done = 0usize;
+    let mut stopped = false;
+    for key in &keys {
+        // 1局面に入る前に見る。探索の途中では止めない（ADR-0123）
+        if stop.requested() {
+            eprintln!("停止ファイルを見つけた: {}", stop.path().display());
+            stopped = true;
+            break;
+        }
+        // キーは手数を落としたsfenなので、読むときに補う
+        let Ok(pos) = Position::from_sfen(&format!("{key} 1")) else {
+            eprintln!("読めない局面を飛ばす: {key}");
+            continue;
+        };
+        let found = prune_by_margin(search_lines(&pos, cfg, &pool, &sink), cfg.margin);
+        if found.is_empty() {
+            continue;
+        }
+        book.insert(key.clone(), found.clone());
+        done += 1;
+        let secs = started.elapsed().as_secs();
+        eprintln!(
+            "[{done:>5}/{total} {secs:>6}s] 手={} 評価={} 候補{}",
+            found[0].0,
+            found[0].1,
+            found.len(),
+        );
+        if done.is_multiple_of(cfg.save_every) {
+            book.save(&cfg.out, cfg.depth)?;
+            eprintln!("  途中書き出し: {done}局面を更新（{secs}秒）");
+        }
+    }
+    pool.quit();
+    book.save(&cfg.out, cfg.depth)?;
+    eprintln!(
+        "{} の{done}局面を引き直しました（全{total}局面、{}秒）",
+        cfg.out,
+        started.elapsed().as_secs()
+    );
+    if stopped {
+        // 消しておかないと、次回が何もせずに終わる
+        stop.consume();
+        eprintln!("停止した。同じコマンドで最初から引き直せる");
+    }
+    Ok(())
+}
+
+fn generate(cfg: &Config) -> std::io::Result<()> {
+    // 生成条件をログの先頭に残す（ADR-0082）。定跡は非決定的に生成され、
+    // 評価関数にも依存するため、どの設定で作ったかを後から追えないと
+    // 作り直しの判断ができない
+    eprintln!(
+        "BookGen: ply={} width={} full_ply={} depth={} threads={} hash={}MB max={} margin={}",
+        cfg.ply,
+        cfg.width,
+        cfg.full_ply,
+        cfg.depth,
+        cfg.threads,
+        cfg.hash_mb,
+        cfg.max_positions,
+        cfg.margin
+    );
+    let (pool, sink) = make_pool(cfg)?;
 
     let mut book = Book::load(&cfg.out)?;
     let resumed = book.len();
@@ -460,7 +559,8 @@ fn prune_by_margin(mut lines: Lines, margin: i32) -> Lines {
 
 fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
-    if args.first().map(String::as_str) != Some("gen") {
+    let sub = args.first().map(String::as_str).unwrap_or("");
+    if sub != "gen" && sub != "refresh" {
         eprintln!("使い方は crates/tools/src/bin/book.rs 冒頭のコメントを参照");
         std::process::exit(3);
     }
@@ -508,7 +608,12 @@ fn main() {
     if let Some(dir) = std::path::Path::new(&cfg.out).parent() {
         let _ = std::fs::create_dir_all(dir);
     }
-    if let Err(e) = generate(&cfg) {
+    let result = if sub == "refresh" {
+        refresh(&cfg)
+    } else {
+        generate(&cfg)
+    };
+    if let Err(e) = result {
         eprintln!("エラー: {e}");
         std::process::exit(3);
     }
