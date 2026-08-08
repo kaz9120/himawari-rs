@@ -105,6 +105,37 @@ die() {
 	exit "${2:-3}"
 }
 
+# --- 実験ログの置き場（ADR-0149） -------------------------------------
+#
+# ログは data/logs/<名前>.log に置く。リダイレクト先を呼び出しのたびに
+# 決めていた結果、data/ 直下に21本が規則なくたまった（2026-08-08）。
+#
+# 追記で開く。停止と再開（ADR-0123）で同じ実験を複数回に分けて走らせる
+# ため、上書きすると前半が消える。
+log_path() {
+	local name="$1"
+	[[ -n "$name" ]] || die "ログ名が空"
+	mkdir -p "${REPO_ROOT}/data/logs"
+	printf '%s/data/logs/%s.log' "$REPO_ROOT" "$name"
+}
+
+# 標準出力と標準エラーをログへ流しつつ端末にも出す。
+# 使い方: run_logged <名前> <コマンド> [引数...]
+run_logged() {
+	local name="$1"
+	shift
+	local path
+	path="$(log_path "$name")"
+	log_info "ログ: ${path}"
+	{
+		printf '\n=== %s ===\n' "$(date '+%Y-%m-%d %H:%M:%S')"
+		printf 'cmd: %s\n' "$*"
+	} >>"$path"
+	# パイプの途中で失敗しても呼び出し元へ伝える
+	set -o pipefail
+	"$@" 2>&1 | tee -a "$path"
+}
+
 # --- 共通の前提チェック -------------------------------------------------
 
 require_file() {
