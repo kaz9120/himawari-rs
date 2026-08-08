@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.32.0](https://github.com/kaz9120/himawari-rs/compare/v0.31.2...v0.32.0) (2026-08-08)
+
+
+### 棋力向上
+
+* 教師データの世代ループに要る2つの部品を置き、EffectBucketを起草する（ADR-0144・0145・0147） ([#214](https://github.com/kaz9120/himawari-rs/issues/214)) ([e8307ca](https://github.com/kaz9120/himawari-rs/commit/e8307caa1a735aeb632fbfa6e5c7ef8bfc3d1528))
+
 ## [0.31.2](https://github.com/kaz9120/himawari-rs/compare/v0.31.1...v0.31.2) (2026-08-08)
 
 
