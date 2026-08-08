@@ -162,6 +162,8 @@
 | [0145](0145-continual-learning.md) | 前世代のネットから継続学習で積む | - | proposed |
 | [0146](0146-book-full-width-opening.md) | 定跡の浅い層を全合法手で埋める | - | proposed |
 | [0147](0147-effect-bucket-features.md) | 特徴indexを被利き数でバケット化する（EffectBucket） | - | proposed |
+| [0148](0148-effect-table.md) | 盤面の利きを差分で持つ | - | proposed |
+| [0149](0149-experiment-runner.md) | 実験の実行とログを規約で固定する | - | proposed |
 
 ## バックログ
 
