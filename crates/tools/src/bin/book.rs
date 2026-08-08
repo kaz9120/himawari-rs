@@ -8,7 +8,7 @@
 //!
 //! 使い方:
 //!   book gen --out <path> [--eval <hmwr>] [--ply 24] [--width 4]
-//!            [--depth 24] [--hash 256] [--threads N]
+//!            [--full-ply 0] [--depth 24] [--hash 256] [--threads N]
 //!            [--max-positions 2000] [--margin 100] [--save-every 25]
 //!            [--stop-file <path>]
 //!
@@ -20,6 +20,13 @@
 //! 最善手との評価差を切り、差が開いた候補は記録も展開もしない。実戦で
 //! 選ばれない手に探索時間を使わないためである。--max-positions に
 //! 達したら打ち切る。
+//!
+//! --full-ply より浅い層では、この絞り込みを外して全合法手を展開する
+//! （ADR-0146）。相手の手は選べないので、widthとmarginで絞ると定跡を
+//! 引けるかどうかが相手の指し手に依存する。平手初期局面の合法手は30通り
+//! あり、--full-ply 2 なら61局面で「相手の初手が何であっても自分の2手目と
+//! 3手目を定跡から出せる」状態になる。この区間はcostを0で積むため、
+//! 埋め終わるまで深い層へ進まない。
 //!
 //! 長時間走るので --save-every 局面ごとに書き出す。出力ファイルが既に
 //! あれば読み込んで再開する。中断しても、そこまでの定跡はそのまま使える。
@@ -38,7 +45,7 @@ use std::collections::{BinaryHeap, HashMap, HashSet};
 use std::io::Write;
 use std::sync::{Arc, Mutex};
 
-use himawari_core::{Position, SFEN_STARTPOS};
+use himawari_core::{Color, MoveList, Position, SFEN_STARTPOS, generate_legal};
 use himawari_engine::{EngineOptions, Limits, ThreadPool};
 use himawari_tools::stop_file::StopFile;
 
@@ -47,6 +54,7 @@ struct Config {
     eval: String,
     ply: u16,
     width: usize,
+    full_ply: u16,
     depth: u32,
     hash_mb: usize,
     threads: usize,
@@ -72,6 +80,9 @@ struct Task {
     seq: usize,
     ply: u16,
     pos: Position,
+    /// この枝でエンジンが持つ側。同じ局面でも、自分が先手か後手かで
+    /// 「相手の手」が入れ替わるため、展開の幅が変わる（ADR-0146）。
+    my_side: Color,
 }
 
 impl Ord for Task {
@@ -270,8 +281,15 @@ fn generate(cfg: &Config) -> std::io::Result<()> {
     // 評価関数にも依存するため、どの設定で作ったかを後から追えないと
     // 作り直しの判断ができない
     eprintln!(
-        "BookGen: ply={} width={} depth={} threads={} hash={}MB max={} margin={}",
-        cfg.ply, cfg.width, cfg.depth, cfg.threads, cfg.hash_mb, cfg.max_positions, cfg.margin
+        "BookGen: ply={} width={} full_ply={} depth={} threads={} hash={}MB max={} margin={}",
+        cfg.ply,
+        cfg.width,
+        cfg.full_ply,
+        cfg.depth,
+        cfg.threads,
+        cfg.hash_mb,
+        cfg.max_positions,
+        cfg.margin
     );
     let eval = if cfg.eval.is_empty() {
         None
@@ -309,13 +327,21 @@ fn generate(cfg: &Config) -> std::io::Result<()> {
     let root = Position::from_sfen(SFEN_STARTPOS).expect("startpos");
     let mut queue: BinaryHeap<Task> = BinaryHeap::new();
     let mut seq = 0usize;
-    queue.push(Task {
-        cost: 0,
-        seq,
-        ply: 0,
-        pos: root,
-    });
-    let mut visited: HashSet<String> = HashSet::new();
+    // 先手用と後手用の2本を同じ木に重ねて掘る。エンジンはどちらにもなるので、
+    // 片側だけ掘ると反対の手番で穴が残る（ADR-0146）
+    for my_side in [Color::Black, Color::White] {
+        queue.push(Task {
+            cost: 0,
+            seq,
+            ply: 0,
+            pos: root.clone(),
+            my_side,
+        });
+        seq += 1;
+    }
+    // 局面が同じでも持つ側が違えば展開の幅が変わるので、側までをキーにする。
+    // 探索の結果はbookに入っているので、2度目は使い回して探索し直さない
+    let mut visited: HashSet<(String, u8)> = HashSet::new();
     let started = std::time::Instant::now();
     let mut searched = 0usize;
     let mut stopped = false;
@@ -331,7 +357,7 @@ fn generate(cfg: &Config) -> std::io::Result<()> {
             break;
         }
         let key = book_key(&task.pos);
-        if !visited.insert(key.clone()) {
+        if !visited.insert((key.clone(), task.my_side as u8)) {
             continue;
         }
         // 再開時、探索済みの局面は結果を使って子だけを積む
@@ -363,6 +389,27 @@ fn generate(cfg: &Config) -> std::io::Result<()> {
                 found
             }
         };
+        // 相手の手番の浅い層は、widthとmarginで絞らず全合法手を展開する
+        // （ADR-0146）。相手の指し手は選べないので、絞ると定跡を引けるか
+        // どうかが相手に依存する。cost 0 で積み、この層を埋め終わるまで
+        // 深い層へ進まない
+        if task.pos.side_to_move() != task.my_side && task.ply < cfg.full_ply {
+            let mut legal = MoveList::default();
+            generate_legal(&task.pos, false, &mut legal);
+            for &m in &legal {
+                let mut next = task.pos.clone();
+                next.do_move(m);
+                seq += 1;
+                queue.push(Task {
+                    cost: 0,
+                    seq,
+                    ply: task.ply + 1,
+                    pos: next,
+                    my_side: task.my_side,
+                });
+            }
+            continue;
+        }
         let best = lines[0].1;
         for (mv, score, _) in &lines {
             let Some(m) = task.pos.move_from_usi(mv) else {
@@ -376,6 +423,7 @@ fn generate(cfg: &Config) -> std::io::Result<()> {
                 seq,
                 ply: task.ply + 1,
                 pos: next,
+                my_side: task.my_side,
             });
         }
     }
@@ -421,6 +469,7 @@ fn main() {
         eval: String::new(),
         ply: 24,
         width: 4,
+        full_ply: 0,
         depth: 24,
         hash_mb: 256,
         threads: std::thread::available_parallelism().map_or(1, |n| n.get()),
@@ -437,6 +486,7 @@ fn main() {
             "--eval" => cfg.eval = val,
             "--ply" => cfg.ply = val.parse().unwrap_or(cfg.ply),
             "--width" => cfg.width = val.parse::<usize>().unwrap_or(cfg.width).max(1),
+            "--full-ply" => cfg.full_ply = val.parse().unwrap_or(cfg.full_ply),
             "--depth" => cfg.depth = val.parse().unwrap_or(cfg.depth),
             "--hash" => cfg.hash_mb = val.parse().unwrap_or(cfg.hash_mb),
             "--threads" => cfg.threads = val.parse::<usize>().unwrap_or(cfg.threads).max(1),
@@ -511,6 +561,7 @@ mod tests {
                 seq,
                 ply: 1,
                 pos: pos.clone(),
+                my_side: Color::Black,
             });
         }
         // costの小さい順、同点は先に積んだ順
