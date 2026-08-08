@@ -7,8 +7,11 @@
 //! 小さい順に掘る（`Task` を参照）。実戦で現れやすい変化から深くなる。
 //!
 //! 使い方:
+//!   book gen     定跡を掘り広げる（新しい局面を足す）
+//!   book refresh 定跡が持つ局面はそのままに、指し手と評価値を引き直す
+//!
 //!   book gen --out <path> [--eval <hmwr>] [--ply 24] [--width 4]
-//!            [--depth 24] [--hash 256] [--threads N]
+//!            [--full-ply 0] [--depth 24] [--hash 256] [--threads N]
 //!            [--max-positions 2000] [--margin 100] [--save-every 25]
 //!            [--stop-file <path>]
 //!
@@ -21,6 +24,13 @@
 //! 選ばれない手に探索時間を使わないためである。--max-positions に
 //! 達したら打ち切る。
 //!
+//! --full-ply より浅い層では、この絞り込みを外して全合法手を展開する
+//! （ADR-0146）。相手の手は選べないので、widthとmarginで絞ると定跡を
+//! 引けるかどうかが相手の指し手に依存する。平手初期局面の合法手は30通り
+//! あり、--full-ply 2 なら61局面で「相手の初手が何であっても自分の2手目と
+//! 3手目を定跡から出せる」状態になる。この区間はcostを0で積むため、
+//! 埋め終わるまで深い層へ進まない。
+//!
 //! 長時間走るので --save-every 局面ごとに書き出す。出力ファイルが既に
 //! あれば読み込んで再開する。中断しても、そこまでの定跡はそのまま使える。
 //!
@@ -28,6 +38,15 @@
 //! 書き出して終わるので、探索中の1局面ぶんも失わない。
 //!
 //!   touch data/book/main.db.stop
+//!
+//! refreshは評価関数の世代が変わったときに使う（ADR-0146）。掘り直すのは
+//! 高くつくので、局面の集合を変えずに中身だけ新しいネットで引き直す。
+//!
+//!   book refresh --out data/book/main.db --eval <新しいhmwr> [--depth 28]
+//!
+//! 定跡を広げるのは gen を条件を変えて再実行する。出力ファイルがあれば
+//! 読んで再開するので、--max-positions を増やせば続きから掘り、
+//! --full-ply を上げれば浅い層の幅が広がる。
 //!
 //! 探索はThreadPool経由でLazy SMP（ADR-0031）を使う。置換表は局面を
 //! またいで再利用する。親から子へ展開するので、親の探索で読んだ子局面の
@@ -38,7 +57,7 @@ use std::collections::{BinaryHeap, HashMap, HashSet};
 use std::io::Write;
 use std::sync::{Arc, Mutex};
 
-use himawari_core::{Position, SFEN_STARTPOS};
+use himawari_core::{Color, MoveList, Position, SFEN_STARTPOS, generate_legal};
 use himawari_engine::{EngineOptions, Limits, ThreadPool};
 use himawari_tools::stop_file::StopFile;
 
@@ -47,6 +66,7 @@ struct Config {
     eval: String,
     ply: u16,
     width: usize,
+    full_ply: u16,
     depth: u32,
     hash_mb: usize,
     threads: usize,
@@ -72,6 +92,9 @@ struct Task {
     seq: usize,
     ply: u16,
     pos: Position,
+    /// この枝でエンジンが持つ側。同じ局面でも、自分が先手か後手かで
+    /// 「相手の手」が入れ替わるため、展開の幅が変わる（ADR-0146）。
+    my_side: Color,
 }
 
 impl Ord for Task {
@@ -265,14 +288,9 @@ fn search_lines(pos: &Position, cfg: &Config, pool: &ThreadPool, sink: &Sink) ->
 
 type Sink = Arc<Mutex<Vec<String>>>;
 
-fn generate(cfg: &Config) -> std::io::Result<()> {
-    // 生成条件をログの先頭に残す（ADR-0082）。定跡は非決定的に生成され、
-    // 評価関数にも依存するため、どの設定で作ったかを後から追えないと
-    // 作り直しの判断ができない
-    eprintln!(
-        "BookGen: ply={} width={} depth={} threads={} hash={}MB max={} margin={}",
-        cfg.ply, cfg.width, cfg.depth, cfg.threads, cfg.hash_mb, cfg.max_positions, cfg.margin
-    );
+/// 評価関数を読み、探索用のスレッドプールとinfo行の受け皿を作る。
+/// genとrefreshで同じ手順を使う。
+fn make_pool(cfg: &Config) -> std::io::Result<(ThreadPool, Sink)> {
     let eval = if cfg.eval.is_empty() {
         None
     } else {
@@ -291,7 +309,106 @@ fn generate(cfg: &Config) -> std::io::Result<()> {
             }
         })
     };
-    let pool = ThreadPool::new(cfg.hash_mb, cfg.threads, eval, on_line);
+    Ok((
+        ThreadPool::new(cfg.hash_mb, cfg.threads, eval, on_line),
+        sink,
+    ))
+}
+
+/// 定跡が持つ局面はそのままに、指し手と評価値だけを引き直す（ADR-0146）。
+///
+/// 評価関数の世代が変わると、古い定跡は前の世代の判断を持ち続ける。掘り直す
+/// のは高くつくので、局面の集合を変えずに中身だけ更新する経路を分けている。
+///
+/// 途中で止めても定跡は壊れない。読んだ定跡をそのまま土台にして上書きするので、
+/// 更新できなかった局面は前の値のまま残る。
+fn refresh(cfg: &Config) -> std::io::Result<()> {
+    eprintln!(
+        "BookRefresh: width={} depth={} threads={} hash={}MB margin={}",
+        cfg.width, cfg.depth, cfg.threads, cfg.hash_mb, cfg.margin
+    );
+    let (pool, sink) = make_pool(cfg)?;
+    let mut book = Book::load(&cfg.out)?;
+    let total = book.len();
+    if total == 0 {
+        pool.quit();
+        eprintln!("{} に定跡がない", cfg.out);
+        return Ok(());
+    }
+    eprintln!("{}局面を引き直す", total);
+
+    let stop = match &cfg.stop_file {
+        Some(p) => StopFile::at(std::path::PathBuf::from(p)),
+        None => StopFile::beside(std::path::Path::new(&cfg.out)),
+    };
+    stop.clear_stale();
+    eprintln!("止めるには: touch {}", stop.path().display());
+
+    let keys = book.order.clone();
+    let started = std::time::Instant::now();
+    let mut done = 0usize;
+    let mut stopped = false;
+    for key in &keys {
+        // 1局面に入る前に見る。探索の途中では止めない（ADR-0123）
+        if stop.requested() {
+            eprintln!("停止ファイルを見つけた: {}", stop.path().display());
+            stopped = true;
+            break;
+        }
+        // キーは手数を落としたsfenなので、読むときに補う
+        let Ok(pos) = Position::from_sfen(&format!("{key} 1")) else {
+            eprintln!("読めない局面を飛ばす: {key}");
+            continue;
+        };
+        let found = prune_by_margin(search_lines(&pos, cfg, &pool, &sink), cfg.margin);
+        if found.is_empty() {
+            continue;
+        }
+        book.insert(key.clone(), found.clone());
+        done += 1;
+        let secs = started.elapsed().as_secs();
+        eprintln!(
+            "[{done:>5}/{total} {secs:>6}s] 手={} 評価={} 候補{}",
+            found[0].0,
+            found[0].1,
+            found.len(),
+        );
+        if done.is_multiple_of(cfg.save_every) {
+            book.save(&cfg.out, cfg.depth)?;
+            eprintln!("  途中書き出し: {done}局面を更新（{secs}秒）");
+        }
+    }
+    pool.quit();
+    book.save(&cfg.out, cfg.depth)?;
+    eprintln!(
+        "{} の{done}局面を引き直しました（全{total}局面、{}秒）",
+        cfg.out,
+        started.elapsed().as_secs()
+    );
+    if stopped {
+        // 消しておかないと、次回が何もせずに終わる
+        stop.consume();
+        eprintln!("停止した。同じコマンドで最初から引き直せる");
+    }
+    Ok(())
+}
+
+fn generate(cfg: &Config) -> std::io::Result<()> {
+    // 生成条件をログの先頭に残す（ADR-0082）。定跡は非決定的に生成され、
+    // 評価関数にも依存するため、どの設定で作ったかを後から追えないと
+    // 作り直しの判断ができない
+    eprintln!(
+        "BookGen: ply={} width={} full_ply={} depth={} threads={} hash={}MB max={} margin={}",
+        cfg.ply,
+        cfg.width,
+        cfg.full_ply,
+        cfg.depth,
+        cfg.threads,
+        cfg.hash_mb,
+        cfg.max_positions,
+        cfg.margin
+    );
+    let (pool, sink) = make_pool(cfg)?;
 
     let mut book = Book::load(&cfg.out)?;
     let resumed = book.len();
@@ -309,13 +426,21 @@ fn generate(cfg: &Config) -> std::io::Result<()> {
     let root = Position::from_sfen(SFEN_STARTPOS).expect("startpos");
     let mut queue: BinaryHeap<Task> = BinaryHeap::new();
     let mut seq = 0usize;
-    queue.push(Task {
-        cost: 0,
-        seq,
-        ply: 0,
-        pos: root,
-    });
-    let mut visited: HashSet<String> = HashSet::new();
+    // 先手用と後手用の2本を同じ木に重ねて掘る。エンジンはどちらにもなるので、
+    // 片側だけ掘ると反対の手番で穴が残る（ADR-0146）
+    for my_side in [Color::Black, Color::White] {
+        queue.push(Task {
+            cost: 0,
+            seq,
+            ply: 0,
+            pos: root.clone(),
+            my_side,
+        });
+        seq += 1;
+    }
+    // 局面が同じでも持つ側が違えば展開の幅が変わるので、側までをキーにする。
+    // 探索の結果はbookに入っているので、2度目は使い回して探索し直さない
+    let mut visited: HashSet<(String, u8)> = HashSet::new();
     let started = std::time::Instant::now();
     let mut searched = 0usize;
     let mut stopped = false;
@@ -331,7 +456,7 @@ fn generate(cfg: &Config) -> std::io::Result<()> {
             break;
         }
         let key = book_key(&task.pos);
-        if !visited.insert(key.clone()) {
+        if !visited.insert((key.clone(), task.my_side as u8)) {
             continue;
         }
         // 再開時、探索済みの局面は結果を使って子だけを積む
@@ -363,6 +488,27 @@ fn generate(cfg: &Config) -> std::io::Result<()> {
                 found
             }
         };
+        // 相手の手番の浅い層は、widthとmarginで絞らず全合法手を展開する
+        // （ADR-0146）。相手の指し手は選べないので、絞ると定跡を引けるか
+        // どうかが相手に依存する。cost 0 で積み、この層を埋め終わるまで
+        // 深い層へ進まない
+        if task.pos.side_to_move() != task.my_side && task.ply < cfg.full_ply {
+            let mut legal = MoveList::default();
+            generate_legal(&task.pos, false, &mut legal);
+            for &m in &legal {
+                let mut next = task.pos.clone();
+                next.do_move(m);
+                seq += 1;
+                queue.push(Task {
+                    cost: 0,
+                    seq,
+                    ply: task.ply + 1,
+                    pos: next,
+                    my_side: task.my_side,
+                });
+            }
+            continue;
+        }
         let best = lines[0].1;
         for (mv, score, _) in &lines {
             let Some(m) = task.pos.move_from_usi(mv) else {
@@ -376,6 +522,7 @@ fn generate(cfg: &Config) -> std::io::Result<()> {
                 seq,
                 ply: task.ply + 1,
                 pos: next,
+                my_side: task.my_side,
             });
         }
     }
@@ -412,7 +559,8 @@ fn prune_by_margin(mut lines: Lines, margin: i32) -> Lines {
 
 fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
-    if args.first().map(String::as_str) != Some("gen") {
+    let sub = args.first().map(String::as_str).unwrap_or("");
+    if sub != "gen" && sub != "refresh" {
         eprintln!("使い方は crates/tools/src/bin/book.rs 冒頭のコメントを参照");
         std::process::exit(3);
     }
@@ -421,6 +569,7 @@ fn main() {
         eval: String::new(),
         ply: 24,
         width: 4,
+        full_ply: 0,
         depth: 24,
         hash_mb: 256,
         threads: std::thread::available_parallelism().map_or(1, |n| n.get()),
@@ -437,6 +586,7 @@ fn main() {
             "--eval" => cfg.eval = val,
             "--ply" => cfg.ply = val.parse().unwrap_or(cfg.ply),
             "--width" => cfg.width = val.parse::<usize>().unwrap_or(cfg.width).max(1),
+            "--full-ply" => cfg.full_ply = val.parse().unwrap_or(cfg.full_ply),
             "--depth" => cfg.depth = val.parse().unwrap_or(cfg.depth),
             "--hash" => cfg.hash_mb = val.parse().unwrap_or(cfg.hash_mb),
             "--threads" => cfg.threads = val.parse::<usize>().unwrap_or(cfg.threads).max(1),
@@ -458,7 +608,12 @@ fn main() {
     if let Some(dir) = std::path::Path::new(&cfg.out).parent() {
         let _ = std::fs::create_dir_all(dir);
     }
-    if let Err(e) = generate(&cfg) {
+    let result = if sub == "refresh" {
+        refresh(&cfg)
+    } else {
+        generate(&cfg)
+    };
+    if let Err(e) = result {
         eprintln!("エラー: {e}");
         std::process::exit(3);
     }
@@ -511,6 +666,7 @@ mod tests {
                 seq,
                 ply: 1,
                 pos: pos.clone(),
+                my_side: Color::Black,
             });
         }
         // costの小さい順、同点は先に積んだ順
