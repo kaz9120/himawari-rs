@@ -44,12 +44,15 @@ impl EffectTable {
     }
 
     /// 盤面から全部作り直す。差分更新の正しさは、これとの一致で確かめる。
-    pub fn rebuild(&mut self, pos: &Position) {
+    ///
+    /// `Position` ではなく盤面と占有を受けるのは、`Position` の中から
+    /// 呼ぶためである。フィールドを個別に渡せば、`effect` を可変で借りつつ
+    /// `board` を不変で借りられる。
+    pub fn rebuild(&mut self, board: &[Piece; Square::NB], occ: Bitboard) {
         self.to_sq = [Bitboard::EMPTY; Square::NB];
         self.from_sq = [Bitboard::EMPTY; Square::NB];
-        let occ = pos.occupied();
         for from in occ {
-            let pc = pos.piece_on(from);
+            let pc = board[from.index()];
             let att = attacks(pc, from, occ);
             self.from_sq[from.index()] = att;
             for to in att {
@@ -66,36 +69,47 @@ impl EffectTable {
     /// 使う。占有が変わるのは移動元と移動先の2マスだけなので、そこへ利きを
     /// 持つ駒を集めれば漏れない（ADR-0148）。
     ///
-    /// 短い利きの駒は占有が変わっても利きが動かないが、選り分けずに
-    /// 数え直す。判定を挟むより素直で、誤りが入りにくい。
-    pub fn update(&mut self, pos: &Position, m: Move) {
+    /// 数え直すのは動いたマスと、そこへ利きを持つ**飛び駒**だけでよい。
+    /// 短い利きの駒は占有が変わっても利きが動かない。全部数え直す実装から
+    /// 絞ったところ、NPSの低下が14.96%から縮んだ（ADR-0148）。
+    ///
+    /// `sliders` は香・角・飛・馬・竜の位置である。呼び出し側が渡すのは、
+    /// `Position` の中から呼ぶときにフィールドを個別に借りるためである。
+    pub fn update(
+        &mut self,
+        board: &[Piece; Square::NB],
+        occ: Bitboard,
+        sliders: Bitboard,
+        m: Move,
+    ) {
         let to = m.to();
-        let mut touched = Bitboard::from_square(to) | self.to_sq[to.index()];
+        let mut touched = Bitboard::from_square(to) | (self.to_sq[to.index()] & sliders);
         if !m.is_drop() {
             let from = m.from_sq();
-            touched |= Bitboard::from_square(from) | self.to_sq[from.index()];
+            touched |= Bitboard::from_square(from) | (self.to_sq[from.index()] & sliders);
         }
 
-        // 先に古い利きを全部落とす。落としてから足さないと、同じ駒を
-        // 2度数える
+        // 触るのは増えた分と減った分だけにする。飛び駒が1マス伸びても、
+        // 全部消して全部足すと利きマスの数（飛車なら16回）を払う。差分に
+        // すると数回で済む（ADR-0148）
         for sq in touched {
-            for t in self.from_sq[sq.index()] {
-                self.to_sq[t.index()].clear(sq);
-            }
-            self.from_sq[sq.index()] = Bitboard::EMPTY;
-        }
-
-        let occ = pos.occupied();
-        for sq in touched {
-            let pc = pos.piece_on(sq);
-            if pc == Piece::EMPTY {
+            let pc = board[sq.index()];
+            let new = if pc == Piece::EMPTY {
+                Bitboard::EMPTY
+            } else {
+                attacks(pc, sq, occ)
+            };
+            let old = self.from_sq[sq.index()];
+            if old == new {
                 continue;
             }
-            let att = attacks(pc, sq, occ);
-            self.from_sq[sq.index()] = att;
-            for t in att {
+            for t in old & !new {
+                self.to_sq[t.index()].clear(sq);
+            }
+            for t in new & !old {
                 self.to_sq[t.index()].set(sq);
             }
+            self.from_sq[sq.index()] = new;
         }
     }
 
@@ -126,7 +140,7 @@ mod tests {
     /// 全マスについて、差分なしの `attackers_to` と一致するか。
     fn assert_matches_attackers_to(pos: &Position) {
         let mut t = EffectTable::new();
-        t.rebuild(pos);
+        t.rebuild(pos.board_ref(), pos.occupied());
         let occ = pos.occupied();
         for i in 0..Square::NB {
             let sq = Square::from_index(i as u8);
@@ -159,7 +173,7 @@ mod tests {
     fn count_excludes_the_piece_on_the_square() {
         let pos = Position::from_sfen(SFEN_STARTPOS).expect("startpos");
         let mut t = EffectTable::new();
-        t.rebuild(&pos);
+        t.rebuild(pos.board_ref(), pos.occupied());
         // 先手の歩は7七にあり、7六へ利く。7六に立つ先手の駒は歩1枚だけ
         let target = Square::from_usi("7f").expect("7f");
         assert_eq!(t.count(&pos, target, Color::Black), 1);
@@ -170,7 +184,7 @@ mod tests {
     fn attacks_from_is_empty_on_an_empty_square() {
         let pos = Position::from_sfen(SFEN_STARTPOS).expect("startpos");
         let mut t = EffectTable::new();
-        t.rebuild(&pos);
+        t.rebuild(pos.board_ref(), pos.occupied());
         let empty = Square::from_usi("5e").expect("5e");
         assert!(t.attacks_from(empty).is_empty());
     }
@@ -188,9 +202,9 @@ mod tests {
             let mut next = pos.clone();
             next.do_move(m);
             let mut diff = table.clone();
-            diff.update(&next, m);
+            diff.update(next.board_ref(), next.occupied(), next.sliders(), m);
             let mut full = EffectTable::new();
-            full.rebuild(&next);
+            full.rebuild(next.board_ref(), next.occupied());
             assert_eq!(
                 diff,
                 full,
@@ -206,7 +220,7 @@ mod tests {
     fn incremental_update_matches_rebuild_from_startpos() {
         let mut pos = Position::from_sfen(SFEN_STARTPOS).expect("startpos");
         let mut t = EffectTable::new();
-        t.rebuild(&pos);
+        t.rebuild(pos.board_ref(), pos.occupied());
         // 深さ3で約2.5万局面。飛び駒の伸縮と駒取りが十分に現れる
         let n = walk_and_compare(&mut pos, &t, 3);
         assert!(n > 20000, "局面数が少なすぎる: {n}");
@@ -218,7 +232,7 @@ mod tests {
         let sfen = "l6nl/5+P1gk/2np1S3/p1p4Pp/3P2Sp1/1PPb2P1P/P5GS1/R8/LN4bKL w GR5pnsg 1";
         let mut pos = Position::from_sfen(sfen).expect("sfen");
         let mut t = EffectTable::new();
-        t.rebuild(&pos);
+        t.rebuild(pos.board_ref(), pos.occupied());
         walk_and_compare(&mut pos, &t, 2);
     }
 
@@ -229,7 +243,7 @@ mod tests {
         let sfen = "l6nl/5+P1gk/2np1S3/p1p4Pp/3P2Sp1/1PPb2P1P/P5GS1/R8/LN4bKL w GR5pnsg 1";
         let pos = Position::from_sfen(sfen).expect("sfen");
         let mut t = EffectTable::new();
-        t.rebuild(&pos);
+        t.rebuild(pos.board_ref(), pos.occupied());
         for i in 0..Square::NB {
             let from = Square::from_index(i as u8);
             for to in t.attacks_from(from) {

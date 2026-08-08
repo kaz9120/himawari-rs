@@ -146,6 +146,23 @@ impl Position {
         self.king_sq[c.index()]
     }
 
+    /// 盤面の生の配列。利きテーブルの再計算で使う（ADR-0148）。
+    #[inline]
+    pub fn board_ref(&self) -> &[Piece; 81] {
+        &self.board
+    }
+
+    /// 香・角・飛・馬・竜の位置。占有が変わると利きが伸縮する駒である
+    /// （ADR-0148）。
+    #[inline]
+    pub fn sliders(&self) -> Bitboard {
+        self.by_type[PieceType::LANCE.index()]
+            | self.by_type[PieceType::BISHOP.index()]
+            | self.by_type[PieceType::ROOK.index()]
+            | self.by_type[PieceType::HORSE.index()]
+            | self.by_type[PieceType::DRAGON.index()]
+    }
+
     #[inline]
     pub fn occupied(&self) -> Bitboard {
         self.by_color[0] | self.by_color[1]
