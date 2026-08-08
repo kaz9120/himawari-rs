@@ -5,6 +5,11 @@
 //! ついた時点で勝敗を書き込んでPSV（ADR-0038）へ流す。
 //!
 //! 使い方:
+//! 対局を並列に回す。--threads は同時に指す対局の数で、探索そのものは
+//! 1スレッドである。1局面ずつLazy SMPで探索する作りだと並列効率が上がらず、
+//! 8スレッドで494局面/秒しか出なかった。置換表はワーカーごとに持つので、
+//! --hash は頭数で割られる。
+//!
 //!   gensfen --out <path> --eval <hmwr> [--games 1000] [--depth 8]
 //!           [--random-plies 8] [--min-ply 8] [--max-moves 320]
 //!           [--resign 3000] [--threads N] [--hash 256] [--seed 1]
@@ -17,8 +22,13 @@
 //! --resign を超える評価値が出たら投了する。決着の見えた局面を指し継いでも
 //! 教師の情報量は増えず、生成速度だけが落ちる。0を渡すと投了しない。
 //!
+//! 記録するのはqsearchの静止局面である（--quiet-plies、既定1）。評価関数が
+//! 探索中に見るのは静止局面なので、教師の局面もそこへ揃える（ADR-0136）。
+//! 後からpsv quietをかけるより工程が1つ減り、費用も小さい。0を渡すと
+//! 静止化せずに指した局面をそのまま記録する。
+//!
 //! 評価値と勝敗はどちらも手番視点で書く（ADR-0136で踏んだ落とし穴）。
-//! 詰みスコアは素通しにする（ADR-0126）。
+//! 静止化で奇数手進んだら符号を戻す。詰みスコアは素通しにする（ADR-0126）。
 //!
 //! 途中で止めるときは停止ファイルを置く（ADR-0123）。1局の切れ目で書き出して
 //! 終わるので、途中まで生成した教師はそのまま使える。
@@ -26,10 +36,15 @@
 //!   touch data/train/gen.psv.stop
 
 use std::io::Write;
+use std::sync::atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 
-use himawari_core::packed_sfen::{PackedSfenValue, pack};
+use himawari_core::packed_sfen::{PSV_BYTES, PackedSfenValue, pack};
 use himawari_core::{Color, Move16, MoveList, Position, Repetition, SFEN_STARTPOS, generate_legal};
+use himawari_engine::eval::Evaluator;
+use himawari_engine::movepick::Histories;
+use himawari_engine::search::{Shared, Worker};
+use himawari_engine::timeman::{TimeManager, TimeOptions};
 use himawari_engine::{EngineOptions, Limits, ThreadPool};
 use himawari_tools::stop_file::StopFile;
 
@@ -40,6 +55,7 @@ struct Config {
     depth: u32,
     random_plies: usize,
     min_ply: u16,
+    quiet_plies: usize,
     max_moves: usize,
     resign: i32,
     threads: usize,
@@ -131,6 +147,7 @@ fn play_one(
     cfg: &Config,
     pool: &ThreadPool,
     sink: &Sink,
+    quiet: &mut Worker,
     rng: &mut Rng,
 ) -> (Vec<Pending>, Option<Color>, &'static str) {
     let mut pos = Position::from_sfen(SFEN_STARTPOS).expect("startpos");
@@ -182,19 +199,43 @@ fn play_one(
 
         // 記録するのはランダム区間を抜けてからにする。詰みスコアは素通しで
         // よい（ADR-0126）。評価値・勝敗はどちらも手番視点で書く
-        if pos.game_ply() >= cfg.min_ply
-            && let Ok(packed) = pack(&pos)
-        {
-            pending.push(Pending {
-                rec: PackedSfenValue {
-                    sfen: packed,
-                    score: score.clamp(-32000, 32000) as i16,
-                    move16: Move16::from_usi(&mv).unwrap_or(Move16::NONE).0,
-                    game_ply: pos.game_ply(),
-                    game_result: 0,
-                },
-                stm,
-            });
+        if pos.game_ply() >= cfg.min_ply {
+            // 記録する前に静止局面へ進める（ADR-0136）。評価関数が探索中に
+            // 見るのは静止局面なので、後からpsv quietで直すより、ここで
+            // 済ませたほうが工程が1つ減る
+            let mut rec_pos = pos.clone();
+            let mut rec_score = score;
+            let mut rec_stm = stm;
+            let mut rec_ply = pos.game_ply();
+            let mut rec_move = Move16::from_usi(&mv).unwrap_or(Move16::NONE).0;
+            if cfg.quiet_plies > 0 {
+                quiet.set_position(pos.clone());
+                let plies = quiet.walk_to_quiet(cfg.quiet_plies);
+                if plies > 0 {
+                    // 奇数手進めると手番が入れ替わる。評価値と勝敗はどちらも
+                    // 手番視点なので符号を戻す
+                    if plies % 2 == 1 {
+                        rec_score = -rec_score;
+                        rec_stm = stm.flip();
+                    }
+                    rec_ply = rec_ply.saturating_add(plies as u16);
+                    // PVの初手は元局面のもので、葉では指せない
+                    rec_move = Move16::NONE.0;
+                    rec_pos = quiet.pos.clone();
+                }
+            }
+            if let Ok(packed) = pack(&rec_pos) {
+                pending.push(Pending {
+                    rec: PackedSfenValue {
+                        sfen: packed,
+                        score: rec_score.clamp(-32000, 32000) as i16,
+                        move16: rec_move,
+                        game_ply: rec_ply,
+                        game_result: 0,
+                    },
+                    stm: rec_stm,
+                });
+            }
         }
 
         if cfg.resign > 0 && score <= -cfg.resign {
@@ -209,34 +250,24 @@ fn generate(cfg: &Config) -> std::io::Result<()> {
     // 生成条件をログの先頭に残す。教師データは条件を変えて何度も作るので、
     // どの設定で作ったかを後から追えないと混ぜる判断ができない
     eprintln!(
-        "GenSfen: games={} depth={} random_plies={} min_ply={} max_moves={} resign={} threads={} hash={}MB seed={}",
+        "GenSfen: games={} depth={} random_plies={} min_ply={} quiet_plies={} max_moves={} resign={} workers={} hash={}MB seed={}",
         cfg.games,
         cfg.depth,
         cfg.random_plies,
         cfg.min_ply,
+        cfg.quiet_plies,
         cfg.max_moves,
         cfg.resign,
         cfg.threads,
         cfg.hash_mb,
         cfg.seed,
     );
-    let eval = {
+    let (net, lineage) = {
         let mut f = std::fs::File::open(&cfg.eval)?;
-        let (net, lineage) = himawari_engine::nnue_io::load(&mut f)
-            .map_err(|e| std::io::Error::other(e.to_string()))?;
-        eprintln!("EvalFile: {} ({lineage})", cfg.eval);
-        Some((cfg.eval.clone(), Arc::new(net)))
+        himawari_engine::nnue_io::load(&mut f).map_err(|e| std::io::Error::other(e.to_string()))?
     };
-    let sink: Sink = Arc::new(Mutex::new(Vec::new()));
-    let on_line = {
-        let s = Arc::clone(&sink);
-        Arc::new(move |line: &str| {
-            if line.starts_with("info depth") {
-                s.lock().expect("sink").push(line.to_string());
-            }
-        })
-    };
-    let pool = ThreadPool::new(cfg.hash_mb, cfg.threads, eval, on_line);
+    eprintln!("EvalFile: {} ({lineage})", cfg.eval);
+    let net = Arc::new(net);
 
     let stop = match &cfg.stop_file {
         Some(p) => StopFile::at(std::path::PathBuf::from(p)),
@@ -246,58 +277,137 @@ fn generate(cfg: &Config) -> std::io::Result<()> {
     eprintln!("止めるには: touch {}", stop.path().display());
 
     // 追記で開く。同じ条件で足したいときに、前の生成を消さずに済む
-    let mut w = std::io::BufWriter::new(
+    let w = std::io::BufWriter::new(
         std::fs::OpenOptions::new()
             .create(true)
             .append(true)
             .open(&cfg.out)?,
     );
-    let mut rng = Rng(cfg.seed | 1);
+    let writer = Mutex::new(w);
     let started = std::time::Instant::now();
-    let mut written = 0u64;
-    let mut games = 0usize;
-    let mut stopped = false;
+    let claimed = AtomicUsize::new(0);
+    let finished = AtomicUsize::new(0);
+    let written = AtomicU64::new(0);
+    let stopped = AtomicBool::new(false);
 
-    while games < cfg.games {
-        // 1局の切れ目で見る。対局の途中では止めない（ADR-0123）
-        if stop.requested() {
-            eprintln!("停止ファイルを見つけた: {}", stop.path().display());
-            stopped = true;
-            break;
+    // 1スレッドで1対局を回し、対局のほうを並列にする。1局面ずつLazy SMPで
+    // 探索すると並列効率が上がらず、8スレッドで494局面/秒しか出なかった。
+    // 探索を1スレッドに落として対局を並べれば、待ち合わせがなくなる。
+    // 置換表はワーカーごとに持つので、指定量を頭数で割る
+    let hash_each = (cfg.hash_mb / cfg.threads.max(1)).max(16);
+    std::thread::scope(|scope| {
+        for t in 0..cfg.threads {
+            let net = Arc::clone(&net);
+            let eval_path = cfg.eval.clone();
+            let writer = &writer;
+            let claimed = &claimed;
+            let finished = &finished;
+            let written = &written;
+            let stopped = &stopped;
+            let stop = &stop;
+            scope.spawn(move || {
+                let sink: Sink = Arc::new(Mutex::new(Vec::new()));
+                let on_line = {
+                    let s = Arc::clone(&sink);
+                    Arc::new(move |line: &str| {
+                        if line.starts_with("info depth") {
+                            s.lock().expect("sink").push(line.to_string());
+                        }
+                    })
+                };
+                let pool =
+                    ThreadPool::new(hash_each, 1, Some((eval_path, Arc::clone(&net))), on_line);
+                // 静止化用のWorker。局面ごとに作るとhistory一式の確保が
+                // 律速になるので、1つ作って使い回す（ADR-0136で実測）
+                let shared = Arc::new(Shared::new(16));
+                let start = Position::from_sfen(SFEN_STARTPOS).expect("startpos");
+                let limits = Limits::default();
+                let tm = TimeManager::new(
+                    &limits,
+                    start.side_to_move(),
+                    start.game_ply(),
+                    &TimeOptions::default(),
+                );
+                let mut quiet = Worker::new(
+                    start,
+                    shared,
+                    limits,
+                    tm,
+                    0,
+                    1,
+                    Evaluator::nnue(Arc::clone(&net)),
+                    Histories::default(),
+                );
+                // 種はワーカーごとにずらす。同じ開始局面を8本で作っても
+                // 学習の役に立たない
+                let mut rng = Rng(
+                    (cfg.seed | 1).wrapping_add((t as u64).wrapping_mul(0x9E37_79B9_7F4A_7C15))
+                );
+                loop {
+                    if stopped.load(Ordering::Relaxed) {
+                        break;
+                    }
+                    // 1局の切れ目で見る。対局の途中では止めない（ADR-0123）
+                    if stop.requested() {
+                        stopped.store(true, Ordering::Relaxed);
+                        break;
+                    }
+                    if claimed.fetch_add(1, Ordering::Relaxed) >= cfg.games {
+                        break;
+                    }
+                    let (pending, winner, reason) =
+                        play_one(cfg, &pool, &sink, &mut quiet, &mut rng);
+                    let mut buf: Vec<u8> = Vec::with_capacity(pending.len() * PSV_BYTES);
+                    for p in &pending {
+                        let mut rec = p.rec;
+                        rec.game_result = match winner {
+                            None => 0,
+                            Some(c) if c == p.stm => 1,
+                            Some(_) => -1,
+                        };
+                        buf.extend_from_slice(&rec.to_bytes());
+                    }
+                    {
+                        let mut g = writer.lock().expect("writer");
+                        if g.write_all(&buf).is_err() {
+                            stopped.store(true, Ordering::Relaxed);
+                            break;
+                        }
+                    }
+                    let n = written.fetch_add(pending.len() as u64, Ordering::Relaxed)
+                        + pending.len() as u64;
+                    let done = finished.fetch_add(1, Ordering::Relaxed) + 1;
+                    if done.is_multiple_of(cfg.save_every) {
+                        let mut g = writer.lock().expect("writer");
+                        let _ = g.flush();
+                        drop(g);
+                        let secs = started.elapsed().as_secs_f64().max(0.001);
+                        eprintln!(
+                            "[{done:>6}局 {:>6.0}s] {n}局面 {:.0}局面/秒 直近={reason}",
+                            secs,
+                            n as f64 / secs,
+                        );
+                    }
+                }
+                pool.quit();
+            });
         }
-        let (pending, winner, reason) = play_one(cfg, &pool, &sink, &mut rng);
-        games += 1;
-        for p in &pending {
-            let mut rec = p.rec;
-            rec.game_result = match winner {
-                None => 0,
-                Some(c) if c == p.stm => 1,
-                Some(_) => -1,
-            };
-            w.write_all(&rec.to_bytes())?;
-            written += 1;
-        }
-        if games.is_multiple_of(cfg.save_every) {
-            w.flush()?;
-            let secs = started.elapsed().as_secs_f64().max(0.001);
-            eprintln!(
-                "[{games:>6}局 {:>6.0}s] {written}局面 {:.0}局面/秒 直近={reason}",
-                secs,
-                written as f64 / secs,
-            );
-        }
+    });
+
+    {
+        let mut g = writer.lock().expect("writer");
+        g.flush()?;
     }
-    w.flush()?;
-    pool.quit();
-
     let secs = started.elapsed().as_secs_f64().max(0.001);
+    let total = written.load(Ordering::Relaxed);
     eprintln!(
-        "{} へ{written}局面を書きました（{games}局、{:.0}秒、{:.0}局面/秒）",
+        "{} へ{total}局面を書きました（{}局、{:.0}秒、{:.0}局面/秒）",
         cfg.out,
+        finished.load(Ordering::Relaxed),
         secs,
-        written as f64 / secs,
+        total as f64 / secs,
     );
-    if stopped {
+    if stopped.load(Ordering::Relaxed) {
         // 消しておかないと、次回が何もせずに終わる
         stop.consume();
         eprintln!("停止した。同じコマンドで続きを足せる");
@@ -314,6 +424,7 @@ fn main() {
         depth: 8,
         random_plies: 8,
         min_ply: 8,
+        quiet_plies: 1,
         max_moves: 320,
         resign: 3000,
         threads: std::thread::available_parallelism().map_or(1, |n| n.get()),
@@ -332,6 +443,7 @@ fn main() {
             "--depth" => cfg.depth = val.parse().unwrap_or(cfg.depth),
             "--random-plies" => cfg.random_plies = val.parse().unwrap_or(cfg.random_plies),
             "--min-ply" => cfg.min_ply = val.parse().unwrap_or(cfg.min_ply),
+            "--quiet-plies" => cfg.quiet_plies = val.parse().unwrap_or(cfg.quiet_plies),
             "--max-moves" => cfg.max_moves = val.parse().unwrap_or(cfg.max_moves),
             "--resign" => cfg.resign = val.parse().unwrap_or(cfg.resign),
             "--threads" => cfg.threads = val.parse::<usize>().unwrap_or(cfg.threads).max(1),
@@ -400,6 +512,6 @@ mod tests {
 
     #[test]
     fn psv_record_size_is_unchanged() {
-        assert_eq!(himawari_core::packed_sfen::PSV_BYTES, 40);
+        assert_eq!(PSV_BYTES, 40);
     }
 }
