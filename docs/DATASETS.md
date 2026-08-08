@@ -42,6 +42,18 @@
    ```
 2. 検証データは valid_385M.psv（1695340981の023由来）を据え置く。
    valid lossをhalfkp_180M・halfkp_370M・halfkp_1900Mと直接比較するため
+3. 教師局面を静止化する（[ADR-0136](adr/0136-quiet-teacher-positions.md)）。
+   hao_depth9はqsearch PV葉への置換なしで配られており、駒の取り合いの
+   途中の局面へ収束後の探索値が付いている。1手だけ進める設定で置換率は
+   36.15%、29.9億で7.0時間かかる。
+   ```
+   psv quiet --in data/train/train_2990M.psv \
+             --out data/train/train_2990M_q1.psv \
+             --max-plies 1 --eval-file data/nets/<現行ネット>.hmwr.best
+   ```
+4. **検証集合も同じ設定で静止化する。** 学習データと土俵を揃えないと、
+   best checkpointの選択が歪む。非静止の検証集合で測った値は、静止化した
+   ネットには不利に出る（[ADR-0136](adr/0136-quiet-teacher-positions.md)）
 
 前処理（P8用、19.9億。[ADR-0065](adr/0065-large-scale-dataloader.md)）:
 1. 上と同じ手順を253ファイル（start_time=1695340981と1695606850）で行う
