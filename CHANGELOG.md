@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.33.1](https://github.com/kaz9120/himawari-rs/compare/v0.33.0...v0.33.1) (2026-08-08)
+
+
+### 内部
+
+* 実験の実行とログを規約で固定する（ADR-0149） ([#217](https://github.com/kaz9120/himawari-rs/issues/217)) ([389ec2b](https://github.com/kaz9120/himawari-rs/commit/389ec2bc5af0159014747dbb9f77c0176bb5bdee))
+
 ## [0.33.0](https://github.com/kaz9120/himawari-rs/compare/v0.32.0...v0.33.0) (2026-08-08)
 
 
