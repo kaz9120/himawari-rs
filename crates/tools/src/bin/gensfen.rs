@@ -377,7 +377,7 @@ fn generate(cfg: &Config) -> std::io::Result<()> {
                     let n = written.fetch_add(pending.len() as u64, Ordering::Relaxed)
                         + pending.len() as u64;
                     let done = finished.fetch_add(1, Ordering::Relaxed) + 1;
-                    if done % cfg.save_every == 0 {
+                    if done.is_multiple_of(cfg.save_every) {
                         let mut g = writer.lock().expect("writer");
                         let _ = g.flush();
                         drop(g);
