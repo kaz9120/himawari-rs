@@ -159,6 +159,9 @@
 | [0142](0142-dfpn-mate-search.md) | df-pnの詰み探索をrootへ並走させる | - | proposed |
 | [0143](0143-spsa-tuning.md) | 探索定数をSPSAで一括チューニングする | - | proposed |
 | [0144](0144-selfplay-teacher-loop.md) | 自前gensfenで教師データの世代ループを始める | - | proposed |
+| [0145](0145-continual-learning.md) | 前世代のネットから継続学習で積む | - | proposed |
+| [0146](0146-book-full-width-opening.md) | 定跡の浅い層を全合法手で埋める | - | proposed |
+| [0147](0147-effect-bucket-features.md) | 特徴indexを被利き数でバケット化する（EffectBucket） | - | proposed |
 
 ## バックログ
 

@@ -188,6 +188,13 @@ def main():
              "対しては1.0を指定する",
     )
     p.add_argument(
+        "--init-checkpoint",
+        help="f32のチェックポイント（.pt）から重みだけを読んで新しい学習を始める"
+             "（ADR-0145）。--resume と違い step・optimizer・schedulerは引き継がず、"
+             "lrは渡した値から改めて減衰する。--init-net は量子化を経た.hmwrを読むので"
+             "世代を重ねるほど丸め誤差が乗るが、こちらは乗らない",
+    )
+    p.add_argument(
         "--eval-only",
         action="store_true",
         help="学習せず、--init-net で読んだネットの検証損失だけを出す"
@@ -245,8 +252,8 @@ def main():
         p.error("--data と --generate は同時に使えない（局面の出どころは1つ）")
     if args.eval_only:
         # 測るだけなので教師データは要らない。読むネットと物差しが要る
-        if not args.init_net:
-            p.error("--eval-only には --init-net が要る（測るネットがない）")
+        if not args.init_net and not args.init_checkpoint:
+            p.error("--eval-only には --init-net か --init-checkpoint が要る（測るネットがない）")
         if not args.valid:
             p.error("--eval-only には --valid が要る（物差しがない）")
     elif not args.data and not args.generate:
@@ -367,16 +374,33 @@ def main():
         effect_head=args.effect_head,
     ).to(device)
 
-    if args.init_net:
+    if args.init_net and args.init_checkpoint:
+        p.error("--init-net と --init-checkpoint は同時に使えない（初期値は1つ）")
+    if args.init_checkpoint:
+        # 重みだけ読む。stepとoptimizerを引き継がないので、lrは渡した値から
+        # 改めて減衰する。前世代の続きを別のデータで学習するための経路である
+        ckpt = torch.load(args.init_checkpoint, map_location=device,
+                          weights_only=False)
+        model.load_state_dict(ckpt["model"])
+        print(f"初期値（f32）: {args.init_checkpoint} "
+              f"step={ckpt.get('step', '?')} valid={ckpt.get('best_valid', '?')}",
+              file=sys.stderr)
+        if args.freeze_ft:
+            model.ft.weight.requires_grad_(False)
+            model.ft_bias.requires_grad_(False)
+            if model.ft_p is not None:
+                model.ft_p.weight.requires_grad_(False)
+    elif args.init_net:
         from quantize import load_into
         print(f"初期値: {load_into(model, args.init_net, args.freeze_ft)}",
               file=sys.stderr)
     elif args.freeze_ft:
-        p.error("--freeze-ft には --init-net が要る（凍結する重みがない）")
+        p.error("--freeze-ft には --init-net か --init-checkpoint が要る（凍結する重みがない）")
 
     if args.eval_only:
         vl = validate(model, valid_loader, device)
-        print(f"{args.init_net}\t{args.valid}\t{vl:.5f}")
+        src = args.init_net or args.init_checkpoint
+        print(f"{src}\t{args.valid}\t{vl:.5f}")
         return
 
     dense_params = [
