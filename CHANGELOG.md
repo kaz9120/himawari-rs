@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.31.0](https://github.com/kaz9120/himawari-rs/compare/v0.30.1...v0.31.0) (2026-08-08)
+
+
+### 棋力向上
+
+* 教師局面を静止化したネットを現行構成にする（+13.9 Elo、ADR-0136） ([#208](https://github.com/kaz9120/himawari-rs/issues/208)) ([71cece8](https://github.com/kaz9120/himawari-rs/commit/71cece8f004f44248f41f36c4d4769306668839b))
+
 ## [0.30.1](https://github.com/kaz9120/himawari-rs/compare/v0.30.0...v0.30.1) (2026-08-07)
 
 
