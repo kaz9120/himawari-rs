@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.34.0](https://github.com/kaz9120/himawari-rs/compare/v0.33.2...v0.34.0) (2026-08-08)
+
+
+### 棋力向上
+
+* gensfenを並列化し、記録する局面を静止局面にする（ADR-0144・0136） ([#221](https://github.com/kaz9120/himawari-rs/issues/221)) ([0d936a4](https://github.com/kaz9120/himawari-rs/commit/0d936a4e03ddf73907dcba0ed4514cc090cef265))
+
 ## [0.33.2](https://github.com/kaz9120/himawari-rs/compare/v0.33.1...v0.33.2) (2026-08-08)
 
 
