@@ -151,6 +151,8 @@ RUSTFLAGS="-C target-cpu=native" cargo build --release
 すべてgitignore対象。`data/raw/<データセット名>/` に生データ、
 `data/train/` に加工済みpsv、`data/nets/` に学習済みネット、
 `data/sprt/` にselfplayの棋譜ログ（jsonl）、`data/bin/` に
-比較用に残すビルド済みバイナリを置く。
+比較用に残すビルド済みバイナリ、`data/logs/` にスクリプトの実行ログを置く。
+**ログのリダイレクト先を手で決めない。** `scripts/` の各スクリプトが
+`data/logs/<名前>.log` へ追記する（[ADR-0149](docs/adr/0149-experiment-runner.md)）。
 チェックポイント（*.pt）は `training/checkpoints/` に置く。
 ネットのファイル名は実験名を含める（例: `halfkp_180M.hmwr.best`）。

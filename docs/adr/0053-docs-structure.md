@@ -60,6 +60,9 @@ data/
   train/                  加工済みpsv（train_*.psv、valid_*.psv、bench*.psv）
   nets/                   学習済みネット（<実験名>.hmwr[.best]）
   sprt/                   selfplayの棋譜ログ（jsonl。2026-07-23追記）
+  bin/                    比較用に残すビルド済みバイナリ
+  book/                   定跡db
+  logs/                   スクリプトの実行ログ（2026-08-08追記。ADR-0149）
 ```
 
 - 学習チェックポイント（*.pt）はdata/に置かず、従来どおり
