@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.33.0](https://github.com/kaz9120/himawari-rs/compare/v0.32.0...v0.33.0) (2026-08-08)
+
+
+### 棋力向上
+
+* 盤面の利きを差分で持つEffectTableを置く（ADR-0148） ([#216](https://github.com/kaz9120/himawari-rs/issues/216)) ([8d375e9](https://github.com/kaz9120/himawari-rs/commit/8d375e991a0baabf68c5c8f2011ae5098fa8235f))
+
 ## [0.32.0](https://github.com/kaz9120/himawari-rs/compare/v0.31.2...v0.32.0) (2026-08-08)
 
 
