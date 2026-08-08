@@ -9,6 +9,7 @@
 //! 使い方:
 //!   book gen     定跡を掘り広げる（新しい局面を足す）
 //!   book refresh 定跡が持つ局面はそのままに、指し手と評価値を引き直す
+//!   book stats   plyごとの網羅率を数える
 //!
 //!   book gen --out <path> [--eval <hmwr>] [--ply 24] [--width 4]
 //!            [--full-ply 0] [--depth 24] [--hash 256] [--threads N]
@@ -47,6 +48,12 @@
 //! 定跡を広げるのは gen を条件を変えて再実行する。出力ファイルがあれば
 //! 読んで再開するので、--max-positions を増やせば続きから掘り、
 //! --full-ply を上げれば浅い層の幅が広がる。
+//!
+//! statsは「相手の手が何であっても定跡を引けるか」を見る。plyを進めるたびに、
+//! その層の全合法手のうち何手ぶんを定跡が持っているかを出す。--ply で
+//! 数える深さを決める。
+//!
+//!   book stats --out data/book/main.db --ply 6
 //!
 //! 探索はThreadPool経由でLazy SMP（ADR-0031）を使う。置換表は局面を
 //! またいで再利用する。親から子へ展開するので、親の探索で読んだ子局面の
@@ -557,10 +564,68 @@ fn prune_by_margin(mut lines: Lines, margin: i32) -> Lines {
     lines
 }
 
+/// 定跡がどこまで網羅できているかを数える（ADR-0146）。
+///
+/// 見るのは「相手の手が何であっても定跡を引けるか」である。plyを1つ進める
+/// たびに、その層の全合法手のうち何手ぶんの局面を定跡が持っているかを出す。
+/// 網羅できていない手が現れた時点で、そこから先は定跡が外れうる。
+fn stats(cfg: &Config) -> std::io::Result<()> {
+    let book = Book::load(&cfg.out)?;
+    if book.len() == 0 {
+        eprintln!("{} に定跡がない", cfg.out);
+        return Ok(());
+    }
+    println!("{}: {}局面", cfg.out, book.len());
+    println!();
+    println!("| ply | 到達局面 | 合法手 | 定跡にある | 網羅率 |");
+    println!("|---|---|---|---|---|");
+
+    // その層で「定跡が持っている局面」だけを次の層へ伸ばす。持っていない
+    // 局面から先を数えても、実戦ではそこへ到達する前に定跡が切れている
+    let root = Position::from_sfen(SFEN_STARTPOS).expect("startpos");
+    let mut frontier = vec![root];
+    for ply in 1..=cfg.ply {
+        let mut next: Vec<Position> = Vec::new();
+        let mut legal_total = 0usize;
+        let mut covered = 0usize;
+        let mut seen: HashSet<String> = HashSet::new();
+        for pos in &frontier {
+            let mut list = MoveList::default();
+            generate_legal(pos, false, &mut list);
+            for &m in &list {
+                let mut child = pos.clone();
+                child.do_move(m);
+                let key = book_key(&child);
+                if !seen.insert(key.clone()) {
+                    continue;
+                }
+                legal_total += 1;
+                if book.lines.contains_key(&key) {
+                    covered += 1;
+                    next.push(child);
+                }
+            }
+        }
+        if legal_total == 0 {
+            break;
+        }
+        println!(
+            "| {ply} | {} | {legal_total} | {covered} | {:.1}% |",
+            frontier.len(),
+            covered as f64 * 100.0 / legal_total as f64,
+        );
+        if covered == 0 {
+            break;
+        }
+        frontier = next;
+    }
+    Ok(())
+}
+
 fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
     let sub = args.first().map(String::as_str).unwrap_or("");
-    if sub != "gen" && sub != "refresh" {
+    if sub != "gen" && sub != "refresh" && sub != "stats" {
         eprintln!("使い方は crates/tools/src/bin/book.rs 冒頭のコメントを参照");
         std::process::exit(3);
     }
@@ -608,10 +673,10 @@ fn main() {
     if let Some(dir) = std::path::Path::new(&cfg.out).parent() {
         let _ = std::fs::create_dir_all(dir);
     }
-    let result = if sub == "refresh" {
-        refresh(&cfg)
-    } else {
-        generate(&cfg)
+    let result = match sub {
+        "refresh" => refresh(&cfg),
+        "stats" => stats(&cfg),
+        _ => generate(&cfg),
     };
     if let Err(e) = result {
         eprintln!("エラー: {e}");
