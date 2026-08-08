@@ -22,8 +22,13 @@
 //! --resign を超える評価値が出たら投了する。決着の見えた局面を指し継いでも
 //! 教師の情報量は増えず、生成速度だけが落ちる。0を渡すと投了しない。
 //!
+//! 記録するのはqsearchの静止局面である（--quiet-plies、既定1）。評価関数が
+//! 探索中に見るのは静止局面なので、教師の局面もそこへ揃える（ADR-0136）。
+//! 後からpsv quietをかけるより工程が1つ減り、費用も小さい。0を渡すと
+//! 静止化せずに指した局面をそのまま記録する。
+//!
 //! 評価値と勝敗はどちらも手番視点で書く（ADR-0136で踏んだ落とし穴）。
-//! 詰みスコアは素通しにする（ADR-0126）。
+//! 静止化で奇数手進んだら符号を戻す。詰みスコアは素通しにする（ADR-0126）。
 //!
 //! 途中で止めるときは停止ファイルを置く（ADR-0123）。1局の切れ目で書き出して
 //! 終わるので、途中まで生成した教師はそのまま使える。
@@ -36,6 +41,10 @@ use std::sync::{Arc, Mutex};
 
 use himawari_core::packed_sfen::{PSV_BYTES, PackedSfenValue, pack};
 use himawari_core::{Color, Move16, MoveList, Position, Repetition, SFEN_STARTPOS, generate_legal};
+use himawari_engine::eval::Evaluator;
+use himawari_engine::movepick::Histories;
+use himawari_engine::search::{Shared, Worker};
+use himawari_engine::timeman::{TimeManager, TimeOptions};
 use himawari_engine::{EngineOptions, Limits, ThreadPool};
 use himawari_tools::stop_file::StopFile;
 
@@ -46,6 +55,7 @@ struct Config {
     depth: u32,
     random_plies: usize,
     min_ply: u16,
+    quiet_plies: usize,
     max_moves: usize,
     resign: i32,
     threads: usize,
@@ -137,6 +147,7 @@ fn play_one(
     cfg: &Config,
     pool: &ThreadPool,
     sink: &Sink,
+    quiet: &mut Worker,
     rng: &mut Rng,
 ) -> (Vec<Pending>, Option<Color>, &'static str) {
     let mut pos = Position::from_sfen(SFEN_STARTPOS).expect("startpos");
@@ -188,19 +199,43 @@ fn play_one(
 
         // 記録するのはランダム区間を抜けてからにする。詰みスコアは素通しで
         // よい（ADR-0126）。評価値・勝敗はどちらも手番視点で書く
-        if pos.game_ply() >= cfg.min_ply
-            && let Ok(packed) = pack(&pos)
-        {
-            pending.push(Pending {
-                rec: PackedSfenValue {
-                    sfen: packed,
-                    score: score.clamp(-32000, 32000) as i16,
-                    move16: Move16::from_usi(&mv).unwrap_or(Move16::NONE).0,
-                    game_ply: pos.game_ply(),
-                    game_result: 0,
-                },
-                stm,
-            });
+        if pos.game_ply() >= cfg.min_ply {
+            // 記録する前に静止局面へ進める（ADR-0136）。評価関数が探索中に
+            // 見るのは静止局面なので、後からpsv quietで直すより、ここで
+            // 済ませたほうが工程が1つ減る
+            let mut rec_pos = pos.clone();
+            let mut rec_score = score;
+            let mut rec_stm = stm;
+            let mut rec_ply = pos.game_ply();
+            let mut rec_move = Move16::from_usi(&mv).unwrap_or(Move16::NONE).0;
+            if cfg.quiet_plies > 0 {
+                quiet.set_position(pos.clone());
+                let plies = quiet.walk_to_quiet(cfg.quiet_plies);
+                if plies > 0 {
+                    // 奇数手進めると手番が入れ替わる。評価値と勝敗はどちらも
+                    // 手番視点なので符号を戻す
+                    if plies % 2 == 1 {
+                        rec_score = -rec_score;
+                        rec_stm = stm.flip();
+                    }
+                    rec_ply = rec_ply.saturating_add(plies as u16);
+                    // PVの初手は元局面のもので、葉では指せない
+                    rec_move = Move16::NONE.0;
+                    rec_pos = quiet.pos.clone();
+                }
+            }
+            if let Ok(packed) = pack(&rec_pos) {
+                pending.push(Pending {
+                    rec: PackedSfenValue {
+                        sfen: packed,
+                        score: rec_score.clamp(-32000, 32000) as i16,
+                        move16: rec_move,
+                        game_ply: rec_ply,
+                        game_result: 0,
+                    },
+                    stm: rec_stm,
+                });
+            }
         }
 
         if cfg.resign > 0 && score <= -cfg.resign {
@@ -215,11 +250,12 @@ fn generate(cfg: &Config) -> std::io::Result<()> {
     // 生成条件をログの先頭に残す。教師データは条件を変えて何度も作るので、
     // どの設定で作ったかを後から追えないと混ぜる判断ができない
     eprintln!(
-        "GenSfen: games={} depth={} random_plies={} min_ply={} max_moves={} resign={} workers={} hash={}MB seed={}",
+        "GenSfen: games={} depth={} random_plies={} min_ply={} quiet_plies={} max_moves={} resign={} workers={} hash={}MB seed={}",
         cfg.games,
         cfg.depth,
         cfg.random_plies,
         cfg.min_ply,
+        cfg.quiet_plies,
         cfg.max_moves,
         cfg.resign,
         cfg.threads,
@@ -279,7 +315,29 @@ fn generate(cfg: &Config) -> std::io::Result<()> {
                         }
                     })
                 };
-                let pool = ThreadPool::new(hash_each, 1, Some((eval_path, net)), on_line);
+                let pool =
+                    ThreadPool::new(hash_each, 1, Some((eval_path, Arc::clone(&net))), on_line);
+                // 静止化用のWorker。局面ごとに作るとhistory一式の確保が
+                // 律速になるので、1つ作って使い回す（ADR-0136で実測）
+                let shared = Arc::new(Shared::new(16));
+                let start = Position::from_sfen(SFEN_STARTPOS).expect("startpos");
+                let limits = Limits::default();
+                let tm = TimeManager::new(
+                    &limits,
+                    start.side_to_move(),
+                    start.game_ply(),
+                    &TimeOptions::default(),
+                );
+                let mut quiet = Worker::new(
+                    start,
+                    shared,
+                    limits,
+                    tm,
+                    0,
+                    1,
+                    Evaluator::nnue(Arc::clone(&net)),
+                    Histories::default(),
+                );
                 // 種はワーカーごとにずらす。同じ開始局面を8本で作っても
                 // 学習の役に立たない
                 let mut rng = Rng(
@@ -297,7 +355,8 @@ fn generate(cfg: &Config) -> std::io::Result<()> {
                     if claimed.fetch_add(1, Ordering::Relaxed) >= cfg.games {
                         break;
                     }
-                    let (pending, winner, reason) = play_one(cfg, &pool, &sink, &mut rng);
+                    let (pending, winner, reason) =
+                        play_one(cfg, &pool, &sink, &mut quiet, &mut rng);
                     let mut buf: Vec<u8> = Vec::with_capacity(pending.len() * PSV_BYTES);
                     for p in &pending {
                         let mut rec = p.rec;
@@ -365,6 +424,7 @@ fn main() {
         depth: 8,
         random_plies: 8,
         min_ply: 8,
+        quiet_plies: 1,
         max_moves: 320,
         resign: 3000,
         threads: std::thread::available_parallelism().map_or(1, |n| n.get()),
@@ -383,6 +443,7 @@ fn main() {
             "--depth" => cfg.depth = val.parse().unwrap_or(cfg.depth),
             "--random-plies" => cfg.random_plies = val.parse().unwrap_or(cfg.random_plies),
             "--min-ply" => cfg.min_ply = val.parse().unwrap_or(cfg.min_ply),
+            "--quiet-plies" => cfg.quiet_plies = val.parse().unwrap_or(cfg.quiet_plies),
             "--max-moves" => cfg.max_moves = val.parse().unwrap_or(cfg.max_moves),
             "--resign" => cfg.resign = val.parse().unwrap_or(cfg.resign),
             "--threads" => cfg.threads = val.parse::<usize>().unwrap_or(cfg.threads).max(1),
