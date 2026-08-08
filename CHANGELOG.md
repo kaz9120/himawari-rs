@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.31.2](https://github.com/kaz9120/himawari-rs/compare/v0.31.1...v0.31.2) (2026-08-08)
+
+
+### その他の変更
+
+* 定跡の浅い層を全合法手で埋め、最新ネットで引き直せるようにする（ADR-0146） ([#212](https://github.com/kaz9120/himawari-rs/issues/212)) ([59b4027](https://github.com/kaz9120/himawari-rs/commit/59b4027818aa73263261e0e7731faf66e19ea417))
+
 ## [0.31.1](https://github.com/kaz9120/himawari-rs/compare/v0.31.0...v0.31.1) (2026-08-08)
 
 
