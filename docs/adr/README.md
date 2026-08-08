@@ -164,6 +164,7 @@
 | [0147](0147-effect-bucket-features.md) | 特徴indexを被利き数でバケット化する（EffectBucket） | - | proposed |
 | [0148](0148-effect-table.md) | 盤面の利きを差分で持つ | - | proposed |
 | [0149](0149-experiment-runner.md) | 実験の実行とログを規約で固定する | - | proposed |
+| [0150](0150-rootstrap-evaluation.md) | 世代ループの良し悪しを検証損失で測らない | - | proposed |
 
 ## バックログ
 
