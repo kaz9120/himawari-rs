@@ -1,9 +1,8 @@
 #!/usr/bin/env bash
 # ネットの検証損失を測る（ADR-0149）。
 #
-# 教師データの分布を変える実験では、valid lossの土俵も一緒に動く
-# （ADR-0136）。同じネットを複数の検証集合で測って並べないと、
-# 差が実力なのか物差しなのか分からない。
+# 学習を回さずに損失だけ見たい場面がある。継続学習の条件比較（ADR-0145）
+# のように、書き出したネットを並べて測るときに使う。
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -19,12 +18,17 @@ usage() {
   scripts/eval-net.sh data/nets/halfkp_2990M_q1.hmwr.best
   scripts/eval-net.sh data/nets/*.hmwr.best
 
-渡したネットを、既定の検証集合すべてで測って表にする。学習はしない。
+渡したネットを検証集合で測って表にする。学習はしない。
 .hmwr は量子化を経ているので、学習中に出る値とは丸めのぶん違う。
 f32のチェックポイント（.ckpt）も同じように渡せる。
 
-検証集合は環境変数で変えられる（コンマ区切り）。
-  EVAL_VALIDS  既定 data/train/valid_385M.psv,data/train/valid_385M_q1.psv
+検証集合の既定は data/train/valid_385M_q1.psv で、現行の教師と同じ静止化を
+かけたものである（ADR-0136）。**学習データと土俵を揃える。**
+
+土俵を跨いで比べたいときだけコンマ区切りで並べる。教師データの分布を変える
+実験では物差しも動くので、そのときは複数を渡す必要がある。
+  EVAL_VALIDS=data/train/valid_385M.psv,data/train/valid_385M_q1.psv \
+    scripts/eval-net.sh <ネット>
 
 ネットワーク構成はPyO3拡張の次元で決まる。構成を変えて測るときは
 scripts/build-shapes.sh で拡張を作り直してから呼ぶ。
@@ -43,7 +47,7 @@ fi
 
 cd "$REPO_ROOT"
 
-VALIDS="${EVAL_VALIDS:-data/train/valid_385M.psv,data/train/valid_385M_q1.psv}"
+VALIDS="${EVAL_VALIDS:-data/train/valid_385M_q1.psv}"
 
 log_step "検証損失の測定（${#@}件）"
 
