@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.34.19](https://github.com/kaz9120/himawari-rs/compare/v0.34.18...v0.34.19) (2026-08-09)
+
+
+### ドキュメント
+
+* 部分挿入ソートの二分探索化を棄却する（ADR-0151群M） ([#261](https://github.com/kaz9120/himawari-rs/issues/261)) ([02b6f11](https://github.com/kaz9120/himawari-rs/commit/02b6f111a37a18f7be52b70aa80f9c46650a455b))
+
 ## [0.34.18](https://github.com/kaz9120/himawari-rs/compare/v0.34.17...v0.34.18) (2026-08-09)
 
 
