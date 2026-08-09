@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.34.11](https://github.com/kaz9120/himawari-rs/compare/v0.34.10...v0.34.11) (2026-08-09)
+
+
+### その他の変更
+
+* 二歩マスクのビット演算化とSEEの最安駒選択の表引き化（ADR-0151群D） ([#245](https://github.com/kaz9120/himawari-rs/issues/245)) ([cae01f0](https://github.com/kaz9120/himawari-rs/commit/cae01f0046368bb3d65b6acc6a99df8340891e34))
+
 ## [0.34.10](https://github.com/kaz9120/himawari-rs/compare/v0.34.9...v0.34.10) (2026-08-09)
 
 
