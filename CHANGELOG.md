@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.34.2](https://github.com/kaz9120/himawari-rs/compare/v0.34.1...v0.34.2) (2026-08-09)
+
+
+### ドキュメント
+
+* 世代1の棄却を記録し、ADR-0150の検証損失の扱いを直す ([#226](https://github.com/kaz9120/himawari-rs/issues/226)) ([7a4d775](https://github.com/kaz9120/himawari-rs/commit/7a4d775c8f616c4f8cec094d13d04c719ce787e7))
+
 ## [0.34.1](https://github.com/kaz9120/himawari-rs/compare/v0.34.0...v0.34.1) (2026-08-09)
 
 
