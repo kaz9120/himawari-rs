@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.34.14](https://github.com/kaz9120/himawari-rs/compare/v0.34.13...v0.34.14) (2026-08-09)
+
+
+### ドキュメント
+
+* ADR-0151に第3次プロファイルと群L〜Oを追記する ([#251](https://github.com/kaz9120/himawari-rs/issues/251)) ([d7dc15d](https://github.com/kaz9120/himawari-rs/commit/d7dc15da8a03cfcea0b8ef13591d91becb76bc12))
+
 ## [0.34.13](https://github.com/kaz9120/himawari-rs/compare/v0.34.12...v0.34.13) (2026-08-09)
 
 
