@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.35.2](https://github.com/kaz9120/himawari-rs/compare/v0.35.1...v0.35.2) (2026-08-09)
+
+
+### 内部
+
+* 棋譜の局面を定跡へ足すbook seedを実装する（ADR-0152） ([#275](https://github.com/kaz9120/himawari-rs/issues/275)) ([45691eb](https://github.com/kaz9120/himawari-rs/commit/45691eb1baeb7463d0e15ed12032e414d61b7f63))
+
 ## [0.35.1](https://github.com/kaz9120/himawari-rs/compare/v0.35.0...v0.35.1) (2026-08-09)
 
 
