@@ -171,6 +171,15 @@ u128のORは2命令なので、1回の `attackers_to` で20〜30命令がこの�
 `ray_dec` は16命令のGPRコードに落ちており（アセンブリ実測）、NEONには
 128bitの桁上がりがなく、AVX2のような1レジスタ2レイの並列化もできない。
 
+**実測: +2.47% NPS**（2026-08-09、群A・B適用後のmainがbase）。合成板は
+`composite: [Bitboard; 4]`（GOLDS・BISHOP_HORSE・ROOK_DRAGON・HDK）で、
+`by_type` を触る経路がput/removeの2関数に集約されていることを確認して
+そこで差分維持する。更新は駒種→所属のビットマスク表を引く分岐なしXOR。
+デバッグビルドでは「合成板＝by_typeからの再計算」をdo_move・undo_move・
+from_sfenで検査し、故障注入でassertが実際に発火することも確かめた。
+機能検証は全4局面一致。NPSは7周すべてでcandが上回り、分布は重ならない
+（base 1,909,130〜1,947,435、cand 1,958,438〜1,979,204）。
+
 ### 群G: BETWEEN/LINE表の圧縮（2026-08-09追記）
 
 `BETWEEN[81][81]` と `LINE[81][81]` は各105KB、合計210KBで、M4のL1
