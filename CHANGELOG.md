@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.34.10](https://github.com/kaz9120/himawari-rs/compare/v0.34.9...v0.34.10) (2026-08-09)
+
+
+### その他の変更
+
+* NNUE隠れ層の行束ねを8行にしdotへ専用命令を使う（ADR-0151群C、+1.01% NPS） ([#243](https://github.com/kaz9120/himawari-rs/issues/243)) ([cdf998b](https://github.com/kaz9120/himawari-rs/commit/cdf998b2e0041f29296a61481b73bb783b704f7c))
+
 ## [0.34.9](https://github.com/kaz9120/himawari-rs/compare/v0.34.8...v0.34.9) (2026-08-09)
 
 
