@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.34.12](https://github.com/kaz9120/himawari-rs/compare/v0.34.11...v0.34.12) (2026-08-09)
+
+
+### 内部
+
+* 配布バイナリをPGOで作る（ADR-0151群I） ([#247](https://github.com/kaz9120/himawari-rs/issues/247)) ([868f1dc](https://github.com/kaz9120/himawari-rs/commit/868f1dc8e1cf244af9f001b7f0ec16a5868e9153))
+
 ## [0.34.11](https://github.com/kaz9120/himawari-rs/compare/v0.34.10...v0.34.11) (2026-08-09)
 
 
