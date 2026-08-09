@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.35.3](https://github.com/kaz9120/himawari-rs/compare/v0.35.2...v0.35.3) (2026-08-09)
+
+
+### 内部
+
+* floodgateの棋譜回収と再解析レポートを実装する（ADR-0152） ([#277](https://github.com/kaz9120/himawari-rs/issues/277)) ([5086dec](https://github.com/kaz9120/himawari-rs/commit/5086decc8e401e473cd3afeaa7826f8135231e8a))
+
 ## [0.35.2](https://github.com/kaz9120/himawari-rs/compare/v0.35.1...v0.35.2) (2026-08-09)
 
 
