@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.34.1](https://github.com/kaz9120/himawari-rs/compare/v0.34.0...v0.34.1) (2026-08-09)
+
+
+### その他の変更
+
+* RootStrapの評価方法を決め直し、生成の終盤欠落を直す（ADR-0144・0145・0150） ([#224](https://github.com/kaz9120/himawari-rs/issues/224)) ([aafc57d](https://github.com/kaz9120/himawari-rs/commit/aafc57debfb7552c32ec83c39122a928a2aab929))
+
 ## [0.34.0](https://github.com/kaz9120/himawari-rs/compare/v0.33.2...v0.34.0) (2026-08-08)
 
 
