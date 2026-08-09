@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.34.22](https://github.com/kaz9120/himawari-rs/compare/v0.34.21...v0.34.22) (2026-08-09)
+
+
+### その他の変更
+
+* check_squaresをノード内の遅延キャッシュにする（ADR-0151群O、+1.82% NPS） ([#267](https://github.com/kaz9120/himawari-rs/issues/267)) ([f1e415d](https://github.com/kaz9120/himawari-rs/commit/f1e415de0198b1ea14335604dab13a4e21f74a3f))
+
 ## [0.34.21](https://github.com/kaz9120/himawari-rs/compare/v0.34.20...v0.34.21) (2026-08-09)
 
 
