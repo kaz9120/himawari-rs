@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.34.15](https://github.com/kaz9120/himawari-rs/compare/v0.34.14...v0.34.15) (2026-08-09)
+
+
+### その他の変更
+
+* 探索のPV/NonPVをconst genericsで単相化する（ADR-0151群J） ([#253](https://github.com/kaz9120/himawari-rs/issues/253)) ([9cb1789](https://github.com/kaz9120/himawari-rs/commit/9cb17895a86f8cb7c9726508d5853685fd8f82a0))
+
 ## [0.34.14](https://github.com/kaz9120/himawari-rs/compare/v0.34.13...v0.34.14) (2026-08-09)
 
 
