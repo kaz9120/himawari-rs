@@ -72,6 +72,7 @@ pub fn load_nn_bin(r: &mut impl Read) -> Result<(NnueNetwork, String), String> {
             ft_w,
             ft_b,
             w2,
+            w2_sparse: Vec::new(),
             b2,
             w3,
             b3,
@@ -79,7 +80,8 @@ pub fn load_nn_bin(r: &mut impl Read) -> Result<(NnueNetwork, String), String> {
             b4: Vec::new(),
             w_out,
             b_out,
-        },
+        }
+        .finish(),
         arch,
     ))
 }

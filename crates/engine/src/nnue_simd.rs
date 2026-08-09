@@ -425,12 +425,190 @@ fn affine_relu(w: &[i8], b: &[i32], x: &[u8], out: &mut [u8]) {
     }
 }
 
+/// 4列チャンクの数（第1層の入力）。
+#[cfg(all(target_arch = "aarch64", target_feature = "dotprod"))]
+const NNZ_CHUNKS: usize = CONCAT / 4;
+
+/// 第1層のアキュムレータ本数。1本（int32x4）が4出力を持つ。
+#[cfg(all(target_arch = "aarch64", target_feature = "dotprod"))]
+const L1_ACCS: usize = L1_OUT / 4;
+
+/// 列駆動に載せる上限（アキュムレータの本数）。これを超えるとレジスタが
+/// 溢れてスピルするので、密のまま計算する。aarch64のSIMDレジスタは32本で、
+/// 重みと入力に数本残す。
+#[cfg(all(target_arch = "aarch64", target_feature = "dotprod"))]
+const L1_ACCS_MAX: usize = 16;
+
+/// バイトマスクから非ゼロ位置8個を引く表（ADR-0151群L）。
+///
+/// `NNZ_LUT[m]` は、mのビットが立っている位置を前へ詰めた並びになる。
+/// 立っていないぶんは使わない（`count_ones` の数だけ読む）。4KB。
+#[cfg(all(target_arch = "aarch64", target_feature = "dotprod"))]
+static NNZ_LUT: [[u16; 8]; 256] = {
+    let mut t = [[0u16; 8]; 256];
+    let mut m = 0usize;
+    while m < 256 {
+        let mut n = 0;
+        let mut i = 0;
+        while i < 8 {
+            if m & (1 << i) != 0 {
+                t[m][n] = i as u16;
+                n += 1;
+            }
+            i += 1;
+        }
+        m += 1;
+    }
+    t
+};
+
+/// 活性のうち非ゼロを含む4列チャンクを列挙する（ADR-0151群L）。
+///
+/// 16チャンク（64バイト）ずつ見て、チャンクごとの非ゼロ判定を1ビットに
+/// 潰し、2バイトのマスクを `NNZ_LUT` で添字へ展開する。**分岐を持たない。**
+/// 活性の並びは呼び出しごとに変わるので、分岐で書くと予測が外れ続ける
+/// （ベンチで実測: 分岐版112.7ns、この版99.6ns、密127.6ns）。
+///
+/// 戻り値は `nnz` に書いた個数。
+#[cfg(all(target_arch = "aarch64", target_feature = "dotprod"))]
+#[inline]
+fn find_nnz(x: &[u8; CONCAT], nnz: &mut [u16; NNZ_CHUNKS + 8]) -> usize {
+    use std::arch::aarch64::{
+        vaddq_u16, vaddv_u8, vandq_u8, vceqzq_u32, vcombine_u8, vcombine_u16, vdupq_n_u16,
+        vget_high_u8, vget_low_u8, vld1q_u8, vld1q_u16, vld1q_u32, vmovn_u16, vmovn_u32, vmvnq_u8,
+        vst1q_u16,
+    };
+
+    /// バイトへ潰すときの重み。前半8レーンと後半8レーンで同じ並びにし、
+    /// `vaddv_u8` を上下half別に取って2バイトのマスクにする。
+    const BITS: [u8; 16] = [1, 2, 4, 8, 16, 32, 64, 128, 1, 2, 4, 8, 16, 32, 64, 128];
+
+    let mut count = 0usize;
+    let mut k = 0usize;
+    // SAFETY: 読み出しは16チャンク（64バイト）ごとで、k+16 <= NNZ_CHUNKS を
+    // ループ条件が保証する。vld1q_u32は整列を要求しない。書き込みは8要素
+    // ずつで、countは高々 NNZ_CHUNKS-8 までしか進まないので末尾8要素の
+    // 余白に収まる
+    unsafe {
+        let bits = vld1q_u8(BITS.as_ptr());
+        while k + 16 <= NNZ_CHUNKS {
+            let p = x.as_ptr().add(k * 4).cast::<u32>();
+            // ceqzは「ゼロなら全1」。4本のu32マスクをバイトへ潰す
+            let m01 = vcombine_u16(
+                vmovn_u32(vceqzq_u32(vld1q_u32(p))),
+                vmovn_u32(vceqzq_u32(vld1q_u32(p.add(4)))),
+            );
+            let m23 = vcombine_u16(
+                vmovn_u32(vceqzq_u32(vld1q_u32(p.add(8)))),
+                vmovn_u32(vceqzq_u32(vld1q_u32(p.add(12)))),
+            );
+            let m = vcombine_u8(vmovn_u16(m01), vmovn_u16(m23));
+            // 反転して「非ゼロなら全1」にし、重みを掛けて畳む
+            let b = vandq_u8(vmvnq_u8(m), bits);
+            for (half, mask) in [vget_low_u8(b), vget_high_u8(b)].into_iter().enumerate() {
+                let mask = usize::from(vaddv_u8(mask));
+                let base = vdupq_n_u16((k + half * 8) as u16);
+                vst1q_u16(
+                    nnz.as_mut_ptr().add(count),
+                    vaddq_u16(vld1q_u16(NNZ_LUT[mask].as_ptr()), base),
+                );
+                count += mask.count_ones() as usize;
+            }
+            k += 16;
+        }
+    }
+    // 16で割り切れない端数。CONCATは32の倍数なのでチャンク数は8の倍数に
+    // なり、ここへ来るのは高々8チャンクである
+    while k < NNZ_CHUNKS {
+        // SAFETY: k < NNZ_CHUNKS なので4バイトの読み出しは範囲内。
+        // 活性の並びは整列を保証しないので非整列で読む
+        let v = unsafe { x.as_ptr().add(k * 4).cast::<u32>().read_unaligned() };
+        nnz[count] = k as u16;
+        count += usize::from(v != 0);
+        k += 1;
+    }
+    count
+}
+
+/// 第1層を列駆動で計算する（ADR-0151群L）。
+///
+/// 活性の73.1%はゼロなので、4列チャンクの28.4%は丸ごとゼロになる。
+/// そのチャンクを飛ばすと積和がその分だけ減る。**i32の和は正確なので、
+/// 加算順序を変えてもゼロ項を飛ばしても結果はビット一致する。**
+///
+/// `wt` は `nnue::interleave_w2` が作る4列チャンク単位の表で、チャンクkの
+/// 16バイトごとに出力4行ぶんの重みが並ぶ。入力4バイトをブロードキャストし、
+/// `vdotq_s32` の4レーンで4行を同時に進める。
+#[cfg(all(target_arch = "aarch64", target_feature = "dotprod"))]
+fn affine_relu_l1_sparse(wt: &[i8], b: &[i32], x: &[u8; CONCAT], out: &mut [u8]) {
+    use std::arch::aarch64::{
+        int32x4_t, vdotq_s32, vdupq_n_s32, vdupq_n_u32, vld1q_s8, vreinterpretq_s8_u32, vst1q_s32,
+    };
+
+    debug_assert_eq!(wt.len(), L1_OUT * CONCAT);
+    debug_assert_eq!(b.len(), L1_OUT);
+    debug_assert_eq!(out.len(), L1_OUT);
+
+    let mut nnz = [0u16; NNZ_CHUNKS + 8];
+    let count = find_nnz(x, &mut nnz);
+
+    let mut sums = [0i32; L1_OUT];
+    // SAFETY: nnzの要素は 0..NNZ_CHUNKS で、チャンクkの重みは
+    // wt[k*L1_OUT*4 .. (k+1)*L1_OUT*4] にあり、wt.len()==L1_OUT*CONCAT から
+    // 範囲内に収まる。活性の4バイト読みも同じ理由で範囲内。書き出しは
+    // sumsの L1_OUT 要素ちょうど
+    unsafe {
+        let mut acc: [int32x4_t; L1_ACCS] = [vdupq_n_s32(0); L1_ACCS];
+        for &k in &nnz[..count] {
+            let k = usize::from(k);
+            let v = x.as_ptr().add(k * 4).cast::<u32>().read_unaligned();
+            let xv = vreinterpretq_s8_u32(vdupq_n_u32(v));
+            let base = wt.as_ptr().add(k * L1_OUT * 4);
+            for (r, a) in acc.iter_mut().enumerate() {
+                *a = vdotq_s32(*a, vld1q_s8(base.add(r * 16)), xv);
+            }
+        }
+        for (r, a) in acc.iter().enumerate() {
+            vst1q_s32(sums.as_mut_ptr().add(r * 4), *a);
+        }
+    }
+    for (o, h) in out.iter_mut().enumerate() {
+        *h = clip((b[o] + sums[o]) >> 6);
+    }
+}
+
+/// 第1層。SDOT経路だけ列駆動へ回す（ADR-0151群L）。
+///
+/// 派生表が空のネット（`NnueNetwork::finish` を呼ばずに組んだ場合）と、
+/// アキュムレータが溢れるほど出力が広い構成では密のまま計算する。
+/// どちらの経路も同じ値を返すので、落ちても速度が戻るだけである。
+#[cfg(all(target_arch = "aarch64", target_feature = "dotprod"))]
+#[inline]
+fn l1(net: &NnueNetwork, x: &[u8; CONCAT], out: &mut [u8]) {
+    let wt = if L1_ACCS <= L1_ACCS_MAX {
+        net.w2_sparse.get(..L1_OUT * CONCAT)
+    } else {
+        None
+    };
+    match wt {
+        Some(wt) => affine_relu_l1_sparse(wt, &net.b2, x, out),
+        None => affine_relu(&net.w2, &net.b2, x, out),
+    }
+}
+
+/// 同上（SDOT以外の経路。密のまま計算する）。
+#[cfg(not(all(target_arch = "aarch64", target_feature = "dotprod")))]
+#[inline]
+fn l1(net: &NnueNetwork, x: &[u8; CONCAT], out: &mut [u8]) {
+    affine_relu(&net.w2, &net.b2, x, out);
+}
+
 /// 連結ベクトルから評価値まで（SIMD版）。
 pub fn forward_hidden(net: &NnueNetwork, concat: &[u8; CONCAT]) -> Value {
     // 次の層の入力はパディングした幅で渡す。実次元より後ろはゼロのままで、
     // 重みの対応する列もゼロなので積和に効かない（ADR-0127）
     let mut h2 = [0u8; L1_PAD];
-    affine_relu(&net.w2, &net.b2, concat, &mut h2[..L1_OUT]);
+    l1(net, concat, &mut h2[..L1_OUT]);
     // 隠れ層は書いたぶんだけ挟む。次元は定数なので使わない分岐は消える
     let mut h3 = [0u8; L2_PAD];
     let mut h4 = [0u8; L3_OUT];
@@ -534,19 +712,23 @@ mod tests {
         }
     }
 
-    /// 隠れ層の推論がスカラー実装とビット一致すること（ADR-0099）。
-    /// SDOT経路は積和の順序がスカラーと異なるため、境界値も含めて照合する。
+    /// 隠れ層の推論がスカラー実装とビット一致すること（ADR-0099・0151群L）。
+    ///
+    /// SDOT経路は積和の順序がスカラーと異なり、第1層は列駆動でゼロの列を
+    /// 飛ばす。**飛ばす列の並びで結果が変わらないこと**を見るため、
+    /// 境界値（全0・全127）に加えてゼロ率を振ったランダムパターンを照合する。
+    /// ゼロ率0.731は探索での実測値である。
     #[test]
     fn forward_hidden_matches_scalar() {
         let net = NnueNetwork::random(11);
         let mut concat = [0u8; CONCAT];
-        // 全0・全127・鋸歯の3パターン。活性の値域は0..127（clip_to_u8）
+        // 全0・全127・鋸歯（全列が非ゼロ）の3パターン
         for pattern in 0..3 {
             for (i, v) in concat.iter_mut().enumerate() {
                 *v = match pattern {
                     0 => 0,
                     1 => 127,
-                    _ => ((i * 31) % 128) as u8,
+                    _ => ((i * 31) % 128 + 1).min(127) as u8,
                 };
             }
             assert_eq!(
@@ -554,6 +736,87 @@ mod tests {
                 crate::nnue::forward_hidden(&net, &concat),
                 "pattern={pattern}"
             );
+        }
+        // ゼロ率を振ったランダムパターン。ゼロの位置が毎回変わるので、
+        // 4列チャンクの飛ばし方（全ゼロ・一部ゼロ・非ゼロ）が総当たりに近く出る
+        let mut state = 0x9E37_79B9_7F4A_7C15u64;
+        for zero_permille in [1u64, 250, 500, 731, 900, 999] {
+            for _ in 0..32 {
+                fill_activations(&mut concat, zero_permille, &mut state);
+                assert_eq!(
+                    forward_hidden(&net, &concat),
+                    crate::nnue::forward_hidden(&net, &concat),
+                    "zero_permille={zero_permille}"
+                );
+            }
+        }
+    }
+
+    /// 第1層が飽和しないネット。乱数ネットのままだと和が大きく、出力の
+    /// 多くがclipの端（0か127）に張り付くため、**列駆動の誤りが潰されて
+    /// 見えなくなる。** 重みを小さくして値の違いが出るようにする。
+    fn small_l1_net(seed: u64) -> NnueNetwork {
+        let mut net = NnueNetwork::random(seed);
+        for w in &mut net.w2 {
+            *w = *w % 5 - 2;
+        }
+        net.finish()
+    }
+
+    /// ゼロ率を指定した活性を作る（0以外は1..127）。
+    fn fill_activations(concat: &mut [u8; CONCAT], zero_permille: u64, state: &mut u64) {
+        for v in concat.iter_mut() {
+            let mut next = || {
+                *state ^= *state << 13;
+                *state ^= *state >> 7;
+                *state ^= *state << 17;
+                *state
+            };
+            *v = if next() % 1000 < zero_permille {
+                0
+            } else {
+                (next() % 127 + 1) as u8
+            };
+        }
+    }
+
+    /// 第1層の出力が1つずつスカラーと一致すること（ADR-0151群L）。
+    /// ゼロの位置は毎回変わるので、4列チャンクの飛ばし方が総当たりに近く出る。
+    #[test]
+    fn l1_matches_scalar_without_saturation() {
+        let net = small_l1_net(23);
+        let mut state = 0xDEAD_BEEF_1234_5678u64;
+        let mut concat = [0u8; CONCAT];
+        let mut out = vec![0u8; L1_OUT];
+        for zero_permille in [0u64, 500, 731, 990] {
+            for _ in 0..16 {
+                fill_activations(&mut concat, zero_permille, &mut state);
+                l1(&net, &concat, &mut out);
+                for (o, &h) in out.iter().enumerate() {
+                    let sum: i32 = (0..CONCAT)
+                        .map(|i| i32::from(net.w2[o * CONCAT + i]) * i32::from(concat[i]))
+                        .sum();
+                    assert_eq!(h, clip((net.b2[o] + sum) >> 6), "o={o}");
+                }
+            }
+        }
+    }
+
+    /// 派生表を持たないネットでも同じ値を返すこと（ADR-0151群L）。
+    /// 列駆動は表が空なら密へ落ちる。落ちても結果は変わらない。
+    #[test]
+    fn l1_without_the_interleaved_table() {
+        let full = small_l1_net(29);
+        let mut bare = small_l1_net(29);
+        bare.w2_sparse = Vec::new();
+        let mut state = 0x0BAD_C0DE_5EED_1234u64;
+        let mut concat = [0u8; CONCAT];
+        let (mut a, mut b) = (vec![0u8; L1_OUT], vec![0u8; L1_OUT]);
+        for _ in 0..16 {
+            fill_activations(&mut concat, 731, &mut state);
+            l1(&full, &concat, &mut a);
+            l1(&bare, &concat, &mut b);
+            assert_eq!(a, b);
         }
     }
 }
