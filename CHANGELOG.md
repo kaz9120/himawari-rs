@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.34.13](https://github.com/kaz9120/himawari-rs/compare/v0.34.12...v0.34.13) (2026-08-09)
+
+
+### ドキュメント
+
+* ADR-0151累計のSPRT結果（+60.6 Elo、H1採択）を記録する ([#249](https://github.com/kaz9120/himawari-rs/issues/249)) ([c60199c](https://github.com/kaz9120/himawari-rs/commit/c60199cb155e706c98c5f2ba5e544004b2c09b47))
+
 ## [0.34.12](https://github.com/kaz9120/himawari-rs/compare/v0.34.11...v0.34.12) (2026-08-09)
 
 
