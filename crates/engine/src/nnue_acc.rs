@@ -115,9 +115,7 @@ impl NnueState {
 
     /// 現局面の評価値。必要な視点だけ遡り差分または全計算で作る。
     pub fn evaluate(&mut self, net: &NnueNetwork, pos: &Position) -> Value {
-        for c in [Color::Black, Color::White] {
-            self.ensure(net, pos, c);
-        }
+        self.ensure_both(net, pos);
         let stm = pos.side_to_move();
         let top = &self.entries[self.top];
         let mut concat = [0u8; CONCAT];
@@ -129,45 +127,99 @@ impl NnueState {
         nnue_simd::forward_hidden(net, &concat)
     }
 
-    /// 視点cのaccumulatorを最上段に用意する。
-    fn ensure(&mut self, net: &NnueNetwork, pos: &Position, c: Color) {
+    /// 両視点のaccumulatorを最上段に用意する（ADR-0151群N）。
+    ///
+    /// 視点ごとに遡れる範囲は違う。**両色をまとめて適用できるのは、
+    /// 遅いほうの起点から上の区間だけである。** 手前の区間は片色ずつ
+    /// 埋め、そこから上を1パスで両色へ書く。玉が動いた視点は遡れないので
+    /// 全計算になり、その視点は融合の対象から外れる。
+    fn ensure_both(&mut self, net: &NnueNetwork, pos: &Position) {
         let top = self.top;
-        if self.entries[top].computed[c.index()] {
-            return;
+        let src = [
+            self.computed_ancestor(Color::Black),
+            self.computed_ancestor(Color::White),
+        ];
+        match src {
+            [Some(b), Some(w)] => {
+                let join = b.max(w);
+                // 起点がずれている片色だけ、合流点まで先に埋める
+                if b < join {
+                    self.apply_range(net, pos, Color::Black, b, join);
+                }
+                if w < join {
+                    self.apply_range(net, pos, Color::White, w, join);
+                }
+                self.apply_range_both(net, pos, join, top);
+            }
+            [Some(b), None] => {
+                self.apply_range(net, pos, Color::Black, b, top);
+                self.refresh_top(net, pos, Color::White);
+            }
+            [None, Some(w)] => {
+                self.refresh_top(net, pos, Color::Black);
+                self.apply_range(net, pos, Color::White, w, top);
+            }
+            [None, None] => {
+                self.refresh_top(net, pos, Color::Black);
+                self.refresh_top(net, pos, Color::White);
+            }
         }
-        // 計算済みの祖先を探す。視点cの玉移動を跨いだら遡れない
-        let mut src = None;
-        let mut i = top;
+    }
+
+    /// 視点cのaccが計算済みで最上段にいちばん近い段。玉移動を跨いだら
+    /// 遡れないのでNone（全計算になる）。
+    fn computed_ancestor(&self, c: Color) -> Option<usize> {
+        let mut i = self.top;
         loop {
             if self.entries[i].computed[c.index()] {
-                src = Some(i);
-                break;
+                return Some(i);
             }
             let d = &self.entries[i].dirty;
             if d.king_moved && d.piece_new[0].color() == c {
-                break;
+                return None;
             }
             if i == 0 {
-                break;
+                return None;
             }
             i -= 1;
         }
-        match src {
-            Some(s) => {
-                let king = pos.king(c);
-                for j in s + 1..=top {
-                    let (before, after) = self.entries.split_at_mut(j);
-                    let prev = &before[j - 1];
-                    debug_assert!(prev.computed[c.index()], "未計算のaccを読もうとした");
-                    let e = &mut after[0];
-                    // 借用が分かれているので、親のaccを読みながら直接書ける。
-                    // 複製と足し引きを1パスに融合する（ADR-0151群A）
-                    let rows = diff_rows(net, c, king, &e.dirty, e.hand);
-                    apply_rows(&mut e.acc[c.index()], &prev.acc[c.index()], &rows);
-                    e.computed[c.index()] = true;
-                }
-            }
-            None => self.refresh_top(net, pos, c),
+    }
+
+    /// 段 `from` から `to` まで、視点cの差分を1段ずつ適用する。
+    /// `from` は計算済みで、`from+1..=to` を埋める。
+    fn apply_range(&mut self, net: &NnueNetwork, pos: &Position, c: Color, from: usize, to: usize) {
+        // この区間に視点cの玉移動はないので、玉位置は現局面のもので通る
+        let king = pos.king(c);
+        for j in from + 1..=to {
+            let (before, after) = self.entries.split_at_mut(j);
+            let prev = &before[j - 1];
+            debug_assert!(prev.computed[c.index()], "未計算のaccを読もうとした");
+            let e = &mut after[0];
+            // 借用が分かれているので、親のaccを読みながら直接書ける。
+            // 複製と足し引きを1パスに融合する（ADR-0151群A）
+            let rows = diff_rows(net, [(c, king)], &e.dirty, e.hand);
+            apply_rows([&mut e.acc[c.index()]], [&prev.acc[c.index()]], &rows);
+            e.computed[c.index()] = true;
+        }
+    }
+
+    /// 同上を両視点まとめて行う（ADR-0151群N）。連鎖の走査とdirtyの
+    /// デコードが1回で済み、accへの読み書きが2本のストリームで並ぶ。
+    fn apply_range_both(&mut self, net: &NnueNetwork, pos: &Position, from: usize, to: usize) {
+        let views = [
+            (Color::Black, pos.king(Color::Black)),
+            (Color::White, pos.king(Color::White)),
+        ];
+        for j in from + 1..=to {
+            let (before, after) = self.entries.split_at_mut(j);
+            let prev = &before[j - 1];
+            debug_assert!(prev.computed == [true, true], "未計算のaccを読もうとした");
+            let e = &mut after[0];
+            let rows = diff_rows(net, views, &e.dirty, e.hand);
+            let [d0, d1] = &mut e.acc;
+            let [s0, s1] = &prev.acc;
+            apply_rows([d0, d1], [s0, s1], &rows);
+            e.computed = [true, true];
         }
     }
 
@@ -230,36 +282,44 @@ fn hand_delta_of(pos: &Position, dirty: &DirtyPiece) -> Option<HandDelta> {
 
 /// 1手ぶんの差分の重み行。玉は特徴に含まれないので、引く行も足す行も
 /// 2本を超えない（取る手が最大で、移動元＋取られた駒と移動先＋手駒）。
-struct DiffRows<'a> {
-    subs: [&'a [FtWeight]; 2],
+///
+/// 行を集める条件はdirtyの中身だけで決まり、視点には依らない。だから
+/// 本数 `ns`・`na` は視点で共通になり、同じ位置の行を視点 `V` 本ぶん
+/// 並べて持てる（ADR-0151群N）。添字は `[スロット][視点]` の順。
+struct DiffRows<'a, const V: usize> {
+    subs: [[&'a [FtWeight]; V]; 2],
     ns: usize,
-    adds: [&'a [FtWeight]; 2],
+    adds: [[&'a [FtWeight]; V]; 2],
     na: usize,
 }
 
-/// entry1つぶんの差分から、引く行と足す行を集める。
-fn diff_rows<'a>(
+/// entry1つぶんの差分から、引く行と足す行を視点ごとに集める。
+/// `views` は視点色と、その視点の玉位置の組である。
+fn diff_rows<'a, const V: usize>(
     net: &'a NnueNetwork,
-    c: Color,
-    king: Square,
+    views: [(Color, Square); V],
     dirty: &DirtyPiece,
     hand: Option<HandDelta>,
-) -> DiffRows<'a> {
+) -> DiffRows<'a, V> {
+    let empty: &'a [FtWeight] = &[];
     let mut r = DiffRows {
-        subs: [&[], &[]],
+        subs: [[empty; V]; 2],
         ns: 0,
-        adds: [&[], &[]],
+        adds: [[empty; V]; 2],
         na: 0,
     };
-    let push = |r: &mut DiffRows<'a>, bp: u16, add: bool| {
+    let row = |k: usize, bp: u16| -> &'a [FtWeight] {
+        let (c, king) = views[k];
         let idx = bonapiece::halfkp_index(c, king, bp) as usize * FT_OUT;
-        let w = &net.ft_w[idx..idx + FT_OUT];
+        &net.ft_w[idx..idx + FT_OUT]
+    };
+    let push = |r: &mut DiffRows<'a, V>, rows: [&'a [FtWeight]; V], add: bool| {
         // 上限を超えたら添字で落ちる。黙って差分を捨てない
         if add {
-            r.adds[r.na] = w;
+            r.adds[r.na] = rows;
             r.na += 1;
         } else {
-            r.subs[r.ns] = w;
+            r.subs[r.ns] = rows;
             r.ns += 1;
         }
     };
@@ -267,26 +327,40 @@ fn diff_rows<'a>(
         let old = dirty.piece_old[j];
         let from = dirty.from[j];
         if from != Square::NONE && !old.is_empty() && old.piece_type() != PieceType::KING {
-            push(&mut r, bonapiece::board_bona_piece(c, old, from), false);
+            let rows =
+                std::array::from_fn(|k| row(k, bonapiece::board_bona_piece(views[k].0, old, from)));
+            push(&mut r, rows, false);
         }
         let new = dirty.piece_new[j];
         let to = dirty.to[j];
         if to != Square::NONE && !new.is_empty() && new.piece_type() != PieceType::KING {
-            push(&mut r, bonapiece::board_bona_piece(c, new, to), true);
+            let rows =
+                std::array::from_fn(|k| row(k, bonapiece::board_bona_piece(views[k].0, new, to)));
+            push(&mut r, rows, true);
         }
     }
     if let Some(hd) = hand {
-        let bp = bonapiece::hand_bona_piece(c, hd.owner, hd.kind, hd.slot);
-        push(&mut r, bp, hd.added);
+        let rows = std::array::from_fn(|k| {
+            row(
+                k,
+                bonapiece::hand_bona_piece(views[k].0, hd.owner, hd.kind, hd.slot),
+            )
+        });
+        push(&mut r, rows, hd.added);
     }
     r
 }
 
-/// 親のaccへ差分を適用して自分のaccへ書く（ADR-0151群A）。
+/// 親のaccへ差分を適用して自分のaccへ書く（ADR-0151群A・群N）。
 /// 行数ごとに融合カーネルを単相化する。実際に現れるのは
 /// (0,0)（玉の移動・null move）・(1,1)（普通の手と駒打ち）・
 /// (2,2)（取る手）の3通りで、残りは念のため用意する。
-fn apply_rows(dst: &mut [i16; FT_OUT], src: &[i16; FT_OUT], r: &DiffRows<'_>) {
+/// 視点の本数 `V` も定数なので、1視点版と両視点版が同じ形で書ける。
+fn apply_rows<const V: usize>(
+    dst: [&mut [i16; FT_OUT]; V],
+    src: [&[i16; FT_OUT]; V],
+    r: &DiffRows<'_, V>,
+) {
     let (s, a) = (r.subs, r.adds);
     match (r.ns, r.na) {
         (0, 0) => nnue_simd::ft_apply(dst, src, [], []),

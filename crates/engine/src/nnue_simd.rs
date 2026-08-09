@@ -31,42 +31,55 @@ const FT_CHUNKS: usize = FT_OUT / FT_I8_LANES;
 #[cfg(ft_i8)]
 const _: () = assert!(FT_OUT.is_multiple_of(FT_I8_LANES));
 
-/// `dst = src - Σsubs + Σadds`（i16、ラップ加減算。ADR-0151群A）。
+/// `dst[k] = src[k] - Σsubs[·][k] + Σadds[·][k]`（i16、ラップ加減算。
+/// ADR-0151群A・群N）。
 ///
 /// 親のaccを読みながら全差分を適用し、自分のaccへ書く。accへの往復が
 /// 1回で済む。i16のラップ加減算は可換かつ結合的なので、1行ずつ足し引き
 /// した結果とビット一致する。行数は定数なので内側の展開はコンパイル時に
 /// 決まる。
+///
+/// 視点の本数 `V` も定数で受ける。両視点で同時に更新できる区間は `V = 2`
+/// で呼び、accのチャンク1本ぶんの中で2色を続けて処理する。連鎖の走査と
+/// dirtyのデコードが1回で済み、依存の切れた2本のストリームが並ぶ。
+/// 各視点の演算順序は `V = 1` のときと同じなので結果はビット一致する。
 #[cfg(not(ft_i8))]
-pub fn ft_apply<const NS: usize, const NA: usize>(
-    dst: &mut [i16; FT_OUT],
-    src: &[i16; FT_OUT],
-    subs: [&[i16]; NS],
-    adds: [&[i16]; NA],
+pub fn ft_apply<const V: usize, const NS: usize, const NA: usize>(
+    dst: [&mut [i16; FT_OUT]; V],
+    src: [&[i16; FT_OUT]; V],
+    subs: [[&[i16]; V]; NS],
+    adds: [[&[i16]; V]; NA],
 ) {
-    let subs = subs.map(|w| {
-        debug_assert_eq!(w.len(), FT_OUT);
-        &w.as_chunks::<I16_LANES>().0[..FT_CHUNKS]
+    let subs = subs.map(|ws| {
+        ws.map(|w| {
+            debug_assert_eq!(w.len(), FT_OUT);
+            &w.as_chunks::<I16_LANES>().0[..FT_CHUNKS]
+        })
     });
-    let adds = adds.map(|w| {
-        debug_assert_eq!(w.len(), FT_OUT);
-        &w.as_chunks::<I16_LANES>().0[..FT_CHUNKS]
+    let adds = adds.map(|ws| {
+        ws.map(|w| {
+            debug_assert_eq!(w.len(), FT_OUT);
+            &w.as_chunks::<I16_LANES>().0[..FT_CHUNKS]
+        })
     });
-    for (i, (d, s)) in dst
-        .as_chunks_mut::<I16_LANES>()
-        .0
-        .iter_mut()
-        .zip(src.as_chunks::<I16_LANES>().0)
-        .enumerate()
-    {
-        let mut v = Simd::from_array(*s);
-        for &w in &subs {
-            v -= Simd::from_array(w[i]);
+    let dst = dst.map(|d| d.as_chunks_mut::<I16_LANES>().0);
+    let src = src.map(|s| &s.as_chunks::<I16_LANES>().0[..FT_CHUNKS]);
+    for i in 0..FT_CHUNKS {
+        let mut acc: [Simd<i16, I16_LANES>; V] =
+            std::array::from_fn(|k| Simd::from_array(src[k][i]));
+        for w in &subs {
+            for (k, a) in acc.iter_mut().enumerate() {
+                *a -= Simd::from_array(w[k][i]);
+            }
         }
-        for &w in &adds {
-            v += Simd::from_array(w[i]);
+        for w in &adds {
+            for (k, a) in acc.iter_mut().enumerate() {
+                *a += Simd::from_array(w[k][i]);
+            }
         }
-        *d = v.to_array();
+        for (k, a) in acc.iter().enumerate() {
+            dst[k][i] = a.to_array();
+        }
     }
 }
 
@@ -75,37 +88,46 @@ pub fn ft_apply<const NS: usize, const NA: usize>(
 /// accumulatorはi16のままなので、飽和は新たに起こらない。変わるのは
 /// 重みの読み出し幅だけである。
 #[cfg(ft_i8)]
-pub fn ft_apply<const NS: usize, const NA: usize>(
-    dst: &mut [i16; FT_OUT],
-    src: &[i16; FT_OUT],
-    subs: [&[i8]; NS],
-    adds: [&[i8]; NA],
+pub fn ft_apply<const V: usize, const NS: usize, const NA: usize>(
+    dst: [&mut [i16; FT_OUT]; V],
+    src: [&[i16; FT_OUT]; V],
+    subs: [[&[i8]; V]; NS],
+    adds: [[&[i8]; V]; NA],
 ) {
-    let subs = subs.map(|w| {
-        debug_assert_eq!(w.len(), FT_OUT);
-        &w.as_chunks::<FT_I8_LANES>().0[..FT_CHUNKS]
+    let subs = subs.map(|ws| {
+        ws.map(|w| {
+            debug_assert_eq!(w.len(), FT_OUT);
+            &w.as_chunks::<FT_I8_LANES>().0[..FT_CHUNKS]
+        })
     });
-    let adds = adds.map(|w| {
-        debug_assert_eq!(w.len(), FT_OUT);
-        &w.as_chunks::<FT_I8_LANES>().0[..FT_CHUNKS]
+    let adds = adds.map(|ws| {
+        ws.map(|w| {
+            debug_assert_eq!(w.len(), FT_OUT);
+            &w.as_chunks::<FT_I8_LANES>().0[..FT_CHUNKS]
+        })
     });
-    for (i, (d, s)) in dst
-        .as_chunks_mut::<FT_I8_LANES>()
-        .0
-        .iter_mut()
-        .zip(src.as_chunks::<FT_I8_LANES>().0)
-        .enumerate()
-    {
-        let mut v = Simd::from_array(*s);
-        for &w in &subs {
-            let wide: Simd<i16, FT_I8_LANES> = Simd::<i8, FT_I8_LANES>::from_array(w[i]).cast();
-            v -= wide;
+    let dst = dst.map(|d| d.as_chunks_mut::<FT_I8_LANES>().0);
+    let src = src.map(|s| &s.as_chunks::<FT_I8_LANES>().0[..FT_CHUNKS]);
+    for i in 0..FT_CHUNKS {
+        let mut acc: [Simd<i16, FT_I8_LANES>; V] =
+            std::array::from_fn(|k| Simd::from_array(src[k][i]));
+        for w in &subs {
+            for (k, a) in acc.iter_mut().enumerate() {
+                let wide: Simd<i16, FT_I8_LANES> =
+                    Simd::<i8, FT_I8_LANES>::from_array(w[k][i]).cast();
+                *a -= wide;
+            }
         }
-        for &w in &adds {
-            let wide: Simd<i16, FT_I8_LANES> = Simd::<i8, FT_I8_LANES>::from_array(w[i]).cast();
-            v += wide;
+        for w in &adds {
+            for (k, a) in acc.iter_mut().enumerate() {
+                let wide: Simd<i16, FT_I8_LANES> =
+                    Simd::<i8, FT_I8_LANES>::from_array(w[k][i]).cast();
+                *a += wide;
+            }
         }
-        *d = v.to_array();
+        for (k, a) in acc.iter().enumerate() {
+            dst[k][i] = a.to_array();
+        }
     }
 }
 
@@ -645,7 +667,12 @@ mod tests {
             // ft_apply: 引く行2・足す行2の最大構成でラップ動作が一致する
             let src = [i16::MAX - 3; FT_OUT];
             let mut dst = [0i16; FT_OUT];
-            ft_apply(&mut dst, &src, [row(0), row(1)], [row(2), row(3)]);
+            ft_apply(
+                [&mut dst],
+                [&src],
+                [[row(0)], [row(1)]],
+                [[row(2)], [row(3)]],
+            );
             let mut want = src;
             for (o, x) in want.iter_mut().enumerate() {
                 *x = x
@@ -656,7 +683,7 @@ mod tests {
             }
             assert_eq!(dst, want);
             // 差分が空なら親のaccをそのまま写す
-            ft_apply(&mut dst, &src, [], []);
+            ft_apply([&mut dst], [&src], [], []);
             assert_eq!(dst, src);
             // ft_refresh: バイアス＋特徴行の総和が一致する
             let features = [3u32, 11, 29];
@@ -683,6 +710,66 @@ mod tests {
                 .map(|(&w, &v)| i32::from(w) * i32::from(v))
                 .sum();
             assert_eq!(dot(w8, xs), scalar, "len={len}");
+        }
+    }
+
+    /// 両視点1パスが片視点2回とビット一致すること（ADR-0151群N）。
+    ///
+    /// 融合しても視点ごとの演算順序は変わらない。行数の組み合わせを
+    /// すべて回し、ラップの起きる境界値で照合する。
+    #[test]
+    fn ft_apply_two_views_matches_single_view() {
+        let net = NnueNetwork::random(11);
+        let row = |i: usize| &net.ft_w[i * FT_OUT..(i + 1) * FT_OUT];
+        // 視点ごとに別の行・別の親accを使い、取り違えを検出できるようにする
+        let src: [[i16; FT_OUT]; 2] = [[i16::MAX - 5; FT_OUT], [i16::MIN + 5; FT_OUT]];
+        let s = [[row(0), row(4)], [row(1), row(5)]];
+        let a = [[row(2), row(6)], [row(3), row(7)]];
+        for ns in 0..=2usize {
+            for na in 0..=2usize {
+                let mut want = [[0i16; FT_OUT]; 2];
+                for k in 0..2 {
+                    let mut d = [0i16; FT_OUT];
+                    match (ns, na) {
+                        (0, 0) => ft_apply([&mut d], [&src[k]], [], []),
+                        (0, 1) => ft_apply([&mut d], [&src[k]], [], [[a[0][k]]]),
+                        (0, 2) => ft_apply([&mut d], [&src[k]], [], [[a[0][k]], [a[1][k]]]),
+                        (1, 0) => ft_apply([&mut d], [&src[k]], [[s[0][k]]], []),
+                        (1, 1) => ft_apply([&mut d], [&src[k]], [[s[0][k]]], [[a[0][k]]]),
+                        (1, 2) => {
+                            ft_apply([&mut d], [&src[k]], [[s[0][k]]], [[a[0][k]], [a[1][k]]])
+                        }
+                        (2, 0) => ft_apply([&mut d], [&src[k]], [[s[0][k]], [s[1][k]]], []),
+                        (2, 1) => {
+                            ft_apply([&mut d], [&src[k]], [[s[0][k]], [s[1][k]]], [[a[0][k]]])
+                        }
+                        _ => ft_apply(
+                            [&mut d],
+                            [&src[k]],
+                            [[s[0][k]], [s[1][k]]],
+                            [[a[0][k]], [a[1][k]]],
+                        ),
+                    }
+                    want[k] = d;
+                }
+                let mut got = [[0i16; FT_OUT]; 2];
+                {
+                    let [d0, d1] = &mut got;
+                    let [s0, s1] = &src;
+                    match (ns, na) {
+                        (0, 0) => ft_apply([d0, d1], [s0, s1], [], []),
+                        (0, 1) => ft_apply([d0, d1], [s0, s1], [], [a[0]]),
+                        (0, 2) => ft_apply([d0, d1], [s0, s1], [], [a[0], a[1]]),
+                        (1, 0) => ft_apply([d0, d1], [s0, s1], [s[0]], []),
+                        (1, 1) => ft_apply([d0, d1], [s0, s1], [s[0]], [a[0]]),
+                        (1, 2) => ft_apply([d0, d1], [s0, s1], [s[0]], [a[0], a[1]]),
+                        (2, 0) => ft_apply([d0, d1], [s0, s1], [s[0], s[1]], []),
+                        (2, 1) => ft_apply([d0, d1], [s0, s1], [s[0], s[1]], [a[0]]),
+                        _ => ft_apply([d0, d1], [s0, s1], [s[0], s[1]], [a[0], a[1]]),
+                    }
+                }
+                assert_eq!(got, want, "ns={ns}, na={na}");
+            }
         }
     }
 
