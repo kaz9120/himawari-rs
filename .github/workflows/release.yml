@@ -4,12 +4,24 @@ name: Release
 # Releaseへ添付する（ADR-0003のtarget-feature固定ビルド、ADR-0071）。
 # 添付の競合を避けるため、ビルドはartifact経由で単一ジョブに集約する。
 # リリースノートとタグはrelease-pleaseが作るので、ここでは触らない。
+#
+# 配布バイナリはPGOで作る（ADR-0151群I、+10%前後のNPS）。手順は
+# scripts/build-pgo.sh と同じ3段で、各ターゲットのrunner上で計測用
+# ビルド→ベンチ4局面の走行→profile-useの再ビルドを行う。学習走行の
+# 評価関数はネット配布リリース（ADR-0080）から取得する。
+# workflow_dispatchはタグなしの動作確認用で、Releaseへの添付は行わない。
 on:
   push:
     tags: ["v*"]
+  workflow_dispatch:
 
 permissions:
   contents: write
+
+env:
+  # 学習走行に使う評価関数。現行ネットを差し替えたら更新する
+  NET_TAG: net-v4
+  NET_ASSET: halfkp_2990M_q1.hmwr
 
 jobs:
   build:
@@ -43,10 +55,44 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
-      - name: Build
+      - name: Fetch eval net
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release download "$NET_TAG" --pattern "$NET_ASSET"
+      - name: Install llvm-tools
         shell: bash
         run: |
-          export RUSTFLAGS="${{ matrix.rustflags }}"
+          # rust-toolchain.tomlの固定版を先に入れてからコンポーネントを足す
+          cargo --version
+          rustup component add llvm-tools \
+            --toolchain "$(rustup show active-toolchain | cut -d' ' -f1)"
+      - name: Build (instrumented)
+        shell: bash
+        run: |
+          # Windowsのgit-bashでは、環境変数の中のMSYSパスがrustcへ
+          # 変換されずに渡る。pwd -W でWindows形式のパスにする
+          ROOT="$PWD"
+          if [[ "$RUNNER_OS" == "Windows" ]]; then ROOT="$(pwd -W)"; fi
+          export RUSTFLAGS="${{ matrix.rustflags }} -C profile-generate=${ROOT}/pgo-raw"
+          export HIMAWARI_BUILD_ID="${GITHUB_SHA::7}"
+          cargo build --release -p himawari-usi
+          cargo build --release -p himawari-tools --bin bench
+      - name: Train (bench positions)
+        shell: bash
+        run: |
+          BENCH="./target/release/bench"
+          if [[ -f "${BENCH}.exe" ]]; then BENCH="${BENCH}.exe"; fi
+          "$BENCH" "./target/release/${{ matrix.bin }}" \
+            --depth 22 --runs 1 --eval-file "$NET_ASSET"
+          PROFDATA="$(find "$(rustc --print sysroot)/lib/rustlib" -name 'llvm-profdata*' -type f | head -1)"
+          "$PROFDATA" merge -o merged.profdata pgo-raw/*.profraw
+      - name: Build (profile-use)
+        shell: bash
+        run: |
+          ROOT="$PWD"
+          if [[ "$RUNNER_OS" == "Windows" ]]; then ROOT="$(pwd -W)"; fi
+          export RUSTFLAGS="${{ matrix.rustflags }} -C profile-use=${ROOT}/merged.profdata"
           export HIMAWARI_BUILD_ID="${GITHUB_SHA::7}"
           cargo build --release -p himawari-usi
       - name: Package
@@ -61,6 +107,8 @@ jobs:
 
   release:
     needs: build
+    # workflow_dispatchの動作確認ではReleaseへ添付しない
+    if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4
