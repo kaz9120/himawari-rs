@@ -126,6 +126,7 @@ fn layer_sdot8(w: &[i8], x: &[u8], cols: usize, out: &mut [i32]) {
 
 /// 4列チャンク単位のインターリーブ表（ADR-0151群L）。
 /// `t[k * rows * 4 + o * 4 + j] = w[o * cols + 4k + j]`。
+#[cfg(all(target_arch = "aarch64", target_feature = "dotprod"))]
 fn interleave(w: &[i8], rows: usize, cols: usize) -> Vec<i8> {
     let mut t = vec![0i8; rows * cols];
     for k in 0..cols / 4 {
@@ -139,6 +140,7 @@ fn interleave(w: &[i8], rows: usize, cols: usize) -> Vec<i8> {
 }
 
 /// 非ゼロチャンクの添字表（バイトマスク→8個の位置）。
+#[cfg(all(target_arch = "aarch64", target_feature = "dotprod"))]
 const NNZ_LUT: [[u16; 8]; 256] = {
     let mut t = [[0u16; 8]; 256];
     let mut b = 0usize;
