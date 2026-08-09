@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.34.23](https://github.com/kaz9120/himawari-rs/compare/v0.34.22...v0.34.23) (2026-08-09)
+
+
+### ドキュメント
+
+* ADR-0151の総括（12群、+22.60% NPS）を記録しROADMAPを更新する ([#269](https://github.com/kaz9120/himawari-rs/issues/269)) ([8b6026c](https://github.com/kaz9120/himawari-rs/commit/8b6026cb009c359c9184e68da2e95e155b102a55))
+
 ## [0.34.22](https://github.com/kaz9120/himawari-rs/compare/v0.34.21...v0.34.22) (2026-08-09)
 
 
