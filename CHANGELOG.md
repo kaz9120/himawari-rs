@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.35.0](https://github.com/kaz9120/himawari-rs/compare/v0.34.23...v0.35.0) (2026-08-09)
+
+
+### 棋力向上
+
+* 挙動不変の高速化12群を積む（+100.1 Elo、ADR-0151） ([#271](https://github.com/kaz9120/himawari-rs/issues/271)) ([3a60974](https://github.com/kaz9120/himawari-rs/commit/3a6097445514ceea5dba935d68d313bc468e072f))
+
 ## [0.34.23](https://github.com/kaz9120/himawari-rs/compare/v0.34.22...v0.34.23) (2026-08-09)
 
 
