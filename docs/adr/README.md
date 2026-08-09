@@ -165,6 +165,7 @@
 | [0148](0148-effect-table.md) | 盤面の利きを差分で持つ | - | proposed |
 | [0149](0149-experiment-runner.md) | 実験の実行とログを規約で固定する | - | proposed |
 | [0150](0150-rootstrap-evaluation.md) | 世代ループの良し悪しを検証損失で測らない | - | proposed |
+| [0151](0151-speedup-sweep.md) | 挙動を変えない高速化の第2弾をプロファイル起点で洗い出す | - | proposed |
 
 ## バックログ
 
