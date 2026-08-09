@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.34.17](https://github.com/kaz9120/himawari-rs/compare/v0.34.16...v0.34.17) (2026-08-09)
+
+
+### その他の変更
+
+* blockersとpinnersを初回参照時に計算する（ADR-0151群K） ([#257](https://github.com/kaz9120/himawari-rs/issues/257)) ([ebf65bb](https://github.com/kaz9120/himawari-rs/commit/ebf65bbeaee44048791c35de9addce53cabfaa7e))
+
 ## [0.34.16](https://github.com/kaz9120/himawari-rs/compare/v0.34.15...v0.34.16) (2026-08-09)
 
 
