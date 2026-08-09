@@ -45,7 +45,7 @@ WDL_RE = re.compile(r"(\+[0-9]+ =[0-9]+ -[0-9]+)")
 GAMES_RE = re.compile(r"games ([0-9]+)")
 PAIRS_NUM_RE = re.compile(r"pairs +([0-9]+)")
 
-EXIT_BY_VERDICT = {"H1": 0, "H0": 1, "打ち切り": 2}
+EXIT_BY_VERDICT = {"H1": 0, "H0": 1, "打ち切り": 2, "判定前": 2}
 
 
 class ArgParser(argparse.ArgumentParser):
@@ -92,7 +92,8 @@ def find_source_line(lines):
         if line.startswith(PAIRS_LINE_PREFIX):
             pairs_line = line
     if pairs_line is not None:
-        return pairs_line, "打ち切り"
+        # 判定行がまだ無い。実行中の途中経過か、判定前に止まったログ
+        return pairs_line, "判定前"
 
     return None, None
 
@@ -133,6 +134,8 @@ def build_report(feature, verdict, fields):
 
     if verdict == "打ち切り":
         results_row = f"| {feature} | **{elo_num} {elo_ci}**（{games}局、LLR {llr}で打ち切り） |"
+    elif verdict == "判定前":
+        results_row = f"| {feature} | {elo_num} {elo_ci}（{games}局、LLR {llr}、判定前の途中経過） |"
     else:
         results_row = f"| {feature} | **{elo_num} {elo_ci}**（{games}局、LLR {llr}で{verdict}採択） |"
 
