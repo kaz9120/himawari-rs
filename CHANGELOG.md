@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.35.5](https://github.com/kaz9120/himawari-rs/compare/v0.35.4...v0.35.5) (2026-08-09)
+
+
+### 内部
+
+* kifuレポートへ逆転検出と評価推移の表を足す（ADR-0152） ([#281](https://github.com/kaz9120/himawari-rs/issues/281)) ([da9bd68](https://github.com/kaz9120/himawari-rs/commit/da9bd68f86bbdd797ef2e6c074daeb287adc8eae))
+
 ## [0.35.4](https://github.com/kaz9120/himawari-rs/compare/v0.35.3...v0.35.4) (2026-08-09)
 
 
