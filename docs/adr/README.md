@@ -167,6 +167,7 @@
 | [0150](0150-rootstrap-evaluation.md) | 世代ループの良し悪しを検証損失で測らない | - | proposed |
 | [0151](0151-speedup-sweep.md) | 挙動を変えない高速化の第2弾をプロファイル起点で洗い出す | - | accepted |
 | [0152](0152-floodgate-cycle.md) | floodgateの棋譜を定期回収し、分析と定跡追加を決定論の手順にする | - | proposed |
+| [0153](0153-superior-repetition-root-gate.md) | 優等・劣等局面の判定を探索経路内に限定する | - | proposed |
 
 ## バックログ
 
