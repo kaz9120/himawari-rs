@@ -6,7 +6,7 @@
 
 use std::simd::Simd;
 use std::simd::cmp::SimdOrd;
-use std::simd::num::{SimdInt, SimdUint};
+use std::simd::num::SimdInt;
 
 use crate::nnue::{CONCAT, FT_OUT, L1_OUT, L1_PAD, L2_OUT, L2_PAD, L3_OUT, NnueNetwork};
 use crate::value::Value;
@@ -171,8 +171,14 @@ pub fn clip_to_u8(acc: &[i16; FT_OUT], out: &mut [u8]) {
     }
 }
 
-/// i8重み×u8活性の内積（i32）。
+/// i8重み×u8活性の内積（i32）。portable版。
+#[cfg(not(any(
+    all(target_arch = "aarch64", target_feature = "dotprod"),
+    all(target_arch = "x86_64", target_feature = "avx2")
+)))]
 fn dot(w: &[i8], x: &[u8]) -> i32 {
+    use std::simd::num::SimdUint as _;
+
     debug_assert_eq!(w.len(), x.len());
     let mut acc = Simd::<i32, 8>::splat(0);
     for (wc, xc) in w.as_chunks::<8>().0.iter().zip(x.as_chunks::<8>().0) {
@@ -183,16 +189,114 @@ fn dot(w: &[i8], x: &[u8]) -> i32 {
     acc.reduce_sum()
 }
 
+/// 端数の内積をスカラーで畳む（専用命令版の末尾処理）。
+#[cfg(any(
+    all(target_arch = "aarch64", target_feature = "dotprod"),
+    all(target_arch = "x86_64", target_feature = "avx2")
+))]
+#[inline]
+fn dot_tail(w: &[i8], x: &[u8]) -> i32 {
+    w.iter()
+        .zip(x)
+        .map(|(&wv, &xv)| i32::from(wv) * i32::from(xv))
+        .sum()
+}
+
+/// SDOT版の内積（ADR-0151群C）。1命令で16要素ぶんの積和を進める。
+///
+/// 出力層は1行なので行束ねの対象にならず、portable版では8レーンへ
+/// 広げる形で回っていた。アキュムレータを2本に分けて依存を切り、
+/// 16の倍数に満たない端数はスカラーで畳む。活性は0..127なのでi8として
+/// 読んでも値が変わらない（ADR-0099）。
+#[cfg(all(target_arch = "aarch64", target_feature = "dotprod"))]
+fn dot(w: &[i8], x: &[u8]) -> i32 {
+    use std::arch::aarch64::{vaddq_s32, vaddvq_s32, vdotq_s32, vdupq_n_s32, vld1q_s8};
+
+    debug_assert_eq!(w.len(), x.len());
+    let n = w.len();
+    let mut k = 0;
+    // SAFETY: 読み出しは16バイト単位で、範囲内に収まることを各ループの
+    // 条件が保証する。u8の並びをi8として読むが、値域0..127では同じ
+    // ビット列を指す
+    let sum = unsafe {
+        let mut acc0 = vdupq_n_s32(0);
+        let mut acc1 = vdupq_n_s32(0);
+        while k + 32 <= n {
+            let w0 = vld1q_s8(w.as_ptr().add(k));
+            let x0 = vld1q_s8(x.as_ptr().add(k).cast::<i8>());
+            let w1 = vld1q_s8(w.as_ptr().add(k + 16));
+            let x1 = vld1q_s8(x.as_ptr().add(k + 16).cast::<i8>());
+            acc0 = vdotq_s32(acc0, w0, x0);
+            acc1 = vdotq_s32(acc1, w1, x1);
+            k += 32;
+        }
+        if k + 16 <= n {
+            let wv = vld1q_s8(w.as_ptr().add(k));
+            let xv = vld1q_s8(x.as_ptr().add(k).cast::<i8>());
+            acc0 = vdotq_s32(acc0, wv, xv);
+            k += 16;
+        }
+        vaddvq_s32(vaddq_s32(acc0, acc1))
+    };
+    sum + dot_tail(&w[k..], &x[k..])
+}
+
+/// AVX2版の内積（ADR-0151群C）。`affine_relu` と同じく
+/// `maddubs`＋`madd` の組で32要素ずつ積和する。
+///
+/// 隣接2要素の積の和は-32,512..32,258で、`maddubs` のi16飽和は起きない
+/// （ADR-0099）。32の倍数に満たない端数はスカラーで畳む。
+#[cfg(all(target_arch = "x86_64", target_feature = "avx2"))]
+fn dot(w: &[i8], x: &[u8]) -> i32 {
+    use std::arch::x86_64::{
+        __m256i, _mm256_add_epi32, _mm256_loadu_si256, _mm256_madd_epi16, _mm256_maddubs_epi16,
+        _mm256_set1_epi16, _mm256_setzero_si256,
+    };
+
+    debug_assert_eq!(w.len(), x.len());
+    let n = w.len();
+    let mut k = 0;
+    // SAFETY: avx2はtarget_featureで有効。読み出しは32バイト単位で、
+    // k+32 <= n をループ条件が保証する。loaduは境界整列を要求しない
+    let sum = unsafe {
+        let ones = _mm256_set1_epi16(1);
+        let mut acc = _mm256_setzero_si256();
+        while k + 32 <= n {
+            let xv = _mm256_loadu_si256(x.as_ptr().add(k).cast::<__m256i>());
+            let wv = _mm256_loadu_si256(w.as_ptr().add(k).cast::<__m256i>());
+            let p = _mm256_maddubs_epi16(xv, wv);
+            acc = _mm256_add_epi32(acc, _mm256_madd_epi16(p, ones));
+            k += 32;
+        }
+        hsum_i32x8(acc)
+    };
+    sum + dot_tail(&w[k..], &x[k..])
+}
+
+/// 8レーンのi32を1つに畳む（AVX2）。
+#[cfg(all(target_arch = "x86_64", target_feature = "avx2"))]
+#[inline]
+fn hsum_i32x8(v: std::arch::x86_64::__m256i) -> i32 {
+    use std::arch::x86_64::{
+        _mm_add_epi32, _mm_cvtsi128_si32, _mm_shuffle_epi32, _mm256_castsi256_si128,
+        _mm256_extracti128_si256,
+    };
+    // SAFETY: avx2はtarget_featureで有効。レジスタ内の畳み込みのみ
+    unsafe {
+        let s = _mm_add_epi32(_mm256_castsi256_si128(v), _mm256_extracti128_si256::<1>(v));
+        let s = _mm_add_epi32(s, _mm_shuffle_epi32::<0b01_00_11_10>(s));
+        let s = _mm_add_epi32(s, _mm_shuffle_epi32::<0b10_11_00_01>(s));
+        _mm_cvtsi128_si32(s)
+    }
+}
+
 #[inline]
 fn clip(v: i32) -> u8 {
     v.clamp(0, 127) as u8
 }
 
-/// 4行同時に回す実装で束ねる行数（ADR-0099）。
-#[cfg(any(
-    all(target_arch = "aarch64", target_feature = "dotprod"),
-    all(target_arch = "x86_64", target_feature = "avx2")
-))]
+/// AVX2版で束ねる行数（ADR-0099）。
+#[cfg(all(target_arch = "x86_64", target_feature = "avx2"))]
 const ROWS: usize = 4;
 
 /// 全結合層＋clipped ReLU。`out[o] = clip((b[o] + w[o行]·x) >> 6)`。
@@ -210,43 +314,70 @@ fn affine_relu(w: &[i8], b: &[i32], x: &[u8], out: &mut [u8]) {
     }
 }
 
-/// SDOT版（ADR-0099）。1命令で16要素ぶんの積和を進め、4行を同時に回す。
+/// SDOT版の行グループ1つ（`out[o..o+R]`）を計算する。
 ///
-/// 活性は `clip_to_u8` が0..127へ丸めた値なので、i8として読んでも
-/// 値が変わらない。積和の順序はportable版と異なるが、i32の範囲で
-/// オーバーフローしないため結果は一致する。
+/// アキュムレータをR本並べ、入力ベクトル `x` のロードをR行で共有する。
+/// Rはconst genericなので内側は展開され、アキュムレータはレジスタに
+/// 載る。活性は `clip_to_u8` が0..127へ丸めた値なので、i8として読んでも
+/// 値が変わらない。
 #[cfg(all(target_arch = "aarch64", target_feature = "dotprod"))]
-fn affine_relu(w: &[i8], b: &[i32], x: &[u8], out: &mut [u8]) {
+#[inline]
+fn affine_rows<const R: usize>(w: &[i8], b: &[i32], x: &[u8], out: &mut [u8], o: usize) {
     use std::arch::aarch64::{int32x4_t, vaddvq_s32, vdotq_s32, vdupq_n_s32, vld1q_s8};
 
     let cols = x.len();
+    let mut acc: [int32x4_t; R] = [
+        // SAFETY: dotprodはtarget_featureで有効。定数生成のみ
+        unsafe { vdupq_n_s32(0) };
+        R
+    ];
+    for k in (0..cols).step_by(16) {
+        // SAFETY: k+16 <= cols かつ (o+r)*cols+k+16 <= w.len() が
+        // 呼び出し側のdebug_assertとループ範囲から従う。u8の読み出しを
+        // i8として解釈するが、値域0..127では同じビット列を指す
+        unsafe {
+            let xv = vld1q_s8(x.as_ptr().add(k).cast::<i8>());
+            for (r, a) in acc.iter_mut().enumerate() {
+                *a = vdotq_s32(*a, vld1q_s8(w.as_ptr().add((o + r) * cols + k)), xv);
+            }
+        }
+    }
+    for (r, a) in acc.iter().enumerate() {
+        // SAFETY: dotprodはtarget_featureで有効。水平加算のみ
+        let sum = unsafe { vaddvq_s32(*a) };
+        out[o + r] = clip((b[o + r] + sum) >> 6);
+    }
+}
+
+/// SDOT版（ADR-0099。行束ねを8へ広げた。ADR-0151群C）。
+///
+/// aarch64はSIMDレジスタが32本あるので、8行ぶんのアキュムレータを
+/// 並べても溢れない。入力ベクトルのロードが8行で共有され、4行束ねの
+/// 半分になる。**出力次元はビルド時に変わる**（`HIMAWARI_ARCH`）ため、
+/// 8行が取れるだけ取り、端数は4行・1行へ落とす。
+///
+/// 積和の順序はportable版と異なるが、i32の範囲でオーバーフローしない
+/// ため結果は一致する。
+#[cfg(all(target_arch = "aarch64", target_feature = "dotprod"))]
+fn affine_relu(w: &[i8], b: &[i32], x: &[u8], out: &mut [u8]) {
+    let cols = x.len();
     debug_assert!(cols.is_multiple_of(16));
-    debug_assert!(out.len().is_multiple_of(ROWS));
     debug_assert_eq!(w.len(), out.len() * cols);
     debug_assert_eq!(b.len(), out.len());
 
-    for o in (0..out.len()).step_by(ROWS) {
-        let mut acc: [int32x4_t; ROWS] = [
-            // SAFETY: dotprodはtarget_featureで有効。定数生成のみ
-            unsafe { vdupq_n_s32(0) };
-            ROWS
-        ];
-        for k in (0..cols).step_by(16) {
-            // SAFETY: k+16 <= cols かつ (o+r)*cols+k+16 <= w.len() が
-            // 上のdebug_assertとループ範囲から従う。u8の読み出しを
-            // i8として解釈するが、値域0..127では同じビット列を指す
-            unsafe {
-                let xv = vld1q_s8(x.as_ptr().add(k).cast::<i8>());
-                for (r, a) in acc.iter_mut().enumerate() {
-                    *a = vdotq_s32(*a, vld1q_s8(w.as_ptr().add((o + r) * cols + k)), xv);
-                }
-            }
-        }
-        for (r, a) in acc.iter().enumerate() {
-            // SAFETY: dotprodはtarget_featureで有効。水平加算のみ
-            let sum = unsafe { vaddvq_s32(*a) };
-            out[o + r] = clip((b[o + r] + sum) >> 6);
-        }
+    let n = out.len();
+    let mut o = 0;
+    while o + 8 <= n {
+        affine_rows::<8>(w, b, x, out, o);
+        o += 8;
+    }
+    while o + 4 <= n {
+        affine_rows::<4>(w, b, x, out, o);
+        o += 4;
+    }
+    while o < n {
+        affine_rows::<1>(w, b, x, out, o);
+        o += 1;
     }
 }
 
@@ -259,22 +390,9 @@ fn affine_relu(w: &[i8], b: &[i32], x: &[u8], out: &mut [u8]) {
 #[cfg(all(target_arch = "x86_64", target_feature = "avx2"))]
 fn affine_relu(w: &[i8], b: &[i32], x: &[u8], out: &mut [u8]) {
     use std::arch::x86_64::{
-        __m256i, _mm_add_epi32, _mm_cvtsi128_si32, _mm_shuffle_epi32, _mm256_add_epi32,
-        _mm256_castsi256_si128, _mm256_extracti128_si256, _mm256_loadu_si256, _mm256_madd_epi16,
-        _mm256_maddubs_epi16, _mm256_set1_epi16, _mm256_setzero_si256,
+        __m256i, _mm256_add_epi32, _mm256_loadu_si256, _mm256_madd_epi16, _mm256_maddubs_epi16,
+        _mm256_set1_epi16, _mm256_setzero_si256,
     };
-
-    /// 8レーンのi32を1つに畳む。
-    #[inline]
-    fn hsum(v: __m256i) -> i32 {
-        // SAFETY: avx2はtarget_featureで有効。レジスタ内の畳み込みのみ
-        unsafe {
-            let s = _mm_add_epi32(_mm256_castsi256_si128(v), _mm256_extracti128_si256::<1>(v));
-            let s = _mm_add_epi32(s, _mm_shuffle_epi32::<0b01_00_11_10>(s));
-            let s = _mm_add_epi32(s, _mm_shuffle_epi32::<0b10_11_00_01>(s));
-            _mm_cvtsi128_si32(s)
-        }
-    }
 
     /// 1レジスタで扱う要素数（32バイト）。
     const LANES: usize = 32;
@@ -301,7 +419,7 @@ fn affine_relu(w: &[i8], b: &[i32], x: &[u8], out: &mut [u8]) {
                 }
             }
             for (r, a) in acc.iter().enumerate() {
-                out[o + r] = clip((b[o + r] + hsum(*a)) >> 6);
+                out[o + r] = clip((b[o + r] + hsum_i32x8(*a)) >> 6);
             }
         }
     }
@@ -327,7 +445,7 @@ pub fn forward_hidden(net: &NnueNetwork, concat: &[u8; CONCAT]) -> Value {
             &h3[..L2_OUT]
         }
     };
-    // 出力層は1行なので4行同時の対象にならない
+    // 出力層は1行なので行束ねの対象にならない。専用命令版のdotで畳む
     let out = net.b_out + dot(&net.w_out, last);
     out / crate::nnue::FV_SCALE
 }
@@ -375,15 +493,45 @@ mod tests {
             }
             assert_eq!(acc, want);
         }
-        // dot: スカラー積和一致
+        // dot: スカラー積和一致。専用命令版は16または32要素ずつ進むので、
+        // 端数の畳み込みも含めて長さを変えて照合する
         let x: Vec<u8> = (0..CONCAT).map(|i| (i % 128) as u8).collect();
-        let w8 = &net.w2[..CONCAT];
-        let scalar: i32 = w8
-            .iter()
-            .zip(&x)
-            .map(|(&w, &v)| i32::from(w) * i32::from(v))
-            .sum();
-        assert_eq!(dot(w8, &x), scalar);
+        for len in [8, 16, 24, 32, 40, CONCAT] {
+            let w8 = &net.w2[..len];
+            let xs = &x[..len];
+            let scalar: i32 = w8
+                .iter()
+                .zip(xs)
+                .map(|(&w, &v)| i32::from(w) * i32::from(v))
+                .sum();
+            assert_eq!(dot(w8, xs), scalar, "len={len}");
+        }
+    }
+
+    /// 行束ねがどの行数でもスカラーと一致すること（ADR-0151群C）。
+    ///
+    /// 出力次元は `HIMAWARI_ARCH` でビルド時に変わる。8行束ねが割り切れず
+    /// 4行束ねへ落ちる行数（12・20）も含めて照合する。行数を4の倍数に
+    /// 限るのは、AVX2版が4行束ね前提のままだからである（build.rsの
+    /// `L1_MULTIPLE`）。
+    #[test]
+    fn affine_relu_matches_scalar_for_row_counts() {
+        let net = NnueNetwork::random(7);
+        // 32はaarch64（16の倍数）とAVX2（32の倍数）の両方を満たす列数
+        const COLS: usize = 32;
+        let x: Vec<u8> = (0..COLS).map(|i| ((i * 17) % 128) as u8).collect();
+        for rows in [4usize, 8, 12, 16, 20, 24, 32] {
+            let w = &net.w2[..rows * COLS];
+            let b: Vec<i32> = (0..rows).map(|o| o as i32 * 977 - 2000).collect();
+            let mut out = vec![0u8; rows];
+            affine_relu(w, &b, &x, &mut out);
+            for (o, &h) in out.iter().enumerate() {
+                let sum: i32 = (0..COLS)
+                    .map(|i| i32::from(w[o * COLS + i]) * i32::from(x[i]))
+                    .sum();
+                assert_eq!(h, clip((b[o] + sum) >> 6), "rows={rows} o={o}");
+            }
+        }
     }
 
     /// 隠れ層の推論がスカラー実装とビット一致すること（ADR-0099）。
