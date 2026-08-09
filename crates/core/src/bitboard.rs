@@ -135,6 +135,46 @@ impl Bitboard {
         self.0
     }
 
+    /// ビットが1つでもある筋を、筋全体へ広げた集合。二歩マスクの生成に
+    /// 使う（ADR-0151群D）。筋ごとの分岐を持たない。
+    ///
+    /// 1筋は9ビット連続（bit 9f〜9f+8）なので、筋内をOR畳み込みして
+    /// 最下位ビットへ集め、そこから筋全体へ展開する。シフトで隣の筋から
+    /// 漏れたビットは、畳み込みのたびにマスクで落とす。
+    #[inline]
+    pub(crate) const fn fill_files(self) -> Bitboard {
+        /// bitsを9筋ぶん並べたパターン。
+        const fn rep(bits: u128) -> u128 {
+            let mut m = 0u128;
+            let mut f = 0;
+            while f < 9 {
+                m |= bits << (f * 9);
+                f += 1;
+            }
+            m
+        }
+        // 筋内の位置0..=8-kだけを残す（シフト量kで隣の筋から来たビットを落とす）
+        const KEEP8: u128 = rep(0x1FF >> 8);
+        const KEEP4: u128 = rep(0x1FF >> 4);
+        const KEEP2: u128 = rep(0x1FF >> 2);
+        const KEEP1: u128 = rep(0x1FF >> 1);
+        const LSB: u128 = rep(1);
+
+        let mut t = self.0;
+        t |= (t >> 8) & KEEP8;
+        t |= (t >> 4) & KEEP4;
+        t |= (t >> 2) & KEEP2;
+        t |= (t >> 1) & KEEP1;
+        // 各筋の最下位ビットが「その筋にビットがある」を表す。筋全体へ広げる
+        let b = t & LSB;
+        let mut e = b;
+        e |= e << 1;
+        e |= e << 2;
+        e |= e << 4;
+        e |= b << 8;
+        Bitboard(e)
+    }
+
     /// condが真ならself、偽ならEMPTY。分岐を持たない選択で、
     /// 合成ビットボードの差分更新に使う（ADR-0151群F）。
     #[inline]
@@ -281,6 +321,42 @@ mod tests {
         assert!(!Bitboard::promotion_zone(Color::Black).test(Square::new(File(4), Rank(3))));
         assert!(Bitboard::promotion_zone(Color::White).test(Square::new(File(4), Rank(6))));
         assert_eq!(Bitboard::promotion_zone(Color::Black).count(), 27);
+    }
+
+    /// fill_filesの正解器。筋ごとに有無を見てORする素朴な実装。
+    fn fill_files_reference(bb: Bitboard) -> Bitboard {
+        let mut out = Bitboard::EMPTY;
+        for f in 0..9 {
+            let file = Bitboard::file(File(f));
+            if !(bb & file).is_empty() {
+                out |= file;
+            }
+        }
+        out
+    }
+
+    #[test]
+    fn fill_files_matches_reference() {
+        assert!(fill_files_reference(Bitboard::EMPTY).is_empty());
+        assert!(Bitboard::EMPTY.fill_files().is_empty());
+        // 単一ビットは自分の筋だけを埋める
+        for i in 0..81u8 {
+            let bb = Bitboard::from_square(Square::from_index(i));
+            assert_eq!(
+                bb.fill_files(),
+                Bitboard::file(Square::from_index(i).file())
+            );
+        }
+        // ランダムな部分集合で正解器と突き合わせる
+        let mut x = 0x9E37_79B9_7F4A_7C15u64;
+        for _ in 0..20000 {
+            x ^= x << 13;
+            x ^= x >> 7;
+            x ^= x << 17;
+            let y = x.wrapping_mul(0xD1B5_4A32_D192_ED03);
+            let bb = Bitboard(((x as u128) | ((y as u128) << 64)) & BOARD);
+            assert_eq!(bb.fill_files(), fill_files_reference(bb), "{:#x}", bb.0);
+        }
     }
 
     #[test]
