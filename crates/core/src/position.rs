@@ -140,6 +140,18 @@ struct CheckInfo {
     pinners: Cell<Bitboard>,
 }
 
+/// 1ノード分のcheck_squaresの遅延スロット（ADR-0151群O）。
+///
+/// `computed` のビットiが立っていれば `squares[i]` が有効である。
+/// 駒種のindexは2〜15なので、u16のマスクで全駒種を覆える。
+#[derive(Clone, Default, Debug)]
+struct CheckSquares {
+    computed: Cell<u16>,
+    squares: [Cell<Bitboard>; PieceType::NB],
+}
+
+const _: () = assert!(PieceType::NB <= u16::BITS as usize);
+
 /// do_moveの巻き戻し材料と差分計算済みの付随情報（ADR-0014）。
 #[derive(Clone, Default, Debug)]
 pub struct StateInfo {
@@ -190,6 +202,12 @@ pub struct Position {
     game_ply: u16,
     king_sq: [Square; 2],
     states: Vec<StateInfo>,
+    /// check_squaresの遅延スロットを局面スタックの深さ別に持つ
+    /// （ADR-0151群O）。`states` と同じ添字で引き、`push_state` が
+    /// 積むたびにマスクだけを落とす。StateInfoに同居させると
+    /// do_moveのたびに256バイトのゼロ書き込みが増えるため、
+    /// 無効化がマスク1本の書き込みで済むこの形にした
+    check_sq: Vec<CheckSquares>,
 }
 
 pub const SFEN_STARTPOS: &str = "lnsgkgsnl/1r5b1/ppppppppp/9/9/9/PPPPPPPPP/1B5R1/LNSGKGSNL b - 1";
@@ -530,34 +548,100 @@ impl Position {
     }
 
     /// mが相手玉への王手になるか。
+    ///
+    /// 直接王手は `check_squares`（ノード内キャッシュ）で判定する
+    /// （ADR-0151群O）。移動後の利きを毎回引く旧実装と結果は一致する。
+    /// 使う利きの盤面が「指す前」に変わるが、ずれるのは `from` が
+    /// `to` と敵玉の間に挟まる場合だけで、そのとき指す前の駒は同じ線を
+    /// 走る駒種であり、玉との間に遮る駒がなければ指す前から王手に
+    /// なっていて局面が不正になる。遮る駒があれば指した後も届かない。
     pub fn gives_check(&self, m: Move) -> bool {
-        let us = self.side;
-        let them = us.flip();
-        let ksq = self.king_sq[them.index()];
-        let to = m.to();
-        if m.is_drop() {
-            let occ = self.occupied() | Bitboard::from_square(to);
-            return attacks(m.piece_after(), to, occ).test(ksq);
-        }
-        let from = m.from_sq();
-        let occ = (self.occupied() ^ Bitboard::from_square(from)) | Bitboard::from_square(to);
-        // 直接王手
-        if attacks(m.piece_after(), to, occ).test(ksq) {
+        let direct = self
+            .check_squares(m.piece_after().piece_type())
+            .test(m.to());
+        debug_assert_eq!(
+            direct,
+            self.gives_direct_check_slow(m),
+            "直接王手の判定がずれた"
+        );
+        if direct {
             return true;
         }
+        if m.is_drop() {
+            return false;
+        }
         // 開き王手
-        self.blockers_for_king(them).test(from) && !aligned(from, to, ksq)
+        let them = self.side.flip();
+        let from = m.from_sq();
+        self.blockers_for_king(them).test(from)
+            && !aligned(from, m.to(), self.king_sq[them.index()])
+    }
+
+    /// 移動後の盤面から直接王手を引く旧実装。キャッシュ経路の正解器で、
+    /// デバッグビルドのassertとテストからだけ呼ぶ。
+    fn gives_direct_check_slow(&self, m: Move) -> bool {
+        let ksq = self.king_sq[self.side.flip().index()];
+        let to = m.to();
+        let occ = if m.is_drop() {
+            self.occupied() | Bitboard::from_square(to)
+        } else {
+            (self.occupied() ^ Bitboard::from_square(m.from_sq())) | Bitboard::from_square(to)
+        };
+        attacks(m.piece_after(), to, occ).test(ksq)
     }
 
     /// 駒種ptの手番側の駒がそこへ動くと相手玉に直接王手になるマスの集合。
-    /// 開き王手は含めない。指し手オーダリングの王手ボーナスに使う
+    /// 開き王手は含めない。指し手オーダリングの王手ボーナスと
+    /// `gives_check` の直接王手判定が使う
     /// （ADR-0109。出典はやねうら王のPosition::check_squares）。
+    ///
+    /// 敵玉からの利きを毎回引くと高くつくので、ノード内で共有する
+    /// 遅延キャッシュを通す（ADR-0151群O）。敵玉基準なので手番に
+    /// 依存するが、スロットは局面スタックの深さ別で、手番が変わる
+    /// do_null_moveも新しいStateInfoを積むため取り違えは起きない。
     #[inline]
     pub fn check_squares(&self, pt: PieceType) -> Bitboard {
+        let slot = &self.check_sq[self.states.len() - 1];
+        let i = pt.index();
+        let bit = 1u16 << i;
+        if slot.computed.get() & bit != 0 {
+            let cached = slot.squares[i].get();
+            // 無効化漏れは古い王手マスを読ませ、王手判定を壊す。
+            // デバッグビルドでは毎回突き合わせて捕まえる
+            debug_assert_eq!(
+                cached,
+                self.compute_check_squares(pt),
+                "check_squaresの遅延キャッシュが盤面と食い違う（無効化漏れ）"
+            );
+            cached
+        } else {
+            let v = self.compute_check_squares(pt);
+            slot.squares[i].set(v);
+            slot.computed.set(slot.computed.get() | bit);
+            v
+        }
+    }
+
+    /// check_squaresの本計算。キャッシュの正解器も兼ねる。
+    #[inline]
+    fn compute_check_squares(&self, pt: PieceType) -> Bitboard {
         let them = self.side.flip();
         let ksq = self.king_sq[them.index()];
         // 相手の駒として玉の位置から利きを引くと、逆向きの利きの集合になる
         attacks(Piece::new(them, pt), ksq, self.occupied())
+    }
+
+    /// StateInfoを積み、その深さのcheck_squaresスロットを未計算にする。
+    /// スロットは積み直すたびに使い回すので、落とすのはマスクだけでよい。
+    #[inline]
+    fn push_state(&mut self, st: StateInfo) {
+        self.states.push(st);
+        let depth = self.states.len();
+        if self.check_sq.len() < depth {
+            self.check_sq.resize_with(depth, CheckSquares::default);
+        } else {
+            self.check_sq[depth - 1].computed.set(0);
+        }
     }
 
     // ---- do/undo（ADR-0014） ----
@@ -672,7 +756,7 @@ impl Position {
         st.hand_key = u64::from(self.hands[0].0) | (u64::from(self.hands[1].0) << 32);
         self.side = them;
         self.game_ply += 1;
-        self.states.push(st);
+        self.push_state(st);
         self.update_checkers();
 
         // 連続王手カウンタ（指した側が王手を掛けたか）
@@ -765,7 +849,7 @@ impl Position {
         st.continuous_check[self.side.index()] = 0;
         self.side = self.side.flip();
         self.game_ply += 1;
-        self.states.push(st);
+        self.push_state(st);
         self.update_checkers();
     }
 
@@ -794,6 +878,7 @@ impl Position {
             game_ply: 1,
             king_sq: [Square::NONE; 2],
             states: Vec::with_capacity(1024),
+            check_sq: Vec::new(),
         };
 
         // 盤面: 9a側（左上）から段ごとに走査
@@ -922,7 +1007,7 @@ impl Position {
             pos.compute_non_pawn_key(Color::White),
         ];
         let minor_piece_key = pos.compute_minor_piece_key();
-        pos.states.push(StateInfo {
+        pos.push_state(StateInfo {
             board_key,
             hand_key: u64::from(pos.hands[0].0) | (u64::from(pos.hands[1].0) << 32),
             pawn_key,
@@ -1357,6 +1442,70 @@ mod tests {
                 "pinnersが盤面と食い違う: {} {c:?}",
                 pos.to_sfen()
             );
+        }
+    }
+
+    /// 遅延計算したcheck_squaresを、同じ盤面から作り直した局面と突き合わせる。
+    fn assert_check_squares_fresh(pos: &Position) {
+        let fresh = Position::from_sfen(&pos.to_sfen()).unwrap();
+        for i in 2..PieceType::NB {
+            let pt = PieceType(i as u8);
+            assert_eq!(
+                pos.check_squares(pt),
+                fresh.compute_check_squares(pt),
+                "check_squaresが盤面と食い違う: {} {pt:?}",
+                pos.to_sfen()
+            );
+        }
+    }
+
+    /// `gives_check` のキャッシュ経路が移動後の盤面から引く旧実装と一致するか。
+    /// 直接王手の判定で使う盤面が「指す前」に変わるので、全合法手で照合する。
+    fn assert_gives_check_matches_slow(pos: &Position) {
+        let mut list = MoveList::default();
+        generate_legal(pos, true, &mut list);
+        for &m in list.as_slice() {
+            let direct = pos.check_squares(m.piece_after().piece_type()).test(m.to());
+            assert_eq!(
+                direct,
+                pos.gives_direct_check_slow(m),
+                "直接王手の判定がずれた: {} {m:?}",
+                pos.to_sfen()
+            );
+        }
+    }
+
+    /// check_squaresの遅延計算（ADR-0151群O）が盤面と食い違わないか。
+    /// pin情報と同じくランダム対局で往復させ、releaseビルドでも効かせる。
+    #[test]
+    fn lazy_check_squares_stays_in_sync() {
+        for seed in 1..=4u64 {
+            let mut rng = Rng(seed.wrapping_mul(0x9E37_79B9_7F4A_7C15) | 1);
+            let mut pos = Position::from_sfen(SFEN_STARTPOS).unwrap();
+            for _ in 0..80 {
+                assert_check_squares_fresh(&pos);
+                assert_gives_check_matches_slow(&pos);
+                if !pos.in_check() {
+                    // null moveで手番が変わるとcheck_squaresの基準玉も変わる。
+                    // 新しいStateInfoを積むので取り違えないことを見る
+                    pos.do_null_move();
+                    assert_check_squares_fresh(&pos);
+                    pos.undo_null_move();
+                    assert_check_squares_fresh(&pos);
+                }
+                let mut list = MoveList::default();
+                generate_legal(&pos, true, &mut list);
+                if list.is_empty() {
+                    break;
+                }
+                let probe = list.as_slice()[(rng.next() % list.len() as u64) as usize];
+                pos.do_move(probe);
+                assert_check_squares_fresh(&pos);
+                pos.undo_move(probe);
+                assert_check_squares_fresh(&pos);
+                let idx = (rng.next() % list.len() as u64) as usize;
+                pos.do_move(list.as_slice()[idx]);
+            }
         }
     }
 

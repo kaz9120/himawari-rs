@@ -9,8 +9,7 @@
 //! `yaneuraou-search.cpp` を出典とする（ADR-0074）。
 
 use himawari_core::{
-    Bitboard, Color, GenType, Move, MoveList, Piece, PieceType, Position, Square, generate,
-    piece_value,
+    Color, GenType, Move, MoveList, Piece, PieceType, Position, Square, generate, piece_value,
 };
 
 // ---- テーブルの寸法 ----
@@ -21,8 +20,6 @@ const PIECE_NB: usize = 32;
 const SQUARE_NB: usize = 81;
 /// 駒種の数（先後なし）。参照実装のPIECE_TYPE_NB。
 const PIECE_TYPE_NB: usize = 16;
-/// `score_quiets` が駒種の集合を `u16` のビットマスクで持つための前提。
-const _: () = assert!(PIECE_TYPE_NB <= u16::BITS as usize);
 /// 16bitの指し手をそのまま添字にする表のサイズ（history.h:27）。
 const UINT16_HISTORY_SIZE: usize = 65536;
 /// lowPly historyが覆うply数（history.h:31）。
@@ -671,11 +668,6 @@ impl MovePicker {
     fn score_quiets(&mut self, pos: &Position, h: &Histories, cont: &[usize; 6], list: &MoveList) {
         let pawn_slot = PawnHistory::slot(pos.pawn_key());
         let us = pos.side_to_move();
-        // 直接王手になるマスは駒種ごとに1回だけ引く。`Option<Bitboard>` は
-        // `u128` にニッチがないぶん1要素32バイトになり、初期化が512バイトに
-        // なる。値の配列と「引いたか」のビットマスクへ分けると258バイトで済む
-        let mut check_sq = [Bitboard::EMPTY; PIECE_TYPE_NB];
-        let mut computed: u16 = 0;
         for &m in list {
             let pc = m.piece_after();
             let to = m.to();
@@ -686,18 +678,10 @@ impl MovePicker {
             v += h.cont.get(cont[2], pc, to);
             v += h.cont.get(cont[3], pc, to);
             v += h.cont.get(cont[5], pc, to);
-            // 王手になる手へのボーナス
-            let pt = pc.piece_type();
-            let i = pt.index();
-            let cs = if computed & (1 << i) != 0 {
-                check_sq[i]
-            } else {
-                let v = pos.check_squares(pt);
-                check_sq[i] = v;
-                computed |= 1 << i;
-                v
-            };
-            if cs.test(to) && pos.see_ge(m, CHECK_SEE_MARGIN) {
+            // 王手になる手へのボーナス。直接王手になるマスは
+            // Positionのノード内キャッシュが駒種ごとに1回だけ引く
+            // （ADR-0151群O）
+            if pos.check_squares(pc.piece_type()).test(to) && pos.see_ge(m, CHECK_SEE_MARGIN) {
                 v += CHECK_BONUS;
             }
             if self.ply < LOW_PLY_HISTORY_SIZE {
