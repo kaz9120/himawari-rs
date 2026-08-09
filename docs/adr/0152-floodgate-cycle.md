@@ -42,14 +42,17 @@ ROADMAPには「優勢時の頓死の精査は、floodgateの棋譜をまとめ�
 
 ### 1. 回収: `scripts/floodgate-fetch.py`
 
-wdoorの年別アーカイブ（`x/<年>/<日付>/`）のインデックスから、ファイル名に
-`+Himawari` を含むCSAを `data/raw/floodgate/<年>/` へ落とす。
+wdoorの対局者ページ（`x/<年>/player/<アカウント>.html`、既定は
+`Himawari+6fd5a66`）に載っている対局のCSAだけを
+`data/raw/floodgate/<年>/` へ落とす。
 
-- プレイヤー名はビルドIDを含むため（`Himawari+6fd5a66`）、名前の前方一致で
-  拾う。放流ビルドが変わっても追従できる
+- **対局者ページが唯一の情報源。** 当初は年別アーカイブをファイル名の
+  部分一致で走査する案だったが、名前の一致だけを頼りにすると関係のない
+  対局が混じる。対局者ページならwdoor側がその対局者の棋譜であることを
+  保証する（2026-08-09オーナー指示で変更）。アカウント名は固定で、
+  年をまたぐときは `--player-url` を年ごとに渡す
 - 取得済みファイルはスキップ（追記専用）。取得ログは
-  `data/logs/floodgate-fetch.log` へ追記
-- サーバへの負荷を抑えるため、日付範囲の既定は「前回取得以降」
+  `data/logs/floodgate-fetch.log` へ追記。リクエスト間に既定0.5秒置く
 
 ### 2. 分析: `kifu` ツール（Rust、`crates/tools/src/bin/kifu.rs`）
 
