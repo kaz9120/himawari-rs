@@ -76,6 +76,11 @@ struct Cli {
     #[arg(long, default_value_t = 300, value_parser = clap::value_parser!(i32).range(1..))]
     blunder_cp: i32,
 
+    /// 逆転とみなす振れ幅[cp]。符号がプラスからマイナスへ変わり、
+    /// かつ振れ幅がこの値以上の点を挙げる
+    #[arg(long, default_value_t = 200, value_parser = clap::value_parser!(i32).range(1..))]
+    flip_cp: i32,
+
     /// 詰みを調べる終盤の手数（自分の手番で数える）
     #[arg(long, default_value_t = 10)]
     mate_window: usize,
@@ -258,6 +263,8 @@ fn analyse_game(cli: &Cli, eval: &Path, path: &Path) -> Result<Section> {
     let replayed = replay(&game)?;
     let analysed = analyse_positions(cli, eval, &replayed)?;
     let blunders = find_blunders(cli, &game, me, &analysed);
+    let turns = turn_evals(&game, me, &analysed);
+    let flips = find_flips(cli, &turns);
     let mate_misses = find_mate_misses(cli, &game, me, &analysed);
     let time = time_stat(cli, &game, me);
 
@@ -273,6 +280,7 @@ fn analyse_game(cli: &Cli, eval: &Path, path: &Path) -> Result<Section> {
         &mate_misses,
         &time,
     );
+    write_flips_and_curve(&mut text, cli, &turns, &flips);
     Ok(Section {
         text,
         blunders: blunders.len(),
@@ -386,6 +394,139 @@ struct Blunder {
     after: i32,
     best: String,
     sfen: String,
+}
+
+/// 自分の手番から見た評価の1点。指す前と、指した直後（符号を自分視点へ
+/// 反転）を持つ。
+struct TurnEval {
+    ply: usize,
+    played: String,
+    before: i32,
+    after: i32,
+    sfen: String,
+    best: String,
+}
+
+/// 自分の手番ごとの評価列を作る。レポートの「評価の推移」と逆転検出が使う。
+fn turn_evals(game: &CsaGame, me: Color, a: &[Analysed]) -> Vec<TurnEval> {
+    let mut out = Vec::new();
+    for i in 0..game.moves.len() {
+        if !is_mine(i, me) || a[i].mated {
+            continue;
+        }
+        out.push(TurnEval {
+            ply: i + 1,
+            played: game.moves[i].text.clone(),
+            before: a[i].score_cp,
+            after: -a[i + 1].score_cp,
+            sfen: a[i].sfen.clone(),
+            best: a[i].bestmove.clone(),
+        });
+    }
+    out
+}
+
+/// 評価の逆転。どちらの種類かで意味が違う。
+enum FlipKind {
+    /// 自分の手で±flip_cpをまたいだ。1手での逆転（実際の悪手）
+    OwnMove,
+    /// 自分が指した直後は+側だったのに、相手の手を挟んだ次の手番で
+    /// −側になっていた。相手の応手で評価が剥がれた＝直前の評価が
+    /// 過大だった（水平線・過大評価の露呈）
+    OpponentReveal,
+}
+
+struct Flip {
+    kind: FlipKind,
+    ply: usize,
+    played: String,
+    from: i32,
+    to: i32,
+    sfen: String,
+    best: String,
+}
+
+/// 評価がプラスから一気にマイナスへ落ちた点を探す（2026-08-09オーナー指摘）。
+/// 大悪手検出は落差の大きさしか見ないため、+160→−80のような「小さいが
+/// 決定的な」反転を取りこぼす。「符号がまたがり、かつ振れ幅が閾値以上」を
+/// 別枠で挙げる。
+fn find_flips(cli: &Cli, turns: &[TurnEval]) -> Vec<Flip> {
+    let t = cli.flip_cp;
+    let crossed = |from: i32, to: i32| from > 0 && to < 0 && from - to >= t;
+    let mut out = Vec::new();
+    for (k, e) in turns.iter().enumerate() {
+        // 自分の手の中での反転
+        if crossed(e.before, e.after) {
+            out.push(Flip {
+                kind: FlipKind::OwnMove,
+                ply: e.ply,
+                played: e.played.clone(),
+                from: e.before,
+                to: e.after,
+                sfen: e.sfen.clone(),
+                best: e.best.clone(),
+            });
+        }
+        // 相手の手を挟んだ反転（指した直後は+側、次の手番では−側）
+        if let Some(next) = turns.get(k + 1)
+            && crossed(e.after, next.before)
+        {
+            out.push(Flip {
+                kind: FlipKind::OpponentReveal,
+                ply: next.ply,
+                played: e.played.clone(),
+                from: e.after,
+                to: next.before,
+                sfen: next.sfen.clone(),
+                best: next.best.clone(),
+            });
+        }
+    }
+    out
+}
+
+/// 逆転と評価の推移の節を書く。推移は自分の手番の全評価で、
+/// 大悪手の閾値に届かない悪化やジリ貧もここで追える。
+fn write_flips_and_curve(out: &mut String, cli: &Cli, turns: &[TurnEval], flips: &[Flip]) {
+    use std::fmt::Write;
+    let _ = writeln!(
+        out,
+        "### 逆転（符号がプラスからマイナスへ変わり、振れ幅{}cp以上）\n",
+        cli.flip_cp
+    );
+    if flips.is_empty() {
+        let _ = writeln!(out, "なし\n");
+    } else {
+        for f in flips {
+            let (label, detail) = match f.kind {
+                FlipKind::OwnMove => ("自分の手で逆転", "この手自体が敗着の候補"),
+                FlipKind::OpponentReveal => (
+                    "相手の応手で逆転",
+                    "指した直後は+側で、相手の手を挟むと−側。直前の評価が過大だった（水平線・過大評価の露呈）",
+                ),
+            };
+            let _ = writeln!(
+                out,
+                "- {}手目 `{}` : {:+} → {:+}（{}）",
+                f.ply, f.played, f.from, f.to, label
+            );
+            let _ = writeln!(out, "  - SFEN: `{}`", f.sfen);
+            let _ = writeln!(out, "  - 再解析の最善手: {}。{}", f.best, detail);
+        }
+        out.push('\n');
+    }
+
+    let _ = writeln!(out, "### 評価の推移（自分の手番、自分視点）\n");
+    let _ = writeln!(out, "| 手数 | 実戦の手 | 指す前 | 指した後 |");
+    let _ = writeln!(out, "|---|---|---|---|");
+    for e in turns {
+        let _ = writeln!(
+            out,
+            "| {} | {} | {:+} | {:+} |",
+            e.ply, e.played, e.before, e.after
+        );
+    }
+    out.push('\n');
 }
 
 /// 自分の手の前後で評価がどれだけ落ちたかを見る。
@@ -706,6 +847,35 @@ mod tests {
         // 閏日をまたぐ
         assert_eq!(civil_from_days(19_782), (2024, 2, 29));
         assert_eq!(civil_from_days(20_674), (2026, 8, 9));
+    }
+
+    /// 逆転の判定。符号がプラスからマイナスへ変わり、振れ幅が閾値以上の
+    /// ものだけを挙げる。実戦で取りこぼした+160→−80（振れ幅240）の型と、
+    /// 相手の応手で剥がれる型の両方を固定する。
+    #[test]
+    fn flips_require_sign_change_with_enough_swing() {
+        let cli = cli(&["--flip-cp", "200"]);
+        let turn = |ply: usize, before: i32, after: i32| TurnEval {
+            ply,
+            played: String::new(),
+            before,
+            after,
+            sfen: String::new(),
+            best: String::new(),
+        };
+        // 自分の手での逆転: +160→−80（振れ幅240 ≥ 200）
+        let flips = find_flips(&cli, &[turn(1, 160, -80)]);
+        assert_eq!(flips.len(), 1);
+        assert!(matches!(flips[0].kind, FlipKind::OwnMove));
+        // 振れ幅不足（+90→−90 = 180）は挙げない
+        assert!(find_flips(&cli, &[turn(1, 90, -90)]).is_empty());
+        // 符号が変わらない大差の悪化（+900→+100）は逆転ではない
+        assert!(find_flips(&cli, &[turn(1, 900, 100)]).is_empty());
+        // 相手の応手での逆転: 指した後+250、次の手番の前に−100
+        let flips = find_flips(&cli, &[turn(1, 300, 250), turn(3, -100, -120)]);
+        assert_eq!(flips.len(), 1);
+        assert!(matches!(flips[0].kind, FlipKind::OpponentReveal));
+        assert_eq!(flips[0].ply, 3);
     }
 
     /// 自分の手番の判定。先手なら偶数番目、後手なら奇数番目。
