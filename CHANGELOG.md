@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.34.3](https://github.com/kaz9120/himawari-rs/compare/v0.34.2...v0.34.3) (2026-08-09)
+
+
+### ドキュメント
+
+* 挙動を変えない高速化の第2弾を洗い出す（ADR-0151） ([#228](https://github.com/kaz9120/himawari-rs/issues/228)) ([cfb8eb7](https://github.com/kaz9120/himawari-rs/commit/cfb8eb77336e1009fc36fc88e5e97be2b8ff732d))
+
 ## [0.34.2](https://github.com/kaz9120/himawari-rs/compare/v0.34.1...v0.34.2) (2026-08-09)
 
 
