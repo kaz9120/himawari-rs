@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.34.4](https://github.com/kaz9120/himawari-rs/compare/v0.34.3...v0.34.4) (2026-08-09)
+
+
+### ドキュメント
+
+* ADR-0151に群F〜K（複合ビットボード・PGOほか）を追記する ([#230](https://github.com/kaz9120/himawari-rs/issues/230)) ([675ef5b](https://github.com/kaz9120/himawari-rs/commit/675ef5bb1bacbabacc9a5749e687a7c16f39af6e))
+
 ## [0.34.3](https://github.com/kaz9120/himawari-rs/compare/v0.34.2...v0.34.3) (2026-08-09)
 
 
