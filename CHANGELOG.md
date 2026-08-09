@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.34.18](https://github.com/kaz9120/himawari-rs/compare/v0.34.17...v0.34.18) (2026-08-09)
+
+
+### ドキュメント
+
+* ADR-0151第3波（群J・G・K）の合算+1.19%を記録する ([#259](https://github.com/kaz9120/himawari-rs/issues/259)) ([eb077b2](https://github.com/kaz9120/himawari-rs/commit/eb077b285622a6780765373927f9f6d51d343b80))
+
 ## [0.34.17](https://github.com/kaz9120/himawari-rs/compare/v0.34.16...v0.34.17) (2026-08-09)
 
 
