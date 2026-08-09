@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.34.20](https://github.com/kaz9120/himawari-rs/compare/v0.34.19...v0.34.20) (2026-08-09)
+
+
+### その他の変更
+
+* NNUE第1層をスパース伝播にする（ADR-0151群L、+1.12% NPS） ([#263](https://github.com/kaz9120/himawari-rs/issues/263)) ([6eaeea3](https://github.com/kaz9120/himawari-rs/commit/6eaeea3d99a3ba7102ce85be58e88787ab746267))
+
 ## [0.34.19](https://github.com/kaz9120/himawari-rs/compare/v0.34.18...v0.34.19) (2026-08-09)
 
 
