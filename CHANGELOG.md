@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.34.16](https://github.com/kaz9120/himawari-rs/compare/v0.34.15...v0.34.16) (2026-08-09)
+
+
+### その他の変更
+
+* BETWEEN/LINE表を方向表とRAY合成へ圧縮する（ADR-0151群G） ([#255](https://github.com/kaz9120/himawari-rs/issues/255)) ([6477903](https://github.com/kaz9120/himawari-rs/commit/6477903a1ee1e6d5d02c6237ad6b08059adec111))
+
 ## [0.34.15](https://github.com/kaz9120/himawari-rs/compare/v0.34.14...v0.34.15) (2026-08-09)
 
 
