@@ -7,7 +7,7 @@
 
 use himawari_core::{Color, DirtyPiece, PieceType, Position, Square, bonapiece};
 
-use crate::nnue::{CONCAT, FT_OUT, NnueNetwork, halfkp_active};
+use crate::nnue::{CONCAT, FT_OUT, FtWeight, NnueNetwork, halfkp_active};
 use crate::nnue_simd;
 use crate::value::{MAX_PLY, Value};
 
@@ -151,9 +151,10 @@ impl NnueState {
                     let prev = &before[j - 1];
                     debug_assert!(prev.computed[c.index()], "未計算のaccを読もうとした");
                     let e = &mut after[0];
-                    // 借用が分かれているので、一時領域を挟まず直接写す
-                    e.acc[c.index()].copy_from_slice(&prev.acc[c.index()]);
-                    apply_dirty(net, c, king, e);
+                    // 借用が分かれているので、親のaccを読みながら直接書ける。
+                    // 複製と足し引きを1パスに融合する（ADR-0151群A）
+                    let rows = diff_rows(net, c, king, &e.dirty, e.hand);
+                    apply_rows(&mut e.acc[c.index()], &prev.acc[c.index()], &rows);
                     e.computed[c.index()] = true;
                 }
             }
@@ -170,12 +171,13 @@ impl NnueState {
         halfkp_active(pos, c, &mut features);
         {
             let top = &mut self.entries[self.top];
-            let acc = &mut top.acc[c.index()];
-            acc.copy_from_slice(&net.ft_b[..FT_OUT]);
-            for &f in &features {
-                let base = f as usize * FT_OUT;
-                nnue_simd::ft_add(acc, &net.ft_w[base..base + FT_OUT]);
-            }
+            // バイアスの複製と全特徴の加算を1パスにまとめる（ADR-0151群A）
+            nnue_simd::ft_refresh(
+                &mut top.acc[c.index()],
+                &net.ft_b[..FT_OUT],
+                &net.ft_w,
+                &features,
+            );
             top.computed[c.index()] = true;
         }
         self.scratch = features;
@@ -217,33 +219,77 @@ fn hand_delta_of(pos: &Position, dirty: &DirtyPiece) -> Option<HandDelta> {
     }
 }
 
-/// entry1つぶんの差分をacc[c]へ適用する。玉は特徴に含まれない。
-fn apply_dirty(net: &NnueNetwork, c: Color, king: Square, e: &mut AccEntry) {
-    let acc = &mut e.acc[c.index()];
-    let mut sub_add = |bp: u16, add: bool| {
+/// 1手ぶんの差分の重み行。玉は特徴に含まれないので、引く行も足す行も
+/// 2本を超えない（取る手が最大で、移動元＋取られた駒と移動先＋手駒）。
+struct DiffRows<'a> {
+    subs: [&'a [FtWeight]; 2],
+    ns: usize,
+    adds: [&'a [FtWeight]; 2],
+    na: usize,
+}
+
+/// entry1つぶんの差分から、引く行と足す行を集める。
+fn diff_rows<'a>(
+    net: &'a NnueNetwork,
+    c: Color,
+    king: Square,
+    dirty: &DirtyPiece,
+    hand: Option<HandDelta>,
+) -> DiffRows<'a> {
+    let mut r = DiffRows {
+        subs: [&[], &[]],
+        ns: 0,
+        adds: [&[], &[]],
+        na: 0,
+    };
+    let push = |r: &mut DiffRows<'a>, bp: u16, add: bool| {
         let idx = bonapiece::halfkp_index(c, king, bp) as usize * FT_OUT;
         let w = &net.ft_w[idx..idx + FT_OUT];
+        // 上限を超えたら添字で落ちる。黙って差分を捨てない
         if add {
-            nnue_simd::ft_add(acc, w);
+            r.adds[r.na] = w;
+            r.na += 1;
         } else {
-            nnue_simd::ft_sub(acc, w);
+            r.subs[r.ns] = w;
+            r.ns += 1;
         }
     };
-    for j in 0..e.dirty.count as usize {
-        let old = e.dirty.piece_old[j];
-        let from = e.dirty.from[j];
+    for j in 0..dirty.count as usize {
+        let old = dirty.piece_old[j];
+        let from = dirty.from[j];
         if from != Square::NONE && !old.is_empty() && old.piece_type() != PieceType::KING {
-            sub_add(bonapiece::board_bona_piece(c, old, from), false);
+            push(&mut r, bonapiece::board_bona_piece(c, old, from), false);
         }
-        let new = e.dirty.piece_new[j];
-        let to = e.dirty.to[j];
+        let new = dirty.piece_new[j];
+        let to = dirty.to[j];
         if to != Square::NONE && !new.is_empty() && new.piece_type() != PieceType::KING {
-            sub_add(bonapiece::board_bona_piece(c, new, to), true);
+            push(&mut r, bonapiece::board_bona_piece(c, new, to), true);
         }
     }
-    if let Some(hd) = e.hand {
+    if let Some(hd) = hand {
         let bp = bonapiece::hand_bona_piece(c, hd.owner, hd.kind, hd.slot);
-        sub_add(bp, hd.added);
+        push(&mut r, bp, hd.added);
+    }
+    r
+}
+
+/// 親のaccへ差分を適用して自分のaccへ書く（ADR-0151群A）。
+/// 行数ごとに融合カーネルを単相化する。実際に現れるのは
+/// (0,0)（玉の移動・null move）・(1,1)（普通の手と駒打ち）・
+/// (2,2)（取る手）の3通りで、残りは念のため用意する。
+fn apply_rows(dst: &mut [i16; FT_OUT], src: &[i16; FT_OUT], r: &DiffRows<'_>) {
+    let (s, a) = (r.subs, r.adds);
+    match (r.ns, r.na) {
+        (0, 0) => nnue_simd::ft_apply(dst, src, [], []),
+        (1, 1) => nnue_simd::ft_apply(dst, src, [s[0]], [a[0]]),
+        (2, 2) => nnue_simd::ft_apply(dst, src, [s[0], s[1]], [a[0], a[1]]),
+        (0, 1) => nnue_simd::ft_apply(dst, src, [], [a[0]]),
+        (0, 2) => nnue_simd::ft_apply(dst, src, [], [a[0], a[1]]),
+        (1, 0) => nnue_simd::ft_apply(dst, src, [s[0]], []),
+        (1, 2) => nnue_simd::ft_apply(dst, src, [s[0]], [a[0], a[1]]),
+        (2, 0) => nnue_simd::ft_apply(dst, src, [s[0], s[1]], []),
+        (2, 1) => nnue_simd::ft_apply(dst, src, [s[0], s[1]], [a[0]]),
+        _ => unreachable!("差分の行数が上限を超えた: ns={}, na={}", r.ns, r.na),
     }
 }
 

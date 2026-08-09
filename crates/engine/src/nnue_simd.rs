@@ -18,64 +18,140 @@ const I16_LANES: usize = 16;
 #[cfg(ft_i8)]
 const FT_I8_LANES: usize = 32;
 
-/// acc += 重み列（i16、ラップ加算）。
+/// accを1パスで舐めるときのチャンク数（i16重み）。
 #[cfg(not(ft_i8))]
-pub fn ft_add(acc: &mut [i16; FT_OUT], w: &[i16]) {
-    debug_assert_eq!(w.len(), FT_OUT);
-    for (a, wc) in acc
-        .as_chunks_mut::<I16_LANES>()
-        .0
-        .iter_mut()
-        .zip(w.as_chunks::<I16_LANES>().0)
-    {
-        *a = (Simd::from_array(*a) + Simd::from_array(*wc)).to_array();
-    }
-}
+const FT_CHUNKS: usize = FT_OUT / I16_LANES;
 
-/// acc -= 重み列（i16、ラップ減算）。
-#[cfg(not(ft_i8))]
-pub fn ft_sub(acc: &mut [i16; FT_OUT], w: &[i16]) {
-    debug_assert_eq!(w.len(), FT_OUT);
-    for (a, wc) in acc
-        .as_chunks_mut::<I16_LANES>()
-        .0
-        .iter_mut()
-        .zip(w.as_chunks::<I16_LANES>().0)
-    {
-        *a = (Simd::from_array(*a) - Simd::from_array(*wc)).to_array();
-    }
-}
+/// 同上（i8重み。1チャンクが32要素になる）。
+#[cfg(ft_i8)]
+const FT_CHUNKS: usize = FT_OUT / FT_I8_LANES;
 
-/// acc += 重み列（i8を符号拡張してから加算。ADR-0138）。
+/// i8経路は32要素ずつ舐めるので、FT_OUTが32の倍数でないと末尾が落ちる。
+/// build.rsが要求するのは16の倍数までなので、ここで止める。
+#[cfg(ft_i8)]
+const _: () = assert!(FT_OUT.is_multiple_of(FT_I8_LANES));
+
+/// `dst = src - Σsubs + Σadds`（i16、ラップ加減算。ADR-0151群A）。
 ///
-/// accumulatorはi16のままなので、加算の飽和は新たに起こらない。
-/// 変わるのは重みの読み出し幅だけである。
-#[cfg(ft_i8)]
-pub fn ft_add(acc: &mut [i16; FT_OUT], w: &[i8]) {
-    debug_assert_eq!(w.len(), FT_OUT);
-    for (a, wc) in acc
-        .as_chunks_mut::<FT_I8_LANES>()
+/// 親のaccを読みながら全差分を適用し、自分のaccへ書く。accへの往復が
+/// 1回で済む。i16のラップ加減算は可換かつ結合的なので、1行ずつ足し引き
+/// した結果とビット一致する。行数は定数なので内側の展開はコンパイル時に
+/// 決まる。
+#[cfg(not(ft_i8))]
+pub fn ft_apply<const NS: usize, const NA: usize>(
+    dst: &mut [i16; FT_OUT],
+    src: &[i16; FT_OUT],
+    subs: [&[i16]; NS],
+    adds: [&[i16]; NA],
+) {
+    let subs = subs.map(|w| {
+        debug_assert_eq!(w.len(), FT_OUT);
+        &w.as_chunks::<I16_LANES>().0[..FT_CHUNKS]
+    });
+    let adds = adds.map(|w| {
+        debug_assert_eq!(w.len(), FT_OUT);
+        &w.as_chunks::<I16_LANES>().0[..FT_CHUNKS]
+    });
+    for (i, (d, s)) in dst
+        .as_chunks_mut::<I16_LANES>()
         .0
         .iter_mut()
-        .zip(w.as_chunks::<FT_I8_LANES>().0)
+        .zip(src.as_chunks::<I16_LANES>().0)
+        .enumerate()
     {
-        let wide: Simd<i16, FT_I8_LANES> = Simd::<i8, FT_I8_LANES>::from_array(*wc).cast();
-        *a = (Simd::from_array(*a) + wide).to_array();
+        let mut v = Simd::from_array(*s);
+        for &w in &subs {
+            v -= Simd::from_array(w[i]);
+        }
+        for &w in &adds {
+            v += Simd::from_array(w[i]);
+        }
+        *d = v.to_array();
     }
 }
 
-/// acc -= 重み列（i8を符号拡張してから減算。ADR-0138）。
+/// 同上（i8重みを符号拡張してから足し引きする。ADR-0138）。
+///
+/// accumulatorはi16のままなので、飽和は新たに起こらない。変わるのは
+/// 重みの読み出し幅だけである。
 #[cfg(ft_i8)]
-pub fn ft_sub(acc: &mut [i16; FT_OUT], w: &[i8]) {
-    debug_assert_eq!(w.len(), FT_OUT);
-    for (a, wc) in acc
+pub fn ft_apply<const NS: usize, const NA: usize>(
+    dst: &mut [i16; FT_OUT],
+    src: &[i16; FT_OUT],
+    subs: [&[i8]; NS],
+    adds: [&[i8]; NA],
+) {
+    let subs = subs.map(|w| {
+        debug_assert_eq!(w.len(), FT_OUT);
+        &w.as_chunks::<FT_I8_LANES>().0[..FT_CHUNKS]
+    });
+    let adds = adds.map(|w| {
+        debug_assert_eq!(w.len(), FT_OUT);
+        &w.as_chunks::<FT_I8_LANES>().0[..FT_CHUNKS]
+    });
+    for (i, (d, s)) in dst
         .as_chunks_mut::<FT_I8_LANES>()
         .0
         .iter_mut()
-        .zip(w.as_chunks::<FT_I8_LANES>().0)
+        .zip(src.as_chunks::<FT_I8_LANES>().0)
+        .enumerate()
     {
-        let wide: Simd<i16, FT_I8_LANES> = Simd::<i8, FT_I8_LANES>::from_array(*wc).cast();
-        *a = (Simd::from_array(*a) - wide).to_array();
+        let mut v = Simd::from_array(*s);
+        for &w in &subs {
+            let wide: Simd<i16, FT_I8_LANES> = Simd::<i8, FT_I8_LANES>::from_array(w[i]).cast();
+            v -= wide;
+        }
+        for &w in &adds {
+            let wide: Simd<i16, FT_I8_LANES> = Simd::<i8, FT_I8_LANES>::from_array(w[i]).cast();
+            v += wide;
+        }
+        *d = v.to_array();
+    }
+}
+
+/// `acc = bias + Σ特徴行`（i16、ラップ加算。ADR-0151群A）。
+///
+/// 外側をaccのチャンク、内側を特徴にする。accへの書きが1回になり、
+/// バイアスの初期化も同じパスに入る。加算の順序は特徴ごとに足す版と
+/// 同じで、結果もビット一致する。
+#[cfg(not(ft_i8))]
+pub fn ft_refresh(acc: &mut [i16; FT_OUT], bias: &[i16], w: &[i16], features: &[u32]) {
+    debug_assert_eq!(bias.len(), FT_OUT);
+    for (i, (a, b)) in acc
+        .as_chunks_mut::<I16_LANES>()
+        .0
+        .iter_mut()
+        .zip(bias.as_chunks::<I16_LANES>().0)
+        .enumerate()
+    {
+        let mut v = Simd::from_array(*b);
+        for &f in features {
+            let base = f as usize * FT_OUT + i * I16_LANES;
+            v += Simd::<i16, I16_LANES>::from_slice(&w[base..base + I16_LANES]);
+        }
+        *a = v.to_array();
+    }
+}
+
+/// 同上（i8重み。ADR-0138）。
+#[cfg(ft_i8)]
+pub fn ft_refresh(acc: &mut [i16; FT_OUT], bias: &[i16], w: &[i8], features: &[u32]) {
+    debug_assert_eq!(bias.len(), FT_OUT);
+    for (i, (a, b)) in acc
+        .as_chunks_mut::<FT_I8_LANES>()
+        .0
+        .iter_mut()
+        .zip(bias.as_chunks::<FT_I8_LANES>().0)
+        .enumerate()
+    {
+        let mut v = Simd::from_array(*b);
+        for &f in features {
+            let base = f as usize * FT_OUT + i * FT_I8_LANES;
+            let wide: Simd<i16, FT_I8_LANES> =
+                Simd::<i8, FT_I8_LANES>::from_slice(&w[base..base + FT_I8_LANES]).cast();
+            v += wide;
+        }
+        *a = v.to_array();
     }
 }
 
@@ -265,24 +341,39 @@ mod tests {
     #[test]
     fn primitives_match_scalar() {
         let net = NnueNetwork::random(5);
-        // ft_add/sub: ラップ動作の一致
-        let mut a = [i16::MAX - 3; FT_OUT];
-        let mut b = a;
-        let w = &net.ft_w[..FT_OUT];
+        let row = |i: usize| &net.ft_w[i * FT_OUT..(i + 1) * FT_OUT];
         // 重みの格納型はビルドで変わる（ADR-0138）。参照側はi16へ揃える。
         // 既定ビルドでは型が同じで変換が恒等になるが、i8ビルドでは必要
         #[allow(clippy::useless_conversion)]
         {
-            ft_add(&mut a, w);
-            for (x, &wv) in b.iter_mut().zip(w) {
-                *x = x.wrapping_add(i16::from(wv));
+            // ft_apply: 引く行2・足す行2の最大構成でラップ動作が一致する
+            let src = [i16::MAX - 3; FT_OUT];
+            let mut dst = [0i16; FT_OUT];
+            ft_apply(&mut dst, &src, [row(0), row(1)], [row(2), row(3)]);
+            let mut want = src;
+            for (o, x) in want.iter_mut().enumerate() {
+                *x = x
+                    .wrapping_sub(i16::from(row(0)[o]))
+                    .wrapping_sub(i16::from(row(1)[o]))
+                    .wrapping_add(i16::from(row(2)[o]))
+                    .wrapping_add(i16::from(row(3)[o]));
             }
-            assert_eq!(a, b);
-            ft_sub(&mut a, w);
-            for (x, &wv) in b.iter_mut().zip(w) {
-                *x = x.wrapping_sub(i16::from(wv));
+            assert_eq!(dst, want);
+            // 差分が空なら親のaccをそのまま写す
+            ft_apply(&mut dst, &src, [], []);
+            assert_eq!(dst, src);
+            // ft_refresh: バイアス＋特徴行の総和が一致する
+            let features = [3u32, 11, 29];
+            let mut acc = [0i16; FT_OUT];
+            ft_refresh(&mut acc, &net.ft_b[..FT_OUT], &net.ft_w, &features);
+            let mut want = [0i16; FT_OUT];
+            for (o, x) in want.iter_mut().enumerate() {
+                *x = net.ft_b[o];
+                for &f in &features {
+                    *x = x.wrapping_add(i16::from(net.ft_w[f as usize * FT_OUT + o]));
+                }
             }
-            assert_eq!(a, b);
+            assert_eq!(acc, want);
         }
         // dot: スカラー積和一致
         let x: Vec<u8> = (0..CONCAT).map(|i| (i % 128) as u8).collect();
