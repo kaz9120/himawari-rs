@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.34.8](https://github.com/kaz9120/himawari-rs/compare/v0.34.7...v0.34.8) (2026-08-09)
+
+
+### 内部
+
+* PGOビルドの手順をスクリプトに固定する（ADR-0151群I、+10.67% NPS） ([#239](https://github.com/kaz9120/himawari-rs/issues/239)) ([8699a85](https://github.com/kaz9120/himawari-rs/commit/8699a852e53305b6c90d070b1655393ad786f8a1))
+
 ## [0.34.7](https://github.com/kaz9120/himawari-rs/compare/v0.34.6...v0.34.7) (2026-08-09)
 
 
