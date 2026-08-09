@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.35.1](https://github.com/kaz9120/himawari-rs/compare/v0.35.0...v0.35.1) (2026-08-09)
+
+
+### ドキュメント
+
+* floodgate棋譜の定期回収・分析・定跡追加をADR-0152に起草する ([#273](https://github.com/kaz9120/himawari-rs/issues/273)) ([11d98a1](https://github.com/kaz9120/himawari-rs/commit/11d98a1657313f8526b56ed73c15e8c92637fcf9))
+
 ## [0.35.0](https://github.com/kaz9120/himawari-rs/compare/v0.34.23...v0.35.0) (2026-08-09)
 
 
