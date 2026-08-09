@@ -56,9 +56,12 @@ run_logged floodgate-cycle target/release/kifu target/release/himawari \
 	"$GAMES_DIR" --eval-file "$EVAL_FILE" --out "$REPORT"
 
 log_info "3/4: 定跡追加（最大${SEED_MAX}局面。冪等なので続きから足す）..."
+# --depth 28 は定跡の規格（ADR-0146のbook-v3）。seedの既定はgenと共通の
+# 24なので、ここで明示しないと浅い探索の局面が混ざる（初回運用で実際に
+# 起き、book-v3からの復元でやり直した）
 run_logged floodgate-cycle target/release/book seed \
 	--games "$GAMES_DIR" --out "$BOOK_FILE" \
-	--eval "$EVAL_FILE" --max-positions "$SEED_MAX"
+	--eval "$EVAL_FILE" --depth 28 --max-positions "$SEED_MAX"
 
 log_info "4/4: 網羅率..."
 run_logged floodgate-cycle target/release/book stats --out "$BOOK_FILE"
