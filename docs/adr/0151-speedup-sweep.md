@@ -238,6 +238,13 @@ mainがbase）。手順は `scripts/build-pgo.sh` に固定した。計測用ビ
 `build-pair.sh` の既定手順が変わらない。学習走行の局面が変わるとPGOの
 結果もぶれるため、比較測定に混ぜると条件の管理が増えるからでもある。
 
+**配布バイナリもPGOで作る**（2026-08-09オーナー要望）。`release.yml` の
+5ターゲットすべてで、各runner上に同じ3段の手順を組み込んだ。学習走行の
+評価関数はネット配布リリース（net-v4、[ADR-0080](0080-net-release.md)）から
+取得する。現行ネットを差し替えたらworkflowの `NET_TAG`/`NET_ASSET` も
+更新する。タグなしの動作確認用に `workflow_dispatch` を足した（Releaseへの
+添付はタグpush時のみ）。
+
 ### 群J: PV/NonPVの単相化（2026-08-09追記）
 
 `search`・`qsearch` は `is_pv: bool` を実行時引数で受け、ノードごとに
