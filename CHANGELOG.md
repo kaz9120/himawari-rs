@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.35.6](https://github.com/kaz9120/himawari-rs/compare/v0.35.5...v0.35.6) (2026-08-09)
+
+
+### ドキュメント
+
+* 優等局面のroot跨ぎ判定の不具合をADR-0153に起草する ([#283](https://github.com/kaz9120/himawari-rs/issues/283)) ([d123aae](https://github.com/kaz9120/himawari-rs/commit/d123aae5f25c3cc83ed5a5b4eeb6f6c22e8ce525))
+
 ## [0.35.5](https://github.com/kaz9120/himawari-rs/compare/v0.35.4...v0.35.5) (2026-08-09)
 
 
