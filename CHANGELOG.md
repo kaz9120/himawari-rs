@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.34.9](https://github.com/kaz9120/himawari-rs/compare/v0.34.8...v0.34.9) (2026-08-09)
+
+
+### その他の変更
+
+* accumulatorのアラインとリダクション表の縮小（ADR-0151群H） ([#241](https://github.com/kaz9120/himawari-rs/issues/241)) ([4b4e7c9](https://github.com/kaz9120/himawari-rs/commit/4b4e7c954247d021b2b38e2f516ebf6a5d8ac655))
+
 ## [0.34.8](https://github.com/kaz9120/himawari-rs/compare/v0.34.7...v0.34.8) (2026-08-09)
 
 
