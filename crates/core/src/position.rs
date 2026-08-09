@@ -3,6 +3,8 @@
 //! make/unmake方式。StateInfoはVecスタックで持ち、do_moveは常に
 //! DirtyPiece（NNUE差分の材料）を記録する。SFEN入出力もここに置く。
 
+use std::cell::Cell;
+
 use crate::attacks::{
     aligned, attacks, between, bishop_attacks, king_attacks, lance_attacks, rook_attacks,
 };
@@ -125,6 +127,19 @@ impl Default for DirtyPiece {
     }
 }
 
+/// 片側の玉に対するpin情報の遅延スロット（ADR-0151群K）。
+///
+/// do_moveでは計算せず、`is_legal`・`gives_check` が初めて読むときに埋める。
+/// `computed` が立つまで `blockers`・`pinners` の中身は無効である。
+/// StateInfoは局面と1対1なので、undo_moveで盤が元に戻れば
+/// 計算済みの値もそのまま有効になる。
+#[derive(Clone, Default, Debug)]
+struct CheckInfo {
+    computed: Cell<bool>,
+    blockers: Cell<Bitboard>,
+    pinners: Cell<Bitboard>,
+}
+
 /// do_moveの巻き戻し材料と差分計算済みの付随情報（ADR-0014）。
 #[derive(Clone, Default, Debug)]
 pub struct StateInfo {
@@ -140,8 +155,9 @@ pub struct StateInfo {
     /// 先後は区別せず1本に混ぜる。出典はやねうら王 position.cpp:144
     pub minor_piece_key: u64,
     pub checkers: Bitboard,
-    pub blockers_for_king: [Bitboard; 2],
-    pub pinners: [Bitboard; 2],
+    /// 色別のpin情報（ADR-0151群K）。読み出しは
+    /// `Position::blockers_for_king`・`Position::pinners` を通す
+    check_info: [CheckInfo; 2],
     pub continuous_check: [u16; 2],
     pub plies_from_null: u16,
     pub material: i32,
@@ -406,17 +422,53 @@ impl Position {
         (blockers, pinners)
     }
 
-    fn update_check_info(&mut self) {
+    /// 色cのpin情報を必要なら計算して返す（ADR-0151群K）。
+    ///
+    /// blockers・pinnersを読むのは `is_legal` と `gives_check` だけで、
+    /// TTカットや千日手で即返るノードでは読まれない。do_moveで先に
+    /// 計算せず、ここで初回参照時に埋める。
+    #[inline]
+    fn check_info(&self, c: Color) -> &CheckInfo {
+        let ci = &self.state().check_info[c.index()];
+        if ci.computed.get() {
+            // 無効化漏れは古いpin情報を読ませ、合法手判定を壊す。
+            // デバッグビルドでは毎回突き合わせて捕まえる
+            debug_assert_eq!(
+                (ci.blockers.get(), ci.pinners.get()),
+                self.slider_blockers(c),
+                "遅延キャッシュが盤面と食い違う（無効化漏れ）"
+            );
+        } else {
+            let (blockers, pinners) = self.slider_blockers(c);
+            ci.blockers.set(blockers);
+            ci.pinners.set(pinners);
+            ci.computed.set(true);
+        }
+        ci
+    }
+
+    /// 色cの玉への利きを遮っている駒（両色）。初回参照時に計算する。
+    #[inline]
+    pub fn blockers_for_king(&self, c: Color) -> Bitboard {
+        self.check_info(c).blockers.get()
+    }
+
+    /// 色cの玉をpinしている敵の遠隔駒。初回参照時に計算する。
+    #[inline]
+    pub fn pinners(&self, c: Color) -> Bitboard {
+        self.check_info(c).pinners.get()
+    }
+
+    /// 手番側の玉への王手駒を求めてStateInfoへ入れる。
+    /// pin情報は毎ノード読むわけではないので、ここでは計算しない
+    /// （ADR-0151群K）。
+    fn update_checkers(&mut self) {
         let us = self.side;
         let them = us.flip();
         let occ = self.occupied();
         let checkers = self.attackers_to(them, self.king_sq[us.index()], occ);
-        let (b0, p0) = self.slider_blockers(Color::Black);
-        let (b1, p1) = self.slider_blockers(Color::White);
         let st = self.states.last_mut().expect("state stack is never empty");
         st.checkers = checkers;
-        st.blockers_for_king = [b0, b1];
-        st.pinners = [p0, p1];
     }
 
     // ---- 合法性（ADR-0016） ----
@@ -441,7 +493,7 @@ impl Position {
             let occ_without_king = self.occupied() ^ Bitboard::from_square(from);
             return self.attackers_to(them, to, occ_without_king).is_empty();
         }
-        if self.state().blockers_for_king[us.index()].test(from) {
+        if self.blockers_for_king(us).test(from) {
             return aligned(from, to, self.king_sq[us.index()]);
         }
         true
@@ -494,7 +546,7 @@ impl Position {
             return true;
         }
         // 開き王手
-        self.state().blockers_for_king[them.index()].test(from) && !aligned(from, to, ksq)
+        self.blockers_for_king(them).test(from) && !aligned(from, to, ksq)
     }
 
     /// 駒種ptの手番側の駒がそこへ動くと相手玉に直接王手になるマスの集合。
@@ -540,8 +592,8 @@ impl Position {
             non_pawn_key: prev.non_pawn_key,
             minor_piece_key: prev.minor_piece_key,
             checkers: Bitboard::EMPTY,
-            blockers_for_king: [Bitboard::EMPTY; 2],
-            pinners: [Bitboard::EMPTY; 2],
+            // 未計算の状態で積む（ADR-0151群K）
+            check_info: Default::default(),
             continuous_check: prev.continuous_check,
             plies_from_null: prev.plies_from_null + 1,
             material: prev.material,
@@ -621,7 +673,7 @@ impl Position {
         self.side = them;
         self.game_ply += 1;
         self.states.push(st);
-        self.update_check_info();
+        self.update_checkers();
 
         // 連続王手カウンタ（指した側が王手を掛けたか）
         let checked = self.in_check();
@@ -702,8 +754,8 @@ impl Position {
             non_pawn_key: prev.non_pawn_key,
             minor_piece_key: prev.minor_piece_key,
             checkers: Bitboard::EMPTY,
-            blockers_for_king: [Bitboard::EMPTY; 2],
-            pinners: [Bitboard::EMPTY; 2],
+            // 未計算の状態で積む（ADR-0151群K）
+            check_info: Default::default(),
             continuous_check: prev.continuous_check,
             plies_from_null: 0,
             material: prev.material,
@@ -714,7 +766,7 @@ impl Position {
         self.side = self.side.flip();
         self.game_ply += 1;
         self.states.push(st);
-        self.update_check_info();
+        self.update_checkers();
     }
 
     pub fn undo_null_move(&mut self) {
@@ -879,7 +931,7 @@ impl Position {
             material,
             ..StateInfo::default()
         });
-        pos.update_check_info();
+        pos.update_checkers();
         debug_assert!(pos.composites_match_by_type());
         Ok(pos)
     }
@@ -1286,6 +1338,58 @@ mod tests {
             x ^= x << 17;
             self.0 = x;
             x
+        }
+    }
+
+    /// 遅延計算したpin情報を、同じ盤面から作り直した局面と突き合わせる。
+    fn assert_check_info_fresh(pos: &Position) {
+        let fresh = Position::from_sfen(&pos.to_sfen()).unwrap();
+        for c in [Color::Black, Color::White] {
+            assert_eq!(
+                pos.blockers_for_king(c),
+                fresh.slider_blockers(c).0,
+                "blockersが盤面と食い違う: {} {c:?}",
+                pos.to_sfen()
+            );
+            assert_eq!(
+                pos.pinners(c),
+                fresh.slider_blockers(c).1,
+                "pinnersが盤面と食い違う: {} {c:?}",
+                pos.to_sfen()
+            );
+        }
+    }
+
+    /// pin情報の遅延計算（ADR-0151群K）で無効化漏れが起きないか。
+    /// ランダム対局にdo/undoとnull moveを挟み、各時点で作り直した局面と
+    /// 比べる。releaseビルドのテストでも効く安全網になる。
+    #[test]
+    fn lazy_check_info_stays_in_sync() {
+        for seed in 1..=4u64 {
+            let mut rng = Rng(seed.wrapping_mul(0xA24B_AED4_963E_E407) | 1);
+            let mut pos = Position::from_sfen(SFEN_STARTPOS).unwrap();
+            for _ in 0..80 {
+                assert_check_info_fresh(&pos);
+                if !pos.in_check() {
+                    pos.do_null_move();
+                    assert_check_info_fresh(&pos);
+                    pos.undo_null_move();
+                    assert_check_info_fresh(&pos);
+                }
+                let mut list = MoveList::default();
+                generate_legal(&pos, true, &mut list);
+                if list.is_empty() {
+                    break;
+                }
+                // 1手進めて戻す往復を挟み、元の局面の値が保たれることも見る
+                let probe = list.as_slice()[(rng.next() % list.len() as u64) as usize];
+                pos.do_move(probe);
+                assert_check_info_fresh(&pos);
+                pos.undo_move(probe);
+                assert_check_info_fresh(&pos);
+                let idx = (rng.next() % list.len() as u64) as usize;
+                pos.do_move(list.as_slice()[idx]);
+            }
         }
     }
 
