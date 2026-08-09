@@ -250,12 +250,14 @@ fn move_from_usi_roundtrip() {
 }
 
 /// 飛車の往復による通常の千日手（ADR-0026）。
+/// 千日手はrootを跨いでも成立する（ADR-0153）ので、ply=0でも返る。
 #[test]
 fn repetition_draw() {
     let mut pos = Position::from_sfen(SFEN_STARTPOS).unwrap();
-    assert_eq!(pos.repetition_state(), Repetition::None);
+    assert_eq!(pos.repetition_state_all(), Repetition::None);
     apply(&mut pos, &["2h3h", "8b7b", "3h2h", "7b8b"]);
-    assert_eq!(pos.repetition_state(), Repetition::Draw);
+    assert_eq!(pos.repetition_state_all(), Repetition::Draw);
+    assert_eq!(pos.repetition_state(0), Repetition::Draw);
 }
 
 /// 連続王手の千日手。王手を掛け続けた側（先手）がLose。
@@ -264,7 +266,35 @@ fn perpetual_check_is_loss_for_checker() {
     let mut pos = Position::from_sfen("4k4/9/9/9/9/9/9/5R3/4K4 b - 1").unwrap();
     apply(&mut pos, &["4h5h", "5a4a", "5h4h", "4a5a"]);
     // ここで盤面はループ先頭と同一。先手の手はすべて王手だった
-    assert_eq!(pos.repetition_state(), Repetition::Lose);
+    assert_eq!(pos.repetition_state_all(), Repetition::Lose);
+    assert_eq!(pos.repetition_state(0), Repetition::Lose);
+}
+
+/// 優等局面はrootを跨いで判定しない（ADR-0153）。
+///
+/// 8ply前と盤面が同一で、先手だけ歩を1枚得ている局面を作る。手順は
+/// 先手が2六の歩を飛車で取り、玉の往復で手待ちし、後手が同じ2六へ
+/// 歩を打ち直す。検出距離は8plyになる。
+#[test]
+fn superior_is_gated_by_search_ply() {
+    let mut pos = Position::from_sfen("4k4/9/9/9/9/7p1/9/7R1/4K4 b p 1").unwrap();
+    apply(
+        &mut pos,
+        &[
+            "2h2f", "5a4a", // 飛車が歩を取り、後手玉が動く
+            "2f2h", "P*2f", // 飛車が戻り、後手が同じ位置へ歩を打つ
+            "5i4i", "4a4b", // 双方が手待ちする
+            "4i5i", "4b5a",
+        ],
+    );
+    // 検出距離は8ply。探索経路が9ply以上あれば優等として返る
+    assert_eq!(pos.repetition_state(9), Repetition::Superior);
+    assert_eq!(pos.repetition_state(usize::MAX), Repetition::Superior);
+    assert_eq!(pos.repetition_state_all(), Repetition::Superior);
+    // rootが検出位置と同じか、それより後ろなら返さない
+    assert_eq!(pos.repetition_state(8), Repetition::None);
+    assert_eq!(pos.repetition_state(4), Repetition::None);
+    assert_eq!(pos.repetition_state(0), Repetition::None);
 }
 
 /// null moveの往復一致と、手番だけ違う局面のキー相違（ADR-0028）。
@@ -287,13 +317,13 @@ fn null_move_roundtrip() {
 fn repetition_scan_stops_at_null_move() {
     let mut pos = Position::from_sfen(SFEN_STARTPOS).unwrap();
     apply(&mut pos, &["2h3h", "8b7b", "3h2h", "7b8b"]);
-    assert_eq!(pos.repetition_state(), Repetition::Draw);
+    assert_eq!(pos.repetition_state_all(), Repetition::Draw);
     // ループをもう1周するが、途中にnull moveを挟む
     apply(&mut pos, &["2h3h", "8b7b", "3h2h"]);
     pos.do_null_move();
     pos.do_null_move();
     apply(&mut pos, &["7b8b"]);
-    assert_eq!(pos.repetition_state(), Repetition::None);
+    assert_eq!(pos.repetition_state_all(), Repetition::None);
 }
 
 /// 入玉宣言勝ち（27点法、ADR-0030）の境界条件。

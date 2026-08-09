@@ -183,7 +183,7 @@ fn play_one(
         if list.is_empty() {
             return (pending, Some(stm.flip()), "mate");
         }
-        match pos.repetition_state() {
+        match pos.repetition_state_all() {
             Repetition::Draw => return (pending, None, "repetition"),
             // 連続王手の千日手。王手をかけ続けた側が負ける
             Repetition::Win => return (pending, Some(stm), "repetition_win"),

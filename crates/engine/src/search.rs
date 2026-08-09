@@ -882,7 +882,7 @@ impl Worker {
     /// して位置を残した判定で、玉が敵陣外なら即falseで安い
     #[inline]
     fn terminal_value(&self, ply: usize) -> Option<Value> {
-        match self.pos.repetition_state() {
+        match self.pos.repetition_state(ply) {
             Repetition::Draw => return Some(self.draw_value()),
             Repetition::Win => return Some(mate_in(ply)),
             Repetition::Lose => return Some(mated_in(ply)),
