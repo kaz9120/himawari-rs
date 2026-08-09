@@ -134,6 +134,13 @@ impl Bitboard {
     pub(crate) const fn raw(self) -> u128 {
         self.0
     }
+
+    /// condが真ならself、偽ならEMPTY。分岐を持たない選択で、
+    /// 合成ビットボードの差分更新に使う（ADR-0151群F）。
+    #[inline]
+    pub(crate) const fn keep_if(self, cond: bool) -> Bitboard {
+        Bitboard(self.0 & 0u128.wrapping_sub(cond as u128))
+    }
 }
 
 impl BitAnd for Bitboard {

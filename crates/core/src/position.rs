@@ -35,6 +35,38 @@ pub const fn is_minor_piece(pt: PieceType) -> bool {
     MINOR_PIECE_MASK & (1 << pt.0) != 0
 }
 
+// ---- 合成ビットボード（ADR-0151群F） ----
+//
+// by_typeのORはattackers_toなどで毎回作り直していた。同じ合成を
+// Positionが持ち、駒の出し入れと同時に差分維持する。色は使う側が
+// by_colorとのANDで絞る（by_typeと同じ流儀）。
+
+/// 金の動きをする駒（金＋成金4種）。
+const COMP_GOLDS: usize = 0;
+/// 角＋馬。
+const COMP_BISHOP_HORSE: usize = 1;
+/// 飛＋龍。
+const COMP_ROOK_DRAGON: usize = 2;
+/// 玉＋馬＋龍（玉の利きの形で近接に利く駒）。
+const COMP_HDK: usize = 3;
+const COMP_NB: usize = 4;
+
+/// 駒種が属する合成板のビットマスク（添字はPieceType）。
+const COMPOSITE_OF: [u8; PieceType::NB] = {
+    let mut t = [0u8; PieceType::NB];
+    t[PieceType::GOLD.index()] = 1 << COMP_GOLDS;
+    t[PieceType::PRO_PAWN.index()] = 1 << COMP_GOLDS;
+    t[PieceType::PRO_LANCE.index()] = 1 << COMP_GOLDS;
+    t[PieceType::PRO_KNIGHT.index()] = 1 << COMP_GOLDS;
+    t[PieceType::PRO_SILVER.index()] = 1 << COMP_GOLDS;
+    t[PieceType::BISHOP.index()] = 1 << COMP_BISHOP_HORSE;
+    t[PieceType::HORSE.index()] = (1 << COMP_BISHOP_HORSE) | (1 << COMP_HDK);
+    t[PieceType::ROOK.index()] = 1 << COMP_ROOK_DRAGON;
+    t[PieceType::DRAGON.index()] = (1 << COMP_ROOK_DRAGON) | (1 << COMP_HDK);
+    t[PieceType::KING.index()] = 1 << COMP_HDK;
+    t
+};
+
 /// 入玉宣言の点数（ADR-0030）。飛角系5点、玉以外の他駒1点。
 const fn declaration_points(pt: PieceType) -> u32 {
     match pt {
@@ -108,6 +140,8 @@ pub enum Repetition {
 pub struct Position {
     board: [Piece; 81],
     by_type: [Bitboard; 16],
+    /// by_typeのORのキャッシュ（ADR-0151群F）。put/removeが差分維持する
+    composite: [Bitboard; COMP_NB],
     by_color: [Bitboard; 2],
     hands: [Hand; 2],
     side: Color,
@@ -157,10 +191,8 @@ impl Position {
     #[inline]
     pub fn sliders(&self) -> Bitboard {
         self.by_type[PieceType::LANCE.index()]
-            | self.by_type[PieceType::BISHOP.index()]
-            | self.by_type[PieceType::ROOK.index()]
-            | self.by_type[PieceType::HORSE.index()]
-            | self.by_type[PieceType::DRAGON.index()]
+            | self.composite[COMP_BISHOP_HORSE]
+            | self.composite[COMP_ROOK_DRAGON]
     }
 
     #[inline]
@@ -181,12 +213,7 @@ impl Position {
     /// 金の動きをする駒（金＋成金4種）。
     #[inline]
     pub fn golds(&self, c: Color) -> Bitboard {
-        (self.by_type[PieceType::GOLD.index()]
-            | self.by_type[PieceType::PRO_PAWN.index()]
-            | self.by_type[PieceType::PRO_LANCE.index()]
-            | self.by_type[PieceType::PRO_KNIGHT.index()]
-            | self.by_type[PieceType::PRO_SILVER.index()])
-            & self.by_color[c.index()]
+        self.composite[COMP_GOLDS] & self.by_color[c.index()]
     }
 
     #[inline]
@@ -271,10 +298,35 @@ impl Position {
 
     // ---- 盤面操作（bitboard/board配列のみ。キーは呼び出し側で管理） ----
 
+    /// 合成板のsqのビットを反転する（ADR-0151群F）。putは0→1、
+    /// removeは1→0なので、どちらもXORで足りる。
+    #[inline]
+    fn xor_composites(&mut self, pt: PieceType, sq: Square) {
+        let bit = Bitboard::from_square(sq);
+        let member = COMPOSITE_OF[pt.index()];
+        for (i, comp) in self.composite.iter_mut().enumerate() {
+            *comp ^= bit.keep_if(member & (1 << i) != 0);
+        }
+    }
+
+    /// 合成板がby_typeの合成と一致するか（ADR-0151群F）。
+    /// 更新経路の漏れをデバッグビルドで捕まえる。
+    fn composites_match_by_type(&self) -> bool {
+        let mut expect = [Bitboard::EMPTY; COMP_NB];
+        for (pt, &bb) in self.by_type.iter().enumerate() {
+            let member = COMPOSITE_OF[pt];
+            for (i, e) in expect.iter_mut().enumerate() {
+                *e |= bb.keep_if(member & (1 << i) != 0);
+            }
+        }
+        expect == self.composite
+    }
+
     fn put_piece(&mut self, sq: Square, pc: Piece) {
         debug_assert!(self.board[sq.index()].is_empty());
         self.board[sq.index()] = pc;
         self.by_type[pc.piece_type().index()].set(sq);
+        self.xor_composites(pc.piece_type(), sq);
         self.by_color[pc.color().index()].set(sq);
     }
 
@@ -283,6 +335,7 @@ impl Position {
         debug_assert!(!pc.is_empty());
         self.board[sq.index()] = Piece::EMPTY;
         self.by_type[pc.piece_type().index()].clear(sq);
+        self.xor_composites(pc.piece_type(), sq);
         self.by_color[pc.color().index()].clear(sq);
         pc
     }
@@ -293,22 +346,15 @@ impl Position {
     pub fn attackers_to(&self, c: Color, sq: Square, occ: Bitboard) -> Bitboard {
         use crate::attacks::{gold_attacks, knight_attacks, pawn_attacks, silver_attacks};
         let e = c.flip();
-        let horses = self.by_type[PieceType::HORSE.index()];
-        let dragons = self.by_type[PieceType::DRAGON.index()];
+        let ours = self.by_color[c.index()];
         let mut a = pawn_attacks(e, sq) & self.pieces(c, PieceType::PAWN);
         a |= knight_attacks(e, sq) & self.pieces(c, PieceType::KNIGHT);
         a |= silver_attacks(e, sq) & self.pieces(c, PieceType::SILVER);
         a |= gold_attacks(e, sq) & self.golds(c);
-        a |= king_attacks(sq)
-            & (self.by_type[PieceType::KING.index()] | horses | dragons)
-            & self.by_color[c.index()];
+        a |= king_attacks(sq) & self.composite[COMP_HDK] & ours;
         a |= lance_attacks(e, sq, occ) & self.pieces(c, PieceType::LANCE);
-        a |= bishop_attacks(sq, occ)
-            & (self.by_type[PieceType::BISHOP.index()] | horses)
-            & self.by_color[c.index()];
-        a |= rook_attacks(sq, occ)
-            & (self.by_type[PieceType::ROOK.index()] | dragons)
-            & self.by_color[c.index()];
+        a |= bishop_attacks(sq, occ) & self.composite[COMP_BISHOP_HORSE] & ours;
+        a |= rook_attacks(sq, occ) & self.composite[COMP_ROOK_DRAGON] & ours;
         a
     }
 
@@ -316,15 +362,10 @@ impl Position {
     fn slider_blockers(&self, c: Color) -> (Bitboard, Bitboard) {
         let ksq = self.king_sq[c.index()];
         let e = c.flip();
-        let horses = self.by_type[PieceType::HORSE.index()];
-        let dragons = self.by_type[PieceType::DRAGON.index()];
+        let theirs = self.by_color[e.index()];
         let empty = Bitboard::EMPTY;
-        let mut snipers = rook_attacks(ksq, empty)
-            & (self.by_type[PieceType::ROOK.index()] | dragons)
-            & self.by_color[e.index()];
-        snipers |= bishop_attacks(ksq, empty)
-            & (self.by_type[PieceType::BISHOP.index()] | horses)
-            & self.by_color[e.index()];
+        let mut snipers = rook_attacks(ksq, empty) & self.composite[COMP_ROOK_DRAGON] & theirs;
+        snipers |= bishop_attacks(ksq, empty) & self.composite[COMP_BISHOP_HORSE] & theirs;
         snipers |= lance_attacks(c, ksq, empty) & self.pieces(e, PieceType::LANCE);
         let occ = self.occupied();
         let mut blockers = Bitboard::EMPTY;
@@ -564,6 +605,7 @@ impl Position {
         } else {
             st.continuous_check[us.index()] = 0;
         }
+        debug_assert!(self.composites_match_by_type());
     }
 
     pub fn undo_move(&mut self, m: Move) {
@@ -587,6 +629,7 @@ impl Position {
                 self.hands[us.index()].sub(st.captured.piece_type().unpromote());
             }
         }
+        debug_assert!(self.composites_match_by_type());
     }
 
     /// 入玉宣言勝ち（27点法、ADR-0030）が成立するか。
@@ -666,6 +709,7 @@ impl Position {
         let mut pos = Position {
             board: [Piece::EMPTY; 81],
             by_type: [Bitboard::EMPTY; 16],
+            composite: [Bitboard::EMPTY; COMP_NB],
             by_color: [Bitboard::EMPTY; 2],
             hands: [Hand::EMPTY; 2],
             side: Color::Black,
@@ -810,6 +854,7 @@ impl Position {
             ..StateInfo::default()
         });
         pos.update_check_info();
+        debug_assert!(pos.composites_match_by_type());
         Ok(pos)
     }
 
