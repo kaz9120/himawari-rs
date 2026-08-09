@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.34.5](https://github.com/kaz9120/himawari-rs/compare/v0.34.4...v0.34.5) (2026-08-09)
+
+
+### その他の変更
+
+* NNUEのFT差分適用を1パスに融合する（ADR-0151群A、+9.20% NPS） ([#232](https://github.com/kaz9120/himawari-rs/issues/232)) ([0cda1b9](https://github.com/kaz9120/himawari-rs/commit/0cda1b9bf32734f8e7474b3c473001d3e3817abd))
+* 探索ホットパスのヒープ確保を消す（ADR-0151群B、+5.02% NPS） ([#234](https://github.com/kaz9120/himawari-rs/issues/234)) ([b196ea6](https://github.com/kaz9120/himawari-rs/commit/b196ea64f42806e13b0a68511fb3f96d43ed0c55))
+
 ## [0.34.4](https://github.com/kaz9120/himawari-rs/compare/v0.34.3...v0.34.4) (2026-08-09)
 
 
