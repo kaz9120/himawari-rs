@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.35.8](https://github.com/kaz9120/himawari-rs/compare/v0.35.7...v0.35.8) (2026-08-09)
+
+
+### ドキュメント
+
+* ADR-0153のSPRT2走の結果と60+0.6再測定の判断を記録する ([#287](https://github.com/kaz9120/himawari-rs/issues/287)) ([783d4c6](https://github.com/kaz9120/himawari-rs/commit/783d4c6b42a411f14db5aba147b17de9d3d3503a))
+
 ## [0.35.7](https://github.com/kaz9120/himawari-rs/compare/v0.35.6...v0.35.7) (2026-08-09)
 
 
