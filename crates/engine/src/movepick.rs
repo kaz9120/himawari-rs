@@ -494,6 +494,25 @@ struct ExtMove {
     v: i32,
 }
 
+/// ノード1つで生成される手を見込んだ初期容量。
+const MOVE_BUF_CAP: usize = 64;
+
+/// MovePickerへ貸し出す採点済みの手の置き場（ADR-0151の群B）。
+///
+/// `ExtMove` をモジュールの外へ出さずに、`Worker` がply別の領域を
+/// 持ち回るための入れ物である。`Default` は空を返すので、
+/// `std::mem::take` で貸し出しても確保が起きない。
+#[derive(Default)]
+pub struct MoveBuf(Vec<ExtMove>);
+
+impl MoveBuf {
+    /// ply別バッファの初期確保に使う。以後は返却のたびに容量が残るので、
+    /// そのplyで生成された最大手数まで伸びたあとは再確保が起きない。
+    pub fn with_node_capacity() -> MoveBuf {
+        MoveBuf(Vec::with_capacity(MOVE_BUF_CAP))
+    }
+}
+
 /// 良い静かな手とみなすスコアの下限（movepick.cpp:459）。
 const GOOD_QUIET_THRESHOLD: i32 = -14000;
 /// 静かな手の部分ソートの閾値係数（movepick.cpp:605）。
@@ -543,14 +562,25 @@ pub struct MovePicker {
 }
 
 impl MovePicker {
-    fn make(stage: Stage, tt_move: Move, depth: i32, ply: usize, threshold: i32) -> Self {
+    fn make(
+        stage: Stage,
+        tt_move: Move,
+        depth: i32,
+        ply: usize,
+        threshold: i32,
+        buf: MoveBuf,
+    ) -> Self {
+        // 貸し出されたバッファは前のノードの中身が残っている。
+        // 生成の段（CaptureInit等）が必ずclearするが、ここでも空にしておく
+        let mut moves = buf.0;
+        moves.clear();
         MovePicker {
             stage,
             tt_move,
             depth,
             ply,
             skip_quiets: false,
-            moves: Vec::with_capacity(64),
+            moves,
             cur: 0,
             end_cur: 0,
             end_bad_captures: 0,
@@ -561,7 +591,7 @@ impl MovePicker {
     }
 
     /// 通常探索・静止探索用（movepick.cpp:120-202）。depth <= 0で静止探索。
-    pub fn new(pos: &Position, tt_move: Move, depth: i32, ply: usize) -> Self {
+    pub fn new(pos: &Position, tt_move: Move, depth: i32, ply: usize, buf: MoveBuf) -> Self {
         let tt_ok = tt_move != Move::NONE && pos.pseudo_legal(tt_move);
         let stage = if pos.in_check() {
             if tt_ok {
@@ -580,13 +610,13 @@ impl MovePicker {
         } else {
             Stage::QCaptureInit
         };
-        Self::make(stage, tt_move, depth, ply, 0)
+        Self::make(stage, tt_move, depth, ply, 0, buf)
     }
 
     /// ProbCut用（movepick.cpp:204-252）。SEEが閾値以上の取る手だけを返す。
     /// 置換表の手は取る手でありさえすれば、SEEを見ずに先に返す
     /// （movepick.cpp:245-248）。ProbCutは王手中に呼ばれない
-    pub fn new_probcut(pos: &Position, tt_move: Move, threshold: i32) -> Self {
+    pub fn new_probcut(pos: &Position, tt_move: Move, threshold: i32, buf: MoveBuf) -> Self {
         debug_assert!(!pos.in_check());
         let tt_ok = tt_move != Move::NONE
             && !tt_move.is_drop()
@@ -597,7 +627,13 @@ impl MovePicker {
         } else {
             Stage::ProbCutInit
         };
-        Self::make(stage, tt_move, 0, 0, threshold)
+        Self::make(stage, tt_move, 0, 0, threshold, buf)
+    }
+
+    /// バッファを呼び出し側へ返す（ADR-0151の群B）。容量が残るので、
+    /// 次に同じplyで借りるときは確保が起きない。
+    pub fn into_buf(self) -> MoveBuf {
+        MoveBuf(self.moves)
     }
 
     /// 静かな手をもう返さないよう伝える（movepick.cpp:697）。
