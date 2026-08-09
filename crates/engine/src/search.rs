@@ -197,16 +197,25 @@ const REDUCTIONS_LEN: usize = 608;
 /// LMRのリダクション表（G2。yaneuraou-search.cpp:2168-2169）。
 /// `2763 / 128 × ln(i)` を整数化した1次元表で、深さと手数の積を取る。
 /// 積が1024倍の固定小数になるスケールはADR-0076で確認済み。
-static REDUCTIONS: std::sync::OnceLock<[i32; REDUCTIONS_LEN]> = std::sync::OnceLock::new();
+///
+/// 要素はi16で持つ（ADR-0151群H）。値域は0〜138（`i = 607` が最大）で
+/// i16に収まり、表が2.4KBから1.2KBへ半分になる。読み出し側は `i32::from`
+/// で広げてから掛けるので、値も計算結果も従来とビット一致する。
+static REDUCTIONS: std::sync::OnceLock<[i16; REDUCTIONS_LEN]> = std::sync::OnceLock::new();
 
 /// リダクション表への参照を得る。`f64::ln` を含むのでconstにできず、
 /// 実行時に1回だけ作る。`Worker::new` が参照を受け取って持ち回るので、
 /// 指し手ごとに `OnceLock` の初期化済み判定を通ることはない
-fn reductions_table() -> &'static [i32; REDUCTIONS_LEN] {
+fn reductions_table() -> &'static [i16; REDUCTIONS_LEN] {
     REDUCTIONS.get_or_init(|| {
-        let mut t = [0i32; REDUCTIONS_LEN];
+        let mut t = [0i16; REDUCTIONS_LEN];
         for (i, r) in t.iter_mut().enumerate().skip(1) {
-            *r = (2763.0 / 128.0 * (i as f64).ln()) as i32;
+            let v = (2763.0 / 128.0 * (i as f64).ln()) as i32;
+            debug_assert!(
+                i32::from(i16::MIN) <= v && v <= i32::from(i16::MAX),
+                "リダクション表の値がi16の範囲を超えた: i={i}, v={v}"
+            );
+            *r = v as i16;
         }
         t
     })
@@ -590,7 +599,7 @@ pub struct Worker {
     draw_value_us: Value,
     /// LMRのリダクション表への参照。`Worker::new` で1回だけ受け取る。
     /// 表引きは指し手ごとに起きるので、そのたびに `OnceLock` を叩かない
-    reductions: &'static [i32; REDUCTIONS_LEN],
+    reductions: &'static [i16; REDUCTIONS_LEN],
 }
 
 impl Worker {
@@ -770,8 +779,8 @@ impl Worker {
     #[inline]
     fn reduction(&self, improving: bool, depth: u32, move_count: u32, delta: Value) -> i32 {
         let t = self.reductions;
-        let scale = t[(depth as usize).min(REDUCTIONS_LEN - 1)]
-            * t[(move_count as usize).min(REDUCTIONS_LEN - 1)];
+        let scale = i32::from(t[(depth as usize).min(REDUCTIONS_LEN - 1)])
+            * i32::from(t[(move_count as usize).min(REDUCTIONS_LEN - 1)]);
         scale - delta * 585 / self.root_delta + i32::from(!improving) * scale * 206 / 512 + 1133
     }
 

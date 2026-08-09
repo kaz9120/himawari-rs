@@ -21,6 +21,11 @@ struct HandDelta {
     added: bool,
 }
 
+/// accを64バイト境界に載せる（ADR-0151群H）。アライン未指定だと要素の
+/// ストライドが64の倍数にならず、`Vec` の要素ごとにaccの先頭がずれる。
+/// 片視点512バイトが8本でなく9本のキャッシュラインに跨る場合が出る。
+/// `repr(C)` は宣言順を固定し、`FT_OUT` の値によらずaccをオフセット0に置く。
+#[repr(C, align(64))]
 struct AccEntry {
     /// 視点色（絶対色）ごとのFT accumulator。
     /// `computed[c]` がfalseの間は中身が未定義で、誰も読まない。
@@ -31,6 +36,10 @@ struct AccEntry {
     dirty: DirtyPiece,
     hand: Option<HandDelta>,
 }
+
+// accの先頭がキャッシュライン境界に載ることをコンパイル時に固定する。
+const _: () = assert!(std::mem::align_of::<AccEntry>() == 64);
+const _: () = assert!(std::mem::offset_of!(AccEntry, acc) == 0);
 
 impl AccEntry {
     fn empty() -> AccEntry {
