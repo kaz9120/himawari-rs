@@ -35,7 +35,7 @@ def test_find_source_line_no_verdict_uses_last_pairs_line():
         "pairs   346 | +313 =57 -322 | [72,21,160,30,63] | Elo -4.5 [-28.5,+19.4] | LLR -0.24 [-2.94,2.94]",
     ]
     src, verdict = sprt_summary.find_source_line(lines)
-    assert verdict == "打ち切り"
+    assert verdict == "判定前"
     assert src.startswith("pairs   346")
 
 
@@ -135,4 +135,4 @@ def test_build_report_uchikiri_format_differs_from_verdict_wording():
 
 
 def test_exit_by_verdict_mapping():
-    assert sprt_summary.EXIT_BY_VERDICT == {"H1": 0, "H0": 1, "打ち切り": 2}
+    assert sprt_summary.EXIT_BY_VERDICT == {"H1": 0, "H0": 1, "打ち切り": 2, "判定前": 2}

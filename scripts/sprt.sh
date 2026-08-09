@@ -68,8 +68,13 @@ log_step "SPRT: $NAME"
 env_summary
 log_info "baseline : $BASELINE"
 log_info "candidate: $CANDIDATE"
+log_info "経過の確認: python3 scripts/sprt-summary.py data/logs/sprt-${NAME}.log"
 
-exec "$SELFPLAY" \
+# 経過は必ず data/logs/sprt-<名前>.log へ残す（ADR-0154）。起動の仕方
+# （前面・バックグラウンド・リダイレクト）に関わらず、途中経過を
+# 同じ場所で読めるようにする。execだとstdoutにしか出ず、起動方法次第で
+# 経過が見えなくなっていた
+run_logged "sprt-${NAME}" "$SELFPLAY" \
 	--baseline "$BASELINE" \
 	--candidate "$CANDIDATE" \
 	--openings "$OPENINGS" \

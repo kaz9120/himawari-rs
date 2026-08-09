@@ -67,6 +67,11 @@ proposedで起草し、オーナーLGTMでacceptedにする。1アイデア1ADR�
 変えて測るか、非劣性検定（elo0=-5、elo1=0）へ落とす。条件を変えたら、なぜ既定で
 測れないかをADRに書く（[ADR-0116](docs/adr/0116-g7-timeman.md)が例）。
 
+**実行・監視・後処理の手順は running-sprt スキルに固定してある**
+（[ADR-0154](docs/adr/0154-sprt-ops.md)）。SPRTを回すときは必ずスキルを使う。
+経過は常に `data/logs/sprt-<名前>.log` にあり、`sprt-summary.py` で
+途中経過も読める。
+
 SPRTの前に機能検証を行う（[ADR-0074](docs/adr/0074-feature-verification.md)）。
 固定深さで3局面以上のノード数を変更前後で比べ、変わることを確かめる。
 全局面で一致したら探索に影響していない。枝刈り・延長は発動率も測り、
