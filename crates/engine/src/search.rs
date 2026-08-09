@@ -464,10 +464,12 @@ struct TtInfo {
 /// `search` の引数と局所変数をそのまま写したもので、値は組み立てたあと
 /// 変わらない。ムーブループで動く `depth`・`alpha`・`improving` はここへ
 /// 入れず、関数の引数で渡す。
+///
+/// ノードがPVかどうかはここへ入れない。`search` と同じくconst genericの
+/// `PV` で受け取る（ADR-0151の群J）。
 #[derive(Clone, Copy)]
 struct NodeInfo {
     ply: usize,
-    is_pv: bool,
     cut_node: bool,
     /// PVでもcutでもないノード（yaneuraou-search.cpp:2251）。
     /// 全手を調べる見込みなのでリダクションを強める。IIRの条件も読む
@@ -1061,7 +1063,7 @@ impl Worker {
         let mut plies = 0;
         while plies < max_plies {
             self.stack[STACK_OFFSET].in_check = self.pos.in_check();
-            self.qsearch(-VALUE_INFINITE, VALUE_INFINITE, 0, true);
+            self.qsearch::<true>(-VALUE_INFINITE, VALUE_INFINITE, 0);
             let key = self.pos.key();
             let Some(data) = self.shared.tt.probe(key) else {
                 break;
@@ -1492,20 +1494,12 @@ impl Worker {
             // rootはcut_node = false。PVの第1手と再探索はfalse、
             // 第2手以降のnull windowは反転してtrueになる（ADR-0109のG0）
             let value = if j == 0 {
-                -self.search(-beta, -alpha, depth - 1, 1, m, &mut child_pv, true, false)
+                -self.search::<true>(-beta, -alpha, depth - 1, 1, m, &mut child_pv, false)
             } else {
-                let v = -self.search(
-                    -alpha - 1,
-                    -alpha,
-                    depth - 1,
-                    1,
-                    m,
-                    &mut child_pv,
-                    false,
-                    true,
-                );
+                let v =
+                    -self.search::<false>(-alpha - 1, -alpha, depth - 1, 1, m, &mut child_pv, true);
                 if v > alpha && !self.stopped() {
-                    -self.search(-beta, -alpha, depth - 1, 1, m, &mut child_pv, true, false)
+                    -self.search::<true>(-beta, -alpha, depth - 1, 1, m, &mut child_pv, false)
                 } else {
                     v
                 }
@@ -1569,8 +1563,11 @@ impl Worker {
         best
     }
 
+    /// 通常探索。参照実装が `search<PV>` と `search<NonPV>` をテンプレートで
+    /// 分けるのに合わせ、ノード種別をconst genericの `PV` で受ける
+    /// （ADR-0151の群J）。呼び出し側は定数で呼び分ける。
     #[allow(clippy::too_many_arguments)]
-    fn search(
+    fn search<const PV: bool>(
         &mut self,
         mut alpha: Value,
         beta: Value,
@@ -1578,11 +1575,10 @@ impl Worker {
         ply: usize,
         prev: Move,
         pv: &mut Vec<Move>,
-        is_pv: bool,
         cut_node: bool,
     ) -> Value {
         // 参照実装の不変条件（ADR-0109のG0）。PVノードはcut_nodeにならない
-        debug_assert!(!(is_pv && cut_node));
+        debug_assert!(!(PV && cut_node));
         pv.clear();
         if self.stopped() {
             return VALUE_ZERO;
@@ -1641,14 +1637,14 @@ impl Worker {
 
         // 置換表（ADR-0022, 0024）
         let key = self.pos.key();
-        let tt = self.probe_tt(key, ply, is_pv, excluded);
+        let tt = self.probe_tt(key, ply, PV, excluded);
         if let Some(v) = self.tt_cutoff(
             &tt,
             ply,
             depth,
             alpha,
             beta,
-            is_pv,
+            PV,
             excluded,
             prior_capture,
             prev_sq,
@@ -1662,11 +1658,11 @@ impl Worker {
             tt.mv != Move::NONE && !tt.mv.is_drop() && !self.pos.piece_on(tt.mv.to()).is_empty();
         // PVでもcutでもないノード（yaneuraou-search.cpp:2251）。
         // 全手を調べる見込みなのでリダクションを強める。IIRの条件も読む
-        let all_node = !(is_pv || cut_node);
+        let all_node = !(PV || cut_node);
 
         if depth == 0 {
             // 参照実装はノード種別を引き継ぐ（yaneuraou-search.cpp:2256）
-            return self.qsearch(alpha, beta, ply, is_pv);
+            return self.qsearch::<PV>(alpha, beta, ply);
         }
 
         // 静的評価（ADR-0028, 0109のG4）。TTのevalを再利用する。
@@ -1737,7 +1733,6 @@ impl Worker {
         // リダクション・終端処理が共通して読む
         let node = NodeInfo {
             ply,
-            is_pv,
             cut_node,
             all_node,
             in_check,
@@ -1762,7 +1757,7 @@ impl Worker {
         // ply < 2でも比較だけでfalseになる（参照実装も同じ性質に依存する）
         let mut improving = false;
         if let Some(v) =
-            self.prune_before_moves(&node, alpha, beta, &mut depth, &mut improving, prev)
+            self.prune_before_moves::<PV>(&node, alpha, beta, &mut depth, &mut improving, prev)
         {
             return v;
         }
@@ -1786,7 +1781,7 @@ impl Worker {
         // depthを増やす前に決まるので、singularでdepthが増えても動かない
         let depth_pre_singular = depth as i32;
         // TT手に与える延長。Noneは判定に入らなかったことを表す
-        let singular_ext = match self.singular_extension(&node, beta, &mut depth, prev) {
+        let singular_ext = match self.singular_extension::<PV>(&node, beta, &mut depth, prev) {
             Ok(e) => e,
             // multi-cutと打ち切りはこのノードごと抜ける
             Err(v) => return v,
@@ -1855,7 +1850,7 @@ impl Worker {
                     r += 1013;
                 }
                 // Step 14: 浅い深さでの枝刈り（yaneuraou-search.cpp:3586-3698）
-                if self.prune_shallow(
+                if self.prune_shallow::<PV>(
                     &node,
                     &mut picker,
                     &mut best,
@@ -1874,7 +1869,7 @@ impl Worker {
                 }
 
                 // リダクションの加減算（yaneuraou-search.cpp:3879-3941）
-                let mut r = self.reduction_amount(&node, m, &cont, r, alpha, depth, count);
+                let mut r = self.reduction_amount::<PV>(&node, m, &cont, r, alpha, depth, count);
 
                 self.set_current_move(ply, m, is_capture);
                 self.pos.do_move(m);
@@ -1885,16 +1880,15 @@ impl Worker {
                     // LMR（yaneuraou-search.cpp:3954-4010）。参照実装の発動条件は
                     // 深さと手数だけで、取る手も王手する手も対象にする。
                     // リダクションが負なら `new_depth + 2` まで深く読む
-                    let d = (new_depth - r / 1024).min(new_depth + 2).max(1) + i32::from(is_pv);
+                    let d = (new_depth - r / 1024).min(new_depth + 2).max(1) + i32::from(PV);
                     self.stack[ply + STACK_OFFSET].reduction = new_depth - d;
-                    value = -self.search(
+                    value = -self.search::<false>(
                         -alpha - 1,
                         -alpha,
                         d as u32,
                         ply + 1,
                         m,
                         &mut child_pv,
-                        false,
                         true,
                     );
                     self.stack[ply + STACK_OFFSET].reduction = 0;
@@ -1906,14 +1900,13 @@ impl Worker {
                         let do_shallower = value < best + 9;
                         new_depth += i32::from(do_deeper) - i32::from(do_shallower);
                         if new_depth > d && !self.stopped() {
-                            value = -self.search(
+                            value = -self.search::<false>(
                                 -alpha - 1,
                                 -alpha,
                                 new_depth.max(0) as u32,
                                 ply + 1,
                                 m,
                                 &mut child_pv,
-                                false,
                                 !cut_node,
                             );
                         }
@@ -1921,27 +1914,26 @@ impl Worker {
                         // （yaneuraou-search.cpp:4008）
                         self.update_continuation_histories(ply, m.piece_after(), m.to(), 1426);
                     }
-                } else if !is_pv || count > 1 {
+                } else if !PV || count > 1 {
                     // LMRを省いたときの調整（yaneuraou-search.cpp:4017-4030）。
                     // 項12: TT手がなければ削る。削る量が大きければ深さを落とす
                     if tt.mv == Move::NONE {
                         r += 1057;
                     }
                     let d = new_depth - i32::from(r > 4628) - i32::from(r > 5772 && new_depth > 2);
-                    value = -self.search(
+                    value = -self.search::<false>(
                         -alpha - 1,
                         -alpha,
                         d.max(0) as u32,
                         ply + 1,
                         m,
                         &mut child_pv,
-                        false,
                         !cut_node,
                     );
                 }
                 // PVノードは第1手とfail highの後だけ全窓で読み直す
                 // （yaneuraou-search.cpp:4043-4061）
-                if is_pv && (count == 1 || value > alpha) && !self.stopped() {
+                if PV && (count == 1 || value > alpha) && !self.stopped() {
                     // 静止探索へ直行する手前で、TT手だけは1手残す
                     // （yaneuraou-search.cpp:4053-4057）。負の延長でnew_depthが
                     // 0以下になったTT手をqsearchへ落とすと、詰みの発見が鈍る
@@ -1953,14 +1945,13 @@ impl Worker {
                     {
                         new_depth = new_depth.max(1);
                     }
-                    value = -self.search(
+                    value = -self.search::<true>(
                         -beta,
                         -alpha,
                         new_depth.max(0) as u32,
                         ply + 1,
                         m,
                         &mut child_pv,
-                        true,
                         false,
                     );
                 }
@@ -1975,7 +1966,7 @@ impl Worker {
                     if value > alpha {
                         best_move = m;
                         best_move_is_capture = is_capture;
-                        if is_pv {
+                        if PV {
                             pv.clear();
                             pv.push(m);
                             pv.extend_from_slice(&child_pv);
@@ -1984,7 +1975,7 @@ impl Worker {
                             // 次plyのfail highの多さをリダクションへ渡す
                             // （yaneuraou-search.cpp:4214）。2手以上延長した手の
                             // カットは数えない（G5で延長が最大+3になった）
-                            if extension < 2 || is_pv {
+                            if extension < 2 || PV {
                                 self.stack[ply + STACK_OFFSET].cutoff_cnt += 1;
                             }
                             break;
@@ -2022,7 +2013,7 @@ impl Worker {
                 break 'node mated_in(ply);
             }
 
-            self.finalize_node(
+            self.finalize_node::<PV>(
                 &node,
                 depth,
                 alpha,
@@ -2050,7 +2041,7 @@ impl Worker {
     /// `quiets_searched` と `captures_searched` は、このノードで調べたが
     /// 最善にならなかった手を良い順に並べたもの。
     #[allow(clippy::too_many_arguments)]
-    fn finalize_node(
+    fn finalize_node<const PV: bool>(
         &mut self,
         node: &NodeInfo,
         depth: u32,
@@ -2064,7 +2055,6 @@ impl Worker {
     ) {
         let &NodeInfo {
             ply,
-            is_pv,
             in_check,
             excluded,
             key,
@@ -2090,7 +2080,7 @@ impl Worker {
             );
             // 非PVノードのbestMove確定時の更新（yaneuraou-search.cpp:4308）。
             // もう1か所、multi-cutが減点する（yaneuraou-search.cpp:3819）
-            if !is_pv {
+            if !PV {
                 self.hist
                     .tt_move
                     .update(if best_move == tt.mv { 805 } else { -787 });
@@ -2146,7 +2136,7 @@ impl Worker {
         if excluded == Move::NONE {
             let bound = if best >= beta {
                 Bound::Lower
-            } else if is_pv && best_move != Move::NONE {
+            } else if PV && best_move != Move::NONE {
                 Bound::Exact
             } else {
                 Bound::Upper
@@ -2186,7 +2176,7 @@ impl Worker {
     /// 項10の途中で、その手の履歴の強さをStackへ控える。子のhistory更新量も
     /// この値を読むので、do_moveの前に測る必要がある
     #[allow(clippy::too_many_arguments)]
-    fn reduction_amount(
+    fn reduction_amount<const PV: bool>(
         &mut self,
         node: &NodeInfo,
         m: Move,
@@ -2198,7 +2188,6 @@ impl Worker {
     ) -> i32 {
         let &NodeInfo {
             ply,
-            is_pv,
             cut_node,
             all_node,
             corr_value,
@@ -2210,7 +2199,7 @@ impl Worker {
         // 深さが足りている、といった手掛かりがあるほど戻す
         if self.stack[ply + STACK_OFFSET].tt_pv {
             r -= 2819
-                + i32::from(is_pv) * 973
+                + i32::from(PV) * 973
                 + i32::from(tt.value > alpha) * 905
                 + i32::from(tt.depth >= depth as i32) * (935 + i32::from(cut_node) * 959);
         }
@@ -2259,7 +2248,7 @@ impl Worker {
     /// -VALUE_INFINITEなので、第1手はここで刈られない。親futilityは
     /// 刈った手の見込み値で `best` を引き上げる
     #[allow(clippy::too_many_arguments)]
-    fn prune_shallow(
+    fn prune_shallow<const PV: bool>(
         &mut self,
         node: &NodeInfo,
         picker: &mut MovePicker,
@@ -2279,7 +2268,6 @@ impl Worker {
             return false;
         }
         let &NodeInfo {
-            is_pv,
             in_check,
             follow_pv,
             static_eval,
@@ -2325,7 +2313,7 @@ impl Worker {
             if alpha >= VALUE_DRAW && !self.pos.see_ge(m, -margin) {
                 return true;
             }
-        } else if !follow_pv || !is_pv {
+        } else if !follow_pv || !PV {
             // 前回の反復深化のPV上にいるPVノードでは、静かな手の
             // 枝刈りを一切かけない（yaneuraou-search.cpp:3644）。
             // 前回のPVを浅い枝刈りで壊さないための仕掛けである
@@ -2394,7 +2382,7 @@ impl Worker {
     /// も1手増やし、beta以上ならmulti-cutでこのノードごと刈り、間なら
     /// negative extensionになる。multi-cutと打ち切りは `Err` で返し、
     /// 呼び出し側がそのままreturnする。
-    fn singular_extension(
+    fn singular_extension<const PV: bool>(
         &mut self,
         node: &NodeInfo,
         beta: Value,
@@ -2403,7 +2391,6 @@ impl Worker {
     ) -> Result<Option<i32>, Value> {
         let &NodeInfo {
             ply,
-            is_pv,
             cut_node,
             excluded,
             static_eval,
@@ -2427,7 +2414,7 @@ impl Worker {
             let singular_beta = tt.value
                 - (SINGULAR_MARGIN
                     + SINGULAR_MARGIN_TTPV
-                        * Value::from(self.stack[ply + STACK_OFFSET].tt_pv && !is_pv))
+                        * Value::from(self.stack[ply + STACK_OFFSET].tt_pv && !PV))
                     * *depth as Value
                     / SINGULAR_MARGIN_DIV;
             // 検証探索の深さは延長前のnewDepth（= *depth - 1）の半分
@@ -2435,14 +2422,13 @@ impl Worker {
             let singular_depth = (*depth - 1) / 2;
             self.stack[ply + STACK_OFFSET].excluded_move = tt.mv;
             let mut verify_pv = Vec::new();
-            let v = self.search(
+            let v = self.search::<false>(
                 singular_beta - 1,
                 singular_beta,
                 singular_depth,
                 ply,
                 prev,
                 &mut verify_pv,
-                false,
                 // 検証探索はcut_nodeを引き継ぐ（ADR-0109のG0）
                 cut_node,
             );
@@ -2505,7 +2491,7 @@ impl Worker {
     ///
     /// 深さの事後補正とIIRが `depth` を、NMPの前後の再計算が `improving` を
     /// 書き換える。刈らずに抜けたときだけ呼び出し側へ反映される。
-    fn prune_before_moves(
+    fn prune_before_moves<const PV: bool>(
         &mut self,
         node: &NodeInfo,
         alpha: Value,
@@ -2522,7 +2508,6 @@ impl Worker {
         }
         let &NodeInfo {
             ply,
-            is_pv,
             cut_node,
             all_node,
             follow_pv,
@@ -2560,9 +2545,9 @@ impl Worker {
         // razoring（ADR-0057, 0109のG4。yaneuraou-search.cpp:3191-3192）。
         // 評価がalphaを大きく下回るなら通常探索をやめ、qsearchの値を返す。
         // PVノードでないことが唯一の前提で、深さの上限はない
-        if !is_pv && eval < alpha - RAZOR_BASE - RAZOR_DEPTH_COEF * (*depth * *depth) as Value {
+        if !PV && eval < alpha - RAZOR_BASE - RAZOR_DEPTH_COEF * (*depth * *depth) as Value {
             // razoringは非PVノード限定なので常にNonPV（yaneuraou-search.cpp:3192）
-            return Some(self.qsearch(alpha, beta, ply, false));
+            return Some(self.qsearch::<false>(alpha, beta, ply));
         }
 
         // 子ノードのfutility（RFP。yaneuraou-search.cpp:3217-3227）。
@@ -2615,14 +2600,13 @@ impl Worker {
             e.cont_corr_base = 0;
             self.pos.do_null_move();
             self.evaluator.push(&self.pos);
-            let v = -self.search(
+            let v = -self.search::<false>(
                 -beta,
                 -beta + 1,
                 (*depth).saturating_sub(r),
                 ply + 1,
                 Move::NULL,
                 &mut null_pv,
-                false,
                 // NMPの子はcut_node = false（ADR-0109のG0）
                 false,
             );
@@ -2641,14 +2625,13 @@ impl Worker {
                 }
                 self.nmp_min_ply = ply + 3 * (*depth - r) as usize / 4;
                 let mut verify_pv = Vec::new();
-                let vv = self.search(
+                let vv = self.search::<false>(
                     beta - 1,
                     beta,
                     *depth - r,
                     ply,
                     prev,
                     &mut verify_pv,
-                    false,
                     false,
                 );
                 self.nmp_min_ply = 0;
@@ -2707,18 +2690,17 @@ impl Worker {
                     self.pos.do_move(m);
                     self.evaluator.push(&self.pos);
                     // まずqsearchで確認（窓は (-probcut_beta, -probcut_beta+1)）
-                    let mut v = -self.qsearch(-probcut_beta, -probcut_beta + 1, ply + 1, false);
+                    let mut v = -self.qsearch::<false>(-probcut_beta, -probcut_beta + 1, ply + 1);
                     // 通ったら同じ窓で通常探索 *depth-4 を確認する
                     if v >= probcut_beta && probcut_depth > 0 {
                         let mut child_pv = Vec::new();
-                        v = -self.search(
+                        v = -self.search::<false>(
                             -probcut_beta,
                             -probcut_beta + 1,
                             probcut_depth as u32,
                             ply + 1,
                             m,
                             &mut child_pv,
-                            false,
                             // ProbCutの子はcut_nodeを反転する（ADR-0109のG0）
                             !cut_node,
                         );
@@ -2760,8 +2742,9 @@ impl Worker {
 
     /// 静止探索（ADR-0024, 0109のG6）。出典はやねうら王の `qsearch()`
     /// （yaneuraou-search.cpp:4441-5145）。参照実装は `qsearch<PV>` と
-    /// `qsearch<NonPV>` をテンプレートで分けるので、`is_pv` で受ける。
-    fn qsearch(&mut self, mut alpha: Value, beta: Value, ply: usize, is_pv: bool) -> Value {
+    /// `qsearch<NonPV>` をテンプレートで分けるので、const genericの `PV` で
+    /// 受ける（ADR-0151の群J）。
+    fn qsearch<const PV: bool>(&mut self, mut alpha: Value, beta: Value, ply: usize) -> Value {
         if self.stopped() {
             return VALUE_ZERO;
         }
@@ -2799,7 +2782,7 @@ impl Worker {
             // TTカットは非PVノードだけで行う（yaneuraou-search.cpp:4670-4679）。
             // PVノードでは前回evaluateした値が使えるのでカットしない。
             // DEPTH_UNSEARCHEDで書かれたstand patの記録はここを通らない
-            if !is_pv
+            if !PV
                 && data.depth >= TT_DEPTH_QS
                 && tt_value != VALUE_NONE
                 // 原典の `bound & (value >= beta ? LOWER : UPPER)` をそのまま写す
@@ -2984,7 +2967,7 @@ impl Worker {
                 self.set_current_move(ply, m, capture);
                 self.pos.do_move(m);
                 self.evaluator.push(&self.pos);
-                let value = -self.qsearch(-beta, -alpha, ply + 1, is_pv);
+                let value = -self.qsearch::<PV>(-beta, -alpha, ply + 1);
                 self.evaluator.pop();
                 self.pos.undo_move(m);
                 if self.stopped() {
