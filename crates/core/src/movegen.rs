@@ -9,7 +9,7 @@ use crate::bitboard::Bitboard;
 use crate::moves::{Move, MoveList};
 use crate::piece::{Piece, PieceType};
 use crate::position::Position;
-use crate::types::{Color, File, Rank, Square};
+use crate::types::{Color, Rank, Square};
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum GenType {
@@ -105,15 +105,8 @@ fn generate_drops(pos: &Position, target: Bitboard, list: &mut MoveList) {
         }
         let mask = match pt {
             PieceType::PAWN => {
-                // 二歩と1段目を除外
-                let mut nifu = Bitboard::EMPTY;
-                let pawns = pos.pieces(us, PieceType::PAWN);
-                for f in 0..9 {
-                    let file = Bitboard::file(File(f));
-                    if !(pawns & file).is_empty() {
-                        nifu |= file;
-                    }
-                }
+                // 二歩と1段目を除外。歩のいる筋はfill_filesで一括して求める
+                let nifu = pos.pieces(us, PieceType::PAWN).fill_files();
                 target & !r1 & !nifu
             }
             PieceType::LANCE => target & !r1,

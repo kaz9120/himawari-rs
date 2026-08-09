@@ -67,6 +67,32 @@ const COMPOSITE_OF: [u8; PieceType::NB] = {
     t
 };
 
+// ---- SEEの最安攻撃駒の選択順（ADR-0151群D） ----
+//
+// PIECE_VALUEの昇順に駒種を見て、最初に当たったグループが最安になる。
+// 同値の駒種は1グループにまとめる。ORしてからlsbを取るので、同値タイの
+// 選択は「最小マス番号」で、全マス走査していた旧実装と一致する。
+// 同値なのは540の金・と・成香・成桂・成銀だけで、これは合成板
+// COMP_GOLDSそのものである。
+
+/// SEE_ORDERのセレクタのうち、合成板COMP_GOLDSを指す値。
+const SEE_GOLDS: u8 = u8::MAX;
+
+/// (セレクタ, 価値)を価値の昇順に並べた表。セレクタはPieceTypeの生値で、
+/// SEE_GOLDSだけが合成板を指す。
+const SEE_ORDER: [(u8, i32); 10] = [
+    (PieceType::PAWN.0, PIECE_VALUE[PieceType::PAWN.index()]),
+    (PieceType::LANCE.0, PIECE_VALUE[PieceType::LANCE.index()]),
+    (PieceType::KNIGHT.0, PIECE_VALUE[PieceType::KNIGHT.index()]),
+    (PieceType::SILVER.0, PIECE_VALUE[PieceType::SILVER.index()]),
+    (SEE_GOLDS, PIECE_VALUE[PieceType::GOLD.index()]),
+    (PieceType::BISHOP.0, PIECE_VALUE[PieceType::BISHOP.index()]),
+    (PieceType::HORSE.0, PIECE_VALUE[PieceType::HORSE.index()]),
+    (PieceType::ROOK.0, PIECE_VALUE[PieceType::ROOK.index()]),
+    (PieceType::DRAGON.0, PIECE_VALUE[PieceType::DRAGON.index()]),
+    (PieceType::KING.0, PIECE_VALUE[PieceType::KING.index()]),
+];
+
 /// 入玉宣言の点数（ADR-0030）。飛角系5点、玉以外の他駒1点。
 const fn declaration_points(pt: PieceType) -> u32 {
     match pt {
@@ -1114,6 +1140,29 @@ impl Position {
 
     // ---- SEE（静的交換評価。ADR-0025） ----
 
+    /// 攻撃駒の集合から最も安い駒を選ぶ（ADR-0151群D）。
+    /// 返り値は(マス, 価値, 玉か)。attackersは空でないこと。
+    ///
+    /// SEE_ORDERを価値の昇順に見て、最初に当たったグループのlsbを返す。
+    /// グループは同値の駒種をまとめてあるので、返るのは最安の駒のうち
+    /// 最小マス番号のものになる。
+    #[inline]
+    fn least_valuable_attacker(&self, attackers: Bitboard) -> (Square, i32, bool) {
+        debug_assert!(!attackers.is_empty());
+        for &(sel, value) in &SEE_ORDER {
+            let group = if sel == SEE_GOLDS {
+                self.composite[COMP_GOLDS]
+            } else {
+                self.by_type[sel as usize]
+            };
+            let hit = attackers & group;
+            if !hit.is_empty() {
+                return (hit.lsb(), value, sel == PieceType::KING.0);
+            }
+        }
+        unreachable!("attackers are occupied squares, so some group must hit")
+    }
+
     /// mの静的交換評価がthreshold以上か。Stockfishのsee_geと同じswap構造。
     /// 駒打ちも解き（ADR-0091）、初手の成りも扱う（ADR-0095）。
     /// 交換の途中で相手が成る筋は見ない簡略版のままである。
@@ -1160,16 +1209,8 @@ impl Position {
             }
             res = !res;
             // 最も安い攻撃駒を選ぶ
-            let mut best = Square::NONE;
-            let mut best_val = i32::MAX;
-            for sq in stm_attackers {
-                let v = PIECE_VALUE[self.piece_on(sq).piece_type().index()];
-                if v < best_val {
-                    best_val = v;
-                    best = sq;
-                }
-            }
-            if self.piece_on(best).piece_type() == PieceType::KING {
+            let (best, best_val, best_is_king) = self.least_valuable_attacker(stm_attackers);
+            if best_is_king {
                 // 相手の攻撃が残っていれば玉では取れず、結果は直前のまま
                 let occ2 = occ ^ Bitboard::from_square(best);
                 if !(self.attackers_to(stm.flip(), to, occ2) & occ2).is_empty() {
@@ -1228,4 +1269,204 @@ impl Position {
 
 fn err(msg: &str) -> SfenError {
     SfenError(msg.to_string())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::movegen::generate_legal;
+
+    struct Rng(u64);
+
+    impl Rng {
+        fn next(&mut self) -> u64 {
+            let mut x = self.0;
+            x ^= x << 13;
+            x ^= x >> 7;
+            x ^= x << 17;
+            self.0 = x;
+            x
+        }
+    }
+
+    /// SEE_ORDERがPIECE_VALUEと整合するか。表の作り違いを検出する。
+    #[test]
+    fn see_order_covers_every_piece_type_in_value_order() {
+        let mut seen = [false; PieceType::NB];
+        let mut prev = i32::MIN;
+        for &(sel, value) in &SEE_ORDER {
+            assert!(
+                value > prev,
+                "SEE_ORDERは価値の狭義単調増加でなければ同値グループが割れる"
+            );
+            prev = value;
+            if sel == SEE_GOLDS {
+                // 540のグループは合成板COMP_GOLDSが持つ5駒種そのもの
+                for pt in [
+                    PieceType::GOLD,
+                    PieceType::PRO_PAWN,
+                    PieceType::PRO_LANCE,
+                    PieceType::PRO_KNIGHT,
+                    PieceType::PRO_SILVER,
+                ] {
+                    assert_eq!(PIECE_VALUE[pt.index()], value);
+                    assert_eq!(
+                        COMPOSITE_OF[pt.index()] & (1 << COMP_GOLDS),
+                        1 << COMP_GOLDS
+                    );
+                    assert!(!seen[pt.index()]);
+                    seen[pt.index()] = true;
+                }
+            } else {
+                let pt = PieceType(sel);
+                assert_eq!(PIECE_VALUE[pt.index()], value);
+                assert!(!seen[pt.index()]);
+                seen[pt.index()] = true;
+            }
+        }
+        // 盤上に現れうる駒種（2〜15）を漏れなく覆う
+        for (i, covered) in seen.iter().enumerate().skip(2) {
+            assert!(covered, "駒種{i}がSEE_ORDERから漏れている");
+        }
+    }
+
+    /// ADR-0151群Dより前の最安攻撃駒の選択。全マスを走査して最小値を取る。
+    fn least_valuable_reference(pos: &Position, attackers: Bitboard) -> (Square, i32, bool) {
+        let mut best = Square::NONE;
+        let mut best_val = i32::MAX;
+        for sq in attackers {
+            let v = PIECE_VALUE[pos.piece_on(sq).piece_type().index()];
+            if v < best_val {
+                best_val = v;
+                best = sq;
+            }
+        }
+        (
+            best,
+            best_val,
+            pos.piece_on(best).piece_type() == PieceType::KING,
+        )
+    }
+
+    /// ADR-0151群Dより前のsee_ge。最安攻撃駒の選択だけが違う。
+    fn see_ge_reference(pos: &Position, m: Move, threshold: i32) -> bool {
+        let to = m.to();
+        let (captured, placed, occ0) = if m.is_drop() {
+            (
+                0,
+                PIECE_VALUE[m.drop_piece_type().index()],
+                pos.occupied() | Bitboard::from_square(to),
+            )
+        } else {
+            let from = m.from_sq();
+            let before = PIECE_VALUE[pos.piece_on(from).piece_type().index()];
+            let after = PIECE_VALUE[m.piece_after().piece_type().index()];
+            (
+                PIECE_VALUE[pos.piece_on(to).piece_type().index()] + after - before,
+                after,
+                pos.occupied() ^ Bitboard::from_square(from),
+            )
+        };
+        let mut swap = captured - threshold;
+        if swap < 0 {
+            return false;
+        }
+        swap = placed - swap;
+        if swap <= 0 {
+            return true;
+        }
+
+        let mut occ = occ0;
+        let mut stm = pos.side;
+        let mut res = true;
+        loop {
+            stm = stm.flip();
+            let stm_attackers = pos.attackers_to(stm, to, occ) & occ;
+            if stm_attackers.is_empty() {
+                break;
+            }
+            res = !res;
+            let (best, best_val, _) = least_valuable_reference(pos, stm_attackers);
+            if pos.piece_on(best).piece_type() == PieceType::KING {
+                let occ2 = occ ^ Bitboard::from_square(best);
+                if !(pos.attackers_to(stm.flip(), to, occ2) & occ2).is_empty() {
+                    res = !res;
+                }
+                break;
+            }
+            swap = best_val - swap;
+            if swap < i32::from(res) {
+                break;
+            }
+            occ ^= Bitboard::from_square(best);
+        }
+        res
+    }
+
+    /// ランダム対局を進めながら、盤上の全マス・両色の攻撃駒集合について
+    /// 新旧の最安攻撃駒が一致するかを見る。同値タイの選択もここで潰れる。
+    #[test]
+    fn least_valuable_attacker_matches_reference() {
+        let mut ties = 0u64;
+        for seed in 1..=4u64 {
+            let mut rng = Rng(seed.wrapping_mul(0x9E37_79B9_7F4A_7C15) | 1);
+            let mut pos = Position::from_sfen(SFEN_STARTPOS).unwrap();
+            for _ in 0..160 {
+                let occ = pos.occupied();
+                for i in 0..81u8 {
+                    let sq = Square::from_index(i);
+                    for c in [Color::Black, Color::White] {
+                        let att = pos.attackers_to(c, sq, occ) & occ;
+                        if att.is_empty() {
+                            continue;
+                        }
+                        let got = pos.least_valuable_attacker(att);
+                        let want = least_valuable_reference(&pos, att);
+                        assert_eq!(got, want, "最安攻撃駒の不一致: {} {:?}", pos.to_sfen(), sq);
+                        // 同値タイ（金系5種が2枚以上）を踏んだ回数を数える
+                        if (att & pos.composite[COMP_GOLDS]).more_than_one() {
+                            ties += 1;
+                        }
+                    }
+                }
+                let mut list = MoveList::default();
+                generate_legal(&pos, true, &mut list);
+                if list.is_empty() {
+                    break;
+                }
+                let idx = (rng.next() % list.len() as u64) as usize;
+                pos.do_move(list.as_slice()[idx]);
+            }
+        }
+        assert!(ties > 0, "同値タイの局面を1度も踏んでいない");
+    }
+
+    /// see_ge全体でも新旧が一致するか。複数のしきい値で突き合わせる。
+    #[test]
+    fn see_ge_matches_reference() {
+        for seed in 1..=4u64 {
+            let mut rng = Rng(seed.wrapping_mul(0xD1B5_4A32_D192_ED03) | 1);
+            let mut pos = Position::from_sfen(SFEN_STARTPOS).unwrap();
+            for _ in 0..120 {
+                let mut list = MoveList::default();
+                generate_legal(&pos, true, &mut list);
+                if list.is_empty() {
+                    break;
+                }
+                for &m in list.as_slice() {
+                    for th in [-2000, -500, -90, 0, 1, 90, 500, 2000] {
+                        assert_eq!(
+                            pos.see_ge(m, th),
+                            see_ge_reference(&pos, m, th),
+                            "see_geの不一致: {} {} th={th}",
+                            pos.to_sfen(),
+                            m.to_usi()
+                        );
+                    }
+                }
+                let idx = (rng.next() % list.len() as u64) as usize;
+                pos.do_move(list.as_slice()[idx]);
+            }
+        }
+    }
 }
