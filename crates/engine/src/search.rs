@@ -12,7 +12,7 @@ use himawari_core::{
 
 use crate::eval::Evaluator;
 use crate::movepick::{
-    ContinuationCorrectionHistory, ContinuationHistory, Histories, LOW_PLY_HISTORY_SIZE,
+    ContinuationCorrectionHistory, ContinuationHistory, Histories, LOW_PLY_HISTORY_SIZE, MoveBuf,
     MovePicker, PawnHistory,
 };
 use crate::timeman::{IterationStats, Limits, TimeManager};
@@ -490,6 +490,44 @@ struct NodeInfo {
     tt_capture: bool,
 }
 
+/// ノードごとに使い回すバッファ（ADR-0151の群B）。
+///
+/// 素直に書くと毎ノードで `Vec` を確保し直すので、mallocがプロファイルの
+/// 2.1%を占めていた。`Worker` がply別に持ち、`std::mem::take` で貸し出して
+/// 使い終わったら戻す。takeは空との交換なので確保が起きず、戻したときに
+/// 容量が残る。同じplyで次に借りるときは確保も再確保も起きない。
+///
+/// 添字はそのバッファを所有するノードのplyである。ノードは自分のplyの
+/// スロットだけを借り、子は `ply + 1` のスロットを借りるので衝突しない。
+/// 同一plyへ再帰する経路（singular検証・NMP検証）は、いずれも借りる前に
+/// 呼んで戻ってくるので重ならない。
+///
+/// 返却漏れが起きても正しさは壊れない。次に借りるときが空の `Vec` に
+/// なり、確保が1回復活するだけである。
+struct NodeBuffers {
+    /// 最善にならなかった静かな手（`search` のquiets_searched）
+    quiets: Vec<Move>,
+    /// 同じく取る手（`search` のcaptures_searched）
+    captures: Vec<Move>,
+    /// 子ノードのPV（`search` のchild_pv）
+    child_pv: Vec<Move>,
+    /// `MovePicker` へ貸す採点済みの手
+    moves: MoveBuf,
+}
+
+impl NodeBuffers {
+    fn with_capacity() -> NodeBuffers {
+        NodeBuffers {
+            // 覚える手数の上限は決まっている（yaneuraou-search.cpp:4246-4256）
+            quiets: Vec::with_capacity(SEARCHED_LIST_CAPACITY as usize),
+            captures: Vec::with_capacity(SEARCHED_LIST_CAPACITY as usize),
+            // PVが伸びるのはPVノードだけなので、伸びたぶんを残せば足りる
+            child_pv: Vec::new(),
+            moves: MoveBuf::with_node_capacity(),
+        }
+    }
+}
+
 pub struct Worker {
     pub pos: Position,
     pub evaluator: Evaluator,
@@ -500,6 +538,9 @@ pub struct Worker {
     /// 長さをコンパイル時定数にするため配列で持つ（ADR-0124）。`Vec` だと
     /// 長さがヒープ上にあり、`&mut self` を通る呼び出しのたびに読み直す
     stack: Box<[StackEntry; STACK_LEN]>,
+    /// ply別の再利用バッファ（ADR-0151の群B）。`search` と `qsearch` は
+    /// `ply >= MAX_PLY` で何も借りずに返すので、長さはMAX_PLYで足りる
+    node_bufs: Box<[NodeBuffers; MAX_PLY]>,
     /// このイテレーションで到達した最大ply（seldepth。ADR-0086）。
     sel_depth: u32,
     /// このイテレーションのaspiration窓の幅（G2。yaneuraou-search.cpp:1708）。
@@ -575,6 +616,12 @@ impl Worker {
                 .into_boxed_slice()
                 .try_into()
                 .unwrap_or_else(|_| unreachable!("要素数はSTACK_LENで固定")),
+            node_bufs: std::iter::repeat_with(NodeBuffers::with_capacity)
+                .take(MAX_PLY)
+                .collect::<Vec<_>>()
+                .into_boxed_slice()
+                .try_into()
+                .unwrap_or_else(|_| unreachable!("要素数はMAX_PLYで固定")),
             sel_depth: 0,
             // 0除算を避ける番兵。search_rootが毎回入れ直す
             root_delta: 1,
@@ -1736,237 +1783,256 @@ impl Worker {
             Err(v) => return v,
         };
 
-        let mut picker = MovePicker::new(&self.pos, tt.mv, depth_pre_singular, ply);
+        // ply別の再利用バッファを借りる（ADR-0151の群B）。同一plyへ再帰する
+        // singular検証・NMP検証はここへ来る前に終わっているので重ならない
+        let buf = std::mem::take(&mut self.node_bufs[ply].moves);
+        let mut picker = MovePicker::new(&self.pos, tt.mv, depth_pre_singular, ply, buf);
         // continuation historyの面（1手前から6手前まで。ADR-0109のG1）
         let cont = self.cont_bases(ply);
-        let mut best = -VALUE_INFINITE;
-        let mut best_move = Move::NONE;
-        let mut best_move_is_capture = false;
-        let mut count = 0u32;
         // 最善にならなかった手を良い順に覚える（yaneuraou-search.cpp:2343-2344）
-        let mut quiets_searched: Vec<Move> = Vec::new();
-        let mut captures_searched: Vec<Move> = Vec::new();
-        let mut child_pv = Vec::new();
+        let mut quiets_searched = std::mem::take(&mut self.node_bufs[ply].quiets);
+        let mut captures_searched = std::mem::take(&mut self.node_bufs[ply].captures);
+        // 子のPVの置き場。子の `search` が冒頭でclearするので、
+        // 前のノードの中身が残っていても読まれない
+        let mut child_pv = std::mem::take(&mut self.node_bufs[ply].child_pv);
+        quiets_searched.clear();
+        captures_searched.clear();
 
-        while let Some(m) = picker.next(&self.pos, &self.hist, &cont) {
-            // 除外手はスキップ（singular検証探索。ADR-0050）。通常はexcluded==NONE
-            if m == excluded {
-                continue;
-            }
-            if !self.pos.is_legal(m) {
-                continue;
-            }
-            count += 1;
-            // 1手先のノードが更新条件で読む（yaneuraou-search.cpp:3520）
-            self.stack[ply + STACK_OFFSET].move_count = count;
-            let is_capture = !m.is_drop() && !self.pos.piece_on(m.to()).is_empty();
-            let gives_check = self.pos.gives_check(m);
+        // バッファの返却を一本化するため、ここから先の復帰点をこのブロックに
+        // まとめる。途中で `return` すると返却が漏れる
+        let node_value = 'node: {
+            let mut best = -VALUE_INFINITE;
+            let mut best_move = Move::NONE;
+            let mut best_move_is_capture = false;
+            let mut count = 0u32;
 
-            // 延長（yaneuraou-search.cpp:3543, 3872）。singularの判定に入った
-            // TT手はその結果を使う。王手延長（ADR-0024）は参照実装が持たない
-            // 本エンジンの機能なので残すが、singularの判定が付いた手では
-            // singular側を採る（多段化した延長量を王手延長で潰さない）。
-            // 参照実装は延長をムーブループの枝刈りの後で加えるので、枝刈りの
-            // 尺度（lmr_depth）はこの値でなく `depth - 1` を基準にする
-            let (extension, base_depth) = match singular_ext {
-                // singularの判定が付いたTT手。参照実装はムーブループの中で
-                // `newDepth = depth - 1` を先に決め、そのあとdepthを増やすので、
-                // 増えた1手はTT手自身には乗らない
-                // （yaneuraou-search.cpp:3556, 3788）
-                Some(e) if m == tt.mv => (e, depth_pre_singular),
-                _ => (i32::from(gives_check), depth as i32),
-            };
-            let mut new_depth = base_depth - 1 + extension;
-
-            // LMRのリダクション量（1024倍の固定小数。G2）。枝刈りの尺度
-            // （lmr_depth）と実際の浅い探索で同じ値を使う
-            let delta = beta - alpha;
-            let mut r = self.reduction(improving, depth, count, delta);
-            // 項1: ttPvノードは削る（yaneuraou-search.cpp:3573-3574）。
-            // 枝刈りの尺度に入るのはここまでで、残りはdo_moveの側で足す
-            if self.stack[ply + STACK_OFFSET].tt_pv {
-                r += 1013;
-            }
-            // Step 14: 浅い深さでの枝刈り（yaneuraou-search.cpp:3586-3698）
-            if self.prune_shallow(
-                &node,
-                &mut picker,
-                &mut best,
-                m,
-                alpha,
-                depth,
-                count,
-                r,
-                improving,
-                is_capture,
-                gives_check,
-                best_move,
-                &cont,
-            ) {
-                continue;
-            }
-
-            // リダクションの加減算（yaneuraou-search.cpp:3879-3941）
-            let mut r = self.reduction_amount(&node, m, &cont, r, alpha, depth, count);
-
-            self.set_current_move(ply, m, is_capture);
-            self.pos.do_move(m);
-            self.evaluator.push(&self.pos);
-
-            let mut value = -VALUE_INFINITE;
-            if depth >= 2 && count > 1 {
-                // LMR（yaneuraou-search.cpp:3954-4010）。参照実装の発動条件は
-                // 深さと手数だけで、取る手も王手する手も対象にする。
-                // リダクションが負なら `new_depth + 2` まで深く読む
-                let d = (new_depth - r / 1024).min(new_depth + 2).max(1) + i32::from(is_pv);
-                self.stack[ply + STACK_OFFSET].reduction = new_depth - d;
-                value = -self.search(
-                    -alpha - 1,
-                    -alpha,
-                    d as u32,
-                    ply + 1,
-                    m,
-                    &mut child_pv,
-                    false,
-                    true,
-                );
-                self.stack[ply + STACK_OFFSET].reduction = 0;
-                if value > alpha {
-                    // 減深探索の結果で読み直す深さを調整する
-                    // （yaneuraou-search.cpp:3997-4000）。十分良ければ深く、
-                    // 十分悪ければ浅くする
-                    let do_deeper = d < new_depth && value > best + 48;
-                    let do_shallower = value < best + 9;
-                    new_depth += i32::from(do_deeper) - i32::from(do_shallower);
-                    if new_depth > d && !self.stopped() {
-                        value = -self.search(
-                            -alpha - 1,
-                            -alpha,
-                            new_depth.max(0) as u32,
-                            ply + 1,
-                            m,
-                            &mut child_pv,
-                            false,
-                            !cut_node,
-                        );
-                    }
-                    // LMR後のcontinuation history更新
-                    // （yaneuraou-search.cpp:4008）
-                    self.update_continuation_histories(ply, m.piece_after(), m.to(), 1426);
+            while let Some(m) = picker.next(&self.pos, &self.hist, &cont) {
+                // 除外手はスキップ（singular検証探索。ADR-0050）。通常はexcluded==NONE
+                if m == excluded {
+                    continue;
                 }
-            } else if !is_pv || count > 1 {
-                // LMRを省いたときの調整（yaneuraou-search.cpp:4017-4030）。
-                // 項12: TT手がなければ削る。削る量が大きければ深さを落とす
-                if tt.mv == Move::NONE {
-                    r += 1057;
+                if !self.pos.is_legal(m) {
+                    continue;
                 }
-                let d = new_depth - i32::from(r > 4628) - i32::from(r > 5772 && new_depth > 2);
-                value = -self.search(
-                    -alpha - 1,
-                    -alpha,
-                    d.max(0) as u32,
-                    ply + 1,
-                    m,
-                    &mut child_pv,
-                    false,
-                    !cut_node,
-                );
-            }
-            // PVノードは第1手とfail highの後だけ全窓で読み直す
-            // （yaneuraou-search.cpp:4043-4061）
-            if is_pv && (count == 1 || value > alpha) && !self.stopped() {
-                // 静止探索へ直行する手前で、TT手だけは1手残す
-                // （yaneuraou-search.cpp:4053-4057）。負の延長でnew_depthが
-                // 0以下になったTT手をqsearchへ落とすと、詰みの発見が鈍る
-                if m == tt.mv
-                    && ((tt.value != VALUE_NONE
-                        && tt.value.abs() >= VALUE_MATE_IN_MAX_PLY
-                        && tt.depth > 0)
-                        || tt.depth > 1)
-                {
-                    new_depth = new_depth.max(1);
-                }
-                value = -self.search(
-                    -beta,
-                    -alpha,
-                    new_depth.max(0) as u32,
-                    ply + 1,
-                    m,
-                    &mut child_pv,
-                    true,
-                    false,
-                );
-            }
-            self.evaluator.pop();
-            self.pos.undo_move(m);
-            if self.stopped() {
-                return VALUE_ZERO;
-            }
+                count += 1;
+                // 1手先のノードが更新条件で読む（yaneuraou-search.cpp:3520）
+                self.stack[ply + STACK_OFFSET].move_count = count;
+                let is_capture = !m.is_drop() && !self.pos.piece_on(m.to()).is_empty();
+                let gives_check = self.pos.gives_check(m);
 
-            if value > best {
-                best = value;
-                if value > alpha {
-                    best_move = m;
-                    best_move_is_capture = is_capture;
-                    if is_pv {
-                        pv.clear();
-                        pv.push(m);
-                        pv.extend_from_slice(&child_pv);
-                    }
-                    if value >= beta {
-                        // 次plyのfail highの多さをリダクションへ渡す
-                        // （yaneuraou-search.cpp:4214）。2手以上延長した手の
-                        // カットは数えない（G5で延長が最大+3になった）
-                        if extension < 2 || is_pv {
-                            self.stack[ply + STACK_OFFSET].cutoff_cnt += 1;
+                // 延長（yaneuraou-search.cpp:3543, 3872）。singularの判定に入った
+                // TT手はその結果を使う。王手延長（ADR-0024）は参照実装が持たない
+                // 本エンジンの機能なので残すが、singularの判定が付いた手では
+                // singular側を採る（多段化した延長量を王手延長で潰さない）。
+                // 参照実装は延長をムーブループの枝刈りの後で加えるので、枝刈りの
+                // 尺度（lmr_depth）はこの値でなく `depth - 1` を基準にする
+                let (extension, base_depth) = match singular_ext {
+                    // singularの判定が付いたTT手。参照実装はムーブループの中で
+                    // `newDepth = depth - 1` を先に決め、そのあとdepthを増やすので、
+                    // 増えた1手はTT手自身には乗らない
+                    // （yaneuraou-search.cpp:3556, 3788）
+                    Some(e) if m == tt.mv => (e, depth_pre_singular),
+                    _ => (i32::from(gives_check), depth as i32),
+                };
+                let mut new_depth = base_depth - 1 + extension;
+
+                // LMRのリダクション量（1024倍の固定小数。G2）。枝刈りの尺度
+                // （lmr_depth）と実際の浅い探索で同じ値を使う
+                let delta = beta - alpha;
+                let mut r = self.reduction(improving, depth, count, delta);
+                // 項1: ttPvノードは削る（yaneuraou-search.cpp:3573-3574）。
+                // 枝刈りの尺度に入るのはここまでで、残りはdo_moveの側で足す
+                if self.stack[ply + STACK_OFFSET].tt_pv {
+                    r += 1013;
+                }
+                // Step 14: 浅い深さでの枝刈り（yaneuraou-search.cpp:3586-3698）
+                if self.prune_shallow(
+                    &node,
+                    &mut picker,
+                    &mut best,
+                    m,
+                    alpha,
+                    depth,
+                    count,
+                    r,
+                    improving,
+                    is_capture,
+                    gives_check,
+                    best_move,
+                    &cont,
+                ) {
+                    continue;
+                }
+
+                // リダクションの加減算（yaneuraou-search.cpp:3879-3941）
+                let mut r = self.reduction_amount(&node, m, &cont, r, alpha, depth, count);
+
+                self.set_current_move(ply, m, is_capture);
+                self.pos.do_move(m);
+                self.evaluator.push(&self.pos);
+
+                let mut value = -VALUE_INFINITE;
+                if depth >= 2 && count > 1 {
+                    // LMR（yaneuraou-search.cpp:3954-4010）。参照実装の発動条件は
+                    // 深さと手数だけで、取る手も王手する手も対象にする。
+                    // リダクションが負なら `new_depth + 2` まで深く読む
+                    let d = (new_depth - r / 1024).min(new_depth + 2).max(1) + i32::from(is_pv);
+                    self.stack[ply + STACK_OFFSET].reduction = new_depth - d;
+                    value = -self.search(
+                        -alpha - 1,
+                        -alpha,
+                        d as u32,
+                        ply + 1,
+                        m,
+                        &mut child_pv,
+                        false,
+                        true,
+                    );
+                    self.stack[ply + STACK_OFFSET].reduction = 0;
+                    if value > alpha {
+                        // 減深探索の結果で読み直す深さを調整する
+                        // （yaneuraou-search.cpp:3997-4000）。十分良ければ深く、
+                        // 十分悪ければ浅くする
+                        let do_deeper = d < new_depth && value > best + 48;
+                        let do_shallower = value < best + 9;
+                        new_depth += i32::from(do_deeper) - i32::from(do_shallower);
+                        if new_depth > d && !self.stopped() {
+                            value = -self.search(
+                                -alpha - 1,
+                                -alpha,
+                                new_depth.max(0) as u32,
+                                ply + 1,
+                                m,
+                                &mut child_pv,
+                                false,
+                                !cut_node,
+                            );
                         }
-                        break;
+                        // LMR後のcontinuation history更新
+                        // （yaneuraou-search.cpp:4008）
+                        self.update_continuation_histories(ply, m.piece_after(), m.to(), 1426);
                     }
-                    // alphaを更新できたので、残りの手を浅く読む
-                    // （yaneuraou-search.cpp:4228-4229）。決着スコアのときは
-                    // 深さを保って読み切る
-                    if depth > 2 && depth < 14 && value.abs() < VALUE_MATE_IN_MAX_PLY {
-                        depth -= 2;
+                } else if !is_pv || count > 1 {
+                    // LMRを省いたときの調整（yaneuraou-search.cpp:4017-4030）。
+                    // 項12: TT手がなければ削る。削る量が大きければ深さを落とす
+                    if tt.mv == Move::NONE {
+                        r += 1057;
                     }
-                    alpha = value;
+                    let d = new_depth - i32::from(r > 4628) - i32::from(r > 5772 && new_depth > 2);
+                    value = -self.search(
+                        -alpha - 1,
+                        -alpha,
+                        d.max(0) as u32,
+                        ply + 1,
+                        m,
+                        &mut child_pv,
+                        false,
+                        !cut_node,
+                    );
+                }
+                // PVノードは第1手とfail highの後だけ全窓で読み直す
+                // （yaneuraou-search.cpp:4043-4061）
+                if is_pv && (count == 1 || value > alpha) && !self.stopped() {
+                    // 静止探索へ直行する手前で、TT手だけは1手残す
+                    // （yaneuraou-search.cpp:4053-4057）。負の延長でnew_depthが
+                    // 0以下になったTT手をqsearchへ落とすと、詰みの発見が鈍る
+                    if m == tt.mv
+                        && ((tt.value != VALUE_NONE
+                            && tt.value.abs() >= VALUE_MATE_IN_MAX_PLY
+                            && tt.depth > 0)
+                            || tt.depth > 1)
+                    {
+                        new_depth = new_depth.max(1);
+                    }
+                    value = -self.search(
+                        -beta,
+                        -alpha,
+                        new_depth.max(0) as u32,
+                        ply + 1,
+                        m,
+                        &mut child_pv,
+                        true,
+                        false,
+                    );
+                }
+                self.evaluator.pop();
+                self.pos.undo_move(m);
+                if self.stopped() {
+                    break 'node VALUE_ZERO;
+                }
+
+                if value > best {
+                    best = value;
+                    if value > alpha {
+                        best_move = m;
+                        best_move_is_capture = is_capture;
+                        if is_pv {
+                            pv.clear();
+                            pv.push(m);
+                            pv.extend_from_slice(&child_pv);
+                        }
+                        if value >= beta {
+                            // 次plyのfail highの多さをリダクションへ渡す
+                            // （yaneuraou-search.cpp:4214）。2手以上延長した手の
+                            // カットは数えない（G5で延長が最大+3になった）
+                            if extension < 2 || is_pv {
+                                self.stack[ply + STACK_OFFSET].cutoff_cnt += 1;
+                            }
+                            break;
+                        }
+                        // alphaを更新できたので、残りの手を浅く読む
+                        // （yaneuraou-search.cpp:4228-4229）。決着スコアのときは
+                        // 深さを保って読み切る
+                        if depth > 2 && depth < 14 && value.abs() < VALUE_MATE_IN_MAX_PLY {
+                            depth -= 2;
+                        }
+                        alpha = value;
+                    }
+                }
+
+                // 最善でなかった手を、あとでmalusを配るために覚えておく
+                // （yaneuraou-search.cpp:4246-4256）。上限は32手
+                if m != best_move && count <= SEARCHED_LIST_CAPACITY {
+                    if is_capture {
+                        captures_searched.push(m);
+                    } else {
+                        quiets_searched.push(m);
+                    }
                 }
             }
 
-            // 最善でなかった手を、あとでmalusを配るために覚えておく
-            // （yaneuraou-search.cpp:4246-4256）。上限は32手
-            if m != best_move && count <= SEARCHED_LIST_CAPACITY {
-                if is_capture {
-                    captures_searched.push(m);
-                } else {
-                    quiets_searched.push(m);
+            if count == 0 {
+                // 除外手つき探索（singularの検証）では、TT手を除いたせいで手が
+                // 尽きただけなのでfail lowのスコアを返す（yaneuraou-search.cpp:4295）。
+                // 詰みの値を返すと、TT手が唯一の合法手であるノードの検証値が
+                // 常に最小になり、多段延長が必ず最大まで積む
+                if excluded != Move::NONE {
+                    break 'node alpha;
                 }
+                // 合法手なし = 詰み（将棋はステイルメイトも負け）
+                break 'node mated_in(ply);
             }
-        }
 
-        if count == 0 {
-            // 除外手つき探索（singularの検証）では、TT手を除いたせいで手が
-            // 尽きただけなのでfail lowのスコアを返す（yaneuraou-search.cpp:4295）。
-            // 詰みの値を返すと、TT手が唯一の合法手であるノードの検証値が
-            // 常に最小になり、多段延長が必ず最大まで積む
-            if excluded != Move::NONE {
-                return alpha;
-            }
-            // 合法手なし = 詰み（将棋はステイルメイトも負け）
-            return mated_in(ply);
-        }
+            self.finalize_node(
+                &node,
+                depth,
+                alpha,
+                beta,
+                best,
+                best_move,
+                best_move_is_capture,
+                &quiets_searched,
+                &captures_searched,
+            );
+            best
+        };
 
-        self.finalize_node(
-            &node,
-            depth,
-            alpha,
-            beta,
-            best,
-            best_move,
-            best_move_is_capture,
-            &quiets_searched,
-            &captures_searched,
-        );
-        best
+        // 借りたバッファを戻す。容量が残るので次の同じplyでは確保が起きない
+        self.node_bufs[ply].moves = picker.into_buf();
+        self.node_bufs[ply].quiets = quiets_searched;
+        self.node_bufs[ply].captures = captures_searched;
+        self.node_bufs[ply].child_pv = child_pv;
+        node_value
     }
 
     /// ノードの終端処理（yaneuraou-search.cpp:4299-4418）。指し手の統計、
@@ -2615,56 +2681,69 @@ impl Worker {
             && !(tt.value != VALUE_NONE && tt.value < probcut_beta)
         {
             let probcut_depth = *depth as i32 - PROBCUT_DEPTH_REDUCTION;
-            let mut picker = MovePicker::new_probcut(&self.pos, tt.mv, probcut_beta - static_eval);
+            // ply別の再利用バッファを借りる（ADR-0151の群B）。このplyの
+            // MovePickerは同時に1つしか生きないので、同じスロットを使える
+            let buf = std::mem::take(&mut self.node_bufs[ply].moves);
+            let mut picker =
+                MovePicker::new_probcut(&self.pos, tt.mv, probcut_beta - static_eval, buf);
             let cont = self.cont_bases(ply);
-            while let Some(m) = picker.next(&self.pos, &self.hist, &cont) {
-                // 除外手はsingular検証探索中のTT手（ADR-0050）
-                if m == excluded || !self.pos.is_legal(m) {
-                    continue;
-                }
-                self.set_current_move(ply, m, !self.pos.piece_on(m.to()).is_empty());
-                self.pos.do_move(m);
-                self.evaluator.push(&self.pos);
-                // まずqsearchで確認（窓は (-probcut_beta, -probcut_beta+1)）
-                let mut v = -self.qsearch(-probcut_beta, -probcut_beta + 1, ply + 1, false);
-                // 通ったら同じ窓で通常探索 *depth-4 を確認する
-                if v >= probcut_beta && probcut_depth > 0 {
-                    let mut child_pv = Vec::new();
-                    v = -self.search(
-                        -probcut_beta,
-                        -probcut_beta + 1,
-                        probcut_depth as u32,
-                        ply + 1,
-                        m,
-                        &mut child_pv,
-                        false,
-                        // ProbCutの子はcut_nodeを反転する（ADR-0109のG0）
-                        !cut_node,
-                    );
-                }
-                self.evaluator.pop();
-                self.pos.undo_move(m);
-                if self.stopped() {
-                    return Some(VALUE_ZERO);
-                }
-                if v >= probcut_beta {
-                    // fail-soft。TTにlower bound・*depth-3で保存する
-                    self.shared.tt.store(
-                        key,
-                        m.to_move16(),
-                        value_to_tt(v, ply),
-                        raw_eval as i16,
-                        (probcut_depth + 1 + TT_DEPTH_OFFSET).clamp(0, 255) as u8,
-                        Bound::Lower,
-                        // 参照実装はttPvを書き戻す（yaneuraou-search.cpp:3418）
-                        self.stack[ply + STACK_OFFSET].tt_pv,
-                    );
-                    // 決着スコアでなければ、上乗せしたマージンを戻して
-                    // カットする。決着スコアのときは次の手を試す
-                    if v.abs() < VALUE_MATE_IN_MAX_PLY {
-                        return Some(v - (probcut_beta - beta));
+            // バッファの返却を一本化するため、復帰点をこのブロックにまとめる
+            let probcut_value = 'probcut: {
+                while let Some(m) = picker.next(&self.pos, &self.hist, &cont) {
+                    // 除外手はsingular検証探索中のTT手（ADR-0050）
+                    if m == excluded || !self.pos.is_legal(m) {
+                        continue;
+                    }
+                    self.set_current_move(ply, m, !self.pos.piece_on(m.to()).is_empty());
+                    self.pos.do_move(m);
+                    self.evaluator.push(&self.pos);
+                    // まずqsearchで確認（窓は (-probcut_beta, -probcut_beta+1)）
+                    let mut v = -self.qsearch(-probcut_beta, -probcut_beta + 1, ply + 1, false);
+                    // 通ったら同じ窓で通常探索 *depth-4 を確認する
+                    if v >= probcut_beta && probcut_depth > 0 {
+                        let mut child_pv = Vec::new();
+                        v = -self.search(
+                            -probcut_beta,
+                            -probcut_beta + 1,
+                            probcut_depth as u32,
+                            ply + 1,
+                            m,
+                            &mut child_pv,
+                            false,
+                            // ProbCutの子はcut_nodeを反転する（ADR-0109のG0）
+                            !cut_node,
+                        );
+                    }
+                    self.evaluator.pop();
+                    self.pos.undo_move(m);
+                    if self.stopped() {
+                        break 'probcut Some(VALUE_ZERO);
+                    }
+                    if v >= probcut_beta {
+                        // fail-soft。TTにlower bound・*depth-3で保存する
+                        self.shared.tt.store(
+                            key,
+                            m.to_move16(),
+                            value_to_tt(v, ply),
+                            raw_eval as i16,
+                            (probcut_depth + 1 + TT_DEPTH_OFFSET).clamp(0, 255) as u8,
+                            Bound::Lower,
+                            // 参照実装はttPvを書き戻す（yaneuraou-search.cpp:3418）
+                            self.stack[ply + STACK_OFFSET].tt_pv,
+                        );
+                        // 決着スコアでなければ、上乗せしたマージンを戻して
+                        // カットする。決着スコアのときは次の手を試す
+                        if v.abs() < VALUE_MATE_IN_MAX_PLY {
+                            break 'probcut Some(v - (probcut_beta - beta));
+                        }
                     }
                 }
+                None
+            };
+            // 借りたバッファを戻す
+            self.node_bufs[ply].moves = picker.into_buf();
+            if probcut_value.is_some() {
+                return probcut_value;
             }
         }
         None
@@ -2826,118 +2905,127 @@ impl Worker {
 
         // 参照実装は静止探索で取る手（歩成を含む）だけを生成する
         // （movepick.cpp:69）。静かな王手は生成しない
-        let mut picker = MovePicker::new(&self.pos, tt_move, 0, ply);
+        // ply別の再利用バッファを借りる（ADR-0151の群B）
+        let buf = std::mem::take(&mut self.node_bufs[ply].moves);
+        let mut picker = MovePicker::new(&self.pos, tt_move, 0, ply, buf);
         let cont = self.cont_bases(ply);
-        let mut count = 0u32;
-        let mut best_move = Move::NONE;
-        while let Some(m) = picker.next(&self.pos, &self.hist, &cont) {
-            if !self.pos.is_legal(m) {
-                continue;
-            }
-            count += 1;
-            // capture_stage(m) は将棋版では単なるcapture(m)（position.h:1317-1320）
-            let capture = !m.is_drop() && !self.pos.piece_on(m.to()).is_empty();
-
-            // Step 6. 枝刈り（yaneuraou-search.cpp:4930-4991）。
-            // bestValueが負け側の決着スコアの間は何も刈らない。詰みを逃れる
-            // 手を探している最中だからである
-            if best > VALUE_MATED_IN_MAX_PLY {
-                // futility（ADR-0077）: 王手をかけず取り返しでもない手を、
-                // 取る駒の価値を足してもalphaへ届かないなら捨てる
-                if futility_base > VALUE_MATED_IN_MAX_PLY
-                    && Some(m.to()) != prev_sq
-                    && !self.pos.gives_check(m)
-                {
-                    if count > QS_MOVECOUNT_LIMIT {
-                        continue;
-                    }
-                    let captured = self.pos.piece_on(m.to());
-                    let gain = if captured.is_empty() {
-                        VALUE_ZERO
-                    } else {
-                        himawari_core::piece_value(captured.piece_type())
-                    };
-                    // 捨てる前にbestを引き上げる（yaneuraou-search.cpp:4950-4954,
-                    // 4965-4969）。fail-softの下限を正しく報告するためである。
-                    // 検討モード（MultiPV>1）だけは抑える。ライン確定ごとに出力し、
-                    // 確定後のソートを持たないので、窓に依存する値を入れると
-                    // ライン間のスコア順序が崩れる（ADR-0077, 0109）
-                    let raise = self.multi_pv == 1;
-                    let futility_value = futility_base + gain;
-                    if futility_value <= alpha {
-                        if raise {
-                            best = best.max(futility_value);
-                        }
-                        continue;
-                    }
-                    if !self.pos.see_ge(m, alpha - futility_base) {
-                        if raise {
-                            best = best.max(alpha.min(futility_base));
-                        }
-                        continue;
-                    }
-                }
-
-                // 取る手でない手は一律に捨てる（yaneuraou-search.cpp:4975-4976）
-                if !capture {
+        // バッファの返却を一本化するため、復帰点をこのブロックにまとめる
+        let node_value = 'node: {
+            let mut count = 0u32;
+            let mut best_move = Move::NONE;
+            while let Some(m) = picker.next(&self.pos, &self.hist, &cont) {
+                if !self.pos.is_legal(m) {
                     continue;
                 }
-                // SEEが十分悪い手は探索しない（yaneuraou-search.cpp:4989-4990）。
-                // 無駄な王手ラッシュを抑える。歩損は許す下限である
-                if !self.pos.see_ge(m, QS_SEE_MARGIN) {
-                    continue;
-                }
-            }
+                count += 1;
+                // capture_stage(m) は将棋版では単なるcapture(m)（position.h:1317-1320）
+                let capture = !m.is_drop() && !self.pos.piece_on(m.to()).is_empty();
 
-            self.set_current_move(ply, m, capture);
-            self.pos.do_move(m);
-            self.evaluator.push(&self.pos);
-            let value = -self.qsearch(-beta, -alpha, ply + 1, is_pv);
-            self.evaluator.pop();
-            self.pos.undo_move(m);
-            if self.stopped() {
-                return VALUE_ZERO;
-            }
-            if value > best {
-                best = value;
-                if value > alpha {
-                    best_move = m;
-                    alpha = value;
-                    if value >= beta {
-                        break;
+                // Step 6. 枝刈り（yaneuraou-search.cpp:4930-4991）。
+                // bestValueが負け側の決着スコアの間は何も刈らない。詰みを逃れる
+                // 手を探している最中だからである
+                if best > VALUE_MATED_IN_MAX_PLY {
+                    // futility（ADR-0077）: 王手をかけず取り返しでもない手を、
+                    // 取る駒の価値を足してもalphaへ届かないなら捨てる
+                    if futility_base > VALUE_MATED_IN_MAX_PLY
+                        && Some(m.to()) != prev_sq
+                        && !self.pos.gives_check(m)
+                    {
+                        if count > QS_MOVECOUNT_LIMIT {
+                            continue;
+                        }
+                        let captured = self.pos.piece_on(m.to());
+                        let gain = if captured.is_empty() {
+                            VALUE_ZERO
+                        } else {
+                            himawari_core::piece_value(captured.piece_type())
+                        };
+                        // 捨てる前にbestを引き上げる（yaneuraou-search.cpp:4950-4954,
+                        // 4965-4969）。fail-softの下限を正しく報告するためである。
+                        // 検討モード（MultiPV>1）だけは抑える。ライン確定ごとに出力し、
+                        // 確定後のソートを持たないので、窓に依存する値を入れると
+                        // ライン間のスコア順序が崩れる（ADR-0077, 0109）
+                        let raise = self.multi_pv == 1;
+                        let futility_value = futility_base + gain;
+                        if futility_value <= alpha {
+                            if raise {
+                                best = best.max(futility_value);
+                            }
+                            continue;
+                        }
+                        if !self.pos.see_ge(m, alpha - futility_base) {
+                            if raise {
+                                best = best.max(alpha.min(futility_base));
+                            }
+                            continue;
+                        }
+                    }
+
+                    // 取る手でない手は一律に捨てる（yaneuraou-search.cpp:4975-4976）
+                    if !capture {
+                        continue;
+                    }
+                    // SEEが十分悪い手は探索しない（yaneuraou-search.cpp:4989-4990）。
+                    // 無駄な王手ラッシュを抑える。歩損は許す下限である
+                    if !self.pos.see_ge(m, QS_SEE_MARGIN) {
+                        continue;
+                    }
+                }
+
+                self.set_current_move(ply, m, capture);
+                self.pos.do_move(m);
+                self.evaluator.push(&self.pos);
+                let value = -self.qsearch(-beta, -alpha, ply + 1, is_pv);
+                self.evaluator.pop();
+                self.pos.undo_move(m);
+                if self.stopped() {
+                    break 'node VALUE_ZERO;
+                }
+                if value > best {
+                    best = value;
+                    if value > alpha {
+                        best_move = m;
+                        alpha = value;
+                        if value >= beta {
+                            break;
+                        }
                     }
                 }
             }
-        }
-        // Step 9. 詰みの確認（yaneuraou-search.cpp:5054-5070）。
-        // 王手中に合法手が尽きたら詰み。参照実装は置換表へ書かずに返す。
-        // 再訪問の確率が極めて低く、置換表を汚すだけだからである
-        if in_check && count == 0 {
-            return mated_in(ply);
-        }
+            // Step 9. 詰みの確認（yaneuraou-search.cpp:5054-5070）。
+            // 王手中に合法手が尽きたら詰み。参照実装は置換表へ書かずに返す。
+            // 再訪問の確率が極めて低く、置換表を汚すだけだからである
+            if in_check && count == 0 {
+                break 'node mated_in(ply);
+            }
 
-        // 決着スコアでなければ、返す値をβへ半分寄せる
-        // （yaneuraou-search.cpp:5093-5094）。stand patと同じ扱いである
-        if best.abs() < VALUE_MATE_IN_MAX_PLY && best > beta {
-            best = (best + beta) / 2;
-        }
+            // 決着スコアでなければ、返す値をβへ半分寄せる
+            // （yaneuraou-search.cpp:5093-5094）。stand patと同じ扱いである
+            if best.abs() < VALUE_MATE_IN_MAX_PLY && best > beta {
+                best = (best + beta) / 2;
+            }
 
-        // 置換表store（yaneuraou-search.cpp:5124-5126）。深さはDEPTH_QS固定。
-        // 静止探索の結果は信用ならないのでBOUND_EXACTは書かない
-        self.shared.tt.store(
-            key,
-            best_move.to_move16(),
-            value_to_tt(best, ply),
-            raw_eval as i16,
-            TT_DEPTH_QS,
-            if best >= beta {
-                Bound::Lower
-            } else {
-                Bound::Upper
-            },
-            pv_hit,
-        );
-        best
+            // 置換表store（yaneuraou-search.cpp:5124-5126）。深さはDEPTH_QS固定。
+            // 静止探索の結果は信用ならないのでBOUND_EXACTは書かない
+            self.shared.tt.store(
+                key,
+                best_move.to_move16(),
+                value_to_tt(best, ply),
+                raw_eval as i16,
+                TT_DEPTH_QS,
+                if best >= beta {
+                    Bound::Lower
+                } else {
+                    Bound::Upper
+                },
+                pv_hit,
+            );
+            best
+        };
+
+        // 借りたバッファを戻す
+        self.node_bufs[ply].moves = picker.into_buf();
+        node_value
     }
 
     /// correction historyを6要素まとめて更新する（ADR-0109のG1）。
