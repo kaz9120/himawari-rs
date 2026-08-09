@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.34.7](https://github.com/kaz9120/himawari-rs/compare/v0.34.6...v0.34.7) (2026-08-09)
+
+
+### その他の変更
+
+* 複合ビットボードで利きの合成を差分維持する（ADR-0151群F、+2.47% NPS） ([#237](https://github.com/kaz9120/himawari-rs/issues/237)) ([e9d7579](https://github.com/kaz9120/himawari-rs/commit/e9d75799fa0478dc7c90df3406a5c3b8be67f9b2))
+
 ## [0.34.6](https://github.com/kaz9120/himawari-rs/compare/v0.34.5...v0.34.6) (2026-08-09)
 
 
