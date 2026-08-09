@@ -1,6 +1,6 @@
 # 0151: 挙動を変えない高速化の第2弾をプロファイル起点で洗い出す
 
-- Status: proposed
+- Status: accepted
 - Date: 2026-08-09
 - 関連ADR: [0056](0056-tt-prefetch.md), [0074](0074-feature-verification.md), [0099](0099-nnue-dot-sdot.md), [0101](0101-movelist-uninit.md), [0124](0124-hot-path-allocs.md), [0138](0138-ft-i8-quantization.md), [0147](0147-effect-bucket-features.md), [0148](0148-effect-table.md)
 
@@ -465,6 +465,12 @@ nativeビルド、PGOなし）、既定条件（10+0.1、elo0=0、elo1=5）で
 全群が固定深さでノード数一致なので、これは速度が固定持ち時間で深さに
 変わった分である。+17%の速度でこのEloは1倍速=70 Eloの経験則より大きく、
 10+0.1の短い持ち時間ではEloの速度勾配が急であることを示す。
+
+**締めのSPRTで+100.1 Elo [+73.2, +128.2]のH1採択になった**（2026-08-09、
+オーナー提案。base＝着手前main、cand＝12群適用後main、どちらも素の
+nativeビルド、既定条件、321ペア642局、+398 =26 -218、LLR +2.85）。
+6群時点の+60.6に後半6群が上積みされた形で、この結果を根拠にStatusを
+acceptedにする。棋譜は `data/sprt/adr0151-final.jsonl`。
 
 **総括（2026-08-09）: 12群をマージし、総合算は+22.60% NPS。** 着手前の
 mainと全群適用後のmainの直接比較（7周交互測定、base 1,728,804 →
