@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.35.7](https://github.com/kaz9120/himawari-rs/compare/v0.35.6...v0.35.7) (2026-08-09)
+
+
+### 内部
+
+* SPRTの実行・監視・後処理を定型化する（ADR-0154） ([#285](https://github.com/kaz9120/himawari-rs/issues/285)) ([e7f5999](https://github.com/kaz9120/himawari-rs/commit/e7f599983443ac807fd370f2ffdbabef89f32195))
+
 ## [0.35.6](https://github.com/kaz9120/himawari-rs/compare/v0.35.5...v0.35.6) (2026-08-09)
 
 
