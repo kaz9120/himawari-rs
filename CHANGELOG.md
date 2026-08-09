@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.35.4](https://github.com/kaz9120/himawari-rs/compare/v0.35.3...v0.35.4) (2026-08-09)
+
+
+### その他の変更
+
+* floodgateサイクルの定跡追加へ--depth 28を明示する（ADR-0152） ([#279](https://github.com/kaz9120/himawari-rs/issues/279)) ([a69f984](https://github.com/kaz9120/himawari-rs/commit/a69f984c06874805bcef1c05809542078ca756d6))
+
 ## [0.35.3](https://github.com/kaz9120/himawari-rs/compare/v0.35.2...v0.35.3) (2026-08-09)
 
 
