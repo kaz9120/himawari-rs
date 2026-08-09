@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.34.21](https://github.com/kaz9120/himawari-rs/compare/v0.34.20...v0.34.21) (2026-08-09)
+
+
+### その他の変更
+
+* FT差分適用を両視点1パスにする（ADR-0151群N） ([#265](https://github.com/kaz9120/himawari-rs/issues/265)) ([5abace2](https://github.com/kaz9120/himawari-rs/commit/5abace2a36feb345831a95b7207f79a1aad6057a))
+
 ## [0.34.20](https://github.com/kaz9120/himawari-rs/compare/v0.34.19...v0.34.20) (2026-08-09)
 
 
