@@ -324,6 +324,7 @@ fn save_hmwr(
         ft_w,
         ft_b,
         w2,
+        w2_sparse: Vec::new(),
         b2,
         // 学習側はパディングを持たない。推論の幅へ広げる
         w3: himawari_engine::nnue::pad_rows(&w3, L1_OUT, L1_PAD),
@@ -332,7 +333,8 @@ fn save_hmwr(
         b4,
         w_out,
         b_out,
-    };
+    }
+    .finish();
     let mut f = std::fs::File::create(path)
         .map_err(|e| PyErr::new::<pyo3::exceptions::PyIOError, _>(e.to_string()))?;
     nnue_io::save(&net, lineage, &mut f)

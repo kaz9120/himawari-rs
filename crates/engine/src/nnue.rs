@@ -59,6 +59,10 @@ pub struct NnueNetwork {
     pub ft_b: Vec<i16>,
     /// 隠れ層1。行優先: `w2[row * CONCAT + i]`。
     pub w2: Vec<i8>,
+    /// 同じ重みを4列チャンク単位で並べ替えた表（ADR-0151群L）。
+    /// `w2` から機械的に作る派生表で、列駆動の推論だけが読む。
+    /// **`w2` を差し替えたら `finish` を呼び直す。**
+    pub w2_sparse: Vec<i8>,
     pub b2: Vec<i32>,
     /// 隠れ層2。行優先だが列幅は `L1_PAD` で、`L1_OUT` 以降の列は
     /// 常にゼロにする（入力側もゼロ埋めなので値には影響しない）。
@@ -81,7 +85,35 @@ pub const LAST_HIDDEN: usize = if L3_OUT != 0 {
     L1_OUT
 };
 
+/// 隠れ層1の重みを4列チャンク単位で並べ替える（ADR-0151群L）。
+///
+/// `out[k * L1_OUT * 4 + o * 4 + j] = w2[o * CONCAT + 4k + j]`。入力列を
+/// 4要素ずつのチャンクに区切り、チャンクkについて全出力行の重みを
+/// 連続させる。列駆動の推論は、活性が非ゼロのチャンクだけを選んで
+/// この16バイト単位の並びを読む。長さは `w2` と同じで、既定構成では16KBになる。
+pub fn interleave_w2(w2: &[i8]) -> Vec<i8> {
+    debug_assert_eq!(w2.len(), L1_OUT * CONCAT);
+    let mut t = vec![0i8; L1_OUT * CONCAT];
+    for k in 0..CONCAT / 4 {
+        for o in 0..L1_OUT {
+            let dst = k * L1_OUT * 4 + o * 4;
+            t[dst..dst + 4].copy_from_slice(&w2[o * CONCAT + 4 * k..o * CONCAT + 4 * k + 4]);
+        }
+    }
+    t
+}
+
 impl NnueNetwork {
+    /// 派生表を作って完成させる。**`w2` を決めた直後に呼ぶ。**
+    ///
+    /// 呼び忘れても評価値は変わらない（列駆動の経路が使う表が空になり、
+    /// 密の経路へ落ちるだけ）が、速度は戻る。
+    #[must_use]
+    pub fn finish(mut self) -> NnueNetwork {
+        self.w2_sparse = interleave_w2(&self.w2);
+        self
+    }
+
     /// テスト・開発用の乱数重み（xorshiftで再現可能）。
     pub fn random(seed: u64) -> NnueNetwork {
         struct Rng(u64);
@@ -123,6 +155,7 @@ impl NnueNetwork {
                 .collect(),
             ft_b: r.i16v(FT_OUT, 128),
             w2: r.i8v(L1_OUT * CONCAT),
+            w2_sparse: Vec::new(),
             b2: r.i32v(L1_OUT),
             w3: r.i8_rows(L2_OUT, L1_OUT, L1_PAD),
             b3: r.i32v(L2_OUT),
@@ -131,6 +164,7 @@ impl NnueNetwork {
             w_out: r.i8v(LAST_HIDDEN),
             b_out: 0,
         }
+        .finish()
     }
 }
 
@@ -634,6 +668,25 @@ mod tests {
                 "鏡像でラベルが一致しない: {}",
                 pos.to_sfen()
             );
+        }
+    }
+
+    /// インターリーブ表は `w2` の並べ替えである（ADR-0151群L）。
+    /// 全要素を1対1で突き合わせる。列駆動の推論はこの並びに依存する。
+    #[test]
+    fn interleaved_w2_is_a_permutation_of_w2() {
+        let net = NnueNetwork::random(17);
+        assert_eq!(net.w2_sparse.len(), net.w2.len());
+        for k in 0..CONCAT / 4 {
+            for o in 0..L1_OUT {
+                for j in 0..4 {
+                    assert_eq!(
+                        net.w2_sparse[k * L1_OUT * 4 + o * 4 + j],
+                        net.w2[o * CONCAT + 4 * k + j],
+                        "k={k} o={o} j={j}"
+                    );
+                }
+            }
         }
     }
 

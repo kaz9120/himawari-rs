@@ -287,6 +287,7 @@ pub fn load(r: &mut impl Read) -> Result<(NnueNetwork, String), String> {
             ft_w,
             ft_b,
             w2,
+            w2_sparse: Vec::new(),
             b2,
             w3,
             b3,
@@ -294,7 +295,8 @@ pub fn load(r: &mut impl Read) -> Result<(NnueNetwork, String), String> {
             b4,
             w_out,
             b_out,
-        },
+        }
+        .finish(),
         lineage,
     ))
 }
@@ -449,6 +451,7 @@ pub fn load_resized_with_dims(
             ft_w,
             ft_b,
             w2,
+            w2_sparse: Vec::new(),
             b2,
             w3,
             b3,
@@ -456,7 +459,8 @@ pub fn load_resized_with_dims(
             b4,
             w_out,
             b_out,
-        },
+        }
+        .finish(),
         format!("{lineage} / resized to {ARCH}"),
         dims,
     ))
