@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.35.9](https://github.com/kaz9120/himawari-rs/compare/v0.35.8...v0.35.9) (2026-08-10)
+
+
+### その他の変更
+
+* 優等・劣等局面の判定を探索経路内に限定する（ADR-0153） ([#289](https://github.com/kaz9120/himawari-rs/issues/289)) ([ab4bf46](https://github.com/kaz9120/himawari-rs/commit/ab4bf46d3f7aed7329dffe59a2929059a27d9788))
+
 ## [0.35.8](https://github.com/kaz9120/himawari-rs/compare/v0.35.7...v0.35.8) (2026-08-09)
 
 
