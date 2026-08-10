@@ -1158,7 +1158,14 @@ impl Position {
     // ---- 千日手・優等局面（ADR-0026） ----
 
     /// 現局面の千日手状態。StateInfoスタックを2plyごとに遡って判定する。
-    pub fn repetition_state(&self) -> Repetition {
+    ///
+    /// `ply` はrootからの距離を表す。優等・劣等局面（`Superior` /
+    /// `Inferior`）は検出距離 `i < ply` のときだけ返す。つまり同一盤面の
+    /// 両方の出現が探索経路内にあるときに限る（ADR-0153）。rootを跨いだ
+    /// 比較は「大昔の同一盤面より手駒が多い」だけを意味し、探索の値として
+    /// は誤りになる。千日手系（`Draw` / `Win` / `Lose`）は対局ルールその
+    /// ものなので、`ply` に関係なく全履歴を対象にする。
+    pub fn repetition_state(&self, ply: usize) -> Repetition {
         let cur = self.states.len() - 1;
         let st = &self.states[cur];
         let us = self.side.index();
@@ -1178,19 +1185,29 @@ impl Position {
                     }
                     return Repetition::Draw;
                 }
-                let my_now = Hand((st.hand_key >> (32 * us)) as u32);
-                let my_then = Hand((prev.hand_key >> (32 * us)) as u32);
-                if my_now.is_superior_or_equal(my_then) {
-                    return Repetition::Superior;
-                }
-                if my_then.is_superior_or_equal(my_now) {
-                    return Repetition::Inferior;
+                // rootを跨ぐ優等・劣等は判定しない（ADR-0153）。走査は続ける
+                if i < ply {
+                    let my_now = Hand((st.hand_key >> (32 * us)) as u32);
+                    let my_then = Hand((prev.hand_key >> (32 * us)) as u32);
+                    if my_now.is_superior_or_equal(my_then) {
+                        return Repetition::Superior;
+                    }
+                    if my_then.is_superior_or_equal(my_now) {
+                        return Repetition::Inferior;
+                    }
                 }
                 // 交換が混在する場合は判定不能なので走査を続ける
             }
             i += 2;
         }
         Repetition::None
+    }
+
+    /// 対局ルールの千日手裁定用。優等・劣等も含めて全履歴を対象にする
+    /// （ADR-0153。探索ではなくルール判定に使う呼び出し元向け）。
+    #[inline]
+    pub fn repetition_state_all(&self) -> Repetition {
+        self.repetition_state(usize::MAX)
     }
 
     // ---- 擬似合法性（置換表由来の指し手の検査。ADR-0025） ----

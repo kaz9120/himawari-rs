@@ -144,7 +144,7 @@ pub fn play_game(
         let c = counts.entry(pos.key()).or_insert(0);
         *c += 1;
         if *c >= 4 {
-            match pos.repetition_state() {
+            match pos.repetition_state_all() {
                 Repetition::Draw => break 'game GameRecord::end(None, "repetition", moves),
                 // Win/Loseは手番側から見た連続王手の千日手の判定
                 Repetition::Win => {
