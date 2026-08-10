@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.35.10](https://github.com/kaz9120/himawari-rs/compare/v0.35.9...v0.35.10) (2026-08-10)
+
+
+### ドキュメント
+
+* 参照実装ウォークスルーの結果をADR-0155に起草する ([#291](https://github.com/kaz9120/himawari-rs/issues/291)) ([e6ead93](https://github.com/kaz9120/himawari-rs/commit/e6ead93a781fdb38822c3b7ba881e74e3a1e611f))
+
 ## [0.35.9](https://github.com/kaz9120/himawari-rs/compare/v0.35.8...v0.35.9) (2026-08-10)
 
 
