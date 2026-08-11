@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.35.15](https://github.com/kaz9120/himawari-rs/compare/v0.35.14...v0.35.15) (2026-08-11)
+
+
+### ドキュメント
+
+* 玉位置の左右ミラーを棄却として記録する（ADR-0157） ([#302](https://github.com/kaz9120/himawari-rs/issues/302)) ([fd9d1f8](https://github.com/kaz9120/himawari-rs/commit/fd9d1f88986d8050c6e6811a6bb6ce8b8a00d67c))
+
 ## [0.35.14](https://github.com/kaz9120/himawari-rs/compare/v0.35.13...v0.35.14) (2026-08-11)
 
 
