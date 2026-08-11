@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.35.11](https://github.com/kaz9120/himawari-rs/compare/v0.35.10...v0.35.11) (2026-08-11)
+
+
+### ドキュメント
+
+* ADR-0155群1〜3の測定結果と見送り判断を記録する ([#293](https://github.com/kaz9120/himawari-rs/issues/293)) ([b7bcf48](https://github.com/kaz9120/himawari-rs/commit/b7bcf48fe007ff7dfa5a6f70aa278e08d64a6334))
+
 ## [0.35.10](https://github.com/kaz9120/himawari-rs/compare/v0.35.9...v0.35.10) (2026-08-10)
 
 
