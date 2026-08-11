@@ -7,7 +7,7 @@
 
 use himawari_core::{Color, DirtyPiece, PieceType, Position, Square, bonapiece};
 
-use crate::nnue::{CONCAT, FT_OUT, FtWeight, NnueNetwork, halfkp_active};
+use crate::nnue::{self, CONCAT, FT_OUT, FtWeight, NnueNetwork};
 use crate::nnue_simd;
 use crate::value::{MAX_PLY, Value};
 
@@ -56,6 +56,36 @@ impl AccEntry {
 /// 実際に積まれるのは最大 `MAX_PLY` 段になる。余白を足して越えを防ぐ。
 const MAX_ENTRIES: usize = MAX_PLY + 16;
 
+/// BonaPieceの集合を持つビットセットの語数。
+const BP_WORDS: usize = (bonapiece::FE_END as usize).div_ceil(64);
+
+/// 玉位置ごとのキャッシュの件数（視点色 × 玉の81升）。
+const FINNY_ENTRIES: usize = 2 * 81;
+
+/// 玉位置ごとのaccumulatorキャッシュ1件（ADR-0156）。
+///
+/// `acc` は `bits` が表すBonaPiece集合をバイアスへ足し込んだ状態にある。
+/// 玉が動いた視点は差分連鎖を遡れないが、**同じ玉位置の局面をここに
+/// 1件だけ残しておけば、全計算の代わりに集合の差分で済む。**
+#[repr(C, align(64))]
+struct FinnyEntry {
+    acc: [i16; FT_OUT],
+    /// `acc` に反映済みのBonaPiece集合。
+    bits: [u64; BP_WORDS],
+    /// falseの間は `acc`・`bits` の中身が未定義で、誰も読まない。
+    valid: bool,
+}
+
+impl FinnyEntry {
+    fn empty() -> FinnyEntry {
+        FinnyEntry {
+            acc: [0; FT_OUT],
+            bits: [0; BP_WORDS],
+            valid: false,
+        }
+    }
+}
+
 /// 探索スタックと同期するaccumulatorスタック。
 pub struct NnueState {
     /// 起動時に `MAX_ENTRIES` ぶん確保し、以後は長さを変えない。
@@ -63,9 +93,22 @@ pub struct NnueState {
     entries: Vec<AccEntry>,
     /// スタックトップの添字。
     top: usize,
-    /// 全計算で使う特徴の置き場。ノードごとに確保し直さないため、
+    /// 玉位置ごとのaccumulatorキャッシュ（ADR-0156）。
+    /// 添字は `視点色 * 81 + 玉の升`。
+    finny: Vec<FinnyEntry>,
+    /// キャッシュとの差分を組み立てる置き場。`scratch` と同じく
     /// 容量を保ったまま使い回す（ADR-0124）
-    scratch: Vec<u32>,
+    scratch: Scratch,
+}
+
+/// キャッシュ差分で使う作業領域。まとめて `mem::take` できる形に
+/// しておくと、`entries`・`finny` と借用が衝突しない。
+#[derive(Default)]
+struct Scratch {
+    /// キャッシュへ足す特徴インデックス。
+    adds: Vec<u32>,
+    /// キャッシュから引く特徴インデックス。
+    subs: Vec<u32>,
 }
 
 impl NnueState {
@@ -75,8 +118,14 @@ impl NnueState {
                 .take(MAX_ENTRIES)
                 .collect(),
             top: 0,
+            finny: std::iter::repeat_with(FinnyEntry::empty)
+                .take(FINNY_ENTRIES)
+                .collect(),
             // HalfKPで立つ特徴は玉以外の駒の数だけで、上限は38
-            scratch: Vec::with_capacity(64),
+            scratch: Scratch {
+                adds: Vec::with_capacity(64),
+                subs: Vec::with_capacity(64),
+            },
         }
     }
 
@@ -223,25 +272,60 @@ impl NnueState {
         }
     }
 
-    /// 最上段を現局面から全計算する。
+    /// 最上段の視点cを、同じ玉位置のキャッシュとの差分で作る（ADR-0156）。
+    ///
+    /// 玉が動いた視点は段の連鎖を遡れない。**遡る代わりに、同じ玉位置で
+    /// 最後に作ったaccumulatorを起点にする。** HalfKPの特徴は玉位置を
+    /// 固定すればBonaPieceの集合で決まるので、集合の差だけ足し引きすれば
+    /// 全計算と同じ値になる。キャッシュは引くと同時に現局面で更新する
+    /// ので、書き戻す手順は要らない。
+    ///
+    /// キャッシュが空のときは、バイアスを置いて全特徴を足す形になり、
+    /// 従来の全計算と同じ経路をたどる。
     fn refresh_top(&mut self, net: &NnueNetwork, pos: &Position, c: Color) {
-        // scratchとentriesを同時に借りられないので、いったん取り出して戻す。
-        // takeは空Vecとの交換なので確保は起きず、戻すときに容量が残る
-        let mut features = std::mem::take(&mut self.scratch);
-        features.clear();
-        halfkp_active(pos, c, &mut features);
-        {
-            let top = &mut self.entries[self.top];
-            // バイアスの複製と全特徴の加算を1パスにまとめる（ADR-0151群A）
-            nnue_simd::ft_refresh(
-                &mut top.acc[c.index()],
-                &net.ft_b[..FT_OUT],
-                &net.ft_w,
-                &features,
-            );
-            top.computed[c.index()] = true;
+        let king = pos.king(c);
+        // 玉位置を固定した特徴インデックスの起点。BonaPieceを足せば
+        // そのまま特徴インデックスになる
+        let base = bonapiece::halfkp_index(c, king, 0);
+        let mut cur = [0u64; BP_WORDS];
+        nnue::for_each_bona_piece(pos, c, |bp| {
+            cur[bp as usize / 64] |= 1u64 << (bp % 64);
+        });
+
+        // scratch・finny・entriesを同時に借りられないので、いったん取り出して
+        // 戻す。takeは空Vecとの交換なので確保は起きず、容量も残る
+        let mut s = std::mem::take(&mut self.scratch);
+        let mut finny = std::mem::take(&mut self.finny);
+        let e = &mut finny[c.index() * 81 + king.index()];
+        if !e.valid {
+            e.acc.copy_from_slice(&net.ft_b[..FT_OUT]);
+            e.bits = [0; BP_WORDS];
+            e.valid = true;
         }
-        self.scratch = features;
+        for (w, (&now, &had)) in cur.iter().zip(e.bits.iter()).enumerate() {
+            let off = base + (w * 64) as u32;
+            let mut added = now & !had;
+            while added != 0 {
+                s.adds.push(off + added.trailing_zeros());
+                added &= added - 1;
+            }
+            let mut removed = had & !now;
+            while removed != 0 {
+                s.subs.push(off + removed.trailing_zeros());
+                removed &= removed - 1;
+            }
+        }
+        nnue_simd::ft_update(&mut e.acc, &net.ft_w, &s.adds, &s.subs);
+        e.bits = cur;
+
+        let top = &mut self.entries[self.top];
+        top.acc[c.index()] = e.acc;
+        top.computed[c.index()] = true;
+
+        s.adds.clear();
+        s.subs.clear();
+        self.scratch = s;
+        self.finny = finny;
     }
 }
 
@@ -434,6 +518,36 @@ mod tests {
             }
             // undo直後の再評価も一致すること
             assert_eq!(st.evaluate(net, pos), evaluate_scalar(net, pos));
+        }
+    }
+
+    /// 玉位置ごとのキャッシュ（ADR-0156）が、別局面を挟んでも全計算と
+    /// 一致し続けること。同じ玉位置に違う駒配置で何度も戻るので、
+    /// キャッシュの中身と現局面が離れた状態からの差分を必ず踏む。
+    #[test]
+    fn bucket_cache_matches_full_computation_across_positions() {
+        let net = NnueNetwork::random(11);
+        let mut st = NnueState::new();
+        let mut rng = Rng(0x1234_5678_9ABC_DEF1);
+        for _ in 0..200 {
+            let mut pos = Position::from_sfen(SFEN_STARTPOS).unwrap();
+            for _ in 0..(rng.next() % 60) {
+                let mut list = MoveList::default();
+                generate_legal(&pos, true, &mut list);
+                if list.is_empty() {
+                    break;
+                }
+                let m = list.as_slice()[(rng.next() % list.len() as u64) as usize];
+                pos.do_move(m);
+            }
+            // 探索のたびに積み直す経路（Worker::set_position）と同じ形にする
+            st.reset();
+            assert_eq!(
+                st.evaluate(&net, &pos),
+                evaluate_scalar(&net, &pos),
+                "キャッシュ差分と全計算が一致しない: {}",
+                pos.to_sfen()
+            );
         }
     }
 
