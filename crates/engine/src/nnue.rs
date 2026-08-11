@@ -297,28 +297,35 @@ pub fn effect_labels(pos: &Position) -> ([u8; EFFECT_LEN], [u8; EFFECT_LEN]) {
     (short, long)
 }
 
-/// 視点cのHalfKP活性特徴（玉以外の盤上駒＋両者の持ち駒）を列挙する。
-pub fn halfkp_active(pos: &Position, c: Color, out: &mut Vec<u32>) {
-    out.clear();
-    let king = pos.king(c);
-    for sq_i in 0..81u8 {
-        let sq = Square::from_index(sq_i);
-        let pc = pos.piece_on(sq);
-        if pc.is_empty() || pc.piece_type() == PieceType::KING {
-            continue;
-        }
-        let bp = bonapiece::board_bona_piece(c, pc, sq);
-        out.push(bonapiece::halfkp_index(c, king, bp));
+/// 視点cのHalfKP活性特徴（玉以外の盤上駒＋両者の持ち駒）のBonaPieceを
+/// 順に渡す。玉位置のオフセットを掛ける前の形で、これを起点に
+/// 特徴インデックスにもキャッシュの鍵にもできる（ADR-0156）。
+/// 盤上は駒のある升だけを走る。81升を舐めると空升の判定が3分の2を
+/// 占め、全計算のほうで列挙が支配的になる（ADR-0156のプロファイル）。
+#[inline]
+pub fn for_each_bona_piece(pos: &Position, c: Color, mut f: impl FnMut(u16)) {
+    let kings = Bitboard::from_square(pos.king(Color::Black))
+        | Bitboard::from_square(pos.king(Color::White));
+    for sq in pos.occupied() ^ kings {
+        f(bonapiece::board_bona_piece(c, pos.piece_on(sq), sq));
     }
     for owner in [Color::Black, Color::White] {
         let hand = pos.hand(owner);
         for pt in PieceType::HAND_KINDS {
             for i in 1..=hand.count(pt) {
-                let bp = bonapiece::hand_bona_piece(c, owner, pt, i);
-                out.push(bonapiece::halfkp_index(c, king, bp));
+                f(bonapiece::hand_bona_piece(c, owner, pt, i));
             }
         }
     }
+}
+
+/// 視点cのHalfKP活性特徴（玉以外の盤上駒＋両者の持ち駒）を列挙する。
+pub fn halfkp_active(pos: &Position, c: Color, out: &mut Vec<u32>) {
+    out.clear();
+    let king = pos.king(c);
+    for_each_bona_piece(pos, c, |bp| {
+        out.push(bonapiece::halfkp_index(c, king, bp));
+    });
 }
 
 #[inline]

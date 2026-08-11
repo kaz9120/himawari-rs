@@ -177,6 +177,49 @@ pub fn ft_refresh(acc: &mut [i16; FT_OUT], bias: &[i16], w: &[i8], features: &[u
     }
 }
 
+/// `acc += Σadds行 − Σsubs行`（i16、ラップ加減算。ADR-0156）。
+///
+/// `ft_apply` との違いは行数を実行時に受けることである。玉位置ごとの
+/// キャッシュとの差分は局面の隔たりで本数が変わるので、単相化できない。
+/// 構造は `ft_refresh` と同じで、外側をaccのチャンク、内側を行にする。
+/// 加減算はラップなので、1行ずつ適用した結果とビット一致する。
+#[cfg(not(ft_i8))]
+pub fn ft_update(acc: &mut [i16; FT_OUT], w: &[i16], adds: &[u32], subs: &[u32]) {
+    for (i, a) in acc.as_chunks_mut::<I16_LANES>().0.iter_mut().enumerate() {
+        let mut v = Simd::from_array(*a);
+        for &f in adds {
+            let base = f as usize * FT_OUT + i * I16_LANES;
+            v += Simd::<i16, I16_LANES>::from_slice(&w[base..base + I16_LANES]);
+        }
+        for &f in subs {
+            let base = f as usize * FT_OUT + i * I16_LANES;
+            v -= Simd::<i16, I16_LANES>::from_slice(&w[base..base + I16_LANES]);
+        }
+        *a = v.to_array();
+    }
+}
+
+/// 同上（i8重み。ADR-0138）。
+#[cfg(ft_i8)]
+pub fn ft_update(acc: &mut [i16; FT_OUT], w: &[i8], adds: &[u32], subs: &[u32]) {
+    for (i, a) in acc.as_chunks_mut::<FT_I8_LANES>().0.iter_mut().enumerate() {
+        let mut v = Simd::from_array(*a);
+        for &f in adds {
+            let base = f as usize * FT_OUT + i * FT_I8_LANES;
+            let wide: Simd<i16, FT_I8_LANES> =
+                Simd::<i8, FT_I8_LANES>::from_slice(&w[base..base + FT_I8_LANES]).cast();
+            v += wide;
+        }
+        for &f in subs {
+            let base = f as usize * FT_OUT + i * FT_I8_LANES;
+            let wide: Simd<i16, FT_I8_LANES> =
+                Simd::<i8, FT_I8_LANES>::from_slice(&w[base..base + FT_I8_LANES]).cast();
+            v -= wide;
+        }
+        *a = v.to_array();
+    }
+}
+
 /// i16アキュムレータをclipped ReLU（0..127）でu8へ。
 pub fn clip_to_u8(acc: &[i16; FT_OUT], out: &mut [u8]) {
     debug_assert_eq!(out.len(), FT_OUT);

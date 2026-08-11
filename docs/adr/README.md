@@ -170,6 +170,7 @@
 | [0153](0153-superior-repetition-root-gate.md) | 優等・劣等局面の判定を探索経路内に限定する | - | accepted |
 | [0154](0154-sprt-ops.md) | SPRTの実行・監視・後処理を定型化する | - | proposed |
 | [0155](0155-reference-walkthrough.md) | 参照実装との精緻ウォークスルーで見つけた乖離を群で修正する | - | proposed |
+| [0156](0156-bucket-accumulator-cache.md) | 玉位置ごとのaccumulatorキャッシュで全計算を差分に置き換える | - | accepted |
 
 ## バックログ
 
