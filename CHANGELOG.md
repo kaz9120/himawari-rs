@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.35.13](https://github.com/kaz9120/himawari-rs/compare/v0.35.12...v0.35.13) (2026-08-11)
+
+
+### その他の変更
+
+* FTの全計算を玉位置ごとのキャッシュ差分にする（ADR-0156、+2.66% NPS） ([#297](https://github.com/kaz9120/himawari-rs/issues/297)) ([8f3a5ec](https://github.com/kaz9120/himawari-rs/commit/8f3a5ec3d28d6975ac7327ddd09db6cfaeb9052b))
+
 ## [0.35.12](https://github.com/kaz9120/himawari-rs/compare/v0.35.11...v0.35.12) (2026-08-11)
 
 
