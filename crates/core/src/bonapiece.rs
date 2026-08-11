@@ -95,14 +95,6 @@ fn board_base(us_view: bool, pt: PieceType) -> u16 {
     if us_view { f } else { f + 81 }
 }
 
-/// 視点cから見た盤上駒(pc, sq)のBonaPiece。玉には使えない。
-#[inline]
-pub fn board_bona_piece(c: Color, pc: Piece, sq: Square) -> u16 {
-    debug_assert!(pc.piece_type() != PieceType::KING);
-    let sq = if c == Color::Black { sq } else { sq.inv() };
-    board_base(pc.color() == c, pc.piece_type()) + sq.index() as u16
-}
-
 /// 視点cから見た、owner側の手駒ptのi枚目（1始まり）のBonaPiece。
 #[inline]
 pub fn hand_bona_piece(c: Color, owner: Color, pt: PieceType, i: u32) -> u16 {
@@ -110,15 +102,72 @@ pub fn hand_bona_piece(c: Color, owner: Color, pt: PieceType, i: u32) -> u16 {
     hand_base(owner == c, pt) + (i - 1) as u16
 }
 
-/// HalfKPの特徴インデックス: 視点cの自玉位置 × FE_END + BonaPiece。
-#[inline]
-pub fn halfkp_index(c: Color, own_king: Square, bp: u16) -> u32 {
-    let k = if c == Color::Black {
-        own_king
-    } else {
-        own_king.inv()
-    };
-    k.index() as u32 * u32::from(FE_END) + u32::from(bp)
+/// 玉バケットの数（ADR-0157）。盤は左右対称なので、自玉の筋を1〜5へ
+/// 正規化して5筋 × 9段に畳む。
+pub const KING_BUCKETS: usize = 5 * 9;
+
+/// 視点1つ分の特徴インデックスの作り方（ADR-0157）。
+///
+/// **自玉の位置から、盤面を左右反転するかと玉バケットの起点が同時に
+/// 決まる。** 升の反転とバケットの選び方は必ず対で使うので、別々の関数に
+/// 分けず、この型に閉じ込める。片方だけ適用すると静かに壊れる。
+#[derive(Clone, Copy)]
+pub struct View {
+    c: Color,
+    /// 盤面を左右反転するか。自玉の筋が中央より右のときに立つ。
+    mirror: bool,
+    /// バケットの先頭インデックス（バケット番号 × FE_END）。
+    base: u32,
+}
+
+impl View {
+    /// 視点cと、その視点の自玉位置から作る。
+    #[inline]
+    pub fn new(c: Color, own_king: Square) -> View {
+        // 先に視点の向きへ回してから、左右を正規化する
+        let k = if c == Color::Black {
+            own_king
+        } else {
+            own_king.inv()
+        };
+        let mirror = k.file().0 >= 5;
+        let k = if mirror { k.mir() } else { k };
+        debug_assert!(k.file().0 < 5, "玉の筋が正規化されていない");
+        let bucket = u32::from(k.file().0) * 9 + u32::from(k.rank().0);
+        View {
+            c,
+            mirror,
+            base: bucket * u32::from(FE_END),
+        }
+    }
+
+    /// バケットの先頭インデックス。BonaPieceを足せば特徴インデックスになる。
+    #[inline]
+    pub fn base(self) -> u32 {
+        self.base
+    }
+
+    /// 盤上駒(pc, sq)のBonaPiece。玉には使えない。
+    #[inline]
+    pub fn board_bona_piece(self, pc: Piece, sq: Square) -> u16 {
+        debug_assert!(pc.piece_type() != PieceType::KING);
+        let sq = if self.c == Color::Black { sq } else { sq.inv() };
+        let sq = if self.mirror { sq.mir() } else { sq };
+        board_base(pc.color() == self.c, pc.piece_type()) + sq.index() as u16
+    }
+
+    /// owner側の手駒ptのi枚目（1始まり）のBonaPiece。
+    /// 手駒は升を持たないので、左右反転の影響を受けない。
+    #[inline]
+    pub fn hand_bona_piece(self, owner: Color, pt: PieceType, i: u32) -> u16 {
+        hand_bona_piece(self.c, owner, pt, i)
+    }
+
+    /// 盤上駒の特徴インデックス。
+    #[inline]
+    pub fn board_index(self, pc: Piece, sq: Square) -> u32 {
+        self.base + u32::from(self.board_bona_piece(pc, sq))
+    }
 }
 
 #[cfg(test)]
@@ -137,16 +186,20 @@ mod tests {
         assert_eq!(FE_END, 1548);
     }
 
+    /// 玉を5五に置く視点。5筋は左右の正規化で反転しないので、
+    /// 反転そのものを含まない性質だけを見るテストで使う。
+    fn center_view(c: Color) -> View {
+        View::new(c, Square::new(File(4), Rank(4)))
+    }
+
     #[test]
     fn perspective_flip_symmetry() {
         // 先手視点の先手歩@5五 と 後手視点の後手歩@5五(回転で同じ相対位置)
         let sq = Square::new(File(4), Rank(4));
-        let b = board_bona_piece(Color::Black, Piece::new(Color::Black, PieceType::PAWN), sq);
-        let w = board_bona_piece(
-            Color::White,
-            Piece::new(Color::White, PieceType::PAWN),
-            sq.inv(),
-        );
+        let b = center_view(Color::Black)
+            .board_bona_piece(Piece::new(Color::Black, PieceType::PAWN), sq);
+        let w = center_view(Color::White)
+            .board_bona_piece(Piece::new(Color::White, PieceType::PAWN), sq.inv());
         assert_eq!(b, w);
         // 5五の回転は5五
         assert_eq!(sq.inv(), sq);
@@ -155,12 +208,9 @@ mod tests {
     #[test]
     fn promoted_smalls_are_gold() {
         let sq = Square::new(File(0), Rank(0));
-        let gold = board_bona_piece(Color::Black, Piece::new(Color::Black, PieceType::GOLD), sq);
-        let tokin = board_bona_piece(
-            Color::Black,
-            Piece::new(Color::Black, PieceType::PRO_PAWN),
-            sq,
-        );
+        let v = center_view(Color::Black);
+        let gold = v.board_bona_piece(Piece::new(Color::Black, PieceType::GOLD), sq);
+        let tokin = v.board_bona_piece(Piece::new(Color::Black, PieceType::PRO_PAWN), sq);
         assert_eq!(gold, tokin);
     }
 
@@ -187,10 +237,47 @@ mod tests {
     }
 
     #[test]
-    fn halfkp_index_range() {
-        // 最大値: 玉が81升目、BonaPieceがFE_END-1
-        let max = halfkp_index(Color::Black, Square::new(File(8), Rank(8)), FE_END - 1);
-        assert_eq!(max, 80 * u32::from(FE_END) + u32::from(FE_END) - 1);
-        assert!(max < 81 * u32::from(FE_END));
+    fn king_buckets_cover_the_board_without_overflow() {
+        // 81升のどこに玉があっても、バケットは45通りに収まる
+        let mut seen = std::collections::HashSet::new();
+        for i in 0..81u8 {
+            for c in [Color::Black, Color::White] {
+                let v = View::new(c, Square::from_index(i));
+                let bucket = v.base() / u32::from(FE_END);
+                assert!(bucket < KING_BUCKETS as u32, "バケットが範囲外: {bucket}");
+                seen.insert(bucket);
+            }
+        }
+        assert_eq!(seen.len(), KING_BUCKETS, "45バケットすべてが現れる");
+        // 最大の特徴インデックスがFT_INに収まる
+        let max = (KING_BUCKETS as u32) * u32::from(FE_END) - 1;
+        assert_eq!(max, 45 * u32::from(FE_END) - 1);
+    }
+
+    #[test]
+    fn mirrored_kings_share_a_bucket() {
+        // 左右対称の位置にある玉は同じバケットへ落ちる
+        for i in 0..81u8 {
+            let sq = Square::from_index(i);
+            let a = View::new(Color::Black, sq);
+            let b = View::new(Color::Black, sq.mir());
+            assert_eq!(a.base(), b.base(), "鏡像の玉が別バケットになった: {i}");
+        }
+    }
+
+    #[test]
+    fn mirrored_positions_give_identical_features() {
+        // 玉と駒をまとめて左右反転すると、同じ特徴インデックスになる
+        let king = Square::new(File(7), Rank(8));
+        let pc = Piece::new(Color::Black, PieceType::SILVER);
+        for i in 0..81u8 {
+            let sq = Square::from_index(i);
+            if sq == king {
+                continue;
+            }
+            let a = View::new(Color::Black, king).board_index(pc, sq);
+            let b = View::new(Color::Black, king.mir()).board_index(pc, sq.mir());
+            assert_eq!(a, b, "鏡像で特徴が食い違う: 駒={i}");
+        }
     }
 }

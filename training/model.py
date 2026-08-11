@@ -32,7 +32,9 @@ EFFECT_MLP_HIDDEN = 256
 # 利き数の正規化に使う。1升に8枚も利いていれば十分に多い
 EFFECT_SCALE = 8.0
 ARCH = himawari.ARCH
-FE_END = FT_IN // 81
+# 玉バケットの数（ADR-0157）。左右対称な玉位置は同じバケットを共有する
+KING_BUCKETS = himawari.KING_BUCKETS
+FE_END = FT_IN // KING_BUCKETS
 CONCAT = FT_OUT * 2
 
 # Evaluation scale (ADR-0036)
@@ -141,7 +143,9 @@ class NnueModel(nn.Module):
         if self.ft_p is None:
             return w
         virtual = self.ft_p.weight.detach().float()
-        return (w.view(81, FE_END, FT_OUT) + virtual.unsqueeze(0)).view(FT_IN, FT_OUT)
+        return (w.view(KING_BUCKETS, FE_END, FT_OUT) + virtual.unsqueeze(0)).view(
+            FT_IN, FT_OUT
+        )
 
     def transform_both(self, stm_idx, stm_off, opp_idx, opp_off):
         """FT出力を2視点ぶん連結して返す。補助ヘッドもここから生やす。"""
@@ -170,7 +174,7 @@ class NnueModel(nn.Module):
 
         書き出しに使うのは `folded_ft_weight()` の値なので、制約は畳み込み後に
         掛ける必要がある。超過分は実特徴側（`ft`）から引く。仮想特徴（`ft_p`）は
-        81の玉位置で共有されるため、そちらを動かすと無関係な升へ波及する。
+        全ての玉バケットで共有されるため、そちらを動かすと無関係な升へ波及する。
 
         i8で格納すると量子化値が±127に収まらない重みは飽和する。飽和は
         0.055%（1800個に1個）でも-59.3 Eloになる（ADR-0138のリーグ戦）。

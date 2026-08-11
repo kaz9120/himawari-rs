@@ -446,6 +446,7 @@ fn himawari(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(load_hmwr, m)?)?;
     m.add_function(wrap_pyfunction!(load_hmwr_ft, m)?)?;
     m.add("FT_IN", FT_IN)?;
+    m.add("KING_BUCKETS", himawari_core::bonapiece::KING_BUCKETS)?;
     m.add("FT_OUT", FT_OUT)?;
     m.add("L1_OUT", L1_OUT)?;
     m.add("L2_OUT", L2_OUT)?;

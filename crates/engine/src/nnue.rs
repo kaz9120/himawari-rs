@@ -8,6 +8,7 @@
 //! 次元は `build.rs` が環境変数 `HIMAWARI_ARCH` から生成する（ADR-0127）。
 
 use himawari_core::attacks::{attacks, king_attacks};
+use himawari_core::bonapiece::View;
 use himawari_core::{Bitboard, Color, PieceType, Position, Square, bonapiece};
 
 use crate::value::Value;
@@ -20,7 +21,7 @@ pub const CONCAT: usize = FT_OUT * 2;
 /// 評価値スケール（ADR-0036）。
 pub const FV_SCALE: i32 = 16;
 /// HalfKP特徴の総数。
-pub const FT_IN: usize = 81 * bonapiece::FE_END as usize;
+pub const FT_IN: usize = bonapiece::KING_BUCKETS * bonapiece::FE_END as usize;
 
 /// FT重みの格納型（ADR-0036、ADR-0138）。既定はi16で、`HIMAWARI_FT_I8=1`
 /// でビルドするとi8になる。accumulatorとFTバイアスはどちらの場合もi16の
@@ -303,17 +304,17 @@ pub fn effect_labels(pos: &Position) -> ([u8; EFFECT_LEN], [u8; EFFECT_LEN]) {
 /// 盤上は駒のある升だけを走る。81升を舐めると空升の判定が3分の2を
 /// 占め、全計算のほうで列挙が支配的になる（ADR-0156のプロファイル）。
 #[inline]
-pub fn for_each_bona_piece(pos: &Position, c: Color, mut f: impl FnMut(u16)) {
+pub fn for_each_bona_piece(pos: &Position, view: View, mut f: impl FnMut(u16)) {
     let kings = Bitboard::from_square(pos.king(Color::Black))
         | Bitboard::from_square(pos.king(Color::White));
     for sq in pos.occupied() ^ kings {
-        f(bonapiece::board_bona_piece(c, pos.piece_on(sq), sq));
+        f(view.board_bona_piece(pos.piece_on(sq), sq));
     }
     for owner in [Color::Black, Color::White] {
         let hand = pos.hand(owner);
         for pt in PieceType::HAND_KINDS {
             for i in 1..=hand.count(pt) {
-                f(bonapiece::hand_bona_piece(c, owner, pt, i));
+                f(view.hand_bona_piece(owner, pt, i));
             }
         }
     }
@@ -322,9 +323,9 @@ pub fn for_each_bona_piece(pos: &Position, c: Color, mut f: impl FnMut(u16)) {
 /// 視点cのHalfKP活性特徴（玉以外の盤上駒＋両者の持ち駒）を列挙する。
 pub fn halfkp_active(pos: &Position, c: Color, out: &mut Vec<u32>) {
     out.clear();
-    let king = pos.king(c);
-    for_each_bona_piece(pos, c, |bp| {
-        out.push(bonapiece::halfkp_index(c, king, bp));
+    let view = View::new(c, pos.king(c));
+    for_each_bona_piece(pos, view, |bp| {
+        out.push(view.base() + u32::from(bp));
     });
 }
 
@@ -552,6 +553,37 @@ mod tests {
             })
             .collect();
         format!("{} {} {} {}", rows.join("/"), parts[1], parts[2], parts[3])
+    }
+
+    /// 左右反転で評価値が1ビットも動かないこと（ADR-0157）。
+    ///
+    /// 玉位置を45バケットへ畳んだので、鏡像は同じ特徴集合になる。
+    /// **これは学習の結果ではなく構造の性質なので、乱数の重みでも成り立つ。**
+    #[test]
+    fn mirror_lr_invariance() {
+        let net = NnueNetwork::random(43);
+        for seed in 1..=8u64 {
+            let mut rng = Rng(seed.wrapping_mul(0x9E37_79B9_7F4A_7C15));
+            let mut pos = Position::from_sfen(SFEN_STARTPOS).expect("初期局面");
+            for ply in 0..40 {
+                let mut list = MoveList::default();
+                generate_legal(&pos, true, &mut list);
+                if list.is_empty() {
+                    break;
+                }
+                if ply % 5 == 0 {
+                    let mirrored = Position::from_sfen(&mirror_lr_sfen(&pos)).expect("鏡像のsfen");
+                    assert_eq!(
+                        evaluate_scalar(&net, &pos),
+                        evaluate_scalar(&net, &mirrored),
+                        "左右反転で評価が動いた: {}",
+                        pos.to_sfen()
+                    );
+                }
+                let m = list.as_slice()[(rng.next() % list.len() as u64) as usize];
+                pos.do_move(m);
+            }
+        }
     }
 
     /// 左右反転で評価値がどれだけ動くかを測る（ADR-0157の先行指標）。

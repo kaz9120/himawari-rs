@@ -132,7 +132,7 @@ fn read_u32(r: &mut impl Read) -> Result<u32, String> {
 }
 
 /// リトルエンディアンのバイト列リーダ。独自形式と互換ローダ
-/// （nnue_compat）で共用する。
+/// で共用する。
 pub(crate) struct Cursor<'a> {
     body: &'a [u8],
     off: usize,
@@ -152,14 +152,6 @@ impl<'a> Cursor<'a> {
         let s = &self.body[self.off..end];
         self.off = end;
         Ok(s)
-    }
-
-    pub(crate) fn u32(&mut self) -> Result<u32, String> {
-        Ok(u32::from_le_bytes(self.take(4)?.try_into().unwrap()))
-    }
-
-    pub(crate) fn bytes(&mut self, n: usize) -> Result<&'a [u8], String> {
-        self.take(n)
     }
 
     pub(crate) fn i16v(&mut self, n: usize) -> Result<Vec<i16>, String> {

@@ -5,7 +5,8 @@
 //! 差分を適用する。自玉が動いた視点は全計算（refresh）する。
 //! 正しさの基準はnnue::evaluate_scalarとの完全一致。
 
-use himawari_core::{Color, DirtyPiece, PieceType, Position, Square, bonapiece};
+use himawari_core::bonapiece::{FE_END, KING_BUCKETS, View};
+use himawari_core::{Color, DirtyPiece, PieceType, Position, Square};
 
 use crate::nnue::{self, CONCAT, FT_OUT, FtWeight, NnueNetwork};
 use crate::nnue_simd;
@@ -57,10 +58,11 @@ impl AccEntry {
 const MAX_ENTRIES: usize = MAX_PLY + 16;
 
 /// BonaPieceの集合を持つビットセットの語数。
-const BP_WORDS: usize = (bonapiece::FE_END as usize).div_ceil(64);
+const BP_WORDS: usize = (FE_END as usize).div_ceil(64);
 
-/// 玉位置ごとのキャッシュの件数（視点色 × 玉の81升）。
-const FINNY_ENTRIES: usize = 2 * 81;
+/// 玉位置ごとのキャッシュの件数（視点色 × 玉バケット）。
+/// 左右対称な玉位置は同じバケットを共有する（ADR-0157）。
+const FINNY_ENTRIES: usize = 2 * KING_BUCKETS;
 
 /// 玉位置ごとのaccumulatorキャッシュ1件（ADR-0156）。
 ///
@@ -237,8 +239,9 @@ impl NnueState {
     /// 段 `from` から `to` まで、視点cの差分を1段ずつ適用する。
     /// `from` は計算済みで、`from+1..=to` を埋める。
     fn apply_range(&mut self, net: &NnueNetwork, pos: &Position, c: Color, from: usize, to: usize) {
-        // この区間に視点cの玉移動はないので、玉位置は現局面のもので通る
-        let king = pos.king(c);
+        // この区間に視点cの玉移動はないので、視点は現局面のもので通る。
+        // 左右の正規化も玉位置から決まるので、同じ理由で区間内は一定である
+        let view = View::new(c, pos.king(c));
         for j in from + 1..=to {
             let (before, after) = self.entries.split_at_mut(j);
             let prev = &before[j - 1];
@@ -246,7 +249,7 @@ impl NnueState {
             let e = &mut after[0];
             // 借用が分かれているので、親のaccを読みながら直接書ける。
             // 複製と足し引きを1パスに融合する（ADR-0151群A）
-            let rows = diff_rows(net, [(c, king)], &e.dirty, e.hand);
+            let rows = diff_rows(net, [view], &e.dirty, e.hand);
             apply_rows([&mut e.acc[c.index()]], [&prev.acc[c.index()]], &rows);
             e.computed[c.index()] = true;
         }
@@ -256,8 +259,8 @@ impl NnueState {
     /// デコードが1回で済み、accへの読み書きが2本のストリームで並ぶ。
     fn apply_range_both(&mut self, net: &NnueNetwork, pos: &Position, from: usize, to: usize) {
         let views = [
-            (Color::Black, pos.king(Color::Black)),
-            (Color::White, pos.king(Color::White)),
+            View::new(Color::Black, pos.king(Color::Black)),
+            View::new(Color::White, pos.king(Color::White)),
         ];
         for j in from + 1..=to {
             let (before, after) = self.entries.split_at_mut(j);
@@ -283,12 +286,12 @@ impl NnueState {
     /// キャッシュが空のときは、バイアスを置いて全特徴を足す形になり、
     /// 従来の全計算と同じ経路をたどる。
     fn refresh_top(&mut self, net: &NnueNetwork, pos: &Position, c: Color) {
-        let king = pos.king(c);
-        // 玉位置を固定した特徴インデックスの起点。BonaPieceを足せば
+        let view = View::new(c, pos.king(c));
+        // 玉バケットを固定した特徴インデックスの起点。BonaPieceを足せば
         // そのまま特徴インデックスになる
-        let base = bonapiece::halfkp_index(c, king, 0);
+        let base = view.base();
         let mut cur = [0u64; BP_WORDS];
-        nnue::for_each_bona_piece(pos, c, |bp| {
+        nnue::for_each_bona_piece(pos, view, |bp| {
             cur[bp as usize / 64] |= 1u64 << (bp % 64);
         });
 
@@ -296,7 +299,7 @@ impl NnueState {
         // 戻す。takeは空Vecとの交換なので確保は起きず、容量も残る
         let mut s = std::mem::take(&mut self.scratch);
         let mut finny = std::mem::take(&mut self.finny);
-        let e = &mut finny[c.index() * 81 + king.index()];
+        let e = &mut finny[c.index() * KING_BUCKETS + (base / u32::from(FE_END)) as usize];
         if !e.valid {
             e.acc.copy_from_slice(&net.ft_b[..FT_OUT]);
             e.bits = [0; BP_WORDS];
@@ -378,10 +381,10 @@ struct DiffRows<'a, const V: usize> {
 }
 
 /// entry1つぶんの差分から、引く行と足す行を視点ごとに集める。
-/// `views` は視点色と、その視点の玉位置の組である。
+/// `views` は視点ごとの特徴インデックスの作り方（ADR-0157）である。
 fn diff_rows<'a, const V: usize>(
     net: &'a NnueNetwork,
-    views: [(Color, Square); V],
+    views: [View; V],
     dirty: &DirtyPiece,
     hand: Option<HandDelta>,
 ) -> DiffRows<'a, V> {
@@ -393,8 +396,7 @@ fn diff_rows<'a, const V: usize>(
         na: 0,
     };
     let row = |k: usize, bp: u16| -> &'a [FtWeight] {
-        let (c, king) = views[k];
-        let idx = bonapiece::halfkp_index(c, king, bp) as usize * FT_OUT;
+        let idx = (views[k].base() + u32::from(bp)) as usize * FT_OUT;
         &net.ft_w[idx..idx + FT_OUT]
     };
     let push = |r: &mut DiffRows<'a, V>, rows: [&'a [FtWeight]; V], add: bool| {
@@ -411,25 +413,19 @@ fn diff_rows<'a, const V: usize>(
         let old = dirty.piece_old[j];
         let from = dirty.from[j];
         if from != Square::NONE && !old.is_empty() && old.piece_type() != PieceType::KING {
-            let rows =
-                std::array::from_fn(|k| row(k, bonapiece::board_bona_piece(views[k].0, old, from)));
+            let rows = std::array::from_fn(|k| row(k, views[k].board_bona_piece(old, from)));
             push(&mut r, rows, false);
         }
         let new = dirty.piece_new[j];
         let to = dirty.to[j];
         if to != Square::NONE && !new.is_empty() && new.piece_type() != PieceType::KING {
-            let rows =
-                std::array::from_fn(|k| row(k, bonapiece::board_bona_piece(views[k].0, new, to)));
+            let rows = std::array::from_fn(|k| row(k, views[k].board_bona_piece(new, to)));
             push(&mut r, rows, true);
         }
     }
     if let Some(hd) = hand {
-        let rows = std::array::from_fn(|k| {
-            row(
-                k,
-                bonapiece::hand_bona_piece(views[k].0, hd.owner, hd.kind, hd.slot),
-            )
-        });
+        let rows =
+            std::array::from_fn(|k| row(k, views[k].hand_bona_piece(hd.owner, hd.kind, hd.slot)));
         push(&mut r, rows, hd.added);
     }
     r
