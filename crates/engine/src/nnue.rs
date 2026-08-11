@@ -528,6 +528,113 @@ mod tests {
         }
     }
 
+    /// 左右反転したsfen。行の順序も手番も手駒も変えず、各行の升だけ
+    /// 逆順にする。将棋の駒の動きは左右対称なので、この像は元の局面と
+    /// 同じ強さのはずである。
+    fn mirror_lr_sfen(pos: &Position) -> String {
+        let sfen = pos.to_sfen();
+        let parts: Vec<&str> = sfen.split(' ').collect();
+        let rows: Vec<String> = parts[0]
+            .split('/')
+            .map(|row| {
+                let mut cells: Vec<String> = Vec::new();
+                let mut chars = row.chars();
+                while let Some(ch) = chars.next() {
+                    if ch == '+' {
+                        let p = chars.next().expect("成駒の駒種がない");
+                        cells.push(format!("+{p}"));
+                    } else {
+                        cells.push(ch.to_string());
+                    }
+                }
+                cells.reverse();
+                cells.concat()
+            })
+            .collect();
+        format!("{} {} {} {}", rows.join("/"), parts[1], parts[2], parts[3])
+    }
+
+    /// 左右反転で評価値がどれだけ動くかを測る（ADR-0157の先行指標）。
+    ///
+    /// HalfKPは玉位置を81通りそのまま持つので、左右対称性は構造では
+    /// 保証されず、学習で獲得するしかない。**獲得できていない量が、
+    /// 特徴側でミラーを畳む改造の伸びしろになる。**
+    ///
+    /// 現行ネットが要るので既定では走らせない。
+    /// `EVAL_FILE=... cargo test --release -p himawari-engine -- --ignored --nocapture mirror_lr_gap`
+    #[test]
+    #[ignore = "現行ネットが要る調査（ADR-0157）"]
+    fn mirror_lr_gap() {
+        let path = std::env::var("EVAL_FILE").expect("EVAL_FILE を指定する");
+        let f = std::fs::File::open(&path).expect("EVAL_FILEを開けない");
+        let mut r = std::io::BufReader::new(f);
+        let (net, _) = crate::nnue_io::load(&mut r).expect("ネットを読めない");
+
+        // SFEN_FILEを渡すとその局面集で測る。渡さないとランダムに進めた
+        // 局面で測る。教師データの分布から離れるほど評価は荒れるので、
+        // 実戦的な局面集での値を正とする
+        let sfens: Vec<String> = match std::env::var("SFEN_FILE") {
+            Ok(p) => std::fs::read_to_string(&p)
+                .expect("SFEN_FILEを読めない")
+                .lines()
+                .filter(|l| !l.trim().is_empty())
+                .map(|l| l.trim_start_matches("sfen ").to_string())
+                .collect(),
+            Err(_) => Vec::new(),
+        };
+
+        let mut rng = Rng(0xDEAD_BEEF_1234_5678);
+        let mut gaps: Vec<i32> = Vec::new();
+        let mut scores: Vec<i32> = Vec::new();
+        let count = if sfens.is_empty() {
+            2000
+        } else {
+            sfens.len().min(20000)
+        };
+        for i in 0..count {
+            let pos = if sfens.is_empty() {
+                let mut pos = Position::from_sfen(SFEN_STARTPOS).expect("初期局面");
+                let plies = 20 + rng.next() % 80;
+                for _ in 0..plies {
+                    let mut list = MoveList::default();
+                    generate_legal(&pos, true, &mut list);
+                    if list.is_empty() {
+                        break;
+                    }
+                    let m = list.as_slice()[(rng.next() % list.len() as u64) as usize];
+                    pos.do_move(m);
+                }
+                pos
+            } else {
+                Position::from_sfen(&sfens[i]).expect("SFEN_FILEの局面が壊れている")
+            };
+            let mirrored =
+                Position::from_sfen(&mirror_lr_sfen(&pos)).expect("鏡像のsfenが壊れている");
+            let a = evaluate_scalar(&net, &pos);
+            let b = evaluate_scalar(&net, &mirrored);
+            gaps.push((a - b).abs());
+            scores.push(a.abs());
+        }
+        gaps.sort_unstable();
+        scores.sort_unstable();
+        let pick = |v: &[i32], q: f64| v[((v.len() - 1) as f64 * q) as usize];
+        let mean = |v: &[i32]| v.iter().map(|&x| i64::from(x)).sum::<i64>() / v.len() as i64;
+        // 歩=90スケール（ADR-0036）
+        println!(
+            "左右ミラーの評価差（歩=90）: 平均{} 中央{} p90={} p99={} 最大{}",
+            mean(&gaps),
+            pick(&gaps, 0.5),
+            pick(&gaps, 0.9),
+            pick(&gaps, 0.99),
+            gaps[gaps.len() - 1]
+        );
+        println!(
+            "比較用の評価値の規模: 平均|score|={} 中央={}",
+            mean(&scores),
+            pick(&scores, 0.5)
+        );
+    }
+
     /// 手番視点の升へ回す。テスト側でも同じ変換を持ち、実装と突き合わせる。
     fn view_index(sq: Square, stm: Color) -> usize {
         if stm == Color::Black {
