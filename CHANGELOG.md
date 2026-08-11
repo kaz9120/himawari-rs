@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.35.12](https://github.com/kaz9120/himawari-rs/compare/v0.35.11...v0.35.12) (2026-08-11)
+
+
+### ドキュメント
+
+* ADR-0155群1最小形の棄却を記録し群1〜3を閉じる ([#295](https://github.com/kaz9120/himawari-rs/issues/295)) ([a5b04e5](https://github.com/kaz9120/himawari-rs/commit/a5b04e55bc6e72e3628702cbec8b2f8aae6c0d40))
+
 ## [0.35.11](https://github.com/kaz9120/himawari-rs/compare/v0.35.10...v0.35.11) (2026-08-11)
 
 
