@@ -171,7 +171,7 @@
 | [0154](0154-sprt-ops.md) | SPRTの実行・監視・後処理を定型化する | - | proposed |
 | [0155](0155-reference-walkthrough.md) | 参照実装との精緻ウォークスルーで見つけた乖離を群で修正する | - | proposed |
 | [0156](0156-bucket-accumulator-cache.md) | 玉位置ごとのaccumulatorキャッシュで全計算を差分に置き換える | - | accepted |
-| [0157](0157-king-mirror-buckets.md) | HalfKPの玉位置を左右ミラーで45バケットへ畳む | - | proposed |
+| [0157](0157-king-mirror-buckets.md) | HalfKPの玉位置を左右ミラーで45バケットへ畳む | - | rejected |
 
 ## バックログ
 
