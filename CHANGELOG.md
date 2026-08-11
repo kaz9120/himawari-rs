@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.35.14](https://github.com/kaz9120/himawari-rs/compare/v0.35.13...v0.35.14) (2026-08-11)
+
+
+### ドキュメント
+
+* ADR-0156にFT幅ごとの取り分の実測を追記する ([#299](https://github.com/kaz9120/himawari-rs/issues/299)) ([b39b1cf](https://github.com/kaz9120/himawari-rs/commit/b39b1cfa0fb3fdb5606bc41816e08f349c50963f))
+
 ## [0.35.13](https://github.com/kaz9120/himawari-rs/compare/v0.35.12...v0.35.13) (2026-08-11)
 
 
