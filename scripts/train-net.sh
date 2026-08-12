@@ -39,6 +39,7 @@ training/runs/registry.tsv へ積む。
   TRAIN_DEVICE     既定 cpu
   TRAIN_SEED       既定 0
   TRAIN_NOTES      台帳へ書く備考
+  TRAIN_EXTRA_ARGS train.pyへそのまま渡す追加引数（例: --mirror-factor）
 USAGE
 }
 
@@ -101,6 +102,14 @@ if [[ -n "${TRAIN_INIT_CKPT:-}" ]]; then
 	log_info "初期値    : ${TRAIN_INIT_CKPT}（継続学習、peak_lr ${PEAK_LR}）"
 fi
 
+# 実験ごとの追加引数。既定に無いフラグを試すときに使う（ADR-0158の
+# --mirror-factor など）。空白区切りで複数渡せる
+EXTRA_ARGS=()
+if [[ -n "${TRAIN_EXTRA_ARGS:-}" ]]; then
+	read -r -a EXTRA_ARGS <<<"${TRAIN_EXTRA_ARGS}"
+	log_info "追加引数  : ${TRAIN_EXTRA_ARGS}"
+fi
+
 run_logged "$NAME" python3 training/train.py \
 	--data "$DATA" \
 	--valid "$VALID" \
@@ -115,4 +124,5 @@ run_logged "$NAME" python3 training/train.py \
 	--name "$NAME" \
 	--notes "${TRAIN_NOTES:-${DATA} で学習（ADR-0149のtrain-net.sh）}" \
 	${INIT_ARGS[@]+"${INIT_ARGS[@]}"} \
-	${LR_ARGS[@]+"${LR_ARGS[@]}"}
+	${LR_ARGS[@]+"${LR_ARGS[@]}"} \
+	${EXTRA_ARGS[@]+"${EXTRA_ARGS[@]}"}
