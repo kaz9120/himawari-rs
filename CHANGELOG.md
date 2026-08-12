@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.35.16](https://github.com/kaz9120/himawari-rs/compare/v0.35.15...v0.35.16) (2026-08-12)
+
+
+### ドキュメント
+
+* 左右ミラーの2案を棄却として記録する（ADR-0157・0158） ([#304](https://github.com/kaz9120/himawari-rs/issues/304)) ([86a6839](https://github.com/kaz9120/himawari-rs/commit/86a6839729f45236fca038fbf0871e20e27bf1c4))
+
 ## [0.35.15](https://github.com/kaz9120/himawari-rs/compare/v0.35.14...v0.35.15) (2026-08-11)
 
 
