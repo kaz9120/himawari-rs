@@ -172,6 +172,7 @@
 | [0155](0155-reference-walkthrough.md) | 参照実装との精緻ウォークスルーで見つけた乖離を群で修正する | - | proposed |
 | [0156](0156-bucket-accumulator-cache.md) | 玉位置ごとのaccumulatorキャッシュで全計算を差分に置き換える | - | accepted |
 | [0157](0157-king-mirror-buckets.md) | HalfKPの玉位置を左右ミラーで45バケットへ畳む | - | rejected |
+| [0158](0158-mirror-factorizer.md) | 学習時だけ左右ミラーの仮想特徴を併用する | - | rejected |
 
 ## バックログ
 
