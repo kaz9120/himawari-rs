@@ -174,6 +174,7 @@
 | [0157](0157-king-mirror-buckets.md) | HalfKPの玉位置を左右ミラーで45バケットへ畳む | - | rejected |
 | [0158](0158-mirror-factorizer.md) | 学習時だけ左右ミラーの仮想特徴を併用する | - | rejected |
 | [0159](0159-ft-width-1024.md) | FT幅を1024へ拡大する | - | proposed |
+| [0160](0160-revisit-rejected-under-better-eval.md) | 評価の精度が上がった前提で、棄却した参照追従を測り直す | - | proposed |
 
 ## バックログ
 
