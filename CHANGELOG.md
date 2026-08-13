@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.35.17](https://github.com/kaz9120/himawari-rs/compare/v0.35.16...v0.35.17) (2026-08-13)
+
+
+### ドキュメント
+
+* FT幅1024の測定を記録し、次の一手をADR-0160に起票する ([#306](https://github.com/kaz9120/himawari-rs/issues/306)) ([8389d6b](https://github.com/kaz9120/himawari-rs/commit/8389d6b417309527b8a4cec6a291f5e76598012c))
+
 ## [0.35.16](https://github.com/kaz9120/himawari-rs/compare/v0.35.15...v0.35.16) (2026-08-12)
 
 
