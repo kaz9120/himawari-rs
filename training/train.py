@@ -465,9 +465,27 @@ def main():
         if scheduler_ft is not None and ckpt["scheduler_ft"] is not None:
             scheduler_ft.load_state_dict(ckpt["scheduler_ft"])
         step = ckpt["step"]
-        start_epoch = ckpt["epoch"]
         best_valid = ckpt.get("best_valid", float("inf"))
         best_step = ckpt.get("best_step", 0)
+        # **エポック内の位置も戻す（ADR-0159）。** stepだけ戻して
+        # エポックを頭から回すと、schedulerが復元した値から進むので
+        # cosineの終端を越えて学習率が再上昇する。epochs=1が既定の
+        # 本エンジンでは、この経路が常に壊れていた（ADR-0158で発覚）
+        start_epoch = step // steps_per_epoch
+        skip = step % steps_per_epoch
+        if hasattr(train_loader, "skip_batches"):
+            train_loader.epoch = start_epoch
+            train_loader.skip_batches = skip
+            print(
+                f"再開位置: epoch {start_epoch} のバッチ {skip}/{steps_per_epoch} から",
+                file=sys.stderr,
+            )
+        elif skip:
+            print(
+                f"警告: このローダはエポック途中からの再開に対応していない"
+                f"（{skip}バッチぶんを重複して学習する）",
+                file=sys.stderr,
+            )
 
     print(
         f"学習データ: {data_n}局面 × {args.epochs}エポック, "
