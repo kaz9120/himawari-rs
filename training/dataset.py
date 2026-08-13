@@ -74,6 +74,10 @@ class PsvBatchLoader:
         self.seed = seed
         self.prefetch = prefetch
         self.epoch = 0
+        # 再開時にエポック内で読み飛ばすバッチ数（ADR-0159）。1回の
+        # __iter__ でだけ効く。バッチの並びは seed と epoch で決まるので、
+        # 同じ数だけ飛ばせば中断した位置から続けられる
+        self.skip_batches = 0
         if mmap:
             self.data = np.memmap(path, dtype=np.uint8, mode="r", shape=(self.n, 40))
         else:
@@ -120,11 +124,18 @@ class PsvBatchLoader:
     def __iter__(self):
         rng = np.random.default_rng(self.seed + self.epoch)
         self.epoch += 1
+        skip = self.skip_batches
+        self.skip_batches = 0
         q = queue.Queue(maxsize=self.prefetch)
 
         def produce():
             try:
-                for raw in self._raw_batches(rng):
+                for i, raw in enumerate(self._raw_batches(rng)):
+                    # 読み飛ばす区間も生成器は回す。チャンクのシャッフルが
+                    # 乱数の状態を進めるので、飛ばすと以降の並びがずれる。
+                    # 特徴抽出だけを省くので、ここは読むだけで済む
+                    if i < skip:
+                        continue
                     q.put(self._extract(raw))
             except Exception as e:  # 生産側の例外を消費側へ伝える
                 q.put(e)
@@ -168,6 +179,10 @@ class GeneratedBatchLoader:
         self.max_plies = max_plies
         self.prefetch = prefetch
         self.epoch = 0
+        # 再開時にエポック内で読み飛ばすバッチ数（ADR-0159）。1回の
+        # __iter__ でだけ効く。バッチの並びは seed と epoch で決まるので、
+        # 同じ数だけ飛ばせば中断した位置から続けられる
+        self.skip_batches = 0
         # バッチの通し番号。エポックをまたいで進めるので、同じ乱数列は
         # 二度使わない。序盤の数手だけは playout の作りから必ず重なる
         self.cursor = 0
