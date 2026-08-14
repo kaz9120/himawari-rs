@@ -3,9 +3,10 @@
 学習に使う教師データの所在・形式・前処理手順を持つ。データ本体はリポジトリに
 含めない（`data/` はgitignore）。
 
-**公開データの供給は尽きている。** hao_depth9は2026-08-04に3グループすべてを
-取得し、使い切りになった（[ADR-0135](adr/0135-teacher-data-3b.md)）。次の増量は
-自前生成しかない（[ADR-0144](adr/0144-selfplay-teacher-loop.md)）。
+**利用中のhao_depth9は使い切った。** 2026-08-04に3グループすべてを取得済みで、
+このデータセットからこれ以上は増やせない（[ADR-0135](adr/0135-teacher-data-3b.md)）。
+別系統のデータは[下の未取得候補](#未取得候補)にあるが、次の増量の本命は自前生成に
+なる（[ADR-0144](adr/0144-selfplay-teacher-loop.md)）。
 
 ## 利用中: nodchip/shogi_hao_depth9
 
@@ -34,31 +35,32 @@
 取得から加工まで `scripts/fetch-dataset.sh all` の1本で通る。中で何が起きるかを
 知りたいとき、または途中から回すときは以下を読む。
 
-**1. 全体シャッフル。** start_time=1695340981のthread_index=023を除く380ファイルを
-`psv shuffle` にかける。2パスのバケット法で動くため、RAMに載らない規模でも通る。
+1. 全体をシャッフルする。start_time=1695340981のthread_index=023を除く
+   380ファイルが対象になる。2パスのバケット法で動くため、RAMに載らない
+   規模でも通る。
 
-```sh
-cd data/raw/hao_depth9
-FILES=$(ls | grep -v "start_time=1695340981.thread_index=023" | paste -sd, -)
-psv shuffle --in "$FILES" --out ../../train/train_2990M.psv --seed 42
-```
+   ```sh
+   cd data/raw/hao_depth9
+   FILES=$(ls | grep -v "start_time=1695340981.thread_index=023" | paste -sd, -)
+   psv shuffle --in "$FILES" --out ../../train/train_2990M.psv --seed 42
+   ```
 
-**2. 検証データは valid_385M.psv を据え置く**（1695340981の023由来）。
-halfkp_180M・halfkp_370M・halfkp_1900Mのvalid lossと直接比べるためである。
+2. 検証データは `valid_385M.psv`（1695340981の023由来）を据え置く。
+   halfkp_180M・halfkp_370M・halfkp_1900Mのvalid lossと直接比べるためである。
 
-**3. 教師局面の静止化**（[ADR-0136](adr/0136-quiet-teacher-positions.md)）。
-hao_depth9は駒の取り合いの途中の局面へ収束後の探索値が付いている。1手だけ
-進める設定で置換率は36.15%、29.9億で7.0時間かかる。
+3. 教師局面を静止化する（[ADR-0136](adr/0136-quiet-teacher-positions.md)）。
+   hao_depth9は駒の取り合いの途中の局面へ、収束後の探索値が付いている。
+   1手だけ進める設定で置換率は36.15%、29.9億で7.0時間かかる。
 
-```sh
-psv quiet --in data/train/train_2990M.psv \
-          --out data/train/train_2990M_q1.psv \
-          --max-plies 1 --eval-file data/nets/<現行ネット>.hmwr.best
-```
+   ```sh
+   psv quiet --in data/train/train_2990M.psv \
+             --out data/train/train_2990M_q1.psv \
+             --max-plies 1 --eval-file data/nets/<現行ネット>.hmwr.best
+   ```
 
-**4. 検証集合も同じ設定で静止化する。** 学習データと土俵を揃えないと、best
-checkpointの選択が歪む。非静止の検証集合で測った値は、静止化したネットには
-不利に出る。この罠で改善を捨てかけた実例がADR-0136にある。
+4. 検証集合も同じ設定で静止化する。学習データと土俵を揃えないと、best
+   checkpointの選択が歪む。非静止の検証集合で測った値は、静止化したネットには
+   不利に出る。この罠で改善を捨てかけた実例がADR-0136にある。
 
 ### 現行ネットの学習条件
 
