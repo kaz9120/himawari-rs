@@ -53,6 +53,7 @@
 - [0125](0125-search-decomposition.md) 探索本体を責務ごとに切り出す
 - [0155](0155-reference-walkthrough.md) 残った乖離の監査と、整列を見送った判断
 - [0160](0160-revisit-rejected-under-better-eval.md) 棄却済みの追従を掘り起こす案（導入済みと判明して棄却）
+- [0162](0162-parallel-group.md) 並列の未測定3件を1群で測る（TTの手番分割は見送り）
 
 ### 評価関数（NNUE）
 
@@ -255,6 +256,7 @@
 | [0159](0159-ft-width-1024.md) | FT幅を1024へ拡大する | 2026-08-12 |  | proposed |
 | [0160](0160-revisit-rejected-under-better-eval.md) | 棄却した参照追従を1群にまとめて測り直す | 2026-08-13 |  | rejected |
 | [0161](0161-hide-docs-chore-from-changelog.md) | docsとchoreをCHANGELOGから外し、バージョンを動かさない | 2026-08-14 |  | accepted |
+| [0162](0162-parallel-group.md) | 並列の未測定3件を1群で測り、TTの手番分割は見送る | 2026-08-14 |  | proposed |
 | [0163](0163-sprt-hypothesis-choice.md) | 変更の性質でSPRTの対立仮説を着手時に決める | 2026-08-15 |  | proposed |
 
 ## バックログ
