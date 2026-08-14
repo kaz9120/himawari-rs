@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.36.0](https://github.com/kaz9120/himawari-rs/compare/v0.35.20...v0.36.0) (2026-08-14)
+
+
+### 棋力向上
+
+* pawn/correction historyを全スレッドで共有する（ADR-0162） ([f72c3ac](https://github.com/kaz9120/himawari-rs/commit/f72c3ac6cef8447cd80bc935f0ffd03a168b25a1))
+
 ## [0.35.20](https://github.com/kaz9120/himawari-rs/compare/v0.35.19...v0.35.20) (2026-08-14)
 
 
