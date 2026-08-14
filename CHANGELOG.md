@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.35.20](https://github.com/kaz9120/himawari-rs/compare/v0.35.19...v0.35.20) (2026-08-14)
+
+
+### ドキュメント
+
+* CLAUDE.mdへ測定と文書の規律を書き足す ([#312](https://github.com/kaz9120/himawari-rs/issues/312)) ([96884f8](https://github.com/kaz9120/himawari-rs/commit/96884f855f4acc0cc2ff63e4fe5959e8f1902c45))
+
 ## [0.35.19](https://github.com/kaz9120/himawari-rs/compare/v0.35.18...v0.35.19) (2026-08-14)
 
 
