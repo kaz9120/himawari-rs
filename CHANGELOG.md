@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.35.18](https://github.com/kaz9120/himawari-rs/compare/v0.35.17...v0.35.18) (2026-08-14)
+
+
+### ドキュメント
+
+* FT1024を保留し、ADR-0160を群単位の参照追従へ書き直す ([#308](https://github.com/kaz9120/himawari-rs/issues/308)) ([cdb9f5f](https://github.com/kaz9120/himawari-rs/commit/cdb9f5fb56969282a02e1b44d1ed985947679d5b))
+
 ## [0.35.17](https://github.com/kaz9120/himawari-rs/compare/v0.35.16...v0.35.17) (2026-08-13)
 
 
