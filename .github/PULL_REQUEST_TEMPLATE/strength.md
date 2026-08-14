@@ -33,7 +33,7 @@ elo0=0 elo1=5 alpha=0.05 beta=0.05
 | LLR | |
 | 判定 | H1 / H0 / 打ち切り |
 
-コミットに付けるトレーラ（ADR-0069）:
+コミットに付けるトレーラ（ADR-0071）:
 
 ```
 SPRT: <Elo> [<CI下限>,<CI上限>] <対局数>games <H0|H1>
@@ -41,10 +41,10 @@ SPRT: <Elo> [<CI下限>,<CI上限>] <対局数>games <H0|H1>
 
 ## チェック
 
+- [ ] SPRTの前に機能検証を行った（固定深さでノード数が変わることを確認。ADR-0074）
 - [ ] CIが緑
 - [ ] SPRTでH1採択（これがマージ条件。ADR-0070）
 - [ ] コミットの型は `feat`、件名にEloを入れた（ADR-0071）
-- [ ] RESULTS.mdへ結果を追記した（append-only）
-- [ ] 設計判断があればADRを起草し、acceptedにした
+- [ ] 結果をADRへ記録した（ADRがなければ起草する）
 
 バージョンはrelease-pleaseが上げる。`Cargo.toml` は触らない。
