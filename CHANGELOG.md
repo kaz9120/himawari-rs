@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.35.19](https://github.com/kaz9120/himawari-rs/compare/v0.35.18...v0.35.19) (2026-08-14)
+
+
+### ドキュメント
+
+* ドキュメントを実態に合わせて全面的に見直す ([#310](https://github.com/kaz9120/himawari-rs/issues/310)) ([f76daa0](https://github.com/kaz9120/himawari-rs/commit/f76daa0220a0d727ff76f8245e55aa3decdde5d1))
+
 ## [0.35.18](https://github.com/kaz9120/himawari-rs/compare/v0.35.17...v0.35.18) (2026-08-14)
 
 
