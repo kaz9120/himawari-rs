@@ -307,7 +307,7 @@ fn spawn_worker(
     let handle = std::thread::spawn(move || {
         // スレッドローカル状態（対局を通じて保持。ADR-0020, 0109）。
         // 約100MiBあるので、goごとに作り直さずWorkerへ渡して回収する
-        let mut hist = Histories::default();
+        let mut hist = Histories::new(Arc::clone(&shared.hists));
         // goをまたぐ記憶（G9）。参照実装がSearchManagerに置く値で、
         // 対局開始時にだけクリアする
         let mut memory = MainMemory::default();
@@ -327,6 +327,11 @@ fn spawn_worker(
                 Job::Quit => break,
                 Job::NewGame => {
                     hist.clear();
+                    // 共有分は全スレッドで同じ表なので、メインだけが消す
+                    // （ADR-0162）
+                    if is_main {
+                        shared.hists.clear();
+                    }
                     memory = MainMemory::default();
                 }
                 Job::Search(j) => {
@@ -551,7 +556,8 @@ impl ThreadPool {
         net: Option<(String, Arc<NnueNetwork>)>,
         on_line: OnLine,
     ) -> ThreadPool {
-        let shared = Arc::new(Shared::new(hash_mb));
+        // 共有historyの表はスレッド数に比例させる（ADR-0162）
+        let shared = Arc::new(Shared::with_threads(hash_mb, threads.max(1)));
         let ponder = Arc::new(PonderCtl {
             state: Mutex::new(PonderState::None),
             cv: Condvar::new(),
