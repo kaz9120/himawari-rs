@@ -1,6 +1,6 @@
 # 0161: docsとchoreをCHANGELOGから外し、バージョンを動かさない
 
-- Status: proposed
+- Status: accepted
 - Date: 2026-08-14
 - 関連ADR: [0068](0068-sprt-driven-versioning.md), [0071](0071-release-please.md)
 
@@ -93,6 +93,19 @@ compareリンクから辿れる。CHANGELOGに再掲する読み手がいない�
 本ADRを入れるPRは `chore` と `docs` だけで構成されるので、そのマージで
 そのまま確認できる。リリースPRが作られなければacceptedにする。
 作られてしまったら案Bへ移り、日次のcronで頻度を抑える。
+
+確認できた。#314のマージ後に走ったrelease-pleaseはリリースPRを作らず、
+後続のCargo.lock同期とauto-mergeもスキップした。
+
+```
+✔ Building candidate release pull request for path: .
+✔ No user facing commits found since 260db242 - skipping
+```
+
+`hidden: true` はCHANGELOGから外すだけでなく、その型しかない期間の
+リリースを止める。ログの文言（user facing）が示すとおり、release-please
+にとって「CHANGELOGへ載る変更」と「リリースする理由のある変更」は同義で
+ある。案Bは要らない。
 
 ## Consequences
 
