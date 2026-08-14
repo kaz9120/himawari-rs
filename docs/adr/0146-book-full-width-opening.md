@@ -1,6 +1,6 @@
 # 0146: 定跡の浅い層を全合法手で埋める
 
-- Status: proposed
+- Status: accepted
 - Date: 2026-08-08
 - 関連ADR: [0063](0063-book-loader-and-mini-book.md), [0119](0119-g10-book.md), [0121](0121-book-scale-up.md)
 

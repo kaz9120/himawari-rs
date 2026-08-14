@@ -2,7 +2,7 @@
 
 - Status: accepted
 - Date: 2026-08-02
-- 関連ADR: [0034](0034-nnue-architecture.md), [0064](0064-dense-ft-gradient.md), [0066](0066-feature-factorizer.md), [0120](0120-after-parity.md), [0126](0126-mate-score-in-training.md), [0127](0127-net-shape-bench.md)
+- 関連ADR: [0034](0034-nnue-architecture.md), [0064](0064-dense-ft-gradient-mps.md), [0066](0066-halfkp-factorizer.md), [0120](0120-after-parity.md), [0126](0126-mate-score-in-training.md), [0127](0127-net-shape-bench.md)
 
 ## Context
 
@@ -57,7 +57,7 @@ WDL・進行度を推論時にも出し、時間管理や枝刈りへ供給す�
 FTの出力から評価値と並列に指し手・勝敗を予測させ、損失を合算して学習する。書き出しでは
 補助ヘッドを捨てるので、**推論の構造と速度はまったく変わらない。**
 
-[ADR-0066](0066-feature-factorizer.md)のfactorizerと同じ形である。あちらも学習時だけ
+[ADR-0066](0066-halfkp-factorizer.md)のfactorizerと同じ形である。あちらも学習時だけ
 仮想特徴を並列に持ち、書き出し時に実特徴へ畳み込む。
 
 1回の学習で済むのが利点である。ただし評価値ヘッドは推論と同じ3層（L1→L2→1）のままなので、

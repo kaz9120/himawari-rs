@@ -1,8 +1,8 @@
 # 0121: 定跡を損失の小さい順に掘り、上限と再開を付ける
 
-- Status: proposed
+- Status: accepted
 - Date: 2026-08-01
-- 関連ADR: [0063](0063-book-loader-and-mini-book.md), [0082](0082-release-automation.md), [0119](0119-g10-book.md), [0120](0120-after-parity.md)
+- 関連ADR: [0063](0063-book-loader-and-mini-book.md), [0082](0082-book-release.md), [0119](0119-g10-book.md), [0120](0120-after-parity.md)
 
 ## Context
 

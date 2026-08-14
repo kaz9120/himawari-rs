@@ -1,6 +1,6 @@
 # 0149: 実験の実行とログを規約で固定する
 
-- Status: proposed
+- Status: accepted
 - Date: 2026-08-08
 - 関連ADR: [0028](0028-pruning-extensions.md), [0053](0053-docs-structure.md), [0081](0081-portability.md), [0122](0122-tooling-language-split.md), [0123](0123-stop-and-resume.md)
 

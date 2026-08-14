@@ -1,6 +1,6 @@
 # 0095: SEEで初手の成りを扱う（ほぼ等価と判明）
 
-- Status: proposed
+- Status: accepted
 - Date: 2026-07-29
 - 関連ADR: [0091](0091-see-drop.md), [0025](0025-move-ordering.md), [0074](0074-feature-verification.md)
 

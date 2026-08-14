@@ -1,8 +1,8 @@
 # 0131: 良いFTを凍結して軽量ヘッドを載せる作り方を、本番規模で確かめる
 
-- Status: proposed
+- Status: accepted
 - Date: 2026-08-03
-- 関連ADR: [0034](0034-nnue-architecture.md), [0066](0066-feature-factorizer.md), [0089](0089-improvement-criteria.md), [0127](0127-net-shape-bench.md), [0128](0128-round-robin-league.md), [0129](0129-auxiliary-heads.md), [0130](0130-freeze-ft.md)
+- 関連ADR: [0034](0034-nnue-architecture.md), [0066](0066-halfkp-factorizer.md), [0089](0089-improvement-criteria.md), [0127](0127-net-shape-bench.md), [0128](0128-round-robin-league.md), [0129](0129-auxiliary-heads.md), [0130](0130-freeze-ft.md)
 
 ## Context
 

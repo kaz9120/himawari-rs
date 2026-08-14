@@ -1,6 +1,6 @@
 # 0109: 参照実装への追従を群単位で進める
 
-- Status: proposed
+- Status: accepted
 - Date: 2026-07-30
 - 関連ADR: [0028](0028-pruning-extensions.md), [0074](0074-feature-verification.md), [0089](0089-improvement-criteria.md), [0108](0108-license-gplv3.md)
 
@@ -402,7 +402,7 @@ goをまたぐ記憶はbestPreviousAverageScoreとpreviousTimeReduction
 S:1986）。timeReductionのロジスティック化（S:1981-1983）。
 
 deltaの評価値依存項は、評価値が大きいほど窓外れが増える現象
-（RESULTS.md（当時の計測記録。現在はCHANGELOGとADRが持つ））に直接効く。
+（当時のRESULTS.md）に直接効く。
 
 ### G10: 定跡・投票・実務オプション
 

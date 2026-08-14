@@ -1,8 +1,8 @@
 # 0152: floodgateの棋譜を定期回収し、分析と定跡追加を決定論の手順にする
 
-- Status: proposed
+- Status: accepted
 - Date: 2026-08-09
-- 関連ADR: [0063](0063-opening-book.md), [0074](0074-feature-verification.md), [0122](0122-tooling-language-split.md), [0139](0139-mate1ply-in-search-retry.md), [0146](0146-book-full-width-opening.md), [0149](0149-experiment-runner.md)
+- 関連ADR: [0063](0063-book-loader-and-mini-book.md), [0074](0074-feature-verification.md), [0122](0122-tooling-language-split.md), [0139](0139-mate1ply-in-search-retry.md), [0146](0146-book-full-width-opening.md), [0149](0149-experiment-runner.md)
 
 ## Context
 

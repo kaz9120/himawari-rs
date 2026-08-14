@@ -1,6 +1,6 @@
 # 0125: 探索本体を責務ごとに切り出す
 
-- Status: proposed
+- Status: accepted
 - Date: 2026-08-01
 - 関連ADR: [0074](0074-feature-verification.md), [0109](0109-reference-parity.md), [0119](0119-g10-book.md)
 

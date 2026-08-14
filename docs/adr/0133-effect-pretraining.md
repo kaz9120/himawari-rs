@@ -1,8 +1,8 @@
 # 0133: 利き予測でFTを自己教師あり事前学習する
 
-- Status: proposed
+- Status: accepted
 - Date: 2026-08-03
-- 関連ADR: [0034](0034-nnue-architecture.md), [0045](0045-remove-effect-tower.md), [0066](0066-feature-factorizer.md), [0127](0127-net-shape-bench.md), [0129](0129-auxiliary-heads.md), [0130](0130-freeze-ft.md), [0131](0131-frozen-ft-light-head.md), [0132](0132-ft-distillation.md)
+- 関連ADR: [0034](0034-nnue-architecture.md), [0045](0045-remove-effect-tower.md), [0066](0066-halfkp-factorizer.md), [0127](0127-net-shape-bench.md), [0129](0129-auxiliary-heads.md), [0130](0130-freeze-ft.md), [0131](0131-frozen-ft-light-head.md), [0132](0132-ft-distillation.md)
 
 ## Context
 
@@ -311,7 +311,7 @@ MLPが要る。追っていない。
 本番は3億でこの750倍にあたる。**未知の特徴に当たることは実質ない。**
 
 出現の偏りは大きい（上位1%の特徴が活性の64%を占める）が、
-factorizer（[ADR-0066](0066-feature-factorizer.md)、有効）が玉位置をまたいで統計を共有する。
+factorizer（[ADR-0066](0066-halfkp-factorizer.md)、有効）が玉位置をまたいで統計を共有する。
 
 ## Decision（結論）
 

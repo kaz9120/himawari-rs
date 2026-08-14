@@ -2,7 +2,7 @@
 
 - Status: proposed
 - Date: 2026-08-11
-- 関連ADR: [0026](0026-repetition.md), [0054](0054-tt-replacement.md), [0074](0074-feature-verification.md), [0109](0109-reference-parity.md), [0125](0125-search-decomposition.md), [0153](0153-superior-repetition-root-gate.md)
+- 関連ADR: [0026](0026-repetition.md), [0054](0054-qsearch-tt.md), [0074](0074-feature-verification.md), [0109](0109-reference-parity.md), [0125](0125-search-decomposition.md), [0153](0153-superior-repetition-root-gate.md)
 
 ## Context
 

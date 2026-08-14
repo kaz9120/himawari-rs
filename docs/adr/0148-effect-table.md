@@ -2,7 +2,7 @@
 
 - Status: proposed
 - Date: 2026-08-08
-- 関連ADR: [0018](0018-perft.md), [0035](0035-nnue-accumulator.md), [0093](0093-mate1ply-in-search.md), [0124](0124-hot-path-allocs.md), [0133](0133-effect-pretraining.md), [0139](0139-mate1ply-in-search-retry.md), [0147](0147-effect-bucket-features.md)
+- 関連ADR: [0018](0018-sfen-perft.md), [0035](0035-nnue-accumulator.md), [0093](0093-mate1ply-in-search.md), [0124](0124-hot-path-allocs.md), [0133](0133-effect-pretraining.md), [0139](0139-mate1ply-in-search-retry.md), [0147](0147-effect-bucket-features.md)
 
 ## Context
 
@@ -127,7 +127,7 @@ accumulatorは遅延方式で、`push` ではDirtyPieceを積むだけ、`ensure
 
 **full recomputeとの一致をテストで縛る。** 各マスの利きを `attackers_to` で
 数え直したものと、差分更新で維持したテーブルが一致することを確かめる。
-perft（[ADR-0018](0018-perft.md)）の経路に検査を差し込めば、数百万局面を
+perft（[ADR-0018](0018-sfen-perft.md)）の経路に検査を差し込めば、数百万局面を
 自動で通せる。
 
 飛び駒の伸縮が絡む局面を明示的に入れる。飛車の前の駒が動く、角の利きが

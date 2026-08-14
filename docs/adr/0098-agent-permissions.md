@@ -1,6 +1,6 @@
 # 0098: エージェントが待機で止まらないようにする
 
-- Status: proposed
+- Status: accepted
 - Date: 2026-07-29
 - 関連ADR: [0081](0081-portability.md), [0027](0027-sprt-framework.md)
 

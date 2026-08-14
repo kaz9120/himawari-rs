@@ -1,6 +1,6 @@
 # 0030: 入玉宣言勝ち
 
-- Status: proposed
+- Status: accepted
 - Date: 2026-07-19
 - 関連ADR: [0019](0019-usi-architecture.md), [0027](0027-sprt-framework.md)
 

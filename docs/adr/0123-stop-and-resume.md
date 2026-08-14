@@ -1,6 +1,6 @@
 # 0123: 長時間走る処理は停止と再開ができること
 
-- Status: proposed
+- Status: accepted
 - Date: 2026-08-01
 - 関連ADR: [0087](0087-sprt-resume.md), [0121](0121-book-scale-up.md), [0122](0122-tooling-language-split.md)
 

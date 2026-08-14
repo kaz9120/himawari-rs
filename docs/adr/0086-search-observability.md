@@ -1,6 +1,6 @@
 # 0086: 探索の可観測性を上げる（seldepth・currmove）
 
-- Status: proposed
+- Status: accepted
 - Date: 2026-07-28
 - 関連ADR: [0032](0032-multipv.md), [0024](0024-search-v1.md)
 

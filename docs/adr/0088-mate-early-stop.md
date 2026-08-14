@@ -1,6 +1,6 @@
 # 0088: 勝ちの詰みを見つけたら反復深化を打ち切る
 
-- Status: proposed
+- Status: accepted
 - Date: 2026-07-28
 - 関連ADR: [0021](0021-time-management.md), [0059](0059-easy-move-scaling.md), [0086](0086-search-observability.md)
 
