@@ -94,10 +94,13 @@ FT512は−72.8 Elo（[ADR-0067](docs/adr/0067-ft-dimension-512.md)）、FT1024�
 ### 環境構築
 
 ```sh
-scripts/setup.sh           # ツールチェインとビルド
-gh auth login              # Releaseの取得に要る
-scripts/fetch-dataset.sh   # 教師データ（学習を回す場合のみ、112GB）
+scripts/setup.sh               # ツールチェインとビルド
+gh auth login                  # Releaseの取得に要る
+scripts/fetch-dataset.sh all   # 教師データ（学習を回す場合のみ）
 ```
+
+教師データは生データ116GBと加工後120GBで、空きが236GB要る。`download` /
+`verify` / `prepare` に分けて実行することもできる（`-h` で確認）。
 
 WindowsではWSL2上で動かす。macOSでも開発できる（Apple Siliconで確認している）。
 判断の経緯は[ADR-0081](docs/adr/0081-portability.md)にある。
