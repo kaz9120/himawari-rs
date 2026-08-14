@@ -131,6 +131,74 @@ def test_build_report_uchikiri_format_differs_from_verdict_wording():
     assert "採択" not in out.split("RESULTS.md")[1].split("PR本文")[0]
 
 
+# --- 対立仮説の注記（ADR-0163） ---
+
+START_DEFAULT = (
+    "selfplay: cand vs base | tc 10+0.1 | 並列 8 | SPRT elo[0, 5] α=0.05 β=0.05 | 開始局面 30053件"
+)
+START_NONINF = (
+    "selfplay: cand vs base | tc 10+0.1 | 並列 3 | SPRT elo[-5, 0] α=0.05 β=0.05 | 開始局面 30053件"
+)
+
+
+def test_find_hypothesis_reads_elo_bounds():
+    assert sprt_summary.find_hypothesis([START_NONINF]) == ("-5", "0")
+
+
+def test_find_hypothesis_takes_the_last_run():
+    """--resumeで条件を変えて再開したログは、最後の起動行が正になる。"""
+    lines = [START_DEFAULT, "pairs 100 | ...", START_NONINF, "pairs 200 | ..."]
+    assert sprt_summary.find_hypothesis(lines) == ("-5", "0")
+
+
+def test_last_run_lines_drops_the_previous_run():
+    """再開前の判定行を拾わない（ADR-0087のログは追記式）。"""
+    lines = [
+        START_DEFAULT,
+        "pairs 100 | ...",
+        "判定に至らず | pairs 100 games 200 | ...",
+        START_NONINF,
+        "pairs 200 | ...",
+    ]
+    tail = sprt_summary.last_run_lines(lines)
+    assert tail[0] == START_NONINF
+    assert not any(line.startswith("判定に至らず") for line in tail)
+
+
+def test_last_run_lines_keeps_everything_without_start_line():
+    lines = ["pairs 100 | ...", "pairs 200 | ..."]
+    assert sprt_summary.last_run_lines(lines) == lines
+
+
+def test_find_hypothesis_none_when_absent():
+    assert sprt_summary.find_hypothesis(["起動行がない"]) is None
+
+
+def test_hypothesis_note_empty_for_default():
+    assert sprt_summary.hypothesis_note(("0", "5")) == ""
+    assert sprt_summary.hypothesis_note(None) == ""
+
+
+def test_hypothesis_note_names_non_inferiority():
+    assert sprt_summary.hypothesis_note(("-5", "0")) == "（非劣性 elo0=-5 elo1=0）"
+
+
+def test_hypothesis_note_falls_back_to_raw_bounds():
+    assert sprt_summary.hypothesis_note(("0", "10")) == "（elo0=0 elo1=10）"
+
+
+def test_build_report_puts_note_into_trailer():
+    fields = {
+        "elo_num": "+8.9",
+        "elo_ci": "[-0.9,+18.8]",
+        "llr": "+2.94",
+        "wdl": "+2116 =275 -2003",
+        "games": 4394,
+    }
+    out = sprt_summary.build_report("adr0162", "H1", fields, "（非劣性 elo0=-5 elo1=0）")
+    assert "SPRT: +8.9 [-0.9,+18.8] 4394games H1（非劣性 elo0=-5 elo1=0）" in out
+
+
 # --- 終了コード ---
 
 

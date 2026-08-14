@@ -22,6 +22,11 @@ jobs:
       # 既定以外のネットワーク構成（ADR-0127）。L1をパディングする経路と
       # FTを太らせた経路が壊れていないことを、コンパイルとテストで確認する
       - run: HIMAWARI_ARCH=512x16x64 cargo test --workspace
+      # scripts/ のPython（ADR-0122の分析系）。テストは書かれていたが
+      # CIで回っておらず、壊れても気づけない状態だった
+      - run: pip install --quiet pytest
+      - run: python3 -m pytest tests -q
+        working-directory: scripts
 
   # NNUE推論のAVX2経路を検証する（ADR-0099）。既定のx86-64ターゲットは
   # SSE2までで、上のジョブではAVX2経路がコンパイルされない

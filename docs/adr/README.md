@@ -89,6 +89,7 @@
 - [0146](0146-book-full-width-opening.md) 定跡の浅い層を全合法手で埋める
 - [0152](0152-floodgate-cycle.md) floodgateの棋譜を定期回収する
 - [0154](0154-sprt-ops.md) SPRTの実行・監視・後処理
+- [0163](0163-sprt-hypothesis-choice.md) 対立仮説を着手時に決める（既定と非劣性の使い分け）
 
 ## 全ADR
 
@@ -254,6 +255,7 @@
 | [0159](0159-ft-width-1024.md) | FT幅を1024へ拡大する | 2026-08-12 |  | proposed |
 | [0160](0160-revisit-rejected-under-better-eval.md) | 棄却した参照追従を1群にまとめて測り直す | 2026-08-13 |  | rejected |
 | [0161](0161-hide-docs-chore-from-changelog.md) | docsとchoreをCHANGELOGから外し、バージョンを動かさない | 2026-08-14 |  | accepted |
+| [0163](0163-sprt-hypothesis-choice.md) | 変更の性質でSPRTの対立仮説を着手時に決める | 2026-08-15 |  | proposed |
 
 ## バックログ
 
