@@ -9,12 +9,13 @@
 ## 探し方
 
 - 番号が分かっているなら[全ADR](#全adr)の表を引く。番号は起草順の通し番号で、
-  0079は欠番（採番後に起草しなかった）
+  0079は欠番である
 - テーマから辿るなら[下の入口](#テーマ別の入口)を使う。主要な判断だけを抜き出してある
 - **「これは試したか」を確かめるなら `rejected` の行を読む。** 効かなかった案の記録は
   このプロジェクトの資産で、同じ測定を繰り返さないために残している
 
-表のElo列はSPRTで得た値である。空欄は棋力を測っていない変更を指す。
+表のElo列はSPRTで得た値である。空欄は索引に値が載っていないことを意味し、
+測っていないとは限らない。SPRTの結果は各ADRとCHANGELOGが持つ。
 
 ## テーマ別の入口
 
@@ -22,14 +23,14 @@
 
 作業の進め方を決めている文書。着手前に読む。
 
-- [0028](0028-pruning-extensions.md) SPRTを棋力変更のマージン条件に置く
+- [0028](0028-pruning-extensions.md) SPRTを棋力変更のマージ条件に置く
+- [0053](0053-docs-structure.md) 文書の役割分担
 - [0068](0068-sprt-driven-versioning.md) バージョニングをSPRT採択基準に切り替える
 - [0070](0070-pr-based-workflow.md) 開発をPRベースにし、種別でマージ条件を分ける
 - [0074](0074-feature-verification.md) SPRTの前に機能検証を行う
 - [0089](0089-improvement-criteria.md) 探索改善を速度・ノード効率・終盤の正確さの3軸で選ぶ
 - [0109](0109-reference-parity.md) 参照実装への追従は1群1SPRTで進める
 - [0149](0149-experiment-runner.md) 実験の実行とログを規約で固定する
-- [0053](0053-docs-structure.md) 文書の役割分担
 
 ### 盤面表現と指し手
 
@@ -43,14 +44,18 @@
 
 ### 探索
 
-- [0024](0024-search-v1.md) 探索アルゴリズムv1
+骨格の決定と、参照実装への追従。
+
 - [0022](0022-transposition-table.md) ロックレス置換表
+- [0024](0024-search-v1.md) 探索アルゴリズムv1
 - [0025](0025-move-ordering.md) 指し手オーダリング
 - [0110](0110-g1-history.md)〜[0119](0119-g10-book.md) 参照実装への追従（G1〜G10、単純加算+525.5 Elo）
 - [0125](0125-search-decomposition.md) 探索本体を責務ごとに切り出す
 - [0155](0155-reference-walkthrough.md) 残った乖離の監査と、整列を見送った判断
 
 ### 評価関数（NNUE）
+
+構造の決定と、幅・量子化をめぐる測定。
 
 - [0034](0034-nnue-architecture.md) NNUE特徴量とネットワーク構成
 - [0035](0035-nnue-accumulator.md) 差分計算（accumulator）
@@ -62,6 +67,8 @@
 
 ### 学習
 
+学習器とデータの決定。データが律速だと分かるまでの経緯もここにある。
+
 - [0038](0038-training-data-format.md) 教師データフォーマット
 - [0040](0040-training-infra-v2.md) PyTorchへの移行
 - [0065](0065-large-scale-dataloader.md) 大規模データの供給
@@ -72,13 +79,15 @@
 
 ### 実戦と運用
 
+対局・定跡・配布まわり。
+
 - [0021](0021-time-management.md) 時間管理
 - [0060](0060-opening-book-policy.md) 定跡の方針
+- [0080](0080-net-release.md) 学習済みネットの配布
+- [0108](0108-license-gplv3.md) GPLv3への変更
 - [0146](0146-book-full-width-opening.md) 定跡の浅い層を全合法手で埋める
 - [0152](0152-floodgate-cycle.md) floodgateの棋譜を定期回収する
 - [0154](0154-sprt-ops.md) SPRTの実行・監視・後処理
-- [0080](0080-net-release.md) 学習済みネットの配布
-- [0108](0108-license-gplv3.md) GPLv3への変更
 
 ## 全ADR
 
