@@ -13,7 +13,7 @@ use himawari_core::{
 use crate::eval::Evaluator;
 use crate::movepick::{
     ContinuationCorrectionHistory, ContinuationHistory, Histories, LOW_PLY_HISTORY_SIZE, MoveBuf,
-    MovePicker, PawnHistory,
+    MovePicker, SharedHistories,
 };
 use crate::timeman::{IterationStats, Limits, TimeManager};
 use crate::tt::{Bound, EvalHash, Tt};
@@ -246,11 +246,19 @@ pub struct Shared {
     pub tt: Tt,
     /// 評価値キャッシュ（ADR-0049）。全スレッド共有、new_gameでクリア。
     pub eval_hash: EvalHash,
+    /// 全スレッドで共有するhistory（ADR-0162）。pawn historyと
+    /// correction historyの2面を持ち、表はスレッド数に比例して伸びる
+    pub hists: Arc<SharedHistories>,
 }
 
 impl Shared {
     pub fn new(hash_mb: usize) -> Shared {
+        Shared::with_threads(hash_mb, 1)
+    }
+
+    pub fn with_threads(hash_mb: usize, threads: usize) -> Shared {
         Shared {
+            hists: Arc::new(SharedHistories::new(threads)),
             stop: AtomicBool::new(false),
             aborted_search: AtomicBool::new(false),
             ponder: AtomicBool::new(false),
@@ -836,7 +844,7 @@ impl Worker {
     /// 131072で割る前の値を返す。LMRのリダクションもこの値を読む。
     #[inline]
     fn correction_value(&self, ply: usize) -> i32 {
-        let (pcv, micv, bnpcv, wnpcv) = self.hist.corr.probe(&self.pos);
+        let (pcv, micv, bnpcv, wnpcv) = self.shared.hists.corr.probe(&self.pos);
         // 余白があるのでply 0でも境界検査は要らない。前方は初期値のMove::NONE
         let prev1 = self.stack[ply + STACK_OFFSET - 1].current_move;
         let cntcv = if prev1.is_special() {
@@ -1724,8 +1732,11 @@ impl Worker {
                 && pc.piece_type() != PieceType::PAWN
                 && !prev1.current_move.is_promote()
             {
-                let slot = PawnHistory::slot(self.pos.pawn_key());
-                self.hist.pawn.update(slot, pc, prev_sq, eval_diff * 12);
+                let slot = self.shared.hists.pawn.slot(self.pos.pawn_key());
+                self.shared
+                    .hists
+                    .pawn
+                    .update(slot, pc, prev_sq, eval_diff * 12);
             }
         }
 
@@ -2107,8 +2118,9 @@ impl Worker {
                 .main
                 .update(them, prev1.current_move, scaled * 235 / 32768);
             if pc.piece_type() != PieceType::PAWN && !prev1.current_move.is_promote() {
-                let slot = PawnHistory::slot(self.pos.pawn_key());
-                self.hist
+                let slot = self.shared.hists.pawn.slot(self.pos.pawn_key());
+                self.shared
+                    .hists
                     .pawn
                     .update(slot, pc, prev_sq, scaled * 290 / 8192);
             }
@@ -2322,10 +2334,10 @@ impl Worker {
             // 1手前・2手前のcontinuation historyとpawn historyの和
             let to = m.to();
             let pc = m.piece_after();
-            let pawn_slot = PawnHistory::slot(self.pos.pawn_key());
+            let pawn_slot = self.shared.hists.pawn.slot(self.pos.pawn_key());
             let mut history = self.hist.cont.get(cont[0], pc, to)
                 + self.hist.cont.get(cont[1], pc, to)
-                + self.hist.pawn.get(pawn_slot, pc, to);
+                + self.shared.hists.pawn.get(pawn_slot, pc, to);
 
             // continuation historyによる枝刈り
             // （yaneuraou-search.cpp:3650-3651）。履歴が極端に
@@ -3024,7 +3036,7 @@ impl Worker {
     /// 出典はやねうら王の `update_correction_history()`
     /// （yaneuraou-search.cpp:748-771）。系統ごとに重みが違う。
     fn update_correction_history(&mut self, ply: usize, bonus: i32) {
-        self.hist.corr.update_all(&self.pos, bonus);
+        self.shared.hists.corr.update_all(&self.pos, bonus);
         let prev1 = self.stack[ply + STACK_OFFSET - 1].current_move;
         if !prev1.is_special() {
             let to = prev1.to();
@@ -3065,9 +3077,12 @@ impl Worker {
             self.hist.low_ply.update(ply, m, bonus * 761 / 1024);
         }
         self.update_continuation_histories(ply, m.piece_after(), m.to(), bonus * 955 / 1024);
-        let slot = PawnHistory::slot(self.pos.pawn_key());
+        let slot = self.shared.hists.pawn.slot(self.pos.pawn_key());
         let scaled = bonus * if bonus > 0 { 850 } else { 550 } / 1024;
-        self.hist.pawn.update(slot, m.piece_after(), m.to(), scaled);
+        self.shared
+            .hists
+            .pawn
+            .update(slot, m.piece_after(), m.to(), scaled);
     }
 
     /// 統計情報一式を更新する（ADR-0109のG1）。bestMoveが確定したノードの
@@ -3162,6 +3177,7 @@ mod tests {
             } else {
                 EvalHash::disabled()
             },
+            hists: Arc::new(SharedHistories::new(1)),
         });
         let limits = Limits {
             depth,

@@ -8,6 +8,9 @@
 //! テーブルの次元・値域・初期値は参照実装の `history.h` と
 //! `yaneuraou-search.cpp` を出典とする（ADR-0074）。
 
+use std::sync::Arc;
+use std::sync::atomic::{AtomicI16, Ordering};
+
 use himawari_core::{
     Color, GenType, Move, MoveList, Piece, PieceType, Position, Square, generate, piece_value,
 };
@@ -66,6 +69,21 @@ fn stats_update(entry: &mut i16, bonus: i32, d: i32) {
     let b = bonus.clamp(-d, d);
     let v = i32::from(*entry);
     *entry = (v + b - v * b.abs() / d) as i16;
+}
+
+/// スレッド共有の表に対する同じ更新（ADR-0162。history.hの `AtomicStats`）。
+/// 読んで書く間に別スレッドが書くと片方の更新が消える。参照実装も同じ
+/// 扱いで、historyは統計値なので取りこぼしを許容する。
+#[inline]
+fn stats_update_atomic(entry: &AtomicI16, bonus: i32, d: i32) {
+    let b = bonus.clamp(-d, d);
+    let v = i32::from(entry.load(Ordering::Relaxed));
+    entry.store((v + b - v * b.abs() / d) as i16, Ordering::Relaxed);
+}
+
+/// 初期値で埋めた原子配列を作る。
+fn atomic_table(len: usize, init: i16) -> Box<[AtomicI16]> {
+    (0..len).map(|_| AtomicI16::new(init)).collect()
 }
 
 /// main history（ButterflyHistory。[手番 2][指し手16bit 65536]。history.h:206）。
@@ -180,43 +198,46 @@ impl CaptureHistory {
     }
 }
 
-/// pawn history（[歩構造キー 8192][移動後の駒 32][移動先 81]。history.h:265）。
-/// 参照実装はスレッド共有のatomicだが、ここではスレッドローカルに持つ。
+/// pawn history（[歩構造キー 8192×スレッド数][移動後の駒 32][移動先 81]。
+/// history.h:265）。全スレッドで共有する（ADR-0162）。スロット数は
+/// スレッド数に比例して伸びる（`DynStats`。history.h:151-153）。
 pub struct PawnHistory {
-    table: Box<[i16]>,
-}
-
-impl Default for PawnHistory {
-    fn default() -> Self {
-        PawnHistory {
-            table: vec![INIT_PAWN; PAWN_HISTORY_BASE_SIZE * PIECE_NB * SQUARE_NB]
-                .into_boxed_slice(),
-        }
-    }
+    table: Box<[AtomicI16]>,
+    /// スロットのマスク（スロット数−1）。
+    mask: usize,
 }
 
 impl PawnHistory {
+    fn new(slots: usize) -> Self {
+        PawnHistory {
+            table: atomic_table(slots * PIECE_NB * SQUARE_NB, INIT_PAWN),
+            mask: slots - 1,
+        }
+    }
+
     /// 歩構造キーからスロットを引く（history.h:370-372）。
     #[inline]
-    pub fn slot(pawn_key: u64) -> usize {
-        (pawn_key as usize & (PAWN_HISTORY_BASE_SIZE - 1)) * PIECE_NB * SQUARE_NB
+    pub fn slot(&self, pawn_key: u64) -> usize {
+        (pawn_key as usize & self.mask) * PIECE_NB * SQUARE_NB
     }
 
     #[inline]
     pub fn get(&self, slot: usize, pc: Piece, to: Square) -> i32 {
-        i32::from(self.table[slot + pc.index() * SQUARE_NB + to.index()])
+        i32::from(self.table[slot + pc.index() * SQUARE_NB + to.index()].load(Ordering::Relaxed))
     }
 
-    pub fn update(&mut self, slot: usize, pc: Piece, to: Square, bonus: i32) {
-        stats_update(
-            &mut self.table[slot + pc.index() * SQUARE_NB + to.index()],
+    pub fn update(&self, slot: usize, pc: Piece, to: Square, bonus: i32) {
+        stats_update_atomic(
+            &self.table[slot + pc.index() * SQUARE_NB + to.index()],
             bonus,
             D_PAWN,
         );
     }
 
-    pub fn clear(&mut self) {
-        self.table.fill(INIT_PAWN);
+    pub fn clear(&self) {
+        for e in &self.table {
+            e.store(INIT_PAWN, Ordering::Relaxed);
+        }
     }
 }
 
@@ -224,9 +245,13 @@ impl PawnHistory {
 ///
 /// 参照実装のUnifiedCorrectionHistory（history.h:337-339）に対応する。
 /// 1本の表を4系統（歩・小駒・先手非歩・後手非歩）で共有し、系統ごとに
-/// 別のキーで引く。添字は `[キー下位16bit][手番][系統]`。
+/// 別のキーで引く。添字は `[キー下位16bit×スレッド数][手番][系統]`。
+/// 全スレッドで共有し、スロット数はスレッド数に比例して伸びる
+/// （ADR-0162。history.h:151-153, 359-366）。
 pub struct CorrectionHistory {
-    table: Box<[i16]>,
+    table: Box<[AtomicI16]>,
+    /// スロットのマスク（スロット数−1）。
+    mask: usize,
 }
 
 /// correction historyの系統（history.h:296-309のCorrectionBundle）。
@@ -237,31 +262,26 @@ const CORR_NON_PAWN_WHITE: usize = 3;
 /// 1スロットが持つ系統数。
 const CORR_KINDS: usize = 4;
 
-impl Default for CorrectionHistory {
-    fn default() -> Self {
+impl CorrectionHistory {
+    fn new(slots: usize) -> Self {
         CorrectionHistory {
-            table: vec![0i16; CORRHIST_BASE_SIZE * 2 * CORR_KINDS].into_boxed_slice(),
+            table: atomic_table(slots * 2 * CORR_KINDS, 0),
+            mask: slots - 1,
         }
     }
-}
 
-impl CorrectionHistory {
     #[inline]
-    fn index(key: u64, stm: usize, kind: usize) -> usize {
-        ((key as usize & (CORRHIST_BASE_SIZE - 1)) * 2 + stm) * CORR_KINDS + kind
+    fn index(&self, key: u64, stm: usize, kind: usize) -> usize {
+        ((key as usize & self.mask) * 2 + stm) * CORR_KINDS + kind
     }
 
     #[inline]
     fn get(&self, key: u64, stm: usize, kind: usize) -> i32 {
-        i32::from(self.table[Self::index(key, stm, kind)])
+        i32::from(self.table[self.index(key, stm, kind)].load(Ordering::Relaxed))
     }
 
-    fn update(&mut self, key: u64, stm: usize, kind: usize, bonus: i32) {
-        stats_update(
-            &mut self.table[Self::index(key, stm, kind)],
-            bonus,
-            D_CORRECTION,
-        );
+    fn update(&self, key: u64, stm: usize, kind: usize, bonus: i32) {
+        stats_update_atomic(&self.table[self.index(key, stm, kind)], bonus, D_CORRECTION);
     }
 
     /// 4系統の合成前の生の値を取り出す（yaneuraou-search.cpp:728-731）。
@@ -287,7 +307,7 @@ impl CorrectionHistory {
 
     /// 4系統をまとめて更新する（yaneuraou-search.cpp:759-762）。
     /// 系統ごとの重みも参照実装のものを使う。
-    pub fn update_all(&mut self, pos: &Position, bonus: i32) {
+    pub fn update_all(&self, pos: &Position, bonus: i32) {
         /// 非歩系統の重み（yaneuraou-search.cpp:755）。
         const NON_PAWN_WEIGHT: i32 = 187;
         let stm = pos.side_to_move().index();
@@ -307,8 +327,44 @@ impl CorrectionHistory {
         );
     }
 
-    pub fn clear(&mut self) {
-        self.table.fill(0);
+    pub fn clear(&self) {
+        for e in &self.table {
+            e.store(0, Ordering::Relaxed);
+        }
+    }
+}
+
+/// 全スレッドで共有するhistory（ADR-0162。`history.h:359` の
+/// `SharedHistories`）。参照実装が共有するのはcorrection historyと
+/// pawn historyの2面だけで、continuation correction historyは
+/// スレッドローカルに残る（yaneuraou-search.h:457）。
+pub struct SharedHistories {
+    pub pawn: PawnHistory,
+    pub corr: CorrectionHistory,
+}
+
+impl SharedHistories {
+    /// スレッド数に比例したスロット数で確保する（history.h:151-153）。
+    /// 参照実装はスレッド数が2の冪であることを要求する（history.h:363）。
+    /// 本エンジンは任意の `Threads` を受けるので、2の冪へ切り上げる。
+    pub fn new(threads: usize) -> Self {
+        let mult = threads.max(1).next_power_of_two();
+        SharedHistories {
+            pawn: PawnHistory::new(PAWN_HISTORY_BASE_SIZE * mult),
+            corr: CorrectionHistory::new(CORRHIST_BASE_SIZE * mult),
+        }
+    }
+
+    /// 対局間のリセット（yaneuraou-search.cpp:2139-2176）。
+    pub fn clear(&self) {
+        self.pawn.clear();
+        self.corr.clear();
+    }
+}
+
+impl Default for SharedHistories {
+    fn default() -> Self {
+        SharedHistories::new(1)
     }
 }
 
@@ -436,21 +492,28 @@ pub struct Histories {
     pub main: History,
     pub low_ply: LowPlyHistory,
     pub capture: CaptureHistory,
-    pub pawn: PawnHistory,
     pub cont: ContinuationHistory,
-    pub corr: CorrectionHistory,
     pub corr_cont: ContinuationCorrectionHistory,
     pub tt_move: TtMoveHistory,
+    /// 全スレッドで共有する2面（ADR-0162）。pawn historyと
+    /// correction historyはここから引く
+    pub shared: Arc<SharedHistories>,
 }
 
 impl Histories {
+    pub fn new(shared: Arc<SharedHistories>) -> Self {
+        Histories {
+            shared,
+            ..Default::default()
+        }
+    }
+
     /// 対局間のリセット（yaneuraou-search.cpp:2139-2176）。
+    /// 共有分は呼び出し側が1度だけ消す（全スレッドで同じ表なので）。
     pub fn clear(&mut self) {
         self.main.clear();
         self.capture.clear();
-        self.pawn.clear();
         self.cont.clear();
-        self.corr.clear();
         self.corr_cont.clear();
         self.tt_move.clear();
     }
@@ -666,13 +729,13 @@ impl MovePicker {
 
     /// 静かな手のスコア（movepick.cpp:362-393）。
     fn score_quiets(&mut self, pos: &Position, h: &Histories, cont: &[usize; 6], list: &MoveList) {
-        let pawn_slot = PawnHistory::slot(pos.pawn_key());
+        let pawn_slot = h.shared.pawn.slot(pos.pawn_key());
         let us = pos.side_to_move();
         for &m in list {
             let pc = m.piece_after();
             let to = m.to();
             let mut v = 2 * h.main.get(us, m);
-            v += 2 * h.pawn.get(pawn_slot, pc, to);
+            v += 2 * h.shared.pawn.get(pawn_slot, pc, to);
             v += h.cont.get(cont[0], pc, to);
             v += h.cont.get(cont[1], pc, to);
             v += h.cont.get(cont[2], pc, to);
@@ -861,6 +924,38 @@ impl MovePicker {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// 共有historyの表がスレッド数に比例して伸びること
+    /// （ADR-0162。history.h:151-153）。
+    #[test]
+    fn shared_history_scales_with_threads() {
+        let one = SharedHistories::new(1);
+        let four = SharedHistories::new(4);
+        assert_eq!(four.pawn.mask + 1, (one.pawn.mask + 1) * 4);
+        assert_eq!(four.corr.mask + 1, (one.corr.mask + 1) * 4);
+        // 2の冪でないスレッド数は切り上げる（参照実装は2の冪を要求する）
+        let three = SharedHistories::new(3);
+        assert_eq!(three.pawn.mask + 1, (one.pawn.mask + 1) * 4);
+    }
+
+    /// 共有historyへの更新が、別の持ち主から読めること（ADR-0162）。
+    /// スレッドローカルのままだと、この読み出しが初期値のままになる。
+    #[test]
+    fn shared_history_is_visible_across_owners() {
+        let shared = Arc::new(SharedHistories::new(2));
+        let writer = Histories::new(Arc::clone(&shared));
+        let reader = Histories::new(Arc::clone(&shared));
+
+        let pc = Piece::new(Color::Black, PieceType::PAWN);
+        let to = Square::from_index(40);
+        let slot = writer.shared.pawn.slot(0x1234_5678);
+        let before = reader.shared.pawn.get(slot, pc, to);
+        writer.shared.pawn.update(slot, pc, to, D_PAWN);
+        assert!(
+            reader.shared.pawn.get(slot, pc, to) > before,
+            "共有していれば書き手の更新が読み手にも見える"
+        );
+    }
 
     /// 部分挿入ソートがlimit以上の要素を降順に並べること（movepick.cpp:91）。
     #[test]
