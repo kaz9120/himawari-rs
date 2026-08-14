@@ -18,7 +18,7 @@
 	"changelog-sections": [
 		{ "type": "feat", "section": "棋力向上" },
 		{ "type": "fix", "section": "その他の変更" },
-		{ "type": "docs", "section": "ドキュメント", "hidden": false },
-		{ "type": "chore", "section": "内部", "hidden": false }
+		{ "type": "docs", "section": "ドキュメント", "hidden": true },
+		{ "type": "chore", "section": "内部", "hidden": true }
 	]
 }

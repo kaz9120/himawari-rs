@@ -252,6 +252,7 @@
 | [0158](0158-mirror-factorizer.md) | 学習時だけ左右ミラーの仮想特徴を併用する | 2026-08-12 |  | rejected |
 | [0159](0159-ft-width-1024.md) | FT幅を1024へ拡大する | 2026-08-12 |  | proposed |
 | [0160](0160-revisit-rejected-under-better-eval.md) | 棄却した参照追従を1群にまとめて測り直す | 2026-08-13 |  | proposed |
+| [0161](0161-hide-docs-chore-from-changelog.md) | docsとchoreをCHANGELOGから外し、バージョンを動かさない | 2026-08-14 |  | proposed |
 
 ## バックログ
 

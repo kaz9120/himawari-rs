@@ -2,7 +2,7 @@
 
 - Status: accepted
 - Date: 2026-07-27
-- 関連ADR: [0068](0068-sprt-driven-versioning.md), [0069](0069-release-notes-automation.md)（本ADRが置き換え）, [0070](0070-pr-based-workflow.md)
+- 関連ADR: [0068](0068-sprt-driven-versioning.md), [0069](0069-release-notes-automation.md)（本ADRが置き換え）, [0070](0070-pr-based-workflow.md), [0161](0161-hide-docs-chore-from-changelog.md)
 
 ## Context
 
@@ -80,16 +80,21 @@ Conventional Commitsを採用する。使う型は4つとする。
 | 高速化（棋力は不変） | `fix` | SPRTで有意差がなければ棋力向上ではない |
 
 CHANGELOGの見出しは `changelog-sections` で日本語に置き換える。
-bumpしない型も履歴として残す。
 
 ```json
 "changelog-sections": [
   { "type": "feat", "section": "棋力向上" },
   { "type": "fix", "section": "その他の変更" },
-  { "type": "docs", "section": "ドキュメント", "hidden": false },
-  { "type": "chore", "section": "内部", "hidden": false }
+  { "type": "docs", "section": "ドキュメント", "hidden": true },
+  { "type": "chore", "section": "内部", "hidden": true }
 ]
 ```
+
+当初は `docs` と `chore` を `hidden: false` にし、bumpしない型も履歴として
+残すつもりだった。これは誤りである。release-pleaseの `hidden: false` は
+CHANGELOGへ載せる指定であると同時にリリースを起こす指定でもあり、上の
+対応表と両立しない。文書だけの変更でPATCHが上がり続けた。
+[ADR-0161](0161-hide-docs-chore-from-changelog.md)で `hidden: true` へ改めた。
 
 ### 件名は日本語のまま、Eloを含める
 
