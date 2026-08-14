@@ -52,6 +52,7 @@
 - [0110](0110-g1-history.md)〜[0119](0119-g10-book.md) 参照実装への追従（G1〜G10、単純加算+525.5 Elo）
 - [0125](0125-search-decomposition.md) 探索本体を責務ごとに切り出す
 - [0155](0155-reference-walkthrough.md) 残った乖離の監査と、整列を見送った判断
+- [0160](0160-revisit-rejected-under-better-eval.md) 棄却済みの追従を掘り起こす案（導入済みと判明して棄却）
 
 ### 評価関数（NNUE）
 
@@ -251,7 +252,7 @@
 | [0157](0157-king-mirror-buckets.md) | HalfKPの玉位置を左右ミラーで45バケットへ畳む | 2026-08-12 |  | rejected |
 | [0158](0158-mirror-factorizer.md) | 学習時だけ左右ミラーの仮想特徴を併用する | 2026-08-12 |  | rejected |
 | [0159](0159-ft-width-1024.md) | FT幅を1024へ拡大する | 2026-08-12 |  | proposed |
-| [0160](0160-revisit-rejected-under-better-eval.md) | 棄却した参照追従を1群にまとめて測り直す | 2026-08-13 |  | proposed |
+| [0160](0160-revisit-rejected-under-better-eval.md) | 棄却した参照追従を1群にまとめて測り直す | 2026-08-13 |  | rejected |
 | [0161](0161-hide-docs-chore-from-changelog.md) | docsとchoreをCHANGELOGから外し、バージョンを動かさない | 2026-08-14 |  | accepted |
 
 ## バックログ
