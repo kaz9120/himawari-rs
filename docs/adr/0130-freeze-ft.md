@@ -2,7 +2,7 @@
 
 - Status: accepted
 - Date: 2026-08-02
-- 関連ADR: [0034](0034-nnue-architecture.md), [0064](0064-dense-ft-gradient.md), [0127](0127-net-shape-bench.md), [0128](0128-round-robin-league.md), [0129](0129-auxiliary-heads.md)
+- 関連ADR: [0034](0034-nnue-architecture.md), [0064](0064-dense-ft-gradient-mps.md), [0127](0127-net-shape-bench.md), [0128](0128-round-robin-league.md), [0129](0129-auxiliary-heads.md)
 
 ## Context
 
@@ -121,4 +121,4 @@ value targetのブレンドλにも同じ理由が部分的に当てはまる。
   [ROADMAPの候補](../ROADMAP.md#候補)の「継続学習の世代運用」「公開ネットウォームスタート対照」
   がこの口に乗る
 - FT固定の学習はMPS/GPUに載せやすくなる。更新するパラメータが数万に減るので、
-  [ADR-0064](0064-dense-ft-gradient.md)で問題になったFT勾配の扱いが関係なくなる
+  [ADR-0064](0064-dense-ft-gradient-mps.md)で問題になったFT勾配の扱いが関係なくなる

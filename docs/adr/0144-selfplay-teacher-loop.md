@@ -1,6 +1,6 @@
 # 0144: 自前gensfenで教師データの世代ループを始める
 
-- Status: proposed
+- Status: accepted
 - Date: 2026-08-04
 - 関連ADR: [0030](0030-nyugyoku-declaration.md), [0038](0038-training-data-format.md), [0123](0123-stop-and-resume.md), [0126](0126-mate-score-in-training.md), [0131](0131-frozen-ft-light-head.md), [0135](0135-teacher-data-3b.md)
 

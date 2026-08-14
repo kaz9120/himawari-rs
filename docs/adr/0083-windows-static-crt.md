@@ -1,6 +1,6 @@
 # 0083: WindowsバイナリをMSVCランタイム静的リンクで配布する
 
-- Status: proposed
+- Status: accepted
 - Date: 2026-07-28
 - 関連ADR: [0003](0003-toolchain.md), [0071](0071-release-please.md), [0081](0081-portability.md)
 

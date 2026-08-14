@@ -1,6 +1,6 @@
 # 0122: 開発スクリプトを役割で3言語に分ける
 
-- Status: proposed
+- Status: accepted
 - Date: 2026-08-01
 - 関連ADR: [0027](0027-sprt-framework.md), [0074](0074-feature-verification.md), [0081](0081-portability.md), [0098](0098-agent-permissions.md)
 

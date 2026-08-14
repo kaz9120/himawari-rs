@@ -1,6 +1,6 @@
 # 0124: 挙動を変えない高速化を群でまとめて測る
 
-- Status: proposed
+- Status: accepted
 - Date: 2026-08-01
 - 関連ADR: [0056](0056-tt-prefetch.md), [0067](0067-ft-dimension-512.md), [0089](0089-improvement-criteria.md), [0099](0099-nnue-dot-sdot.md), [0101](0101-movelist-uninit.md), [0122](0122-tooling-language-split.md)
 

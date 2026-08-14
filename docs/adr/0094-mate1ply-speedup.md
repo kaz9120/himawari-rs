@@ -1,6 +1,6 @@
 # 0094: mate_1plyの検証を軽くする
 
-- Status: proposed
+- Status: accepted
 - Date: 2026-07-29
 - 関連ADR: [0029](0029-mate-search.md), [0093](0093-mate1ply-in-search.md), [0089](0089-improvement-criteria.md)
 

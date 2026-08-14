@@ -1,6 +1,6 @@
 # 0031: Lazy SMP
 
-- Status: proposed
+- Status: accepted
 - Date: 2026-07-19
 - 関連ADR: [0020](0020-search-threading.md), [0022](0022-transposition-table.md), [0028](0028-pruning-extensions.md)
 

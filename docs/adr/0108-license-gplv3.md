@@ -1,6 +1,6 @@
 # 0108: ライセンスをMITからGPLv3へ変更する
 
-- Status: proposed
+- Status: accepted
 - Date: 2026-07-30
 - 関連ADR: [0074](0074-feature-verification.md), [0109](0109-reference-parity.md)
 

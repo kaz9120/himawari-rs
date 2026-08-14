@@ -1,8 +1,8 @@
 # 0154: SPRTの実行・監視・後処理を定型化する
 
-- Status: proposed
+- Status: accepted
 - Date: 2026-08-10
-- 関連ADR: [0028](0028-pruning-extensions.md), [0074](0074-feature-verification.md), [0098](0098-sprt-watch.md), [0122](0122-tooling-language-split.md), [0149](0149-experiment-runner.md)
+- 関連ADR: [0028](0028-pruning-extensions.md), [0074](0074-feature-verification.md), [0098](0098-agent-permissions.md), [0122](0122-tooling-language-split.md), [0149](0149-experiment-runner.md)
 
 ## Context
 

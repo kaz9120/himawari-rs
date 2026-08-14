@@ -33,14 +33,9 @@ himawari-rsで作業するエージェントの規約。詳細は各文書へリ
 | [README.md](README.md) | 環境を作るとき | 概要・環境構築・ビルド |
 | [CHANGELOG.md](CHANGELOG.md) | 何が入ったか見るとき | release-pleaseが生成 |
 
-**文書は「誰がいつ読むか」で決める。** このファイルは毎回、ADRは判断の根拠を
-探すとき、ROADMAPは着手を決めるときに読む。読み手のいない文書は作らない。
-同じ情報を2文書に書かない。
-
-**何が入ったかはCHANGELOG.md（release-pleaseが生成）、なぜそうしたかはADR、
-次に何をするかはROADMAPが持つ。** かつてIDEAS.md・RESULTS.md・SETUP.mdを
-別に持っていたが、2026-08-01にそれぞれROADMAP・（CHANGELOGとADR）・READMEへ
-統合した。
+**文書は「誰がいつ読むか」で決める。** 読み手のいない文書は作らない。
+同じ情報を2文書に書かない。何が入ったかはCHANGELOG.md、なぜそうしたかはADR、
+次に何をするかはROADMAPが持つ。
 
 **案は ROADMAPの候補 → ADR → 完了 の順に動く。** 着手を決めたらADRを起こして
 候補から消す。完了・棄却した案も候補には残さない。
@@ -50,7 +45,12 @@ ROADMAPは3節で構成する。現行構成・次の方向・候補。過去の
 ## ADRプロセス
 
 設計判断はすべてADRに記録する（[ADR-0001](docs/adr/0001-adr-process.md)）。
-proposedで起草し、オーナーLGTMでacceptedにする。1アイデア1ADR。
+proposedで起草し、1アイデア1ADRとする。
+
+**Statusは実態に追従させる。** 実装がmainへ入り結果が出たらacceptedに、
+測って捨てたらrejectedにする。索引（`docs/adr/README.md`）の更新は同じPRで
+行う。2026-08-14に、実装済みのまま24件がproposedで残っていたのを直した。
+索引だけを見て「まだ入っていない」と誤読する事故を防ぐ。
 
 ## SPRTゲート（[ADR-0028](docs/adr/0028-pruning-extensions.md)）
 
@@ -155,8 +155,9 @@ RUSTFLAGS="-C target-cpu=native" cargo build --release
 
 すべてgitignore対象。`data/raw/<データセット名>/` に生データ、
 `data/train/` に加工済みpsv、`data/nets/` に学習済みネット、
-`data/sprt/` にselfplayの棋譜ログ（jsonl）、`data/bin/` に
-比較用に残すビルド済みバイナリ、`data/logs/` にスクリプトの実行ログを置く。
+`data/book/` に定跡、`data/sprt/` にselfplayの棋譜ログ（jsonl）、`data/bin/` に
+比較用に残すビルド済みバイナリ、`data/profile/` にプロファイル結果、
+`data/logs/` にスクリプトの実行ログを置く。
 **ログのリダイレクト先を手で決めない。** `scripts/` の各スクリプトが
 `data/logs/<名前>.log` へ追記する（[ADR-0149](docs/adr/0149-experiment-runner.md)）。
 チェックポイント（*.pt）は `training/checkpoints/` に置く。

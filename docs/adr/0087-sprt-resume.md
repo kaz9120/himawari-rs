@@ -1,6 +1,6 @@
 # 0087: 中断したSPRTを棋譜から再開できるようにする
 
-- Status: proposed
+- Status: accepted
 - Date: 2026-07-28
 - 関連ADR: [0027](0027-sprt-framework.md), [0028](0028-pruning-extensions.md)
 

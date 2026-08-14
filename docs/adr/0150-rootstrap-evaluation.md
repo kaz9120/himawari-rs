@@ -1,6 +1,6 @@
 # 0150: 世代ループでの検証損失の読み方
 
-- Status: proposed
+- Status: accepted
 - Date: 2026-08-08
 - 関連ADR: [0089](0089-improvement-criteria.md), [0128](0128-round-robin-league.md), [0131](0131-frozen-ft-light-head.md), [0135](0135-teacher-data-3b.md), [0136](0136-quiet-teacher-positions.md), [0144](0144-selfplay-teacher-loop.md), [0145](0145-continual-learning.md)
 

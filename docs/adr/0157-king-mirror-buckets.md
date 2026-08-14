@@ -2,7 +2,7 @@
 
 - Status: rejected
 - Date: 2026-08-12
-- 関連ADR: [0034](0034-halfkp-features.md), [0066](0066-virtual-features.md), [0127](0127-net-shape-bench.md), [0131](0131-frozen-ft-light-head.md), [0135](0135-teacher-data-3b.md), [0156](0156-bucket-accumulator-cache.md)
+- 関連ADR: [0034](0034-nnue-architecture.md), [0066](0066-halfkp-factorizer.md), [0127](0127-net-shape-bench.md), [0131](0131-frozen-ft-light-head.md), [0135](0135-teacher-data-3b.md), [0156](0156-bucket-accumulator-cache.md)
 
 ## Context
 
@@ -256,7 +256,7 @@ NPSの−1.53%は消せる見込みがある。`View` をconst genericsで単相
 
 - **mainへは入れない。** 実装はブランチ `docs-adr0157-king-mirror` に残す。
   ADRのこの記録が成果物である（CLAUDE.md）
-- 公開評価関数の互換（[ADR-0034](0034-halfkp-features.md)）を切る判断は
+- 公開評価関数の互換（[ADR-0034](0034-nnue-architecture.md)）を切る判断は
   オーナーから得ていた（2026-08-12。「やねうら王のRustコピーが作りたい
   わけではない」）。**棄却したのでmainの `nnue_compat` はそのまま残る**
 - **原資としては生きている。** FTパラメータ44%減は、幅へ振り替えれば

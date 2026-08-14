@@ -2,7 +2,7 @@
 
 - Status: proposed
 - Date: 2026-08-03
-- 関連ADR: [0034](0034-nnue-architecture.md), [0064](0064-dense-ft-gradient.md), [0066](0066-feature-factorizer.md), [0067](0067-ft-dimension-512.md), [0127](0127-net-shape-bench.md), [0129](0129-auxiliary-heads.md), [0130](0130-freeze-ft.md), [0131](0131-frozen-ft-light-head.md)
+- 関連ADR: [0034](0034-nnue-architecture.md), [0064](0064-dense-ft-gradient-mps.md), [0066](0066-halfkp-factorizer.md), [0067](0067-ft-dimension-512.md), [0127](0127-net-shape-bench.md), [0129](0129-auxiliary-heads.md), [0130](0130-freeze-ft.md), [0131](0131-frozen-ft-light-head.md)
 
 ## Context
 
@@ -64,7 +64,7 @@ acc = Σ w[特徴i] + bias     （盤上の38個ぶんを足す）
 太い表で1回多くやるだけである。
 
 写像は書き出し時に捨てる。[ADR-0129](0129-auxiliary-heads.md)の補助ヘッド、
-[ADR-0066](0066-feature-factorizer.md)のfactorizerと同じ形で、**推論側は1バイトも変わらない。**
+[ADR-0066](0066-halfkp-factorizer.md)のfactorizerと同じ形で、**推論側は1バイトも変わらない。**
 
 ## Decision
 
