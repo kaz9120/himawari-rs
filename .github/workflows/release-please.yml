@@ -14,6 +14,12 @@ name: Release Please
 #   chore -> bumpなし（CI・設定・テスト・依存更新）
 # MAJORは Release-As: 1.0.0 トレーラで明示する（選手権への参加）。
 #
+# bumpなしはconfigの changelog-sections で hidden: true にして実現する
+# （ADR-0161）。release-pleaseの既定のversioning strategyは、featでも
+# breakingでもないコミットをPATCHへフォールバックさせる。リリースPRを
+# 作るかどうかはリリースノートが空かで決まるため、hidden: false へ戻すと
+# 文書だけの変更でPATCHが上がる。
+#
 # NOTE: GITHUB_TOKENではなくfine-grained PAT（RELEASE_PLEASE_TOKEN）を使う。
 # GITHUB_TOKENが起こしたイベントはワークフローを起動しない（GitHubの再帰
 # 防止仕様）ため、GITHUB_TOKENのままだと
