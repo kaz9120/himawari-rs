@@ -925,6 +925,38 @@ impl MovePicker {
 mod tests {
     use super::*;
 
+    /// 共有historyの表がスレッド数に比例して伸びること
+    /// （ADR-0162。history.h:151-153）。
+    #[test]
+    fn shared_history_scales_with_threads() {
+        let one = SharedHistories::new(1);
+        let four = SharedHistories::new(4);
+        assert_eq!(four.pawn.mask + 1, (one.pawn.mask + 1) * 4);
+        assert_eq!(four.corr.mask + 1, (one.corr.mask + 1) * 4);
+        // 2の冪でないスレッド数は切り上げる（参照実装は2の冪を要求する）
+        let three = SharedHistories::new(3);
+        assert_eq!(three.pawn.mask + 1, (one.pawn.mask + 1) * 4);
+    }
+
+    /// 共有historyへの更新が、別の持ち主から読めること（ADR-0162）。
+    /// スレッドローカルのままだと、この読み出しが初期値のままになる。
+    #[test]
+    fn shared_history_is_visible_across_owners() {
+        let shared = Arc::new(SharedHistories::new(2));
+        let writer = Histories::new(Arc::clone(&shared));
+        let reader = Histories::new(Arc::clone(&shared));
+
+        let pc = Piece::new(Color::Black, PieceType::PAWN);
+        let to = Square::from_index(40);
+        let slot = writer.shared.pawn.slot(0x1234_5678);
+        let before = reader.shared.pawn.get(slot, pc, to);
+        writer.shared.pawn.update(slot, pc, to, D_PAWN);
+        assert!(
+            reader.shared.pawn.get(slot, pc, to) > before,
+            "共有していれば書き手の更新が読み手にも見える"
+        );
+    }
+
     /// 部分挿入ソートがlimit以上の要素を降順に並べること（movepick.cpp:91）。
     #[test]
     fn partial_insertion_sort_orders_above_limit() {
