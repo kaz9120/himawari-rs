@@ -44,6 +44,14 @@ LLR_RE = re.compile(r"LLR ([+-][0-9.]+)")
 WDL_RE = re.compile(r"(\+[0-9]+ =[0-9]+ -[0-9]+)")
 GAMES_RE = re.compile(r"games ([0-9]+)")
 PAIRS_NUM_RE = re.compile(r"pairs +([0-9]+)")
+# 起動行の例:
+#   selfplay: cand vs base | tc 10+0.1 | 並列 3 | SPRT elo[-5, 0] α=0.05 β=0.05 | 開始局面 30053件
+HYPOTHESIS_RE = re.compile(r"SPRT elo\[(-?[0-9.]+), *(-?[0-9.]+)\]")
+
+# 既定の対立仮説（CLAUDE.mdのSPRTゲート）。
+DEFAULT_HYPOTHESIS = ("0", "5")
+# 非劣性の対立仮説（ADR-0163）。
+NON_INFERIORITY_HYPOTHESIS = ("-5", "0")
 
 EXIT_BY_VERDICT = {"H1": 0, "H0": 1, "打ち切り": 2, "判定前": 2}
 
@@ -98,6 +106,43 @@ def find_source_line(lines):
     return None, None
 
 
+def last_run_lines(lines):
+    """最後の起動行以降だけを返す。起動行が無ければ全体を返す。
+
+    ログは追記式で、`--resume` の再開分も同じファイルへ積む
+    （[ADR-0087](../docs/adr/0087-sprt-resume.md)）。前の走行の判定行が
+    残っているので、全体から探すと古い結果を拾う。再開後のpairs行は通算値を
+    出すため、最後の走行だけを見れば累積の結果になる。
+    """
+    start = 0
+    for i, line in enumerate(lines):
+        if HYPOTHESIS_RE.search(line):
+            start = i
+    return lines[start:]
+
+
+def find_hypothesis(lines):
+    """最後の起動行から (elo0, elo1) を返す。無ければ None。"""
+    found = None
+    for line in lines:
+        m = HYPOTHESIS_RE.search(line)
+        if m:
+            found = (m.group(1), m.group(2))
+    return found
+
+
+def hypothesis_note(hyp):
+    """既定でない対立仮説なら、トレーラへ添える注記を返す（ADR-0163）。
+
+    既定（elo0=0, elo1=5）のときは空文字。非劣性は名前で呼ぶ。
+    """
+    if hyp is None or hyp == DEFAULT_HYPOTHESIS:
+        return ""
+    if hyp == NON_INFERIORITY_HYPOTHESIS:
+        return "（非劣性 elo0=-5 elo1=0）"
+    return f"（elo0={hyp[0]} elo1={hyp[1]}）"
+
+
 def parse_fields(src):
     """結果行からElo・CI・LLR・W-D-L・対局数を取り出す。
 
@@ -127,23 +172,29 @@ def parse_fields(src):
     }
 
 
-def build_report(feature, verdict, fields):
-    """3形式（トレーラ・RESULTS.md表・PR本文表）を1つの文字列にする。"""
+def build_report(feature, verdict, fields, note=""):
+    """3形式（トレーラ・RESULTS.md表・PR本文表）を1つの文字列にする。
+
+    noteは既定でない対立仮説の注記（ADR-0163）。トレーラと表の両方へ入れ、
+    条件を書かずに数値だけが独り歩きするのを防ぐ。
+    """
     elo_num, elo_ci = fields["elo_num"], fields["elo_ci"]
     llr, wdl, games = fields["llr"], fields["wdl"], fields["games"]
 
     if verdict == "打ち切り":
-        results_row = f"| {feature} | **{elo_num} {elo_ci}**（{games}局、LLR {llr}で打ち切り） |"
+        results_row = f"| {feature} | **{elo_num} {elo_ci}**（{games}局、LLR {llr}で打ち切り）{note} |"
     elif verdict == "判定前":
-        results_row = f"| {feature} | {elo_num} {elo_ci}（{games}局、LLR {llr}、判定前の途中経過） |"
+        results_row = f"| {feature} | {elo_num} {elo_ci}（{games}局、LLR {llr}、判定前の途中経過）{note} |"
     else:
-        results_row = f"| {feature} | **{elo_num} {elo_ci}**（{games}局、LLR {llr}で{verdict}採択） |"
+        results_row = (
+            f"| {feature} | **{elo_num} {elo_ci}**（{games}局、LLR {llr}で{verdict}採択）{note} |"
+        )
 
     lines = [
-        f"=== {feature}（{verdict}） ===",
+        f"=== {feature}（{verdict}{note}） ===",
         "",
         "--- コミットのトレーラ（ADR-0071） ---",
-        f"SPRT: {elo_num} {elo_ci} {games}games {verdict}",
+        f"SPRT: {elo_num} {elo_ci} {games}games {verdict}{note}",
         "",
         "--- RESULTS.md の表 ---",
         "| 比較 | 結果 |",
@@ -157,7 +208,7 @@ def build_report(feature, verdict, fields):
         f"| W-D-L | {wdl} |",
         f"| Elo [95%CI] | **{elo_num} {elo_ci}** |",
         f"| LLR | {llr} |",
-        f"| 判定 | **{verdict}** |",
+        f"| 判定 | **{verdict}**{note} |",
     ]
     return "\n".join(lines)
 
@@ -176,6 +227,8 @@ def main(argv=None):
     with open(log_path, encoding="utf-8") as f:
         lines = f.read().splitlines()
 
+    # 再開したログは前の走行の判定行を含む。最後の走行だけを見る（ADR-0087）
+    lines = last_run_lines(lines)
     src, verdict = find_source_line(lines)
     if src is None:
         print(f"エラー: 結果行が見つからない: {log_path}", file=sys.stderr)
@@ -187,7 +240,7 @@ def main(argv=None):
         print(f"エラー: {e}", file=sys.stderr)
         return 3
 
-    print(build_report(feature, verdict, fields))
+    print(build_report(feature, verdict, fields, hypothesis_note(find_hypothesis(lines))))
     return EXIT_BY_VERDICT[verdict]
 
 
