@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.37.0](https://github.com/kaz9120/himawari-rs/compare/v0.36.3...v0.37.0) (2026-08-15)
+
+
+### 棋力向上
+
+* 既定の構成をFT1024へ切り替える（ADR-0159） ([#332](https://github.com/kaz9120/himawari-rs/issues/332)) ([92ddb95](https://github.com/kaz9120/himawari-rs/commit/92ddb9550ada11b534848709b094415b52ebba04))
+
 ## [0.36.3](https://github.com/kaz9120/himawari-rs/compare/v0.36.2...v0.36.3) (2026-08-15)
 
 
