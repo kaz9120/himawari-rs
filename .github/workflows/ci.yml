@@ -22,6 +22,9 @@ jobs:
       # 既定以外のネットワーク構成（ADR-0127）。L1をパディングする経路と
       # FTを太らせた経路が壊れていないことを、コンパイルとテストで確認する
       - run: HIMAWARI_ARCH=512x16x64 cargo test --workspace
+      # 活性ダンプのfeature（ADR-0168）。通常のビルドでは触らないので、
+      # コンパイルが通ることだけ確かめて腐るのを防ぐ
+      - run: cargo check -p himawari-engine --features actdump
       # scripts/ のPython（ADR-0122の分析系）。テストは書かれていたが
       # CIで回っておらず、壊れても気づけない状態だった
       - run: pip install --quiet pytest

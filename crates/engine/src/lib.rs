@@ -1,6 +1,8 @@
 //! 探索・置換表・評価・時間管理（P2のADR群に基づく）。
 #![feature(portable_simd)]
 
+#[cfg(feature = "actdump")]
+pub mod actdump;
 pub mod eval;
 pub mod mate;
 pub mod movepick;

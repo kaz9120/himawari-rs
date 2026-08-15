@@ -8,6 +8,11 @@ license.workspace = true
 [dependencies]
 himawari-core = { path = "../core" }
 
+# 第1層へ入る活性の非ゼロパターンをダンプする（ADR-0168の調査用）。
+# 通常のビルドには入らない。
+[features]
+actdump = []
+
 [lints]
 workspace = true
 

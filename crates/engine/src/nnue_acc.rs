@@ -173,6 +173,8 @@ impl NnueState {
             let acc = &top.acc[c.index()];
             nnue_simd::clip_to_u8(acc, &mut concat[half * FT_OUT..(half + 1) * FT_OUT]);
         }
+        #[cfg(feature = "actdump")]
+        crate::actdump::record(&concat);
         nnue_simd::forward_hidden(net, &concat)
     }
 
