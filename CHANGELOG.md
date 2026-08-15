@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.36.2](https://github.com/kaz9120/himawari-rs/compare/v0.36.1...v0.36.2) (2026-08-15)
+
+
+### その他の変更
+
+* BonaPiece集合をブロック単位のレイアウトへ変える（+1.07% NPS、ADR-0165） ([#323](https://github.com/kaz9120/himawari-rs/issues/323)) ([ce8780c](https://github.com/kaz9120/himawari-rs/commit/ce8780c8ae093b481e8643ca9f4a1d4df260f920))
+
 ## [0.36.1](https://github.com/kaz9120/himawari-rs/compare/v0.36.0...v0.36.1) (2026-08-15)
 
 
