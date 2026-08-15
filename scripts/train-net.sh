@@ -36,7 +36,7 @@ training/runs/registry.tsv へ積む。
   TRAIN_INIT_CKPT  f32チェックポイントから継続学習する（ADR-0145）
   TRAIN_PEAK_LR    継続学習では1e-4が既定（ADR-0145）
   TRAIN_WARMUP     継続学習のwarmupステップ数。既定は総ステップの4%
-  TRAIN_DEVICE     既定 cpu
+  TRAIN_DEVICE     既定 mps（ADR-0064）。MPSがない環境では cpu を渡す
   TRAIN_SEED       既定 0
   TRAIN_NOTES      台帳へ書く備考
   TRAIN_EXTRA_ARGS train.pyへそのまま渡す追加引数（例: --mirror-factor）
@@ -116,7 +116,7 @@ run_logged "$NAME" python3 training/train.py \
 	--out "data/nets/${NAME}.hmwr" \
 	--batch-loader --dense-ft --factorized --mmap \
 	--ft-clip 1.0 \
-	--device "${TRAIN_DEVICE:-cpu}" \
+	--device "${TRAIN_DEVICE:-mps}" \
 	--seed "${TRAIN_SEED:-0}" \
 	--checkpoint-dir "training/checkpoints/${NAME}" \
 	--log-file "training/runs/net_shape/${NAME}.tsv" \
