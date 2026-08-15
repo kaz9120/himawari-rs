@@ -7,7 +7,6 @@
 //! 盤上駒の升番号は当プロジェクトのSquare（筋×9+段）がやねうら王の
 //! SQ番号と一致するため、変換なしで使える。
 
-use crate::bitboard::Bitboard;
 use crate::piece::{Piece, PieceType};
 use crate::position::Position;
 use crate::types::{Color, Square};
@@ -112,26 +111,47 @@ pub fn hand_bona_piece(c: Color, owner: Color, pt: PieceType, i: u32) -> u16 {
     hand_base(owner == c, pt) + (i - 1) as u16
 }
 
-/// BonaPieceの集合を持つビットセットの語数。
-pub const BP_WORDS: usize = (FE_END as usize).div_ceil(64);
-
-/// 盤上駒のカテゴリと、視点側ブロックの起点（ADR-0164）。
+/// 盤上駒のカテゴリ（ADR-0164）。
 ///
-/// 相手側のブロックは起点の直後81升に並ぶ。金の動きをする5駒種は
-/// `board_base` の `gold_like` で1つに畳まれるため、ここでも
-/// `PieceType::GOLD` の1カテゴリで代表し、盤は `Position::golds` で引く。
-/// 玉は特徴に入らないのでカテゴリを持たない。
-const BOARD_CATEGORIES: [(PieceType, u16); 9] = [
-    (PieceType::PAWN, F_PAWN),
-    (PieceType::LANCE, F_LANCE),
-    (PieceType::KNIGHT, F_KNIGHT),
-    (PieceType::SILVER, F_SILVER),
-    (PieceType::GOLD, F_GOLD),
-    (PieceType::BISHOP, F_BISHOP),
-    (PieceType::HORSE, F_HORSE),
-    (PieceType::ROOK, F_ROOK),
-    (PieceType::DRAGON, F_DRAGON),
+/// BonaPieceの盤上部分は、このカテゴリ順に (視点側, 相手側) の81升ブロックが
+/// 並ぶ。金の動きをする5駒種は `board_base` の `gold_like` で1つに畳まれるため、
+/// ここでも `PieceType::GOLD` の1カテゴリで代表し、盤は `Position::golds` で
+/// 引く。玉は特徴に入らないのでカテゴリを持たない。
+const BOARD_CATEGORIES: [PieceType; 9] = [
+    PieceType::PAWN,
+    PieceType::LANCE,
+    PieceType::KNIGHT,
+    PieceType::SILVER,
+    PieceType::GOLD,
+    PieceType::BISHOP,
+    PieceType::HORSE,
+    PieceType::ROOK,
+    PieceType::DRAGON,
 ];
+
+/// BonaPiece集合を保持するブロック数（手駒1＋盤上の9カテゴリ×2色）。
+pub const BP_BLOCKS: usize = 1 + 2 * BOARD_CATEGORIES.len();
+
+/// ブロックに分けたBonaPiece集合（ADR-0165）。
+///
+/// 0番目が手駒（BonaPiece 0..`FE_HAND_END`）、1番目以降が盤上の81升ブロックで、
+/// **並びはBonaPiece番号の昇順と一致する。** 語をまたぐ配置がないので、
+/// 集合を作るときも差分を取るときもread-modify-writeが要らない。
+pub type BonaBits = [u128; BP_BLOCKS];
+
+/// ブロックbの先頭にあたるBonaPiece番号。
+///
+/// 盤上ブロックは `F_PAWN` から81ずつ規則的に並ぶ（`BOARD_CATEGORIES` の順が
+/// `F_PAWN`・`F_LANCE`… の並びと同じであることが前提。下の
+/// `board_categories_match_bona_order` が固定する）。
+#[inline]
+pub const fn block_base(b: usize) -> u32 {
+    if b == 0 {
+        0
+    } else {
+        F_PAWN as u32 + 81 * (b as u32 - 1)
+    }
+}
 
 /// 81升のビット並びを180度回す。`Square::inv`（80 - sq）と同じ写像。
 #[inline]
@@ -139,31 +159,15 @@ const fn rev81(x: u128) -> u128 {
     x.reverse_bits() >> (128 - 81)
 }
 
-/// ビットセットのbit位置posへ、64ビットの値vをORする。
-#[inline]
-fn or_at(out: &mut [u64; BP_WORDS], pos: u16, v: u64) {
-    if v == 0 {
-        return;
-    }
-    let w = pos as usize / 64;
-    let sh = pos as usize % 64;
-    out[w] |= v << sh;
-    // 語をまたぐぶん。sh==0のときシフト量が64になるので分ける
-    if sh != 0 {
-        out[w + 1] |= v >> (64 - sh);
-    }
-}
-
-/// 視点cのBonaPiece集合をビットセットへ書く（ADR-0164）。
+/// 視点cのBonaPiece集合をブロックへ書く（ADR-0164・ADR-0165）。
 ///
 /// 結果は `board_bona_piece`・`hand_bona_piece` を駒1枚ずつ呼んで
 /// ビットを立てたものと一致する。**1枚ずつ回らずに済むのは、BonaPieceの
 /// 番号付けが盤上は81升ぶんのブロックの並び、手駒は枚数ぶんの連番に
-/// なっているためである。** 盤はbitboardをブロックの起点へシフトして入れ、
-/// 手駒は連続ビットのマスクを1回ORすれば同じ集合になる。
-pub fn bona_piece_bits(pos: &Position, c: Color, out: &mut [u64; BP_WORDS]) {
-    *out = [0; BP_WORDS];
-
+/// なっているためである。** 盤はbitboardをそのままブロックへ入れ、手駒は
+/// 連続ビットのマスクを1つ組み立てて入れる。どのブロックも代入で埋まる。
+pub fn bona_piece_bits(pos: &Position, c: Color, out: &mut BonaBits) {
+    let mut hand_bits = 0u128;
     for owner in [Color::Black, Color::White] {
         let hand = pos.hand(owner);
         for pt in PieceType::HAND_KINDS {
@@ -172,31 +176,30 @@ pub fn bona_piece_bits(pos: &Position, c: Color, out: &mut [u64; BP_WORDS]) {
                 continue;
             }
             // 枚数のフィールド幅は最大5ビット（歩）なのでシフトは溢れない
-            debug_assert!(n < 64, "手駒の枚数がフィールド幅を超えた: {n}");
-            or_at(out, hand_base(owner == c, pt), (1u64 << n) - 1);
+            debug_assert!(n < 128, "手駒の枚数がフィールド幅を超えた: {n}");
+            hand_bits |= ((1u128 << n) - 1) << hand_base(owner == c, pt);
         }
     }
+    out[0] = hand_bits;
 
-    for (pt, f) in BOARD_CATEGORIES {
-        for owner in [Color::Black, Color::White] {
-            let bb = if pt == PieceType::GOLD {
+    for (i, pt) in BOARD_CATEGORIES.into_iter().enumerate() {
+        let pick = |owner: Color| {
+            if pt == PieceType::GOLD {
                 pos.golds(owner)
             } else {
                 pos.pieces(owner, pt)
-            };
-            if bb == Bitboard::EMPTY {
-                continue;
             }
-            // 後手視点は盤を180度回す。board_bona_pieceのsq.inv()にあたる
-            let bits = if c == Color::Black {
-                bb.raw()
-            } else {
-                rev81(bb.raw())
-            };
-            let base = if owner == c { f } else { f + 81 };
-            or_at(out, base, bits as u64);
-            or_at(out, base + 64, (bits >> 64) as u64);
-        }
+            .raw()
+        };
+        let (own, opp) = (pick(c), pick(c.flip()));
+        // 後手視点は盤を180度回す。board_bona_pieceのsq.inv()にあたる
+        let (own, opp) = if c == Color::Black {
+            (own, opp)
+        } else {
+            (rev81(own), rev81(opp))
+        };
+        out[1 + 2 * i] = own;
+        out[2 + 2 * i] = opp;
     }
 }
 
@@ -274,6 +277,20 @@ mod tests {
             hand_bona_piece(Color::White, Color::Black, PieceType::ROOK, 2),
             E_HAND_ROOK + 1
         );
+    }
+
+    #[test]
+    fn board_categories_match_bona_order() {
+        // ブロックの並びがBonaPieceの番号順と一致すること。block_baseは
+        // これを前提に F_PAWN から81ずつ進む（ADR-0165）
+        for (i, pt) in BOARD_CATEGORIES.into_iter().enumerate() {
+            assert_eq!(u32::from(board_base(true, pt)), block_base(1 + 2 * i));
+            assert_eq!(u32::from(board_base(false, pt)), block_base(2 + 2 * i));
+        }
+        // 最後のブロックの81升ぶんで番号を使い切る
+        assert_eq!(block_base(BP_BLOCKS - 1) + 81, u32::from(FE_END));
+        // 手駒ブロックは盤上の手前で収まる
+        assert_eq!(block_base(1), u32::from(FE_HAND_END));
     }
 
     #[test]

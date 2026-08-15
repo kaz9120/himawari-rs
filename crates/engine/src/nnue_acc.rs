@@ -56,8 +56,8 @@ impl AccEntry {
 /// 実際に積まれるのは最大 `MAX_PLY` 段になる。余白を足して越えを防ぐ。
 const MAX_ENTRIES: usize = MAX_PLY + 16;
 
-/// BonaPieceの集合を持つビットセットの語数。
-const BP_WORDS: usize = bonapiece::BP_WORDS;
+/// BonaPiece集合を保持するブロック数。
+const BP_BLOCKS: usize = bonapiece::BP_BLOCKS;
 
 /// 玉位置ごとのキャッシュの件数（視点色 × 玉の81升）。
 const FINNY_ENTRIES: usize = 2 * 81;
@@ -71,7 +71,7 @@ const FINNY_ENTRIES: usize = 2 * 81;
 struct FinnyEntry {
     acc: [i16; FT_OUT],
     /// `acc` に反映済みのBonaPiece集合。
-    bits: [u64; BP_WORDS],
+    bits: bonapiece::BonaBits,
     /// falseの間は `acc`・`bits` の中身が未定義で、誰も読まない。
     valid: bool,
 }
@@ -80,7 +80,7 @@ impl FinnyEntry {
     fn empty() -> FinnyEntry {
         FinnyEntry {
             acc: [0; FT_OUT],
-            bits: [0; BP_WORDS],
+            bits: [0; BP_BLOCKS],
             valid: false,
         }
     }
@@ -287,7 +287,7 @@ impl NnueState {
         // 玉位置を固定した特徴インデックスの起点。BonaPieceを足せば
         // そのまま特徴インデックスになる
         let base = bonapiece::halfkp_index(c, king, 0);
-        let mut cur = [0u64; BP_WORDS];
+        let mut cur = [0u128; BP_BLOCKS];
         bonapiece::bona_piece_bits(pos, c, &mut cur);
 
         // scratch・finny・entriesを同時に借りられないので、いったん取り出して
@@ -297,24 +297,30 @@ impl NnueState {
         let e = &mut finny[c.index() * 81 + king.index()];
         if !e.valid {
             e.acc.copy_from_slice(&net.ft_b[..FT_OUT]);
-            e.bits = [0; BP_WORDS];
+            e.bits = [0; BP_BLOCKS];
             e.valid = true;
         }
-        for (w, (&now, &had)) in cur.iter().zip(e.bits.iter()).enumerate() {
-            let off = base + (w * 64) as u32;
-            let mut added = now & !had;
+        // ブロックの並びはBonaPiece番号の昇順なので、adds・subsは語で分けて
+        // いた頃と同じ順に並ぶ。反映済み集合はここで更新し、別のコピーを
+        // 挟まない（ADR-0165）
+        for (b, (&now, had)) in cur.iter().zip(e.bits.iter_mut()).enumerate() {
+            if now == *had {
+                continue;
+            }
+            let off = base + bonapiece::block_base(b);
+            let mut added = now & !*had;
             while added != 0 {
                 s.adds.push(off + added.trailing_zeros());
                 added &= added - 1;
             }
-            let mut removed = had & !now;
+            let mut removed = *had & !now;
             while removed != 0 {
                 s.subs.push(off + removed.trailing_zeros());
                 removed &= removed - 1;
             }
+            *had = now;
         }
         nnue_simd::ft_update(&mut e.acc, &net.ft_w, &s.adds, &s.subs);
-        e.bits = cur;
 
         let top = &mut self.entries[self.top];
         top.acc[c.index()] = e.acc;
@@ -549,12 +555,16 @@ mod tests {
         }
     }
 
-    /// `bona_piece_bits`（ADR-0164）が、駒を1枚ずつ回して立てた集合と
-    /// 一致すること。`for_each_bona_piece` を正解器として残してある。
+    /// `bona_piece_bits`（ADR-0164・ADR-0165）が、駒を1枚ずつ回して立てた
+    /// 集合と一致すること。`for_each_bona_piece` を正解器として残してある。
+    ///
+    /// 正解器の側は語で区切ったビットセットを作り、ブロック表現へ写して
+    /// 比べる。**写像のうえで一致するなら、差分を取り出す順序もBonaPiece
+    /// 番号の昇順で変わらない。**
     #[test]
     fn bona_piece_bits_matches_one_by_one() {
         let mut rng = Rng(0x0BAD_C0DE_1234_5678);
-        let mut bits = [0u64; BP_WORDS];
+        let mut bits = [0u128; BP_BLOCKS];
         for _ in 0..300 {
             let mut pos = Position::from_sfen(SFEN_STARTPOS).unwrap();
             for _ in 0..(rng.next() % 80) {
@@ -567,9 +577,14 @@ mod tests {
                 pos.do_move(m);
             }
             for c in [Color::Black, Color::White] {
-                let mut want = [0u64; BP_WORDS];
+                let mut want = [0u128; BP_BLOCKS];
                 crate::nnue::for_each_bona_piece(&pos, c, |bp| {
-                    want[bp as usize / 64] |= 1u64 << (bp % 64);
+                    // BonaPiece番号がどのブロックの何ビット目にあたるか
+                    let b = match u32::from(bp) {
+                        n if n < bonapiece::block_base(1) => 0,
+                        n => 1 + (n - bonapiece::block_base(1)) as usize / 81,
+                    };
+                    want[b] |= 1u128 << (u32::from(bp) - bonapiece::block_base(b));
                 });
                 bonapiece::bona_piece_bits(&pos, c, &mut bits);
                 assert_eq!(bits, want, "集合が一致しない: {} 視点{c:?}", pos.to_sfen());
