@@ -263,6 +263,7 @@
 | [0166](0166-movepick-frame.md) | MovePickerの生成段を切り出してフレームを縮める | 2026-08-15 |  | accepted |
 | [0167](0167-nnue-kernel-instructions.md) | NNUE推論の命令数を削る2案を測り、どちらも見送る | 2026-08-15 |  | rejected |
 | [0168](0168-ft-dim-reorder.md) | FT出力次元を並べ替えて第1層の空回りを減らす | 2026-08-15 |  | proposed |
+| [0169](0169-clip-nnz-fusion.md) | 活性の構築と非ゼロチャンクの列挙を1パスにまとめる案を棄却する | 2026-08-15 |  | rejected |
 
 ## バックログ
 
