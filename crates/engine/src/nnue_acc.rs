@@ -7,7 +7,7 @@
 
 use himawari_core::{Color, DirtyPiece, PieceType, Position, Square, bonapiece};
 
-use crate::nnue::{self, CONCAT, FT_OUT, FtWeight, NnueNetwork};
+use crate::nnue::{CONCAT, FT_OUT, FtWeight, NnueNetwork};
 use crate::nnue_simd;
 use crate::value::{MAX_PLY, Value};
 
@@ -57,7 +57,7 @@ impl AccEntry {
 const MAX_ENTRIES: usize = MAX_PLY + 16;
 
 /// BonaPieceの集合を持つビットセットの語数。
-const BP_WORDS: usize = (bonapiece::FE_END as usize).div_ceil(64);
+const BP_WORDS: usize = bonapiece::BP_WORDS;
 
 /// 玉位置ごとのキャッシュの件数（視点色 × 玉の81升）。
 const FINNY_ENTRIES: usize = 2 * 81;
@@ -288,9 +288,7 @@ impl NnueState {
         // そのまま特徴インデックスになる
         let base = bonapiece::halfkp_index(c, king, 0);
         let mut cur = [0u64; BP_WORDS];
-        nnue::for_each_bona_piece(pos, c, |bp| {
-            cur[bp as usize / 64] |= 1u64 << (bp % 64);
-        });
+        bonapiece::bona_piece_bits(pos, c, &mut cur);
 
         // scratch・finny・entriesを同時に借りられないので、いったん取り出して
         // 戻す。takeは空Vecとの交換なので確保は起きず、容量も残る
@@ -548,6 +546,34 @@ mod tests {
                 "キャッシュ差分と全計算が一致しない: {}",
                 pos.to_sfen()
             );
+        }
+    }
+
+    /// `bona_piece_bits`（ADR-0164）が、駒を1枚ずつ回して立てた集合と
+    /// 一致すること。`for_each_bona_piece` を正解器として残してある。
+    #[test]
+    fn bona_piece_bits_matches_one_by_one() {
+        let mut rng = Rng(0x0BAD_C0DE_1234_5678);
+        let mut bits = [0u64; BP_WORDS];
+        for _ in 0..300 {
+            let mut pos = Position::from_sfen(SFEN_STARTPOS).unwrap();
+            for _ in 0..(rng.next() % 80) {
+                let mut list = MoveList::default();
+                generate_legal(&pos, true, &mut list);
+                if list.is_empty() {
+                    break;
+                }
+                let m = list.as_slice()[(rng.next() % list.len() as u64) as usize];
+                pos.do_move(m);
+            }
+            for c in [Color::Black, Color::White] {
+                let mut want = [0u64; BP_WORDS];
+                crate::nnue::for_each_bona_piece(&pos, c, |bp| {
+                    want[bp as usize / 64] |= 1u64 << (bp % 64);
+                });
+                bonapiece::bona_piece_bits(&pos, c, &mut bits);
+                assert_eq!(bits, want, "集合が一致しない: {} 視点{c:?}", pos.to_sfen());
+            }
         }
     }
 
