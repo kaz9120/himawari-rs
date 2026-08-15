@@ -777,6 +777,55 @@ impl MovePicker {
         }
     }
 
+    /// 取る手を生成して並べる（movepick.cpp:466-478）。
+    ///
+    /// **`next` から切り出してあるのは、`MoveList`（608手ぶん、約2.4KB）を
+    /// 呼び出しごとのフレームから追い出すためである（ADR-0166）。** 生成段を
+    /// 通るのは `next` の呼び出し5〜6回に1回だが、インライン化すると
+    /// フレームの確保とレジスタの退避が毎回走る。
+    #[inline(never)]
+    fn init_captures(&mut self, pos: &Position, h: &Histories) {
+        let mut list = MoveList::default();
+        generate(pos, GenType::Captures, false, &mut list);
+        self.moves.clear();
+        self.score_captures(pos, h, &list);
+        self.cur = 0;
+        self.end_bad_captures = 0;
+        self.end_captures = self.moves.len();
+        self.end_generated = self.end_captures;
+        self.end_cur = self.end_captures;
+        // 取る手は数が多くないので全数ソートでよい
+        partial_insertion_sort(&mut self.moves, i32::MIN);
+    }
+
+    /// 静かな手を生成して並べる（movepick.cpp:519-533）。
+    /// 切り出す理由は `init_captures` と同じ。
+    #[inline(never)]
+    fn init_quiets(&mut self, pos: &Position, h: &Histories, cont: &[usize; 6]) {
+        let mut list = MoveList::default();
+        generate(pos, GenType::Quiets, false, &mut list);
+        self.score_quiets(pos, h, cont, &list);
+        self.end_generated = self.moves.len();
+        self.end_cur = self.end_generated;
+        partial_insertion_sort(
+            &mut self.moves[self.cur..self.end_cur],
+            QUIET_SORT_COEF * self.depth,
+        );
+    }
+
+    /// 王手回避を生成して並べる（movepick.cpp:661-668）。
+    /// 切り出す理由は `init_captures` と同じ。
+    #[inline(never)]
+    fn init_evasions(&mut self, pos: &Position, h: &Histories, cont: &[usize; 6]) {
+        let mut list = MoveList::default();
+        generate(pos, GenType::Evasions, false, &mut list);
+        self.moves.clear();
+        self.score_evasions(pos, h, cont, &list);
+        self.cur = 0;
+        self.end_cur = self.moves.len();
+        partial_insertion_sort(&mut self.moves, i32::MIN);
+    }
+
     /// 呼ばれるたびに擬似合法手を1つ返す（movepick.cpp:456-695）。
     /// contは1手前から6手前までのcontinuation historyの面。
     pub fn next(&mut self, pos: &Position, h: &Histories, cont: &[usize; 6]) -> Option<Move> {
@@ -800,17 +849,7 @@ impl MovePicker {
                 }
                 Stage::CaptureInit | Stage::QCaptureInit | Stage::ProbCutInit => {
                     let init_stage = self.stage;
-                    let mut list = MoveList::default();
-                    generate(pos, GenType::Captures, false, &mut list);
-                    self.moves.clear();
-                    self.score_captures(pos, h, &list);
-                    self.cur = 0;
-                    self.end_bad_captures = 0;
-                    self.end_captures = self.moves.len();
-                    self.end_generated = self.end_captures;
-                    self.end_cur = self.end_captures;
-                    // 取る手は数が多くないので全数ソートでよい
-                    partial_insertion_sort(&mut self.moves, i32::MIN);
+                    self.init_captures(pos, h);
                     self.stage = match init_stage {
                         Stage::CaptureInit => Stage::GoodCapture,
                         Stage::QCaptureInit => Stage::QCapture,
@@ -836,15 +875,7 @@ impl MovePicker {
                 }
                 Stage::QuietInit => {
                     if !self.skip_quiets {
-                        let mut list = MoveList::default();
-                        generate(pos, GenType::Quiets, false, &mut list);
-                        self.score_quiets(pos, h, cont, &list);
-                        self.end_generated = self.moves.len();
-                        self.end_cur = self.end_generated;
-                        partial_insertion_sort(
-                            &mut self.moves[self.cur..self.end_cur],
-                            QUIET_SORT_COEF * self.depth,
-                        );
+                        self.init_quiets(pos, h, cont);
                     }
                     self.stage = Stage::GoodQuiet;
                 }
@@ -880,13 +911,7 @@ impl MovePicker {
                     return m;
                 }
                 Stage::EvasionInit => {
-                    let mut list = MoveList::default();
-                    generate(pos, GenType::Evasions, false, &mut list);
-                    self.moves.clear();
-                    self.score_evasions(pos, h, cont, &list);
-                    self.cur = 0;
-                    self.end_cur = self.moves.len();
-                    partial_insertion_sort(&mut self.moves, i32::MIN);
+                    self.init_evasions(pos, h, cont);
                     self.stage = Stage::Evasion;
                 }
                 Stage::Evasion => {

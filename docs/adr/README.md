@@ -260,6 +260,7 @@
 | [0163](0163-sprt-hypothesis-choice.md) | 変更の性質でSPRTの対立仮説を着手時に決める | 2026-08-15 |  | proposed |
 | [0164](0164-bona-piece-bitset.md) | BonaPiece集合の構築を駒ごとの走査からブロック配置へ置き換える | 2026-08-15 |  | accepted |
 | [0165](0165-bona-block-layout.md) | BonaPiece集合をブロック単位のレイアウトへ変える | 2026-08-15 |  | accepted |
+| [0166](0166-movepick-frame.md) | MovePickerの生成段を切り出してフレームを縮める | 2026-08-15 |  | accepted |
 
 ## バックログ
 
