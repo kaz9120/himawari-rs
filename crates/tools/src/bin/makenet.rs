@@ -7,7 +7,9 @@
 //!   makenet --resize other.hmwr [--out path]  別の構成のネットを、いまの
 //!                                             ビルド構成へ合わせる
 //!
-//! 学習パイプライン（P5）ができるまでの検証用。
+//! 学習器が作らないネットを用意する役目で、現行の実験でも使う。乱数ネットは
+//! 配線検証と学習の下限測定（ADR-0133）、`--resize` はネット形状の速度比較
+//! （ADR-0127）と継続学習の構成合わせ（ADR-0130）から呼ぶ。
 
 use himawari_engine::nnue::NnueNetwork;
 use himawari_engine::nnue_io::{load_resized, save};

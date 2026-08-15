@@ -316,31 +316,28 @@ impl Position {
         self.state().minor_piece_key
     }
 
-    /// 色cの歩以外の盤上駒キーの全計算。と金など成歩はこちらに入る。
-    /// 持ち駒は含めない。差分更新の検証にも使う。
-    pub fn compute_non_pawn_key(&self, c: Color) -> u64 {
+    /// 述語を満たす盤上駒のpsqキーを全計算する。空マスは述語へ渡さない。
+    fn compute_psq_key(&self, pred: impl Fn(Piece) -> bool) -> u64 {
         let mut key = 0u64;
         for i in 0..Square::NB {
             let sq = Square::from_index(i as u8);
             let pc = self.board[sq.index()];
-            if !pc.is_empty() && pc.piece_type() != PieceType::PAWN && pc.color() == c {
+            if !pc.is_empty() && pred(pc) {
                 key ^= zobrist::psq(pc, sq);
             }
         }
         key
     }
 
+    /// 色cの歩以外の盤上駒キーの全計算。と金など成歩はこちらに入る。
+    /// 持ち駒は含めない。差分更新の検証にも使う。
+    pub fn compute_non_pawn_key(&self, c: Color) -> u64 {
+        self.compute_psq_key(|pc| pc.piece_type() != PieceType::PAWN && pc.color() == c)
+    }
+
     /// 小駒キーの全計算。差分更新の検証にも使う。
     pub fn compute_minor_piece_key(&self) -> u64 {
-        let mut key = 0u64;
-        for i in 0..Square::NB {
-            let sq = Square::from_index(i as u8);
-            let pc = self.board[sq.index()];
-            if !pc.is_empty() && is_minor_piece(pc.piece_type()) {
-                key ^= zobrist::psq(pc, sq);
-            }
-        }
-        key
+        self.compute_psq_key(|pc| is_minor_piece(pc.piece_type()))
     }
 
     /// 歩構造キーの全計算（盤上の歩＋両者の持ち歩枚数）。
