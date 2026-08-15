@@ -258,6 +258,7 @@
 | [0161](0161-hide-docs-chore-from-changelog.md) | docsとchoreをCHANGELOGから外し、バージョンを動かさない | 2026-08-14 |  | accepted |
 | [0162](0162-parallel-group.md) | 並列の未測定3件を1群で測り、TTの手番分割は見送る | 2026-08-14 | +7.9（非劣性） | accepted |
 | [0163](0163-sprt-hypothesis-choice.md) | 変更の性質でSPRTの対立仮説を着手時に決める | 2026-08-15 |  | proposed |
+| [0164](0164-bona-piece-bitset.md) | BonaPiece集合の構築を駒ごとの走査からブロック配置へ置き換える | 2026-08-15 |  | accepted |
 
 ## バックログ
 
