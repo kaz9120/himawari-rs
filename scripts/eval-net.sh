@@ -15,7 +15,7 @@ usage() {
   scripts/eval-net.sh <ネット> [ネット...]
 
 例:
-  scripts/eval-net.sh data/nets/halfkp_2990M_q1.hmwr.best
+  scripts/eval-net.sh data/nets/ft1024_2990M_q1_reorder.hmwr
   scripts/eval-net.sh data/nets/*.hmwr.best
 
 渡したネットを検証集合で測って表にする。学習はしない。

@@ -65,7 +65,8 @@
 - [0127](0127-net-shape-bench.md) 構造の探索は学習前の速度計測から始める
 - [0138](0138-ft-i8-quantization.md) FT重みのi8量子化
 - [0156](0156-bucket-accumulator-cache.md) 玉位置ごとのaccumulatorキャッシュ
-- [0159](0159-ft-width-1024.md) FT幅1024の測定（保留）
+- [0159](0159-ft-width-1024.md) FT幅を1024へ拡大する
+- [0168](0168-ft-dim-reorder.md) FT出力次元の並べ替えで第1層の空回りを減らす
 
 ### 学習
 
@@ -253,7 +254,7 @@
 | [0156](0156-bucket-accumulator-cache.md) | 玉位置ごとのaccumulatorキャッシュで全計算を差分に置き換える | 2026-08-12 |  | accepted |
 | [0157](0157-king-mirror-buckets.md) | HalfKPの玉位置を左右ミラーで45バケットへ畳む | 2026-08-12 |  | rejected |
 | [0158](0158-mirror-factorizer.md) | 学習時だけ左右ミラーの仮想特徴を併用する | 2026-08-12 |  | rejected |
-| [0159](0159-ft-width-1024.md) | FT幅を1024へ拡大する | 2026-08-12 |  | proposed |
+| [0159](0159-ft-width-1024.md) | FT幅を1024へ拡大する | 2026-08-12 | −0.1（互角として採択） | accepted |
 | [0160](0160-revisit-rejected-under-better-eval.md) | 棄却した参照追従を1群にまとめて測り直す | 2026-08-13 |  | rejected |
 | [0161](0161-hide-docs-chore-from-changelog.md) | docsとchoreをCHANGELOGから外し、バージョンを動かさない | 2026-08-14 |  | accepted |
 | [0162](0162-parallel-group.md) | 並列の未測定3件を1群で測り、TTの手番分割は見送る | 2026-08-14 | +7.9（非劣性） | accepted |
