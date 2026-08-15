@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.36.3](https://github.com/kaz9120/himawari-rs/compare/v0.36.2...v0.36.3) (2026-08-15)
+
+
+### その他の変更
+
+* MovePickerの生成段を切り出してフレームを縮める（+0.83% NPS、ADR-0166） ([#325](https://github.com/kaz9120/himawari-rs/issues/325)) ([5dd7d98](https://github.com/kaz9120/himawari-rs/commit/5dd7d98a573d905dc78d5d84b3f7b470747b7215))
+
 ## [0.36.2](https://github.com/kaz9120/himawari-rs/compare/v0.36.1...v0.36.2) (2026-08-15)
 
 
