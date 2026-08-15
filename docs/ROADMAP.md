@@ -10,8 +10,8 @@
 
 | 項目 | 実体 |
 |---|---|
-| エンジン | `target/release/himawari`（FT256、FT重みi8。[ADR-0138](adr/0138-ft-i8-quantization.md)） |
-| 評価関数 | `data/nets/halfkp_2990M_q1.hmwr.best`（32.1MB。29.9億局面の静止化教師で学習。[ADR-0135](adr/0135-teacher-data-3b.md)・[ADR-0136](adr/0136-quiet-teacher-positions.md)） |
+| エンジン | `target/release/himawari`（FT1024、FT重みi8。[ADR-0159](adr/0159-ft-width-1024.md)・[ADR-0138](adr/0138-ft-i8-quantization.md)） |
+| 評価関数 | `data/nets/ft1024_2990M_q1_reorder.hmwr`（128.5MB。29.9億局面の静止化教師で学習し、FT出力次元を並べ替えたもの。[ADR-0135](adr/0135-teacher-data-3b.md)・[ADR-0136](adr/0136-quiet-teacher-positions.md)・[ADR-0168](adr/0168-ft-dim-reorder.md)） |
 | 定跡 | `data/book/main.db`（1250局面・4710手、深さ28。相手の初手を全網羅。[ADR-0146](adr/0146-book-full-width-opening.md)、実戦分の追加は[ADR-0152](adr/0152-floodgate-cycle.md)） |
 | floodgate | レート3484（562局、296勝266敗。2026-08-14時点） |
 

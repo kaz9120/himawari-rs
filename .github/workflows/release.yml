@@ -20,8 +20,8 @@ permissions:
 
 env:
   # 学習走行に使う評価関数。現行ネットを差し替えたら更新する
-  NET_TAG: net-v4
-  NET_ASSET: halfkp_2990M_q1.hmwr
+  NET_TAG: net-v5
+  NET_ASSET: ft1024_2990M_q1_reorder.hmwr
 
 jobs:
   build:

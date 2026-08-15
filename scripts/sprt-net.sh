@@ -22,6 +22,9 @@ usage() {
 両者とも同じビルドで対局する。既定は data/bin/base-<名前> があればそれ、
 なければ target/release/himawari を使う。SPRT_BIN で明示もできる。
 
+**ネットとビルドの次元は揃える。** 既定のビルドはFT1024なので、上の例の
+ようなFT256のネットを渡すなら SPRT_BIN でFT256のビルドを指す（ADR-0159）。
+
 条件は env.sh の既定（ADR-0028）を使う。変えるときは環境変数で:
   SPRT_MAX_PAIRS=6000 scripts/sprt-net.sh base cand name   # 上限を上げる
   SPRT_ELO0=-5 SPRT_ELO1=0 scripts/sprt-net.sh base cand name  # 非劣性
