@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.36.1](https://github.com/kaz9120/himawari-rs/compare/v0.36.0...v0.36.1) (2026-08-15)
+
+
+### その他の変更
+
+* BonaPiece集合の構築をブロック配置へ置き換える（ADR-0164） ([#320](https://github.com/kaz9120/himawari-rs/issues/320)) ([95a88fe](https://github.com/kaz9120/himawari-rs/commit/95a88febe6ac94629af44eabd928e15c7263df48))
+* 盤上駒キーの走査重複とmakenetの位置づけを直す ([#321](https://github.com/kaz9120/himawari-rs/issues/321)) ([a7dc58f](https://github.com/kaz9120/himawari-rs/commit/a7dc58f1aa890cb23830a2bd8dd77ba6a34fc37d))
+
 ## [0.36.0](https://github.com/kaz9120/himawari-rs/compare/v0.35.20...v0.36.0) (2026-08-14)
 
 
