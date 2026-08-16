@@ -10,6 +10,10 @@
 1サンプル `CONCAT / 8` バイトのビットマスクが並ぶ。ビットiは連結ベクトルの
 次元iが非ゼロだったことを表す。
 
+**渡すのは片視点の活性の次元数であって、FTの出力次元ではない。**出力の対を
+掛ける構成（ADR-0171）では活性が `FT_OUT / 2` になる。置換もその単位で出て、
+`makenet --reorder` がFT側を対で動かす。
+
 終了コード: 0=成功、2=引数エラー、3=実行時エラー（ADR-0122）。
 """
 
@@ -40,7 +44,11 @@ def build_parser():
         epilog="ダンプは HIMAWARI_ACT_OUT で場所を指定し、actdump付きのビルドが書く。",
     )
     parser.add_argument("dump", help="活性ダンプ（*.bin）")
-    parser.add_argument("ft_out", type=int, help="FT出力次元（例 1024）")
+    parser.add_argument(
+        "activations",
+        type=int,
+        help="片視点の活性次元（積ありなら FT_OUT/2。例 512）",
+    )
     parser.add_argument("--out", help="置換の出力先。省略すると書かない")
     parser.add_argument(
         "--perm",
@@ -50,7 +58,7 @@ def build_parser():
 
 
 def load_masks(path, ft_out):
-    """次元ごとのゼロマスクを作る。
+    """次元ごとのゼロマスクを作る。`ft_out` は片視点の活性次元。
 
     戻り値は `(視点0のマスク, 視点1のマスク, サンプル数)`。マスクの
     ビットnは「サンプルnでその次元がゼロだった」ことを表す。
@@ -146,7 +154,7 @@ def report(z0, z1, n, ft_out, perm):
     rate0, running0 = chunk_stats(z0, z1, base, n)
     rate1, running1 = chunk_stats(z0, z1, perm, n)
     chunks = ft_out // 2
-    print(f"{n}サンプル、FT_OUT={ft_out}、CONCAT={ft_out * 2}")
+    print(f"{n}サンプル、片視点の活性={ft_out}、CONCAT={ft_out * 2}")
     print(f"要素のゼロ率: {elem:.4f}（独立仮定の全ゼロチャンク率 {elem**4:.4f}）")
     print(f"そのまま:   全ゼロチャンク率 {rate0:.4f}、回るチャンク {running0:.1f}/{chunks}")
     print(f"並べ替え後: 全ゼロチャンク率 {rate1:.4f}、回るチャンク {running1:.1f}/{chunks}")
@@ -161,12 +169,12 @@ def report(z0, z1, n, ft_out, perm):
 
 
 def run(args):
-    z0, z1, n = load_masks(args.dump, args.ft_out)
+    z0, z1, n = load_masks(args.dump, args.activations)
     if args.perm:
-        perm = read_perm(args.perm, args.ft_out)
+        perm = read_perm(args.perm, args.activations)
     else:
         perm = greedy_permutation(z0, z1)
-    report(z0, z1, n, args.ft_out, perm)
+    report(z0, z1, n, args.activations, perm)
     if args.out:
         with open(args.out, "w") as f:
             f.write("\n".join(str(p) for p in perm) + "\n")
@@ -175,8 +183,8 @@ def run(args):
 
 def main():
     args = build_parser().parse_args()
-    if args.ft_out <= 0 or args.ft_out % 4 != 0:
-        error(f"FT出力次元は4の倍数の正整数で指定する: {args.ft_out}")
+    if args.activations <= 0 or args.activations % 4 != 0:
+        error(f"活性の次元は4の倍数の正整数で指定する: {args.activations}")
         return 2
     try:
         run(args)
