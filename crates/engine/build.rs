@@ -6,7 +6,7 @@
 //! ```text
 //! 256x16           FT→16→1          （隠れ層1つ）
 //! 256x32x32        FT→32→32→1       （隠れ層2つ）
-//! 1024x32x32       FT→32→32→1       （隠れ層2つ。既定）
+//! 1024x16x32       FT→16→32→1       （隠れ層2つ。既定）
 //! 256x32x32x32     FT→32→32→32→1    （隠れ層3つ）
 //! ```
 //!
@@ -15,8 +15,11 @@
 
 use std::fmt::Write as _;
 
-/// 既定の構成（ADR-0034・ADR-0036、幅はADR-0159）。
-const DEFAULT_ARCH: &str = "1024x32x32";
+/// 既定の構成（ADR-0034・ADR-0036、幅はADR-0159、後段はADR-0170）。
+const DEFAULT_ARCH: &str = "1024x16x32";
+
+/// やねうら王形式（nn.bin）が固定で持つ構成（ADR-0067）。
+const NN_BIN_ARCH: &str = "256x32x32";
 
 /// SIMD実装（`nnue_simd.rs`）が課す倍数の制約。
 /// FTはi16を16レーンで回す。隠れ層の出力は4行同時（ROWS=4）に計算し、
@@ -108,7 +111,7 @@ fn main() {
     println!("cargo::rerun-if-changed=build.rs");
     println!("cargo::rerun-if-env-changed=HIMAWARI_ARCH");
     println!("cargo::rerun-if-env-changed=HIMAWARI_FT_I8");
-    println!("cargo::rustc-check-cfg=cfg(arch_default)");
+    println!("cargo::rustc-check-cfg=cfg(arch_nn_bin)");
     println!("cargo::rustc-check-cfg=cfg(ft_i8)");
 
     // FT重みの格納型（ADR-0138）。**既定はi8である。** 0を渡すとi16に戻る。
@@ -125,10 +128,11 @@ fn main() {
     let arch = parse(&spec).unwrap_or_else(|e| panic!("HIMAWARI_ARCH: {e}"));
     validate(&arch).unwrap_or_else(|e| panic!("HIMAWARI_ARCH={spec}: {e}"));
 
-    // 既定構成でだけ意味を持つもの（やねうら王形式の読み込みなど）を
-    // 切り替えるための目印。
-    if spec == DEFAULT_ARCH {
-        println!("cargo::rustc-cfg=arch_default");
+    // やねうら王形式（nn.bin）と同じ構成かどうかの目印。**既定構成とは
+    // 別に持つ。** nn.binは256x32x32で固定なので、既定を動かしても
+    // ここは動かさない（ADR-0067・ADR-0127・ADR-0170）。
+    if spec == NN_BIN_ARCH {
+        println!("cargo::rustc-cfg=arch_nn_bin");
     }
 
     let mut src = String::new();

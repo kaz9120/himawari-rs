@@ -47,7 +47,7 @@ pub fn load_nn_bin(r: &mut impl Read) -> Result<(NnueNetwork, String), String> {
         return Err(format!("HalfKPネットではない: {arch}"));
     }
     // nn.binの構造は256x32x32で固定である（ADR-0067・ADR-0127）
-    if !cfg!(arch_default) {
+    if !cfg!(arch_nn_bin) {
         return Err(format!(
             "nn.binは{}専用。このビルドは{ARCH}（ADR-0127）",
             NN_BIN_ARCH
@@ -87,7 +87,7 @@ pub fn load_nn_bin(r: &mut impl Read) -> Result<(NnueNetwork, String), String> {
 }
 
 // テストは256x32x32のnn.binを組み立てるため、他の構成では回さない
-#[cfg(all(test, arch_default))]
+#[cfg(all(test, arch_nn_bin))]
 mod tests {
     use super::*;
     use crate::nnue::evaluate_scalar;

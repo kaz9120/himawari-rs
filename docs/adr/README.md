@@ -67,6 +67,7 @@
 - [0156](0156-bucket-accumulator-cache.md) 玉位置ごとのaccumulatorキャッシュ
 - [0159](0159-ft-width-1024.md) FT幅を1024へ拡大する
 - [0168](0168-ft-dim-reorder.md) FT出力次元の並べ替えで第1層の空回りを減らす
+- [0170](0170-l1-half.md) 後段のL1を16へ半減する
 
 ### 学習
 
@@ -265,6 +266,7 @@
 | [0167](0167-nnue-kernel-instructions.md) | NNUE推論の命令数を削る2案を測り、どちらも見送る | 2026-08-15 |  | rejected |
 | [0168](0168-ft-dim-reorder.md) | FT出力次元を並べ替えて第1層の空回りを減らす | 2026-08-15 |  | proposed |
 | [0169](0169-clip-nnz-fusion.md) | 活性の構築と非ゼロチャンクの列挙を1パスにまとめる案を棄却する | 2026-08-15 |  | rejected |
+| [0170](0170-l1-half.md) | 後段のL1を16へ半減する | 2026-08-16 | +13.4 | accepted |
 
 ## バックログ
 

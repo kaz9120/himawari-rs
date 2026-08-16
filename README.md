@@ -76,7 +76,7 @@ RUSTFLAGS="-C target-cpu=native" cargo build --release
 ```
 
 ネットワークの次元は環境変数 `HIMAWARI_ARCH` でビルド時に切り替える。書式は
-`<FT>x<L1>[x<L2>[x<L3>]]` で、既定は `1024x32x32` である
+`<FT>x<L1>[x<L2>[x<L3>]]` で、既定は `1024x16x32` である
 （[ADR-0127](docs/adr/0127-net-shape-bench.md)）。
 
 ```sh
@@ -84,13 +84,16 @@ HIMAWARI_ARCH=256x32x32 cargo build --release
 ```
 
 **バイナリと評価ファイルは対で使う。** 次元が食い違うと読み込みで落ちる。
-既定のビルドには `data/nets/ft1024_2990M_q1_reorder.hmwr` を渡す。
+既定のビルドには `data/nets/ft1024L16_2990M_q1_reorder.hmwr` を渡す。
 
 FTを太らせると評価精度は上がり、NPSは落ちる。FT1024はノード数固定で
 +70.6 Eloに対し、時間制（10+0.1）では−0.1で互角だった
 （[ADR-0159](docs/adr/0159-ft-width-1024.md)）。互角なら容量の伸びしろを
 採る判断で既定を1024にしている。FT512は−72.8 Eloで
 （[ADR-0067](docs/adr/0067-ft-dimension-512.md)）、幅は単調ではない。
+
+後段のL1は16である。32から半減してもvalid lossは動かず、速度が上がって
++13.4 Eloになった（[ADR-0170](docs/adr/0170-l1-half.md)）。
 
 ## 開発する
 

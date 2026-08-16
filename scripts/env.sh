@@ -29,7 +29,7 @@ _conc=$((CORES > 2 ? CORES - 1 : 1))
 export SPRT_CONCURRENCY="${SPRT_CONCURRENCY:-$((_conc < 8 ? _conc : 8))}"
 
 # 現行構成（ROADMAP.md の「現行構成」と揃える）
-export EVAL_FILE="${EVAL_FILE:-${REPO_ROOT}/data/nets/ft1024_2990M_q1_reorder.hmwr}"
+export EVAL_FILE="${EVAL_FILE:-${REPO_ROOT}/data/nets/ft1024L16_2990M_q1_reorder.hmwr}"
 export OPENINGS="${OPENINGS:-${REPO_ROOT}/openings/start_sfens_ply24.txt}"
 
 # SPRTの既定条件（ADR-0028）
