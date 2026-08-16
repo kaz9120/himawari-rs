@@ -22,6 +22,10 @@ jobs:
       # 既定以外のネットワーク構成（ADR-0127）。L1をパディングする経路と
       # FTを太らせた経路が壊れていないことを、コンパイルとテストで確認する
       - run: HIMAWARI_ARCH=512x16x64 cargo test --workspace
+      # やねうら王形式（nn.bin）の読み込みは256x32x32でだけ有効になる
+      # （ADR-0067）。既定構成から外れたので、明示して回さないと
+      # 互換のテストが1つも走らない（ADR-0170）
+      - run: HIMAWARI_ARCH=256x32x32 cargo test -p himawari-engine --lib
       # 活性ダンプのfeature（ADR-0168）。通常のビルドでは触らないので、
       # コンパイルが通ることだけ確かめて腐るのを防ぐ
       - run: cargo check -p himawari-engine --features actdump
