@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.38.0](https://github.com/kaz9120/himawari-rs/compare/v0.37.0...v0.38.0) (2026-08-16)
+
+
+### 棋力向上
+
+* 後段のL1を16へ半減する（+13.4 Elo、ADR-0170） ([#335](https://github.com/kaz9120/himawari-rs/issues/335)) ([3135499](https://github.com/kaz9120/himawari-rs/commit/3135499beec2204e17e5c53c3026259e855c3916))
+
 ## [0.37.0](https://github.com/kaz9120/himawari-rs/compare/v0.36.3...v0.37.0) (2026-08-15)
 
 
