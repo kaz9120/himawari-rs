@@ -33,7 +33,14 @@ EFFECT_MLP_HIDDEN = 256
 EFFECT_SCALE = 8.0
 ARCH = himawari.ARCH
 FE_END = FT_IN // 81
-CONCAT = FT_OUT * 2
+# 第1層の入力幅。片視点のFT出力を2つに割って掛けるので、視点あたり
+# FT_OUT//2 になる（ADR-0171）。Rust側の定数をそのまま使う
+CONCAT = himawari.CONCAT
+HALF = CONCAT // 2
+# 積の値域合わせ（ADR-0171）。推論側は clip(a)*clip(b) >> 7 で、最大が
+# 127×127/128 = 126 にしかならない。学習側にも同じ127/128を掛けておくと、
+# 活性127・隠れ層64という量子化の係数を1つも変えずに済む
+PAIR_SCALE = 127.0 / 128.0
 
 # Evaluation scale (ADR-0036)
 SIGMOID_SCALE = 600.0
@@ -143,11 +150,23 @@ class NnueModel(nn.Module):
         virtual = self.ft_p.weight.detach().float()
         return (w.view(81, FE_END, FT_OUT) + virtual.unsqueeze(0)).view(FT_IN, FT_OUT)
 
+    @staticmethod
+    def pair_activation(z):
+        """FT出力の前半と後半を要素ごとに掛ける（ADR-0171）。
+
+        駒対の相互作用を低ランクで持つための積で、展開すると
+        `Σ_{i,m} W_ji W'_jm x_i x_m` になる。入力の直積を作らずに済む。
+        """
+        a, b = z[:, :HALF].clamp(0.0, 1.0), z[:, HALF:].clamp(0.0, 1.0)
+        return a * b * PAIR_SCALE
+
     def transform_both(self, stm_idx, stm_off, opp_idx, opp_off):
         """FT出力を2視点ぶん連結して返す。補助ヘッドもここから生やす。"""
         z_stm = self.transform(stm_idx, stm_off)
         z_opp = self.transform(opp_idx, opp_off)
-        return torch.cat([z_stm.clamp(0.0, 1.0), z_opp.clamp(0.0, 1.0)], dim=1)
+        return torch.cat(
+            [self.pair_activation(z_stm), self.pair_activation(z_opp)], dim=1
+        )
 
     def value(self, x):
         """FT出力の連結から評価値を出す（推論と同じ経路）。
