@@ -8,7 +8,7 @@ use std::simd::Simd;
 use std::simd::cmp::SimdOrd;
 use std::simd::num::SimdInt;
 
-use crate::nnue::{CONCAT, FT_OUT, L1_OUT, L1_PAD, L2_OUT, L2_PAD, L3_OUT, NnueNetwork};
+use crate::nnue::{CONCAT, FT_OUT, HALF, L1_OUT, L1_PAD, L2_OUT, L2_PAD, L3_OUT, NnueNetwork};
 use crate::value::Value;
 
 const I16_LANES: usize = 16;
@@ -30,6 +30,10 @@ const FT_CHUNKS: usize = FT_OUT / FT_I8_LANES;
 /// build.rsが要求するのは16の倍数までなので、ここで止める。
 #[cfg(ft_i8)]
 const _: () = assert!(FT_OUT.is_multiple_of(FT_I8_LANES));
+
+/// 対の積は前半・後半を16レーンずつ突き合わせる（ADR-0171）。
+/// HALFが16の倍数でないと末尾が落ちる。
+const _: () = assert!(HALF.is_multiple_of(I16_LANES));
 
 /// `dst[k] = src[k] - Σsubs[·][k] + Σadds[·][k]`（i16、ラップ加減算。
 /// ADR-0151群A・群N）。
@@ -220,19 +224,28 @@ pub fn ft_update(acc: &mut [i16; FT_OUT], w: &[i8], adds: &[u32], subs: &[u32]) 
     }
 }
 
-/// i16アキュムレータをclipped ReLU（0..127）でu8へ。
+/// i16アキュムレータの前半と後半を対にして掛け、u8の活性へ（ADR-0171）。
+///
+/// 出すのは `HALF` 個で、`out[o] = (clip(acc[o]) * clip(acc[o + HALF]) + 64) >> 7`
+/// になる。スカラー基準は `nnue::pair_activation`。clipで0..127に収まるので
+/// 積に64を足しても16bitに収まり、7bit右シフトで0..126のu8になる。
 pub fn clip_to_u8(acc: &[i16; FT_OUT], out: &mut [u8]) {
-    debug_assert_eq!(out.len(), FT_OUT);
+    debug_assert_eq!(out.len(), HALF);
     let zero = Simd::<i16, I16_LANES>::splat(0);
     let max = Simd::<i16, I16_LANES>::splat(127);
-    for (oc, ac) in out
+    let (lo, hi) = acc.split_at(HALF);
+    for ((oc, lc), hc) in out
         .as_chunks_mut::<I16_LANES>()
         .0
         .iter_mut()
-        .zip(acc.as_chunks::<I16_LANES>().0)
+        .zip(lo.as_chunks::<I16_LANES>().0)
+        .zip(hi.as_chunks::<I16_LANES>().0)
     {
-        let v = Simd::from_array(*ac).simd_clamp(zero, max).cast::<u8>();
-        *oc = v.to_array();
+        let a = Simd::from_array(*lc).simd_clamp(zero, max);
+        let b = Simd::from_array(*hc).simd_clamp(zero, max);
+        *oc = ((a * b + Simd::splat(64)) >> Simd::splat(7))
+            .cast::<u8>()
+            .to_array();
     }
 }
 
@@ -754,6 +767,35 @@ mod tests {
                 .sum();
             assert_eq!(dot(w8, xs), scalar, "len={len}");
         }
+    }
+
+    /// 対の積がスカラー基準と一致すること（ADR-0171）。
+    ///
+    /// 境界を作って回す。負・0・127・127超をすべて前半と後半の両方に
+    /// 置き、clipが先で積が後になっていることを確かめる。
+    #[test]
+    fn pair_activation_matches_scalar() {
+        let mut acc = [0i16; FT_OUT];
+        let edge = [-1000i16, -1, 0, 1, 63, 126, 127, 128, 1000, i16::MAX];
+        let mut state = 12345u64;
+        for (i, a) in acc.iter_mut().enumerate() {
+            state = state.wrapping_mul(6364136223846793005).wrapping_add(1);
+            *a = if i % 3 == 0 {
+                edge[(state >> 33) as usize % edge.len()]
+            } else {
+                (state >> 40) as i16
+            };
+        }
+        let mut out = [0u8; HALF];
+        clip_to_u8(&acc, &mut out);
+        for o in 0..HALF {
+            let want = crate::nnue::pair_activation(i32::from(acc[o]), i32::from(acc[o + HALF]));
+            assert_eq!(out[o], want, "o={o} a={} b={}", acc[o], acc[o + HALF]);
+        }
+        // 最大値は127×127>>7 = 126で、127には届かない
+        let full = [127i16; FT_OUT];
+        clip_to_u8(&full, &mut out);
+        assert!(out.iter().all(|&x| x == 126));
     }
 
     /// 両視点1パスが片視点2回とビット一致すること（ADR-0151群N）。

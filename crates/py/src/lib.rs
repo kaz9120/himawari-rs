@@ -6,7 +6,7 @@ use rayon::prelude::*;
 use himawari_core::packed_sfen::{PSV_BYTES, PackedSfenValue, unpack};
 
 use himawari_engine::nnue::{
-    ARCH, EFFECT_LEN, FT_IN, FT_OUT, L1_OUT, L1_PAD, L2_OUT, L2_PAD, L3_OUT, LAST_HIDDEN,
+    ARCH, CONCAT, EFFECT_LEN, FT_IN, FT_OUT, L1_OUT, L1_PAD, L2_OUT, L2_PAD, L3_OUT, LAST_HIDDEN,
     MOVE_FROM_CLASSES, MOVE_NONE, MOVE_TO_CLASSES, NnueNetwork, effect_labels, halfkp_active,
     move_labels,
 };
@@ -299,7 +299,7 @@ fn save_hmwr(
     let ft_w = himawari_engine::nnue::ft_w_from_i16(ft_w)
         .map_err(pyo3::exceptions::PyValueError::new_err)?;
     check_len("ft_b", ft_b.len(), FT_OUT)?;
-    check_len("w2", w2.len(), L1_OUT * FT_OUT * 2)?;
+    check_len("w2", w2.len(), L1_OUT * CONCAT)?;
     check_len("b2", b2.len(), L1_OUT)?;
     check_len("w3", w3.len(), L2_OUT * L1_OUT)?;
     check_len("b3", b3.len(), L2_OUT)?;
@@ -447,6 +447,7 @@ fn himawari(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(load_hmwr_ft, m)?)?;
     m.add("FT_IN", FT_IN)?;
     m.add("FT_OUT", FT_OUT)?;
+    m.add("CONCAT", CONCAT)?;
     m.add("L1_OUT", L1_OUT)?;
     m.add("L2_OUT", L2_OUT)?;
     m.add("L3_OUT", L3_OUT)?;
