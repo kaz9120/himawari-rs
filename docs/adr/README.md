@@ -41,6 +41,7 @@
 - [0014](0014-position-structure.md) Position構造とdo/undo
 - [0016](0016-legality-check.md) 王手・pin・合法性判定
 - [0018](0018-sfen-perft.md) SFEN入出力とperft基盤
+- [0173](0173-knight-non-promotion-movegen.md) 桂の3段目不成を通常の生成でも出す
 
 ### 探索
 
@@ -271,6 +272,7 @@
 | [0170](0170-l1-half.md) | 後段のL1を16へ半減する | 2026-08-16 | +13.4 | accepted |
 | [0171](0171-ft-pairwise-product.md) | FT出力の対を掛けて駒対の相互作用を入れる | 2026-08-16 | +65.4 | accepted |
 | [0172](0172-multihot-input.md) | 入力を玉と駒のマルチホットにして表を75分の1にする | 2026-08-17 | −52.2 | rejected |
+| [0173](0173-knight-non-promotion-movegen.md) | 桂の3段目不成を通常の指し手生成でも出す | 2026-08-17 | +11.2 | accepted |
 
 ## バックログ
 
