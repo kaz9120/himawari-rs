@@ -60,16 +60,17 @@ release_check_prereqs "$TAG"
 # ヘッダからlineageを読む（ADR-0037の形式）。
 #   magic 8B / version 4B / dims / lineage長 4B / lineage / hash 8B / body
 #
-# 寸法の個数は版で変わる（nnue_io.rsの `dims`）。版2は3つ、版3と版5は
-# 4つ、版4と版6は5つである。ADR-0127が版3を入れるまで版2しかなく、ここは
+# 寸法の個数は版で変わる（nnue_io.rsの `dims`）。版2は3つ、3層構成は4つ、
+# 4層構成は5つである。ADR-0127が版3を入れるまで版2しかなく、ここは
 # 24/28の決め打ちだった。版3のネットでは4つ目の寸法をlineage長として
-# 読んでしまう。版5・6はFT重みのi8化で増えた（ADR-0138）。隠れ層の数が
-# 同じなら寸法の個数も同じで、変わるのは重みの型だけである。
+# 読んでしまう。版5・6はFT重みのi8化（ADR-0138）、版7〜10はFT出力の対を
+# 掛ける構成（ADR-0171）で増えた。**どちらも寸法の並びは変えていない。**
+# 変わるのは重みの型と `w2` の列幅で、隠れ層の数が同じなら個数も同じである。
 NET_VERSION=$(od -An -tu4 -j8 -N4 "$NET_PATH" | tr -d ' ')
 case "$NET_VERSION" in
 2) NDIMS=3 ;;
-3 | 5) NDIMS=4 ;;
-4 | 6) NDIMS=5 ;;
+3 | 5 | 7 | 9) NDIMS=4 ;;
+4 | 6 | 8 | 10) NDIMS=5 ;;
 *) die "未対応のフォーマット版: ${NET_VERSION}（Himawari NNUE形式か確認する）" ;;
 esac
 LLEN_OFF=$((12 + NDIMS * 4))
