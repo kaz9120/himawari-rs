@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.39.0](https://github.com/kaz9120/himawari-rs/compare/v0.38.0...v0.39.0) (2026-08-17)
+
+
+### 棋力向上
+
+* FT出力の対を掛けて駒対の相互作用を入れる（+65.4 Elo、ADR-0171） ([#337](https://github.com/kaz9120/himawari-rs/issues/337)) ([e02c5da](https://github.com/kaz9120/himawari-rs/commit/e02c5dadb6ccf400165b38695240e04cdc41742a))
+
 ## [0.38.0](https://github.com/kaz9120/himawari-rs/compare/v0.37.0...v0.38.0) (2026-08-16)
 
 
