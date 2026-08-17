@@ -20,8 +20,8 @@ permissions:
 
 env:
   # 学習走行に使う評価関数。現行ネットを差し替えたら更新する
-  NET_TAG: net-v6
-  NET_ASSET: ft1024L16_2990M_q1_reorder.hmwr
+  NET_TAG: net-v7
+  NET_ASSET: pairprod_2990M_q1_reorder.hmwr
 
 jobs:
   build:

@@ -84,7 +84,7 @@ HIMAWARI_ARCH=256x32x32 cargo build --release
 ```
 
 **バイナリと評価ファイルは対で使う。** 次元が食い違うと読み込みで落ちる。
-既定のビルドには `data/nets/ft1024L16_2990M_q1_reorder.hmwr` を渡す。
+既定のビルドには `data/nets/pairprod_2990M_q1_reorder.hmwr` を渡す。
 
 FTを太らせると評価精度は上がり、NPSは落ちる。FT1024はノード数固定で
 +70.6 Eloに対し、時間制（10+0.1）では−0.1で互角だった
