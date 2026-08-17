@@ -14,7 +14,7 @@
 //! （ADR-0127）と継続学習の構成合わせ（ADR-0130）、`--reorder` は第1層の
 //! 列駆動が飛ばせるチャンクを増やす並べ替え（ADR-0168）から呼ぶ。
 
-use himawari_engine::nnue::{CONCAT, FT_OUT, NnueNetwork};
+use himawari_engine::nnue::{CONCAT, FT_OUT, HALF, NnueNetwork};
 use himawari_engine::nnue_io::{load, load_resized, save};
 
 /// nn.bin（やねうら王形式）を読む。FT 256専用（ADR-0067）。
@@ -59,13 +59,16 @@ fn read_perm(path: &str) -> Vec<usize> {
             })
         })
         .collect();
-    if perm.len() != FT_OUT {
-        eprintln!("置換の長さが違う: {} 個（FT_OUT={FT_OUT}）", perm.len());
+    if perm.len() != HALF {
+        eprintln!(
+            "置換の長さが違う: {} 個（片視点の活性次元={HALF}）",
+            perm.len()
+        );
         std::process::exit(1);
     }
-    let mut seen = vec![false; FT_OUT];
+    let mut seen = vec![false; HALF];
     for &p in &perm {
-        if p >= FT_OUT || seen[p] {
+        if p >= HALF || seen[p] {
             eprintln!("置換が順列になっていない: {p}");
             std::process::exit(1);
         }
@@ -74,20 +77,29 @@ fn read_perm(path: &str) -> Vec<usize> {
     perm
 }
 
-/// FT出力次元を並べ替える（ADR-0168）。
+/// 活性の次元を並べ替える（ADR-0168）。
 ///
 /// 新しい位置jへ元の次元 `perm[j]` を移す。`ft_b`・`ft_w` の列・`w2` の
 /// 入力列（両視点）へ同じ置換を入れるので、**積和の項の集合は変わらず
 /// 評価値はビット一致する。** ゼロになりやすい次元を同じ4列チャンクへ
 /// 寄せると、第1層の列駆動が飛ばせるチャンクが増える。
+///
+/// **置換の単位は活性であって、FTの出力次元ではない**（ADR-0171）。
+/// 活性oはFTの次元oと o+`HALF` の積なので、FT側は対で動かす。片方だけ
+/// 動かすと別の相手と掛かり、評価値が変わる。
 fn apply_perm(net: NnueNetwork, perm: &[usize]) -> NnueNetwork {
     let mut out = net;
-    out.ft_b = perm.iter().map(|&p| out.ft_b[p]).collect();
+    let mut ft_b = vec![0i16; out.ft_b.len()];
+    for (j, &p) in perm.iter().enumerate() {
+        ft_b[j] = out.ft_b[p];
+        ft_b[j + HALF] = out.ft_b[p + HALF];
+    }
     let mut ft_w = vec![0 as himawari_engine::nnue::FtWeight; out.ft_w.len()];
     for feature in 0..out.ft_w.len() / FT_OUT {
         let base = feature * FT_OUT;
         for (j, &p) in perm.iter().enumerate() {
             ft_w[base + j] = out.ft_w[base + p];
+            ft_w[base + j + HALF] = out.ft_w[base + p + HALF];
         }
     }
     let mut w2 = vec![0i8; out.w2.len()];
@@ -96,9 +108,10 @@ fn apply_perm(net: NnueNetwork, perm: &[usize]) -> NnueNetwork {
         for (j, &p) in perm.iter().enumerate() {
             // 視点0と視点1へ同じ置換を入れる
             w2[base + j] = out.w2[base + p];
-            w2[base + FT_OUT + j] = out.w2[base + FT_OUT + p];
+            w2[base + HALF + j] = out.w2[base + HALF + p];
         }
     }
+    out.ft_b = ft_b;
     out.ft_w = ft_w;
     out.w2 = w2;
     out.finish()
@@ -223,8 +236,9 @@ mod tests {
     }
 
     /// 4個ずつずらす置換。並びが変わればよいので中身は問わない。
+    /// 長さは片視点の活性次元（ADR-0171で `HALF` になった）。
     fn rotate_perm() -> Vec<usize> {
-        (0..FT_OUT).map(|i| (i + 4) % FT_OUT).collect()
+        (0..HALF).map(|i| (i + 4) % HALF).collect()
     }
 
     /// 並べ替えたネットは、同じ置換を当てた活性に対して同じ評価値を返す
@@ -248,7 +262,7 @@ mod tests {
         let mut moved = [0u8; CONCAT];
         for (j, &p) in perm.iter().enumerate() {
             moved[j] = concat[p];
-            moved[FT_OUT + j] = concat[FT_OUT + p];
+            moved[HALF + j] = concat[HALF + p];
         }
 
         let before = forward_hidden(&net, &concat);
@@ -275,6 +289,13 @@ mod tests {
 
         for (j, &p) in perm.iter().enumerate() {
             assert_eq!(after[j], before[p], "次元{j}が元の{p}になっていない");
+            assert_eq!(
+                after[j + HALF],
+                before[p + HALF],
+                "対の相手（次元{}）が元の{}になっていない",
+                j + HALF,
+                p + HALF
+            );
         }
     }
 }

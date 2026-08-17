@@ -12,7 +12,7 @@
 use std::io::{Read, Write};
 
 use crate::nnue::{
-    ARCH, CONCAT, FT_I8, FT_IN, FT_OUT, FtWeight, L1_OUT, L1_PAD, L2_OUT, L2_PAD, L3_OUT,
+    ARCH, CONCAT, FT_I8, FT_IN, FT_OUT, FtWeight, HALF, L1_OUT, L1_PAD, L2_OUT, L2_PAD, L3_OUT,
     LAST_HIDDEN, NnueNetwork, ft_w_from_i16, pad_rows,
 };
 
@@ -27,13 +27,22 @@ const FORMAT_VERSION_UNIFORM_HIDDEN: u32 = 2;
 /// 違いはFT重み1つあたりのバイト数だけである。
 const FORMAT_VERSION_TWO_HIDDEN_I8: u32 = 5;
 const FORMAT_VERSION_DEEP_I8: u32 = 6;
+/// FT出力の対を掛けて活性にする版（ADR-0171）。寸法の並びは版5・版6と
+/// 同じで、違うのは `w2` の列幅（`CONCAT`）だけである。**版を分けないと、
+/// 積なしのネットを読んだときのエラーが「末尾に余分なバイトがある」に
+/// なって原因が読めない。**
+const FORMAT_VERSION_TWO_HIDDEN_I8_PAIR: u32 = 7;
+const FORMAT_VERSION_DEEP_I8_PAIR: u32 = 8;
+const FORMAT_VERSION_TWO_HIDDEN_PAIR: u32 = 9;
+const FORMAT_VERSION_DEEP_PAIR: u32 = 10;
 
-/// 書き出しに使う版。層の数とFT重みの型で決まる。
+/// 書き出しに使う版。層の数とFT重みの型で決まる。積の有無はビルドで
+/// 固定なので、このブランチは対応する版だけを書き、他は読まない。
 const FORMAT_VERSION: u32 = match (L3_OUT != 0, FT_I8) {
-    (false, false) => FORMAT_VERSION_TWO_HIDDEN,
-    (true, false) => FORMAT_VERSION_DEEP,
-    (false, true) => FORMAT_VERSION_TWO_HIDDEN_I8,
-    (true, true) => FORMAT_VERSION_DEEP_I8,
+    (false, false) => FORMAT_VERSION_TWO_HIDDEN_PAIR,
+    (true, false) => FORMAT_VERSION_DEEP_PAIR,
+    (false, true) => FORMAT_VERSION_TWO_HIDDEN_I8_PAIR,
+    (true, true) => FORMAT_VERSION_DEEP_I8_PAIR,
 };
 
 /// FT重み列をi16として読む。ファイルの版で1要素のバイト数が変わる
@@ -48,7 +57,36 @@ fn read_ft_i16(cur: &mut Cursor<'_>, version: u32, n: usize) -> Result<Vec<i16>,
 
 /// その版がFT重みをi8で持つか。
 const fn version_is_ft_i8(v: u32) -> bool {
-    matches!(v, FORMAT_VERSION_TWO_HIDDEN_I8 | FORMAT_VERSION_DEEP_I8)
+    matches!(
+        v,
+        FORMAT_VERSION_TWO_HIDDEN_I8
+            | FORMAT_VERSION_DEEP_I8
+            | FORMAT_VERSION_TWO_HIDDEN_I8_PAIR
+            | FORMAT_VERSION_DEEP_I8_PAIR
+    )
+}
+
+/// その版がFT出力の対を掛ける構成か（ADR-0171）。`w2` の列幅が
+/// 積なしの半分になるので、後段まで読む経路はここで弾く。
+const fn version_is_pair(v: u32) -> bool {
+    matches!(
+        v,
+        FORMAT_VERSION_TWO_HIDDEN_I8_PAIR
+            | FORMAT_VERSION_DEEP_I8_PAIR
+            | FORMAT_VERSION_TWO_HIDDEN_PAIR
+            | FORMAT_VERSION_DEEP_PAIR
+    )
+}
+
+/// 後段まで読む経路の入口検査。積なしのネットは読めない。
+fn require_pair(version: u32) -> Result<(), String> {
+    if version_is_pair(version) {
+        return Ok(());
+    }
+    Err(format!(
+        "積なしのネット（版{version}）はこのビルドで読めない。\
+         FT出力の対を掛ける構成に学習し直したネットが要る（ADR-0171）"
+    ))
 }
 
 /// FNV-1a 64bit。重み列の破損検出用。
@@ -211,8 +249,14 @@ fn read_header(r: &mut impl Read) -> Result<(u32, Dims, String, Vec<u8>), String
     let mut u = || read_u32(r).map(|v| v as usize);
     // 旧版は隠れ層の幅を1つしか書かない。L1とL2が同じとみなす
     let dims: Dims = match version {
-        FORMAT_VERSION_DEEP | FORMAT_VERSION_DEEP_I8 => [u()?, u()?, u()?, u()?, u()?],
-        FORMAT_VERSION_TWO_HIDDEN | FORMAT_VERSION_TWO_HIDDEN_I8 => [u()?, u()?, u()?, u()?, 0],
+        FORMAT_VERSION_DEEP
+        | FORMAT_VERSION_DEEP_I8
+        | FORMAT_VERSION_DEEP_I8_PAIR
+        | FORMAT_VERSION_DEEP_PAIR => [u()?, u()?, u()?, u()?, u()?],
+        FORMAT_VERSION_TWO_HIDDEN
+        | FORMAT_VERSION_TWO_HIDDEN_I8
+        | FORMAT_VERSION_TWO_HIDDEN_I8_PAIR
+        | FORMAT_VERSION_TWO_HIDDEN_PAIR => [u()?, u()?, u()?, u()?, 0],
         FORMAT_VERSION_UNIFORM_HIDDEN => {
             let d = [u()?, u()?, u()?];
             [d[0], d[1], d[2], d[2], 0]
@@ -244,6 +288,7 @@ fn read_header(r: &mut impl Read) -> Result<(u32, Dims, String, Vec<u8>), String
 /// 読み込む。戻り値は (ネットワーク, 学習来歴)。
 pub fn load(r: &mut impl Read) -> Result<(NnueNetwork, String), String> {
     let (version, dims, lineage, body) = read_header(r)?;
+    require_pair(version)?;
     let expect = [FT_IN, FT_OUT, L1_OUT, L2_OUT, L3_OUT];
     if dims != expect {
         return Err(format!(
@@ -332,6 +377,7 @@ pub fn load_resized_with_dims(
     r: &mut impl Read,
 ) -> Result<(NnueNetwork, String, [usize; 5]), String> {
     let (version, dims, lineage, body) = read_header(r)?;
+    require_pair(version)?;
     let [ft_in, src_ft, src_l1, src_l2, src_l3] = dims;
     if ft_in != FT_IN {
         return Err(format!("FT入力が違う: ファイル{ft_in} 実装{FT_IN}"));
@@ -369,14 +415,17 @@ pub fn load_resized_with_dims(
         FT_OUT,
     ))?;
     let b2 = fit(cur.i32v(src_l1)?, L1_OUT);
-    // 隠れ層1の入力は2視点の連結なので、視点ごとに写す
-    let src_w2 = cur.i8v(src_l1 * src_ft * 2)?;
+    // 隠れ層1の入力は2視点の連結なので、視点ごとに写す。片視点の幅は
+    // 対を掛けたあとの `src_ft / 2` になる（ADR-0171）
+    let src_half = src_ft / 2;
+    let src_w2 = cur.i8v(src_l1 * src_half * 2)?;
     let mut w2 = vec![0i8; L1_OUT * CONCAT];
-    let ft_cols = src_ft.min(FT_OUT);
-    for (o, row) in src_w2.chunks_exact(src_ft * 2).take(L1_OUT).enumerate() {
+    let ft_cols = src_half.min(HALF);
+    for (o, row) in src_w2.chunks_exact(src_half * 2).take(L1_OUT).enumerate() {
         for half in 0..2 {
-            let dst = o * CONCAT + half * FT_OUT;
-            w2[dst..dst + ft_cols].copy_from_slice(&row[half * src_ft..half * src_ft + ft_cols]);
+            let dst = o * CONCAT + half * HALF;
+            w2[dst..dst + ft_cols]
+                .copy_from_slice(&row[half * src_half..half * src_half + ft_cols]);
         }
     }
 
@@ -523,14 +572,13 @@ mod tests {
         assert!(lineage.contains("resized to"), "来歴に変換の跡が残る");
     }
 
-    /// 版2のファイル（隠れ層の幅が1つ）も読める。L1とL2が同じ構成に限る。
+    /// 積なしのネットは後段まで読む経路で弾く（ADR-0171）。
+    ///
+    /// 寸法のヘッダは積の有無で変わらないので、版で判定する。版を見ずに
+    /// 読むと `w2` の列幅が倍違うまま進み、「末尾に余分なバイトがある」に
+    /// なって原因が読めない。ここでは版2を代表に使う。
     #[test]
-    fn version2_is_readable_when_hidden_widths_match() {
-        if L3_OUT != 0 {
-            // 4層構成は版2・版3のファイルを`load`では読まない（層の数が違う）。
-            // 層を足す変換は`load_resized`が担う
-            return;
-        }
+    fn nets_without_the_pair_product_are_rejected() {
         let net = NnueNetwork::random(123);
         // 版2の本体はFT重みを常にi16で持つ。i8のビルドでも16bitへ広げて
         // 組み立てる（ADR-0138）。バイト列の切り貼りでは並びが合わない
@@ -558,15 +606,18 @@ mod tests {
         v2.extend_from_slice(&fnv1a(&body).to_le_bytes());
         v2.extend_from_slice(&body);
 
-        let result = load(&mut v2.as_slice());
-        if L1_OUT == L2_OUT {
-            let (loaded, lineage) = result.unwrap();
-            assert_eq!(lineage, "v2互換の検査");
-            assert_eq!(net.ft_w, loaded.ft_w);
-            assert_eq!(net.w3, loaded.w3);
-        } else {
-            assert!(result.is_err(), "幅が違う構成で版2を受け入れてはいけない");
-        }
+        let err = load(&mut v2.as_slice())
+            .err()
+            .expect("積なしのネットを受け入れてはいけない");
+        assert!(err.contains("ADR-0171"), "原因の読める文言にする: {err}");
+        let err = load_resized_with_dims(&mut v2.as_slice())
+            .err()
+            .expect("resizeの経路も後段を読むので弾く");
+        assert!(err.contains("ADR-0171"), "原因の読める文言にする: {err}");
+        // FTだけを読む経路（ADR-0132）は積の有無に関わらないので通る
+        let (ft_w, _, dims) = load_ft(&mut v2.as_slice()).expect("FTだけなら読める");
+        assert_eq!(dims[0], FT_IN);
+        assert_eq!(ft_w.len(), FT_IN * FT_OUT);
     }
 
     /// FTだけを持つ合成ファイルを作る。戻り値は (バイト列, ft_w, ft_b)。

@@ -16,7 +16,12 @@ use crate::value::Value;
 include!(concat!(env!("OUT_DIR"), "/arch.rs"));
 
 /// 隠れ層の入力次元（FT両視点）。
-pub const CONCAT: usize = FT_OUT * 2;
+///
+/// 片視点は `FT_OUT` 次元のaccumulatorを2つに割って要素ごとに掛けるので、
+/// 出す活性は `FT_OUT / 2` 次元になる（ADR-0171）。両視点でその2倍。
+pub const CONCAT: usize = FT_OUT;
+/// 連結ベクトルのうち片視点ぶんの幅。
+pub const HALF: usize = CONCAT / 2;
 /// 評価値スケール（ADR-0036）。
 pub const FV_SCALE: i32 = 16;
 /// HalfKP特徴の総数。
@@ -333,6 +338,20 @@ fn clip(v: i32) -> u8 {
     v.clamp(0, 127) as u8
 }
 
+/// accumulatorの前半と後半を要素ごとに掛けて活性にする（ADR-0171）。
+///
+/// `(clip(a) * clip(b) + 64) >> 7` の最大は 126 で、127には届かない。
+/// **学習側が同じ127/128を掛けているので、これで縮尺が合う。**掛けずに
+/// 127で割ると量子化の係数を後段まで直す羽目になる。
+///
+/// 64を足すのは切り捨てでなく四捨五入にするためである。足さないと活性が
+/// 平均0.48ぶん小さく出る。1024次元すべてに同じ向きの偏りが乗るので、
+/// バイアスでは吸収されない（足すと平均誤差が0.49から0.19へ下がる）。
+#[inline]
+pub(crate) fn pair_activation(a: i32, b: i32) -> u8 {
+    ((i32::from(clip(a)) * i32::from(clip(b)) + 64) >> 7) as u8
+}
+
 /// スカラー全計算の評価（手番視点、歩=90スケール）。
 /// 差分計算・SIMDの正解基準（ADR-0035, 0036）。
 pub fn evaluate_scalar(net: &NnueNetwork, pos: &Position) -> Value {
@@ -340,7 +359,7 @@ pub fn evaluate_scalar(net: &NnueNetwork, pos: &Position) -> Value {
     let mut features = Vec::with_capacity(64);
     let mut concat = [0u8; CONCAT];
 
-    // FT: 手番視点 → [0..FT_OUT)、非手番視点 → [FT_OUT..2*FT_OUT)
+    // FT: 手番視点 → [0..HALF)、非手番視点 → [HALF..CONCAT)
     for (half, c) in [(0usize, stm), (1, stm.flip())] {
         halfkp_active(pos, c, &mut features);
         let mut acc = [0i32; FT_OUT];
@@ -353,8 +372,9 @@ pub fn evaluate_scalar(net: &NnueNetwork, pos: &Position) -> Value {
                 *a += i32::from(net.ft_w[base + o]);
             }
         }
-        for (o, &a) in acc.iter().enumerate() {
-            concat[half * FT_OUT + o] = clip(a);
+        // accの前半と後半を対にして掛ける（ADR-0171）
+        for o in 0..HALF {
+            concat[half * HALF + o] = pair_activation(acc[o], acc[o + HALF]);
         }
     }
 

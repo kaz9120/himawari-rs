@@ -7,7 +7,7 @@
 
 use himawari_core::{Color, DirtyPiece, PieceType, Position, Square, bonapiece};
 
-use crate::nnue::{CONCAT, FT_OUT, FtWeight, NnueNetwork};
+use crate::nnue::{CONCAT, FT_OUT, FtWeight, HALF, NnueNetwork};
 use crate::nnue_simd;
 use crate::value::{MAX_PLY, Value};
 
@@ -171,7 +171,7 @@ impl NnueState {
         for (half, c) in [(0usize, stm), (1, stm.flip())] {
             debug_assert!(top.computed[c.index()], "未計算のaccを読もうとした");
             let acc = &top.acc[c.index()];
-            nnue_simd::clip_to_u8(acc, &mut concat[half * FT_OUT..(half + 1) * FT_OUT]);
+            nnue_simd::clip_to_u8(acc, &mut concat[half * HALF..(half + 1) * HALF]);
         }
         #[cfg(feature = "actdump")]
         crate::actdump::record(&concat);
