@@ -174,7 +174,7 @@ HIMAWARI_ARCH=1024x32x32 RUSTFLAGS="-C target-cpu=native" \
 HIMAWARI_ACT_OUT=data/profile/act_ft1024.bin \
   target/release/himawari < 局面とgoを並べたUSI入力
 
-# 2. 置換を決める
+# 2. 置換を決める（渡すのは片視点の活性次元。ADR-0171以降は FT_OUT/2 = 512）
 python3 scripts/ft-reorder.py data/profile/act_ft1024.bin 1024 \
   --out data/profile/perm_ft1024.txt
 
