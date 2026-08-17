@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.40.0](https://github.com/kaz9120/himawari-rs/compare/v0.39.0...v0.40.0) (2026-08-17)
+
+
+### 棋力向上
+
+* 桂の3段目不成を通常の指し手生成でも出す（+11.2 Elo、ADR-0173） ([#342](https://github.com/kaz9120/himawari-rs/issues/342)) ([2f51b09](https://github.com/kaz9120/himawari-rs/commit/2f51b09cde1914bef945e482f68d303d21761310))
+
 ## [0.39.0](https://github.com/kaz9120/himawari-rs/compare/v0.38.0...v0.39.0) (2026-08-17)
 
 
