@@ -45,7 +45,13 @@ fn push_variants(us: Color, from: Square, to: Square, pc: Piece, all: bool, list
                     rel == 1
                 }
             }
-            PieceType::KNIGHT => all && rel >= 2,
+            // 桂の3段目への不成は Normal でも生成する（ADR-0173）。
+            // 成桂は金の動きなので、桂の王手とは利きが違う。「成ると王手に
+            // ならないが、不成なら王手になる」形が実戦で詰みの決め手になり、
+            // floodgateの敗戦11局がこれだった。参照実装（やねうら王・Apery）も
+            // 桂の不成だけは全生成フラグで条件付けていない。
+            // 1〜2段目は不成だと行き所のない駒になるので `rel >= 2` は残す
+            PieceType::KNIGHT => rel >= 2,
             PieceType::SILVER => true,
             PieceType::BISHOP | PieceType::ROOK => all,
             _ => unreachable!("can_promote is limited to 6 kinds"),

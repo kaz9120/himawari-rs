@@ -437,3 +437,68 @@ fn see_ge_accounts_for_promotion() {
         "成る手は歩90＋成りの利得450で400を超える"
     );
 }
+
+/// 桂の3段目不成を通常の生成でも出す（ADR-0173）。
+///
+/// 成桂は金の動きなので、桂の王手とは利きが違う。「成ると王手にならないが、
+/// 不成なら王手になる」形があり、これを落とすと相手の詰め手順ごと見えなくなる。
+/// 局面はfloodgateの実戦（2026-08-16 vs Daigoro-20171029、104手目）で、
+/// 後手の5五桂を6七へ不成で跳ねると5九の先手玉に王手がかかる。
+#[test]
+fn knight_non_promotion_check_is_generated_in_normal_mode() {
+    let pos = Position::from_sfen(
+        "lr7/2g3k2/p2Ppp2B/4s1pPp/2Pnn4/PP1+b1P1p1/1S4P1N/6S2/L3KG2L w RGSNL3Pg2p 104",
+    )
+    .unwrap();
+
+    let usi_of = |all: bool| -> Vec<String> {
+        let mut list = MoveList::default();
+        generate_legal(&pos, all, &mut list);
+        list.as_slice().iter().map(|m| m.to_usi()).collect()
+    };
+    let normal = usi_of(false);
+    let full = usi_of(true);
+
+    assert!(
+        normal.iter().any(|m| m == "5e6g"),
+        "3段目への桂不成が通常の生成から漏れている"
+    );
+    assert!(
+        full.iter().any(|m| m == "5e6g"),
+        "全生成にも桂不成が無い（局面の前提が違う）"
+    );
+
+    // 王手であること。成ると王手にならないことも確かめる
+    let find = |usi: &str| -> Move {
+        let mut list = MoveList::default();
+        generate_legal(&pos, true, &mut list);
+        *list
+            .as_slice()
+            .iter()
+            .find(|m| m.to_usi() == usi)
+            .unwrap_or_else(|| panic!("{usi} が生成されていない"))
+    };
+    assert!(pos.gives_check(find("5e6g")), "桂不成は王手のはず");
+    assert!(
+        !pos.gives_check(find("5e6g+")),
+        "成ると金の動きになり王手にならないはず"
+    );
+}
+
+/// 行き所のない駒になる桂の不成は、どちらのモードでも生成しない（ADR-0017）。
+#[test]
+fn knight_non_promotion_is_not_generated_on_last_two_ranks() {
+    // 先手の2三桂は1一・3一（1段目）へしか跳べない。不成は行き所がない
+    let pos = Position::from_sfen("4k4/9/2N6/9/9/9/9/9/4K4 b - 1").unwrap();
+    for all in [false, true] {
+        let mut list = MoveList::default();
+        generate_legal(&pos, all, &mut list);
+        for m in list.as_slice() {
+            let usi = m.to_usi();
+            assert!(
+                !(usi.starts_with("7c") && !usi.ends_with('+')),
+                "1段目への桂不成を生成した（all={all}）: {usi}"
+            );
+        }
+    }
+}
