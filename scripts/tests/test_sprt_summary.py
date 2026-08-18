@@ -204,3 +204,82 @@ def test_build_report_puts_note_into_trailer():
 
 def test_exit_by_verdict_mapping():
     assert sprt_summary.EXIT_BY_VERDICT == {"H1": 0, "H0": 1, "打ち切り": 2, "判定前": 2}
+
+
+# --- emit_result（ADR-0175） ---
+
+
+def _fields():
+    return {
+        "elo_num": "+11.2",
+        "elo_ci": "[+3.7,+18.8]",
+        "llr": "+2.92",
+        "wdl": "+3819 =284 -3571",
+        "games": 7674,
+    }
+
+
+def test_emit_result_writes_key_value_pairs(tmp_path):
+    out = tmp_path / "adr0173.result"
+    sprt_summary.emit_result(str(out), "adr0173", "H1", _fields(), ("0", "5"))
+
+    got = dict(
+        line.split("=", 1) for line in out.read_text(encoding="utf-8").splitlines()
+    )
+    assert got["name"] == "adr0173"
+    assert got["decision"] == "H1"
+    assert got["elo"] == "+11.2"
+    assert got["ci_low"] == "+3.7"
+    assert got["ci_high"] == "+18.8"
+    assert got["games"] == "7674"
+    assert got["llr"] == "+2.92"
+    assert got["elo0"] == "0"
+    assert got["elo1"] == "5"
+    assert got["finished_at"].endswith("Z")
+
+
+def test_emit_result_records_non_inferiority_hypothesis(tmp_path):
+    out = tmp_path / "adr0174.result"
+    sprt_summary.emit_result(str(out), "adr0174", "H0", _fields(), ("-5", "0"))
+
+    got = dict(
+        line.split("=", 1) for line in out.read_text(encoding="utf-8").splitlines()
+    )
+    assert got["decision"] == "H0"
+    assert (got["elo0"], got["elo1"]) == ("-5", "0")
+
+
+def test_emit_result_leaves_no_temporary_file(tmp_path):
+    out = tmp_path / "adr0173.result"
+    sprt_summary.emit_result(str(out), "adr0173", "H1", _fields(), ("0", "5"))
+    assert sorted(p.name for p in tmp_path.iterdir()) == ["adr0173.result"]
+
+
+def test_main_does_not_emit_result_before_a_verdict(tmp_path):
+    log = tmp_path / "sprt-x.log"
+    log.write_text(
+        "selfplay: c vs b | tc 10+0.1 | SPRT elo[-5, 0] a=0.05\n"
+        "pairs  4998 | +4970 =180 -4846 | [1,2,3,4,5] | "
+        "Elo +0.8 [-5.9,+7.4] | LLR +1.41 [-2.94,2.94]\n",
+        encoding="utf-8",
+    )
+    out = tmp_path / "x.result"
+    code = sprt_summary.main([str(log), "x", "--emit-result", str(out)])
+
+    assert code == 2, "判定前は終了コード2"
+    assert not out.exists(), "判定が出ていない走行で結果ファイルを書いてはいけない"
+
+
+def test_main_emits_result_on_verdict(tmp_path):
+    log = tmp_path / "sprt-y.log"
+    log.write_text(
+        "selfplay: c vs b | tc 10+0.1 | SPRT elo[0, 5] a=0.05\n"
+        "H1採択（候補は有意に強い） | pairs 3837 games 7674 | "
+        "+3819 =284 -3571 | Elo +11.2 [+3.7,+18.8] | LLR +2.92\n",
+        encoding="utf-8",
+    )
+    out = tmp_path / "y.result"
+    code = sprt_summary.main([str(log), "y", "--emit-result", str(out)])
+
+    assert code == 0
+    assert "decision=H1" in out.read_text(encoding="utf-8")

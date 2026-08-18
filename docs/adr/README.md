@@ -96,6 +96,7 @@
 - [0152](0152-floodgate-cycle.md) floodgateの棋譜を定期回収する
 - [0154](0154-sprt-ops.md) SPRTの実行・監視・後処理
 - [0163](0163-sprt-hypothesis-choice.md) 対立仮説を着手時に決める（既定と非劣性の使い分け）
+- [0175](0175-sprt-until-decision.md) SPRTを判定が出るまで走らせ、完了をファイルで検知する
 
 ## 全ADR
 
@@ -273,6 +274,7 @@
 | [0171](0171-ft-pairwise-product.md) | FT出力の対を掛けて駒対の相互作用を入れる | 2026-08-16 | +65.4 | accepted |
 | [0172](0172-multihot-input.md) | 入力を玉と駒のマルチホットにして表を75分の1にする | 2026-08-17 | −52.2 | rejected |
 | [0173](0173-knight-non-promotion-movegen.md) | 桂の3段目不成を通常の指し手生成でも出す | 2026-08-17 | +11.2 | accepted |
+| [0175](0175-sprt-until-decision.md) | SPRTを判定が出るまで走らせ、完了をファイルで検知する | 2026-08-18 |  | proposed |
 
 ## バックログ
 
