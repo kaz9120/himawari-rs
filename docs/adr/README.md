@@ -43,6 +43,7 @@
 - [0018](0018-sfen-perft.md) SFEN入出力とperft基盤
 - [0173](0173-knight-non-promotion-movegen.md) 桂の3段目不成を通常の生成でも出す
 - [0174](0174-mate1ply-knight-promotion.md) mate_1plyへ桂の成り王手を列挙する案（測って棄却）
+- [0176](0176-lance-non-promotion-rank.md) 香の不成を2段目から3段目以降へ移す
 
 ### 探索
 
@@ -277,6 +278,7 @@
 | [0173](0173-knight-non-promotion-movegen.md) | 桂の3段目不成を通常の指し手生成でも出す | 2026-08-17 | +11.2 | accepted |
 | [0174](0174-mate1ply-knight-promotion.md) | mate_1plyへ桂の成り王手を列挙する | 2026-08-17 | −1.7 | rejected |
 | [0175](0175-sprt-until-decision.md) | SPRTを判定が出るまで走らせ、完了をファイルで検知する | 2026-08-18 |  | proposed |
+| [0176](0176-lance-non-promotion-rank.md) | 香の不成を2段目から3段目以降へ移す | 2026-08-18 | +1.7 | accepted |
 
 ## バックログ
 

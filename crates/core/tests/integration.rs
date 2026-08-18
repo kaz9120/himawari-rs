@@ -502,3 +502,48 @@ fn knight_non_promotion_is_not_generated_on_last_two_ranks() {
         }
     }
 }
+
+/// 香の不成は3段目以降で生成し、2段目では生成しない（ADR-0176）。
+///
+/// 香の値打ちは前方へ貫通する利きにある。成香は金の動きなので前1マスへ
+/// 縮む。3段目で不成にすれば貫通が残るので、通常の生成でも出す。2段目の
+/// 不成は1段目へしか行けず、横と後ろへ動ける成香に劣るので出さない。
+#[test]
+fn lance_non_promotion_is_generated_from_third_rank_only() {
+    // 先手の1六香。1三（3段目）・1二（2段目）・1一（1段目）へ進める
+    let pos = Position::from_sfen("4k4/9/9/9/9/8L/9/9/4K4 b - 1").unwrap();
+
+    let usi_of = |all: bool| -> Vec<String> {
+        let mut list = MoveList::default();
+        generate_legal(&pos, all, &mut list);
+        list.as_slice().iter().map(|m| m.to_usi()).collect()
+    };
+    let normal = usi_of(false);
+    let full = usi_of(true);
+
+    // 3段目への不成は通常の生成でも出す
+    assert!(
+        normal.iter().any(|m| m == "1f1c"),
+        "3段目への香不成が通常の生成から漏れている: {normal:?}"
+    );
+    // 2段目への不成は通常の生成では出さない。全生成では出す
+    assert!(
+        !normal.iter().any(|m| m == "1f1b"),
+        "2段目への香不成を通常の生成で出している: {normal:?}"
+    );
+    assert!(
+        full.iter().any(|m| m == "1f1b"),
+        "全生成に2段目への香不成が無い: {full:?}"
+    );
+    // 1段目への不成は行き所がないので、どちらでも出さない
+    for (label, list) in [("通常", &normal), ("全生成", &full)] {
+        assert!(
+            !list.iter().any(|m| m == "1f1a"),
+            "1段目への香不成を{label}の生成で出している"
+        );
+    }
+    // 成る手はどの段でも出る
+    for m in ["1f1c+", "1f1b+", "1f1a+"] {
+        assert!(normal.iter().any(|x| x == m), "成る手が無い: {m}");
+    }
+}

@@ -38,11 +38,15 @@ fn push_variants(us: Color, from: Square, to: Square, pc: Piece, all: bool, list
                     false
                 }
             }
+            // 香の不成は3段目以降で生成する（ADR-0176）。香の値打ちは前方へ
+            // 貫通する利きで、成香は金の動きなので前1マスに縮む。3段目で
+            // 不成にすれば貫通が残る。2段目の不成は1段目へしか行けず、横と
+            // 後ろへ動ける成香に劣るので Normal では生成しない
             PieceType::LANCE => {
                 if all {
                     rel >= 1
                 } else {
-                    rel == 1
+                    rel >= 2
                 }
             }
             // 桂の3段目への不成は Normal でも生成する（ADR-0173）。
