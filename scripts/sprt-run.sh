@@ -1,9 +1,18 @@
 #!/usr/bin/env bash
-# SPRTを判定が出るまで回し続ける（ADR-0087）。
+# SPRTを判定が出るまで回し続ける（ADR-0087・0175）。
 #
-# 長時間のSPRTは外部要因で止まる。実際に1つのSPRTで3回止まった
-# （2026-07-29）。そのたびに手で --resume するのは自動化として不完全
-# なので、ここで繰り返す。
+# 2つのことを自動化する。
+#   1. 走行が落ちたら --resume で拾い直す（ADR-0087）
+#   2. 上限に達しても判定が出ていなければ、そのまま走り続ける（ADR-0175）
+#
+# 2はsprt.shの --max-pairs を安全弁の値（SPRT_HARD_MAX_PAIRS）で1回通す
+# ことで実現する。--max-pairs は通算のペア数なので、段階的に広げる必要は
+# ない。上限は「収束の判定基準」ではなく「暴走を止める安全弁」である。
+#
+# 判定（H1・H0）が出たら data/sprt/<名前>.result へ結果を書く。
+# **このファイルの有無がSPRTの完了を表す**（ADR-0175）。プロセスの生死や
+# セッションの継続に依存しないので、いつ誰が見ても完了を判定できる。
+# 既に .result があれば、走らせずにそれを返す（冪等）。
 #
 # 効く範囲と効かない範囲がある。
 #   効く : selfplayプロセスだけが落ちた場合（メモリ不足、エンジンの異常
@@ -31,12 +40,19 @@ usage() {
 使い方:
   scripts/sprt-run.sh <baselineバイナリ> <candidateバイナリ> <名前> [再試行の上限] [追加引数...]
 
-scripts/sprt.sh を呼び、判定が出る前に落ちたら --resume で再開する。
-既存の棋譜があれば最初から --resume で始める。
+判定（H1・H0）が出るまで走らせる（ADR-0175）。落ちたら --resume で再開し、
+既存の棋譜があれば最初から続きを回す。
 
-再試行の上限は既定20回。判定が出るか上限に達するまで繰り返す。
+判定が出たら data/sprt/<名前>.result へ結果を書く。このファイルがあれば
+走らせずにそれを返すので、何度実行しても安全である。
+
+上限は SPRT_HARD_MAX_PAIRS（既定60000ペア＝12万局）で、収束の判定基準では
+なく暴走を止める安全弁である。ここに達しても判定が出ないなら、局数を積むより
+対立仮説の立て方を見直す状況になる（ADR-0163）。
+
+再試行の上限は既定20回。異常終了からの再開の回数を数える。
 追加引数はsprt.shへ素通しする（例: --copt MinimumThinkingTime=1）。
-終了コードは sprt.sh のもの（0=H1採択、1=H0採択、2=判定に至らず、3=実行エラー）。
+終了コード: 0=H1採択、1=H0採択、2=安全弁まで走って判定に至らず、3=実行エラー。
 USAGE
 }
 
@@ -62,6 +78,25 @@ if [[ $# -gt 0 && "$1" =~ ^[0-9]+$ ]]; then
 fi
 EXTRA=("$@")
 JSONL="${REPO_ROOT}/data/sprt/${NAME}.jsonl"
+RESULT="${REPO_ROOT}/data/sprt/${NAME}.result"
+LOG="${REPO_ROOT}/data/logs/sprt-${NAME}.log"
+
+# 判定済みなら走らせない（ADR-0175の冪等性）。結果はファイルが持つので、
+# セッションをまたいでも同じ答えを返す
+if [[ -f "$RESULT" ]]; then
+	log_step "判定済み: ${RESULT}"
+	cat "$RESULT"
+	case "$(sed -n 's/^decision=//p' "$RESULT")" in
+	H1) exit 0 ;;
+	H0) exit 1 ;;
+	*) die "結果ファイルのdecisionを読めない: ${RESULT}" ;;
+	esac
+fi
+
+# 判定が出るまで走らせるため、--max-pairs は安全弁の値で1回通す。
+# --max-pairs は通算のペア数なので、再開しても数え直しにならない（ADR-0087）
+export SPRT_MAX_PAIRS="$SPRT_HARD_MAX_PAIRS"
+log_step "判定が出るまで走らせる（安全弁 ${SPRT_HARD_MAX_PAIRS} ペア）"
 
 for ((attempt = 1; attempt <= MAX_RETRY; attempt++)); do
 	ARGS=()
@@ -77,10 +112,21 @@ for ((attempt = 1; attempt <= MAX_RETRY; attempt++)); do
 	CODE=$?
 
 	case $CODE in
-	0 | 1 | 2)
-		# 判定が出た（H1・H0）か、上限まで回して判定に至らなかった
-		log_step "SPRT終了: 終了コード ${CODE}"
+	0 | 1)
+		# 判定が出た。結果をファイルへ残す。以後この走行は再実行しない
+		python3 "${SCRIPT_DIR}/sprt-summary.py" "$LOG" "$NAME" --emit-result "$RESULT" >/dev/null || true
+		if [[ -f "$RESULT" ]]; then
+			log_step "SPRT終了: 終了コード ${CODE}。結果を ${RESULT} へ書いた"
+		else
+			log_warn "判定は出たが結果ファイルを書けなかった: ${LOG}"
+		fi
 		exit $CODE
+		;;
+	2)
+		# 安全弁まで走って判定に至らなかった。結果ファイルは書かない
+		log_warn "安全弁（${SPRT_HARD_MAX_PAIRS} ペア）まで走って判定に至らず。"
+		log_warn "局数を積むより対立仮説の立て方を見直す（ADR-0163）"
+		exit 2
 		;;
 	*)
 		log_warn "試行 ${attempt} が異常終了（コード ${CODE}）。再開する"

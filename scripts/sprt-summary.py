@@ -10,17 +10,21 @@ grepで探して1件も無いとき、grepは非0で終わるが、それは異�
 「打ち切りなので最終pairs行を使う」への正常な分岐だったためである。
 Pythonでは例外を投げずNoneのまま次の分岐へ進む形で同じ制御を表す。
 
+--emit-result は判定が出ているときだけ、結果を key=value でそのパスへ書く
+（ADR-0175）。このファイルの有無がSPRTの完了を表す。
+
 終了コード: 0=H1、1=H0、2=判定に至らず、3=読めない。
 """
 
 import argparse
+import datetime
 import os
 import re
 import sys
 
 USAGE = """\
 使い方:
-  scripts/sprt-summary.py <SPRTのログファイル> [機能名]
+  scripts/sprt-summary.py <SPRTのログファイル> [機能名] [--emit-result <パス>]
 
 判定に達していれば結論行から、達していなければ最終のpairs行から作る。
 出力は3つ。
@@ -68,7 +72,37 @@ def build_parser():
     parser = ArgParser(add_help=False)
     parser.add_argument("log")
     parser.add_argument("feature", nargs="?", default=None)
+    parser.add_argument("--emit-result", metavar="パス", default=None)
     return parser
+
+
+def emit_result(path, feature, verdict, fields, hyp):
+    """判定が出た走行の結果を key=value のファイルへ書く（ADR-0175）。
+
+    このファイルの有無が「SPRTが完了したか」の定義になる。判定に至って
+    いない走行では呼ばない。中途半端な結果を完了として記録しないためで
+    ある。書き込みは一時ファイル経由のrenameで、途中まで書けたファイルを
+    完了と誤読させない。
+    """
+    ci = fields["elo_ci"].strip("[]").split(",")
+    elo0, elo1 = hyp if hyp else DEFAULT_HYPOTHESIS
+    lines = [
+        f"name={feature}",
+        f"decision={verdict}",
+        f"elo={fields['elo_num']}",
+        f"ci_low={ci[0]}",
+        f"ci_high={ci[1]}",
+        f"games={fields['games']}",
+        f"wdl={fields['wdl']}",
+        f"llr={fields['llr']}",
+        f"elo0={elo0}",
+        f"elo1={elo1}",
+        f"finished_at={datetime.datetime.now(datetime.timezone.utc):%Y-%m-%dT%H:%M:%SZ}",
+    ]
+    tmp = f"{path}.tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        f.write("\n".join(lines) + "\n")
+    os.replace(tmp, path)
 
 
 def default_feature(log_path):
@@ -240,7 +274,11 @@ def main(argv=None):
         print(f"エラー: {e}", file=sys.stderr)
         return 3
 
-    print(build_report(feature, verdict, fields, hypothesis_note(find_hypothesis(lines))))
+    hyp = find_hypothesis(lines)
+    print(build_report(feature, verdict, fields, hypothesis_note(hyp)))
+    # 判定が出た走行だけ結果ファイルを残す（ADR-0175）
+    if args.emit_result and verdict in ("H1", "H0"):
+        emit_result(args.emit_result, feature, verdict, fields, hyp)
     return EXIT_BY_VERDICT[verdict]
 
 

@@ -40,6 +40,13 @@ export SPRT_ALPHA="${SPRT_ALPHA:-0.05}"
 export SPRT_BETA="${SPRT_BETA:-0.05}"
 export SPRT_ADJUDICATE="${SPRT_ADJUDICATE:-2000,8}"
 export SPRT_MAX_PAIRS="${SPRT_MAX_PAIRS:-3000}"
+# sprt-run.shが使う硬い上限（ADR-0175）。判定が出るまで走らせるので、
+# ここは収束の判定基準ではなく暴走を止める安全弁である。真のEloが
+# 対立仮説の中点ちょうどだと理論上収束しないため、無制限にはしない。
+# 60,000ペア＝12万局は、非劣性で真のEloが+0.5のときの必要局数
+# （約48,000ペア）を上回る値として置く。ここに達しても判定が出ないなら、
+# 局数を積むより仮説の立て方を見直す状況である
+export SPRT_HARD_MAX_PAIRS="${SPRT_HARD_MAX_PAIRS:-60000}"
 
 export RUSTFLAGS_NATIVE="${RUSTFLAGS_NATIVE:--C target-cpu=native}"
 
