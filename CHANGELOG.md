@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.41.0](https://github.com/kaz9120/himawari-rs/compare/v0.40.0...v0.41.0) (2026-08-19)
+
+
+### 棋力向上
+
+* 香の不成を2段目から3段目以降へ移す（ADR-0176） ([#348](https://github.com/kaz9120/himawari-rs/issues/348)) ([fa32058](https://github.com/kaz9120/himawari-rs/commit/fa3205887b6d68cbd878c0ad43e598eaea7eb87d))
+
 ## [0.40.0](https://github.com/kaz9120/himawari-rs/compare/v0.39.0...v0.40.0) (2026-08-17)
 
 
