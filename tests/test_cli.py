@@ -127,7 +127,8 @@ def test_sprt_run_builds_verifies_then_starts(capsys):
     assert code == proc.OK
     assert "build-pair.sh adr0180-x" in lines[0]
     assert "--bin verify" in lines[1]
-    assert "sprt-detach.py" in lines[3]
+    assert "新しいセッションで" in lines[3]
+    assert "sprt run adr0180-x --worker" in lines[3]
 
 
 def test_sprt_run_no_verify_skips_verification(capsys):
@@ -137,7 +138,7 @@ def test_sprt_run_no_verify_skips_verification(capsys):
 
 def test_sprt_run_noninferiority_sets_hypothesis(capsys):
     _, lines = dry(capsys, ["sprt", "run", "adr0180-x", "--noninferiority"])
-    start = [line for line in lines if "sprt-detach.py" in line][0]
+    start = [line for line in lines if "--worker" in line][0]
     assert "SPRT_ELO0=-5" in start
     assert "SPRT_ELO1=0" in start
 
@@ -147,9 +148,34 @@ def test_sprt_run_passes_tc_and_settings(capsys):
         capsys,
         ["sprt", "run", "adr0180-x", "--tc", "60+0.6", "--set", "SPRT_MAX_PAIRS=100"],
     )
-    start = [line for line in lines if "sprt-detach.py" in line][0]
+    start = [line for line in lines if "--worker" in line][0]
     assert "SPRT_TC=60+0.6" in start
     assert "SPRT_MAX_PAIRS=100" in start
+
+
+def test_sprt_run_foreground_builds_the_selfplay_command(capsys):
+    """切り離さない経路では、対局のコマンドをその場で組み立てる。"""
+    _, lines = dry(
+        capsys,
+        ["sprt", "run", "adr0180-x", "--foreground", "--no-verify", "--tc", "60+0.6"],
+    )
+    play = [line for line in lines if "selfplay" in line][0]
+    assert "--baseline data/bin/base-adr0180-x" in play
+    assert "--candidate data/bin/cand-adr0180-x" in play
+    assert "--tc 60+0.6" in play
+    assert "--out data/sprt/adr0180-x.jsonl" in play
+
+
+def test_sprt_net_passes_evaluation_files_per_side(capsys):
+    """評価関数は片側ずつ渡す。--option と併用しない。"""
+    _, lines = dry(
+        capsys,
+        ["sprt", "net", "Cargo.toml", "Cargo.lock", "adr0180-n", "--foreground"],
+    )
+    play = [line for line in lines if "selfplay" in line][0]
+    assert "--bopt EvalFile=" in play
+    assert "--copt EvalFile=" in play
+    assert "--option EvalFile=" not in play
 
 
 def test_sprt_run_rejects_malformed_setting(capsys):

@@ -2,7 +2,7 @@
 # マシンごとに変わる設定をまとめる。各スクリプトから source する。
 #
 # 値は自動で決める。変えたいときは呼び出し側で環境変数を先に設定する。
-#   SPRT_CONCURRENCY=6 scripts/sprt.sh base cand
+#   SPRT_CONCURRENCY=6 hmwr sprt run <名前>
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 export REPO_ROOT
@@ -40,7 +40,7 @@ export SPRT_ALPHA="${SPRT_ALPHA:-0.05}"
 export SPRT_BETA="${SPRT_BETA:-0.05}"
 export SPRT_ADJUDICATE="${SPRT_ADJUDICATE:-2000,8}"
 export SPRT_MAX_PAIRS="${SPRT_MAX_PAIRS:-3000}"
-# sprt-run.shが使う硬い上限（ADR-0175）。判定が出るまで走らせるので、
+# 判定が出るまで走らせるときの硬い上限（ADR-0175）。
 # ここは収束の判定基準ではなく暴走を止める安全弁である。真のEloが
 # 対立仮説の中点ちょうどだと理論上収束しないため、無制限にはしない。
 # 60,000ペア＝12万局は、非劣性で真のEloが+0.5のときの必要局数
@@ -62,9 +62,8 @@ SUMMARY
 # --- 共通ログ関数 -----------------------------------------------------
 #
 # タイムスタンプは既定で付けない。release-*.sh のように数秒で終わる
-# スクリプトでは、出力を目で追うだけなので不要である。sprt-run.sh・
-# watch-*.sh のように長時間ポーリングするスクリプトだけが、source後に
-# LOG_TIMESTAMP=1 を立てて使う。
+# スクリプトでは、出力を目で追うだけなので不要である。長時間ポーリングする
+# スクリプトだけが、source後に LOG_TIMESTAMP=1 を立てて使う。
 LOG_TIMESTAMP="${LOG_TIMESTAMP:-0}"
 export LOG_TIMESTAMP
 

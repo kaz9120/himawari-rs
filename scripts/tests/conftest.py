@@ -1,7 +1,7 @@
 """scripts/ 配下のハイフン付きファイル名をテストからimportするための補助。
 
-`scripts/sprt-summary.py` のようにファイル名にハイフンを含むため、
-`import sprt_summary` はできない。importlib で明示的にロードする。
+`scripts/floodgate-fetch.py` のようにファイル名にハイフンを含むため、
+`import floodgate_fetch` はできない。importlib で明示的にロードする。
 """
 
 import importlib.util

@@ -109,7 +109,7 @@ proposedで起草し、1アイデア1ADRとする。
 
 **実行・監視・後処理の手順は running-sprt スキルに固定してある**
 （[ADR-0154](docs/adr/0154-sprt-ops.md)）。SPRTを回すときは必ずスキルを使う。
-経過は常に `data/logs/sprt-<名前>.log` にあり、`sprt-summary.py` で
+経過は常に `data/logs/sprt-<名前>.log` にあり、`hmwr sprt show` で
 途中経過も読める。
 
 SPRTの前に機能検証を行う（[ADR-0074](docs/adr/0074-feature-verification.md)）。
