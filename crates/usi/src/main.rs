@@ -447,6 +447,18 @@ fn main() {
                 print_line("usiok");
             }
             "setoption" => set_option(&mut opts, &mut bopts, &tokens[1..], &line),
+            // SPSAランナーがチューニング項目を発見するための一覧出力
+            // （ADR-0143）。tuneビルドだけが応答する
+            #[cfg(feature = "tune")]
+            "tunables" => {
+                for e in himawari_engine::tunables::ENTRIES {
+                    print_line(&format!(
+                        "tunable name {} default {} min {} max {}",
+                        e.name, e.default, e.min, e.max
+                    ));
+                }
+                print_line("tunablesok");
+            }
             "isready" => {
                 // 重い初期化（置換表確保・スレッド起動・評価関数読み込み）は
                 // ここで行う。Hash/Threads/EvalFileが変わったら作り直す

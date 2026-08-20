@@ -45,6 +45,20 @@ hmwr sprt wait <名前>                 判定が出るまで待つ
 **SPRTの運用（条件の意味、判定の読み方、H1/H0後の後処理）はrunning-sprt
 スキルを正とする。** ここには書かない。
 
+### 探索定数をSPSAで回す（ADR-0143）
+
+```
+hmwr spsa init <名前>                 tuneビルドと対象一覧の雛形を作る
+hmwr spsa run <名前> --pairs 15000    切り離して走る。判定はなくペア数で止まる
+hmwr spsa show <名前>                 途中経過（θの現在値）
+hmwr spsa stop <名前>                 次のバッチの前で止める。runで再開
+```
+
+対象・可動域・摂動幅は `data/spsa/<名前>.params.json` を編集して絞る。
+完了後は結果の定数を `crates/engine/src/tunables.rs` へ焼き込み、
+SPRT既定条件で検収する。**SPSAは1サイクル数万局を使うので、SPRTと
+時期を分けて回す。**
+
 ### 挙動が変わったかを確かめる
 
 ```

@@ -29,6 +29,10 @@ jobs:
       # 活性ダンプのfeature（ADR-0168）。通常のビルドでは触らないので、
       # コンパイルが通ることだけ確かめて腐るのを防ぐ
       - run: cargo check -p himawari-engine --features actdump
+      # SPSAチューニングのfeature（ADR-0143）。setoptionの動作は
+      # engine側の単体テストで確かめる
+      - run: cargo test -p himawari-usi --features tune
+      - run: cargo test -p himawari-engine --features tune --lib
       # hmwrコマンドと解析ツールのPython（ADR-0180）。引数処理は同じ入力から
       # 同じコマンド列が出ることを、解析はログの読み取りを固定する
       - run: pip install --quiet pytest

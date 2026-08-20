@@ -4,9 +4,9 @@
 `cli.py` はそれを並べるだけで、領域ごとの事情を知らない。
 """
 
-from . import analyze, book, build, ci, data, doc, env, kifu, measure, net, sprt
+from . import analyze, book, build, ci, data, doc, env, kifu, measure, net, sprt, spsa
 
-MODULES = (env, build, sprt, measure, net, data, book, kifu, analyze, ci, doc)
+MODULES = (env, build, sprt, spsa, measure, net, data, book, kifu, analyze, ci, doc)
 
 __all__ = [
     "MODULES",
@@ -21,4 +21,5 @@ __all__ = [
     "measure",
     "net",
     "sprt",
+    "spsa",
 ]
