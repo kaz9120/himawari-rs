@@ -254,6 +254,7 @@ RUSTFLAGS="-C target-cpu=native" cargo build --release
 | `data/nets/` | 学習済みネット |
 | `data/book/` | 定跡 |
 | `data/sprt/` | selfplayの棋譜ログ（jsonl） |
+| `data/spsa/` | SPSAの状態・対象一覧・棋譜（ADR-0143） |
 | `data/bin/` | 比較用に残すビルド済みバイナリ |
 | `data/profile/` | プロファイル結果 |
 | `data/logs/` | hmwrの実行ログ |

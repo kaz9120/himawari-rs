@@ -12,6 +12,9 @@ himawari-core = { path = "../core" }
 # 通常のビルドには入らない。
 [features]
 actdump = []
+# SPSAの対象定数をatomicにしてUSIオプションへ出す（ADR-0143）。
+# 通常のビルドには入らない。
+tune = []
 
 [lints]
 workspace = true

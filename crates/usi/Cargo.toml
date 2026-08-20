@@ -13,5 +13,9 @@ path = "src/main.rs"
 himawari-core = { path = "../core" }
 himawari-engine = { path = "../engine" }
 
+# SPSAのチューニング用ビルド（ADR-0143）。対象定数をUSIオプションへ出す。
+[features]
+tune = ["himawari-engine/tune"]
+
 [lints]
 workspace = true

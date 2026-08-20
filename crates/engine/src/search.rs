@@ -17,12 +17,17 @@ use crate::movepick::{
 };
 use crate::timeman::{IterationStats, Limits, TimeManager};
 use crate::tt::{Bound, EvalHash, Tt};
+#[allow(clippy::wildcard_imports)]
+use crate::tunables::*;
 use crate::value::{
     MAX_PLY, PAWN_VALUE, VALUE_DRAW, VALUE_INFINITE, VALUE_MATE_IN_MAX_PLY, VALUE_MATED_IN_MAX_PLY,
     VALUE_NONE, VALUE_SUPERIOR, VALUE_ZERO, Value, mate_in, mated_in, value_from_tt, value_to_tt,
 };
 
 // ---- 探索定数（ADR-0028。調整は1調整=1SPRT） ----
+//
+// SPSAの対象にした定数は `tunables.rs` にある（ADR-0143）。以下の
+// コメントが式ごと説明し、値はそちらが持つ。ここに残るのは対象外の定数。
 
 /// NMP（ADR-0028, 0109のG4。yaneuraou-search.cpp:3236-3301）。
 /// 発動条件はcutNodeで、静的評価が `beta - 16*depth - 53*improving + 378`
@@ -30,10 +35,6 @@ use crate::value::{
 /// 検証探索でzugzwangの誤りを確かめる。評価値は歩=90スケールで一致する
 /// ため絶対値のまま使う（ADR-0074）
 const NMP_EVAL_DEPTH: Value = 16;
-const NMP_EVAL_IMPROVING: Value = 53;
-const NMP_EVAL_BASE: Value = 378;
-const NMP_BASE_REDUCTION: u32 = 7;
-const NMP_DEPTH_DIVISOR: u32 = 3;
 const NMP_VERIFY_MIN_DEPTH: u32 = 16;
 /// 子ノードのfutility（RFP。ADR-0109のG4。yaneuraou-search.cpp:3217-3227）。
 /// 係数 `m = 76 - 21*(TT不ヒット)` を置くと、マージンは
@@ -43,10 +44,6 @@ const NMP_VERIFY_MIN_DEPTH: u32 = 16;
 /// correction historyの分母131072はG1で参照実装へ揃えたので、除数180600も
 /// 換算せずに使える（ADR-0109の「定数の扱い」）
 const RFP_MAX_DEPTH: u32 = 15;
-const RFP_MULT: i32 = 76;
-const RFP_NO_TT_HIT: i32 = 21;
-const RFP_IMPROVING: i32 = 2686;
-const RFP_OPP_WORSENING: i32 = 362;
 const RFP_CORR_DIVISOR: i32 = 180600;
 /// 親ノードfutilityの上限深さとマージン（ADR-0028, 0109のG3。
 /// yaneuraou-search.cpp:3665-3676）。尺度はdepthではなく履歴で補正した
@@ -55,10 +52,6 @@ const RFP_CORR_DIVISOR: i32 = 180600;
 /// これを静的評価へ足してもalphaに届かない手を刈る。評価値は歩=90の
 /// スケールで一致する（ADR-0074）
 const FUTILITY_MAX_DEPTH: i32 = 13;
-const FUTILITY_BASE: Value = 42;
-const FUTILITY_NO_BEST: Value = 151;
-const FUTILITY_MARGIN: Value = 120;
-const FUTILITY_OVER_ALPHA: Value = 86;
 /// 「今読んでいる手」をinfoで出し始める経過時間（ADR-0086）。
 /// USIの慣例に合わせ、短い探索では出さない
 const CURRMOVE_MIN_MS: u64 = 3000;
@@ -98,44 +91,15 @@ const CORR_DIVISOR: i32 = 131072;
 /// 1手前の指し手がないときのcontinuation項の代替値
 /// （yaneuraou-search.cpp:735）。
 const CORR_CONT_DEFAULT: i32 = 8;
-/// SEEベースの枝刈り（ADR-0090, 0109）。移動先での駒の取り合いを静的に
-/// 解き、この額より損をする手を捨てる。出典はやねうら王の
-/// `-25*lmrDepth^2`（静かな手。yaneuraou-search.cpp:3697）と
-/// `-max(167*depth + captHist*34/1024, 0)`（取る手・王手する手。
-/// yaneuraou-search.cpp:3631）。SEEの駒価値は歩=90でやねうら王と
-/// 同系列のため絶対値のまま使える（ADR-0074）。閾値が負なので
-/// 「多少の駒損は許し、大きな損だけ刈る」
-const SEE_QUIET_COEF: i32 = 25;
-const SEE_CAPTURE_COEF: i32 = 167;
-const SEE_CAPT_HIST: i32 = 34;
 /// 取る手のfutility（ADR-0109のG3。yaneuraou-search.cpp:3618-3619）。
 /// `staticEval + 218 + 223*lmrDepth + 取った駒の価値 + 131*captHist/1024`
 /// がalpha以下なら刈る。評価値は歩=90スケールで一致する（ADR-0074）
 const CAPT_FUTILITY_MAX_DEPTH: i32 = 7;
-const CAPT_FUTILITY_BASE: Value = 218;
-const CAPT_FUTILITY_DEPTH: Value = 223;
 const CAPT_FUTILITY_HIST: i32 = 131;
 /// 静かな手のcontinuation history枝刈り（ADR-0109のG3。
 /// yaneuraou-search.cpp:3650）。1手前・2手前のcontinuation historyと
 /// pawn historyの和が `-4097 * depth` を下回る手は読まない
 const CONT_HIST_PRUNE_COEF: i32 = 4097;
-/// historyによるlmrDepth補正の除数（ADR-0109のG3。
-/// yaneuraou-search.cpp:3661）。上の和にmain historyの `71/32`
-/// （yaneuraou-search.cpp:3656）を足した値をこれで割り、lmrDepthへ
-/// 加える。この補正の後で親futilityと静かな手のSEE枝刈りが同じ
-/// lmrDepthを読むので、順序を入れ替えてはならない
-const LMR_DEPTH_HIST_DIVISOR: i32 = 3220;
-/// razoring（ADR-0057, 0109のG4。yaneuraou-search.cpp:3191-3192）。
-/// 評価が `alpha - 502 - 306*depth^2` を下回るなら通常探索をやめて
-/// qsearchの値を返す。深さの上限はなく、マージンがdepthの2乗で伸びる。
-/// 評価値は歩=90スケールで一致するため絶対値のまま使う（ADR-0074）
-const RAZOR_BASE: Value = 502;
-const RAZOR_DEPTH_COEF: Value = 306;
-/// 静止探索のfutility（ADR-0077）。stand patにこの値を足した額を上限とし、
-/// 取る駒の価値を足してもalphaに届かない手を捨てる。movecount制限は
-/// 「3手目以降は駒価値を見ずに捨てる」。出典はやねうら王の
-/// `futilityBase = staticEval + 328` と `moveCount > 2`。評価値は歩=90
-/// スケールで一致するため絶対値のまま用いる（ADR-0074）。
 /// 置換表の下界を使った簡易ProbCut（ADR-0078）。探索を伴わず、
 /// TTに `beta + このマージン` 以上の下界が depth-4 以上の深さで
 /// 記録されていればカットする。出典はやねうら王の `beta + 416`。
@@ -143,12 +107,9 @@ const RAZOR_DEPTH_COEF: Value = 306;
 const TT_PROBCUT_MARGIN: Value = 416;
 const TT_PROBCUT_DEPTH_SLACK: u32 = 4;
 
-const QS_FUTILITY_MARGIN: Value = 328;
+/// 静止探索のmovecount制限（ADR-0077。「3手目以降は駒価値を見ずに
+/// 捨てる」）。出典はやねうら王の `moveCount > 2`
 const QS_MOVECOUNT_LIMIT: u32 = 2;
-/// 静止探索で探索する取る手のSEE下限（yaneuraou-search.cpp:4989）。
-/// 出典のPawnValueは90で、本エンジンの歩の価値と一致するため絶対値のまま
-/// 用いる（ADR-0074）。歩損（-90）は下回るので、歩損は許す下限である
-const QS_SEE_MARGIN: Value = -73;
 
 /// 置換表のdepth欄のゲタ（tt.cpp:45-66, 103-164）。参照実装も内部で
 /// DEPTH_NONE（-3）分を下駄履きして符号なしで持つ。同じ表現を採る。
@@ -160,15 +121,6 @@ const TT_DEPTH_QS: u8 = 3;
 /// DEPTH_QSより小さいので、この値ではTTカットが起きない
 const TT_DEPTH_UNSEARCHED: u8 = 1;
 
-/// aspirationの初期窓（ADR-0109のG9。yaneuraou-search.cpp:1670-1673）。
-/// 幅は `5 + threadIdx%8 + |二乗平均スコア|/9000` で、評価値が大きいほど
-/// 広がる。中心は前深さの生スコアではなくスコアの移動平均に置く。
-/// 外したら幅を4/3倍にして読み直す（yaneuraou-search.cpp:1795）。
-/// 評価値は歩=90スケールで参照実装と一致するため、除数9000は換算せずに
-/// 使える（ADR-0074）
-const ASPIRATION_BASE: Value = 5;
-const ASPIRATION_MSS_DIV: Value = 9000;
-const ASPIRATION_GROWTH_DIV: Value = 3;
 /// スレッドごとの窓幅のずれ幅（yaneuraou-search.cpp:1670）。
 /// 参照実装が持つ唯一の明示的なLazy SMPの多様化である（ADR-0031）
 const ASPIRATION_THREAD_SPREAD: usize = 8;
@@ -195,30 +147,54 @@ fn lmp_limit(depth: u32, improving: bool) -> u32 {
 const REDUCTIONS_LEN: usize = 608;
 
 /// LMRのリダクション表（G2。yaneuraou-search.cpp:2168-2169）。
-/// `2763 / 128 × ln(i)` を整数化した1次元表で、深さと手数の積を取る。
+/// `LMR_COEF / 128 × ln(i)`（既定2763）を整数化した1次元表で、深さと
+/// 手数の積を取る。
 /// 積が1024倍の固定小数になるスケールはADR-0076で確認済み。
 ///
 /// 要素はi16で持つ（ADR-0151群H）。値域は0〜138（`i = 607` が最大）で
 /// i16に収まり、表が2.4KBから1.2KBへ半分になる。読み出し側は `i32::from`
 /// で広げてから掛けるので、値も計算結果も従来とビット一致する。
+#[cfg(not(feature = "tune"))]
 static REDUCTIONS: std::sync::OnceLock<[i16; REDUCTIONS_LEN]> = std::sync::OnceLock::new();
+
+fn build_reductions() -> [i16; REDUCTIONS_LEN] {
+    let mut t = [0i16; REDUCTIONS_LEN];
+    for (i, r) in t.iter_mut().enumerate().skip(1) {
+        let v = (f64::from(LMR_COEF()) / 128.0 * (i as f64).ln()) as i32;
+        debug_assert!(
+            i32::from(i16::MIN) <= v && v <= i32::from(i16::MAX),
+            "リダクション表の値がi16の範囲を超えた: i={i}, v={v}"
+        );
+        *r = v as i16;
+    }
+    t
+}
 
 /// リダクション表への参照を得る。`f64::ln` を含むのでconstにできず、
 /// 実行時に1回だけ作る。`Worker::new` が参照を受け取って持ち回るので、
 /// 指し手ごとに `OnceLock` の初期化済み判定を通ることはない
+#[cfg(not(feature = "tune"))]
 fn reductions_table() -> &'static [i16; REDUCTIONS_LEN] {
-    REDUCTIONS.get_or_init(|| {
-        let mut t = [0i16; REDUCTIONS_LEN];
-        for (i, r) in t.iter_mut().enumerate().skip(1) {
-            let v = (2763.0 / 128.0 * (i as f64).ln()) as i32;
-            debug_assert!(
-                i32::from(i16::MIN) <= v && v <= i32::from(i16::MAX),
-                "リダクション表の値がi16の範囲を超えた: i={i}, v={v}"
-            );
-            *r = v as i16;
+    REDUCTIONS.get_or_init(build_reductions)
+}
+
+/// tuneビルド用。`LMR_COEF` がsetoptionで変わりうるので、`Worker::new` の
+/// たびに係数を見て、変わっていたら表を作り直す。前の表は解放せずに漏らすが、
+/// 漏れるのは係数を変えた回数ぶんの1.2KBで、チューニング走行に限る
+#[cfg(feature = "tune")]
+fn reductions_table() -> &'static [i16; REDUCTIONS_LEN] {
+    static CURRENT: std::sync::Mutex<Option<(i32, &'static [i16; REDUCTIONS_LEN])>> =
+        std::sync::Mutex::new(None);
+    let coef = LMR_COEF();
+    let mut cur = CURRENT.lock().unwrap();
+    match *cur {
+        Some((c, table)) if c == coef => table,
+        _ => {
+            let table: &'static [i16; REDUCTIONS_LEN] = Box::leak(Box::new(build_reductions()));
+            *cur = Some((coef, table));
+            table
         }
-        t
-    })
+    }
 }
 
 /// スレッド間の共有状態（ADR-0020）。
@@ -1217,9 +1193,9 @@ impl Worker {
                 // ラインごとのaspiration（G9。S:1669-1673）。窓幅は評価値の
                 // 二乗平均に比例して広がり、中心はスコアの移動平均に置く。
                 // 深さ1では二乗平均が番兵のままなので窓が全開になる
-                let mut delta = ASPIRATION_BASE
+                let mut delta = ASPIRATION_BASE()
                     + (self.thread_idx % ASPIRATION_THREAD_SPREAD) as Value
-                    + self.root_moves[pv_idx].mean_squared_score.abs() / ASPIRATION_MSS_DIV;
+                    + self.root_moves[pv_idx].mean_squared_score.abs() / ASPIRATION_MSS_DIV();
                 let avg = self.root_moves[pv_idx].average_score;
                 let mut alpha = (avg - delta).max(-VALUE_INFINITE);
                 let mut beta = (avg + delta).min(VALUE_INFINITE);
@@ -1293,7 +1269,7 @@ impl Worker {
                         break;
                     }
                     // 外したので次は幅を4/3倍にする（S:1795）
-                    delta += delta / ASPIRATION_GROWTH_DIV;
+                    delta += delta / ASPIRATION_GROWTH_DIV();
                 }
             }
             // 今回の反復のPVを覚える（yaneuraou-search.cpp:1846-1853）。
@@ -2308,8 +2284,8 @@ impl Worker {
             // 王手する手は対象外
             if !gives_check && lmr_depth < CAPT_FUTILITY_MAX_DEPTH {
                 let futility_value = static_eval
-                    + CAPT_FUTILITY_BASE
-                    + CAPT_FUTILITY_DEPTH * lmr_depth
+                    + CAPT_FUTILITY_BASE()
+                    + CAPT_FUTILITY_DEPTH() * lmr_depth
                     + himawari_core::piece_value(captured)
                     + CAPT_FUTILITY_HIST * capt_hist / 1024;
                 if futility_value <= alpha {
@@ -2321,7 +2297,7 @@ impl Worker {
             // （yaneuraou-search.cpp:3634-3641）。許す損の額が
             // capture historyで動く。alphaが負のときは刈らない
             let margin =
-                (SEE_CAPTURE_COEF * depth as i32 + capt_hist * SEE_CAPT_HIST / 1024).max(0);
+                (SEE_CAPTURE_COEF() * depth as i32 + capt_hist * SEE_CAPT_HIST() / 1024).max(0);
             if alpha >= VALUE_DRAW && !self.pos.see_ge(m, -margin) {
                 return true;
             }
@@ -2350,7 +2326,7 @@ impl Worker {
             // （yaneuraou-search.cpp:3656-3661）。以降の枝刈りが
             // 使う尺度そのものが履歴で動く
             history += 71 * self.hist.main.get(self.pos.side_to_move(), m) / 32;
-            lmr_depth += history / LMR_DEPTH_HIST_DIVISOR;
+            lmr_depth += history / LMR_DEPTH_HIST_DIVISOR();
 
             // 親ノードのfutility（yaneuraou-search.cpp:3665-3682）。
             // 子を展開する前に、alphaへ届かないと見込める静かな手を
@@ -2358,10 +2334,10 @@ impl Worker {
             // 見つかっていないときと静的評価がalphaを超えている
             // ときにマージンを積む
             let futility_value = static_eval
-                + FUTILITY_BASE
-                + FUTILITY_NO_BEST * Value::from(best_move == Move::NONE)
-                + FUTILITY_MARGIN * lmr_depth
-                + FUTILITY_OVER_ALPHA * Value::from(static_eval > alpha);
+                + FUTILITY_BASE()
+                + FUTILITY_NO_BEST() * Value::from(best_move == Move::NONE)
+                + FUTILITY_MARGIN() * lmr_depth
+                + FUTILITY_OVER_ALPHA() * Value::from(static_eval > alpha);
             if !in_check && lmr_depth < FUTILITY_MAX_DEPTH && futility_value <= alpha {
                 // 刈った手の見込み値でbestValueを引き上げる。
                 // 詰み圏の値は動かさない
@@ -2377,7 +2353,10 @@ impl Worker {
             // 負のSEEを持つ手の枝刈り（yaneuraou-search.cpp:3691-3698）。
             // 参照実装はここで0止めする
             let lmr_depth = lmr_depth.max(0);
-            if !self.pos.see_ge(m, -SEE_QUIET_COEF * lmr_depth * lmr_depth) {
+            if !self
+                .pos
+                .see_ge(m, -SEE_QUIET_COEF() * lmr_depth * lmr_depth)
+            {
                 return true;
             }
         }
@@ -2557,7 +2536,7 @@ impl Worker {
         // razoring（ADR-0057, 0109のG4。yaneuraou-search.cpp:3191-3192）。
         // 評価がalphaを大きく下回るなら通常探索をやめ、qsearchの値を返す。
         // PVノードでないことが唯一の前提で、深さの上限はない
-        if !PV && eval < alpha - RAZOR_BASE - RAZOR_DEPTH_COEF * (*depth * *depth) as Value {
+        if !PV && eval < alpha - RAZOR_BASE() - RAZOR_DEPTH_COEF() * (*depth * *depth) as Value {
             // razoringは非PVノード限定なので常にNonPV（yaneuraou-search.cpp:3192）
             return Some(self.qsearch::<false>(alpha, beta, ply));
         }
@@ -2566,10 +2545,10 @@ impl Worker {
         // 残り深さで評価が動きうる幅を見積り、それを引いてもβを超えるなら
         // 刈る。TTにヒットしていないノードは見積りを狭める
         let futility_mult =
-            RFP_MULT - RFP_NO_TT_HIT * i32::from(!self.stack[ply + STACK_OFFSET].tt_hit);
+            RFP_MULT() - RFP_NO_TT_HIT() * i32::from(!self.stack[ply + STACK_OFFSET].tt_hit);
         let futility_margin = futility_mult * *depth as i32
-            - (RFP_IMPROVING * i32::from(*improving)
-                + RFP_OPP_WORSENING * i32::from(opponent_worsening))
+            - (RFP_IMPROVING() * i32::from(*improving)
+                + RFP_OPP_WORSENING() * i32::from(opponent_worsening))
                 * futility_mult
                 / 1024
             + corr_value.abs() / RFP_CORR_DIVISOR;
@@ -2593,8 +2572,8 @@ impl Worker {
             && static_eval
                 >= beta
                     - NMP_EVAL_DEPTH * *depth as Value
-                    - NMP_EVAL_IMPROVING * Value::from(*improving)
-                    + NMP_EVAL_BASE
+                    - NMP_EVAL_IMPROVING() * Value::from(*improving)
+                    + NMP_EVAL_BASE()
             && excluded == Move::NONE
             && ply >= self.nmp_min_ply
             && beta > VALUE_MATED_IN_MAX_PLY
@@ -2602,7 +2581,7 @@ impl Worker {
             // 連続してnull moveは指さない（yaneuraou-search.cpp:3247）。
             // null moveの子はcut_node = falseなのでここへ来ない
             debug_assert!(prev != Move::NULL);
-            let r = NMP_BASE_REDUCTION + *depth / NMP_DEPTH_DIVISOR;
+            let r = NMP_BASE_REDUCTION() + *depth / NMP_DEPTH_DIVISOR();
             let mut null_pv = Vec::new();
             // null moveは王手でも駒取りでもないので番兵の面を指す
             // （yaneuraou-search.cpp:3254-3256）
@@ -2896,7 +2875,7 @@ impl Worker {
             }
             // 基準はTT値で上書きする前のstaticEvalである
             // （yaneuraou-search.cpp:4836）
-            futility_base = stand + QS_FUTILITY_MARGIN;
+            futility_base = stand + QS_FUTILITY_MARGIN();
         }
         // 1手前の移動先（取り返しをfutilityの対象から外す。ADR-0077）。
         // 余白の初期値はMove::NONEなので、ply 0でもNoneになる
@@ -2971,7 +2950,7 @@ impl Worker {
                     }
                     // SEEが十分悪い手は探索しない（yaneuraou-search.cpp:4989-4990）。
                     // 無駄な王手ラッシュを抑える。歩損は許す下限である
-                    if !self.pos.see_ge(m, QS_SEE_MARGIN) {
+                    if !self.pos.see_ge(m, QS_SEE_MARGIN()) {
                         continue;
                     }
                 }

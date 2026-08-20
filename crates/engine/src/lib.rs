@@ -16,6 +16,7 @@ pub mod search;
 pub mod thread;
 pub mod timeman;
 pub mod tt;
+pub mod tunables;
 pub mod value;
 
 pub use eval::Evaluator;
