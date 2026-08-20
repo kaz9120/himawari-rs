@@ -17,9 +17,9 @@
 自動化したが、CHANGELOGは持っていない。「0.12.0で何が入ったか」を
 知るにはリリース一覧を辿ることになる。
 
-別プロジェクト（hidoko）でrelease-pleaseが機能している。Conventional
-Commitsからbumpを算出してリリースPRを作り、CI通過後の自動マージで
-バージョン更新・CHANGELOG生成・タグ・GitHub Releaseまで通す構成である。
+別プロジェクト（hidoko）でrelease-pleaseが機能している。Conventional Commitsからbumpを算出してリリースPRを作る。CI通過後の自動
+マージで、バージョン更新・CHANGELOG生成・タグ・GitHub Releaseまで通す
+構成である。
 
 ## 選択肢と比較
 
@@ -34,7 +34,7 @@ Conventional Commitsが前提になるため、コミットメッセージの規
 ### 案B: PRラベル駆動の独自ワークフロー
 
 `strength` / `chore` ラベルを読み、マージ時に `Cargo.toml` を更新して
-タグを打つ。ADR-0070の規約に完全に合わせられるが、実装と保守を自前で
+タグを打つ。ADR-0070の規約どおりに合わせられるが、実装と保守を自前で
 抱える。CHANGELOGは別途作ることになる。
 
 ### 案C: 手作業を続ける
@@ -140,10 +140,9 @@ auto-mergeの条件が満たされない。
 `$.workspace.package.version` を更新する。
 
 当初は `rust` を指定したが、導入直後の実行が
-`value at path package.version is not tagged` で失敗した。rust strategyは
-各クレートの `package.version` を文字列として書き換えるが、本リポジトリの
-クレートは `version.workspace = true` で継承しており、書き換える値を
-持たないためである。
+`value at path package.version is not tagged` で失敗した。rust strategyは各クレートの `package.version` を文字列として書き換える。
+本リポジトリのクレートは `version.workspace = true` で継承しており、
+書き換える値を持たないためである。
 
 各クレートに実バージョンを書けばrust strategyは動く。ただしバージョンが
 5箇所へ散り、workspaceの一元管理を失う。`simple` なら構成を変えずに済む。
@@ -173,8 +172,8 @@ clone し、`cargo update --workspace` を走らせ、差分があれば同じPR
 外部依存は動かさない。導入時の実測では `himawari-engine` ほか4件が
 0.7.3から0.7.6へ更新され、外部依存17件は `unchanged` のままだった。
 
-auto-mergeを有効にする前に実行する。順序が逆だと、CI通過と同時にマージされて
-同期が間に合わないおそれがある。release-pleaseがリリースPRをforce pushで
+auto-mergeの有効化より先に実行する。順序が逆だと、CI通過と同時にマージされて
+同期の間に合わないおそれがある。release-pleaseがリリースPRをforce pushで
 更新するとこのコミットは消えるが、同じjobが再び走って積み直すため、
 マージ時点では必ず揃う。
 

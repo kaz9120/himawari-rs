@@ -63,9 +63,9 @@ for (wc, xc) in w.as_chunks::<8>().0.iter().zip(x.as_chunks::<8>().0) {
 持ち、活性のロードを4行で共有する。SDOTの結果依存が4本に分かれる
 ため、パイプラインも埋まりやすい。
 
-x86_64にも同じ構造の命令がある。AVX-VNNIの `_mm256_dpbusd_epi32` は
-u8×i8をi32へ直接積和し、AVX2しかない環境でも `_mm256_maddubs_epi16`
-と `_mm256_madd_epi16` の組で同じ計算になる。移行先として想定している
+x86_64にも同じ構造の命令がある。AVX-VNNIの `_mm256_dpbusd_epi32` はu8×i8をi32へ直接積和する。
+AVX2しかない環境でも `_mm256_maddubs_epi16` と `_mm256_madd_epi16` の組で
+同じ計算になる。移行先として想定している
 Core i7-1255U（Alder Lake、[ADR-0081](0081-portability.md)）は
 AVX-VNNIを持つ。
 

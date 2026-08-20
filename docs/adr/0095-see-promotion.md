@@ -15,7 +15,7 @@
 ```
 
 移動元の駒の価値をそのまま使っており、成りによる価値の上昇を見ていない。
-将棋の成りは大きい。歩(90)→と金(540)で+450、飛(990)→竜(1395)で+405で
+将棋の成りは大きい。歩(90)→と金(540)が+450、飛(990)→竜(1395)が+405で
 ある。同じ路線で効くと見込んで着手した。
 
 ## Decision
@@ -37,7 +37,7 @@ let after = PIECE_VALUE[m.piece_after().piece_type().index()];
 
 ## なぜほぼ等価なのか（2026-07-29）
 
-**機能検証で4局面ともノード数が完全に一致した。** 理由は式にある。
+**機能検証で4局面ともノード数が一致した**。理由は式にある。
 
 `gain = after - before` とおく。swapの2段目は次のようになる。
 
@@ -46,7 +46,7 @@ let after = PIECE_VALUE[m.piece_after().piece_type().index()];
 | 変更前 | `captured - threshold` | `before - captured + threshold` |
 | 変更後 | `captured + gain - threshold` | `(before + gain) - (captured + gain - threshold)` = `before - captured + threshold` |
 
-**2段目は完全に一致する。** 取り分と失う駒の両方へ同じ `gain` を足すため、
+**2段目は一致する**。取り分と失う駒の両方へ同じ `gain` を足すため、
 差し引きで消える。以降のswapループは2段目の値から始まるので、結果も
 同じになる。
 

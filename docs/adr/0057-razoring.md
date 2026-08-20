@@ -12,9 +12,9 @@
 なら刈る」のに対し、razoringはalpha側で「悪すぎるなら手を抜く」
 補完的な位置づけである。
 
-現在のsearch.rsでは、depth==0でqsearchに落ちる処理（464行）は
-あるが、depth 1〜3の浅いノードで静的評価が絶望的なときに早期に
-qsearchに委ねる仕組みがない。SF系ではrazoring（またはそれに
+現在のsearch.rsには、depth==0でqsearchへ落ちる処理（464行）がある。
+depth 1〜3の浅いノードで静的評価が絶望的なとき、早めにqsearchへ委ねる
+仕組みはない。SF系ではrazoring（またはそれに
 相当する浅い深さのqsearch降格）が標準装備されている。
 
 ## 選択肢と比較
@@ -77,7 +77,7 @@ SPRTはADR-0028の既定条件。両エンジンに
 
 ## Consequences
 
-- 浅い深さの絶望局面でqsearchに即座に降格するため、無駄な
+- 浅い深さの絶望局面でqsearchへすぐ降格するため、無駄な
   通常探索ノードが減る。NPS改善ではなく探索木の縮小による効率化
 - マージン300はRFP_MARGIN（120/depth）より大きく、futilityの
   合計マージン（200+120*depth）と同程度。razoringが発動する

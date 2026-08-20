@@ -17,11 +17,12 @@
 
 原因は `release-please-config.json` の `changelog-sections` にある。
 ADR-0071は「bumpしない型も履歴として残す」つもりで `docs` と `chore` に
-`hidden: false` を指定したが、release-pleaseではこの2つが両立しない。
+`hidden: false` を指定した。しかしrelease-pleaseでは、この2つが両立しない。
 
-release-pleaseの既定のversioning strategyは、breaking changeがあれば
-MAJOR、`feat` があればMINOR、それ以外は型を問わずPATCHへフォールバック
-する（`src/versioning-strategies/default.ts`）。
+release-pleaseの既定のversioning strategyは3段で決まる
+（`src/versioning-strategies/default.ts`）。breaking changeがあれば
+MAJOR、`feat` があればMINOR、それ以外は型を問わずPATCHへ
+フォールバックする。
 
 ```typescript
 return new PatchVersionUpdate();
@@ -73,8 +74,8 @@ PATCHのリリースPRをまとめてマージする。`fix` が続いた日も1
 案Aを採る。
 
 決め手は、案Aだけでリリースが3分の1へ減ることである。案Bが追加で削るのは
-`fix` が同日に複数入った場合だけで、直近30リリースでは9件が6件程度に
-なるにすぎない。得られる差に対してワークフローの分岐と定期実行は重い。
+`fix` が同日に複数入った場合だけで、直近30リリースでは9件が6件程度へ
+減るにすぎない。得られる差に対してワークフローの分岐と定期実行は重い。
 `docs` と `chore` を外してもなおPATCHが多いと感じたら、そのとき案Bへ進む。
 
 CHANGELOGから消える情報は、他の文書が持っている。効かなかった案の記録は

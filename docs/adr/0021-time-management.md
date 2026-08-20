@@ -52,7 +52,7 @@ binc/winc（加算）、movetime、infinite、ponderを渡してくる。
 - 時間切れ負けの防御がNetworkDelay/NetworkDelay2の2定数に
   集約され、ネットワーク対局（floodgate等）でも数値の調整だけで
   対応できる
-- 配分式は最初は素朴でよい。P3のSPRT基盤ができた後、
+- 配分式は最初のうち素朴でよい。P3のSPRT基盤ができた後、
   「同時間で強くなる」変更として係数をチューニングする
 - ponderhitの計時引き継ぎはP2ではUSI_Ponder=false運用で
   実質使われない。実装だけ先に正しく入れておき、ponder有効化

@@ -12,7 +12,7 @@ Rustで書くコンピュータ将棋エンジン。USIプロトコルに対応�
 ## 使う
 
 エンジン本体と評価関数ファイルの2つが要る。評価関数は
-[Releases](../../releases)の `net-v*` から取得する。番号が最も大きいものが
+[Releases](../../releases)の `net-v*` から取得する。番号のいちばん大きいものが
 最新で、古い番号のネットはそのぶん弱い。
 
 ```sh
@@ -46,7 +46,7 @@ gh release download net-v4 -p '*.hmwr'   # 評価関数（2026-08-08時点の最
 起動直後に終了するときは、`EvalFile` が未設定かパスが違う。標準エラーへ理由を
 出して終了する。
 
-評価関数の読み込みで次のエラーが出ることがある。
+評価関数の読み込みで次のエラーの出ることがある。
 
 ```
 info string error: EvalFile読み込み失敗: FT重み194がi8に収まらない。--ft-clipを付けて学習したネットが要る（ADR-0138）
@@ -83,14 +83,14 @@ RUSTFLAGS="-C target-cpu=native" cargo build --release
 HIMAWARI_ARCH=256x32x32 cargo build --release
 ```
 
-**バイナリと評価ファイルは対で使う。** 次元が食い違うと読み込みで落ちる。
+**バイナリと評価ファイルは対で使う**。次元が食い違うと読み込みで落ちる。
 既定のビルドには `data/nets/pairprod_2990M_q1_reorder.hmwr` を渡す。
 
 FTを太らせると評価精度は上がり、NPSは落ちる。FT1024はノード数固定で
 +70.6 Eloに対し、時間制（10+0.1）では−0.1で互角だった
 （[ADR-0159](docs/adr/0159-ft-width-1024.md)）。互角なら容量の伸びしろを
-採る判断で既定を1024にしている。FT512は−72.8 Eloで
-（[ADR-0067](docs/adr/0067-ft-dimension-512.md)）、幅は単調ではない。
+採る判断で既定を1024にしている。FT512は−72.8 Eloだった
+（[ADR-0067](docs/adr/0067-ft-dimension-512.md)）。幅は単調でない。
 
 後段のL1は16である。32から半減してもvalid lossは動かず、速度が上がって
 +13.4 Eloになった（[ADR-0170](docs/adr/0170-l1-half.md)）。
@@ -106,7 +106,7 @@ scripts/fetch-dataset.sh all   # 教師データ（学習を回す場合のみ�
 ```
 
 教師データは生データ116GBと加工後120GBで、空きが236GB要る。`download` /
-`verify` / `prepare` に分けて実行することもできる（`-h` で確認）。
+`verify` / `prepare` に分けて実行もできる（`-h` で確認）。
 
 WindowsではWSL2上で動かす。macOSでも開発できる（Apple Siliconで確認している）。
 判断の経緯は[ADR-0081](docs/adr/0081-portability.md)にある。
@@ -156,7 +156,7 @@ GitHub Issuesは使わない。状況・設計・手順のすべてをリポジ�
 
 設計判断はすべてADRに記録し、実装より先に書く。棋力が変わる変更はSPRTで
 H1採択したものだけをmainへ入れる。SPRTの前に機能検証（固定深さでのノード数の
-比較）と発動率の計測を行う。
+比較）と発動率を計測する。
 
 バージョンはrelease-pleaseがコミットの型から算出する。`feat` がMINOR、`fix` が
 PATCHで、`feat` はSPRTを通った変更にだけ使う。

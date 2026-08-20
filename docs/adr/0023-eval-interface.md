@@ -7,9 +7,9 @@
 ## Context
 
 P2の評価は駒割ベースの簡素なもので始め、P4でNNUEに置き換える。
-探索コードを書き換えずに評価関数を差し替えられる境界を、
-NNUEの要件（plyに沿ったaccumulatorスタック、DirtyPieceの消費、
-玉移動時のrefresh）を先取りした形で固定するのがこのADRの目的。
+このADRの目的は、探索コードを書き換えずに評価関数を差し替えられる境界を
+固定することである。NNUEの要件（plyに沿ったaccumulatorスタック、
+DirtyPieceの消費、玉移動時のrefresh）を先取りした形にする。
 
 ## 選択肢と比較
 

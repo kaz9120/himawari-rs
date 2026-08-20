@@ -25,9 +25,9 @@ mate distance pruningしかない。現在の弱さは探索能力の問題で�
 ### SPRT運用規約
 
 - 1機能=1SPRT。合格（H1採択）した変更だけをmainに取り込む
-- 既定条件: `selfplay --openings openings/start_sfens_ply24.txt
-  --tc 10+0.1 --concurrency 8 --adjudicate 2000,8`、
-  elo0=0、elo1=5、α=β=0.05。adjudicationは駒割評価の
+- 既定条件はelo0=0、elo1=5、α=β=0.05とする。対局は
+  `selfplay --openings openings/start_sfens_ply24.txt --tc 10+0.1
+  --concurrency 8 --adjudicate 2000,8` で回す。adjudicationは駒割評価の
   消化試合（詰みまでの指し切り）を打ち切るための運用
   （2026-07-19、項目7のゲートまでは並列6・adjudicationなし）
 - 強化変更はelo0=0/elo1=5。簡素化・等価リファクタの非劣性確認は
@@ -51,7 +51,7 @@ mate distance pruningしかない。現在の弱さは探索能力の問題で�
 3. LMR（log式リダクション。履歴・PV・王手で調整）
 4. futility pruning（子ノード）とreverse futility（親ノード）
 5. move count pruning（LMP）
-6. 本探索でのSEE枝刈り（負SEEの取る手・quietの遅い手）
+6. 本探索でのSEE枝刈り（負SEEの取る手、および遅いquiet手）
 7. qsearchへの静かな王手（QuietChecks）追加（ADR-0024の持ち越し）
 8. singular extension（TTの深さ・手を使うため後段）
 9. IIR（internal iterative reduction）

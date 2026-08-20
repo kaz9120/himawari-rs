@@ -11,9 +11,9 @@
 
 詰まりは3か所にあった。
 
-第1に、`training/dataset.py` の `PsvDataset` は docstring に
-「Memory-mapped PSV dataset」と書きながら、実装は `np.fromfile` に
-よる全ロードだった。第2に、`psv shuffle` は入力を `Vec<u8>` に
+第1に、`training/dataset.py` の `PsvDataset` は docstring へ
+「Memory-mapped PSV dataset」と書いていた。実装は `np.fromfile` による
+全ロードだった。第2に、`psv shuffle` は入力を `Vec<u8>` に
 `read_to_end` する（`crates/tools/src/bin/psv.rs:157`）。第3に、
 DataLoaderは `shuffle=True`（`training/train.py`）で、データセット
 全体から一様にサンプリングする。
@@ -104,10 +104,9 @@ halfkp_180M（0.51727）と直接比較できる。
   では載らない。そこで案Dに移る。`psv shuffle` のストリーミング化
   （ROADMAPの候補の「ストリーミングチャンクシャッフル」）とセットで
   起草する
-- forkはmacOSのPythonで非推奨とされる。現状のworkerはnumpyの読み取り
-  とRust製 `extract_features` の呼び出しに限られるため問題は出て
-  いないが、worker内でスレッドを使う処理が増えるとデッドロックの
-  危険がある
+- forkはmacOSのPythonで非推奨とされる。現状のworkerはnumpyの読み取りとRust製 `extract_features` の呼び出しに
+  限られるため、問題は出ていない。worker内でスレッドを使う処理が増えると
+  デッドロックの危険がある
 - `--mmap` を残したので、RAMが小さい環境でも学習自体は動く。速度は
   案Aの水準（1/8.5）に落ちる
 

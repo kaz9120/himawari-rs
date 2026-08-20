@@ -25,8 +25,8 @@ ponderは相手番の間も探索を続ける機能で、予測が当たれば
 ### bestmove送信の規律（2手指しの防御）
 
 - 探索スレッドの出口を「探索終了」と「bestmove送信」に分離する。
-  go ponder中は、詰みを発見しても、depth上限に達しても、
-  探索スレッドは結果を保持したまま待機し、bestmoveを送らない
+  go ponder中は詰みを発見してもdepth上限に達しても、探索
+  スレッドは結果を保持したまま待機する。bestmoveは送らない
 - bestmoveを送ってよいのは `ponderhit` か `stop` を受けた後だけ。
   この規律をThreadPoolの状態機械（ADR-0020）に実装し、
   「go ponder後、ponderhit/stop前にbestmoveが出ない」ことを
@@ -36,10 +36,10 @@ ponderは相手番の間も探索を続ける機能で、予測が当たれば
 
 - 計時はADR-0021のとおりponderhitを起点に通常配分する
   （ponder中の消費はゼロ扱い）。これを初版とする
-- ponder中に既に深く読めている場合の早指し
-  （optimumの割引。例: ponder経過時間の一部をoptimumから引く、
-  または「前イテレーションからbestが安定していたら打ち切る」）は
-  棋力に効くチューニング項目として、1調整=1SPRTで後から積む
+- ponder中に既に深く読めている場合の早指しは、棋力に効くチューニング
+  項目として1調整=1SPRTで後から積む。中身はoptimumの割引で、ponder経過
+  時間の一部をoptimumから引くか、「前イテレーションからbestが安定して
+  いたら打ち切る」形になる
 - ponderhit時点で探索が終了済み（詰み確定など）の場合は
   即bestmoveを返してよい（この時点では手番なので合法）
 
@@ -55,9 +55,10 @@ ponderは相手番の間も探索を続ける機能で、予測が当たれば
 
 ### 検証
 
-- 結合テスト: go ponder→ponderhit→bestmove、go ponder→stop→
-  bestmove、ponder中にmate発見→bestmove保留→ponderhitで送信、
-  の3系列をUSIコマンド列で自動化する
+- 結合テストは次の3系列をUSIコマンド列で自動化する
+  - go ponder→ponderhit→bestmove
+  - go ponder→stop→bestmove
+  - ponder中にmate発見→bestmove保留→ponderhitで送信
 - 棋力の定量にはselfplayマネージャのponder対応が必要。
   対応（予測手の管理・ponderhit/stopの送出・時計の並行進行）は
   本ADRの実装後に行い、Ponder有効 vs 無効のSPRTで効果を測る
@@ -67,7 +68,7 @@ ponderは相手番の間も探索を続ける機能で、予測が当たれば
 
 - 探索スレッドの状態機械が複雑になる。状態遷移表をテストで
   固定することで、選手権定番の2手指し・応答なしバグを防ぐ
-- 的中率は観測はするが、チューニング指標としては弱い。
+- 的中率は観測するが、チューニング指標としては弱い。
   自己対局は同族エンジン同士で的中率が過大に出るため、
   そこで最適化しても対外戦の利得に結びつかない
 - selfplayマネージャのponder対応までは効果の定量ができない。

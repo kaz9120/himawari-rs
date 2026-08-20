@@ -203,9 +203,9 @@ Decisionで行ったスケール換算は値域の理論値を使ったが、実
 改善を狙う。読み抜けが増える方向のリスクは、`best > 詰まされ圏` のガードと
 PVノード除外で抑える。
 
-閾値がcontinuation historyのスケールに依存するため、
-[ROADMAPの候補](../ROADMAP.md#候補)の「bonus/malus式の再設計」や「continuation historyの
-段数拡張」を実施すると、この閾値の再調整が必要になる。両者を変えるときは
+閾値がcontinuation historyのスケールに依存する。
+[ROADMAPの候補](../ROADMAP.md#候補)の「bonus/malus式の再設計」や
+「continuation historyの段数拡張」を実施すると、この閾値の再調整が要る。両者を変えるときは
 `HISTORY_PRUNING_MARGIN` の再測定を同じPRに含める。
 
 H0になった場合、閾値を変えた再挑戦は[ADR-0028](0028-pruning-extensions.md)の

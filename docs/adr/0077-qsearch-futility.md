@@ -6,8 +6,8 @@
 
 ## Context
 
-本エンジンの静止探索が持つ枝刈りは、stand patによるβカットと、
-MovePicker側の `see_ge(m, 0)` だけである（`search.rs` のqsearch、
+本エンジンの静止探索が持つ枝刈りは2つだけである。stand patによるβカットと、
+MovePicker側の `see_ge(m, 0)` になる（`search.rs` のqsearch、
 `movepick.rs` のQCapturesステージ）。
 
 やねうら王は同じ位置に3つの枝刈りを持つ。
@@ -101,7 +101,7 @@ qsearch内でも更新する配管を足す。[ADR-0047](0047-continuation-histo
 | 2 | 4,839,402 | 5,288,599 | +9% | 同じ |
 | 3 | 335,817 | 450,089 | +34% | B*7c → 8c8d |
 
-[ADR-0075](0075-razoring-margin.md)では全局面で大幅に増え、向きを
+[ADR-0075](0075-razoring-margin.md)では全局面で大きく増え、向きを
 取り違えたと判明した。今回は減る局面があるため、枝刈りとして機能している。
 
 ### やねうら王から外した点

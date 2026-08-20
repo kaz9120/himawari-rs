@@ -6,10 +6,9 @@
 
 ## Context
 
-リリースノートが空である。`release.yml` はタグpushで5種類のCPU別
-バイナリをビルドして添付するが、ノートは
-`softprops/action-gh-release` の既定動作に任せており、その版に
-何が入ったか、どれだけ強くなったかが読めない。
+リリースノートが空である。`release.yml` はタグpushで5種類のCPU別バイナリをビルドして添付する。
+ノートは `softprops/action-gh-release` の既定動作に任せているため、
+その版に何が入ったか、どれだけ強くなったかが読めない。
 
 [ADR-0068](0068-sprt-driven-versioning.md)でSPRT採択1件ごとにMINORを
 上げる運用にした。リリース一覧がそのまま棋力向上の履歴になるため、
