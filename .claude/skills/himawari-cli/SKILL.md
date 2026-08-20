@@ -120,19 +120,35 @@ hmwr doc lint --fix    自動で直せるものを直す
 
 PRを出す前に通す。CIが落ちてから直すより速い（ADR-0178）。
 
-## まだCLIに載っていない操作
+### 実戦を観測する
 
-移行の途中である（[ADR-0180](../../../docs/adr/0180-hmwr-cli-in-python.md)の
-段取りを参照）。次はまだ直接叩く。
+```
+hmwr kifu cycle                回収→分析→定跡追加→網羅率
+hmwr kifu fetch                棋譜だけ回収する
+hmwr book seed --max-positions 100
+hmwr book stats
+hmwr book release <DB> <番号> --apply
+```
 
-| 操作 | コマンド |
-|---|---|
-| 実戦棋譜のサイクル | `scripts/floodgate-cycle.sh` |
-| 定跡の配布 | `scripts/release-book.sh` |
-| 総当たり戦 | `cargo run --release -p himawari-tools --bin league -- ...` |
-| プロファイル | `cargo run --release -p himawari-tools --bin profile -- ...` |
+定跡追加は1局面あたり深さ28で約34秒かかる。1回の追加数を絞り、残りは次回が
+続きから足す（冪等なので何度回しても増えない）。
 
-**移行が終われば `scripts/` に残るのは `setup.sh` だけになる。**
+### 速度の内訳とリーグ戦
+
+```
+hmwr profile record <バイナリ>       プロファイルを取る
+hmwr profile report <プロファイル>   self時間の上位を出す
+hmwr league run <バイナリ>...        総当たり戦を回す
+hmwr league summary <棋譜>           相対Eloを集計する
+```
+
+### CIを待つ
+
+```
+hmwr ci wait <PR番号>
+```
+
+読むだけの操作なので、マージはしない。
 
 ## 名前の付け方
 

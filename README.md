@@ -154,7 +154,7 @@ cargo test --workspace --release  # perft既知値の照合込み
 | `kifu` | floodgate棋譜の分析（[ADR-0152](docs/adr/0152-floodgate-cycle.md)） |
 
 `bench`・`verify`・`profile` は評価関数の場所を環境変数 `EVAL_FILE` から読む。
-`source scripts/env.sh` で入る（[ADR-0122](docs/adr/0122-tooling-language-split.md)）。
+`hmwr` 経由で呼ぶときは指定が要らない（[ADR-0180](docs/adr/0180-hmwr-cli-in-python.md)）。
 
 ### 学習
 

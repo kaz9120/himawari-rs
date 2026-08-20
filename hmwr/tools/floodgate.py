@@ -26,6 +26,8 @@ import pathlib
 import re
 import sys
 import time
+
+from .. import paths
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -209,7 +211,7 @@ def fetch_player(page_url, args, fetcher, log, counts):
 
 
 def main(argv=None):
-    repo_root = pathlib.Path(__file__).resolve().parent.parent
+    repo_root = paths.REPO
     parser = build_parser(repo_root)
     args = parser.parse_args(argv)
 

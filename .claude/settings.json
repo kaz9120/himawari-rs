@@ -1,9 +1,9 @@
 {
   "permissions": {
     "allow": [
+      "Bash(./bin/hmwr ci wait:*)",
       "Bash(./bin/hmwr sprt show:*)",
       "Bash(./bin/hmwr sprt wait:*)",
-      "Bash(./scripts/watch-ci.sh:*)",
       "Bash(awk *)",
       "Bash(cargo bench:*)",
       "Bash(cargo build:*)",

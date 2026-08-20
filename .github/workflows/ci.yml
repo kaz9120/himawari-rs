@@ -29,13 +29,9 @@ jobs:
       # 活性ダンプのfeature（ADR-0168）。通常のビルドでは触らないので、
       # コンパイルが通ることだけ確かめて腐るのを防ぐ
       - run: cargo check -p himawari-engine --features actdump
-      # scripts/ のPython（ADR-0122の分析系）。テストは書かれていたが
-      # CIで回っておらず、壊れても気づけない状態だった
+      # hmwrコマンドと解析ツールのPython（ADR-0180）。引数処理は同じ入力から
+      # 同じコマンド列が出ることを、解析はログの読み取りを固定する
       - run: pip install --quiet pytest
-      - run: python3 -m pytest tests -q
-        working-directory: scripts
-      # hmwrコマンドの引数処理（ADR-0180）。同じ入力から同じコマンド列が
-      # 出ることを固定する
       - run: python3 -m pytest tests -q
 
   # 日本語文書のlint（ADR-0178）。CLAUDE.mdの書き方の規約のうち、

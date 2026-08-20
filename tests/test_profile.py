@@ -1,4 +1,4 @@
-"""scripts/profile-report.py のうち、ロジック部分を検証する。
+"""プロファイルの集計のうち、ロジック部分を検証する。
 
 実バイナリやsamplyのプロファイルが無い環境でも走るよう、
 プロファイル本体はモックの最小データで代用する。
@@ -6,9 +6,7 @@
 
 from unittest import mock
 
-from conftest import load_module
-
-profile_report = load_module("profile_report", "profile-report.py")
+from hmwr.tools import profile as profile_report
 
 
 # --- sample_hz: meta.interval（ミリ秒）からサンプリング周波数を求める ---

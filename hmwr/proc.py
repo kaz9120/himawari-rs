@@ -141,14 +141,6 @@ def git(*args: str) -> str:
     return capture(["git", *args]).strip()
 
 
-def script(name: str) -> str:
-    """scripts/ のスクリプトのパス。移行が終われば呼び出しは消える。"""
-    path = paths.SCRIPTS / name
-    if not path.is_file():
-        raise Fail(f"スクリプトがない: {paths.rel(path)}")
-    return str(path)
-
-
 def cargo_tool(binary: str, args: list[str]) -> list[str]:
     """crates/tools のバイナリを走らせるコマンドを組み立てる。
 

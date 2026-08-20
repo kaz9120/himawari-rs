@@ -1,10 +1,8 @@
-"""ft-reorder.py のテスト（ADR-0168）。"""
+"""FT出力次元の並べ替えを検証する（ADR-0168）。"""
 
 import pytest
 
-from conftest import load_module
-
-ft_reorder = load_module("ft_reorder", "ft-reorder.py")
+from hmwr.tools import ft_reorder
 
 
 def write_dump(tmp_path, samples):
