@@ -110,6 +110,14 @@ fn print_options() {
     print_line("option name FlippedBook type check default true");
     print_line("option name BookRandomize type check default false");
     print_line("option name DebugLogFile type string default <empty>");
+    // SPSAのチューニング項目（ADR-0143）。tuneビルドだけが宣言する
+    #[cfg(feature = "tune")]
+    for e in himawari_engine::tunables::ENTRIES {
+        print_line(&format!(
+            "option name {} type spin default {} min {} max {}",
+            e.name, e.default, e.min, e.max
+        ));
+    }
 }
 
 fn parse_position(tokens: &[&str]) -> Option<Position> {
@@ -309,6 +317,16 @@ fn set_option(opts: &mut EngineOptions, bopts: &mut BookOptions, tokens: &[&str]
         }
         "FlippedBook" => bopts.params.flipped = value == "true",
         "BookRandomize" => bopts.params.randomize = value == "true",
+        // SPSAのチューニング項目（ADR-0143）。tuneビルドだけが受ける
+        #[cfg(feature = "tune")]
+        name if himawari_engine::tunables::ENTRIES
+            .iter()
+            .any(|e| e.name == name) =>
+        {
+            if let Ok(v) = value.parse::<i64>() {
+                himawari_engine::tunables::set(name, v);
+            }
+        }
         "DebugLogFile" => {
             let path: &str = if value == "<empty>" {
                 ""
