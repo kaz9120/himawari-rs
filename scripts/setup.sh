@@ -85,17 +85,18 @@ log_step "テスト"
 (cd "$REPO_ROOT" && cargo test --release --quiet 2>&1 | tail -5)
 
 log_step "完了"
-cat <<'NEXT'
+cat <<NEXT
 次の手順:
 
-1. gh auth login          （GitHubの認証。gh release download に要る）
-2. 学習済みネットの取得
+1. hmwr コマンドへパスを通す（シェルの設定ファイルへ書く）
+     export PATH="${REPO_ROOT}/bin:\$PATH"
+   通したら hmwr env で設定を確認する
+2. gh auth login          （GitHubの認証。gh release download に要る）
+3. 学習済みネットの取得
      gh release list | grep net-v
      gh release download net-v<N> -D data/nets/
-3. 教師データの取得（学習を回す場合のみ。約160GBの空きが要る）
-     scripts/fetch-dataset.sh all
-4. マシンに合わせた設定
-     scripts/env.sh を編集する（SPRTの並列度など）
+4. 教師データの取得（学習を回す場合のみ。約160GBの空きが要る）
+     hmwr data fetch all
 
-詳細は docs/SETUP.md を参照。
+詳細は README.md を参照。
 NEXT

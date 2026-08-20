@@ -1,8 +1,13 @@
 # 0179: 日常操作をhmwrコマンドひとつの入口にまとめる
 
-- Status: accepted
+- Status: superseded（[ADR-0180](0180-hmwr-cli-in-python.md)が置き換えた）
 - Date: 2026-08-20
-- 関連ADR: [0122](0122-tooling-language-split.md), [0149](0149-experiment-runner.md), [0154](0154-sprt-ops.md), [0074](0074-feature-verification.md)
+- 関連ADR: [0180](0180-hmwr-cli-in-python.md), [0122](0122-tooling-language-split.md), [0149](0149-experiment-runner.md), [0154](0154-sprt-ops.md), [0074](0074-feature-verification.md)
+
+**入口の一貫性という目的は引き継ぐが、実処理を既存shellへ委譲する判断は
+差し戻した**（2026-08-20オーナー指摘）。入口が2つ残る状態は統一ではなく
+先送りであり、下のConsequencesに自分で書いた危険がそのまま残る。移行の
+段取りは[ADR-0180](0180-hmwr-cli-in-python.md)にある。
 
 ## Context
 

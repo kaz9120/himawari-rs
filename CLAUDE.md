@@ -32,7 +32,7 @@ himawari-rsで作業するエージェントの規約。詳細は各文書へリ
 | [docs/DATASETS.md](docs/DATASETS.md) | データを扱うとき | データの所在と前処理 |
 | [README.md](README.md) | 環境を作るとき | 概要・環境構築・ビルド |
 | [CHANGELOG.md](CHANGELOG.md) | 何が入ったか見るとき | release-pleaseが生成 |
-| `.claude/skills/` | 定型作業を回すとき | 手順の固定（SPRT運用は[ADR-0154](docs/adr/0154-sprt-ops.md)、CLIは[ADR-0179](docs/adr/0179-hmwr-cli.md)） |
+| `.claude/skills/` | 定型作業を回すとき | 手順の固定（SPRT運用は[ADR-0154](docs/adr/0154-sprt-ops.md)、CLIは[ADR-0180](docs/adr/0180-hmwr-cli-in-python.md)） |
 
 **文書は「誰がいつ読むか」で決める**。読み手のいない文書は作らない。
 同じ情報を2文書に書かない。何が入ったかはCHANGELOG.md、なぜそうしたかはADR、
@@ -211,17 +211,17 @@ MAJOR（選手権への参加。次回2027年5月を1.0.0）は
 行う。「反復深化が再起動したか」は経過時間ではなく「同じ深さの確定infoが2回
 出たか」で判定できる。
 
-## 日常操作（[ADR-0179](docs/adr/0179-hmwr-cli.md)）
+## 日常操作（[ADR-0180](docs/adr/0180-hmwr-cli-in-python.md)）
 
-**入口は `scripts/hmwr` にまとめてある**。ビルド・機能検証・NPS計測・学習・
-教師データの前処理・実戦棋譜の回収・配布・文書のlintがここから動く。
-個別のスクリプトを直接叩く前に `scripts/hmwr --help` を見る。
+**入口は `hmwr` コマンドである**。ビルド・機能検証・NPS計測・学習・教師データの
+前処理・文書のlintがここから動く。個別のスクリプトを直接叩く前に
+`hmwr --help` を見る。パスが通っていなければ `./bin/hmwr` で呼ぶ。
 
 ```
-scripts/hmwr sprt start <名前>          ペア作成→機能検証→SPRT起動
-scripts/hmwr verify <名前>              固定深さで探索の変化を比べる
-scripts/hmwr train <名前> --data <psv>  ネットを学習する
-scripts/hmwr --dry-run <...>            走るはずのコマンドを表示する
+hmwr sprt run <名前>                ペア作成→機能検証→SPRT起動
+hmwr verify <名前>                  固定深さで探索の変化を比べる
+hmwr net train <名前> --data <psv>  ネットを学習する
+hmwr --dry-run <...>                走るはずのコマンドを表示する
 ```
 
 覚えることは3つある。
@@ -230,10 +230,11 @@ scripts/hmwr --dry-run <...>            走るはずのコマンドを表示す�
 - **ログの置き場は書かない**。`data/logs/<領域>-<名前>.log` へ決まる
 - **終了コードは0=成功・1=判定結果・2=引数・3=実行時**（ADR-0122）
 
-使い方の詳細は himawari-cli スキルにある。CLIが覆っていない操作
-（`build-shapes.sh`・`train-shapes.sh`・`league`・`profile`）は今までどおり
-直接叩く。**日常で使う操作がCLIの外に3つを超えて増えたら、載せる範囲を
-決め直す。**
+使い方の詳細は himawari-cli スキルにある。**実装は `hmwr/` のPythonパッケージへ
+移行中である**。終われば `scripts/` に残るのは `setup.sh` だけになる。
+
+まだ移していない操作は直接叩く。`build-shapes.sh`・`train-shapes.sh`・
+`floodgate-cycle.sh`・`release-book.sh`・`league`・`profile` である。
 
 ## ビルド
 
@@ -243,7 +244,7 @@ scripts/hmwr --dry-run <...>            走るはずのコマンドを表示す�
 RUSTFLAGS="-C target-cpu=native" cargo build --release
 ```
 
-配布・対局用の単体ビルドはPGOで作る（`scripts/hmwr build pgo`、+10%前後のNPS。
+配布・対局用の単体ビルドはPGOで作る（`hmwr build pgo`、+10%前後のNPS。
 [ADR-0151](docs/adr/0151-speedup-sweep.md)）。**SPRTのペアには使わない**。
 両側を同条件（PGOなし）で作るほうが公平で、`hmwr build pair` の既定手順が
 そのまま使える。
