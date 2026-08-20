@@ -137,13 +137,11 @@ const RAZOR_DEPTH_COEF: Value = 306;
 /// `futilityBase = staticEval + 328` と `moveCount > 2`。評価値は歩=90
 /// スケールで一致するため絶対値のまま用いる（ADR-0074）。
 /// 置換表の下界を使った簡易ProbCut（ADR-0078）。探索を伴わず、
-/// TTに `beta + このマージン` 以上の下界が `depth - SLACK` 以上の深さで
+/// TTに `beta + このマージン` 以上の下界が depth-4 以上の深さで
 /// 記録されていればカットする。出典はやねうら王の `beta + 416`。
-/// 深さ差はADR-0177で4から2へ狭めた。浅い情報で高深度ノードを打ち切る
-/// 読み抜けが、詰み検出率を実測で16ポイント落としていたためである。
 /// 評価値は歩=90スケールで一致するため絶対値のまま用いる（ADR-0074）。
 const TT_PROBCUT_MARGIN: Value = 416;
-const TT_PROBCUT_DEPTH_SLACK: u32 = 2;
+const TT_PROBCUT_DEPTH_SLACK: u32 = 4;
 
 const QS_FUTILITY_MARGIN: Value = 328;
 const QS_MOVECOUNT_LIMIT: u32 = 2;
