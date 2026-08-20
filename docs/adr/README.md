@@ -57,6 +57,7 @@
 - [0155](0155-reference-walkthrough.md) 残った乖離の監査と、整列を見送った判断
 - [0160](0160-revisit-rejected-under-better-eval.md) 棄却済みの追従を掘り起こす案（導入済みと判明して棄却）
 - [0162](0162-parallel-group.md) 並列の未測定3件を1群で測る（TTの手番分割は見送り）
+- [0177](0177-tt-probcut-depth-slack.md) TT-ProbCutの深さ差を狭める案（測って棄却）
 
 ### 評価関数（NNUE）
 
@@ -279,6 +280,7 @@
 | [0174](0174-mate1ply-knight-promotion.md) | mate_1plyへ桂の成り王手を列挙する | 2026-08-17 | −1.7 | rejected |
 | [0175](0175-sprt-until-decision.md) | SPRTを判定が出るまで走らせ、完了をファイルで検知する | 2026-08-18 |  | proposed |
 | [0176](0176-lance-non-promotion-rank.md) | 香の不成を2段目から3段目以降へ移す | 2026-08-18 | +1.7 | accepted |
+| [0177](0177-tt-probcut-depth-slack.md) | TT-ProbCutの深さ差を4から2へ狭める | 2026-08-19 | −3.1 | rejected |
 
 ## バックログ
 
