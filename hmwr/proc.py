@@ -111,6 +111,27 @@ def capture(argv: list[str], *, cwd: Path | None = None) -> str:
     return result.stdout
 
 
+def succeeds(argv: list[str], *, cwd: Path | None = None) -> bool:
+    """終了コードだけを見る。出力は捨てる。"""
+    try:
+        return (
+            subprocess.run(
+                argv,
+                cwd=str(cwd or paths.REPO),
+                capture_output=True,
+                check=False,
+            ).returncode
+            == 0
+        )
+    except OSError:
+        return False
+
+
+def git(*args: str) -> str:
+    """gitの出力を取り込む。改行は落とす。"""
+    return capture(["git", *args]).strip()
+
+
 def script(name: str) -> str:
     """scripts/ のスクリプトのパス。移行が終われば呼び出しは消える。"""
     path = paths.SCRIPTS / name

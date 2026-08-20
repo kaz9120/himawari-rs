@@ -31,7 +31,7 @@ f32のチェックポイント（.ckpt）も同じように渡せる。
     scripts/eval-net.sh <ネット>
 
 ネットワーク構成はPyO3拡張の次元で決まる。構成を変えて測るときは
-scripts/build-shapes.sh で拡張を作り直してから呼ぶ。
+hmwr build shapes で拡張を作り直してから呼ぶ。
 USAGE
 }
 
