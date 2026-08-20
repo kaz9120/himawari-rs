@@ -1,6 +1,6 @@
 # 0175: SPRTを判定が出るまで走らせ、完了をファイルで検知する
 
-- Status: proposed
+- Status: accepted
 - Date: 2026-08-18
 - 関連ADR: [0028](0028-pruning-extensions.md), [0087](0087-sprt-resume.md), [0149](0149-experiment-runner.md), [0154](0154-sprt-ops.md), [0163](0163-sprt-hypothesis-choice.md)
 

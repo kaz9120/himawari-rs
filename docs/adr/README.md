@@ -266,19 +266,19 @@
 | [0160](0160-revisit-rejected-under-better-eval.md) | 棄却した参照追従を1群にまとめて測り直す | 2026-08-13 |  | rejected |
 | [0161](0161-hide-docs-chore-from-changelog.md) | docsとchoreをCHANGELOGから外し、バージョンを動かさない | 2026-08-14 |  | accepted |
 | [0162](0162-parallel-group.md) | 並列の未測定3件を1群で測り、TTの手番分割は見送る | 2026-08-14 | +7.9（非劣性） | accepted |
-| [0163](0163-sprt-hypothesis-choice.md) | 変更の性質でSPRTの対立仮説を着手時に決める | 2026-08-15 |  | proposed |
+| [0163](0163-sprt-hypothesis-choice.md) | 変更の性質でSPRTの対立仮説を着手時に決める | 2026-08-15 |  | accepted |
 | [0164](0164-bona-piece-bitset.md) | BonaPiece集合の構築を駒ごとの走査からブロック配置へ置き換える | 2026-08-15 |  | accepted |
 | [0165](0165-bona-block-layout.md) | BonaPiece集合をブロック単位のレイアウトへ変える | 2026-08-15 |  | accepted |
 | [0166](0166-movepick-frame.md) | MovePickerの生成段を切り出してフレームを縮める | 2026-08-15 |  | accepted |
 | [0167](0167-nnue-kernel-instructions.md) | NNUE推論の命令数を削る2案を測り、どちらも見送る | 2026-08-15 |  | rejected |
-| [0168](0168-ft-dim-reorder.md) | FT出力次元を並べ替えて第1層の空回りを減らす | 2026-08-15 |  | proposed |
+| [0168](0168-ft-dim-reorder.md) | FT出力次元を並べ替えて第1層の空回りを減らす | 2026-08-15 |  | accepted |
 | [0169](0169-clip-nnz-fusion.md) | 活性の構築と非ゼロチャンクの列挙を1パスにまとめる案を棄却する | 2026-08-15 |  | rejected |
 | [0170](0170-l1-half.md) | 後段のL1を16へ半減する | 2026-08-16 | +13.4 | accepted |
 | [0171](0171-ft-pairwise-product.md) | FT出力の対を掛けて駒対の相互作用を入れる | 2026-08-16 | +65.4 | accepted |
 | [0172](0172-multihot-input.md) | 入力を玉と駒のマルチホットにして表を75分の1にする | 2026-08-17 | −52.2 | rejected |
 | [0173](0173-knight-non-promotion-movegen.md) | 桂の3段目不成を通常の指し手生成でも出す | 2026-08-17 | +11.2 | accepted |
 | [0174](0174-mate1ply-knight-promotion.md) | mate_1plyへ桂の成り王手を列挙する | 2026-08-17 | −1.7 | rejected |
-| [0175](0175-sprt-until-decision.md) | SPRTを判定が出るまで走らせ、完了をファイルで検知する | 2026-08-18 |  | proposed |
+| [0175](0175-sprt-until-decision.md) | SPRTを判定が出るまで走らせ、完了をファイルで検知する | 2026-08-18 |  | accepted |
 | [0176](0176-lance-non-promotion-rank.md) | 香の不成を2段目から3段目以降へ移す | 2026-08-18 | +1.7 | accepted |
 | [0177](0177-tt-probcut-depth-slack.md) | TT-ProbCutの深さ差を4から2へ狭める | 2026-08-19 | −3.1 | rejected |
 | [0178](0178-textlint-gate.md) | 日本語文書の書き方をtextlintでCIゲートにする | 2026-08-20 |  | accepted |
