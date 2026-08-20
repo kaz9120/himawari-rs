@@ -35,6 +35,19 @@ jobs:
       - run: python3 -m pytest tests -q
         working-directory: scripts
 
+  # 日本語文書のlint（ADR-0178）。CLAUDE.mdの書き方の規約のうち、
+  # 機械が判定できるものをここで見る
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+
   # NNUE推論のAVX2経路を検証する（ADR-0099）。既定のx86-64ターゲットは
   # SSE2までで、上のジョブではAVX2経路がコンパイルされない
   avx2:

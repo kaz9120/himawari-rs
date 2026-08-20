@@ -22,9 +22,9 @@ GitHub Actionsの共有ランナーは実行時間が不安定で、数%の性�
 
 ## Decision
 
-CIはシンプルに始める。ubuntu-latestの単一ジョブで
-`cargo fmt --check` / `cargo clippy --all-targets -- -D warnings` /
-`cargo test --workspace` を回す。環境の追加は必要になった時点で行う。
+CIはシンプルに始める。ubuntu-latestの単一ジョブで3つを回す。`cargo fmt --check`、
+`cargo clippy --all-targets -- -D warnings`、`cargo test --workspace`
+である。環境の追加は必要になった時点で行う。
 具体的なトリガーは次の2つ。
 
 - SIMD等のISA依存コードが入った時点で macos arm64 を追加する（P4想定）

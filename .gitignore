@@ -38,5 +38,8 @@ training/runs/
 # 学習チェックポイント
 training/checkpoints/
 
+# textlintの依存（ADR-0178。package-lock.jsonは追跡する）
+node_modules/
+
 # エージェントの個人設定（共有するのは .claude/settings.json のみ）
 .claude/settings.local.json

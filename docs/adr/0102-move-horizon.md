@@ -14,8 +14,8 @@ let avail = my_time / rem_moves + limits.byoyomi + inc;
 ```
 
 分母は96手目以降16で固定される。実戦は150手を超えるのに「あと16手」と
-見積もり、毎手6.25%を投じる。ADR-0021自身が「配分式は最初は素朴でよい」
-と書いており、見直しは予定されていた。
+見積もり、毎手6.25%を投じる。ADR-0021自身が「配分式は最初のうち素朴でよい」
+と書いており、見直しを予定していた。
 
 ### 実測
 
@@ -78,9 +78,9 @@ MTG = min(max_moves_to_draw - ply + 2, move_horizon) / 2
 
 ### 案C: 案Bに MinimumThinkingTime を含めて完全移植する
 
-やねうら王は `optimum = minimumTime + remain_estimate / MTG` として、
-`MinimumThinkingTime`（既定2000ms）から `NetworkDelay` を引いた
-1880msを底上げに使う。分母を大きくした分をこの項が埋め合わせる。
+やねうら王は `optimum = minimumTime + remain_estimate / MTG` とする。
+`MinimumThinkingTime`（既定2000ms）から `NetworkDelay` を引いた1880msを
+底上げに使う。分母を大きくした分をこの項が埋め合わせる。
 
 ## Decision
 
@@ -96,7 +96,7 @@ MTG = min(max_moves_to_draw - ply + 2, move_horizon) / 2
 ```
 
 やねうら王の `remain_estimate = time + inc * MTG + byoyomi * MTG` を
-`MTG` で割ると `time / MTG + inc + byoyomi` になり、現行式と一致する。
+`MTG` で割ると `time / MTG + inc + byoyomi` になる。現行式と一致する。
 将来受け取る加算分を予算に入れる考え方は、本エンジンが既に採っていた。
 違いは分母の定義だけである。よって変更は1点で済む。
 
@@ -128,7 +128,7 @@ MTG = min(max_moves_to_draw - ply + 2, move_horizon) / 2
 
 10+0.1では1手1.88秒となり、5手で持ち時間が尽きる。30+1でも配分の
 6割をこの項が占める。**この定数が前提とするスケールは、本エンジンが
-SPRTを回せる持ち時間では成り立たない。** 測れない定数は入れない。
+SPRTを回せる持ち時間では成り立たない**。測れない定数は入れない。
 
 やねうら王がこの項で分母の拡大を埋め合わせている以上、案Bは
 やねうら王より薄い配分になる。これは承知のうえで進める。薄すぎる
@@ -227,7 +227,7 @@ CIが0を大きく下回ったため、判定の確定を待たずに止めた�
 
 82%の手は深さ1の指し手がそのまま最終手になる。一方で18%の手は
 最善手が後から変わる。**時間を削る余地は大きいが、削ってよい局面と
-そうでない局面の見分けが要る。** 一律の削減が失敗した理由がここに
+そうでない局面の見分けが要る**。一律の削減が失敗した理由は、ここに
 ある。
 
 ## Consequences

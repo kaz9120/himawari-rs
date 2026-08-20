@@ -7,12 +7,12 @@
 ## Context
 
 探索改善キャンペーンの第4弾。同一局面のNNUE評価を繰り返し
-計算している。main searchはTTのeval欄で再利用できるが
-（ADR-0046で生値保存を維持）、qsearchのstand patは毎ノード
-`evaluate()`を全計算する（`search.rs`のqsearch入口）。探索
+計算している。main searchはTTのeval欄で再利用できる（ADR-0046で生値保存を維持）。
+qsearchのstand patは毎ノード `evaluate()` を全計算する
+（`search.rs` のqsearch入口）。探索
 ノードの大半はqsearchであり、置換の多い将棋では同一局面の
 再訪も多い。局面キー→評価値の専用キャッシュ（eval hash）は
-やねうら王系で定着した手法で、評価計算の森を丸ごと省ける。
+やねうら王系で定着した手法であり、評価計算の森を丸ごと省ける。
 
 ## 選択肢と比較
 
@@ -33,7 +33,7 @@
 qsearchのTT probe/storeを拡充する案。テーブルは増えないが、
 TTエントリはbound/move/depthを含み評価専用より重く、qsearchの
 書き込み増でmain searchのエントリを押し出す副作用がある。
-eval専用テーブルの方が用途が明確で干渉しない。
+eval専用テーブルのほうは用途が明確で干渉しない。
 
 ## Decision
 

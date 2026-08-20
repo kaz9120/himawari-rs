@@ -48,7 +48,7 @@ board_keyと合成する。
 - 置換表キー: `board_key ^ (hand_key × 0x9E3779B97F4A7C15)`。
   乗算1回で手駒ビットを全64bitに拡散する。probeのたびに計算し、
   保存はしない（2命令）
-- 優等・劣等判定: `board_key` 一致（手番bit込み）を確認したうえで、
+- 優等・劣等判定: `board_key` の一致（手番bit込み）を確認する。そのうえで
   hand_keyから復元したHand同士を `is_superior_or_equal`（ADR-0013）で
   比較する。手駒部分に偽陽性がないため、判定は正確
 - null moveは `board_key ^= 1` のみ（盤・手駒は不変）

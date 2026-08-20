@@ -6,9 +6,9 @@
 
 ## Context
 
-探索改善キャンペーンの第2弾。quiet手のオーダリングは現在、
-main history（移動後の駒32×移動先81。`movepick.rs:9-38`）だけで
-スコアしている（`movepick.rs:270-278`のQuietsInit）。counter moveは
+探索改善キャンペーンの第2弾。quiet手のオーダリングは現在、main history だけでスコアしている。
+main historyは移動後の駒32×移動先81である（`movepick.rs:9-38`、
+`movepick.rs:270-278` のQuietsInit）。counter moveは
 「直前の手→応手1手」の上書きテーブル（`movepick.rs:76`）で、
 候補を1手挙げる以上の情報を持たない。
 
@@ -43,9 +43,9 @@ counter/follow-upを1案として扱っており、1SPRTで判定する
 ### 実装スケッチ
 
 テーブル（movepick.rs）:
-- `ContinuationHistory { table: Box<[[[[i16; 81]; 32]; 81]; 32]> }`
-  外側=条件手の（piece_after 32、to 81）、内側=応手の
-  （piece_after 32、to 81）。約13.4MB/スレッド
+- `ContinuationHistory { table: Box<[[[[i16; 81]; 32]; 81]; 32]> }` とする。
+  外側が条件手の（piece_after 32、to 81）、内側が応手の
+  （piece_after 32、to 81）である。約13.4MB/スレッド
 - 更新はmain historyと同形式のgravity
   （クランプ±4000、divisor 16384。`movepick.rs:33-37`と同じ）
 - 保持はHistory/CounterMovesと同じ流儀: スレッドローカル、
@@ -54,13 +54,14 @@ counter/follow-upを1案として扱っており、1SPRTで判定する
 search.rs:
 - plyごとの指し手スタック`move_stack`をWorkerに追加
   （do_move時に記録。null moveはMove::NONE）
-- quietスコア: `history.get(m) + cont.get(prev1, m) + cont.get(prev2, m)`
-  （prev1=1手前、prev2=2手前。NONEなら加算しない）。
+- quietスコアは
+  `history.get(m) + cont.get(prev1, m) + cont.get(prev2, m)` とする。
+  prev1が1手前、prev2が2手前で、NONEなら加算しない。
   MovePicker::nextにcontと前2手を渡す
-- 更新: `update_quiet_stats`で、成功したquiet手にbonus、
-  試行済みquiet手に-bonusを、main historyと同時に
+- 更新は `update_quiet_stats` で行う。成功したquiet手にbonus、
+  試行済みquiet手に-bonusを与える。main historyと同時に
   prev1/prev2の両方の文脈へ与える（bonus式は既存の
-  `depth*depth + 2*depth`のまま）
+  `depth*depth + 2*depth` のまま）
 
 初期定数（チューニングしない）: bonus式・クランプ・divisorは
 すべて既存main historyと同一。スコア合算は等重み。

@@ -58,8 +58,8 @@ pub enum SearchInfo {
 
 `IterInfo` にフィールドを1つ増やせば済む。`currmove` は見送る。
 
-`currmove` は長考中の唯一の生存信号になる。反復深化1周が数十秒かかる
-深さでは、`Iteration` の報告が来ない時間が長い。ここを埋めたい。
+`currmove` は長考中の唯一の生存信号になる。反復深化1周に数十秒かかる
+深さでは、`Iteration` の報告が来ない時間は長い。ここを埋めたい。
 
 ## Decision
 
@@ -67,8 +67,8 @@ pub enum SearchInfo {
 
 `seldepth` は `search` と `qsearch` の入口で `ply` の最大を記録する。
 イテレーションごとに0へ戻し、その周の到達深さを表す。出力時は `depth`
-との大きいほうを採る（rootだけで結論が出た場合に `seldepth < depth` に
-ならないようにする）。
+との大きいほうを採る（rootだけで結論が出たとき `seldepth < depth` と
+なるのを防ぐ）。
 
 `currmove` は探索開始から3秒経ってから出す。短い探索で出すと `info` 行が
 溢れる。UCIの慣例に合わせた閾値である（`CURRMOVE_MIN_MS = 3000`）。

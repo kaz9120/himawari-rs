@@ -61,10 +61,12 @@ double extension・negative extension・multi-cutは入れない。
 除外手（excluded move）の配管:
 - 探索関数に除外手を渡す（plyごとのスタックでもパラメータでも、
   既存の流儀に合わせる）
-- 除外手つき探索では、(1) ムーブループで除外手をスキップ、
-  (2) TTカットしない（probeはstatic eval再利用のため可）、
-  (3) TT storeしない、(4) NMP・RFPをスキップ、
-  (5) correction history更新をスキップ
+- 除外手つき探索では次の5つを行う
+  - ムーブループで除外手をスキップする
+  - TTカットしない（probeはstatic eval再利用のため可）
+  - TT storeしない
+  - NMP・RFPをスキップする
+  - correction history更新をスキップする
 
 初期定数（チューニングしない）: depth >= 7、tt_depth >= depth-3、
 margin = 2*depth、検証深さ = depth/2。SF系の実績値。
@@ -80,7 +82,7 @@ margin = 2*depth、検証深さ = depth/2。SF系の実績値。
 
 - 検証探索のコストで生ノードあたりの速度は下がる。延長の
   質で回収する構造なので、NPSでなくSPRTだけで判定する
-- 除外手の配管は将来のmulti-cut（検証探索がbeta超えなら
+- 除外手の配管は将来のmulti-cut（検証探索でbeta超えなら
   複数手が良い=カット）にも流用できる。案Bの拡張は本ADRの
   H1採択後に別ADRで検討する
 - H0の場合、P3の分析（TT質不足）に加えて「NNUE時代でも

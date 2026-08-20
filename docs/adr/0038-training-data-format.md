@@ -15,14 +15,14 @@ P5は公開データセットから教師あり学習を始める（2026-07-20
 
 ### 形式はPackedSfenValueをそのまま使う
 
-- 1局面40バイト: packed sfen 32B + score(i16, 手番視点cp) +
-  move(u16, Move16) + gamePly(u16) + game_result(i8, 手番視点
-  ±1/0) + padding(u8)
+- 1局面40バイト。packed sfen 32B に score（i16、手番視点cp）と
+  move（u16、Move16）が続く。さらに gamePly（u16）、
+  game_result（i8、手番視点±1/0）、padding（u8）が入る
 - 独自形式への変換はしない。公開データ資産とやねうら王系
   ツール群の互換を優先し、将来の自前gensfenもこの形式で書き出す
-- packed sfenは256bitのLSB-firstビット列: 手番1bit、
-  先手玉・後手玉の位置7bit×2、盤上駒のハフマン符号
-  （空1bit、歩4bit、香桂銀6bit、金6bit、角飛8bit）、手駒。
+- packed sfenは256bitのLSB-firstビット列である。手番1bit、先手玉・後手玉の
+  位置7bit×2、盤上駒のハフマン符号（空1bit、歩4bit、香桂銀6bit、金6bit、
+  角飛8bit）、手駒の順に並ぶ。
   符号表はやねうら王 `extra/sfen_packer.cpp` を正とする
 
 ### 実装の置き場所と範囲

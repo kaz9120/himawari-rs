@@ -53,9 +53,10 @@ SFはcapture historyを枝刈り閾値にも使うが、閾値系は
 
 スコアリング:
 - 取る手のスコアを `capture_score(pos, m) + capt_hist.get(...)` に
-  変更する。適用箇所はCapturesInit（`movepick.rs:286`）、
-  QCapturesInit（`movepick.rs:381`）、evasionの捕獲部
-  （`movepick.rs:360`）の3箇所すべて（読み取りのみ）
+  変更する。適用箇所は3つあり、いずれも読み取りのみになる
+  - CapturesInit（`movepick.rs:286`）
+  - QCapturesInit（`movepick.rs:381`）
+  - evasionの捕獲部（`movepick.rs:360`）
 
 更新（main searchのみ）:
 - 探索ループでtried_captures（試行した取る手）を記録する
