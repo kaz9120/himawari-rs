@@ -2,7 +2,7 @@
 
 - Status: proposed
 - Date: 2026-08-04
-- 関連ADR: [0027](0027-sprt-framework.md), [0073](0073-history-bonus-scale.md), [0089](0089-improvement-criteria.md), [0109](0109-reference-parity.md), [0114](0114-g5-singular.md), [0123](0123-stop-and-resume.md), [0141](0141-singular-rate-calibration.md)
+- 関連ADR: [0027](0027-sprt-framework.md), [0073](0073-history-bonus-scale.md), [0089](0089-improvement-criteria.md), [0109](0109-reference-parity.md), [0114](0114-g5-singular.md), [0123](0123-stop-and-resume.md), [0141](0141-singular-rate-calibration.md), [0180](0180-hmwr-cli-in-python.md)
 
 ## Context
 
@@ -44,15 +44,33 @@ SF系はこの問題をSPSA（同時摂動による確率近似）で解いて�
 1. **定数のUSIオプション化**。チューニング対象の定数をビルドなしで
    振れるよう、隠しオプションとして外へ出す（リリースビルドでは固定値へ
    畳む。NPSへの影響がないことをベンチで確認する）
-2. **SPSAランナー**。`scripts/` に置き、対局実行は既存基盤を流用する。
-   中断と再開ができること（[ADR-0123](0123-stop-and-resume.md)）
+2. **SPSAランナー**。`hmwr spsa` として実装し（[ADR-0180](0180-hmwr-cli-in-python.md)）、
+   対局実行は `selfplay` を流用する。中断と再開ができること
+   （[ADR-0123](0123-stop-and-resume.md)）
 3. **対象の第1群**。LMR係数・futility/razoringマージン・NMPの
-   リダクション・SEE枝刈り閾値・aspirationのdelta、計20個程度。
+   リダクション・SEE枝刈り閾値と駒価値・aspirationのdelta、計20個程度。
+   SEE駒価値はROADMAP候補にあった「NNUE時代適合」をここへ吸収する。
    singularのマージンは[ADR-0141](0141-singular-rate-calibration.md)が
    率で較正するので除く
 4. **検収**。チューニング後の定数一式を1群として、チューニングに
    使っていない条件のSPRT既定条件で測る。チューニング対局への過適合を
    held-outで検出するためである
+
+### 実装の設計（2026-08-20着手）
+
+エンジン側は `tune` featureで分岐する。featureなしでは各定数が `const` の
+ままで、生成されるバイナリは現状と同一になる。featureありでは同名の値を
+atomicで持ち、`setoption` で書き換える。LMRのリダクション表のような
+導出テーブルは、`isready` のタイミングで係数から作り直す。SPRTの検収は
+featureなしのビルドへ定数を焼き込んで行うので、atomic読みのコストは
+検収結果に入らない。
+
+ランナーは `hmwr spsa run <名前>` とする。1反復で複数の摂動を作り、
+摂動ごとに `selfplay --max-pairs 1` をθ+側 `--copt`・θ−側 `--bopt` で
+並列に走らせる。ペア結果の符号で勾配を推定し、θを更新する。θと反復数は
+`data/spsa/<名前>.state.json` へ毎反復書き、再開はそこから読む
+（[ADR-0123](0123-stop-and-resume.md)）。対象定数と範囲・c・aは
+起動時にファイルで渡し、走行中は変えない。
 
 **Elo見込みの根拠は、評価関数が別物なのに定数が借り物という構造的な
 ずれである**。ずれの実測はsingularの4.4倍しかなく、他の定数でどれだけ

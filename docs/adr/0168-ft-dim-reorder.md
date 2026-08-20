@@ -1,6 +1,6 @@
 # 0168: FT出力次元を並べ替えて第1層の空回りを減らす
 
-- Status: proposed
+- Status: accepted
 - Date: 2026-08-15
 - 関連ADR: [0122](0122-tooling-language-split.md), [0127](0127-net-shape-bench.md), [0131](0131-frozen-ft-light-head.md), [0137](0137-output-buckets.md), [0151](0151-speedup-sweep.md), [0159](0159-ft-width-1024.md), [0167](0167-nnue-kernel-instructions.md)
 
@@ -192,7 +192,8 @@ makenet --reorder data/profile/perm_ft1024.txt \
 - **ネットごとに置換を測り直す必要がある**。どの次元が死ぬかは学習の結果で
   決まるので、ネットを作り直すたびに活性統計と並べ替えの2工程が挟まる。
   手順は3つで、`--features himawari-engine/actdump` のビルドで活性を集め、
-  `scripts/ft-reorder.py` で置換を出し、`makenet --reorder` でネットを作る
+  `hmwr net reorder` で置換を出し、`makenet --reorder` でネットを作る
+  （置換のスクリプトは[ADR-0180](0180-hmwr-cli-in-python.md)でhmwrへ移った）
 - **エンジンのコードは変わらない**。通常のビルドに入るのは `#[cfg]` の
   1行だけで、生成されるバイナリは着手前と同一である。棋力への影響もない
   （評価値がビット一致する）
@@ -200,7 +201,10 @@ makenet --reorder data/profile/perm_ft1024.txt \
   分岐を常設しないためで、`actdump` を付けないビルドにはコードが残らない
 - **FT1024の採用判断はまだ出せない**。見込みは−8.8 Eloで、H1採択には
   5.1%足りない。次の的は `clip_to_u8`（7.23%）と `refresh_top`（9.79%）で、
-  第1層の残り14.69%にも列駆動の入口（`find_nnz`）が含まれる
+  第1層の残り14.69%にも列駆動の入口（`find_nnz`）が含まれる。
+  （追記: その後[ADR-0159](0159-ft-width-1024.md)は互角で採択し、
+  [ADR-0170](0170-l1-half.md)・[ADR-0171](0171-ft-pairwise-product.md)で
+  勝ち越した）
 - **死んだ次元の多さは学習側の宿題になる**。FT1024で147次元がすべてゼロ、
   513次元がゼロ率0.95以上である。ここを活かせれば同じ幅でノード効率が
   上がるので、速度側の投資とは独立に効く

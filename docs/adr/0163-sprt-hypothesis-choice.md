@@ -1,6 +1,6 @@
 # 0163: 変更の性質でSPRTの対立仮説を着手時に決める
 
-- Status: proposed
+- Status: accepted
 - Date: 2026-08-15
 - 関連ADR: [0028](0028-pruning-extensions.md), [0068](0068-sprt-driven-versioning.md), [0087](0087-sprt-resume.md), [0109](0109-reference-parity.md), [0116](0116-g7-timeman.md), [0154](0154-sprt-ops.md), [0162](0162-parallel-group.md)
 
