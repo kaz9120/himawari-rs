@@ -98,6 +98,15 @@ def _tee(argv: list[str], cwd: str, env: dict[str, str], log: Path, header: str)
 
 def capture(argv: list[str], *, cwd: Path | None = None) -> str:
     """出力を取り込む。失敗しても投げず、空文字を返す。"""
+    return capture_both(argv, cwd=cwd)[0]
+
+
+def capture_both(argv: list[str], *, cwd: Path | None = None) -> tuple[str, str]:
+    """標準出力と標準エラーを組で返す。
+
+    **失敗したときに原因を見せるために、標準エラーも取る。** 捨てると
+    「測れない」だけが残り、何が起きたか分からなくなる。
+    """
     try:
         result = subprocess.run(
             argv,
@@ -106,9 +115,9 @@ def capture(argv: list[str], *, cwd: Path | None = None) -> str:
             text=True,
             check=False,
         )
-    except OSError:
-        return ""
-    return result.stdout
+    except OSError as e:
+        return "", str(e)
+    return result.stdout, result.stderr
 
 
 def succeeds(argv: list[str], *, cwd: Path | None = None) -> bool:

@@ -84,6 +84,7 @@ hmwr build shapes 256x16 512x16x32  構成ごとにエンジンと評価ファ�
 hmwr net train <名前> --data data/train/train_2990M_q1.psv \
                       --valid data/train/valid_385M_q1.psv
 hmwr net train <名前> --data d.psv --init-ckpt <ckpt> --lr 1e-4
+hmwr net shapes 256x16 512x16x32 --seed 1   構成ごとに小さく学習して比べる
 hmwr net eval data/nets/*.hmwr.best
 hmwr net release data/nets/x.hmwr.best 5 --apply
 ```
@@ -126,7 +127,6 @@ PRを出す前に通す。CIが落ちてから直すより速い（ADR-0178）�
 
 | 操作 | コマンド |
 |---|---|
-| 構成ごとの小規模学習 | `scripts/train-shapes.sh` |
 | 実戦棋譜のサイクル | `scripts/floodgate-cycle.sh` |
 | 定跡の配布 | `scripts/release-book.sh` |
 | 総当たり戦 | `cargo run --release -p himawari-tools --bin league -- ...` |

@@ -233,8 +233,8 @@ hmwr --dry-run <...>                走るはずのコマンドを表示する
 使い方の詳細は himawari-cli スキルにある。**実装は `hmwr/` のPythonパッケージへ
 移行中である**。終われば `scripts/` に残るのは `setup.sh` だけになる。
 
-まだ移していない操作は直接叩く。`train-shapes.sh`・`floodgate-cycle.sh`・
-`release-book.sh`・`league`・`profile` である。
+まだ移していない操作は直接叩く。`floodgate-cycle.sh`・`release-book.sh`・
+`league`・`profile` である。
 
 ## ビルド
 

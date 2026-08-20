@@ -265,8 +265,8 @@ def test_bench_forwards_options(capsys):
 # --- net ---------------------------------------------------------------
 
 
-def test_net_train_folds_flags_into_environment(capsys):
-    """フラグを環境変数へ畳むのがCLIの仕事である。"""
+def test_net_train_builds_the_trainer_command(capsys):
+    """フラグを学習器の引数へ畳むのがCLIの仕事である。"""
     _, lines = dry(
         capsys,
         [
@@ -279,11 +279,22 @@ def test_net_train_folds_flags_into_environment(capsys):
         ],
     )
     line = lines[0]
-    assert "TRAIN_PEAK_LR=1e-4" in line
-    assert "TRAIN_SEED=3" in line
-    assert "TRAIN_DEVICE=cpu" in line
-    assert "TRAIN_EXTRA_ARGS=--mirror-factor" in line
-    assert line.endswith("train-net.sh ft1024_300M_q1 data/train/t.psv")
+    assert "--peak-lr 1e-4" in line
+    assert "--seed 3" in line
+    assert "--device cpu" in line
+    assert "--mirror-factor" in line
+    assert "--data data/train/t.psv" in line
+    assert "--out data/nets/ft1024_300M_q1.hmwr" in line
+
+
+def test_net_train_keeps_the_settled_defaults(capsys):
+    """既定は測定で決まった結論に揃える。"""
+    _, lines = dry(capsys, ["net", "train", "x", "--data", "d.psv"])
+    line = lines[0]
+    assert "--ft-clip 1.0" in line
+    assert "--mmap" in line
+    assert "--factorized" in line
+    assert "--device mps" in line
 
 
 def test_net_train_requires_data():
@@ -292,9 +303,33 @@ def test_net_train_requires_data():
     assert e.value.code == 2
 
 
-def test_net_eval_passes_valid_sets(capsys):
+def test_net_train_logs_under_its_area(capsys):
+    _, lines = dry(capsys, ["net", "train", "x", "--data", "d.psv"])
+    assert any("data/logs/train-x.log" in x for x in lines)
+
+
+def test_net_eval_uses_each_validation_set(capsys):
     _, lines = dry(capsys, ["net", "eval", "a.hmwr", "--valid", "v1.psv,v2.psv"])
-    assert "EVAL_VALIDS=v1.psv,v2.psv" in lines[0]
+    assert any("--valid v1.psv" in x for x in lines)
+    assert any("--valid v2.psv" in x for x in lines)
+
+
+def test_net_eval_picks_the_loader_by_extension(capsys):
+    """.hmwr は量子化済み、.ckpt はf32として読む。"""
+    _, lines = dry(capsys, ["net", "eval", "a.hmwr", "b.ckpt"])
+    assert any("--init-net a.hmwr" in x for x in lines)
+    assert any("--init-checkpoint b.ckpt" in x for x in lines)
+
+
+def test_net_shapes_requires_lambda_with_effect_head(capsys):
+    code = cli.main(["--dry-run", "net", "shapes", "256x16", "--effect-head", "board"])
+    assert code == proc.USAGE
+    assert "--lambda-effect" in capsys.readouterr().err
+
+
+def test_net_shapes_rejects_a_malformed_spec(capsys):
+    assert cli.main(["--dry-run", "net", "shapes", "256"]) == proc.USAGE
+    assert "構成の書き方が違う" in capsys.readouterr().err
 
 
 def test_net_release_is_dry_by_default(capsys):
@@ -311,14 +346,37 @@ def test_net_release_apply_is_explicit(capsys):
 # --- data --------------------------------------------------------------
 
 
-def test_data_quiet_folds_options(capsys):
+def test_data_quiet_builds_the_psv_command(capsys):
     _, lines = dry(capsys, ["data", "quiet", "in.psv", "out.psv", "--max-plies", "16"])
-    assert "QUIET_MAX_PLIES=16" in lines[0]
+    assert "psv quiet" in lines[0]
+    assert "--max-plies 16" in lines[0]
+    assert "--in in.psv --out out.psv" in lines[0]
 
 
-def test_data_fetch_defaults_to_all(capsys):
-    _, lines = dry(capsys, ["data", "fetch"])
-    assert lines[0].endswith("fetch-dataset.sh all")
+def test_data_quiet_names_the_log_from_the_output(capsys):
+    _, lines = dry(capsys, ["data", "quiet", "in.psv", "train_2990M_q1.psv"])
+    assert any("data/logs/quiet-train_2990M_q1.log" in x for x in lines)
+
+
+def test_data_fetch_covers_every_source_file(capsys):
+    """3つの供給元それぞれ127ファイル、計381ファイルを対象にする。"""
+    from hmwr.commands import data as data_cmd
+
+    names = data_cmd.all_names()
+    assert len(names) == 381
+    assert len(set(names)) == 381
+
+
+def test_data_fetch_excludes_the_validation_source(capsys, tmp_path):
+    """検証データの供給元は学習データへ混ぜない。"""
+    from hmwr.commands import data as data_cmd
+
+    excluded = data_cmd.file_name(data_cmd.VALID_START_TIME, data_cmd.VALID_INDEX)
+    for name in (excluded, data_cmd.file_name("1695606850", "000")):
+        (tmp_path / name).write_bytes(b"x")
+    data_cmd._prepare(tmp_path, tmp_path / "train", dry_run=True)
+    shuffled = [x for x in capsys.readouterr().out.splitlines() if "shuffle" in x][0]
+    assert excluded not in shuffled
 
 
 # --- 設定 --------------------------------------------------------------
