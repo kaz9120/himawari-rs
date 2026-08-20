@@ -111,17 +111,32 @@ scripts/fetch-dataset.sh all   # 教師データ（学習を回す場合のみ�
 WindowsではWSL2上で動かす。macOSでも開発できる（Apple Siliconで確認している）。
 判断の経緯は[ADR-0081](docs/adr/0081-portability.md)にある。
 
+### 日常操作
+
+`scripts/hmwr` が入口になる（[ADR-0179](docs/adr/0179-hmwr-cli.md)）。
+
+```sh
+scripts/hmwr --help                     全体を見る
+scripts/hmwr --dry-run <...>            走るはずのコマンドを表示する
+scripts/hmwr sprt start <名前>          ペア作成→機能検証→SPRT起動
+scripts/hmwr sprt status <名前>         途中経過・結果
+scripts/hmwr verify <名前>              固定深さで探索の変化を比べる
+scripts/hmwr bench <base> <cand>        NPSを交互に測る
+scripts/hmwr train <名前> --data <psv>  ネットを学習する
+scripts/hmwr doc lint                   日本語文書のlint
+```
+
+オプションはフラグで渡す。ログの置き場（`data/logs/<領域>-<名前>.log`）は
+CLIが決めるので、リダイレクト先を書かない。
+
 ### テストとベンチ
 
 ```sh
 cargo test --workspace            # テスト（debug）
 cargo test --workspace --release  # perft既知値の照合込み
-cargo run --release -p himawari-tools --bin bench -- <base> <cand>   # NPS計測
-cargo run --release -p himawari-tools --bin verify -- <base> <cand>  # 探索の変化を固定深さで比較
-scripts/sprt-run.sh <base> <cand> <名前>  # SPRTで棋力を検定
 ```
 
-開発用ツールは `cargo run --release -p himawari-tools --bin <name>` で動く。
+開発用ツールは `cargo run --release -p himawari-tools --bin <name>` でも動く。
 
 | ツール | 用途 |
 |---|---|

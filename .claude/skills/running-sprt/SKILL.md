@@ -1,6 +1,6 @@
 ---
 name: running-sprt
-description: SPRT（対局ゲート）の起動・監視・終了後の記録を定型手順で行う。棋力が変わる変更の検証、sprt-run.shの実行、途中経過の確認、H1/H0後の後処理のとき必ず使う。
+description: SPRT（対局ゲート）の起動・監視・終了後の記録を定型手順で行う。棋力が変わる変更の検証、hmwr sprt startの実行、途中経過の確認、H1/H0後の後処理のとき必ず使う。
 ---
 
 # SPRTの実行・監視・後処理
@@ -25,44 +25,35 @@ description: SPRT（対局ゲート）の起動・監視・終了後の記録を
 ## 1. 起動
 
 ```
-scripts/build-pair.sh <名前>          # base=origin/main、cand=HEAD
-cargo run --release -p himawari-tools --bin verify -- data/bin/base-<名前> data/bin/cand-<名前>
-scripts/sprt-run.sh data/bin/base-<名前> data/bin/cand-<名前> <名前>
+scripts/hmwr sprt start <名前>                     # 既定条件
+scripts/hmwr sprt start <名前> --noninferiority    # 非劣性（ADR-0163）
+scripts/hmwr sprt start <名前> --tc 60+0.6         # 条件を変える
 ```
 
-**起動は `sprt-run.sh` を使う**。判定（H1・H0）が出るまで走り、落ちたら
-`--resume` で拾い直す（ADR-0087・0175）。`sprt.sh` は単発走行の下位実装で、
-直接使うのは条件を変えて1回だけ試すときに限る。
+**この1コマンドが3つを順に行う**（ADR-0179）。ペアのビルド、機能検証、
+切り離しての起動である。順番を飛ばすには明示が要る形にしてある。
 
-**エージェントが起動するときは、プロセスを親から切り離す**。ツールの
-バックグラウンド実行のまま走らせると、数十分で回収されて止まる（2026-08-18に
-2回。標準出力を捨てても起きたので出力量とは無関係）。棋譜は残るので失いは
-しないが、そのたびに再開が要る。
-
-`sprt-detach.py` が `start_new_session=True`（setsid相当）で新しいセッションへ
-移して起動し、すぐに戻る。
-
-```
-scripts/sprt-detach.py data/bin/base-<名前> data/bin/cand-<名前> <名前>
-scripts/sprt-detach.py base cand <名前> SPRT_ELO0=-5 SPRT_ELO1=0   # 非劣性
-```
+1. `build-pair.sh` がbase（origin/main）とcand（HEAD）を同条件で作る
+2. `verify` が固定深さでノード数を比べる。**全局面で一致したら起動せずに
+   止まる**（ADR-0074）。飛ばすには `--no-verify` を付ける
+3. `sprt-detach.py` が新しいセッションへ移して起動し、すぐ戻る
 
 **切り離してよいのは、状態がファイルにあるからである**（ADR-0175）。進捗は
 ログ、完了は `.result` で分かるので、プロセスを手元で掴んでおく必要がない。
-起動したらそのまま別の作業へ移る。
+起動したらそのまま別の作業へ移る。ツールのバックグラウンド実行のまま走らせると
+数十分で回収されて止まるため、切り離しは省けない（2026-08-18に2回）。
 
-- verifyを先に行う（ADR-0074）。固定深さで全局面のノード数が一致する
-  変更はSPRTにかけても中立にしかならない。**ただしverifyの4局面は序盤に
-  偏っている**。終盤にしか現れない機能（詰み・入玉など）は、この4局面で
-  一致しても「影響なし」と結論しない。終盤局面を別に用意して測る
-  （ADR-0174で実際に起きた）
+- **verifyの4局面は序盤に偏っている**。終盤にしか現れない機能（詰み・入玉
+  など）は、この4局面で一致しても「影響なし」と結論しない。終盤局面を別に
+  用意して測る（ADR-0174で実際に起きた）
 - 対立仮説は着手時に決め、走行後に変えない（ADR-0163）。棋力向上を主張する
   変更は既定、参照追従で「害がなければ入れたい」変更は非劣性
-  （`SPRT_ELO0=-5 SPRT_ELO1=0`）
-- 条件を変えるときは環境変数（`SPRT_TC=` など）。変えた理由をADRに書く
+- 条件を変えた理由はADRに書く
 - **局数の見積もりは要らない**。判定が出るまで走る。上限
   （`SPRT_HARD_MAX_PAIRS`、既定60,000ペア）は暴走を止める安全弁であって、
   収束の判定基準ではない
+- 下位のスクリプト（`sprt.sh`・`sprt-run.sh`）を直接叩くのは、CLIが持たない
+  条件で1回だけ試すときに限る
 
 ## 2. 監視
 
@@ -70,24 +61,27 @@ scripts/sprt-detach.py base cand <名前> SPRT_ELO0=-5 SPRT_ELO1=0   # 非劣性
 継続に依存しない（ADR-0175）。
 
 ```
-ls data/sprt/<名前>.result                                   # あれば完了
-python3 scripts/sprt-summary.py data/logs/sprt-<名前>.log    # 今の値を1回表示
-tail -f data/logs/sprt-<名前>.log                             # 流し見
+scripts/hmwr sprt status <名前>     # 今の値を1回表示
+scripts/hmwr sprt status            # 新しい順に10件
+tail -f data/logs/sprt-<名前>.log   # 流し見
 ```
 
+- 一覧の「未完了」は `.result` がないという意味で、走っているとは限らない。
+  判定前に打ち切った過去の走行もここに入る
 - summaryは判定前でも最後のpairs行から途中経過を出す（判定欄は「判定前」）
 - 経過の読み方: `LLR +2.94` でH1採択、`-2.94` でH0採択。中間で漂うのは
   真のEloがelo0とelo1の**中点**の近くにある徴候で、長期戦になる。中点は
   既定条件で約+2.5、非劣性で約−2.5である
 - 走らせたまま他の作業へ移ってよい。セッションが切れても棋譜は残るので、
-  次に `sprt-run.sh` を叩けば続きから走る。判定済みなら即座に結果を返す
+  次に `hmwr sprt start <名前>` を叩けば続きから走る。判定済みなら即座に
+  結果を返す
 
 ## 3. 終了後
 
 終了コード: 0=H1、1=H0、2=安全弁まで走って判定に至らず。
 
 ```
-python3 scripts/sprt-summary.py data/logs/sprt-<名前>.log
+scripts/hmwr sprt status <名前>
 ```
 
 が「コミットのトレーラ」「結果の表」を整形して出すので、これを使う。
