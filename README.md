@@ -1,144 +1,170 @@
+<!--
+この文書の読み手と範囲はADR-0182で決めた。読み手は2人いる。エンジンを対局に
+使う人と、このリポジトリで開発する人である。棋力・ネットの世代・Elo・既定の
+構成値のように変わり続ける事実はここへ書かず、正の場所（Releases・
+docs/ROADMAP.md・docs/adr/・コード）を指す。
+-->
+
 # himawari-rs
 
 Rustで書くコンピュータ将棋エンジン。USIプロトコルに対応し、将棋所やShogiGUIで
-対局できる。評価関数（NNUE）の学習から探索まで自前で実装している。
+対局できる。探索・評価関数（NNUE）・学習器を自前で実装している。実行時の外部
+依存はなく、エンジン本体と評価関数ファイルの2つで動く。
 
-2027年5月の世界コンピュータ将棋選手権への参加を目標にしている。
+2027年5月の世界コンピュータ将棋選手権への参加を目標にしている。floodgateで
+継続して対局しており、現在の棋力と開発の現在地は
+[docs/ROADMAP.md](docs/ROADMAP.md)にある。
 
-- floodgateレート**3489**（569局、283勝267敗19分。2026-08-17時点）
-- 単一バイナリで動く。実行時の外部依存はなし
-- 評価関数は29.9億局面で学習した純粋HalfKP 256x2-32-32
+- 対局に使う人は「[使う](#使う)」を読む。ビルドは要らない
+- コードを触る人は「[開発する](#開発する)」を読む
 
 ## 使う
 
-エンジン本体と評価関数ファイルの2つが要る。評価関数は
-[Releases](../../releases)の `net-v*` から取得する。番号のいちばん大きいものが
-最新で、古い番号のネットはそのぶん弱い。
+### 用意する
+
+エンジン本体と評価関数ファイルを[Releases](../../releases)から取る。
+
+エンジン本体は `v*` タグの最新から、環境に合うzipを選ぶ。
+
+| ファイル | 環境 |
+|---|---|
+| `himawari-<版>-windows-x64-avx2.zip` | Windows。AVX2を持つCPU |
+| `himawari-<版>-windows-x64-sse42.zip` | Windows。AVX2を持たないCPU |
+| `himawari-<版>-linux-x64-avx2.zip` | Linux。AVX2を持つCPU |
+| `himawari-<版>-linux-x64-sse42.zip` | Linux。AVX2を持たないCPU |
+| `himawari-<版>-macos-arm64.zip` | macOS（Apple Silicon） |
+
+評価関数は `net-v*` タグのうち、番号のいちばん大きいものから `.hmwr` を取る。
+古い番号のネットはそのぶん弱い。
+
+コマンドで取るなら次のようにする。
 
 ```sh
-cargo build --release                    # target/release/himawari ができる
-gh release download net-v4 -p '*.hmwr'   # 評価関数（2026-08-08時点の最新）
+gh release list                              # v* と net-v* の最新を確認する
+gh release download <最新のv*> -p '*macos-arm64.zip'
+gh release download <最新のnet-v*> -p '*.hmwr'
 ```
 
-定跡は任意で、`book-v*` から取得できる。
+**エンジンと評価関数は最新どうしを組む**。世代の離れた組はファイル形式の版が
+合わず、読み込みでエラーになる。
 
-`target/release/himawari` をGUIへエンジンとして登録し、`EvalFile` に
-評価関数のパスを設定する。`EvalFile` を設定しないと起動時にエラーで
-終了する（気づかず弱いまま対局する事故を防ぐため）。
+定跡は任意で、`book-v*` から取れる。USIオプション `BookFile` にパスを渡す。
+
+### GUIへ登録する
+
+解凍した `himawari`（Windowsは `himawari.exe`）をGUIへエンジンとして登録し、
+USIオプション `EvalFile` に評価関数のパスを設定する。
+
+**`EvalFile` の設定を忘れない**。未設定でも起動するが、駒割だけで指すため
+極端に弱くなる。
 
 ### 主なUSIオプション
 
 | オプション | 既定 | 説明 |
 |---|---|---|
 | `EvalFile` | （空） | 評価関数のパス。必須 |
+| `BookFile` | （空） | 定跡ファイルのパス |
 | `USI_Hash` | 256 | 置換表[MB] |
 | `Threads` | 1 | 探索スレッド数 |
 | `USI_Ponder` | false | 相手番の思考 |
-| `BookFile` | （空） | 定跡ファイルのパス |
 | `MinimumThinkingTime` | 2000 | 最小思考時間[ms] |
-| `ResignValue` | 99999 | 投了する評価値の閾値（既定は無効） |
 | `MultiPV` | 1 | 検討モードのライン数 |
 
-全オプションは `usi` コマンドの出力を参照。
+全オプションと値域は、エンジンへ `usi` と入力したときの出力が正になる。
 
-### つまずきやすいところ
+### うまく動かないとき
 
-起動直後に終了するときは、`EvalFile` が未設定かパスが違う。標準エラーへ理由を
-出して終了する。
+エンジンの異常はGUIのログへ `info string error:` の行で出る。まずそこを読む。
 
-評価関数の読み込みで次のエラーの出ることがある。
+起動直後に終了するときは、`EvalFile` のパスが違う。エンジンはパスと現在位置を
+併記して終了するので、手元のファイルと突き合わせる。
 
 ```
-info string error: EvalFile読み込み失敗: FT重み194がi8に収まらない。--ft-clipを付けて学習したネットが要る（ADR-0138）
+info string error: EvalFileを開けません: No such file or directory (os error 2)
+info string   path = "/tmp/net.hmwr" (14文字 14バイト)
+info string   cwd  = "/home/user/shogi"
 ```
 
-既定のビルドはFT重みをi8で持つ（[ADR-0138](docs/adr/0138-ft-i8-quantization.md)）。
-`net-v2` 以前のネットは重みが範囲に収まらず読めない。`net-v3` 以降を使うか、
-`HIMAWARI_FT_I8=0` を付けてビルドする。
+`EvalFile読み込み失敗` で終了するときは、エンジンと評価関数の組が合っていない。
+両方を最新にすると直る。
 
 短い持ち時間で時間を使いすぎるときは、`MinimumThinkingTime` を小さくする。
-既定の2000msは300秒＋10秒加算のような実戦の持ち時間を想定している。
-
-ビルドが通らないときはツールチェインを確認する。SIMDに `std::simd` を使うため
-安定版では通らず、`rust-toolchain.toml` が固定しているnightlyが要る。
-
-## ビルド
-
-```sh
-cargo build --release
-```
-
-計測や対局に使うビルドは `-C target-cpu=native` を付ける
-（[ADR-0003](docs/adr/0003-toolchain.md)）。
-
-```sh
-RUSTFLAGS="-C target-cpu=native" cargo build --release
-```
-
-ネットワークの次元は環境変数 `HIMAWARI_ARCH` でビルド時に切り替える。書式は
-`<FT>x<L1>[x<L2>[x<L3>]]` で、既定は `1024x16x32` である
-（[ADR-0127](docs/adr/0127-net-shape-bench.md)）。
-
-```sh
-HIMAWARI_ARCH=256x32x32 cargo build --release
-```
-
-**バイナリと評価ファイルは対で使う**。次元が食い違うと読み込みで落ちる。
-既定のビルドには `data/nets/pairprod_2990M_q1_reorder.hmwr` を渡す。
-
-FTを太らせると評価精度は上がり、NPSは落ちる。FT1024はノード数固定で
-+70.6 Eloに対し、時間制（10+0.1）では−0.1で互角だった
-（[ADR-0159](docs/adr/0159-ft-width-1024.md)）。互角なら容量の伸びしろを
-採る判断で既定を1024にしている。FT512は−72.8 Eloだった
-（[ADR-0067](docs/adr/0067-ft-dimension-512.md)）。幅は単調でない。
-
-後段のL1は16である。32から半減してもvalid lossは動かず、速度が上がって
-+13.4 Eloになった（[ADR-0170](docs/adr/0170-l1-half.md)）。
+既定の2000msは、300秒＋10秒加算のような実戦の持ち時間を前提にしている。
 
 ## 開発する
 
 ### 環境構築
 
 ```sh
-scripts/setup.sh               # ツールチェインとビルド
+scripts/setup.sh               # ツールチェイン・Python・ビルド・テスト
 export PATH="$PWD/bin:$PATH"   # hmwr コマンドへパスを通す
 gh auth login                  # Releaseの取得に要る
 hmwr data fetch all            # 教師データ（学習を回す場合のみ）
 ```
 
-教師データは生データ116GBと加工後120GBで、空きが236GB要る。`download` /
-`verify` / `prepare` に分けて実行もできる（`-h` で確認）。
+`scripts/setup.sh` はLinuxとWSL2向けである。macOSでも開発できるが、ツールは
+個別に入れる（Apple Siliconで確認している）。
 
-WindowsではWSL2上で動かす。macOSでも開発できる（Apple Siliconで確認している）。
-判断の経緯は[ADR-0081](docs/adr/0081-portability.md)にある。
+教師データは生データと加工後の合計で220GBを超える。内訳と前処理は
+[docs/DATASETS.md](docs/DATASETS.md)にある。`hmwr data fetch` は
+download・verify・prepareへ分けて実行もできる。
+
+### ビルド
+
+SIMDに `std::simd` を使うため、安定版のRustでは通らない。`rust-toolchain.toml`
+が固定するnightlyを、rustupが自動で入れる。
+
+```sh
+cargo build --release                                    # target/release/himawari
+RUSTFLAGS="-C target-cpu=native" cargo build --release   # 計測・対局用
+```
+
+計測と対局には `-C target-cpu=native` を付ける。配布用の単体ビルドはPGOで作り、
+`hmwr build pgo` が手順を持つ。Releasesのバイナリも同じ手順で作っている。
+
+ネットワークの次元は環境変数 `HIMAWARI_ARCH` でビルド時に切り替える。書式は
+`<FT>x<L1>[x<L2>[x<L3>]]` で、既定値は `crates/engine/build.rs` の
+`DEFAULT_ARCH` にある。
+
+```sh
+HIMAWARI_ARCH=256x32x32 cargo build --release
+```
+
+**バイナリと評価ファイルは対で使う**。次元やファイル形式の版が食い違うと
+読み込みで落ちる。既定のビルドへ渡すネットは
+[docs/ROADMAP.md](docs/ROADMAP.md)の現行構成にある。
 
 ### 日常操作
 
-`hmwr` コマンドが入口になる（[ADR-0180](docs/adr/0180-hmwr-cli-in-python.md)）。
-`scripts/setup.sh` がパスの通し方を案内する。
+`hmwr` コマンドが入口になる。ビルド・測定・学習・データ処理・文書のlintが
+ここから動く。
 
 ```sh
-export PATH="$PWD/bin:$PATH"    # シェルの設定ファイルへ書く
-
-hmwr --help                     全体を見る
-hmwr --dry-run <...>            走るはずのコマンドを表示する
-hmwr env                        並列度・評価関数・持ち時間の既定
-hmwr sprt run <名前>            ペア作成→機能検証→SPRT起動
-hmwr sprt show <名前>           途中経過・結果
-hmwr verify <名前>              固定深さで探索の変化を比べる
-hmwr bench <base> <cand>        NPSを交互に測る
+hmwr --help                         全体を見る
+hmwr --dry-run <...>                走るはずのコマンドを表示する
+hmwr env                            並列度・評価関数・持ち時間の既定
+hmwr sprt run <名前>                ペア作成→機能検証→SPRT起動
+hmwr sprt show <名前>               途中経過・結果
+hmwr verify <名前>                  固定深さで探索の変化を比べる
+hmwr bench <base> <cand>            NPSを交互に測る
 hmwr net train <名前> --data <psv>  ネットを学習する
-hmwr doc lint                   日本語文書のlint
+hmwr doc lint                       日本語文書のlint
 ```
 
 オプションはフラグで渡す。ログの置き場（`data/logs/<領域>-<名前>.log`）は
 CLIが決めるので、リダイレクト先を書かない。
 
-### テストとベンチ
+### テストと検査
+
+CIと同じ検査をローカルで通せる。
 
 ```sh
+cargo fmt --all --check
+cargo clippy --all-targets -- -D warnings
 cargo test --workspace            # テスト（debug）
 cargo test --workspace --release  # perft既知値の照合込み
+python3 -m pytest tests -q        # hmwr のテスト
+hmwr doc lint                     # 日本語文書のlint
 ```
 
 開発用ツールは `cargo run --release -p himawari-tools --bin <name>` でも動く。
@@ -151,18 +177,18 @@ cargo test --workspace --release  # perft既知値の照合込み
 | `gensfen` / `psv` | 教師データの生成と加工 |
 | `makenet` | 評価関数ファイルの生成 |
 | `book` | 定跡の生成と統計 |
-| `kifu` | floodgate棋譜の分析（[ADR-0152](docs/adr/0152-floodgate-cycle.md)） |
+| `kifu` | floodgate棋譜の回収と分析 |
 
 `bench`・`verify`・`profile` は評価関数の場所を環境変数 `EVAL_FILE` から読む。
-`hmwr` 経由で呼ぶときは指定が要らない（[ADR-0180](docs/adr/0180-hmwr-cli-in-python.md)）。
+`hmwr` 経由で呼ぶときは指定が要らない。
 
 ### 学習
 
 PyTorchで学習する。教師データはPackedSfenValue形式で、`crates/py` のPyO3拡張が
-特徴抽出を担う。29.9億局面の1エポックが約8.6時間で回る（96,000局面/秒）。
-データの所在と前処理は[docs/DATASETS.md](docs/DATASETS.md)にある。
+特徴抽出を担う。入口は `hmwr net train` である。データの所在と前処理は
+[docs/DATASETS.md](docs/DATASETS.md)にある。
 
-### 開発の進め方
+### 進め方
 
 GitHub Issuesは使わない。状況・設計・手順のすべてをリポジトリ内の文書で管理する。
 
@@ -172,14 +198,11 @@ GitHub Issuesは使わない。状況・設計・手順のすべてをリポジ�
 | [docs/adr/README.md](docs/adr/README.md) | なぜそうしたか知りたいとき |
 | [docs/DATASETS.md](docs/DATASETS.md) | 教師データを扱うとき |
 | [CHANGELOG.md](CHANGELOG.md) | 何が入ったか見るとき |
-| [CLAUDE.md](CLAUDE.md) | エージェントが作業するとき |
+| [CLAUDE.md](CLAUDE.md) | 作業の規約を確認するとき |
 
-設計判断はすべてADRに記録し、実装より先に書く。棋力が変わる変更はSPRTで
-H1採択したものだけをmainへ入れる。SPRTの前に機能検証（固定深さでのノード数の
-比較）と発動率を計測する。
-
-バージョンはrelease-pleaseがコミットの型から算出する。`feat` がMINOR、`fix` が
-PATCHで、`feat` はSPRTを通った変更にだけ使う。
+設計判断はすべてADRに記録し、実装より先に書く。棋力が変わる変更は、SPRTで
+H1採択したものだけをmainへ入れる。変更はPR経由で入れ、バージョンとCHANGELOGは
+release-pleaseがコミットの型から作る。
 
 ## workspace構成
 
@@ -191,11 +214,12 @@ PATCHで、`feat` はSPRTを通った変更にだけ使う。
 | `crates/tools` | 開発用ツール |
 | `crates/py` | PyO3拡張（特徴抽出・.hmwr I/OをPythonに公開） |
 | `training/` | PyTorch学習器 |
+| `hmwr/` | 開発コマンド `hmwr` の実装 |
 
 ## 謝辞
 
 探索部は[やねうら王](https://github.com/yaneurao/YaneuraOu)を参照実装として
-機能差分を埋めている（[ADR-0109](docs/adr/0109-reference-parity.md)）。やねうら王は
+機能差分を埋めている。やねうら王は
 [Stockfish](https://github.com/official-stockfish/Stockfish)の探索技法を将棋へ
 移植したもので、本エンジンはその系譜に連なる。移植したファイルには冒頭に由来を
 書いている。
@@ -208,9 +232,7 @@ GPL-3.0-or-later
 
 Copyright (C) 2026 Kazumasa Yamamoto
 
-v0.16.2まではMITで配布した。GPLv3への変更の経緯は
-[ADR-0108](docs/adr/0108-license-gplv3.md)にある。既存のタグはMITのまま変わらない。
+v0.16.2まではMITで配布した。既存のタグはMITのまま変わらない。
 
 学習済みネットと定跡データはプログラムの出力物であり、このライセンスの対象外と
-する。配布条件は[ADR-0080](docs/adr/0080-net-release.md)と
-[ADR-0082](docs/adr/0082-book-release.md)を参照。
+する。

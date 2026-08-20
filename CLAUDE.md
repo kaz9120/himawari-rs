@@ -35,7 +35,7 @@ himawari-rsで作業するエージェントの規約。詳細は各文書へリ
 | [docs/adr/](docs/adr/README.md) | 判断の根拠を探すとき | 設計判断と経緯・測定の詳細 |
 | [docs/ROADMAP.md](docs/ROADMAP.md) | 着手を決めるとき | 現行構成・次の方向・候補 |
 | [docs/DATASETS.md](docs/DATASETS.md) | データを扱うとき | データの所在と前処理 |
-| [README.md](README.md) | 環境を作るとき | 概要・環境構築・ビルド |
+| [README.md](README.md) | 使い方や環境を知るとき | 概要・対局での使い方・開発環境 |
 | [CHANGELOG.md](CHANGELOG.md) | 何が入ったか見るとき | release-pleaseが生成 |
 | `.claude/skills/` | 定型作業を回すとき | 手順の固定（SPRT運用は[ADR-0154](docs/adr/0154-sprt-ops.md)、CLIは[ADR-0180](docs/adr/0180-hmwr-cli-in-python.md)） |
 
@@ -47,6 +47,10 @@ himawari-rsで作業するエージェントの規約。詳細は各文書へリ
 候補から消す。完了・棄却した案も候補には残さない。
 
 ROADMAPは3節で構成する。現行構成・次の方向・候補。過去の経緯は書かない。
+
+READMEには変わり続ける事実を書かない（[ADR-0182](docs/adr/0182-readme-audience.md)）。
+棋力はROADMAP、配布物の版はReleases、既定のネットワーク次元は
+`crates/engine/build.rs` が正になる。ADRの番号も書かない。
 
 手順を書いたら実行して確かめる。実装が進んでも文書が追わないと、読み手を
 誤った場所へ連れて行く。数値を書くときも同じで、出典（ネットのメタデータ、

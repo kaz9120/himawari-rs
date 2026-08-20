@@ -285,6 +285,7 @@
 | [0179](0179-hmwr-cli.md) | 日常操作をhmwrコマンドひとつの入口にまとめる | 2026-08-20 |  | superseded |
 | [0180](0180-hmwr-cli-in-python.md) | hmwrを独立コマンドにし、実処理をPythonへ移す | 2026-08-20 |  | accepted |
 | [0181](0181-agent-surface.md) | エージェントの作業面を実態へ合わせ、規律を設定へ移す | 2026-08-20 |  | accepted |
+| [0182](0182-readme-audience.md) | READMEの読み手を2つに固定し、変わり続ける事実を置かない | 2026-08-20 |  | accepted |
 
 ## バックログ
 
