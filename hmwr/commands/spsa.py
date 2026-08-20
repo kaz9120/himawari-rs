@@ -228,6 +228,9 @@ def until_done(args: argparse.Namespace, *, log_to_file: bool) -> int:
             if args.dry_run:
                 print(f"[dry-run] {proc.show(argv)}")
                 return proc.OK
+            # selfplayの--outは追記なので、中断したバッチの断片が残っていると
+            # 2局そろわないペアとして捨てられてしまう。先に消す
+            (f["tmp"] / f"{k}.jsonl").unlink(missing_ok=True)
             jobs.append((k, delta, c_mult, r_mult, _spawn(argv)))
 
         scored = 0
