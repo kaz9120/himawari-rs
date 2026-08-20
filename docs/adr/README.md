@@ -282,7 +282,8 @@
 | [0176](0176-lance-non-promotion-rank.md) | 香の不成を2段目から3段目以降へ移す | 2026-08-18 | +1.7 | accepted |
 | [0177](0177-tt-probcut-depth-slack.md) | TT-ProbCutの深さ差を4から2へ狭める | 2026-08-19 | −3.1 | rejected |
 | [0178](0178-textlint-gate.md) | 日本語文書の書き方をtextlintでCIゲートにする | 2026-08-20 |  | accepted |
-| [0179](0179-hmwr-cli.md) | 日常操作をhmwrコマンドひとつの入口にまとめる | 2026-08-20 |  | accepted |
+| [0179](0179-hmwr-cli.md) | 日常操作をhmwrコマンドひとつの入口にまとめる | 2026-08-20 |  | superseded |
+| [0180](0180-hmwr-cli-in-python.md) | hmwrを独立コマンドにし、実処理をPythonへ移す | 2026-08-20 |  | accepted |
 
 ## バックログ
 

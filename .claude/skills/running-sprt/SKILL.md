@@ -1,6 +1,6 @@
 ---
 name: running-sprt
-description: SPRT（対局ゲート）の起動・監視・終了後の記録を定型手順で行う。棋力が変わる変更の検証、hmwr sprt startの実行、途中経過の確認、H1/H0後の後処理のとき必ず使う。
+description: SPRT（対局ゲート）の起動・監視・終了後の記録を定型手順で行う。棋力が変わる変更の検証、hmwr sprt runの実行、途中経過の確認、H1/H0後の後処理のとき必ず使う。
 ---
 
 # SPRTの実行・監視・後処理
@@ -25,9 +25,9 @@ description: SPRT（対局ゲート）の起動・監視・終了後の記録を
 ## 1. 起動
 
 ```
-scripts/hmwr sprt start <名前>                     # 既定条件
-scripts/hmwr sprt start <名前> --noninferiority    # 非劣性（ADR-0163）
-scripts/hmwr sprt start <名前> --tc 60+0.6         # 条件を変える
+hmwr sprt run <名前>                     # 既定条件
+hmwr sprt run <名前> --noninferiority    # 非劣性（ADR-0163）
+hmwr sprt run <名前> --tc 60+0.6         # 条件を変える
 ```
 
 **この1コマンドが3つを順に行う**（ADR-0179）。ペアのビルド、機能検証、
@@ -52,8 +52,7 @@ scripts/hmwr sprt start <名前> --tc 60+0.6         # 条件を変える
 - **局数の見積もりは要らない**。判定が出るまで走る。上限
   （`SPRT_HARD_MAX_PAIRS`、既定60,000ペア）は暴走を止める安全弁であって、
   収束の判定基準ではない
-- 下位のスクリプト（`sprt.sh`・`sprt-run.sh`）を直接叩くのは、CLIが持たない
-  条件で1回だけ試すときに限る
+- CLIが持たない条件で1回だけ試すときは、下位のスクリプトを直接叩く
 
 ## 2. 監視
 
@@ -61,9 +60,9 @@ scripts/hmwr sprt start <名前> --tc 60+0.6         # 条件を変える
 継続に依存しない（ADR-0175）。
 
 ```
-scripts/hmwr sprt status <名前>     # 今の値を1回表示
-scripts/hmwr sprt status            # 新しい順に10件
-tail -f data/logs/sprt-<名前>.log   # 流し見
+hmwr sprt show <名前>               # 今の値を1回表示
+hmwr sprt show                      # 新しい順に10件
+hmwr sprt wait <名前>               # 判定が出るまで待つ
 ```
 
 - 一覧の「未完了」は `.result` がないという意味で、走っているとは限らない。
@@ -73,7 +72,7 @@ tail -f data/logs/sprt-<名前>.log   # 流し見
   真のEloがelo0とelo1の**中点**の近くにある徴候で、長期戦になる。中点は
   既定条件で約+2.5、非劣性で約−2.5である
 - 走らせたまま他の作業へ移ってよい。セッションが切れても棋譜は残るので、
-  次に `hmwr sprt start <名前>` を叩けば続きから走る。判定済みなら即座に
+  次に `hmwr sprt run <名前>` を叩けば続きから走る。判定済みなら即座に
   結果を返す
 
 ## 3. 終了後
@@ -81,7 +80,7 @@ tail -f data/logs/sprt-<名前>.log   # 流し見
 終了コード: 0=H1、1=H0、2=安全弁まで走って判定に至らず。
 
 ```
-scripts/hmwr sprt status <名前>
+hmwr sprt show <名前>
 ```
 
 が「コミットのトレーラ」「結果の表」を整形して出すので、これを使う。

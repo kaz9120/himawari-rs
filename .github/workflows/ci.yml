@@ -34,6 +34,9 @@ jobs:
       - run: pip install --quiet pytest
       - run: python3 -m pytest tests -q
         working-directory: scripts
+      # hmwrコマンドの引数処理（ADR-0180）。同じ入力から同じコマンド列が
+      # 出ることを固定する
+      - run: python3 -m pytest tests -q
 
   # 日本語文書のlint（ADR-0178）。CLAUDE.mdの書き方の規約のうち、
   # 機械が判定できるものをここで見る
