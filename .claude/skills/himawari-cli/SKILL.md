@@ -12,6 +12,7 @@ description: himawari-rsの開発コマンドhmwrを使う。ビルド・機能�
 ```
 hmwr --help              全体
 hmwr <領域>              その領域のヘルプ
+hmwr env                 並列度・評価関数・持ち時間の既定を表示する
 hmwr --dry-run <...>     走るはずのコマンドを表示して終わる
 ```
 
@@ -35,6 +36,7 @@ hmwr --dry-run <...>     走るはずのコマンドを表示して終わる
 ```
 hmwr sprt run <名前>                  ペア作成→機能検証→起動
 hmwr sprt run <名前> --noninferiority 非劣性で測る
+hmwr sprt net <名前>                  ビルドを固定し、評価関数だけ差し替える
 hmwr sprt show <名前>                 途中経過・結果
 hmwr sprt show                        新しい順に10件
 hmwr sprt wait <名前>                 判定が出るまで待つ
