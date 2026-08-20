@@ -1,7 +1,21 @@
 {
   "permissions": {
     "allow": [
+      "Bash(hmwr --dry-run:*)",
+      "Bash(hmwr bench:*)",
+      "Bash(hmwr book stats:*)",
+      "Bash(hmwr ci wait:*)",
+      "Bash(hmwr doc lint:*)",
+      "Bash(hmwr env:*)",
+      "Bash(hmwr league summary:*)",
+      "Bash(hmwr net eval:*)",
+      "Bash(hmwr profile report:*)",
+      "Bash(hmwr sprt show:*)",
+      "Bash(hmwr sprt wait:*)",
+      "Bash(hmwr verify:*)",
+      "Bash(./bin/hmwr --dry-run:*)",
       "Bash(./bin/hmwr ci wait:*)",
+      "Bash(./bin/hmwr doc lint:*)",
       "Bash(./bin/hmwr sprt show:*)",
       "Bash(./bin/hmwr sprt wait:*)",
       "Bash(awk *)",
@@ -11,6 +25,38 @@
       "Bash(cargo fmt:*)",
       "Bash(cargo run --release -p himawari-tools --bin verify:*)",
       "Bash(cargo test:*)"
+    ],
+    "ask": [
+      "Bash(git push --force:*)",
+      "Bash(git push -f:*)",
+      "Bash(git filter-branch:*)",
+      "Bash(rm -r data:*)",
+      "Bash(rm -rf data:*)",
+      "Edit(Cargo.toml)",
+      "Write(Cargo.toml)"
+    ],
+    "deny": [
+      "Bash(git push origin main:*)"
+    ]
+  },
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cargo fmt --check || { echo 'cargo fmt が通っていない。cargo fmt を実行してからコミットする（CLAUDE.md「コミット規律」）' >&2; exit 2; }",
+            "statusMessage": "rustfmtを検査中",
+            "timeout": 60
+          },
+          {
+            "type": "command",
+            "command": "git log origin/main..HEAD --format=%B 2>/dev/null | grep -qE '\\([^()]*\\(' && { echo 'このブランチのコミット本文に入れ子の半角括弧がある。release-pleaseのパーサが失敗し、その回のリリースが黙って止まる。git commit --amend で直す（CLAUDE.md「コミット規律」）' >&2; exit 2; } || true",
+            "statusMessage": "コミット本文を検査中",
+            "timeout": 30
+          }
+        ]
+      }
     ]
   }
 }
