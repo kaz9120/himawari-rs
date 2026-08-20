@@ -108,6 +108,19 @@ def test_log_path_validates_name():
         paths.log("sprt", "../escape")
 
 
+def test_tools_resolve_the_repository_root():
+    """解析ツールの出力先が中途半端な場所へ行かない。
+
+    パッケージの位置からルートを数えているので、ファイルを移すと壊れる。
+    実際に一度壊して hmwr/data/ の下へ書こうとしたので、ここで固定する。
+    """
+    from hmwr.tools import floodgate
+
+    parsed = floodgate.build_parser(paths.REPO).parse_args([])
+    assert parsed.out == str(paths.REPO / "data" / "raw" / "floodgate")
+    assert "hmwr/data" not in parsed.out
+
+
 def test_rel_strips_repo_prefix():
     assert paths.rel(paths.BIN / "x") == "data/bin/x"
     assert paths.rel("/elsewhere/x") == "/elsewhere/x"
@@ -332,15 +345,32 @@ def test_net_shapes_rejects_a_malformed_spec(capsys):
     assert "構成の書き方が違う" in capsys.readouterr().err
 
 
-def test_net_release_is_dry_by_default(capsys):
+def test_net_release_needs_an_existing_file(capsys):
+    assert cli.main(["--dry-run", "net", "release", "nope.hmwr", "5"]) == proc.RUNTIME
+    assert "ネットファイルがない" in capsys.readouterr().err
+
+
+def test_net_release_rejects_a_bad_version(capsys):
+    assert cli.main(["--dry-run", "net", "release", "Cargo.toml", "0"]) == proc.USAGE
+
+
+def test_book_release_checks_the_format(capsys, tmp_path):
+    """定跡の形式を確かめてから配る。"""
+    db = tmp_path / "x.db"
+    db.write_text("これは定跡ではない\n", encoding="utf-8")
+    code = cli.main(["--dry-run", "book", "release", str(db), "1"])
+    assert code == proc.RUNTIME
+    assert "定跡の形式が違う" in capsys.readouterr().err
+
+
+def test_book_release_is_dry_by_default(capsys, tmp_path):
     """外から見える操作は既定で実行しない。"""
-    _, lines = dry(capsys, ["net", "release", "x.hmwr", "5"])
-    assert "--apply" not in lines[0]
-
-
-def test_net_release_apply_is_explicit(capsys):
-    _, lines = dry(capsys, ["net", "release", "x.hmwr", "5", "--apply"])
-    assert lines[0].endswith("--apply")
+    db = tmp_path / "main.db"
+    db.write_text("#YANEURAOU-DB2016 1.00\nsfen a\nsfen b\n", encoding="utf-8")
+    assert cli.main(["--dry-run", "book", "release", str(db), "1"]) == proc.OK
+    out = capsys.readouterr().out
+    assert "予行演習のため作成しない" in out
+    assert "| 局面数 | 2 |" in out
 
 
 # --- data --------------------------------------------------------------

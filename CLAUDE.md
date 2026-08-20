@@ -230,11 +230,8 @@ hmwr --dry-run <...>                走るはずのコマンドを表示する
 - **ログの置き場は書かない**。`data/logs/<領域>-<名前>.log` へ決まる
 - **終了コードは0=成功・1=判定結果・2=引数・3=実行時**（ADR-0122）
 
-使い方の詳細は himawari-cli スキルにある。**実装は `hmwr/` のPythonパッケージへ
-移行中である**。終われば `scripts/` に残るのは `setup.sh` だけになる。
-
-まだ移していない操作は直接叩く。`floodgate-cycle.sh`・`release-book.sh`・
-`league`・`profile` である。
+使い方の詳細は himawari-cli スキルにある。実装は `hmwr/` のPythonパッケージに
+あり、`scripts/` に残るのは環境構築の `setup.sh` だけである。
 
 ## ビルド
 

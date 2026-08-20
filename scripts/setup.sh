@@ -6,11 +6,18 @@
 # gh release download で取る（README.md 参照）。
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=./env.sh
-source "${SCRIPT_DIR}/env.sh"
-
+# **このスクリプトは自己完結させる。** パスを通す前に走る唯一のものなので、
+# hmwr コマンドにも共通のシェル関数にも依存できない。
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+RUSTFLAGS_NATIVE="-C target-cpu=native"
 SKIP_PYTHON="${SKIP_PYTHON:-0}"
+
+log_step() { printf '\n=== %s ===\n' "$1"; }
+log_info() { printf '%s\n' "$1"; }
+die() {
+	printf 'エラー: %s\n' "$1" >&2
+	exit 3
+}
 
 usage() {
 	cat <<'USAGE'

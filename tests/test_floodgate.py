@@ -1,12 +1,10 @@
-"""scripts/floodgate-fetch.py のうち、ネットワークに触らない部分を検証する。
+"""実戦棋譜の回収のうち、ネットワークに触らない部分を検証する。
 
 対局者ページからCSAのURLを取り出す処理は、wdoorへ問い合わせずに
 確かめられる。取得そのものはこのテストでは走らせない。
 """
 
-from conftest import load_module
-
-fetch = load_module("floodgate_fetch", "floodgate-fetch.py")
+from hmwr.tools import floodgate as fetch
 
 PAGE_URL = "https://wdoor.c.u-tokyo.ac.jp/shogi/x/2026/player/Himawari+6fd5a66.html"
 

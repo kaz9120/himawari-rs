@@ -8,9 +8,13 @@ from __future__ import annotations
 
 import argparse
 import re
+import shutil
+import tempfile
 from pathlib import Path
 
-from .. import config, paths, proc
+from .. import paths, proc
+from .. import release as release_mod
+from ..tools import ft_reorder
 
 ARCH_RE = re.compile(r"^\d+x\d+(x\d+){0,2}$")
 TRAINER = "training/train.py"
@@ -97,6 +101,19 @@ def add_parser(sub: argparse._SubParsersAction) -> None:
     t.add_argument("--valid", metavar="PSV", help="検証集合。複数はコンマ区切り")
     t.add_argument("--device", default="cpu", metavar="名前", help="cpu か mps")
     t.set_defaults(func=evaluate)
+
+    t = ss.add_parser(
+        "reorder",
+        help="活性ダンプからFT出力次元の並べ替えを決める",
+        description="第1層は4列チャンクのうち全ゼロのものを飛ばす。"
+        "飛ばせる数は次元の並び順で変わるので、ゼロが同時に起きる次元を"
+        "同じチャンクへ寄せる。評価値はビット一致したまま速度だけが上がる。",
+    )
+    t.add_argument("dump", metavar="ダンプ", help="活性ダンプ（*.bin）")
+    t.add_argument("activations", type=int, metavar="次元", help="片視点の活性次元")
+    t.add_argument("--out", metavar="ファイル", help="並べ替えの出力先")
+    t.add_argument("--perm", metavar="ファイル", help="既存の並べ替えを当てて評価する")
+    t.set_defaults(func=reorder)
 
     t = ss.add_parser(
         "release",
@@ -360,10 +377,93 @@ def _last_loss(output: str) -> str | None:
 # --- release -----------------------------------------------------------
 
 
+def reorder(args: argparse.Namespace) -> int:
+    """活性ダンプから並べ替えを決める。"""
+    if args.dry_run:
+        print(f"[dry-run] 並べ替えを決める: {args.dump}（活性 {args.activations}）")
+        return proc.OK
+    if not Path(args.dump).is_file():
+        raise proc.Fail(f"活性ダンプがない: {args.dump}")
+    argv = [args.dump, str(args.activations)]
+    if args.out:
+        argv += ["--out", args.out]
+    if args.perm:
+        argv += ["--perm", args.perm]
+    return ft_reorder.main(argv)
+
+
+# 評価関数ファイルの形式（ADR-0037）。版によって次元の数が変わる
+NDIMS_BY_VERSION = {2: 3, 3: 4, 5: 4, 7: 4, 9: 4, 4: 5, 6: 5, 8: 5, 10: 5}
+
+
+def read_lineage(path: Path) -> str:
+    """評価関数ファイルから学習来歴を読む。
+
+    どのデータでどう学習したネットかを、配布物の説明に必ず載せる。
+    ファイル自身が持っているので、手で書き写さない。
+    """
+    raw = path.read_bytes()
+    version = int.from_bytes(raw[8:12], "little")
+    ndims = NDIMS_BY_VERSION.get(version)
+    if ndims is None:
+        raise proc.Fail(f"未対応のフォーマット版: {version}（Himawari NNUE形式か確かめる）")
+    length_at = 12 + ndims * 4
+    length = int.from_bytes(raw[length_at : length_at + 4], "little")
+    if not 0 < length <= 4096:
+        raise proc.Fail("学習来歴の長さを読めない（Himawari NNUE形式か確かめる）")
+    start = length_at + 4
+    return raw[start : start + length].decode("utf-8", errors="replace")
+
+
 def release(args: argparse.Namespace) -> int:
-    argv = [proc.script("release-net.sh"), args.file, str(args.version)]
+    """学習済みネットをGitHub Releaseとして配る。
+
+    ネットはリポジトリで管理しないため、学習を回したマシンから直接作る。
+    タグは net-v<番号> で、エンジン本体とは別系統になる。
+    """
+    path = Path(args.file)
+    if not path.is_file():
+        raise proc.Fail(f"ネットファイルがない: {path}")
+    release_mod.check_version(args.version)
+
+    tag = f"net-v{args.version}"
+    release_mod.check_prereqs(tag, dry_run=args.dry_run)
+
+    lineage = read_lineage(path)
+    asset_name = path.name.removesuffix(".best")
+    size = release_mod.file_size(path)
+
+    notes = [
+        "## 学習来歴", "", "```", lineage, "```", "",
+        "## ファイル", "",
+        "| 項目 | 値 |", "|---|---|",
+        f"| アセット | `{asset_name}` |",
+        f"| サイズ | {size} |",
+        "| 形式 | Himawari NNUE |",
+    ]
     if args.notes:
-        argv.append(args.notes)
-    if args.apply:
-        argv.append("--apply")
-    return proc.run(argv, dry_run=args.dry_run)
+        notes += ["", "## 補足", "", args.notes]
+    notes += [
+        "", "## 使い方", "", "```",
+        f"gh release download {tag} -p '{asset_name}' -D data/nets/",
+        "```", "",
+        "USIオプション `EvalFile` にパスを指定する。",
+    ]
+
+    print(f"タグ    : {tag}")
+    print(f"アセット: {asset_name}（{size}）")
+    print(f"学習来歴: {lineage}")
+
+    with tempfile.TemporaryDirectory() as tmp:
+        # 配布名は .best を外したものにする。元のファイル名のままだと
+        # 利用者が「途中経過」と誤読する
+        asset = Path(tmp) / asset_name
+        shutil.copy2(path, asset)
+        return release_mod.create(
+            tag,
+            f"{tag}: {asset_name}",
+            "\n".join(notes) + "\n",
+            [asset],
+            apply=args.apply,
+            dry_run=args.dry_run,
+        )

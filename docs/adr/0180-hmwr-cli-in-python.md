@@ -121,29 +121,37 @@ ADRの番号はソースのdocstringとコメントに置く。テストで、�
 削除する。**削除まで含めて1つのPRにするのは、消し忘れが「入口が2つ」を
 生むからである。**
 
-| PR | 範囲 | 消えるもの |
+| PR | 範囲 | 消えたもの |
 |---|---|---|
 | A | 骨格・体系・パス通し | `scripts/hmwr` |
-| B | 対局ゲート | `sprt.sh`・`sprt-run.sh`・`sprt-net.sh`・`sprt-detach.py`・`watch-sprt.sh` |
+| B | 対局ゲート | `sprt.sh`・`sprt-run.sh`・`sprt-net.sh`・`sprt-detach.py`・`sprt-summary.py`・`watch-sprt.sh` |
 | C | ビルド | `build-pair.sh`・`build-pgo.sh`・`build-shapes.sh` |
 | D | 学習とデータ | `train-net.sh`・`train-shapes.sh`・`eval-net.sh`・`quiet.sh`・`fetch-dataset.sh` |
 | E | 配布・棋譜・集計 | `release-*.sh`・`floodgate-cycle.sh`・`watch-ci.sh`・`env.sh` |
 
 `setup.sh` は残す。パスを通す前に走らせるものなので、CLIの中に置けない。
+env.sh に依存していた部分は自前のログ関数へ置き換え、自己完結させた。
+
+**移行は2026-08-20に完了した**。`scripts/` に残るのは `setup.sh` の1本になった。
+2,153行のshellが消え、Pythonの1,143行は `hmwr/tools/` へ移っている。
 
 ## Consequences
 
 - 入口が1つになる。移行が終われば `scripts/` に残るのは `setup.sh` だけになる
 - `hmwr` としてどこからでも呼べる。`cargo run --release -p ... --bin ... --` を
   打つ必要がなくなる
-- 移行中は `hmwr` が既存shellを呼ぶ期間が続く。**PRごとに、移した領域の
-  shellを同じPRで消す**ことで、二重に存在する時間を領域単位に閉じ込める
-- `env.sh` は最後まで残る。shellのスクリプトが値を読んでいるためで、
-  移行中は `config.py` がそこから値を取り込む。**値を二重に持たない**
+- 移行中は `hmwr` が既存shellを呼ぶ期間が続いた。**PRごとに、移した領域の
+  shellを同じPRで消す**ことで、二重に存在する時間を領域単位に閉じ込めた
+- `env.sh` は最後に消した。移行中は `config.py` がそこから値を読み、
+  値を二重に持たない形を保った。今は `config.py` が既定を持つ
+- **移すたびに実際に動かして確かめた**。dry-runだけでは見つからない誤りが
+  3件出ている。評価関数比較でバイナリの指定が欠けたまま20回再試行したこと、
+  検証損失の測定で失敗の原因を捨てていたこと、解析ツールを移した後に出力先が
+  `hmwr/data/` を指したことである。いずれも動かして初めて見えた
 - Pythonの依存は標準ライブラリだけである。CIで `pytest tests` が引数処理を
   検査する
 - ADR-0179はsupersededにする。委譲方式の判断そのものは残す。**「既存を
   壊さない」を優先すると統一が先送りになる**という記録に意味がある
 - 見直しのトリガーは、CLIの起動が体感で遅くなることである。Pythonの起動は
   50ms前後で、日常の入口として問題にならない。設定の読み込みで外部プロセスを
-  呼ぶ箇所（移行中の `env.sh`）が増えたら測り直す
+  呼ぶ箇所が増えたら測り直す
