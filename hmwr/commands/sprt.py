@@ -19,6 +19,7 @@ import time
 from pathlib import Path
 
 from .. import config, paths, proc, sprt_log
+from . import build
 
 # 異常終了からの再開を数える上限。判定に至らないまま無限に試し続けない
 MAX_RETRY = 20
@@ -125,10 +126,14 @@ def run(args: argparse.Namespace) -> int:
         print(f["result"].read_text(encoding="utf-8"), end="")
         return proc.OK
 
-    build = [proc.script("build-pair.sh"), args.name]
-    if args.baseline:
-        build.append(args.baseline)
-    proc.run(build, dry_run=args.dry_run)
+    code = build.make_pair(
+        args.name,
+        baseline=args.baseline or "origin/main",
+        dry_run=args.dry_run,
+    )
+    if code == proc.JUDGE:
+        # 2本が同一だった。対局しても差は出ない
+        return proc.JUDGE
 
     if args.verify and not _verified(args):
         return proc.JUDGE

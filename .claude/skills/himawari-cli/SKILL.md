@@ -72,6 +72,7 @@ hmwr build pair <名前>              比較用の2本を同条件で作る
 hmwr build pair <名前> --baseline v0.12.0
 hmwr build pgo                      配布・対局用の単体ビルド
 hmwr build engine --arch 512x16x64  構成を変えてビルドする
+hmwr build shapes 256x16 512x16x32  構成ごとにエンジンと評価ファイルを対で作る
 ```
 
 **比較用のペアにPGOを使わない**。両側を同条件（PGOなし）で作るほうが公平で、
@@ -125,7 +126,7 @@ PRを出す前に通す。CIが落ちてから直すより速い（ADR-0178）�
 
 | 操作 | コマンド |
 |---|---|
-| 構成ごとのビルドと学習 | `scripts/build-shapes.sh` / `scripts/train-shapes.sh` |
+| 構成ごとの小規模学習 | `scripts/train-shapes.sh` |
 | 実戦棋譜のサイクル | `scripts/floodgate-cycle.sh` |
 | 定跡の配布 | `scripts/release-book.sh` |
 | 総当たり戦 | `cargo run --release -p himawari-tools --bin league -- ...` |

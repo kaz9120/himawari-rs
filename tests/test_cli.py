@@ -125,10 +125,48 @@ def test_sprt_run_builds_verifies_then_starts(capsys):
     """順番を固定する。機能検証を飛ばせない形にすることが目的である。"""
     code, lines = dry(capsys, ["sprt", "run", "adr0180-x"])
     assert code == proc.OK
-    assert "build-pair.sh adr0180-x" in lines[0]
-    assert "--bin verify" in lines[1]
-    assert "新しいセッションで" in lines[3]
-    assert "sprt run adr0180-x --worker" in lines[3]
+    joined = "\n".join(lines)
+    # ビルド → 機能検証 → 起動 の順で並ぶ
+    build_at = next(i for i, x in enumerate(lines) if "cargo build" in x)
+    verify_at = next(i for i, x in enumerate(lines) if "--bin verify" in x)
+    start_at = next(i for i, x in enumerate(lines) if "--worker" in x)
+    assert build_at < verify_at < start_at
+    assert "git checkout origin/main -- crates/" in joined
+    assert "sprt run adr0180-x --worker" in lines[start_at]
+
+
+def test_build_pair_restores_the_working_tree(capsys):
+    """比較元を作った後、必ず作業木を戻す。"""
+    _, lines = dry(capsys, ["build", "pair", "adr0180-c"])
+    joined = "\n".join(lines)
+    assert "git checkout origin/main -- crates/" in joined
+    assert "git checkout HEAD -- crates/" in joined
+    assert lines[-1].endswith("git checkout HEAD -- crates/")
+
+
+def test_build_pair_uses_the_measurement_flags(capsys):
+    _, lines = dry(capsys, ["build", "pair", "adr0180-c"])
+    assert all("RUSTFLAGS=-C target-cpu=native" in x for x in lines if "cargo build" in x)
+
+
+def test_build_shapes_separates_target_directories(capsys):
+    """構成ごとに出力先を分ける。1つを使い回すと毎回全体が再コンパイルされる。"""
+    _, lines = dry(capsys, ["build", "shapes", "256x16", "512x16x32"])
+    assert any("CARGO_TARGET_DIR=target/shape/256x16" in x for x in lines)
+    assert any("CARGO_TARGET_DIR=target/shape/512x16x32" in x for x in lines)
+
+
+def test_build_shapes_rejects_a_malformed_spec(capsys):
+    assert cli.main(["--dry-run", "build", "shapes", "256"]) == proc.USAGE
+    assert "構成の書き方が違う" in capsys.readouterr().err
+
+
+def test_build_shapes_resizes_from_a_source_net(capsys):
+    _, lines = dry(capsys, ["build", "shapes", "256x16", "--from", "Cargo.toml"])
+    makenet = [x for x in lines if "release/makenet" in x][0]
+    assert "--resize Cargo.toml" in makenet
+    # --from を付けると既定の名前が変わる。元ネットごとの結果を混ぜない
+    assert "data/nets/exp-256x16.hmwr" in makenet
 
 
 def test_sprt_run_no_verify_skips_verification(capsys):
