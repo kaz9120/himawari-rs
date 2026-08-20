@@ -2,8 +2,8 @@
 # 開発環境の構築（Linux / WSL2）。
 #
 # 新しいマシンでこれを1本流せば、ビルド・SPRT・学習が動く状態になる。
-# 教師データと学習済みネットは別途 fetch-dataset.sh と
-# gh release download で取る（SETUP.md 参照）。
+# 教師データと学習済みネットは別途 hmwr data fetch と
+# gh release download で取る（README.md 参照）。
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
