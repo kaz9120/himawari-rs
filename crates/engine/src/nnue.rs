@@ -15,13 +15,16 @@ use crate::value::Value;
 // FT_OUT・L1_OUT・L2_OUT・L1_PAD・ARCH を定義する。
 include!(concat!(env!("OUT_DIR"), "/arch.rs"));
 
+/// 第1段の活性幅（片視点）。`FT_OUT` 次元のaccumulatorを2つに割って
+/// 要素ごとに掛ける（ADR-0171）。
+pub const STAGE1: usize = FT_OUT / 2;
+/// 第2段の活性幅（片視点）。第1段の出力を対で掛け、4駒の相互作用を
+/// 入れる（ADR-0183）。
+pub const STAGE2: usize = STAGE1 / 2;
+/// 連結ベクトルのうち片視点ぶんの幅。第1段と第2段を並べる。
+pub const HALF: usize = STAGE1 + STAGE2;
 /// 隠れ層の入力次元（FT両視点）。
-///
-/// 片視点は `FT_OUT` 次元のaccumulatorを2つに割って要素ごとに掛けるので、
-/// 出す活性は `FT_OUT / 2` 次元になる（ADR-0171）。両視点でその2倍。
-pub const CONCAT: usize = FT_OUT;
-/// 連結ベクトルのうち片視点ぶんの幅。
-pub const HALF: usize = CONCAT / 2;
+pub const CONCAT: usize = 2 * HALF;
 /// 評価値スケール（ADR-0036）。
 pub const FV_SCALE: i32 = 16;
 /// HalfKP特徴の総数。
@@ -352,6 +355,15 @@ pub(crate) fn pair_activation(a: i32, b: i32) -> u8 {
     ((i32::from(clip(a)) * i32::from(clip(b)) + 64) >> 7) as u8
 }
 
+/// 第1段の活性どうしを掛けて第2段の活性にする（ADR-0183）。
+///
+/// 入力は既にu8（0..127）なのでclipは要らない。縮尺は第1段と同じ手口で、
+/// 学習側が127/128を掛けて揃える。最大は `(126*126 + 64) >> 7 = 124`。
+#[inline]
+pub(crate) fn pair2_activation(a: u8, b: u8) -> u8 {
+    ((i32::from(a) * i32::from(b) + 64) >> 7) as u8
+}
+
 /// スカラー全計算の評価（手番視点、歩=90スケール）。
 /// 差分計算・SIMDの正解基準（ADR-0035, 0036）。
 pub fn evaluate_scalar(net: &NnueNetwork, pos: &Position) -> Value {
@@ -372,9 +384,15 @@ pub fn evaluate_scalar(net: &NnueNetwork, pos: &Position) -> Value {
                 *a += i32::from(net.ft_w[base + o]);
             }
         }
-        // accの前半と後半を対にして掛ける（ADR-0171）
-        for o in 0..HALF {
-            concat[half * HALF + o] = pair_activation(acc[o], acc[o + HALF]);
+        // 第1段: accの前半と後半を対にして掛ける（ADR-0171）
+        let base = half * HALF;
+        for o in 0..STAGE1 {
+            concat[base + o] = pair_activation(acc[o], acc[o + STAGE1]);
+        }
+        // 第2段: 第1段の出力を対にして掛け、4駒の相互作用を足す（ADR-0183）
+        for o in 0..STAGE2 {
+            concat[base + STAGE1 + o] =
+                pair2_activation(concat[base + o], concat[base + o + STAGE2]);
         }
     }
 

@@ -14,7 +14,7 @@
 //! （ADR-0127）と継続学習の構成合わせ（ADR-0130）、`--reorder` は第1層の
 //! 列駆動が飛ばせるチャンクを増やす並べ替え（ADR-0168）から呼ぶ。
 
-use himawari_engine::nnue::{CONCAT, FT_OUT, HALF, NnueNetwork};
+use himawari_engine::nnue::{CONCAT, FT_OUT, HALF, NnueNetwork, STAGE1, STAGE2};
 use himawari_engine::nnue_io::{load, load_resized, save};
 
 /// nn.bin（やねうら王形式）を読む。FT 256専用（ADR-0067）。
@@ -44,7 +44,11 @@ fn resize_net(path: &str) -> (NnueNetwork, String) {
     })
 }
 
-/// 置換を読む。1行1整数で、`0..FT_OUT` の順列であることを確かめる。
+/// 置換を読む。1行1整数で、`0..STAGE2` の順列であることを確かめる。
+///
+/// 単位は「第2段の対スロット」である（ADR-0183）。スロットkは活性の
+/// 3次元（第1段のkとk+STAGE2、第2段のk）とFTの4次元を束ねる。これより
+/// 細かい置換は第2段の掛かる相手を変え、評価値が壊れる。
 fn read_perm(path: &str) -> Vec<usize> {
     let text = std::fs::read_to_string(path).unwrap_or_else(|e| {
         eprintln!("開けません: {path}: {e}");
@@ -59,16 +63,16 @@ fn read_perm(path: &str) -> Vec<usize> {
             })
         })
         .collect();
-    if perm.len() != HALF {
+    if perm.len() != STAGE2 {
         eprintln!(
-            "置換の長さが違う: {} 個（片視点の活性次元={HALF}）",
+            "置換の長さが違う: {} 個（第2段の対スロット数={STAGE2}。ADR-0183）",
             perm.len()
         );
         std::process::exit(1);
     }
-    let mut seen = vec![false; HALF];
+    let mut seen = vec![false; STAGE2];
     for &p in &perm {
-        if p >= HALF || seen[p] {
+        if p >= STAGE2 || seen[p] {
             eprintln!("置換が順列になっていない: {p}");
             std::process::exit(1);
         }
@@ -77,38 +81,45 @@ fn read_perm(path: &str) -> Vec<usize> {
     perm
 }
 
-/// 活性の次元を並べ替える（ADR-0168）。
+/// 対スロットを並べ替える（ADR-0168・0183）。
 ///
-/// 新しい位置jへ元の次元 `perm[j]` を移す。`ft_b`・`ft_w` の列・`w2` の
-/// 入力列（両視点）へ同じ置換を入れるので、**積和の項の集合は変わらず
-/// 評価値はビット一致する。** ゼロになりやすい次元を同じ4列チャンクへ
-/// 寄せると、第1層の列駆動が飛ばせるチャンクが増える。
+/// 新しいスロットjへ元のスロット `perm[j]` を移す。スロットkは、
+/// FTの4次元（k、k+STAGE2、k+STAGE1、k+STAGE1+STAGE2）、活性の
+/// 3次元（第1段のkとk+STAGE2、第2段のSTAGE1+k）を束ねる。`ft_b`・
+/// `ft_w` の列・`w2` の入力列（両視点）へ同じ置換を入れるので、
+/// **積和の項の集合は変わらず評価値はビット一致する。**
 ///
-/// **置換の単位は活性であって、FTの出力次元ではない**（ADR-0171）。
-/// 活性oはFTの次元oと o+`HALF` の積なので、FT側は対で動かす。片方だけ
-/// 動かすと別の相手と掛かり、評価値が変わる。
+/// スロットより細かく動かすと、第1段の掛かる相手（+STAGE1）か
+/// 第2段の掛かる相手（+STAGE2）が変わり、評価値が壊れる。
 fn apply_perm(net: NnueNetwork, perm: &[usize]) -> NnueNetwork {
+    /// スロットkが束ねるFT次元。
+    const FT_OFFS: [usize; 4] = [0, STAGE2, STAGE1, STAGE1 + STAGE2];
     let mut out = net;
     let mut ft_b = vec![0i16; out.ft_b.len()];
     for (j, &p) in perm.iter().enumerate() {
-        ft_b[j] = out.ft_b[p];
-        ft_b[j + HALF] = out.ft_b[p + HALF];
+        for off in FT_OFFS {
+            ft_b[j + off] = out.ft_b[p + off];
+        }
     }
     let mut ft_w = vec![0 as himawari_engine::nnue::FtWeight; out.ft_w.len()];
     for feature in 0..out.ft_w.len() / FT_OUT {
         let base = feature * FT_OUT;
         for (j, &p) in perm.iter().enumerate() {
-            ft_w[base + j] = out.ft_w[base + p];
-            ft_w[base + j + HALF] = out.ft_w[base + p + HALF];
+            for off in FT_OFFS {
+                ft_w[base + j + off] = out.ft_w[base + p + off];
+            }
         }
     }
     let mut w2 = vec![0i8; out.w2.len()];
     for row in 0..out.w2.len() / CONCAT {
-        let base = row * CONCAT;
-        for (j, &p) in perm.iter().enumerate() {
-            // 視点0と視点1へ同じ置換を入れる
-            w2[base + j] = out.w2[base + p];
-            w2[base + HALF + j] = out.w2[base + HALF + p];
+        for view in 0..2 {
+            let base = row * CONCAT + view * HALF;
+            for (j, &p) in perm.iter().enumerate() {
+                // 第1段の対と第2段の列を同じ置換で動かす
+                w2[base + j] = out.w2[base + p];
+                w2[base + j + STAGE2] = out.w2[base + p + STAGE2];
+                w2[base + STAGE1 + j] = out.w2[base + STAGE1 + p];
+            }
         }
     }
     out.ft_b = ft_b;
@@ -236,9 +247,20 @@ mod tests {
     }
 
     /// 4個ずつずらす置換。並びが変わればよいので中身は問わない。
-    /// 長さは片視点の活性次元（ADR-0171で `HALF` になった）。
+    /// 長さは第2段の対スロット数（ADR-0183で `STAGE2` になった）。
     fn rotate_perm() -> Vec<usize> {
-        (0..HALF).map(|i| (i + 4) % HALF).collect()
+        (0..STAGE2).map(|i| (i + 4) % STAGE2).collect()
+    }
+
+    /// スロット置換を活性次元の置換へ広げる。テストの照合用。
+    fn expand_to_half(perm: &[usize]) -> Vec<usize> {
+        let mut v = vec![0usize; HALF];
+        for (j, &p) in perm.iter().enumerate() {
+            v[j] = p;
+            v[j + STAGE2] = p + STAGE2;
+            v[STAGE1 + j] = STAGE1 + p;
+        }
+        v
     }
 
     /// 並べ替えたネットは、同じ置換を当てた活性に対して同じ評価値を返す
@@ -260,7 +282,7 @@ mod tests {
             };
         }
         let mut moved = [0u8; CONCAT];
-        for (j, &p) in perm.iter().enumerate() {
+        for (j, &p) in expand_to_half(&perm).iter().enumerate() {
             moved[j] = concat[p];
             moved[HALF + j] = concat[HALF + p];
         }
@@ -288,14 +310,16 @@ mod tests {
         ft_refresh(&mut after, &moved_net.ft_b, &moved_net.ft_w, &features);
 
         for (j, &p) in perm.iter().enumerate() {
-            assert_eq!(after[j], before[p], "次元{j}が元の{p}になっていない");
-            assert_eq!(
-                after[j + HALF],
-                before[p + HALF],
-                "対の相手（次元{}）が元の{}になっていない",
-                j + HALF,
-                p + HALF
-            );
+            // スロットが束ねるFTの4次元がそろって動くこと
+            for off in [0, STAGE2, STAGE1, STAGE1 + STAGE2] {
+                assert_eq!(
+                    after[j + off],
+                    before[p + off],
+                    "次元{}が元の{}になっていない",
+                    j + off,
+                    p + off
+                );
+            }
         }
     }
 }

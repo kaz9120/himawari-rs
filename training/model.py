@@ -33,10 +33,14 @@ EFFECT_MLP_HIDDEN = 256
 EFFECT_SCALE = 8.0
 ARCH = himawari.ARCH
 FE_END = FT_IN // 81
-# 第1層の入力幅。片視点のFT出力を2つに割って掛けるので、視点あたり
-# FT_OUT//2 になる（ADR-0171）。Rust側の定数をそのまま使う
+# 第1層の入力幅。片視点は、FT出力を2つに割って掛けた第1段 FT_OUT//2 と、
+# その出力を対で掛けた第2段 FT_OUT//4 を並べる（ADR-0171・0183）。
+# Rust側の定数をそのまま使う
 CONCAT = himawari.CONCAT
 HALF = CONCAT // 2
+STAGE1 = FT_OUT // 2
+STAGE2 = STAGE1 // 2
+assert HALF == STAGE1 + STAGE2, (HALF, STAGE1, STAGE2)
 # 積の値域合わせ（ADR-0171）。推論側は clip(a)*clip(b) >> 7 で、最大が
 # 127×127/128 = 126 にしかならない。学習側にも同じ127/128を掛けておくと、
 # 活性127・隠れ層64という量子化の係数を1つも変えずに済む
@@ -152,13 +156,16 @@ class NnueModel(nn.Module):
 
     @staticmethod
     def pair_activation(z):
-        """FT出力の前半と後半を要素ごとに掛ける（ADR-0171）。
+        """FT出力の積2段で片視点の活性を作る（ADR-0171・0183）。
 
-        駒対の相互作用を低ランクで持つための積で、展開すると
-        `Σ_{i,m} W_ji W'_jm x_i x_m` になる。入力の直積を作らずに済む。
+        第1段はFT出力の前半と後半の要素積で、駒対の相互作用を低ランクで
+        持つ。第2段は第1段の出力どうしの要素積で、4駒の相互作用が入る。
+        縮尺の127/128は推論側の `>> 7` と揃えるための係数（各段に掛かる）。
         """
-        a, b = z[:, :HALF].clamp(0.0, 1.0), z[:, HALF:].clamp(0.0, 1.0)
-        return a * b * PAIR_SCALE
+        a, b = z[:, :STAGE1].clamp(0.0, 1.0), z[:, STAGE1:].clamp(0.0, 1.0)
+        y = a * b * PAIR_SCALE
+        z2 = y[:, :STAGE2] * y[:, STAGE2:] * PAIR_SCALE
+        return torch.cat([y, z2], dim=1)
 
     def transform_both(self, stm_idx, stm_off, opp_idx, opp_off):
         """FT出力を2視点ぶん連結して返す。補助ヘッドもここから生やす。"""

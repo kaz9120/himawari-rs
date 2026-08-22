@@ -6,9 +6,11 @@
 
 use std::simd::Simd;
 use std::simd::cmp::SimdOrd;
-use std::simd::num::SimdInt;
+use std::simd::num::{SimdInt, SimdUint};
 
-use crate::nnue::{CONCAT, FT_OUT, HALF, L1_OUT, L1_PAD, L2_OUT, L2_PAD, L3_OUT, NnueNetwork};
+use crate::nnue::{
+    CONCAT, FT_OUT, HALF, L1_OUT, L1_PAD, L2_OUT, L2_PAD, L3_OUT, NnueNetwork, STAGE1, STAGE2,
+};
 use crate::value::Value;
 
 const I16_LANES: usize = 16;
@@ -224,17 +226,20 @@ pub fn ft_update(acc: &mut [i16; FT_OUT], w: &[i8], adds: &[u32], subs: &[u32]) 
     }
 }
 
-/// i16アキュムレータの前半と後半を対にして掛け、u8の活性へ（ADR-0171）。
+/// i16アキュムレータから片視点の活性 `HALF` 個を作る（ADR-0171・0183）。
 ///
-/// 出すのは `HALF` 個で、`out[o] = (clip(acc[o]) * clip(acc[o + HALF]) + 64) >> 7`
-/// になる。スカラー基準は `nnue::pair_activation`。clipで0..127に収まるので
-/// 積に64を足しても16bitに収まり、7bit右シフトで0..126のu8になる。
+/// 第1段は `out[o] = (clip(acc[o]) * clip(acc[o + STAGE1]) + 64) >> 7` で
+/// `STAGE1` 個。第2段は第1段の出力を対にして掛け
+/// `out[STAGE1 + o] = (out[o] * out[o + STAGE2] + 64) >> 7` で `STAGE2` 個。
+/// スカラー基準は `nnue::pair_activation` と `nnue::pair2_activation`。
+/// clipで0..127に収まるので積に64を足しても16bitに収まり、7bit右シフトで
+/// u8になる。
 pub fn clip_to_u8(acc: &[i16; FT_OUT], out: &mut [u8]) {
     debug_assert_eq!(out.len(), HALF);
     let zero = Simd::<i16, I16_LANES>::splat(0);
     let max = Simd::<i16, I16_LANES>::splat(127);
-    let (lo, hi) = acc.split_at(HALF);
-    for ((oc, lc), hc) in out
+    let (lo, hi) = acc.split_at(STAGE1);
+    for ((oc, lc), hc) in out[..STAGE1]
         .as_chunks_mut::<I16_LANES>()
         .0
         .iter_mut()
@@ -243,6 +248,23 @@ pub fn clip_to_u8(acc: &[i16; FT_OUT], out: &mut [u8]) {
     {
         let a = Simd::from_array(*lc).simd_clamp(zero, max);
         let b = Simd::from_array(*hc).simd_clamp(zero, max);
+        *oc = ((a * b + Simd::splat(64)) >> Simd::splat(7))
+            .cast::<u8>()
+            .to_array();
+    }
+    // 第2段（ADR-0183）。入力は書いたばかりの第1段で、u16へ広げて掛ける
+    const U8_LANES: usize = 16;
+    let (stage1, stage2) = out.split_at_mut(STAGE1);
+    let (a_half, b_half) = stage1.split_at(STAGE2);
+    for ((oc, ac), bc) in stage2
+        .as_chunks_mut::<U8_LANES>()
+        .0
+        .iter_mut()
+        .zip(a_half.as_chunks::<U8_LANES>().0)
+        .zip(b_half.as_chunks::<U8_LANES>().0)
+    {
+        let a: Simd<u16, U8_LANES> = Simd::<u8, U8_LANES>::from_array(*ac).cast();
+        let b: Simd<u16, U8_LANES> = Simd::<u8, U8_LANES>::from_array(*bc).cast();
         *oc = ((a * b + Simd::splat(64)) >> Simd::splat(7))
             .cast::<u8>()
             .to_array();
@@ -788,14 +810,19 @@ mod tests {
         }
         let mut out = [0u8; HALF];
         clip_to_u8(&acc, &mut out);
-        for o in 0..HALF {
-            let want = crate::nnue::pair_activation(i32::from(acc[o]), i32::from(acc[o + HALF]));
-            assert_eq!(out[o], want, "o={o} a={} b={}", acc[o], acc[o + HALF]);
+        for o in 0..STAGE1 {
+            let want = crate::nnue::pair_activation(i32::from(acc[o]), i32::from(acc[o + STAGE1]));
+            assert_eq!(out[o], want, "o={o} a={} b={}", acc[o], acc[o + STAGE1]);
         }
-        // 最大値は127×127>>7 = 126で、127には届かない
+        for o in 0..STAGE2 {
+            let want = crate::nnue::pair2_activation(out[o], out[o + STAGE2]);
+            assert_eq!(out[STAGE1 + o], want, "第2段 o={o}");
+        }
+        // 最大値は第1段が127×127>>7 = 126、第2段が126×126の丸めで124
         let full = [127i16; FT_OUT];
         clip_to_u8(&full, &mut out);
-        assert!(out.iter().all(|&x| x == 126));
+        assert!(out[..STAGE1].iter().all(|&x| x == 126));
+        assert!(out[STAGE1..].iter().all(|&x| x == 124));
     }
 
     /// 両視点1パスが片視点2回とビット一致すること（ADR-0151群N）。
