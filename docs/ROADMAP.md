@@ -27,8 +27,8 @@
 ### 制約
 
 - hao_depth9は381ファイル・約30.0億局面すべてを取得済み。教師の増量の
-  残り手は、別系統の未取得の公開データ（ライセンス確認が要る）と自前生成
-  （[ADR-0144](adr/0144-selfplay-teacher-loop.md)）の2つになる
+  残り手は、別系統の公開データ（候補表の学習に取得候補を調査済み）と
+  自前生成（[ADR-0144](adr/0144-selfplay-teacher-loop.md)）の2つになる
 - 学習の所要が規模で効く。RAM 48GBに対し29.9億のpsvは111GBあり、
   ページキャッシュに載らない。処理速度は19.9億の222k局面/秒から96k局面/秒へ落ちる
 - 持将棋のルールが2028年の選手権から27点法→24点法へ変わる見込み
@@ -135,7 +135,7 @@ SPSAの一括チューニングでこのずれを回収する（[ADR-0143](adr/0
 | PSQT直結パス（material head） | FTから評価へのskip。序盤の材料感を安定化する | loss+SPRT |
 | 手番特徴の明示化 | HalfKPは手番を視点でしか持たない。tempo項を学習する | loss |
 | 合法手集合の予測 | [ADR-0133](adr/0133-effect-pretraining.md)の次の的。遮りに加えてピンと王手放置が絡むので非加法性が強く、2187次元と的も大きい。局面生成器がそのまま使える。利きが−0.001止まりだった理由が「的が細い」なら、ここで差が出る | probing+SPRT |
-| 入玉局面の評価精度を測る | 教師データ（hao_depth9）は他エンジン由来で入玉が薄い。ただし実戦で問題が出た証拠はまだない | 実測 |
+| 入玉局面の評価精度を測る | 教師データ（hao_depth9）は他エンジン由来で入玉が薄い。ただし実戦で問題が出た証拠はまだない。薄さを補う公開データは見つけてある（学習表の「入玉教師データの混合」） | 実測 |
 
 ### 学習
 
@@ -148,7 +148,9 @@ SPSAの一括チューニングでこのずれを回収する（[ADR-0143](adr/0
 | 詰みスコアの扱い | ±30000近傍のclamp・除外・専用ターゲット。現状は8.5%を素通ししている | loss+SPRT |
 | EMA重み平均（SWA） | 終盤の重み振動を平均化する。ほぼ無料で数Elo | SPRT |
 | 教師との指し手一致率の計測 | PSVのmoveフィールドを使う。lossと別の健全性指標になる | 指標 |
-| 複数データセット混合 | hao系＋水匠系など。分布の偏りを緩和する（ライセンス確認） | SPRT |
+| tanuki- 2024教師データの取得 | [nodchip/tanuki-.nnue-pytorch-2024-07-30.1](https://huggingface.co/datasets/nodchip/tanuki-.nnue-pytorch-2024-07-30.1)。**MITライセンス**、PackedSfenValue、7z分割で計320GB、tanuki-系エンジンのdepth 9生成。未シャッフル・非静止なので、hao_depth9と同じ前処理（シャッフル→qsearch静止化）を通す。公開データでの大規模増量の本命 | SPRT |
+| 入玉教師データの混合 | [nodchip/shogi_suisho5_depth9_entering_king](https://huggingface.co/datasets/nodchip/shogi_suisho5_depth9_entering_king)。**MITライセンス**、約5億局面・20GB。floodgateの2015〜2024年から入玉局面を集め、Suisho5のdepth 9でラベル。教師の入玉の薄さ（評価関数表の「入玉局面の評価精度を測る」）へ直接効き、24点法対応の土台にもなる | SPRT |
+| Kanade蒸留教師データの評価 | [penguinkumimanu/sample_Knowledge_distilled_dataset_by_Kanade](https://huggingface.co/datasets/penguinkumimanu/sample_Knowledge_distilled_dataset_by_Kanade)。suisho5_depth9の局面をDL系エンジンKanadeで再ラベルした約1.1億局面・13GB。qsearch適用済みpsv版があり、「同じ局面でラベルの質だけ変える」実験台になる。**ライセンスの記載がなく、使う前に作者への確認が要る** | loss+SPRT |
 | 序中終盤のサンプリング重み | gamePly別の採択率を調整する | loss+SPRT |
 | ハイパラのSPRT運用 | lr・λ・epochsを1変更=1SPRTで積む | SPRT |
 
