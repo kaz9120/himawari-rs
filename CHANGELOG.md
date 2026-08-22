@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.42.0](https://github.com/kaz9120/himawari-rs/compare/v0.41.0...v0.42.0) (2026-08-22)
+
+
+### 棋力向上
+
+* SPSA第1群の探索定数24項目を焼き込む（+32.0 Elo、ADR-0143） ([#366](https://github.com/kaz9120/himawari-rs/issues/366)) ([6668a54](https://github.com/kaz9120/himawari-rs/commit/6668a543b9d6504369ecffdda2bd5770b039f9e7))
+
+
+### その他の変更
+
+* EvalFile未設定のisreadyを起動エラーで止める（ADR-0037） ([#364](https://github.com/kaz9120/himawari-rs/issues/364)) ([4e31d8c](https://github.com/kaz9120/himawari-rs/commit/4e31d8cedfb30c9353c35ba21c07cdb17d556a30))
+
 ## [0.41.0](https://github.com/kaz9120/himawari-rs/compare/v0.40.0...v0.41.0) (2026-08-19)
 
 
