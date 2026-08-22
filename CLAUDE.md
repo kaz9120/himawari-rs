@@ -48,9 +48,10 @@ himawari-rsで作業するエージェントの規約。詳細は各文書へリ
 
 ROADMAPは3節で構成する。現行構成・次の方向・候補。過去の経緯は書かない。
 
-READMEには変わり続ける事実を書かない（[ADR-0182](docs/adr/0182-readme-audience.md)）。
-棋力はROADMAP、配布物の版はReleases、既定のネットワーク次元は
-`crates/engine/build.rs` が正になる。ADRの番号も書かない。
+READMEとROADMAPには変わり続ける事実を書かない（[ADR-0182](docs/adr/0182-readme-audience.md)）。
+棋力はfloodgateの対局者ページ（URLは `hmwr/tools/floodgate.py`）が正になる。
+現行の評価関数は `hmwr/config.py`、配布物の版はReleases、既定のネットワーク
+次元は `crates/engine/build.rs` が持つ。READMEにはADRの番号も書かない。
 
 手順を書いたら実行して確かめる。実装が進んでも文書が追わないと、読み手を
 誤った場所へ連れて行く。数値を書くときも同じで、出典（ネットのメタデータ、
