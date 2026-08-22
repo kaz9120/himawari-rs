@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.41.1](https://github.com/kaz9120/himawari-rs/compare/v0.41.0...v0.41.1) (2026-08-22)
+
+
+### その他の変更
+
+* EvalFile未設定のisreadyを起動エラーで止める（ADR-0037） ([#364](https://github.com/kaz9120/himawari-rs/issues/364)) ([4e31d8c](https://github.com/kaz9120/himawari-rs/commit/4e31d8cedfb30c9353c35ba21c07cdb17d556a30))
+
 ## [0.41.0](https://github.com/kaz9120/himawari-rs/compare/v0.40.0...v0.41.0) (2026-08-19)
 
 
