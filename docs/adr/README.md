@@ -258,7 +258,7 @@
 | [0152](0152-floodgate-cycle.md) | floodgateの棋譜を定期回収し、分析と定跡追加を決定論の手順にする | 2026-08-09 |  | accepted |
 | [0153](0153-superior-repetition-root-gate.md) | 優等・劣等局面の判定を探索経路内に限定する | 2026-08-09 |  | accepted |
 | [0154](0154-sprt-ops.md) | SPRTの実行・監視・後処理を定型化する | 2026-08-10 |  | accepted |
-| [0155](0155-reference-walkthrough.md) | 参照実装との精緻ウォークスルーで見つけた乖離を群で修正する | 2026-08-11 |  | proposed |
+| [0155](0155-reference-walkthrough.md) | 参照実装との精緻ウォークスルーで見つけた乖離を群で修正する | 2026-08-11 |  | rejected（群1〜3は−6.7。群4は性能改善の候補として独立） |
 | [0156](0156-bucket-accumulator-cache.md) | 玉位置ごとのaccumulatorキャッシュで全計算を差分に置き換える | 2026-08-12 |  | accepted |
 | [0157](0157-king-mirror-buckets.md) | HalfKPの玉位置を左右ミラーで45バケットへ畳む | 2026-08-12 |  | rejected |
 | [0158](0158-mirror-factorizer.md) | 学習時だけ左右ミラーの仮想特徴を併用する | 2026-08-12 |  | rejected |

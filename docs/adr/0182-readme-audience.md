@@ -72,11 +72,16 @@ READMEが唯一の置き場か、変化が実装と同時に目に入る情報�
 
 | 情報 | 正の場所 |
 |---|---|
-| 棋力・現行のネットと定跡 | docs/ROADMAP.md |
+| 棋力（実戦レート） | floodgateの対局者ページ。URLは `hmwr/tools/floodgate.py` |
+| 現行のネットと定跡 | `hmwr/config.py` の `EVAL_FILE`・`data/book/main.db` |
 | 配布物の版 | Releases（番号ではなく「最新」を指す） |
 | 既定のネットワーク次元 | `crates/engine/build.rs` の `DEFAULT_ARCH` |
 | 測定値・判断の根拠 | docs/adr/ |
 | 教師データの内訳 | docs/DATASETS.md |
+
+2026-08-22追記: 当初は棋力と現行構成の正をROADMAP.mdに置いたが、
+ROADMAP側も数値の写しを持たない方針にした。上の表はその後の正を示す。
+ROADMAP.mdの「現在地」がこの表と同じポインタを持つ。
 
 ### ADRの番号を書かない
 

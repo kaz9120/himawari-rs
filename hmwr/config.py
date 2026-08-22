@@ -29,7 +29,8 @@ SPRT_ADJUDICATE = "2000,8"
 # +0.5のときの必要局数（約48,000ペア）を上回る値として置く
 SPRT_HARD_MAX_PAIRS = "60000"
 
-# 現行構成（ROADMAP.md の「現行構成」と揃える）
+# 現行の評価関数。**ここが正の場所である**（ROADMAPとREADMEはここを指す。
+# ADR-0182）。ネットの世代を替えるときはこの1行を更新する
 EVAL_FILE = "data/nets/pairprod_2990M_q1_reorder.hmwr"
 OPENINGS = "openings/start_sfens_ply24.txt"
 
