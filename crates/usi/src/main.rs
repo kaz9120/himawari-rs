@@ -369,11 +369,13 @@ fn load_book(path: &str) -> Option<Book> {
     }
 }
 
-/// EvalFileを読み込む。失敗は起動エラー（ADR-0037: 駒割への
+/// EvalFileを読み込む。失敗も未設定も起動エラー（ADR-0037: 駒割への
 /// フォールバックはしない。気づかず弱いまま対局する事故を防ぐ）。
 fn load_eval(path: &str) -> Option<(String, std::sync::Arc<NnueNetwork>)> {
     if path.is_empty() {
-        return None;
+        print_line("info string error: EvalFileが未設定です");
+        print_line("info string   isreadyの前に setoption name EvalFile value <パス> を送る");
+        std::process::exit(1);
     }
     let mut f = match std::fs::File::open(path) {
         Ok(f) => f,
