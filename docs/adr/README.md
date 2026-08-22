@@ -74,6 +74,7 @@
 - [0170](0170-l1-half.md) 後段のL1を16へ半減する
 - [0171](0171-ft-pairwise-product.md) FT出力の対を掛けて駒対の相互作用を入れる
 - [0172](0172-multihot-input.md) 入力を玉と駒のマルチホットにする案（測って棄却）
+- [0183](0183-stacked-pairwise-product.md) FT積を2段にして4駒の相互作用を入れる
 
 ### 学習
 
@@ -286,6 +287,7 @@
 | [0180](0180-hmwr-cli-in-python.md) | hmwrを独立コマンドにし、実処理をPythonへ移す | 2026-08-20 |  | accepted |
 | [0181](0181-agent-surface.md) | エージェントの作業面を実態へ合わせ、規律を設定へ移す | 2026-08-20 |  | accepted |
 | [0182](0182-readme-audience.md) | READMEの読み手を2つに固定し、変わり続ける事実を置かない | 2026-08-20 |  | accepted |
+| [0183](0183-stacked-pairwise-product.md) | FT積を2段にして4駒の相互作用を入れる | 2026-08-22 |  | proposed |
 
 ## バックログ
 
