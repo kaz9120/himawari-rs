@@ -124,7 +124,7 @@ type BatchArrays<'py> = (
 );
 
 #[pyfunction]
-#[pyo3(signature = (records, lambda_ = 0.7, score_limit = 0, score_clamp = 0, effect = false))]
+#[pyo3(signature = (records, lambda_ = 0.7, score_limit = 0, score_clamp = 0, effect = false, strict = false))]
 fn extract_batch<'py>(
     py: Python<'py>,
     records: &[u8],
@@ -132,6 +132,7 @@ fn extract_batch<'py>(
     score_limit: i16,
     score_clamp: i16,
     effect: bool,
+    strict: bool,
 ) -> PyResult<BatchArrays<'py>> {
     if records.len() % PSV_BYTES != 0 {
         return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(format!(
@@ -140,8 +141,8 @@ fn extract_batch<'py>(
         )));
     }
 
-    let (stm_idx, stm_off, opp_idx, opp_off, targets, mv_from, mv_to, eff_short, eff_long) = py
-        .allow_threads(|| {
+    let (dropped, stm_idx, stm_off, opp_idx, opp_off, targets, mv_from, mv_to, eff_short, eff_long) =
+        py.allow_threads(|| {
             let per: Vec<Option<Sample>> = records
                 .par_chunks_exact(PSV_BYTES)
                 .map(|chunk| {
@@ -151,6 +152,7 @@ fn extract_batch<'py>(
                 .collect();
 
             let n = per.len();
+            let dropped = per.iter().filter(|s| s.is_none()).count();
             let mut stm_idx: Vec<i64> = Vec::with_capacity(n * 40);
             let mut opp_idx: Vec<i64> = Vec::with_capacity(n * 40);
             let mut stm_off: Vec<i64> = Vec::with_capacity(n);
@@ -176,9 +178,18 @@ fn extract_batch<'py>(
                 }
             }
             (
-                stm_idx, stm_off, opp_idx, opp_off, targets, mv_from, mv_to, eff_short, eff_long,
+                dropped, stm_idx, stm_off, opp_idx, opp_off, targets, mv_from, mv_to, eff_short,
+                eff_long,
             )
         });
+
+    // レコードの並びが意味を持つ用途（ADR-0185のランキング群）では、
+    // 黙って落とすと整列が壊れる。strictでは落とした時点で失敗させる
+    if strict && dropped > 0 {
+        return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(format!(
+            "strict指定で{dropped}レコードを抽出できなかった（復元失敗かscore_limit）"
+        )));
+    }
 
     Ok((
         stm_idx.into_pyarray(py),

@@ -123,6 +123,52 @@ impl Move {
 impl Move16 {
     pub const NONE: Move16 = Move16(0);
 
+    /// やねうら王のMove16から本エンジンのMove16へ変換する（ADR-0185）。
+    ///
+    /// PackedSfenValueのmoveフィールドはやねうら王の符号で、本エンジンと
+    /// ビット割り当てが違う。あちらはdrop=bit14・promote=bit15、打つ駒は
+    /// fromフィールドに「駒種+80」（歩1〜金7の並び）で入る。本エンジンは
+    /// promote=bit14・drop=bit15、打つ駒はOSL配列の駒種（9〜15）である。
+    /// 変換できないビット列にはNoneを返す。
+    pub fn from_yaneura(bits: u16) -> Option<Move16> {
+        const Y_DROP: u16 = 1 << 14;
+        const Y_PROMOTE: u16 = 1 << 15;
+        let to = bits & 0x7F;
+        let from = (bits >> 7) & 0x7F;
+        if to >= 81 {
+            return None;
+        }
+        if bits & Y_DROP != 0 {
+            // やねうら王の駒種は歩1・香2・桂3・銀4・角5・飛6・金7。
+            // 打つ駒のfromフィールドは「駒種+80」の流儀と「駒種そのまま」の
+            // 流儀が実在する（hao_depth9は後者だった）。どちらも受ける
+            let ypt = if (81..=87).contains(&from) {
+                from - 80
+            } else {
+                from
+            };
+            let our_pt: u16 = match ypt {
+                1 => 10, // 歩
+                2 => 11, // 香
+                3 => 12, // 桂
+                4 => 13, // 銀
+                5 => 14, // 角
+                6 => 15, // 飛
+                7 => 9,  // 金
+                _ => return None,
+            };
+            return Some(Move16(to | (our_pt << 7) | (DROP_BIT as u16)));
+        }
+        if from >= 81 || from == to {
+            return None;
+        }
+        let mut v = to | (from << 7);
+        if bits & Y_PROMOTE != 0 {
+            v |= PROMOTE_BIT as u16;
+        }
+        Some(Move16(v))
+    }
+
     /// USI表記からのパース。盤面情報がないため駒情報なしのMove16を返す。
     /// 完全なMoveへの復元はPosition側で行う。
     pub fn from_usi(s: &str) -> Option<Move16> {
@@ -344,5 +390,28 @@ mod tests {
         assert!(Move16::from_usi("K*5e").is_none());
         assert!(Move16::from_usi("7g7g").is_none());
         assert!(Move16::from_usi("xx").is_none());
+    }
+
+    #[test]
+    fn from_yaneura_decodes_both_drop_conventions() {
+        // 5三歩打（to=Squareのindexは実装依存なので、両流儀の一致だけ見る）
+        let to = 20u16;
+        let plain = to | (1 << 7) | (1 << 14); // 駒種そのまま
+        let offset = to | ((1 + 80) << 7) | (1 << 14); // 駒種+80
+        let a = Move16::from_yaneura(plain).unwrap();
+        let b = Move16::from_yaneura(offset).unwrap();
+        assert_eq!(a, b);
+        // 本エンジンの符号ではdrop=bit15、駒種はOSLの歩=10
+        assert_eq!(a.0, to | (10 << 7) | 0x8000);
+
+        // 成りはbit15→bit14へ移る
+        let promo = 5u16 | (30 << 7) | (1 << 15);
+        assert_eq!(
+            Move16::from_yaneura(promo).unwrap().0,
+            5 | (30 << 7) | 0x4000
+        );
+        // 壊れたビット列は受けない
+        assert!(Move16::from_yaneura(100 | (1 << 14)).is_none()); // to>=81は上流で弾く前提だがここでも
+        assert!(Move16::from_yaneura((90 << 7) | (8 + 80) << 7).is_none());
     }
 }
