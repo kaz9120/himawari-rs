@@ -17,7 +17,7 @@ from torch.utils.tensorboard import SummaryWriter
 import himawari
 from model import EFFECT_LEN, EFFECT_SCALE, FT_IN, NnueModel, effect_loss_fn, loss_fn
 from optim import MaskedAdam
-from dataset import GeneratedBatchLoader, PsvBatchLoader, PsvDataset, collate_psv
+from dataset import RankLoader, GeneratedBatchLoader, PsvBatchLoader, PsvDataset, collate_psv
 from quantize import save_hmwr
 
 
@@ -98,6 +98,22 @@ def main():
     p.add_argument("--min-lr", type=float, default=1e-6)
     p.add_argument("--warmup-steps", type=int, default=100)
     p.add_argument("--lambda", type=float, default=0.7, dest="lambda_")
+    p.add_argument(
+        "--rank-data",
+        help="兄弟局面のランキング群（psv rankの出力。ADR-0185）",
+    )
+    p.add_argument(
+        "--rank-batch", type=int, default=4096,
+        help="1ステップに引くランキング群の数",
+    )
+    p.add_argument(
+        "--rank-alpha", type=float, default=1.0,
+        help="ランキング損失の重み（ADR-0185の宣言値）",
+    )
+    p.add_argument(
+        "--rank-margin", type=float, default=0.02,
+        help="ヒンジのマージン（シグモイド空間。ADR-0185の宣言値）",
+    )
     p.add_argument("--score-limit", type=int, default=0,
                    help="この絶対値以上の評価値を持つ局面を学習から除外する（0=無効）")
     p.add_argument("--score-clamp", type=int, default=0,
@@ -518,8 +534,16 @@ def main():
     eff_long_base = 0.0
     effect_n = 0
     samples_log = 0
+    rank_acc = 0.0
+    rank_fire = 0.0
+    rank_n = 0
     samples_done = step * args.batch
     early_stopped = False
+
+    rank_loader = None
+    if args.rank_data:
+        rank_loader = RankLoader(args.rank_data, args.rank_batch, seed=args.seed)
+        print(f"ランキング群: {rank_loader.n}群 ({args.rank_data})", file=sys.stderr)
 
     model.train()
     for epoch in range(start_epoch, args.epochs):
@@ -546,6 +570,21 @@ def main():
             # 評価値を切る。ログには測るだけの値として残す（ADR-0133）
             loss = args.lambda_value * value_loss
             value_loss = value_loss.detach()
+            if rank_loader is not None:
+                # 兄弟局面のランキング損失（ADR-0185）。正例の葉が負例の葉
+                # より親視点で良い、をシグモイド空間のヒンジで課す
+                r_si, r_so, r_oi, r_oo, r_par = [
+                    x.to(device) for x in rank_loader.sample()
+                ]
+                u = model(r_si, r_so, r_oi, r_oo)
+                sign = 1.0 - 2.0 * r_par
+                upv = torch.sigmoid(u * sign).view(-1, 3)
+                hinge = F.relu(args.rank_margin + upv[:, 1:3] - upv[:, 0:1])
+                rank_loss = hinge.mean()
+                loss = loss + args.rank_alpha * rank_loss
+                rank_acc += rank_loss.item()
+                rank_fire += (hinge > 0).float().mean().item()
+                rank_n += 1
             if model.policy_from is not None:
                 # ラベルが取れなかった局面は-1で、ignore_indexが落とす
                 lf = model.policy_from(x)
@@ -639,13 +678,28 @@ def main():
                     if effect_n
                     else ""
                 )
+                # ランキング損失と発火率（ADR-0185）。λを掛ける前の値を
+                # 出すのは蒸留・利きと同じ
+                rank_str = (
+                    f" rank {rank_acc / rank_n:.5f}"
+                    f" fire {100.0 * rank_fire / rank_n:.1f}%"
+                    if rank_n
+                    else ""
+                )
                 print(
                     f"step {step} samples {samples_done} "
                     f"loss {avg_loss:.5f} lr {current_lr:.6f}"
-                    f"{hit_rate}{distill_str}{effect_str} "
+                    f"{hit_rate}{distill_str}{effect_str}{rank_str} "
                     f"({sps:.0f} samples/s)",
                     file=sys.stderr,
                 )
+                if rank_n:
+                    if writer:
+                        writer.add_scalar("train/rank", rank_acc / rank_n, step)
+                        writer.add_scalar("train/rank_fire", rank_fire / rank_n, step)
+                    rank_acc = 0.0
+                    rank_fire = 0.0
+                    rank_n = 0
                 if writer:
                     writer.add_scalar("train/loss", avg_loss, step)
                     writer.add_scalar("train/lr", current_lr, step)

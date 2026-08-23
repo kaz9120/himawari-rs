@@ -245,3 +245,33 @@ def collate_psv(batch):
         torch.tensor(opp_off[:-1], dtype=torch.long),
         torch.tensor(targets, dtype=torch.float32),
     )
+
+
+class RankLoader:
+    """兄弟局面のランキング群を供給する（ADR-0185）。
+
+    ファイルは `psv rank` が書いた40バイト×3（正例・負例・負例）の群の
+    連なり。ステップごとに群を一様に引き、順序を保ったまま特徴を抽出して
+    返す。抽出はstrictで行い、1レコードでも落ちたら例外にする。黙って
+    落ちると群の整列が壊れ、別の局面と比較してしまうためである。
+
+    予備バイト（b[39]）は親からの手数の偶奇で、呼び出し側はこれで
+    評価値を親視点の符号へ戻す。
+    """
+
+    def __init__(self, path, groups_per_step, seed=0):
+        size = os.path.getsize(path)
+        if size % 120 != 0:
+            raise ValueError(f"ファイルサイズが120の倍数でない: {size}")
+        self.n = size // 120
+        self.batch = groups_per_step
+        self.rng = np.random.default_rng(seed)
+        self.data = np.memmap(path, dtype=np.uint8, mode="r", shape=(self.n, 120))
+
+    def sample(self):
+        idx = np.sort(self.rng.integers(0, self.n, size=self.batch))
+        recs = np.array(self.data[idx]).reshape(-1, 40)
+        parity = torch.from_numpy(recs[:, 39].astype(np.float32).copy())
+        arrays = himawari.extract_batch(recs.tobytes(), 0.0, 0, 0, False, True)
+        stm_i, stm_o, opp_i, opp_o = (torch.from_numpy(a) for a in arrays[:4])
+        return stm_i, stm_o, opp_i, opp_o, parity
