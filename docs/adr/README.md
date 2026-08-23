@@ -87,6 +87,7 @@
 - [0135](0135-teacher-data-3b.md) 教師データを29.9億局面へ広げる
 - [0136](0136-quiet-teacher-positions.md) 教師局面をqsearchの静止局面へ置き換える
 - [0144](0144-selfplay-teacher-loop.md) 自前生成による世代ループ
+- [0185](0185-sibling-ranking-loss.md) 兄弟局面のランキング損失を回帰へ足す
 
 ### 実戦と運用
 
