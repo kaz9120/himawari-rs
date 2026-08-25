@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.42.1](https://github.com/kaz9120/himawari-rs/compare/v0.42.0...v0.42.1) (2026-08-25)
+
+
+### その他の変更
+
+* hmwr net reorderが引数リストでft_reorderを呼べるようにする ([#380](https://github.com/kaz9120/himawari-rs/issues/380)) ([062b189](https://github.com/kaz9120/himawari-rs/commit/062b189a223151dfab10da4fe4508c97b0c6a8da))
+
 ## [0.42.0](https://github.com/kaz9120/himawari-rs/compare/v0.41.0...v0.42.0) (2026-08-22)
 
 
