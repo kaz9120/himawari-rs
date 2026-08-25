@@ -181,8 +181,9 @@ def run(args):
         print(f"置換を書いた: {args.out}")
 
 
-def main():
-    args = build_parser().parse_args()
+def main(argv=None):
+    """argvを省くとsys.argvを読む。hmwr net reorderは引数リストで呼ぶ。"""
+    args = build_parser().parse_args(argv)
     if args.activations <= 0 or args.activations % 4 != 0:
         error(f"活性の次元は4の倍数の正整数で指定する: {args.activations}")
         return 2

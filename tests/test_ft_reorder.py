@@ -67,3 +67,15 @@ def test_ft_out_must_be_a_multiple_of_four(tmp_path, monkeypatch, capsys):
     monkeypatch.setattr("sys.argv", ["ft-reorder.py", path, "6"])
     assert ft_reorder.main() == 2
     assert "4の倍数" in capsys.readouterr().err
+
+
+def test_main_accepts_argv_list(tmp_path):
+    """hmwr net reorderは引数リストでmainを呼ぶ（回帰。ADR-0185で発覚）。
+
+    ダンプ形式の検証は他のテストが持つ。ここでは呼び出し規約だけを見る。
+    引数が壊れていればargparseがSystemExit(2)を出し、呼べていれば
+    ファイルなしのOSErrorを踏んで3が返る。
+    """
+    from hmwr.tools import ft_reorder
+    missing = str(tmp_path / "no_such_dump.bin")
+    assert ft_reorder.main([missing, "512"]) == 3
