@@ -11,9 +11,13 @@
 //! --hash は頭数で割られる。
 //!
 //!   gensfen --out <path> --eval <hmwr> [--games 1000] [--depth 8]
-//!           [--random-plies 8] [--min-ply 8] [--max-moves 320]
-//!           [--resign 3000] [--threads N] [--hash 256] [--seed 1]
-//!           [--save-every 100] [--stop-file <path>]
+//!           [--openings <sfen列挙>] [--random-plies 8] [--min-ply 8]
+//!           [--max-moves 320] [--resign 3000] [--threads N] [--hash 256]
+//!           [--seed 1] [--save-every 100] [--stop-file <path>]
+//!
+//! --openings は開始局面の列挙（1行1 SFEN、`sfen ` 接頭辞は付いていてもよい）
+//! で、各対局の開始局面をここから一様に引く。訓練の分布を測定（SPRT・実戦）
+//! の分布へ合わせるための入口になる。無指定なら平手から始める。
 //!
 //! --random-plies は開始局面を散らすためにランダムへ指す手数。同じ局面ばかり
 //! 生成しても学習の役に立たない。--min-ply より前の局面は記録しない。乱数で
@@ -57,6 +61,7 @@ struct Config {
     eval: String,
     games: usize,
     depth: u32,
+    openings: Option<String>,
     random_plies: usize,
     min_ply: u16,
     quiet_plies: usize,
@@ -149,12 +154,20 @@ struct Pending {
 /// 1局を指し切り、記録した局面を返す。勝者はNoneが引き分け。
 fn play_one(
     cfg: &Config,
+    openings: &[String],
     pool: &ThreadPool,
     sink: &Sink,
     quiet: &mut Worker,
     rng: &mut Rng,
 ) -> (Vec<Pending>, Option<Color>, &'static str) {
-    let mut pos = Position::from_sfen(SFEN_STARTPOS).expect("startpos");
+    // 開始局面集があればそこから引く。訓練の分布を測定（SPRT・実戦）の
+    // 分布へ合わせるための入口で、無ければ従来どおり平手から始める
+    let mut pos = if openings.is_empty() {
+        Position::from_sfen(SFEN_STARTPOS).expect("startpos")
+    } else {
+        let pick = rng.below(openings.len());
+        Position::from_sfen(&openings[pick]).expect("openings validated at load")
+    };
     let mut pending: Vec<Pending> = Vec::new();
 
     // 開始局面を散らす。ここで指した手には教師にできる評価値が付かない
@@ -254,9 +267,10 @@ fn generate(cfg: &Config) -> std::io::Result<()> {
     // 生成条件をログの先頭に残す。教師データは条件を変えて何度も作るので、
     // どの設定で作ったかを後から追えないと混ぜる判断ができない
     eprintln!(
-        "GenSfen: games={} depth={} random_plies={} min_ply={} quiet_plies={} max_moves={} resign={} workers={} hash={}MB seed={}",
+        "GenSfen: games={} depth={} openings={} random_plies={} min_ply={} quiet_plies={} max_moves={} resign={} workers={} hash={}MB seed={}",
         cfg.games,
         cfg.depth,
+        cfg.openings.as_deref().unwrap_or("-"),
         cfg.random_plies,
         cfg.min_ply,
         cfg.quiet_plies,
@@ -272,6 +286,36 @@ fn generate(cfg: &Config) -> std::io::Result<()> {
     };
     eprintln!("EvalFile: {} ({lineage})", cfg.eval);
     let net = Arc::new(net);
+
+    // 開始局面集は起動時に全行を検証する。生成の途中で不正な行を踏むと、
+    // 数時間の走行が無駄になる
+    let openings: Arc<Vec<String>> = Arc::new(match &cfg.openings {
+        None => Vec::new(),
+        Some(path) => {
+            let text = std::fs::read_to_string(path)?;
+            let mut v = Vec::new();
+            for (i, line) in text.lines().enumerate() {
+                let s = line.trim().trim_start_matches("sfen ").trim();
+                if s.is_empty() {
+                    continue;
+                }
+                if Position::from_sfen(s).is_err() {
+                    return Err(std::io::Error::other(format!(
+                        "{path}:{} をSFENとして読めません",
+                        i + 1
+                    )));
+                }
+                v.push(s.to_string());
+            }
+            if v.is_empty() {
+                return Err(std::io::Error::other(format!(
+                    "{path} に開始局面がありません"
+                )));
+            }
+            eprintln!("Openings: {path}（{}局面）", v.len());
+            v
+        }
+    });
 
     let stop = match &cfg.stop_file {
         Some(p) => StopFile::at(std::path::PathBuf::from(p)),
@@ -302,6 +346,7 @@ fn generate(cfg: &Config) -> std::io::Result<()> {
     std::thread::scope(|scope| {
         for t in 0..cfg.threads {
             let net = Arc::clone(&net);
+            let openings = Arc::clone(&openings);
             let eval_path = cfg.eval.clone();
             let writer = &writer;
             let claimed = &claimed;
@@ -360,7 +405,7 @@ fn generate(cfg: &Config) -> std::io::Result<()> {
                         break;
                     }
                     let (pending, winner, reason) =
-                        play_one(cfg, &pool, &sink, &mut quiet, &mut rng);
+                        play_one(cfg, &openings, &pool, &sink, &mut quiet, &mut rng);
                     let mut buf: Vec<u8> = Vec::with_capacity(pending.len() * PSV_BYTES);
                     for p in &pending {
                         let mut rec = p.rec;
@@ -426,6 +471,7 @@ fn main() {
         eval: String::new(),
         games: 1000,
         depth: 8,
+        openings: None,
         random_plies: 8,
         min_ply: 8,
         quiet_plies: 1,
@@ -443,6 +489,7 @@ fn main() {
         match args[i].as_str() {
             "--out" => cfg.out = val,
             "--eval" => cfg.eval = val,
+            "--openings" => cfg.openings = Some(val),
             "--games" => cfg.games = val.parse().unwrap_or(cfg.games),
             "--depth" => cfg.depth = val.parse().unwrap_or(cfg.depth),
             "--random-plies" => cfg.random_plies = val.parse().unwrap_or(cfg.random_plies),
