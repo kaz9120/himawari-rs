@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.43.0](https://github.com/kaz9120/himawari-rs/compare/v0.42.1...v0.43.0) (2026-08-26)
+
+
+### 棋力向上
+
+* 兄弟局面のランキング損失で学習したネットへ切り替える（+28.9 Elo、ADR-0185） ([#382](https://github.com/kaz9120/himawari-rs/issues/382)) ([edad15f](https://github.com/kaz9120/himawari-rs/commit/edad15f7163d38b0f52bd7b2b6d83c7bbe8b4051))
+
 ## [0.42.1](https://github.com/kaz9120/himawari-rs/compare/v0.42.0...v0.42.1) (2026-08-25)
 
 
