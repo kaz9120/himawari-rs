@@ -76,6 +76,7 @@
 - [0171](0171-ft-pairwise-product.md) FT出力の対を掛けて駒対の相互作用を入れる
 - [0172](0172-multihot-input.md) 入力を玉と駒のマルチホットにする案（測って棄却）
 - [0183](0183-stacked-pairwise-product.md) FT積を2段にして4駒の相互作用を入れる案（測って棄却）
+- [0184](0184-cross-view-product.md) 視点をまたぐ対の積で両玉の相互作用を入れる案（測って棄却）
 
 ### 学習
 
@@ -89,6 +90,7 @@
 - [0136](0136-quiet-teacher-positions.md) 教師局面をqsearchの静止局面へ置き換える
 - [0144](0144-selfplay-teacher-loop.md) 自前生成による世代ループ
 - [0185](0185-sibling-ranking-loss.md) 兄弟局面のランキング損失を回帰へ足す
+- [0187](0187-selfplay-gen2.md) 自前生成の第2世代を診断先行で測る案（乖離の診断で棄却）
 
 ### 実戦と運用
 
@@ -290,6 +292,10 @@
 | [0181](0181-agent-surface.md) | エージェントの作業面を実態へ合わせ、規律を設定へ移す | 2026-08-20 |  | accepted |
 | [0182](0182-readme-audience.md) | READMEの読み手を2つに固定し、変わり続ける事実を置かない | 2026-08-20 |  | accepted |
 | [0183](0183-stacked-pairwise-product.md) | FT積を2段にして4駒の相互作用を入れる | 2026-08-22 | −9.8 | rejected |
+| [0184](0184-cross-view-product.md) | 視点をまたぐ対の積で両玉の相互作用を入れる | 2026-08-23 | −9.2 | rejected |
+| [0185](0185-sibling-ranking-loss.md) | 兄弟局面のランキング損失を回帰へ足す | 2026-08-23 | +28.9 | accepted |
+| [0186](0186-repetition-precompute.md) | 千日手判定をdo_move時の前計算にする | 2026-08-26 |  | proposed |
+| [0187](0187-selfplay-gen2.md) | 自前生成の第2世代を診断先行の混合再学習で測る | 2026-08-26 |  | rejected |
 
 ## バックログ
 
