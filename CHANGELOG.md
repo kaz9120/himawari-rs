@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.43.1](https://github.com/kaz9120/himawari-rs/compare/v0.43.0...v0.43.1) (2026-08-26)
+
+
+### その他の変更
+
+* 世代ループの再設計に向けてgensfenへ--openingsを足し、ADR-0188を起草する ([#386](https://github.com/kaz9120/himawari-rs/issues/386)) ([0f0e379](https://github.com/kaz9120/himawari-rs/commit/0f0e3796fcaf7712e3f6044080cf93547cef4817))
+
 ## [0.43.0](https://github.com/kaz9120/himawari-rs/compare/v0.42.1...v0.43.0) (2026-08-26)
 
 
