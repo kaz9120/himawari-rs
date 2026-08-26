@@ -58,6 +58,7 @@
 - [0160](0160-revisit-rejected-under-better-eval.md) 棄却済みの追従を掘り起こす案（導入済みと判明して棄却）
 - [0162](0162-parallel-group.md) 並列の未測定3件を1群で測る（TTの手番分割は見送り）
 - [0177](0177-tt-probcut-depth-slack.md) TT-ProbCutの深さ差を狭める案（測って棄却）
+- [0186](0186-repetition-precompute.md) 千日手判定をdo_move時の前計算にする
 
 ### 評価関数（NNUE）
 
