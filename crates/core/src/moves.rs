@@ -169,6 +169,36 @@ impl Move16 {
         Some(Move16(v))
     }
 
+    /// 本エンジンのMove16をやねうら王の符号へ変換する（from_yaneuraの逆）。
+    ///
+    /// PSVのmoveフィールド（ADR-0038）はやねうら王の符号なので、教師データへ
+    /// 書くときはこちらを通す。打つ駒は「駒種+80」の流儀で書く（from_yaneuraは
+    /// 両流儀を受ける）。変換できないビット列（NONEを含む）には0を返す。
+    pub fn to_yaneura(self) -> u16 {
+        const Y_DROP: u16 = 1 << 14;
+        const Y_PROMOTE: u16 = 1 << 15;
+        let bits = self.0;
+        if bits & (DROP_BIT as u16) != 0 {
+            let to = bits & 0x7F;
+            // 本エンジンはOSL配列（金9・歩10〜飛15）、やねうら王は歩1〜金7
+            let ypt: u16 = match (bits >> 7) & 0x7F {
+                10 => 1, // 歩
+                11 => 2, // 香
+                12 => 3, // 桂
+                13 => 4, // 銀
+                14 => 5, // 角
+                15 => 6, // 飛
+                9 => 7,  // 金
+                _ => return 0,
+            };
+            to | ((ypt + 80) << 7) | Y_DROP
+        } else if bits & (PROMOTE_BIT as u16) != 0 {
+            (bits & 0x3FFF) | Y_PROMOTE
+        } else {
+            bits
+        }
+    }
+
     /// USI表記からのパース。盤面情報がないため駒情報なしのMove16を返す。
     /// 完全なMoveへの復元はPosition側で行う。
     pub fn from_usi(s: &str) -> Option<Move16> {
@@ -413,5 +443,21 @@ mod tests {
         // 壊れたビット列は受けない
         assert!(Move16::from_yaneura(100 | (1 << 14)).is_none()); // to>=81は上流で弾く前提だがここでも
         assert!(Move16::from_yaneura((90 << 7) | (8 + 80) << 7).is_none());
+    }
+
+    #[test]
+    fn to_yaneura_roundtrips_through_from_yaneura() {
+        // 通常手・成る手・打つ手（全7駒種）で、書いたものを読み戻すと戻る
+        let mut moves = vec!["7g7f", "8h2b+"];
+        let drops = ["P*5e", "L*5e", "N*5e", "S*5e", "B*5e", "R*5e", "G*5e"];
+        moves.extend(drops);
+        for usi in moves {
+            let m = Move16::from_usi(usi).unwrap();
+            let yane = m.to_yaneura();
+            assert_eq!(Move16::from_yaneura(yane), Some(m), "{usi}");
+        }
+        // NONEと壊れたビット列は0になる
+        assert_eq!(Move16::NONE.to_yaneura(), 0);
+        assert_eq!(Move16(5 | (8 << 7) | 0x8000).to_yaneura(), 0); // 玉は打てない
     }
 }
