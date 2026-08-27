@@ -118,6 +118,9 @@ SPSAの一括チューニングでこのずれを回収する（[ADR-0143](adr/0
   次に見るのは定跡の追加（`book seed`）と、まだ回していない大悪手の全量解析
 - **測定の手順はスキルが持つ**。SPRTはrunning-sprt、ビルド・計測・SPSAは
   himawari-cliを使う
+- **成果物の掃除**（[ADR-0189](adr/0189-artifact-retention.md)）。月1回を
+  目安に `hmwr clean --apply` を回す。保持は30日で、現行の評価関数の系列と
+  結果の要約は残る
 
 ## 候補
 
