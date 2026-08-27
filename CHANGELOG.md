@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.43.3](https://github.com/kaz9120/himawari-rs/compare/v0.43.2...v0.43.3) (2026-08-27)
+
+
+### その他の変更
+
+* 成果物の掃除をhmwr cleanと保持方針ADR-0189に固定する ([#392](https://github.com/kaz9120/himawari-rs/issues/392)) ([bac02a8](https://github.com/kaz9120/himawari-rs/commit/bac02a854384062707faecb2d6dc70660d7ebef9))
+
 ## [0.43.2](https://github.com/kaz9120/himawari-rs/compare/v0.43.1...v0.43.2) (2026-08-27)
 
 
