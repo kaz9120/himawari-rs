@@ -224,7 +224,9 @@ fn play_one(
             let mut rec_score = score;
             let mut rec_stm = stm;
             let mut rec_ply = pos.game_ply();
-            let mut rec_move = Move16::from_usi(&mv).unwrap_or(Move16::NONE).0;
+            // PSVのmoveフィールドはやねうら王の符号（ADR-0038）。本エンジンの
+            // 符号のまま書くと、psv rankが打つ手と成る手を読めない
+            let mut rec_move = Move16::from_usi(&mv).map_or(0, Move16::to_yaneura);
             if cfg.quiet_plies > 0 {
                 quiet.set_position(pos.clone());
                 let plies = quiet.walk_to_quiet(cfg.quiet_plies);
