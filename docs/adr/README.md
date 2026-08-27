@@ -106,6 +106,7 @@
 - [0154](0154-sprt-ops.md) SPRTの実行・監視・後処理
 - [0163](0163-sprt-hypothesis-choice.md) 対立仮説を着手時に決める（既定と非劣性の使い分け）
 - [0175](0175-sprt-until-decision.md) SPRTを判定が出るまで走らせ、完了をファイルで検知する
+- [0189](0189-artifact-retention.md) 成果物の保持を日数で決め、掃除をhmwr cleanに固定する
 
 ## 全ADR
 
@@ -298,6 +299,7 @@
 | [0186](0186-repetition-precompute.md) | 千日手判定をdo_move時の前計算にする | 2026-08-26 |  | proposed |
 | [0187](0187-selfplay-gen2.md) | 自前生成の第2世代を診断先行の混合再学習で測る | 2026-08-26 |  | superseded |
 | [0188](0188-selfplay-rl-loop.md) | 自己生成の世代ループを自給自足の継続学習で回す | 2026-08-26 |  | proposed |
+| [0189](0189-artifact-retention.md) | 成果物の保持を日数で決め、掃除をhmwr cleanに固定する | 2026-08-27 |  | accepted |
 
 ## バックログ
 
