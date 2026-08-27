@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.43.2](https://github.com/kaz9120/himawari-rs/compare/v0.43.1...v0.43.2) (2026-08-27)
+
+
+### その他の変更
+
+* gensfenのmoveフィールドをやねうら王符号で書く ([#388](https://github.com/kaz9120/himawari-rs/issues/388)) ([b904dea](https://github.com/kaz9120/himawari-rs/commit/b904deacdc6cff7452fed2c1d38cd7e0c453674b))
+
 ## [0.43.1](https://github.com/kaz9120/himawari-rs/compare/v0.43.0...v0.43.1) (2026-08-26)
 
 
