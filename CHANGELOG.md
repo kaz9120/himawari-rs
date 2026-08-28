@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.44.0](https://github.com/kaz9120/himawari-rs/compare/v0.43.3...v0.44.0) (2026-08-28)
+
+
+### 棋力向上
+
+* 自己生成の世代ループ第1周のネットへ切り替える（+13.9 Elo、ADR-0188） ([#394](https://github.com/kaz9120/himawari-rs/issues/394)) ([533f4ae](https://github.com/kaz9120/himawari-rs/commit/533f4aef0823fd9cf918d9c5ca4a53b44a88f80f))
+
 ## [0.43.3](https://github.com/kaz9120/himawari-rs/compare/v0.43.2...v0.43.3) (2026-08-27)
 
 

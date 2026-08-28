@@ -4,7 +4,7 @@ members = ["crates/core", "crates/engine", "crates/tools", "crates/usi", "crates
 default-members = ["crates/core", "crates/engine", "crates/tools", "crates/usi"]
 
 [workspace.package]
-version = "0.43.3"
+version = "0.44.0"
 edition = "2024"
 license = "GPL-3.0-or-later"
 
