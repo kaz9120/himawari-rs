@@ -31,7 +31,7 @@ SPRT_HARD_MAX_PAIRS = "60000"
 
 # 現行の評価関数。**ここが正の場所である**（ROADMAPとREADMEはここを指す。
 # ADR-0182）。ネットの世代を替えるときはこの1行を更新する
-EVAL_FILE = "data/nets/pairrank_2990M_q1_reorder.hmwr"
+EVAL_FILE = "data/nets/rl_g1b_reorder.hmwr"
 OPENINGS = "openings/start_sfens_ply24.txt"
 
 # 計測・対局のビルドフラグ（ADR-0003）
