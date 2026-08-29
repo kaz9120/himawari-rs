@@ -303,7 +303,7 @@
 | [0187](0187-selfplay-gen2.md) | 自前生成の第2世代を診断先行の混合再学習で測る | 2026-08-26 |  | superseded |
 | [0188](0188-selfplay-rl-loop.md) | 自己生成の世代ループを自給自足の継続学習で回す | 2026-08-26 | +13.9 | accepted |
 | [0189](0189-artifact-retention.md) | 成果物の保持を日数で決め、掃除をhmwr cleanに固定する | 2026-08-27 |  | accepted |
-| [0190](0190-selfplay-decided-thinning.md) | 自己生成教師の決着圏を間引き、分布の偏りを直す | 2026-08-29 |  | proposed |
+| [0190](0190-selfplay-decided-thinning.md) | 自己生成教師の決着圏を間引き、分布の偏りを直す | 2026-08-29 | −12.2 | rejected |
 | [0191](0191-blindspot-benchmark.md) | floodgateの崩壊局面から盲点ベンチマークを作り、世代の定点観測にする | 2026-08-29 |  | proposed |
 | [0192](0192-tanuki2024-teacher.md) | 教師データをtanuki- 2024の78.6億局面へ置き換える | 2026-08-29 |  | proposed |
 
