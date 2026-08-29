@@ -221,12 +221,10 @@ pub fn parse(text: &str) -> Result<CsaGame, CsaError> {
                 game.increment_s = v.trim().parse().ok();
             } else if let Some(v) = body.strip_prefix("summary:") {
                 game.summary = Some(v.trim().to_string());
-            } else if let Some(v) = body.strip_prefix("** ") {
-                if let Some(last) = game.moves.last_mut() {
-                    if last.eval_cp.is_none() {
-                        last.eval_cp = v.split_whitespace().next().and_then(|t| t.parse().ok());
-                    }
-                }
+            } else if let Some(v) = body.strip_prefix("** ")
+                && let Some(last) = game.moves.last_mut().filter(|m| m.eval_cp.is_none())
+            {
+                last.eval_cp = v.split_whitespace().next().and_then(|t| t.parse().ok());
             }
             continue;
         }

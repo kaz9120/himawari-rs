@@ -228,7 +228,7 @@ const MATE_ABS: i32 = 29000;
 /// それ以外（互角圏〜優勢圏と詰みスコア）は全件残す。複製はしないので、
 /// 分布の山を新たに作ることはない。
 fn thin(input: &str, output: &str, threshold: i32, keep: f64, seed: u64, group: usize) {
-    if group % PSV_BYTES != 0 {
+    if !group.is_multiple_of(PSV_BYTES) {
         die(&format!("--group は{PSV_BYTES}の倍数にしてください"));
     }
     let mut r = open_reader(input);
