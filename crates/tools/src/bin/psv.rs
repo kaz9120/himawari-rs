@@ -4,7 +4,10 @@
 //!   psv stats   --in file [--limit N]          統計表示（局面数・score分布・勝敗・勝率帯）
 //!   psv dump    --in file [--limit N]          SFENと教師信号を1行ずつ表示
 //!   psv head    --in file --out file --count N [--skip M]   部分抽出
-//!   psv shuffle --in file[,file...] --out file [--seed N] [--tmp DIR]  全体シャッフル
+//!   psv shuffle --in file[,file...] --out file [--seed N] [--tmp DIR]
+//!               [--consume] [--parts N]        全体シャッフル。--consumeは読み終えた
+//!                                              入力を消してピークを約1倍に抑える。
+//!                                              --parts Nは出力を.partNNNへ分割する
 //!   psv quiet   --in file --out file [--limit N] [--max-plies N] [--hash MB]
 //!                                              qsearchのPV葉へ置き換える（ADR-0136）
 //!   psv rank    --in file --out file [--limit N] [--skip N] [--hash MB]
@@ -280,7 +283,21 @@ fn shuffle_in_place(buf: &mut [u8], rng: &mut Rng) {
 ///
 /// パス1で各レコードをランダムなバケットへ振り分け、パス2でバケット単位に
 /// メモリ上でシャッフルして連結する。メモリ使用量はバケット1個分に収まる。
-fn shuffle(inputs: &[&str], output: &str, seed: u64, tmp_dir: Option<&str>) {
+///
+/// consumeは読み終えた入力ファイルから順に消し、ディスクのピークを
+/// 入力1倍強に抑える（ADR-0192）。再取得できる生データにだけ使う。
+/// partsが2以上なら、出力を `<出力名>.partNNN` のほぼ等分な連番へ分ける。
+/// 分割してもレコードの割り付けはseedだけで決まり、連結すればparts=1と
+/// 同じ並びになる。
+fn shuffle(
+    inputs: &[&str],
+    output: &str,
+    seed: u64,
+    tmp_dir: Option<&str>,
+    consume: bool,
+    parts: usize,
+    bucket_bytes: u64,
+) {
     let total: u64 = inputs
         .iter()
         .map(|p| {
@@ -292,7 +309,7 @@ fn shuffle(inputs: &[&str], output: &str, seed: u64, tmp_dir: Option<&str>) {
     if !total.is_multiple_of(PSV_BYTES as u64) {
         die(&format!("入力サイズが40の倍数でない: {total}バイト"));
     }
-    let n_buckets = (total.div_ceil(BUCKET_BYTES)).max(1) as usize;
+    let n_buckets = (total.div_ceil(bucket_bytes)).max(1) as usize;
     let dir = tmp_dir.map(std::path::PathBuf::from).unwrap_or_else(|| {
         std::path::Path::new(output)
             .parent()
@@ -330,6 +347,15 @@ fn shuffle(inputs: &[&str], output: &str, seed: u64, tmp_dir: Option<&str>) {
                     .write_all(&buf)
                     .unwrap_or_else(|e| die(&format!("書き込み失敗: {e}")));
             }
+            if consume {
+                // バケットへ写し終えた入力から順に消し、ピークを抑える
+                for w in &mut writers {
+                    w.flush()
+                        .unwrap_or_else(|e| die(&format!("flush失敗: {e}")));
+                }
+                std::fs::remove_file(path)
+                    .unwrap_or_else(|e| die(&format!("入力を消せません: {path}: {e}")));
+            }
         }
         for w in &mut writers {
             w.flush()
@@ -338,21 +364,46 @@ fn shuffle(inputs: &[&str], output: &str, seed: u64, tmp_dir: Option<&str>) {
     }
 
     eprintln!("パス2: バケットごとにシャッフルして連結します");
-    let mut w = BufWriter::with_capacity(
-        BUCKET_BUF,
-        std::fs::File::create(output).unwrap_or_else(|e| die(&format!("作成できません: {e}"))),
-    );
-    let mut written = 0u64;
-    for p in &paths {
-        let mut data = std::fs::read(p).unwrap_or_else(|e| die(&format!("読み込み失敗: {e}")));
-        shuffle_in_place(&mut data, &mut rng);
-        w.write_all(&data)
-            .unwrap_or_else(|e| die(&format!("書き込み失敗: {e}")));
-        written += (data.len() / PSV_BYTES) as u64;
-        let _ = std::fs::remove_file(p);
+    if parts > n_buckets {
+        eprintln!("注意: バケットが{n_buckets}個しかないため、分割数を{n_buckets}に丸めます");
     }
-    w.flush().unwrap();
-    println!("{written}局面をシャッフルして{output}へ書き出しました (seed={seed})");
+    let parts = parts.max(1).min(n_buckets);
+    let out_name = |part: usize| -> String {
+        if parts == 1 {
+            output.to_string()
+        } else {
+            format!("{output}.part{part:03}")
+        }
+    };
+    let mut written = 0u64;
+    for part in 0..parts {
+        // バケットをほぼ等分な連番グループに割り、グループごとに1本書く
+        let lo = n_buckets * part / parts;
+        let hi = n_buckets * (part + 1) / parts;
+        let name = out_name(part);
+        let mut w = BufWriter::with_capacity(
+            BUCKET_BUF,
+            std::fs::File::create(&name)
+                .unwrap_or_else(|e| die(&format!("作成できません: {name}: {e}"))),
+        );
+        for p in &paths[lo..hi] {
+            let mut data = std::fs::read(p).unwrap_or_else(|e| die(&format!("読み込み失敗: {e}")));
+            shuffle_in_place(&mut data, &mut rng);
+            w.write_all(&data)
+                .unwrap_or_else(|e| die(&format!("書き込み失敗: {e}")));
+            written += (data.len() / PSV_BYTES) as u64;
+            let _ = std::fs::remove_file(p);
+        }
+        w.flush().unwrap();
+    }
+    if parts == 1 {
+        println!("{written}局面をシャッフルして{output}へ書き出しました (seed={seed})");
+    } else {
+        println!(
+            "{written}局面をシャッフルして{output}.part000〜{:03}の{parts}本へ書き出しました (seed={seed})",
+            parts - 1
+        );
+    }
 }
 
 /// 教師局面をqsearchのPV葉へ置き換える（ADR-0136）。
@@ -716,11 +767,22 @@ fn main() {
             let input = input.unwrap_or_else(|| die("--in が必要です"));
             let inputs: Vec<&str> = input.split(',').collect();
             let tmp = arg_value(rest, "--tmp");
+            let consume = rest.iter().any(|a| a == "--consume");
+            let parts: usize = arg_value(rest, "--parts")
+                .map(|s| s.parse().unwrap_or_else(|_| die("--parts は整数")))
+                .unwrap_or(1);
+            // バケット幅はテスト用の隠しノブ。変えると割り付けが変わる
+            let bucket_bytes: u64 = arg_value(rest, "--bucket-bytes")
+                .map(|s| s.parse().unwrap_or_else(|_| die("--bucket-bytes は整数")))
+                .unwrap_or(BUCKET_BYTES);
             shuffle(
                 &inputs,
                 &output.unwrap_or_else(|| die("--out が必要です")),
                 seed,
                 tmp.as_deref(),
+                consume,
+                parts,
+                bucket_bytes,
             );
         }
         "quiet" => {
