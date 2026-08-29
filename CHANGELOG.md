@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.44.1](https://github.com/kaz9120/himawari-rs/compare/v0.44.0...v0.44.1) (2026-08-29)
+
+
+### その他の変更
+
+* sprtの--setで未知の鍵を拒否し、見送り上限の--max-pairsを足す ([#396](https://github.com/kaz9120/himawari-rs/issues/396)) ([bad12a3](https://github.com/kaz9120/himawari-rs/commit/bad12a39d78352c11c64f05607a60cde1724c9c9))
+
 ## [0.44.0](https://github.com/kaz9120/himawari-rs/compare/v0.43.3...v0.44.0) (2026-08-28)
 
 
