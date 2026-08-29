@@ -51,6 +51,12 @@ def add_parser(sub: argparse._SubParsersAction) -> None:
         help="測定条件を直接渡す（繰り返し可）",
     )
     t.add_argument(
+        "--max-pairs",
+        type=int,
+        metavar="N",
+        help="このペア数で打ち切る。H1だけを採択するゲート用途の見送り上限（ADR-0163）",
+    )
+    t.add_argument(
         "--no-verify",
         dest="verify",
         action="store_false",
@@ -78,6 +84,12 @@ def add_parser(sub: argparse._SubParsersAction) -> None:
     t.add_argument("--noninferiority", action="store_true", help="非劣性で測る")
     t.add_argument("--tc", metavar="持ち時間", help="例 60+0.6")
     t.add_argument("--set", action="append", metavar="KEY=VALUE", help="測定条件")
+    t.add_argument(
+        "--max-pairs",
+        type=int,
+        metavar="N",
+        help="このペア数で打ち切る。H1だけを採択するゲート用途の見送り上限（ADR-0163）",
+    )
     t.add_argument("--foreground", action="store_true", help="切り離さず走らせる")
     t.add_argument("--worker", action="store_true", help=argparse.SUPPRESS)
     t.set_defaults(func=run_net)
@@ -194,10 +206,20 @@ def settings(args: argparse.Namespace) -> dict[str, str]:
         env["SPRT_ELO1"] = "0"
     if getattr(args, "tc", None):
         env["SPRT_TC"] = args.tc
+    if getattr(args, "max_pairs", None):
+        env["SPRT_MAX_PAIRS"] = str(args.max_pairs)
+    # 未知の鍵は黙って無視されると誤設定に気づけない。上限3,000ペアの
+    # つもりが安全弁の60,000まで走った事故が実例（2026-08-29）
+    allowed = set(config.DEFAULTS) | {"SPRT_MAX_PAIRS"}
     for item in getattr(args, "set", None) or []:
         if "=" not in item:
             raise proc.Fail(f"--set はKEY=VALUEで書く: {item}", proc.USAGE)
         key, value = item.split("=", 1)
+        if key not in allowed:
+            raise proc.Fail(
+                f"--set の鍵を知らない: {key}（使える鍵: {', '.join(sorted(allowed))}）",
+                proc.USAGE,
+            )
         env[key] = value
     return env
 
@@ -272,7 +294,11 @@ def until_decision(
         print(f["result"].read_text(encoding="utf-8"), end="")
         return _exit_code(f["result"])
 
-    hard_max = env.get("SPRT_MAX_PAIRS") or config.get("SPRT_HARD_MAX_PAIRS", "60000")
+    hard_max = (
+        env.get("SPRT_MAX_PAIRS")
+        or env.get("SPRT_HARD_MAX_PAIRS")
+        or config.get("SPRT_HARD_MAX_PAIRS", "60000")
+    )
     env = {**env, "SPRT_MAX_PAIRS": hard_max}
 
     for attempt in range(1, MAX_RETRY + 1):
