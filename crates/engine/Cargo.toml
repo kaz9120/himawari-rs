@@ -15,6 +15,8 @@ actdump = []
 # SPSAの対象定数をatomicにしてUSIオプションへ出す（ADR-0143）。
 # 通常のビルドには入らない。
 tune = []
+# 入力をHalfKAへ拡張する（ADR-0193）。coreの同名featureへ転送する。
+halfka = ["himawari-core/halfka"]
 
 [lints]
 workspace = true

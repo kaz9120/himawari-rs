@@ -226,6 +226,13 @@ impl NnueState {
                 return Some(i);
             }
             let d = &self.entries[i].dirty;
+            // halfkaは相手玉も特徴なので、どちらの玉が動いても差分連鎖を
+            // 遡れない。玉位置別のキャッシュ（refresh_top）が受け持つ
+            #[cfg(feature = "halfka")]
+            if d.king_moved {
+                return None;
+            }
+            #[cfg(not(feature = "halfka"))]
             if d.king_moved && d.piece_new[0].color() == c {
                 return None;
             }

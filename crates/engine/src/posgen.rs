@@ -221,13 +221,15 @@ mod tests {
     }
 
     /// 活性特徴の数が妥当である。HalfKPは玉以外の40−2枚を数えるので、
-    /// 駒が減らない将棋では常に38になる。上限を超えないことも見る。
+    /// 駒が減らない将棋では常に38になる（halfkaは相手玉で+1）。
+    /// 上限を超えないことも見る。
     #[test]
     fn feature_counts_stay_in_range() {
+        let max = if cfg!(feature = "halfka") { 39 } else { 38 };
         for s in generate(2000, 3, 128) {
             for feats in [&s.stm, &s.opp] {
                 assert!(
-                    (2..=38).contains(&feats.len()),
+                    (2..=max).contains(&feats.len()),
                     "活性特徴の数が範囲外: {}",
                     feats.len()
                 );

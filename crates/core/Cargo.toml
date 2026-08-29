@@ -5,6 +5,11 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 
+[features]
+# 入力をHalfKAへ拡張する（相手玉の81升平面、ADR-0193）。
+# 特徴次元が変わるためネットの互換が切れる。既定はHalfKP。
+halfka = []
+
 [lints]
 workspace = true
 

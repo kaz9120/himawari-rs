@@ -24,8 +24,8 @@ pub const CONCAT: usize = FT_OUT;
 pub const HALF: usize = CONCAT / 2;
 /// 評価値スケール（ADR-0036）。
 pub const FV_SCALE: i32 = 16;
-/// HalfKP特徴の総数。
-pub const FT_IN: usize = 81 * bonapiece::FE_END as usize;
+/// 入力特徴の総数。halfkaでは相手玉平面のぶん広がる（ADR-0193）。
+pub const FT_IN: usize = 81 * bonapiece::FE_TOTAL as usize;
 
 /// FT重みの格納型（ADR-0036、ADR-0138）。既定はi16で、`HIMAWARI_FT_I8=1`
 /// でビルドするとi8になる。accumulatorとFTバイアスはどちらの場合もi16の
@@ -321,6 +321,13 @@ pub fn for_each_bona_piece(pos: &Position, c: Color, mut f: impl FnMut(u16)) {
                 f(bonapiece::hand_bona_piece(c, owner, pt, i));
             }
         }
+    }
+    // 相手玉の平面（ADR-0193）。視点cから見た相手玉の升
+    #[cfg(feature = "halfka")]
+    {
+        let ek = pos.king(c.flip());
+        let ek = if c == Color::Black { ek } else { ek.inv() };
+        f(bonapiece::E_KING + ek.index() as u16);
     }
 }
 
@@ -824,13 +831,14 @@ mod tests {
         }
     }
 
-    /// HalfKP活性特徴数 = 盤上の玉以外の駒 + 持ち駒総数。
+    /// 活性特徴数 = 盤上の玉以外の駒 + 持ち駒総数（halfkaは相手玉が1つ足される）。
     #[test]
     fn halfkp_active_count() {
         let pos = Position::from_sfen(SFEN_STARTPOS).unwrap();
         let mut v = Vec::new();
         halfkp_active(&pos, Color::Black, &mut v);
-        assert_eq!(v.len(), 38, "平手は玉以外38枚・持ち駒なし");
+        let expected = if cfg!(feature = "halfka") { 39 } else { 38 };
+        assert_eq!(v.len(), expected, "平手は玉以外38枚・持ち駒なし");
         assert!(v.iter().all(|&f| (f as usize) < FT_IN));
     }
 }

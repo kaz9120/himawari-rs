@@ -14,3 +14,7 @@ numpy = "0.24"
 rayon = "1"
 himawari-core = { path = "../core" }
 himawari-engine = { path = "../engine" }
+
+[features]
+# 入力をHalfKAへ拡張する（ADR-0193）。engine経由でcoreにも効く。
+halfka = ["himawari-engine/halfka"]

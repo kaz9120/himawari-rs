@@ -49,6 +49,19 @@ pub const F_DRAGON: u16 = E_ROOK + 81;
 pub const E_DRAGON: u16 = F_DRAGON + 81;
 pub const FE_END: u16 = E_DRAGON + 81;
 
+/// 相手玉の升の平面（HalfKA拡張、ADR-0193）。やねうら王互換の番号の
+/// 直後に置く。自玉は特徴インデックスの軸なので平面を持たない。
+#[cfg(feature = "halfka")]
+pub const E_KING: u16 = FE_END;
+
+/// 特徴次元の実効値。halfkaでは相手玉の81升ぶん広がる。
+/// `halfkp_index` の玉位置オフセットはこちらを使う（`FE_END` は
+/// やねうら王互換の番号付けの終端として据え置く）。
+#[cfg(feature = "halfka")]
+pub const FE_TOTAL: u16 = E_KING + 81;
+#[cfg(not(feature = "halfka"))]
+pub const FE_TOTAL: u16 = FE_END;
+
 /// 手駒のBonaPiece起点。us_viewは視点側の駒か。
 fn hand_base(us_view: bool, pt: PieceType) -> u16 {
     match (pt, us_view) {
@@ -129,8 +142,12 @@ const BOARD_CATEGORIES: [PieceType; 9] = [
     PieceType::DRAGON,
 ];
 
-/// BonaPiece集合を保持するブロック数（手駒1＋盤上の9カテゴリ×2色）。
+/// BonaPiece集合を保持するブロック数（手駒1＋盤上の9カテゴリ×2色。
+/// halfkaでは相手玉の平面が1ブロック増える）。
+#[cfg(not(feature = "halfka"))]
 pub const BP_BLOCKS: usize = 1 + 2 * BOARD_CATEGORIES.len();
+#[cfg(feature = "halfka")]
+pub const BP_BLOCKS: usize = 2 + 2 * BOARD_CATEGORIES.len();
 
 /// ブロックに分けたBonaPiece集合（ADR-0165）。
 ///
@@ -201,9 +218,17 @@ pub fn bona_piece_bits(pos: &Position, c: Color, out: &mut BonaBits) {
         out[1 + 2 * i] = own;
         out[2 + 2 * i] = opp;
     }
+
+    // 相手玉の平面。視点cから見た相手玉の升に1ビット立てる
+    #[cfg(feature = "halfka")]
+    {
+        let ek = pos.king(c.flip());
+        let ek = if c == Color::Black { ek } else { ek.inv() };
+        out[BP_BLOCKS - 1] = 1u128 << ek.index();
+    }
 }
 
-/// HalfKPの特徴インデックス: 視点cの自玉位置 × FE_END + BonaPiece。
+/// HalfKP/HalfKAの特徴インデックス: 視点cの自玉位置 × FE_TOTAL + BonaPiece。
 #[inline]
 pub fn halfkp_index(c: Color, own_king: Square, bp: u16) -> u32 {
     let k = if c == Color::Black {
@@ -211,7 +236,7 @@ pub fn halfkp_index(c: Color, own_king: Square, bp: u16) -> u32 {
     } else {
         own_king.inv()
     };
-    k.index() as u32 * u32::from(FE_END) + u32::from(bp)
+    k.index() as u32 * u32::from(FE_TOTAL) + u32::from(bp)
 }
 
 #[cfg(test)]
@@ -287,17 +312,28 @@ mod tests {
             assert_eq!(u32::from(board_base(true, pt)), block_base(1 + 2 * i));
             assert_eq!(u32::from(board_base(false, pt)), block_base(2 + 2 * i));
         }
-        // 最後のブロックの81升ぶんで番号を使い切る
-        assert_eq!(block_base(BP_BLOCKS - 1) + 81, u32::from(FE_END));
+        // 最後のブロックの81升ぶんで番号を使い切る（halfkaは相手玉平面が
+        // FE_ENDの直後に81升続くので、同じ式のまま成り立つ）
+        assert_eq!(block_base(BP_BLOCKS - 1) + 81, u32::from(FE_TOTAL));
         // 手駒ブロックは盤上の手前で収まる
         assert_eq!(block_base(1), u32::from(FE_HAND_END));
     }
 
+    #[cfg(feature = "halfka")]
+    #[test]
+    fn enemy_king_plane_layout() {
+        // 相手玉平面はやねうら王互換番号の直後に置かれ、ブロック終端の
+        // 式とも一致する
+        assert_eq!(E_KING, 1548);
+        assert_eq!(FE_TOTAL, 1629);
+        assert_eq!(block_base(BP_BLOCKS - 1), u32::from(E_KING));
+    }
+
     #[test]
     fn halfkp_index_range() {
-        // 最大値: 玉が81升目、BonaPieceがFE_END-1
-        let max = halfkp_index(Color::Black, Square::new(File(8), Rank(8)), FE_END - 1);
-        assert_eq!(max, 80 * u32::from(FE_END) + u32::from(FE_END) - 1);
-        assert!(max < 81 * u32::from(FE_END));
+        // 最大値: 玉が81升目、BonaPieceがFE_TOTAL-1
+        let max = halfkp_index(Color::Black, Square::new(File(8), Rank(8)), FE_TOTAL - 1);
+        assert_eq!(max, 80 * u32::from(FE_TOTAL) + u32::from(FE_TOTAL) - 1);
+        assert!(max < 81 * u32::from(FE_TOTAL));
     }
 }
