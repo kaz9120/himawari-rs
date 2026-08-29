@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.44.2](https://github.com/kaz9120/himawari-rs/compare/v0.44.1...v0.44.2) (2026-08-29)
+
+
+### その他の変更
+
+* 教師データの診断・取得・整形の道具を足し、ADR-0190〜0192を記録する ([#398](https://github.com/kaz9120/himawari-rs/issues/398)) ([d74f9c6](https://github.com/kaz9120/himawari-rs/commit/d74f9c6bc0693dac6061a67a039640e1f4cec051))
+
 ## [0.44.1](https://github.com/kaz9120/himawari-rs/compare/v0.44.0...v0.44.1) (2026-08-29)
 
 
