@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.44.5](https://github.com/kaz9120/himawari-rs/compare/v0.44.4...v0.44.5) (2026-08-29)
+
+
+### その他の変更
+
+* sprt netに--cand-binを足し、入力特徴の違うビルド同士を測れるようにする ([#404](https://github.com/kaz9120/himawari-rs/issues/404)) ([bbb416f](https://github.com/kaz9120/himawari-rs/commit/bbb416f4124f7cc1bead1b939a0968870ff58e2f))
+
 ## [0.44.4](https://github.com/kaz9120/himawari-rs/compare/v0.44.3...v0.44.4) (2026-08-29)
 
 
