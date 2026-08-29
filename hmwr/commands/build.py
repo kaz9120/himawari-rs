@@ -53,6 +53,7 @@ def add_parser(sub: argparse._SubParsersAction) -> None:
         description="計測と同じフラグでビルドする。",
     )
     t.add_argument("--arch", metavar="構成", help="例 512x16x64。省くと既定構成")
+    t.add_argument("--halfka", action="store_true", help="入力をHalfKAで作る（ADR-0193）")
     t.set_defaults(func=engine)
 
     t = ss.add_parser(
@@ -66,6 +67,7 @@ def add_parser(sub: argparse._SubParsersAction) -> None:
     t.add_argument("specs", nargs="+", metavar="構成", help="例 256x16 512x16x32")
     t.add_argument("--from", dest="source", metavar="ネット", help="元の評価関数")
     t.add_argument("--tag", metavar="名前", help="出力名の頭（既定 shape）")
+    t.add_argument("--halfka", action="store_true", help="入力をHalfKAで作る（ADR-0193）")
     t.set_defaults(func=shapes)
 
 
@@ -245,7 +247,8 @@ def _find_profdata(*, dry_run: bool) -> str:
 
 def engine(args: argparse.Namespace) -> int:
     env = {"HIMAWARI_ARCH": args.arch} if args.arch else {}
-    cargo_build(dry_run=args.dry_run, env=env, args=["-p", "himawari-usi"])
+    extra = ["--features", "himawari-usi/halfka"] if args.halfka else []
+    cargo_build(dry_run=args.dry_run, env=env, args=["-p", "himawari-usi", *extra])
     return proc.OK
 
 
@@ -272,12 +275,18 @@ def shapes(args: argparse.Namespace) -> int:
 
     for spec in args.specs:
         # 構成ごとに出力先を分ける。1つを使い回すと構成を変えるたびに
-        # 全体が再コンパイルされる
-        target = paths.REPO / "target" / "shape" / spec
-        binary = paths.BIN / f"shape-{spec}"
-        net = paths.NETS / f"{tag}-{spec}.hmwr"
+        # 全体が再コンパイルされる。halfkaは次元が違うので別の出力先にする
+        shape_key = f"ka-{spec}" if args.halfka else spec
+        target = paths.REPO / "target" / "shape" / shape_key
+        binary = paths.BIN / f"shape-{shape_key}"
+        net = paths.NETS / f"{tag}-{shape_key}.hmwr"
 
-        print(f"ビルド: {spec}")
+        print(f"ビルド: {shape_key}")
+        feature_args = (
+            ["--features", "himawari-usi/halfka,himawari-tools/halfka"]
+            if args.halfka
+            else []
+        )
         cargo_build(
             dry_run=args.dry_run,
             env={"HIMAWARI_ARCH": spec, "CARGO_TARGET_DIR": str(target)},
@@ -286,6 +295,7 @@ def shapes(args: argparse.Namespace) -> int:
                 "-p", "himawari-tools",
                 "--bin", "himawari",
                 "--bin", "makenet",
+                *feature_args,
             ],
         )
         _copy(target / "release" / "himawari", binary, dry_run=args.dry_run)
@@ -297,8 +307,9 @@ def shapes(args: argparse.Namespace) -> int:
         net.parent.mkdir(parents=True, exist_ok=True)
         proc.run(makenet, dry_run=args.dry_run)
 
+    prefix = "ka-" if args.halfka else ""
     pairs = " ".join(
-        f"data/bin/shape-{s}=data/nets/{tag}-{s}.hmwr" for s in args.specs
+        f"data/bin/shape-{prefix}{s}=data/nets/{tag}-{prefix}{s}.hmwr" for s in args.specs
     )
     print()
     print(f"NPSを測る: hmwr bench --runs 5 {pairs}")

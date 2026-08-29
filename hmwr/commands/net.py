@@ -58,6 +58,11 @@ def add_parser(sub: argparse._SubParsersAction) -> None:
         metavar="引数",
         help="学習器へ素通しする追加引数。ハイフンで始まる値は --extra=--flag と書く",
     )
+    t.add_argument(
+        "--halfka",
+        action="store_true",
+        help="HalfKA拡張のwheelで学習する（ADR-0193）。省くとHalfKPを検査して使う",
+    )
     t.set_defaults(func=train)
 
     t = ss.add_parser(
@@ -136,6 +141,42 @@ def positions(psv: Path) -> int:
     return psv.stat().st_size // BYTES_PER_POSITION
 
 
+def _ensure_extension(*, halfka: bool, dry_run: bool) -> None:
+    """py拡張の入力次元を要求と揃える。
+
+    wheelはインストールされた状態が残るので、halfkaの学習の後に
+    そのままHalfKPを学習すると次元が黙ってずれる。毎回検査し、
+    ずれていれば作り直して入れ替える。
+    """
+    want = 81 * (1629 if halfka else 1548)
+    got = proc.capture(
+        ["python3", "-c", "import himawari; print(himawari.FT_IN)"]
+    ).strip()
+    if got == str(want):
+        return
+    label = "HalfKA" if halfka else "HalfKP"
+    print(f"py拡張を{label}で作り直す（今の入力次元: {got or '未導入'}）")
+    wheels = paths.REPO / "target" / ("wheels-halfka" if halfka else "wheels")
+    argv = [
+        "maturin", "build", "--release", "--quiet",
+        "-m", "crates/py/Cargo.toml",
+        "--out", str(wheels),
+    ]
+    if halfka:
+        argv += ["--features", "halfka"]
+    proc.run(
+        argv,
+        dry_run=dry_run,
+        env={"CARGO_TARGET_DIR": f"target/py-{'ka' if halfka else 'kp'}"},
+    )
+    if dry_run:
+        return
+    built = sorted(wheels.glob("*.whl"), key=lambda w: w.stat().st_mtime, reverse=True)
+    if not built:
+        raise proc.Fail(f"拡張が作られていない: {paths.rel(wheels)}")
+    proc.run(["pip", "install", "--quiet", "--force-reinstall", str(built[0])])
+
+
 def train(args: argparse.Namespace) -> int:
     """本番規模の学習。既定はADRの結論に揃えてある。"""
     name = paths.check_name(args.name)
@@ -146,6 +187,8 @@ def train(args: argparse.Namespace) -> int:
         for path, label in ((data, "学習データ"), (valid, "検証データ")):
             if not path.is_file():
                 raise proc.Fail(f"{label}がない: {path}")
+
+    _ensure_extension(halfka=args.halfka, dry_run=args.dry_run)
 
     out = paths.NETS / f"{name}.hmwr"
     argv = [

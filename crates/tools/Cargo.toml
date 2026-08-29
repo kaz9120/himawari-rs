@@ -17,6 +17,10 @@ himawari-engine = { path = "../engine" }
 anyhow = "1"
 clap = { version = "4", features = ["derive"] }
 
+[features]
+# 入力をHalfKAへ拡張する（ADR-0193）。makenet・psvの次元が変わる。
+halfka = ["himawari-engine/halfka", "himawari-core/halfka"]
+
 [lints]
 workspace = true
 
