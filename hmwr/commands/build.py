@@ -53,7 +53,7 @@ def add_parser(sub: argparse._SubParsersAction) -> None:
         description="計測と同じフラグでビルドする。",
     )
     t.add_argument("--arch", metavar="構成", help="例 512x16x64。省くと既定構成")
-    t.add_argument("--halfka", action="store_true", help="入力をHalfKAで作る（ADR-0193）")
+    t.add_argument("--halfka", action="store_true", help="入力をHalfKA（相手玉の平面つき）で作る")
     t.set_defaults(func=engine)
 
     t = ss.add_parser(
@@ -67,7 +67,7 @@ def add_parser(sub: argparse._SubParsersAction) -> None:
     t.add_argument("specs", nargs="+", metavar="構成", help="例 256x16 512x16x32")
     t.add_argument("--from", dest="source", metavar="ネット", help="元の評価関数")
     t.add_argument("--tag", metavar="名前", help="出力名の頭（既定 shape）")
-    t.add_argument("--halfka", action="store_true", help="入力をHalfKAで作る（ADR-0193）")
+    t.add_argument("--halfka", action="store_true", help="入力をHalfKA（相手玉の平面つき）で作る")
     t.set_defaults(func=shapes)
 
 

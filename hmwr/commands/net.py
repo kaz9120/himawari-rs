@@ -61,7 +61,7 @@ def add_parser(sub: argparse._SubParsersAction) -> None:
     t.add_argument(
         "--halfka",
         action="store_true",
-        help="HalfKA拡張のwheelで学習する（ADR-0193）。省くとHalfKPを検査して使う",
+        help="HalfKA拡張のwheelで学習する。省くとHalfKPを検査して使う",
     )
     t.set_defaults(func=train)
 
@@ -148,6 +148,10 @@ def _ensure_extension(*, halfka: bool, dry_run: bool) -> None:
     そのままHalfKPを学習すると次元が黙ってずれる。毎回検査し、
     ずれていれば作り直して入れ替える。
     """
+    if dry_run:
+        if halfka:
+            print("[dry-run] py拡張の入力次元を検査し、必要ならHalfKAで作り直す")
+        return
     want = 81 * (1629 if halfka else 1548)
     got = proc.capture(
         ["python3", "-c", "import himawari; print(himawari.FT_IN)"]
