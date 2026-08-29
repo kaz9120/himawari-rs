@@ -1,12 +1,15 @@
 """教師データの取得と前処理。
 
-公開データセット（nodchip/shogi_hao_depth9）から381ファイル・約29.9億局面を
-取り、学習用と検証用のpsvを作る。開発機を移すときはこれで再現できる。
+公開データセットを取り、学習用と検証用のpsvを作る。開発機を移すときは
+これで再現できる。hao_depth9は固定の381ファイル、その他のデータセットは
+HuggingFaceのAPIでファイル一覧とサイズを引いて取得・検査する。
 """
 
 from __future__ import annotations
 
 import argparse
+import json
+import urllib.request
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
@@ -16,6 +19,19 @@ BASE_URL = "https://huggingface.co/datasets/nodchip/shogi_hao_depth9/resolve/mai
 PREFIX = "kifu.tag=train.depth=9.num_positions=1000000000"
 START_TIMES = ("1695340981", "1695606850", "1695872823")
 INDEXES = tuple(f"{i:03d}" for i in range(127))
+
+# 取得できるデータセット。hao以外は生psv（.bin）をAPIの一覧で取る
+DATASETS = {
+    "hao": {"repo": "nodchip/shogi_hao_depth9", "dir": "hao_depth9"},
+    "tanuki2024": {
+        "repo": "nodchip/tanuki-.nnue-pytorch-2024-07-30.1",
+        "dir": "tanuki2024",
+    },
+    "entering-king": {
+        "repo": "nodchip/shogi_suisho5_depth9_entering_king",
+        "dir": "entering_king",
+    },
+}
 
 # 検証データの供給元。学習データからは除く
 VALID_START_TIME = "1695340981"
@@ -48,6 +64,18 @@ def add_parser(sub: argparse._SubParsersAction) -> None:
     t.add_argument("--jobs", type=int, default=DEFAULT_JOBS, metavar="N", help="並列数")
     t.add_argument("--raw-dir", metavar="パス", help="生データの置き場")
     t.add_argument("--train-dir", metavar="パス", help="加工後の置き場")
+    t.add_argument(
+        "--dataset",
+        default="hao",
+        choices=sorted(DATASETS),
+        help="取得するデータセット（既定 hao）。prepareはhaoだけが持つ",
+    )
+    t.add_argument(
+        "--limit-files",
+        type=int,
+        metavar="N",
+        help="名前順の先頭Nファイルだけ取得する。スラブ処理と部分検証用",
+    )
     t.set_defaults(func=fetch)
 
     t = ss.add_parser(
@@ -71,7 +99,9 @@ def add_parser(sub: argparse._SubParsersAction) -> None:
 
 
 def _raw_dir(args: argparse.Namespace) -> Path:
-    return Path(args.raw_dir) if args.raw_dir else paths.RAW / "hao_depth9"
+    if args.raw_dir:
+        return Path(args.raw_dir)
+    return paths.RAW / DATASETS[args.dataset]["dir"]
 
 
 def _train_dir(args: argparse.Namespace) -> Path:
@@ -86,44 +116,84 @@ def all_names() -> list[str]:
     return [file_name(st, i) for st in START_TIMES for i in INDEXES]
 
 
+def _manifest(dataset: str, limit: int | None) -> list[tuple[str, int | None]]:
+    """(ファイル名, 期待サイズ)の一覧。haoは固定、他はAPIから引く。
+
+    期待サイズNoneは「下限MIN_SIZEだけ検査する」を意味する。
+    """
+    if dataset == "hao":
+        entries: list[tuple[str, int | None]] = [(n, None) for n in all_names()]
+    else:
+        repo = DATASETS[dataset]["repo"]
+        url = f"https://huggingface.co/api/datasets/{repo}/tree/main"
+        with urllib.request.urlopen(url, timeout=60) as r:
+            tree = json.load(r)
+        entries = sorted(
+            (f["path"], (f.get("lfs") or {}).get("size") or f["size"])
+            for f in tree
+            if f["path"].endswith(".bin")
+        )
+        if not entries:
+            raise proc.Fail(f"{repo} に.binファイルがない")
+    return entries[:limit] if limit else entries
+
+
 def fetch(args: argparse.Namespace) -> int:
     raw, train = _raw_dir(args), _train_dir(args)
     stages = ("download", "verify", "prepare") if args.stage == "all" else (args.stage,)
+    if "prepare" in stages and args.dataset != "hao":
+        if args.stage == "all":
+            stages = ("download", "verify")
+        else:
+            raise proc.Fail(
+                "prepareはhao専用。他のデータセットの前処理は着手時のADRの手順で行う"
+            )
+    manifest = _manifest(args.dataset, args.limit_files)
     for stage in stages:
         if stage == "download":
-            _download(raw, args.jobs, dry_run=args.dry_run)
+            _download(args.dataset, manifest, raw, args.jobs, dry_run=args.dry_run)
         elif stage == "verify":
-            if not _verify(raw) and not args.dry_run:
+            if not _verify(manifest, raw) and not args.dry_run:
                 raise proc.Fail("欠落またはサイズ不足のファイルがある")
         else:
             _prepare(raw, train, dry_run=args.dry_run)
     return proc.OK
 
 
-def _download(raw: Path, jobs: int, *, dry_run: bool) -> None:
-    names = all_names()
-    print(f"対象 {len(names)} ファイル、並列 {jobs}、置き場 {paths.rel(raw)}")
+def _download(
+    dataset: str,
+    manifest: list[tuple[str, int | None]],
+    raw: Path,
+    jobs: int,
+    *,
+    dry_run: bool,
+) -> None:
+    total = sum(s for _, s in manifest if s)
+    size_note = f"、計{total / 2**30:.1f}GiB" if total else ""
+    print(f"対象 {len(manifest)} ファイル{size_note}、並列 {jobs}、置き場 {paths.rel(raw)}")
     if dry_run:
-        print(f"[dry-run] curl で {len(names)} ファイルを取得する")
+        print(f"[dry-run] curl で {len(manifest)} ファイルを取得する")
         return
 
+    repo = DATASETS[dataset]["repo"]
+    base = f"https://huggingface.co/datasets/{repo}/resolve/main"
     raw.mkdir(parents=True, exist_ok=True)
     with ThreadPoolExecutor(max_workers=jobs) as pool:
-        list(pool.map(lambda n: _fetch_one(n, raw), names))
+        list(pool.map(lambda e: _fetch_one(base, e[0], e[1], raw), manifest))
 
 
-def _fetch_one(name: str, raw: Path) -> None:
+def _fetch_one(base: str, name: str, size: int | None, raw: Path) -> None:
     """1ファイル取る。妥当なサイズで既にあれば飛ばす。"""
     path = raw / name
     if path.is_file():
-        size = path.stat().st_size
-        if size >= MIN_SIZE:
+        have = path.stat().st_size
+        if have == size or (size is None and have >= MIN_SIZE):
             return
-        print(f"再取得（サイズ不足 {size}B）: {name}")
+        print(f"再取得（サイズ不一致 {have}B）: {name}")
         path.unlink()
 
     # HuggingFaceは = をエンコードしたパスで配る
-    url = f"{BASE_URL}/{name.replace('=', '%3D')}"
+    url = f"{base}/{name.replace('=', '%3D')}"
     part = path.with_suffix(path.suffix + ".part")
     ok = proc.succeeds(
         ["curl", "-fsSL", "--retry", "3", "--retry-delay", "5", "-o", str(part), url]
@@ -134,18 +204,19 @@ def _fetch_one(name: str, raw: Path) -> None:
     print(f"取得: {name}")
 
 
-def _verify(raw: Path) -> bool:
+def _verify(manifest: list[tuple[str, int | None]], raw: Path) -> bool:
     bad = 0
-    names = all_names()
-    for name in names:
+    for name, size in manifest:
         path = raw / name
         if not path.is_file():
             print(f"欠落: {name}")
             bad += 1
-        elif path.stat().st_size < MIN_SIZE:
-            print(f"サイズ不足 {path.stat().st_size}B: {name}")
+            continue
+        have = path.stat().st_size
+        if (size is not None and have != size) or (size is None and have < MIN_SIZE):
+            print(f"サイズ不一致 {have}B（期待{size}B）: {name}")
             bad += 1
-    print(f"検査 {len(names)} ファイル、異常 {bad} 件")
+    print(f"検査 {len(manifest)} ファイル、異常 {bad} 件")
     return bad == 0
 
 
