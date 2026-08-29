@@ -163,6 +163,7 @@ SPSAの一括チューニングでこのずれを回収する（[ADR-0143](adr/0
 | EMA重み平均（SWA） | 終盤の重み振動を平均化する。ほぼ無料で数Elo | SPRT |
 | tanuki- 2024教師データの取得 | [nodchip/tanuki-.nnue-pytorch-2024-07-30.1](https://huggingface.co/datasets/nodchip/tanuki-.nnue-pytorch-2024-07-30.1)。**MITライセンス**、PackedSfenValue、7z分割で計320GB、tanuki-系エンジンのdepth 9生成。未シャッフル・非静止なので、hao_depth9と同じ前処理（シャッフル→qsearch静止化）を通す。公開データでの大規模増量の本命 | SPRT |
 | 入玉教師データの混合 | [nodchip/shogi_suisho5_depth9_entering_king](https://huggingface.co/datasets/nodchip/shogi_suisho5_depth9_entering_king)。**MITライセンス**、約5億局面・20GB。floodgateの2015〜2024年から入玉局面を集め、Suisho5のdepth 9でラベル。教師の入玉の薄さ（評価関数表の「入玉局面の評価精度を測る」）へ直接効き、24点法対応の土台にもなる | SPRT |
+| 自己生成の生成条件の精査 | 教師局面の選び方はADR-0190の間引き実験では閉じない。対局内の相関（1局平均89手の書き出し）、序盤の重複率、開始局面の被覆（進行度・駒割・入玉度）を既存データから測り、指し切り設定・書き出し割当・ランダム性の再設計につなぐ。ADR-0190の「閉じない論点」が詳細を持つ | 実測 |
 | Kanade蒸留教師データの評価 | [penguinkumimanu/sample_Knowledge_distilled_dataset_by_Kanade](https://huggingface.co/datasets/penguinkumimanu/sample_Knowledge_distilled_dataset_by_Kanade)。suisho5_depth9の局面をDL系エンジンKanadeで再ラベルした約1.1億局面・13GB。qsearch適用済みpsv版があり、「同じ局面でラベルの質だけ変える」実験台になる。**ライセンスの記載がなく、使う前に作者への確認が要る** | loss+SPRT |
 
 ### 基盤
