@@ -113,7 +113,8 @@ SPSAの一括チューニングでこのずれを回収する（[ADR-0143](adr/0
 2026-08-29オーナー共有）。**ただし着手は後段に置く**（2026-08-29
 オーナー判断）。DL再ラベルは本機の計算資源で数か月かかり、太いネットで
 その成果を超えるのも難しい。先に表現（HalfKA、候補表）とデータ全量
-（tanuki 2024の80億、学習表）で肉薄を測ってから戻る。同記事は蒸留
+（tanuki 2024の78.6億、[ADR-0192](adr/0192-tanuki2024-teacher.md)で
+移行中）で肉薄を測ってから戻る。同記事は蒸留
 データが容量拡張の前提になったとも報告しており、ヘッド・L1の拡張は
 蒸留の後に測る順序も変えない。
 
@@ -173,7 +174,6 @@ SPSAの一括チューニングでこのずれを回収する（[ADR-0143](adr/0
 | 左右ミラーのデータ拡張 | 将棋のルールは左右対称で、鏡映局面は同じ評価値を持つ。読み込み時に確率0.5で盤と手を鏡映すれば、教師データを1バイトも増やさず分布を対称化できる。重みを縛った[ADR-0157](adr/0157-king-mirror-buckets.md)（−16.0）・[ADR-0158](adr/0158-mirror-factorizer.md)（利得なし）と違い、データ側から対称性を教えるので表現力を落とさない。初期配置は左右非対称なので、序盤の分布が実戦から離れる懸念は残る | loss+SPRT |
 | 詰みスコアの扱い | ±30000近傍のclamp・除外・専用ターゲット。現状は8.5%を素通ししている | loss+SPRT |
 | EMA重み平均（SWA） | 終盤の重み振動を平均化する。ほぼ無料で数Elo | SPRT |
-| tanuki- 2024教師データの取得 | [nodchip/tanuki-.nnue-pytorch-2024-07-30.1](https://huggingface.co/datasets/nodchip/tanuki-.nnue-pytorch-2024-07-30.1)。**MITライセンス**、生psvが254本・計320GB＝80億局面、tanuki-系のdepth 9生成（AobaZeroの分布調査に出る「野田さんの80億」と同一物）。未シャッフル・非静止なので、hao_depth9と同じ前処理を通す。空き312GBに収めるにはスラブ処理（取得→静止化→生を削除）と、読んだ入力を消しながら進むshuffleの拡張が要る。ランキング群は2.8倍に膨れるので全量には作れず、サブセットかオンザフライ導出をADRで決める。公開データでの大規模増量の本命 | SPRT |
 | 入玉教師データの混合 | [nodchip/shogi_suisho5_depth9_entering_king](https://huggingface.co/datasets/nodchip/shogi_suisho5_depth9_entering_king)。**MITライセンス**、約5億局面・20GB。floodgateの2015〜2024年から入玉局面を集め、Suisho5のdepth 9でラベル。教師の入玉の薄さ（評価関数表の「入玉局面の評価精度を測る」）へ直接効き、24点法対応の土台にもなる | SPRT |
 | 自己生成の生成条件の精査 | 教師局面の選び方はADR-0190の間引き実験では閉じない。対局内の相関（1局平均89手の書き出し）、序盤の重複率、開始局面の被覆（進行度・駒割・入玉度）を既存データから測り、指し切り設定・書き出し割当・ランダム性の再設計につなぐ。ADR-0190の「閉じない論点」が詳細を持つ | 実測 |
 | Kanade蒸留教師データの評価 | [penguinkumimanu/sample_Knowledge_distilled_dataset_by_Kanade](https://huggingface.co/datasets/penguinkumimanu/sample_Knowledge_distilled_dataset_by_Kanade)。suisho5_depth9の局面をDL系エンジンKanadeで再ラベルした約1.1億局面・13GB。qsearch適用済みpsv版があり、「同じ局面でラベルの質だけ変える」実験台になる。**ライセンスの記載がなく、使う前に作者への確認が要る**。DL再ラベルの線自体は氷彗が+40で実証済み（注力3を見よ）。ライセンス懸念のないdlshogi公開モデルでの自前付け直しも選択肢になる | loss+SPRT |
