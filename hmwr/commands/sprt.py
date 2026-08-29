@@ -81,6 +81,11 @@ def add_parser(sub: argparse._SubParsersAction) -> None:
     t.add_argument("cand", metavar="candidateネット")
     t.add_argument("name", help="実験名")
     t.add_argument("--bin", metavar="パス", help="対局に使うビルド")
+    t.add_argument(
+        "--cand-bin",
+        metavar="パス",
+        help="candidate側だけ別のビルドを使う。入力特徴の違う構成の比較用",
+    )
     t.add_argument("--noninferiority", action="store_true", help="非劣性で測る")
     t.add_argument("--tc", metavar="持ち時間", help="例 60+0.6")
     t.add_argument("--set", action="append", metavar="KEY=VALUE", help="測定条件")
@@ -172,6 +177,8 @@ def run_net(args: argparse.Namespace) -> int:
             raise proc.Fail(f"ネットがない: {net}")
 
     rest = ["sprt", "net", args.base, args.cand, args.name]
+    if getattr(args, "cand_bin", None):
+        rest += ["--cand-bin", args.cand_bin]
     if args.bin:
         rest += ["--bin", args.bin]
     return _start(args, args.name, rest, nets=_net_options(args))
@@ -226,7 +233,12 @@ def settings(args: argparse.Namespace) -> dict[str, str]:
 
 def _net_options(args: argparse.Namespace) -> dict[str, str]:
     """評価関数を片側ずつ指定するための情報。"""
-    return {"base": args.base, "cand": args.cand, "bin": args.bin or ""}
+    return {
+        "base": args.base,
+        "cand": args.cand,
+        "bin": args.bin or "",
+        "cand_bin": args.cand_bin or "",
+    }
 
 
 def _start(
@@ -357,7 +369,8 @@ def _selfplay(
         # 評価関数だけを差し替える。--option と併用すると、どちらが効くかが
         # 実装依存になるため、片側指定だけで完結させる
         engine = nets["bin"] or _default_bin(name)
-        argv += ["--baseline", engine, "--candidate", engine]
+        cand_engine = nets.get("cand_bin") or engine
+        argv += ["--baseline", engine, "--candidate", cand_engine]
         argv += ["--bopt", f"EvalFile={_abs(nets['base'])}"]
         argv += ["--copt", f"EvalFile={_abs(nets['cand'])}"]
     else:
