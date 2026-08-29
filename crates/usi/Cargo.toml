@@ -16,6 +16,8 @@ himawari-engine = { path = "../engine" }
 # SPSAのチューニング用ビルド（ADR-0143）。対象定数をUSIオプションへ出す。
 [features]
 tune = ["himawari-engine/tune"]
+# 入力をHalfKAへ拡張する（ADR-0193）。
+halfka = ["himawari-engine/halfka"]
 
 [lints]
 workspace = true
