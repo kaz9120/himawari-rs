@@ -9,6 +9,8 @@
 //!                                              qsearchのPV葉へ置き換える（ADR-0136）
 //!   psv rank    --in file --out file [--limit N] [--skip N] [--hash MB]
 //!                                              兄弟局面の葉の群を作る（ADR-0185）
+//!   psv thin    --in file --out file [--threshold N] [--keep P] [--seed N] [--group B]
+//!                                              決着圏の局面を確率で間引く（ADR-0190）
 //!
 //! shuffleは2パスのバケット法で動く（ADR-0065）。メモリ使用量は
 //! バケット1個分（2GB）に収まるため、入力サイズの制限はない。
@@ -162,6 +164,49 @@ fn head(input: &str, output: &str, count: u64, skip: u64) {
     }
     w.flush().unwrap();
     println!("{n}局面を{output}へ書き出しました（{skip}局面スキップ）");
+}
+
+/// 詰みスコアの下限。この絶対値以上は間引かず全件残す（詰み域を欠かさない、ADR-0188）。
+const MATE_ABS: i32 = 29000;
+
+/// 決着圏の局面を確率で間引く（ADR-0190）。
+///
+/// レコードのscore（groupが120ならば先頭レコードのscore）を見て、
+/// 非詰みかつ|score|がthreshold以上のものをkeepの確率で残す。
+/// それ以外（互角圏〜優勢圏と詰みスコア）は全件残す。複製はしないので、
+/// 分布の山を新たに作ることはない。
+fn thin(input: &str, output: &str, threshold: i32, keep: f64, seed: u64, group: usize) {
+    if group % PSV_BYTES != 0 {
+        die(&format!("--group は{PSV_BYTES}の倍数にしてください"));
+    }
+    let mut r = open_reader(input);
+    let mut w = BufWriter::new(
+        std::fs::File::create(output).unwrap_or_else(|e| die(&format!("作成できません: {e}"))),
+    );
+    let mut rng = Rng(seed | 1);
+    let mut buf = vec![0u8; group];
+    let (mut total, mut decided, mut kept_decided) = (0u64, 0u64, 0u64);
+    while r.read_exact(&mut buf).is_ok() {
+        total += 1;
+        let score = i32::from(i16::from_le_bytes([buf[32], buf[33]]));
+        let is_decided = score.abs() >= threshold && score.abs() < MATE_ABS;
+        if is_decided {
+            decided += 1;
+            let p = (rng.next() >> 11) as f64 / (1u64 << 53) as f64;
+            if p >= keep {
+                continue;
+            }
+            kept_decided += 1;
+        }
+        w.write_all(&buf)
+            .unwrap_or_else(|e| die(&format!("書き込み失敗: {e}")));
+    }
+    w.flush().unwrap();
+    let written = total - (decided - kept_decided);
+    println!(
+        "入力{total}件のうち決着圏（{threshold}<=|score|<{MATE_ABS}）{decided}件を\
+         {kept_decided}件へ間引き、{written}件を書き出しました"
+    );
 }
 
 /// 1バケットの目標サイズ。パス2でバケット1個をメモリに載せる（ADR-0065）。
@@ -584,7 +629,7 @@ fn rank(input: &str, output: &str, limit: u64, skip: u64, hash_mb: usize, eval: 
 fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
     let Some(cmd) = args.first() else {
-        die("サブコマンドが必要です: stats / dump / head / shuffle / quiet / rank");
+        die("サブコマンドが必要です: stats / dump / head / shuffle / quiet / rank / thin");
     };
     let rest = &args[1..];
     let input = arg_value(rest, "--in");
@@ -671,6 +716,31 @@ fn main() {
                 skip,
                 hash_mb,
                 &eval,
+            );
+        }
+        "thin" => {
+            let threshold: i32 = arg_value(rest, "--threshold")
+                .map(|s| s.parse().unwrap_or_else(|_| die("--threshold は整数")))
+                .unwrap_or(1318);
+            let keep: f64 = arg_value(rest, "--keep")
+                .map(|s| s.parse().unwrap_or_else(|_| die("--keep は0〜1の実数")))
+                .unwrap_or(0.5);
+            if !(0.0..=1.0).contains(&keep) {
+                die("--keep は0〜1の実数");
+            }
+            let seed: u64 = arg_value(rest, "--seed")
+                .map(|s| s.parse().unwrap_or(1))
+                .unwrap_or(1);
+            let group: usize = arg_value(rest, "--group")
+                .map(|s| s.parse().unwrap_or_else(|_| die("--group は整数")))
+                .unwrap_or(PSV_BYTES);
+            thin(
+                &input.unwrap_or_else(|| die("--in が必要です")),
+                &output.unwrap_or_else(|| die("--out が必要です")),
+                threshold,
+                keep,
+                seed,
+                group,
             );
         }
         other => die(&format!("不明なサブコマンド: {other}")),
