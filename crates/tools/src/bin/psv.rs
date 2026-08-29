@@ -9,7 +9,9 @@
 //!                                              入力を消してピークを約1倍に抑える。
 //!                                              --parts Nは出力を.partNNNへ分割する
 //!   psv quiet   --in file --out file [--limit N] [--max-plies N] [--hash MB]
-//!                                              qsearchのPV葉へ置き換える（ADR-0136）
+//!               [--append] [--consume]         qsearchのPV葉へ置き換える（ADR-0136）。
+//!                                              --appendは出力へ追記、--consumeは完了後に
+//!                                              入力を消す（分割入力の逐次処理用）
 //!   psv rank    --in file --out file [--limit N] [--skip N] [--hash MB]
 //!                                              兄弟局面の葉の群を作る（ADR-0185）
 //!   psv thin    --in file --out file [--threshold N] [--keep P] [--seed N] [--group B]
@@ -414,12 +416,33 @@ fn shuffle(
 ///
 /// 評価値と勝敗は元の値を保つ。ただしどちらも手番視点なので、奇数手
 /// 進めたときは符号を戻す。手数は進めた分を足し、PVの初手は捨てる。
-fn quiet(input: &str, output: &str, limit: u64, max_plies: usize, hash_mb: usize, eval: &str) {
+/// quietの入出力の扱い。分割入力を1本へ集約する逐次処理で使う。
+struct QuietMode {
+    /// 出力へ追記する（既定は新規作成）
+    append: bool,
+    /// 完了後に入力を消す
+    consume: bool,
+}
+
+fn quiet(
+    input: &str,
+    output: &str,
+    limit: u64,
+    max_plies: usize,
+    hash_mb: usize,
+    eval: &str,
+    mode: QuietMode,
+) {
     let mut r = open_reader(input);
-    let mut w = BufWriter::new(
+    let file = if mode.append {
+        std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(output)
+    } else {
         std::fs::File::create(output)
-            .unwrap_or_else(|e| die(&format!("作れません: {output}: {e}"))),
-    );
+    };
+    let mut w = BufWriter::new(file.unwrap_or_else(|e| die(&format!("作れません: {output}: {e}"))));
     let shared = Arc::new(Shared::new(hash_mb));
     let mut f = std::fs::File::open(eval)
         .unwrap_or_else(|e| die(&format!("評価関数を開けません: {eval}: {e}")));
@@ -517,6 +540,12 @@ fn quiet(input: &str, output: &str, limit: u64, max_plies: usize, hash_mb: usize
     }
     w.flush()
         .unwrap_or_else(|e| die(&format!("書けません: {e}")));
+    if mode.consume {
+        drop(r);
+        std::fs::remove_file(input)
+            .unwrap_or_else(|e| die(&format!("入力を消せません: {input}: {e}")));
+        println!("入力を消しました: {input}");
+    }
     let sec = start.elapsed().as_secs_f64();
     println!("局面数        : {n}");
     println!(
@@ -798,6 +827,10 @@ fn main() {
             let eval = arg_value(rest, "--eval-file")
                 .or_else(|| std::env::var("EVAL_FILE").ok())
                 .unwrap_or_else(|| die("--eval-file か EVAL_FILE が必要です"));
+            let mode = QuietMode {
+                append: rest.iter().any(|a| a == "--append"),
+                consume: rest.iter().any(|a| a == "--consume"),
+            };
             quiet(
                 &input.unwrap_or_else(|| die("--in が必要です")),
                 &output.unwrap_or_else(|| die("--out が必要です")),
@@ -805,6 +838,7 @@ fn main() {
                 max_plies,
                 hash_mb,
                 &eval,
+                mode,
             );
         }
         "rank" => {
