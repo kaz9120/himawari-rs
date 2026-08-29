@@ -74,6 +74,19 @@ enum Cmd {
         #[arg(long)]
         limit: Option<usize>,
     },
+    /// 現行ネットの浅い評価（qsearch葉）と正解ラベルの乖離を測る
+    Measure {
+        /// labelが書いたラベルTSV
+        #[arg(long, default_value = "data/raw/blindspots/labels.tsv")]
+        labels: PathBuf,
+        /// 評価関数。省くと環境変数EVAL_FILEを読む
+        #[arg(long)]
+        eval_file: Option<PathBuf>,
+        /// ベンチに入れる下限。実戦評価と正解の勝率乖離がこれ未満の行は
+        /// 「評価は正しく、水平線か相手の妙手」なので除く
+        #[arg(long, default_value_t = 0.15)]
+        gap_floor: f64,
+    },
 }
 
 fn main() -> ExitCode {
@@ -113,7 +126,137 @@ fn run(cli: &Cli) -> Result<()> {
             *timeout,
             *limit,
         ),
+        Cmd::Measure {
+            labels,
+            eval_file: eval,
+            gap_floor,
+        } => measure(labels, eval.clone(), *gap_floor),
     }
+}
+
+/// 勝率変換。学習の損失と同じ sigmoid(score/600)（crates/pyのSIGMOID_SCALE）。
+fn winprob(cp: i32) -> f64 {
+    1.0 / (1.0 + (-f64::from(cp.clamp(-20000, 20000)) / 600.0).exp())
+}
+
+/// 現行ネットのqsearch葉の評価と正解ラベルの勝率乖離を集計する。
+///
+/// 数字は世代ごとにADR-0191の測定節へ追記する。ゲートではなく、
+/// 自己分布の外の性能を世代の推移として見る検出器である。
+fn measure(labels: &Path, eval: Option<PathBuf>, gap_floor: f64) -> Result<()> {
+    use himawari_core::Position;
+    use himawari_engine::eval::Evaluator;
+    use himawari_engine::movepick::Histories;
+    use himawari_engine::search::{Shared, Worker};
+    use himawari_engine::timeman::{Limits, TimeManager, TimeOptions};
+    use std::sync::Arc;
+
+    let eval_path = eval_file(eval)?;
+    let mut f = std::fs::File::open(&eval_path)?;
+    let (net, _lineage) =
+        himawari_engine::nnue_io::load(&mut f).map_err(|e| anyhow::anyhow!("{e}"))?;
+    let net = Arc::new(net);
+    let shared = Arc::new(Shared::new(16));
+    let limits = Limits::default();
+    let start_pos = Position::from_sfen(SFEN_STARTPOS).expect("平手初期局面");
+    let tm = TimeManager::new(
+        &limits,
+        start_pos.side_to_move(),
+        start_pos.game_ply(),
+        &TimeOptions::default(),
+    );
+    let mut worker = Worker::new(
+        start_pos,
+        Arc::clone(&shared),
+        limits,
+        tm,
+        0,
+        1,
+        Evaluator::nnue(Arc::clone(&net)),
+        Histories::default(),
+    );
+
+    let text = std::fs::read_to_string(labels)
+        .with_context(|| format!("ラベルTSVを開けません: {}", labels.display()))?;
+    // (乖離, 手数, 実戦評価)
+    let mut gaps: Vec<(f64, usize, i32)> = Vec::new();
+    let mut skipped = 0usize;
+    for line in text.lines().skip(1) {
+        let cols: Vec<&str> = line.split('\t').collect();
+        let [sfen, ply, eval_game, deep_cp, ..] = cols[..] else {
+            continue;
+        };
+        let (Ok(ply), Ok(eval_game), Ok(deep_cp)) = (
+            ply.parse::<usize>(),
+            eval_game.parse::<i32>(),
+            deep_cp.parse::<i32>(),
+        ) else {
+            continue;
+        };
+        // 確定基準: 実戦時の評価が正解から乖離していた局面だけを測る
+        if (winprob(eval_game) - winprob(deep_cp)).abs() < gap_floor {
+            skipped += 1;
+            continue;
+        }
+        let Ok(pos) = Position::from_sfen(sfen) else {
+            skipped += 1;
+            continue;
+        };
+        worker.set_position(pos);
+        let plies = worker.walk_to_quiet(16);
+        let raw = worker.evaluator.evaluate(&worker.pos);
+        let shallow = if plies % 2 == 1 { -raw } else { raw };
+        let gap = (winprob(shallow) - winprob(deep_cp)).abs();
+        gaps.push((gap, ply, eval_game));
+    }
+    if gaps.is_empty() {
+        anyhow::bail!("測定対象がない（確定基準で全滅）");
+    }
+
+    let mean = |v: &[f64]| v.iter().sum::<f64>() / v.len() as f64;
+    let all: Vec<f64> = gaps.iter().map(|g| g.0).collect();
+    let mut sorted = all.clone();
+    sorted.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    println!("評価関数: {}", eval_path.display());
+    println!(
+        "対象{}件（確定基準の床{gap_floor}、除外{skipped}件）",
+        gaps.len()
+    );
+    println!(
+        "浅い評価と正解の勝率乖離: 平均{:.3} 中央値{:.3} p90={:.3}",
+        mean(&all),
+        sorted[sorted.len() / 2],
+        sorted[sorted.len() * 9 / 10]
+    );
+    for (name, lo, hi) in [
+        ("〜60手", 0, 60),
+        ("61〜100手", 61, 100),
+        ("101手〜", 101, 9999),
+    ] {
+        let v: Vec<f64> = gaps
+            .iter()
+            .filter(|g| (lo..=hi).contains(&g.1))
+            .map(|g| g.0)
+            .collect();
+        if !v.is_empty() {
+            println!("  {name:>9}: 平均{:.3}（{}件）", mean(&v), v.len());
+        }
+    }
+    for (name, lo, hi) in [
+        ("互角〜+500", 0, 500),
+        ("+501〜2000", 501, 2000),
+        ("+2001〜", 2001, 99999),
+    ] {
+        let v: Vec<f64> = gaps
+            .iter()
+            .filter(|g| (lo..=hi).contains(&g.2))
+            .map(|g| g.0)
+            .collect();
+        if !v.is_empty() {
+            println!("  実戦評価{name:>10}: 平均{:.3}（{}件）", mean(&v), v.len());
+        }
+    }
+    Ok(())
 }
 
 /// 候補を1スレッド・固定ノードで再解析し、正解ラベルを追記する。
