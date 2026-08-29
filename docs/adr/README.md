@@ -108,6 +108,7 @@
 - [0163](0163-sprt-hypothesis-choice.md) 対立仮説を着手時に決める（既定と非劣性の使い分け）
 - [0175](0175-sprt-until-decision.md) SPRTを判定が出るまで走らせ、完了をファイルで検知する
 - [0189](0189-artifact-retention.md) 成果物の保持を日数で決め、掃除をhmwr cleanに固定する
+- [0191](0191-blindspot-benchmark.md) floodgateの崩壊局面から盲点ベンチマークを作る
 
 ## 全ADR
 
@@ -302,6 +303,7 @@
 | [0188](0188-selfplay-rl-loop.md) | 自己生成の世代ループを自給自足の継続学習で回す | 2026-08-26 | +13.9 | accepted |
 | [0189](0189-artifact-retention.md) | 成果物の保持を日数で決め、掃除をhmwr cleanに固定する | 2026-08-27 |  | accepted |
 | [0190](0190-selfplay-decided-thinning.md) | 自己生成教師の決着圏を間引き、分布の偏りを直す | 2026-08-29 |  | proposed |
+| [0191](0191-blindspot-benchmark.md) | floodgateの崩壊局面から盲点ベンチマークを作り、世代の定点観測にする | 2026-08-29 |  | proposed |
 
 ## バックログ
 

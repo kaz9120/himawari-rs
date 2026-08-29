@@ -115,7 +115,8 @@ SPSAの一括チューニングでこのずれを回収する（[ADR-0143](adr/0
   棋譜を回収し、評価値系列から問題を掘り、定跡を足す。桂の3段目不成の
   生成漏れ（+11.2 Elo、[ADR-0173](adr/0173-knight-non-promotion-movegen.md)）は
   この観測が見つけた。CSAに残る評価値系列は、再解析より安い診断材料になる。
-  次に見るのは定跡の追加（`book seed`）と、まだ回していない大悪手の全量解析
+  次に見るのは定跡の追加（`book seed`）と、崩壊局面の盲点ベンチマーク化
+  （[ADR-0191](adr/0191-blindspot-benchmark.md)、大悪手の全量解析の後継）
 - **測定の手順はスキルが持つ**。SPRTはrunning-sprt、ビルド・計測・SPSAは
   himawari-cliを使う
 - **成果物の掃除**（[ADR-0189](adr/0189-artifact-retention.md)）。月1回を
