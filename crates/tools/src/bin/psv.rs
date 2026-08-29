@@ -1,7 +1,7 @@
 //! PackedSfenValue教師データの前処理ツール（ADR-0038）。
 //!
 //! 使い方:
-//!   psv stats   --in file [--limit N]          統計表示（局面数・score分布・勝敗）
+//!   psv stats   --in file [--limit N]          統計表示（局面数・score分布・勝敗・勝率帯）
 //!   psv dump    --in file [--limit N]          SFENと教師信号を1行ずつ表示
 //!   psv head    --in file --out file --count N [--skip M]   部分抽出
 //!   psv shuffle --in file[,file...] --out file [--seed N] [--tmp DIR]  全体シャッフル
@@ -66,6 +66,8 @@ fn stats(input: &str, limit: Option<u64>) {
     let mut results = [0u64; 3]; // 負け・引き分け・勝ち
     let mut ply_max = 0u16;
     let mut hist = [0u64; 9]; // |score|の桁別ヒストグラム
+    let mut wp_hist = [0u64; 100]; // 勝率1%刻み（非詰み）。ADR-0190の診断
+    let (mut mate_win, mut mate_lose) = (0u64, 0u64);
     while r.read_exact(&mut buf).is_ok() {
         let rec = PackedSfenValue::from_bytes(&buf);
         if n < 1000 && unpack_sfen(&rec.sfen, rec.game_ply).is_err() {
@@ -94,6 +96,18 @@ fn stats(input: &str, limit: Option<u64>) {
             _ => 8,
         };
         hist[bucket] += 1;
+        if i32::from(rec.score).abs() >= MATE_ABS {
+            if rec.score > 0 {
+                mate_win += 1;
+            } else {
+                mate_lose += 1;
+            }
+        } else {
+            // 学習の損失と同じ勝率変換（crates/py の SIGMOID_SCALE=600）
+            let wp = 1.0 / (1.0 + (-f64::from(rec.score) / 600.0).exp());
+            let bin = ((wp * 100.0) as usize).min(99);
+            wp_hist[bin] += 1;
+        }
         n += 1;
         if limit.is_some_and(|l| n >= l) {
             break;
@@ -126,6 +140,41 @@ fn stats(input: &str, limit: Option<u64>) {
     ];
     for (l, c) in labels.iter().zip(hist.iter()) {
         println!("|score| {l:>11}: {c}");
+    }
+    let pct = |c: u64| c as f64 / n as f64 * 100.0;
+    println!("勝率帯（sigmoid s/600、非詰み、全体比）:");
+    for band in 0..10 {
+        let c: u64 = wp_hist[band * 10..(band + 1) * 10].iter().sum();
+        println!(
+            "  {:>3}-{:<3}%: {:5.1}%",
+            band * 10,
+            (band + 1) * 10,
+            pct(c)
+        );
+    }
+    println!(
+        "詰みスコア（手番視点 勝ち/負け）: {:.1}% / {:.1}%",
+        pct(mate_win),
+        pct(mate_lose)
+    );
+    println!(
+        "端1%ビン（勝率0-1 / 99-100）: {:.1}% / {:.1}%",
+        pct(wp_hist[0]),
+        pct(wp_hist[99])
+    );
+    println!(
+        "スパイク質量（端1%ビン＋詰み）: {:.1}%",
+        pct(wp_hist[0] + wp_hist[99] + mate_win + mate_lose)
+    );
+    let inner = &wp_hist[5..95];
+    let mean = inner.iter().sum::<u64>() as f64 / inner.len() as f64;
+    if mean > 0.0 {
+        let var = inner
+            .iter()
+            .map(|&c| (c as f64 - mean).powi(2))
+            .sum::<f64>()
+            / inner.len() as f64;
+        println!("内側5〜95%の変動係数: {:.2}", var.sqrt() / mean);
     }
 }
 
