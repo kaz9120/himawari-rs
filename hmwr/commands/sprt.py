@@ -54,7 +54,7 @@ def add_parser(sub: argparse._SubParsersAction) -> None:
         "--max-pairs",
         type=int,
         metavar="N",
-        help="このペア数で打ち切る。H1だけを採択するゲート用途の見送り上限（ADR-0163）",
+        help="このペア数で打ち切る。H1だけを採択するゲート用途の見送り上限",
     )
     t.add_argument(
         "--no-verify",
@@ -88,7 +88,7 @@ def add_parser(sub: argparse._SubParsersAction) -> None:
         "--max-pairs",
         type=int,
         metavar="N",
-        help="このペア数で打ち切る。H1だけを採択するゲート用途の見送り上限（ADR-0163）",
+        help="このペア数で打ち切る。H1だけを採択するゲート用途の見送り上限",
     )
     t.add_argument("--foreground", action="store_true", help="切り離さず走らせる")
     t.add_argument("--worker", action="store_true", help=argparse.SUPPRESS)
