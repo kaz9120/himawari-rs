@@ -89,6 +89,7 @@
 - [0135](0135-teacher-data-3b.md) 教師データを29.9億局面へ広げる
 - [0136](0136-quiet-teacher-positions.md) 教師局面をqsearchの静止局面へ置き換える
 - [0192](0192-tanuki2024-teacher.md) 教師データをtanuki- 2024の78.6億局面へ置き換える
+- [0193](0193-halfka-input.md) 入力をHalfKAへ拡張し、両玉の関係を1次特徴にする
 - [0144](0144-selfplay-teacher-loop.md) 自前生成による世代ループ
 - [0185](0185-sibling-ranking-loss.md) 兄弟局面のランキング損失を回帰へ足す
 - [0187](0187-selfplay-gen2.md) 自前生成の第2世代を診断先行で測る案（基準の誤りで0188へ）
@@ -306,6 +307,7 @@
 | [0190](0190-selfplay-decided-thinning.md) | 自己生成教師の決着圏を間引き、分布の偏りを直す | 2026-08-29 | −12.2 | rejected |
 | [0191](0191-blindspot-benchmark.md) | floodgateの崩壊局面から盲点ベンチマークを作り、世代の定点観測にする | 2026-08-29 |  | proposed |
 | [0192](0192-tanuki2024-teacher.md) | 教師データをtanuki- 2024の78.6億局面へ置き換える | 2026-08-29 |  | proposed |
+| [0193](0193-halfka-input.md) | 入力をHalfKAへ拡張し、両玉の関係を1次特徴にする | 2026-08-29 |  | proposed |
 
 ## バックログ
 
