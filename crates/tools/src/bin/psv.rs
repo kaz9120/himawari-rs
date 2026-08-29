@@ -1,14 +1,21 @@
 //! PackedSfenValue教師データの前処理ツール（ADR-0038）。
 //!
 //! 使い方:
-//!   psv stats   --in file [--limit N]          統計表示（局面数・score分布・勝敗）
+//!   psv stats   --in file [--limit N]          統計表示（局面数・score分布・勝敗・勝率帯）
 //!   psv dump    --in file [--limit N]          SFENと教師信号を1行ずつ表示
 //!   psv head    --in file --out file --count N [--skip M]   部分抽出
-//!   psv shuffle --in file[,file...] --out file [--seed N] [--tmp DIR]  全体シャッフル
+//!   psv shuffle --in file[,file...] --out file [--seed N] [--tmp DIR]
+//!               [--consume] [--parts N]        全体シャッフル。--consumeは読み終えた
+//!                                              入力を消してピークを約1倍に抑える。
+//!                                              --parts Nは出力を.partNNNへ分割する
 //!   psv quiet   --in file --out file [--limit N] [--max-plies N] [--hash MB]
-//!                                              qsearchのPV葉へ置き換える（ADR-0136）
+//!               [--append] [--consume]         qsearchのPV葉へ置き換える（ADR-0136）。
+//!                                              --appendは出力へ追記、--consumeは完了後に
+//!                                              入力を消す（分割入力の逐次処理用）
 //!   psv rank    --in file --out file [--limit N] [--skip N] [--hash MB]
 //!                                              兄弟局面の葉の群を作る（ADR-0185）
+//!   psv thin    --in file --out file [--threshold N] [--keep P] [--seed N] [--group B]
+//!                                              決着圏の局面を確率で間引く（ADR-0190）
 //!
 //! shuffleは2パスのバケット法で動く（ADR-0065）。メモリ使用量は
 //! バケット1個分（2GB）に収まるため、入力サイズの制限はない。
@@ -64,6 +71,8 @@ fn stats(input: &str, limit: Option<u64>) {
     let mut results = [0u64; 3]; // 負け・引き分け・勝ち
     let mut ply_max = 0u16;
     let mut hist = [0u64; 9]; // |score|の桁別ヒストグラム
+    let mut wp_hist = [0u64; 100]; // 勝率1%刻み（非詰み）。ADR-0190の診断
+    let (mut mate_win, mut mate_lose) = (0u64, 0u64);
     while r.read_exact(&mut buf).is_ok() {
         let rec = PackedSfenValue::from_bytes(&buf);
         if n < 1000 && unpack_sfen(&rec.sfen, rec.game_ply).is_err() {
@@ -92,6 +101,18 @@ fn stats(input: &str, limit: Option<u64>) {
             _ => 8,
         };
         hist[bucket] += 1;
+        if i32::from(rec.score).abs() >= MATE_ABS {
+            if rec.score > 0 {
+                mate_win += 1;
+            } else {
+                mate_lose += 1;
+            }
+        } else {
+            // 学習の損失と同じ勝率変換（crates/py の SIGMOID_SCALE=600）
+            let wp = 1.0 / (1.0 + (-f64::from(rec.score) / 600.0).exp());
+            let bin = ((wp * 100.0) as usize).min(99);
+            wp_hist[bin] += 1;
+        }
         n += 1;
         if limit.is_some_and(|l| n >= l) {
             break;
@@ -124,6 +145,41 @@ fn stats(input: &str, limit: Option<u64>) {
     ];
     for (l, c) in labels.iter().zip(hist.iter()) {
         println!("|score| {l:>11}: {c}");
+    }
+    let pct = |c: u64| c as f64 / n as f64 * 100.0;
+    println!("勝率帯（sigmoid s/600、非詰み、全体比）:");
+    for band in 0..10 {
+        let c: u64 = wp_hist[band * 10..(band + 1) * 10].iter().sum();
+        println!(
+            "  {:>3}-{:<3}%: {:5.1}%",
+            band * 10,
+            (band + 1) * 10,
+            pct(c)
+        );
+    }
+    println!(
+        "詰みスコア（手番視点 勝ち/負け）: {:.1}% / {:.1}%",
+        pct(mate_win),
+        pct(mate_lose)
+    );
+    println!(
+        "端1%ビン（勝率0-1 / 99-100）: {:.1}% / {:.1}%",
+        pct(wp_hist[0]),
+        pct(wp_hist[99])
+    );
+    println!(
+        "スパイク質量（端1%ビン＋詰み）: {:.1}%",
+        pct(wp_hist[0] + wp_hist[99] + mate_win + mate_lose)
+    );
+    let inner = &wp_hist[5..95];
+    let mean = inner.iter().sum::<u64>() as f64 / inner.len() as f64;
+    if mean > 0.0 {
+        let var = inner
+            .iter()
+            .map(|&c| (c as f64 - mean).powi(2))
+            .sum::<f64>()
+            / inner.len() as f64;
+        println!("内側5〜95%の変動係数: {:.2}", var.sqrt() / mean);
     }
 }
 
@@ -164,6 +220,49 @@ fn head(input: &str, output: &str, count: u64, skip: u64) {
     println!("{n}局面を{output}へ書き出しました（{skip}局面スキップ）");
 }
 
+/// 詰みスコアの下限。この絶対値以上は間引かず全件残す（詰み域を欠かさない、ADR-0188）。
+const MATE_ABS: i32 = 29000;
+
+/// 決着圏の局面を確率で間引く（ADR-0190）。
+///
+/// レコードのscore（groupが120ならば先頭レコードのscore）を見て、
+/// 非詰みかつ|score|がthreshold以上のものをkeepの確率で残す。
+/// それ以外（互角圏〜優勢圏と詰みスコア）は全件残す。複製はしないので、
+/// 分布の山を新たに作ることはない。
+fn thin(input: &str, output: &str, threshold: i32, keep: f64, seed: u64, group: usize) {
+    if !group.is_multiple_of(PSV_BYTES) {
+        die(&format!("--group は{PSV_BYTES}の倍数にしてください"));
+    }
+    let mut r = open_reader(input);
+    let mut w = BufWriter::new(
+        std::fs::File::create(output).unwrap_or_else(|e| die(&format!("作成できません: {e}"))),
+    );
+    let mut rng = Rng(seed | 1);
+    let mut buf = vec![0u8; group];
+    let (mut total, mut decided, mut kept_decided) = (0u64, 0u64, 0u64);
+    while r.read_exact(&mut buf).is_ok() {
+        total += 1;
+        let score = i32::from(i16::from_le_bytes([buf[32], buf[33]]));
+        let is_decided = score.abs() >= threshold && score.abs() < MATE_ABS;
+        if is_decided {
+            decided += 1;
+            let p = (rng.next() >> 11) as f64 / (1u64 << 53) as f64;
+            if p >= keep {
+                continue;
+            }
+            kept_decided += 1;
+        }
+        w.write_all(&buf)
+            .unwrap_or_else(|e| die(&format!("書き込み失敗: {e}")));
+    }
+    w.flush().unwrap();
+    let written = total - (decided - kept_decided);
+    println!(
+        "入力{total}件のうち決着圏（{threshold}<=|score|<{MATE_ABS}）{decided}件を\
+         {kept_decided}件へ間引き、{written}件を書き出しました"
+    );
+}
+
 /// 1バケットの目標サイズ。パス2でバケット1個をメモリに載せる（ADR-0065）。
 const BUCKET_BYTES: u64 = 2 << 30;
 /// バケットごとの書き込みバッファ。40バイト単位の書き込みをまとめる。
@@ -186,7 +285,21 @@ fn shuffle_in_place(buf: &mut [u8], rng: &mut Rng) {
 ///
 /// パス1で各レコードをランダムなバケットへ振り分け、パス2でバケット単位に
 /// メモリ上でシャッフルして連結する。メモリ使用量はバケット1個分に収まる。
-fn shuffle(inputs: &[&str], output: &str, seed: u64, tmp_dir: Option<&str>) {
+///
+/// consumeは読み終えた入力ファイルから順に消し、ディスクのピークを
+/// 入力1倍強に抑える（ADR-0192）。再取得できる生データにだけ使う。
+/// partsが2以上なら、出力を `<出力名>.partNNN` のほぼ等分な連番へ分ける。
+/// 分割してもレコードの割り付けはseedだけで決まり、連結すればparts=1と
+/// 同じ並びになる。
+fn shuffle(
+    inputs: &[&str],
+    output: &str,
+    seed: u64,
+    tmp_dir: Option<&str>,
+    consume: bool,
+    parts: usize,
+    bucket_bytes: u64,
+) {
     let total: u64 = inputs
         .iter()
         .map(|p| {
@@ -198,7 +311,7 @@ fn shuffle(inputs: &[&str], output: &str, seed: u64, tmp_dir: Option<&str>) {
     if !total.is_multiple_of(PSV_BYTES as u64) {
         die(&format!("入力サイズが40の倍数でない: {total}バイト"));
     }
-    let n_buckets = (total.div_ceil(BUCKET_BYTES)).max(1) as usize;
+    let n_buckets = (total.div_ceil(bucket_bytes)).max(1) as usize;
     let dir = tmp_dir.map(std::path::PathBuf::from).unwrap_or_else(|| {
         std::path::Path::new(output)
             .parent()
@@ -236,6 +349,15 @@ fn shuffle(inputs: &[&str], output: &str, seed: u64, tmp_dir: Option<&str>) {
                     .write_all(&buf)
                     .unwrap_or_else(|e| die(&format!("書き込み失敗: {e}")));
             }
+            if consume {
+                // バケットへ写し終えた入力から順に消し、ピークを抑える
+                for w in &mut writers {
+                    w.flush()
+                        .unwrap_or_else(|e| die(&format!("flush失敗: {e}")));
+                }
+                std::fs::remove_file(path)
+                    .unwrap_or_else(|e| die(&format!("入力を消せません: {path}: {e}")));
+            }
         }
         for w in &mut writers {
             w.flush()
@@ -244,21 +366,46 @@ fn shuffle(inputs: &[&str], output: &str, seed: u64, tmp_dir: Option<&str>) {
     }
 
     eprintln!("パス2: バケットごとにシャッフルして連結します");
-    let mut w = BufWriter::with_capacity(
-        BUCKET_BUF,
-        std::fs::File::create(output).unwrap_or_else(|e| die(&format!("作成できません: {e}"))),
-    );
-    let mut written = 0u64;
-    for p in &paths {
-        let mut data = std::fs::read(p).unwrap_or_else(|e| die(&format!("読み込み失敗: {e}")));
-        shuffle_in_place(&mut data, &mut rng);
-        w.write_all(&data)
-            .unwrap_or_else(|e| die(&format!("書き込み失敗: {e}")));
-        written += (data.len() / PSV_BYTES) as u64;
-        let _ = std::fs::remove_file(p);
+    if parts > n_buckets {
+        eprintln!("注意: バケットが{n_buckets}個しかないため、分割数を{n_buckets}に丸めます");
     }
-    w.flush().unwrap();
-    println!("{written}局面をシャッフルして{output}へ書き出しました (seed={seed})");
+    let parts = parts.max(1).min(n_buckets);
+    let out_name = |part: usize| -> String {
+        if parts == 1 {
+            output.to_string()
+        } else {
+            format!("{output}.part{part:03}")
+        }
+    };
+    let mut written = 0u64;
+    for part in 0..parts {
+        // バケットをほぼ等分な連番グループに割り、グループごとに1本書く
+        let lo = n_buckets * part / parts;
+        let hi = n_buckets * (part + 1) / parts;
+        let name = out_name(part);
+        let mut w = BufWriter::with_capacity(
+            BUCKET_BUF,
+            std::fs::File::create(&name)
+                .unwrap_or_else(|e| die(&format!("作成できません: {name}: {e}"))),
+        );
+        for p in &paths[lo..hi] {
+            let mut data = std::fs::read(p).unwrap_or_else(|e| die(&format!("読み込み失敗: {e}")));
+            shuffle_in_place(&mut data, &mut rng);
+            w.write_all(&data)
+                .unwrap_or_else(|e| die(&format!("書き込み失敗: {e}")));
+            written += (data.len() / PSV_BYTES) as u64;
+            let _ = std::fs::remove_file(p);
+        }
+        w.flush().unwrap();
+    }
+    if parts == 1 {
+        println!("{written}局面をシャッフルして{output}へ書き出しました (seed={seed})");
+    } else {
+        println!(
+            "{written}局面をシャッフルして{output}.part000〜{:03}の{parts}本へ書き出しました (seed={seed})",
+            parts - 1
+        );
+    }
 }
 
 /// 教師局面をqsearchのPV葉へ置き換える（ADR-0136）。
@@ -269,12 +416,33 @@ fn shuffle(inputs: &[&str], output: &str, seed: u64, tmp_dir: Option<&str>) {
 ///
 /// 評価値と勝敗は元の値を保つ。ただしどちらも手番視点なので、奇数手
 /// 進めたときは符号を戻す。手数は進めた分を足し、PVの初手は捨てる。
-fn quiet(input: &str, output: &str, limit: u64, max_plies: usize, hash_mb: usize, eval: &str) {
+/// quietの入出力の扱い。分割入力を1本へ集約する逐次処理で使う。
+struct QuietMode {
+    /// 出力へ追記する（既定は新規作成）
+    append: bool,
+    /// 完了後に入力を消す
+    consume: bool,
+}
+
+fn quiet(
+    input: &str,
+    output: &str,
+    limit: u64,
+    max_plies: usize,
+    hash_mb: usize,
+    eval: &str,
+    mode: QuietMode,
+) {
     let mut r = open_reader(input);
-    let mut w = BufWriter::new(
+    let file = if mode.append {
+        std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(output)
+    } else {
         std::fs::File::create(output)
-            .unwrap_or_else(|e| die(&format!("作れません: {output}: {e}"))),
-    );
+    };
+    let mut w = BufWriter::new(file.unwrap_or_else(|e| die(&format!("作れません: {output}: {e}"))));
     let shared = Arc::new(Shared::new(hash_mb));
     let mut f = std::fs::File::open(eval)
         .unwrap_or_else(|e| die(&format!("評価関数を開けません: {eval}: {e}")));
@@ -372,6 +540,12 @@ fn quiet(input: &str, output: &str, limit: u64, max_plies: usize, hash_mb: usize
     }
     w.flush()
         .unwrap_or_else(|e| die(&format!("書けません: {e}")));
+    if mode.consume {
+        drop(r);
+        std::fs::remove_file(input)
+            .unwrap_or_else(|e| die(&format!("入力を消せません: {input}: {e}")));
+        println!("入力を消しました: {input}");
+    }
     let sec = start.elapsed().as_secs_f64();
     println!("局面数        : {n}");
     println!(
@@ -584,7 +758,7 @@ fn rank(input: &str, output: &str, limit: u64, skip: u64, hash_mb: usize, eval: 
 fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
     let Some(cmd) = args.first() else {
-        die("サブコマンドが必要です: stats / dump / head / shuffle / quiet / rank");
+        die("サブコマンドが必要です: stats / dump / head / shuffle / quiet / rank / thin");
     };
     let rest = &args[1..];
     let input = arg_value(rest, "--in");
@@ -622,11 +796,22 @@ fn main() {
             let input = input.unwrap_or_else(|| die("--in が必要です"));
             let inputs: Vec<&str> = input.split(',').collect();
             let tmp = arg_value(rest, "--tmp");
+            let consume = rest.iter().any(|a| a == "--consume");
+            let parts: usize = arg_value(rest, "--parts")
+                .map(|s| s.parse().unwrap_or_else(|_| die("--parts は整数")))
+                .unwrap_or(1);
+            // バケット幅はテスト用の隠しノブ。変えると割り付けが変わる
+            let bucket_bytes: u64 = arg_value(rest, "--bucket-bytes")
+                .map(|s| s.parse().unwrap_or_else(|_| die("--bucket-bytes は整数")))
+                .unwrap_or(BUCKET_BYTES);
             shuffle(
                 &inputs,
                 &output.unwrap_or_else(|| die("--out が必要です")),
                 seed,
                 tmp.as_deref(),
+                consume,
+                parts,
+                bucket_bytes,
             );
         }
         "quiet" => {
@@ -642,6 +827,10 @@ fn main() {
             let eval = arg_value(rest, "--eval-file")
                 .or_else(|| std::env::var("EVAL_FILE").ok())
                 .unwrap_or_else(|| die("--eval-file か EVAL_FILE が必要です"));
+            let mode = QuietMode {
+                append: rest.iter().any(|a| a == "--append"),
+                consume: rest.iter().any(|a| a == "--consume"),
+            };
             quiet(
                 &input.unwrap_or_else(|| die("--in が必要です")),
                 &output.unwrap_or_else(|| die("--out が必要です")),
@@ -649,6 +838,7 @@ fn main() {
                 max_plies,
                 hash_mb,
                 &eval,
+                mode,
             );
         }
         "rank" => {
@@ -671,6 +861,31 @@ fn main() {
                 skip,
                 hash_mb,
                 &eval,
+            );
+        }
+        "thin" => {
+            let threshold: i32 = arg_value(rest, "--threshold")
+                .map(|s| s.parse().unwrap_or_else(|_| die("--threshold は整数")))
+                .unwrap_or(1318);
+            let keep: f64 = arg_value(rest, "--keep")
+                .map(|s| s.parse().unwrap_or_else(|_| die("--keep は0〜1の実数")))
+                .unwrap_or(0.5);
+            if !(0.0..=1.0).contains(&keep) {
+                die("--keep は0〜1の実数");
+            }
+            let seed: u64 = arg_value(rest, "--seed")
+                .map(|s| s.parse().unwrap_or(1))
+                .unwrap_or(1);
+            let group: usize = arg_value(rest, "--group")
+                .map(|s| s.parse().unwrap_or_else(|_| die("--group は整数")))
+                .unwrap_or(PSV_BYTES);
+            thin(
+                &input.unwrap_or_else(|| die("--in が必要です")),
+                &output.unwrap_or_else(|| die("--out が必要です")),
+                threshold,
+                keep,
+                seed,
+                group,
             );
         }
         other => die(&format!("不明なサブコマンド: {other}")),

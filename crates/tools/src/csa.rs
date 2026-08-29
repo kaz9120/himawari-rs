@@ -40,6 +40,8 @@ pub struct CsaMove {
     pub time_s: Option<u64>,
     /// 元の表記（`+7776FU`）。レポートへそのまま出す。
     pub text: String,
+    /// 直後の `'** <cp> ...` コメントの評価値。指した側の視点[cp]。
+    pub eval_cp: Option<i32>,
 }
 
 /// 1局ぶんの記録。
@@ -189,6 +191,7 @@ fn parse_move_line(line: &str) -> Option<Result<CsaMove, CsaError>> {
         piece,
         time_s: None,
         text: line.to_string(),
+        eval_cp: None,
     }))
 }
 
@@ -213,11 +216,15 @@ pub fn parse(text: &str) -> Result<CsaGame, CsaError> {
             continue;
         }
         if let Some(body) = line.strip_prefix('\'') {
-            // コメント行。持ち時間と結果だけを拾う
+            // コメント行。持ち時間・結果・直前の手の評価値を拾う
             if let Some(v) = body.strip_prefix("Increment:") {
                 game.increment_s = v.trim().parse().ok();
             } else if let Some(v) = body.strip_prefix("summary:") {
                 game.summary = Some(v.trim().to_string());
+            } else if let Some(v) = body.strip_prefix("** ")
+                && let Some(last) = game.moves.last_mut().filter(|m| m.eval_cp.is_none())
+            {
+                last.eval_cp = v.split_whitespace().next().and_then(|t| t.parse().ok());
             }
             continue;
         }
@@ -327,6 +334,8 @@ mod tests {
         assert_eq!(game.winner(), Some(Color::Black));
         assert_eq!(game.side_of("Himawari"), Some(Color::Black));
         assert_eq!(game.side_of("いない"), None);
+        assert_eq!(game.moves[0].eval_cp, Some(120));
+        assert_eq!(game.moves[1].eval_cp, None);
     }
 
     /// 消費時間は直前の指し手に付く。コメント行は読み飛ばす。

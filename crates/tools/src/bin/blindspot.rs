@@ -1,0 +1,331 @@
+//! 盲点ベンチマーク（ADR-0191）。
+//!
+//! floodgateの実戦で評価が崩壊した局面を集め、深い探索の正解ラベル付きの
+//! 測定集合を作る。学習と検収が自己対局で閉じている穴を、実戦の相手が
+//! 掘った局面で補う。
+//!
+//! 使い方:
+//!   blindspot extract --dir data/raw/floodgate/2026 --out candidates.tsv
+//!
+//! 抽出は決定論で、同じ入力からは同じ出力が出る。実戦時の評価値
+//! （CSAの `'**` コメント）だけを使い、エンジンは起動しない。
+
+use std::collections::BTreeSet;
+use std::io::Write;
+use std::path::{Path, PathBuf};
+use std::process::ExitCode;
+use std::time::Duration;
+
+use anyhow::{Context, Result};
+use clap::{Parser, Subcommand};
+use himawari_core::{Position, SFEN_STARTPOS};
+use himawari_tools::csa::{self, CsaGame};
+use himawari_tools::usi_engine::UsiEngine;
+use himawari_tools::{OrBail, ensure_executable, eval_file, path_str, single_thread_options};
+
+#[derive(Parser)]
+#[command(about = "盲点ベンチマークの抽出・ラベル・測定（ADR-0191）")]
+struct Cli {
+    #[command(subcommand)]
+    cmd: Cmd,
+}
+
+#[derive(Subcommand)]
+enum Cmd {
+    /// 崩壊局面の候補をCSA群から抽出してTSVへ書く
+    Extract {
+        /// 棋譜の置き場
+        #[arg(long, default_value = "data/raw/floodgate/2026")]
+        dir: PathBuf,
+        /// 出力TSV
+        #[arg(long, default_value = "data/raw/blindspots/candidates.tsv")]
+        out: PathBuf,
+        /// 自分とみなす対局者名の部分一致
+        #[arg(long, default_value = "Himawari")]
+        player: String,
+        /// 崩壊とみなす評価の落差[cp]
+        #[arg(long, default_value_t = 300)]
+        drop: i32,
+        /// 崩壊前の評価の床[cp]。これ未満から始まる悪化は除く
+        #[arg(long, default_value_t = 0)]
+        floor: i32,
+    },
+    /// 候補を深い探索で再解析し、正解ラベルをTSVへ追記する
+    Label {
+        /// extractが書いた候補TSV
+        #[arg(long, default_value = "data/raw/blindspots/candidates.tsv")]
+        candidates: PathBuf,
+        /// ラベルの出力TSV。既にある行のSFENは飛ばす（再開できる）
+        #[arg(long, default_value = "data/raw/blindspots/labels.tsv")]
+        out: PathBuf,
+        /// 再解析に使うエンジン
+        #[arg(long, default_value = "target/release/himawari")]
+        engine: PathBuf,
+        /// 評価関数。省くと環境変数EVAL_FILEを読む
+        #[arg(long)]
+        eval_file: Option<PathBuf>,
+        /// 再解析のノード数（1スレッド固定で決定論）
+        #[arg(long, default_value_t = 10_000_000)]
+        nodes: u64,
+        /// 1局面の制限時間[秒]
+        #[arg(long, default_value_t = 300)]
+        timeout: u64,
+        /// 先頭のこの件数だけ処理する
+        #[arg(long)]
+        limit: Option<usize>,
+    },
+}
+
+fn main() -> ExitCode {
+    let cli = Cli::parse();
+    match run(&cli) {
+        Ok(()) => ExitCode::SUCCESS,
+        Err(e) => {
+            eprintln!("エラー: {e:#}");
+            ExitCode::from(3)
+        }
+    }
+}
+
+fn run(cli: &Cli) -> Result<()> {
+    match &cli.cmd {
+        Cmd::Extract {
+            dir,
+            out,
+            player,
+            drop,
+            floor,
+        } => extract(dir, out, player, *drop, *floor),
+        Cmd::Label {
+            candidates,
+            out,
+            engine,
+            eval_file: eval,
+            nodes,
+            timeout,
+            limit,
+        } => label(
+            candidates,
+            out,
+            engine,
+            eval.clone(),
+            *nodes,
+            *timeout,
+            *limit,
+        ),
+    }
+}
+
+/// 候補を1スレッド・固定ノードで再解析し、正解ラベルを追記する。
+///
+/// 局面はSFENでなくUSI手順で渡し、千日手の判定を実戦と揃える。
+/// 局面ごとに `usinewgame` でTTを消す（kifuの再解析と同じ決定論の要件）。
+fn label(
+    candidates: &Path,
+    out: &Path,
+    engine: &Path,
+    eval: Option<PathBuf>,
+    nodes: u64,
+    timeout: u64,
+    limit: Option<usize>,
+) -> Result<()> {
+    let eval = eval_file(eval)?;
+    ensure_executable(engine)?;
+    let text = std::fs::read_to_string(candidates)
+        .with_context(|| format!("候補TSVを開けません: {}", candidates.display()))?;
+
+    // 既にラベル済みのSFENは飛ばす（追記・再開）
+    let mut done = BTreeSet::new();
+    if out.is_file() {
+        for line in std::fs::read_to_string(out)?.lines().skip(1) {
+            if let Some(sfen) = line.split('\t').next() {
+                done.insert(sfen.to_string());
+            }
+        }
+    }
+    let fresh = !out.is_file();
+    let mut w = std::io::BufWriter::new(
+        std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(out)?,
+    );
+    if fresh {
+        writeln!(
+            w,
+            "sfen\tply\teval_game\tdeep_cp\tdeep_score\tbestmove\tfile"
+        )?;
+    }
+
+    let mut options = single_thread_options(&eval);
+    options.push(("USI_OwnBook".to_string(), "false".to_string()));
+    let mut eng = UsiEngine::launch(path_str(engine)?, &options).or_bail()?;
+
+    let (mut labeled, mut skipped) = (0usize, 0usize);
+    for line in text.lines().skip(1) {
+        let cols: Vec<&str> = line.split('\t').collect();
+        let [sfen, file, ply, eval_before, _eval_after, moves] = cols[..] else {
+            continue;
+        };
+        if done.contains(sfen) {
+            skipped += 1;
+            continue;
+        }
+        if limit.is_some_and(|l| labeled >= l) {
+            break;
+        }
+        let position_cmd = format!("position startpos moves {moves}");
+        eng.new_game().or_bail()?;
+        let result = eng
+            .think(
+                &position_cmd,
+                &format!("go nodes {nodes}"),
+                Duration::from_secs(timeout),
+            )
+            .or_bail()?;
+        let deep_cp = result.score_cp.unwrap_or(0);
+        let deep_score = result.last_info.score.unwrap_or_else(|| "n/a".to_string());
+        writeln!(
+            w,
+            "{sfen}\t{ply}\t{eval_before}\t{deep_cp}\t{deep_score}\t{}\t{file}",
+            result.bestmove
+        )?;
+        w.flush()?;
+        labeled += 1;
+        if labeled % 20 == 0 {
+            println!("{labeled}件ラベル済み（直近: 実戦{eval_before} → 深い再解析{deep_cp}）");
+        }
+    }
+    eng.quit();
+    println!(
+        "ラベル{labeled}件を追記、既存{skipped}件を飛ばしました → {}",
+        out.display()
+    );
+    Ok(())
+}
+
+/// 1件の崩壊候補。崩壊前の自分の手番の局面を指す。
+struct Candidate {
+    sfen: String,
+    file: String,
+    /// 崩壊前の自分の手番（1始まり）。
+    ply: usize,
+    eval_before: i32,
+    eval_after: i32,
+    /// 初期局面からこの局面までのUSI手順。千日手の履歴を保つ。
+    moves: String,
+}
+
+fn extract(dir: &Path, out: &Path, player: &str, drop: i32, floor: i32) -> Result<()> {
+    let mut files: Vec<PathBuf> = std::fs::read_dir(dir)
+        .with_context(|| format!("開けません: {}", dir.display()))?
+        .filter_map(|e| e.ok().map(|e| e.path()))
+        .filter(|p| p.extension().is_some_and(|x| x == "csa"))
+        .collect();
+    files.sort();
+
+    let mut seen = BTreeSet::new();
+    let mut candidates = Vec::new();
+    let (mut games, mut skipped) = (0usize, 0usize);
+    for path in &files {
+        let text = std::fs::read_to_string(path)?;
+        let game = match csa::parse(&text) {
+            Ok(g) => g,
+            Err(_) => {
+                skipped += 1;
+                continue;
+            }
+        };
+        games += 1;
+        if let Err(_e) = scan_game(&game, path, player, drop, floor, &mut seen, &mut candidates) {
+            skipped += 1;
+        }
+    }
+
+    if let Some(parent) = out.parent() {
+        std::fs::create_dir_all(parent)?;
+    }
+    let mut w = std::io::BufWriter::new(std::fs::File::create(out)?);
+    writeln!(w, "sfen\tfile\tply\teval_before\teval_after\tmoves")?;
+    for c in &candidates {
+        writeln!(
+            w,
+            "{}\t{}\t{}\t{}\t{}\t{}",
+            c.sfen, c.file, c.ply, c.eval_before, c.eval_after, c.moves
+        )?;
+    }
+    w.flush()?;
+    println!(
+        "対局{games}件（読めない棋譜{skipped}件）から候補{}件を{}へ書き出しました",
+        candidates.len(),
+        out.display()
+    );
+    Ok(())
+}
+
+/// 1局を走査し、自分の評価が次の自分の手番までにdrop以上落ちた対の
+/// 崩壊前局面を候補へ足す。
+fn scan_game(
+    game: &CsaGame,
+    path: &std::path::Path,
+    player: &str,
+    drop: i32,
+    floor: i32,
+    seen: &mut BTreeSet<String>,
+    out: &mut Vec<Candidate>,
+) -> Result<()> {
+    let Some(me) = game.side_of(player) else {
+        return Ok(());
+    };
+    // 自分の手番のうち評価値が付いている(手index, eval)の列
+    let evals: Vec<(usize, i32)> = game
+        .moves
+        .iter()
+        .enumerate()
+        .filter(|(_, m)| m.color == me)
+        .filter_map(|(i, m)| m.eval_cp.map(|e| (i, e)))
+        .collect();
+
+    // 崩壊対を先に決めてから、必要な局面だけ再生する
+    let wanted: Vec<(usize, i32, i32)> = evals
+        .windows(2)
+        .filter(|w| w[0].1 >= floor && w[0].1 - w[1].1 >= drop)
+        .map(|w| (w[0].0, w[0].1, w[1].1))
+        .collect();
+    if wanted.is_empty() {
+        return Ok(());
+    }
+
+    let mut pos = Position::from_sfen(SFEN_STARTPOS).expect("平手初期局面");
+    let mut usi_moves: Vec<String> = Vec::with_capacity(game.moves.len());
+    let mut iter = wanted.iter().peekable();
+    for (i, m) in game.moves.iter().enumerate() {
+        if let Some(&&(idx, before, after)) = iter.peek()
+            && idx == i
+        {
+            let sfen = pos.to_sfen();
+            if seen.insert(sfen.clone()) {
+                out.push(Candidate {
+                    sfen,
+                    file: path
+                        .file_name()
+                        .map(|s| s.to_string_lossy().into_owned())
+                        .unwrap_or_default(),
+                    ply: i + 1,
+                    eval_before: before,
+                    eval_after: after,
+                    moves: usi_moves.join(" "),
+                });
+            }
+            iter.next();
+            if iter.peek().is_none() {
+                break;
+            }
+        }
+        let mv = csa::resolve_move(&pos, m)
+            .ok_or_else(|| anyhow::anyhow!("{}手目を解決できない: {}", i + 1, m.text))?;
+        pos.do_move(mv);
+        usi_moves.push(mv.to_usi());
+    }
+    Ok(())
+}

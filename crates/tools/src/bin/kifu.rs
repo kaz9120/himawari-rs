@@ -933,6 +933,7 @@ mod tests {
                     piece: himawari_core::PieceType::PAWN,
                     time_s: Some(t),
                     text: format!("手{}", i + 1),
+                    eval_cp: None,
                 })
                 .collect(),
             increment_s: Some(10),

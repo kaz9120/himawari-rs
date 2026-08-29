@@ -55,3 +55,7 @@ path = "src/bin/profile.rs"
 [[bin]]
 name = "league"
 path = "src/bin/league.rs"
+
+[[bin]]
+name = "blindspot"
+path = "src/bin/blindspot.rs"
