@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.44.3](https://github.com/kaz9120/himawari-rs/compare/v0.44.2...v0.44.3) (2026-08-29)
+
+
+### その他の変更
+
+* HalfKA入力拡張をfeatureで実装する（ADR-0193） ([#400](https://github.com/kaz9120/himawari-rs/issues/400)) ([d266e71](https://github.com/kaz9120/himawari-rs/commit/d266e7102810301d9413f0407cc1b3c4bee24161))
+
 ## [0.44.2](https://github.com/kaz9120/himawari-rs/compare/v0.44.1...v0.44.2) (2026-08-29)
 
 
