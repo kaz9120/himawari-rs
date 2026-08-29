@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.44.4](https://github.com/kaz9120/himawari-rs/compare/v0.44.3...v0.44.4) (2026-08-29)
+
+
+### その他の変更
+
+* 盲点ベンチマークの測定コマンドと初回構築の記録（ADR-0191） ([#402](https://github.com/kaz9120/himawari-rs/issues/402)) ([e86a737](https://github.com/kaz9120/himawari-rs/commit/e86a737798adaf9c567314b24a8231f17168fd83))
+
 ## [0.44.3](https://github.com/kaz9120/himawari-rs/compare/v0.44.2...v0.44.3) (2026-08-29)
 
 
