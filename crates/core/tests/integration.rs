@@ -547,3 +547,74 @@ fn lance_non_promotion_is_generated_from_third_rank_only() {
         assert!(normal.iter().any(|x| x == m), "成る手が無い: {m}");
     }
 }
+
+/// generate_legalが「generate→is_legalフィルタ」と同じ列を返す。
+///
+/// generate_legalは合法性を生成へ折り込んでおり（issue #435）、
+/// 二段構えのフィルタ経路とは実装が分かれている。ここでは性格の違う
+/// 6局面（movegenベンチと同じ）のperft木を歩き、全ノードで両経路の
+/// 生成列が順序まで一致することを確かめる。
+#[test]
+fn generate_legal_matches_filtered_pseudo() {
+    fn legal_by_filter(pos: &Position, all: bool, list: &mut MoveList) {
+        let mut pseudo = MoveList::default();
+        if pos.in_check() {
+            generate(pos, GenType::Evasions, all, &mut pseudo);
+        } else {
+            generate(pos, GenType::NonEvasions, all, &mut pseudo);
+        }
+        for &m in pseudo.as_slice() {
+            if pos.is_legal(m) {
+                list.push(m);
+            }
+        }
+    }
+
+    fn walk(pos: &mut Position, depth: u32) {
+        for all in [false, true] {
+            let mut direct = MoveList::default();
+            let mut filtered = MoveList::default();
+            generate_legal(pos, all, &mut direct);
+            legal_by_filter(pos, all, &mut filtered);
+            assert_eq!(
+                direct.as_slice(),
+                filtered.as_slice(),
+                "生成列の不一致（all={all}）: {}",
+                pos.to_sfen()
+            );
+        }
+        if depth == 0 {
+            return;
+        }
+        let mut list = MoveList::default();
+        generate_legal(pos, true, &mut list);
+        for &m in list.as_slice() {
+            pos.do_move(m);
+            walk(pos, depth - 1);
+            pos.undo_move(m);
+        }
+    }
+
+    // (SFEN, 潜る深さ)。深さは局面の広さに合わせて絞る
+    let cases = [
+        (SFEN_STARTPOS, 2),
+        (
+            "+Bn1g2s1l/2skg2r1/ppppp1n1p/5bpp1/5p1P1/2P6/PP1PP1P1P/1SK2S1R1/LN1G1G1NL w Lp 24",
+            2,
+        ),
+        (
+            "lr7/2g3k2/p2Ppp2B/4s1pPp/2Pnn4/PP1+b1P1p1/1S4P1N/6S2/L3KG2L w RGSNL3Pg2p 104",
+            1,
+        ),
+        (
+            "l6nl/5+P1gk/2np1S3/p1p4Pp/3P2Sp1/1PPb2P1P/P5GS1/R8/LN4bKL w GR5pnsg 1",
+            1,
+        ),
+        ("R8/2K1S1SSk/4B4/9/9/9/9/9/1L1L1L3 b RBGSNLP3G3N17P 1", 1),
+        ("K+R+P+P+P+P+P+P+P/g6+P+P/9/9/9/9/9/9/4k4 b RB3GS 1", 2),
+    ];
+    for (sfen, depth) in cases {
+        let mut pos = Position::from_sfen(sfen).unwrap();
+        walk(&mut pos, depth);
+    }
+}

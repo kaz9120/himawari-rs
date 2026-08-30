@@ -4,7 +4,7 @@
 //! `all = false`（Normal）は無意味な不成を生成せず、`all = true` は
 //! 全合法手（perft・検証用）を生成する。
 
-use crate::attacks::{attacks, between, king_attacks};
+use crate::attacks::{aligned, attacks, between, king_attacks, pawn_attacks};
 use crate::bitboard::Bitboard;
 use crate::moves::{Move, MoveList};
 use crate::piece::{Piece, PieceType};
@@ -206,18 +206,126 @@ pub fn generate(pos: &Position, gt: GenType, all: bool, list: &mut MoveList) {
     }
 }
 
-/// 合法手を生成する（王手の有無で自動分岐＋is_legalフィルタ）。
-pub fn generate_legal(pos: &Position, all: bool, list: &mut MoveList) {
-    let mut pseudo = MoveList::default();
-    if pos.in_check() {
-        generate(pos, GenType::Evasions, all, &mut pseudo);
-    } else {
-        generate(pos, GenType::NonEvasions, all, &mut pseudo);
-    }
-    for &m in &pseudo {
-        if pos.is_legal(m) {
-            list.push(m);
+/// 玉以外の盤上の駒の合法手を、targetへ直接生成する。
+///
+/// pinされた駒（blockers_for_king）だけ、移動先を玉との整列で絞る。
+/// pinされていない駒の移動はis_legalが常にtrueを返す集合なので、
+/// 検査せずに積む。判定が手ごとから駒ごとに減る。
+fn generate_board_moves_legal(pos: &Position, target: Bitboard, all: bool, list: &mut MoveList) {
+    let us = pos.side_to_move();
+    let occ = pos.occupied();
+    let ksq = pos.king(us);
+    let blockers = pos.blockers_for_king(us);
+    let movers = pos.color_bb(us) & !pos.pieces(us, PieceType::KING);
+    for from in movers {
+        let pc = pos.piece_on(from);
+        let att = attacks(pc, from, occ) & target;
+        if blockers.test(from) {
+            for to in att {
+                if aligned(from, to, ksq) {
+                    push_variants(us, from, to, pc, all, list);
+                }
+            }
+        } else {
+            for to in att {
+                push_variants(us, from, to, pc, all, list);
+            }
         }
+    }
+}
+
+/// 玉の合法手をtargetへ直接生成する。
+///
+/// 移動先に敵の利きがなければ合法である。利きは玉自身を除いた占有で
+/// 数える。玉が王手の線に沿って退く手を残さないためで、is_legalの
+/// 玉の分岐と同じ判定になる。
+fn generate_king_moves_legal(pos: &Position, target: Bitboard, list: &mut MoveList) {
+    let us = pos.side_to_move();
+    let them = us.flip();
+    let from = pos.king(us);
+    let pc = pos.piece_on(from);
+    let occ_wo_king = pos.occupied() ^ Bitboard::from_square(from);
+    for to in king_attacks(from) & target {
+        if pos.attackers_to(them, to, occ_wo_king).is_empty() {
+            list.push(Move::new_move(from, to, false, pc));
+        }
+    }
+}
+
+/// 駒打ちの合法手をtargetへ直接生成する。targetは空きマスの部分集合で
+/// あること。
+///
+/// 不合法になりうる駒打ちは打ち歩詰めだけで、それは敵玉へ王手となる
+/// 歩打ち、つまり敵玉の1つ手前への歩打ちに限られる。そのマスを含む
+/// ときだけis_legalへ回し、他の駒打ちは検査せずに積む。
+fn generate_drops_legal(pos: &Position, target: Bitboard, list: &mut MoveList) {
+    let us = pos.side_to_move();
+    let hand = pos.hand(us);
+    if hand.is_empty() {
+        return;
+    }
+    let them = us.flip();
+    // 敵玉の1つ手前は、敵から見た歩の利き先として求まる
+    let pawn_check = pawn_attacks(them, pos.king(them));
+    let r1 = Bitboard::rank(Rank(0).relative(us));
+    let r2 = Bitboard::rank(Rank(1).relative(us));
+    for pt in PieceType::HAND_KINDS {
+        if !hand.has(pt) {
+            continue;
+        }
+        let mask = match pt {
+            PieceType::PAWN => {
+                // 二歩と1段目を除外。歩のいる筋はfill_filesで一括して求める
+                let nifu = pos.pieces(us, PieceType::PAWN).fill_files();
+                target & !r1 & !nifu
+            }
+            PieceType::LANCE => target & !r1,
+            PieceType::KNIGHT => target & !(r1 | r2),
+            _ => target,
+        };
+        if pt == PieceType::PAWN && !(mask & pawn_check).is_empty() {
+            for to in mask {
+                let m = Move::new_drop(pt, to, us);
+                if !pawn_check.test(to) || pos.is_legal(m) {
+                    list.push(m);
+                }
+            }
+        } else {
+            for to in mask {
+                list.push(Move::new_drop(pt, to, us));
+            }
+        }
+    }
+}
+
+/// 合法手を生成する（王手の有無で自動分岐）。
+///
+/// 擬似合法手を全数生成してis_legalで濾し直す二段構えは使わない。
+/// 二段目の検査とコピーが生成時間の4〜7割を占めていたためで、合法性は
+/// カテゴリ別の生成へ折り込む（issue #435）。盤上の駒はpinされた駒だけ
+/// 整列検査、玉はattackers_to、駒打ちは王手となる歩打ちだけ打ち歩詰め
+/// 検査を通す。
+///
+/// 生成順は従来の「generate→is_legalフィルタ」と一致する。一致は
+/// perft既知値と、新旧生成列を突き合わせるテストで守る
+/// （crates/core/tests/integration.rsのgenerate_legal_matches_filtered_pseudo）。
+pub fn generate_legal(pos: &Position, all: bool, list: &mut MoveList) {
+    let us = pos.side_to_move();
+    if pos.in_check() {
+        let checkers = pos.checkers();
+        generate_king_moves_legal(pos, !pos.color_bb(us), list);
+        if checkers.more_than_one() {
+            return;
+        }
+        let checker = checkers.lsb();
+        let block = between(pos.king(us), checker);
+        generate_board_moves_legal(pos, block | checkers, all, list);
+        generate_drops_legal(pos, block, list);
+    } else {
+        let target = !pos.color_bb(us);
+        generate_board_moves_legal(pos, target, all, list);
+        generate_king_moves_legal(pos, target, list);
+        generate_drops_legal(pos, !pos.occupied(), list);
     }
 }
 
