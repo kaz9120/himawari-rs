@@ -10,9 +10,10 @@ use himawari_core::Move16;
 
 use crate::value::Value;
 
-/// eval hashのエントリ数（2^23 = 約840万、AtomicU64で64MB固定）。
-/// USIオプションは設けない（ADR-0049）。
-const EVAL_HASH_BITS: usize = 23;
+/// eval hashのエントリ数（既定2^23 = 約840万、AtomicU64で64MB）。
+/// USIオプションは設けない（ADR-0049）。小メモリの的に向けては
+/// ビルド時に `HIMAWARI_EVAL_HASH_BITS` で絞る（issue #429）。
+const EVAL_HASH_BITS: usize = crate::nnue::EVAL_HASH_BITS;
 const EVAL_HASH_SIZE: usize = 1 << EVAL_HASH_BITS;
 
 /// 評価値キャッシュ（ADR-0049）。局面キー→生評価のロックレス共有表。
