@@ -8,7 +8,7 @@
 //!               [--consume] [--parts N]        全体シャッフル。--consumeは読み終えた
 //!                                              入力を消してピークを約1倍に抑える。
 //!                                              --parts Nは出力を.partNNNへ分割する
-//!   psv quiet   --in file --out file [--limit N] [--max-plies N] [--hash MB]
+//!   psv quiet   --in file --out file [--limit N] [--max-plies N（既定1）] [--hash MB]
 //!               [--append] [--consume] [--jobs N]  qsearchのPV葉へ置き換える（ADR-0136）。
 //!                                              --appendは出力へ追記、--consumeは完了後に
 //!                                              入力を消す（分割入力の逐次処理用）。--jobsの
@@ -949,9 +949,12 @@ fn main() {
             let limit = arg_value(rest, "--limit")
                 .map(|s| s.parse().unwrap_or(u64::MAX))
                 .unwrap_or(u64::MAX);
+            // 既定はADR-0136の採択構成（1手）。hmwr data quietの既定と
+            // 揃える。ここが16のままだと、直接呼んだときだけ別条件の
+            // データができる（2026-08-30の前処理事故の再発防止）
             let max_plies = arg_value(rest, "--max-plies")
-                .map(|s| s.parse().unwrap_or(16))
-                .unwrap_or(16);
+                .map(|s| s.parse().unwrap_or(1))
+                .unwrap_or(1);
             let hash_mb = arg_value(rest, "--hash")
                 .map(|s| s.parse().unwrap_or(64))
                 .unwrap_or(64);
