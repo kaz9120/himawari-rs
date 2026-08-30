@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.44.9](https://github.com/kaz9120/himawari-rs/compare/v0.44.8...v0.44.9) (2026-08-30)
+
+
+### その他の変更
+
+* rankのWorker構築をquiet_workerへ共通化する ([#425](https://github.com/kaz9120/himawari-rs/issues/425)) ([bb0ee9e](https://github.com/kaz9120/himawari-rs/commit/bb0ee9e9903a25ed452727e469e3bbd7890ee5e0))
+
 ## [0.44.8](https://github.com/kaz9120/himawari-rs/compare/v0.44.7...v0.44.8) (2026-08-30)
 
 
