@@ -211,6 +211,9 @@ def report(log: Path, name: str, result: Path | None = None) -> tuple[str, str]:
     lines = last_run_lines(log.read_text(encoding="utf-8").splitlines())
     src, verdict = find_source_line(lines)
     if src is None or verdict is None:
+        # 起動直後はpairs行がまだない。エラーではなく走行前として報告する
+        if any(line.startswith("selfplay:") or "--baseline" in line for line in lines):
+            return f"=== {name}（判定前） ===\n\nまだ対局結果がない（起動直後）。", "判定前"
         raise Unreadable(f"結果行が見つからない: {log}")
 
     fields = parse_fields(src)
