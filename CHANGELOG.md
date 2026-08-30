@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.44.7](https://github.com/kaz9120/himawari-rs/compare/v0.44.6...v0.44.7) (2026-08-30)
+
+
+### その他の変更
+
+* 学習ループを等価な書き換えで22%速くする ([#417](https://github.com/kaz9120/himawari-rs/issues/417)) ([9543464](https://github.com/kaz9120/himawari-rs/commit/9543464cfad085aeb9a6ecdb66b9793dfcb16468))
+
 ## [0.44.6](https://github.com/kaz9120/himawari-rs/compare/v0.44.5...v0.44.6) (2026-08-30)
 
 
