@@ -8,8 +8,9 @@
 //!   （`crates/tools/src/positions.rs` の検証局面）
 //! - midgame_ply104: 中盤、駒が捌けて持ち駒が増えた104手目
 //!   （`crates/core/tests/integration.rs` の桂不成テスト局面）
-//! - endgame_many_hand: 終盤、双方の持ち駒が多い寄せ合い
-//!   （`crates/core/src/effect.rs` の差分更新テスト局面）
+//! - matsuri: 指し手生成祭りの局面。双方の持ち駒が多く打ち手の生成が
+//!   支配的で、生成器の定番ベンチ（やねうら王のUnitTestにも同じSFENが
+//!   ある。`crates/core/src/effect.rs` の差分更新テスト局面と同一）
 //! - max_moves: 合法手593手の最多手数局面
 //!   （`crates/core/tests/integration.rs` のMoveList容量テスト局面）
 //! - in_check: 王手がかかりEvasions経路を通る局面
@@ -37,7 +38,7 @@ const POSITIONS: [(&str, &str); 6] = [
         "lr7/2g3k2/p2Ppp2B/4s1pPp/2Pnn4/PP1+b1P1p1/1S4P1N/6S2/L3KG2L w RGSNL3Pg2p 104",
     ),
     (
-        "endgame_many_hand",
+        "matsuri",
         "l6nl/5+P1gk/2np1S3/p1p4Pp/3P2Sp1/1PPb2P1P/P5GS1/R8/LN4bKL w GR5pnsg 1",
     ),
     (
