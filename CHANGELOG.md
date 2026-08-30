@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.44.6](https://github.com/kaz9120/himawari-rs/compare/v0.44.5...v0.44.6) (2026-08-30)
+
+
+### その他の変更
+
+* psv quietの並列化と既定max-pliesの統一（前処理事故の再発防止） ([#413](https://github.com/kaz9120/himawari-rs/issues/413)) ([3d76ed6](https://github.com/kaz9120/himawari-rs/commit/3d76ed64ed5b970cf8b2bf684c89337cb22963cb))
+
 ## [0.44.5](https://github.com/kaz9120/himawari-rs/compare/v0.44.4...v0.44.5) (2026-08-29)
 
 
