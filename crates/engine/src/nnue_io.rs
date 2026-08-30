@@ -89,14 +89,21 @@ fn require_pair(version: u32) -> Result<(), String> {
     ))
 }
 
-/// FNV-1a 64bit。重み列の破損検出用。
-fn fnv1a(bytes: &[u8]) -> u64 {
-    let mut h: u64 = 0xcbf2_9ce4_8422_2325;
+/// FNV-1a 64bitの初期値。
+const FNV_BASIS: u64 = 0xcbf2_9ce4_8422_2325;
+
+/// FNV-1a 64bitを途中から進める。ストリーム読みのハッシュ計算に使う。
+fn fnv1a_update(mut h: u64, bytes: &[u8]) -> u64 {
     for &b in bytes {
         h ^= u64::from(b);
         h = h.wrapping_mul(0x0000_0100_0000_01B3);
     }
     h
+}
+
+/// FNV-1a 64bit。重み列の破損検出用。
+fn fnv1a(bytes: &[u8]) -> u64 {
+    fnv1a_update(FNV_BASIS, bytes)
 }
 
 fn weight_bytes(net: &NnueNetwork) -> Vec<u8> {
@@ -237,8 +244,102 @@ impl<'a> Cursor<'a> {
 /// ファイルの構成（FT入力・FT出力・L1・L2・L3）。L3は3層構成では0。
 type Dims = [usize; 5];
 
-/// ヘッダを読み、(構成, 学習来歴, 検証済みの重み列) を返す。
-fn read_header(r: &mut impl Read) -> Result<(u32, Dims, String, Vec<u8>), String> {
+/// ハッシュを進めながら重み列を読むリーダ（issue #428）。
+///
+/// `read_header` は本体全体をVecへ置くので、読み込み中のピークメモリが
+/// 定常のほぼ2倍になる。こちらは固定長の作業バッファで読み進め、
+/// FNVの計算とデコードを同じパスで行う。ハッシュの照合は読み切った
+/// あとに `finish` で行う。
+struct HashingReader<'r, R: Read> {
+    inner: &'r mut R,
+    hash: u64,
+    buf: Vec<u8>,
+}
+
+/// 作業バッファの長さ。i16・i32の要素境界がチャンクをまたがないよう、
+/// 4の倍数の2の冪にする。
+const READ_CHUNK: usize = 1 << 20;
+
+impl<'r, R: Read> HashingReader<'r, R> {
+    fn new(inner: &'r mut R) -> Self {
+        HashingReader {
+            inner,
+            hash: FNV_BASIS,
+            buf: vec![0u8; READ_CHUNK],
+        }
+    }
+
+    /// nバイトを作業バッファ単位で読み、ハッシュを進めてからfへ渡す。
+    fn read_chunks(&mut self, n: usize, mut f: impl FnMut(&[u8])) -> Result<(), String> {
+        let mut rest = n;
+        while rest > 0 {
+            let k = rest.min(READ_CHUNK);
+            let buf = &mut self.buf[..k];
+            self.inner
+                .read_exact(buf)
+                .map_err(|_| "重み列が短い".to_string())?;
+            self.hash = fnv1a_update(self.hash, buf);
+            f(buf);
+            rest -= k;
+        }
+        Ok(())
+    }
+
+    fn i16v(&mut self, n: usize) -> Result<Vec<i16>, String> {
+        let mut v = Vec::with_capacity(n);
+        self.read_chunks(n * 2, |b| {
+            v.extend(b.as_chunks::<2>().0.iter().map(|c| i16::from_le_bytes(*c)));
+        })?;
+        Ok(v)
+    }
+
+    fn i32v(&mut self, n: usize) -> Result<Vec<i32>, String> {
+        let mut v = Vec::with_capacity(n);
+        self.read_chunks(n * 4, |b| {
+            v.extend(b.as_chunks::<4>().0.iter().map(|c| i32::from_le_bytes(*c)));
+        })?;
+        Ok(v)
+    }
+
+    fn i8v(&mut self, n: usize) -> Result<Vec<i8>, String> {
+        let mut v = Vec::with_capacity(n);
+        self.read_chunks(n, |b| v.extend(b.iter().map(|&x| x as i8)))?;
+        Ok(v)
+    }
+
+    /// i8のFT重み列を格納型へ直接読む（ADR-0138）。中間のVecを挟まない。
+    fn ftv(&mut self, n: usize) -> Result<Vec<FtWeight>, String> {
+        let mut v = Vec::with_capacity(n);
+        self.read_chunks(n, |b| {
+            v.extend(b.iter().map(|&x| x as i8 as FtWeight));
+        })?;
+        Ok(v)
+    }
+
+    /// 読み残しがないことを確かめ、ハッシュを照合する。
+    fn finish(mut self, expect: u64) -> Result<(), String> {
+        let mut rest = 0usize;
+        loop {
+            match self.inner.read(&mut self.buf) {
+                Ok(0) => break,
+                Ok(k) => rest += k,
+                Err(e) if e.kind() == std::io::ErrorKind::Interrupted => continue,
+                Err(e) => return Err(format!("読み込み失敗: {e}")),
+            }
+        }
+        if rest != 0 {
+            return Err(format!("末尾に余分な{rest}バイトがある"));
+        }
+        if self.hash != expect {
+            return Err("重みハッシュが不一致（ファイル破損）".to_string());
+        }
+        Ok(())
+    }
+}
+
+/// マジックから重みハッシュまでのヘッダを読む。本体は読まない。
+/// 戻り値は (版, 構成, 学習来歴, 期待ハッシュ)。
+fn read_meta(r: &mut impl Read) -> Result<(u32, Dims, String, u64), String> {
     let mut magic = [0u8; 8];
     r.read_exact(&mut magic)
         .map_err(|e| format!("読み込み失敗: {e}"))?;
@@ -275,7 +376,12 @@ fn read_header(r: &mut impl Read) -> Result<(u32, Dims, String, Vec<u8>), String
     r.read_exact(&mut hash_b)
         .map_err(|e| format!("読み込み失敗: {e}"))?;
     let expect_hash = u64::from_le_bytes(hash_b);
+    Ok((version, dims, lineage, expect_hash))
+}
 
+/// ヘッダを読み、(構成, 学習来歴, 検証済みの重み列) を返す。
+fn read_header(r: &mut impl Read) -> Result<(u32, Dims, String, Vec<u8>), String> {
+    let (version, dims, lineage, expect_hash) = read_meta(r)?;
     let mut body = Vec::new();
     r.read_to_end(&mut body)
         .map_err(|e| format!("読み込み失敗: {e}"))?;
@@ -286,8 +392,12 @@ fn read_header(r: &mut impl Read) -> Result<(u32, Dims, String, Vec<u8>), String
 }
 
 /// 読み込む。戻り値は (ネットワーク, 学習来歴)。
+///
+/// 本体をまとめてVecへ置かず、ハッシュ計算と各層のデコードを流しながら
+/// 進める（issue #428）。読み込み中のピークメモリが重みの定常分に
+/// 近づく。既定構成の現行ネットで約247MiBから約125MiBになる。
 pub fn load(r: &mut impl Read) -> Result<(NnueNetwork, String), String> {
-    let (version, dims, lineage, body) = read_header(r)?;
+    let (version, dims, lineage, expect_hash) = read_meta(r)?;
     require_pair(version)?;
     let expect = [FT_IN, FT_OUT, L1_OUT, L2_OUT, L3_OUT];
     if dims != expect {
@@ -296,14 +406,14 @@ pub fn load(r: &mut impl Read) -> Result<(NnueNetwork, String), String> {
         ));
     }
 
-    let mut cur = Cursor::new(&body);
+    let mut cur = HashingReader::new(r);
     let ft_b = cur.i16v(FT_OUT)?;
     // FT重みの型はファイルの版とビルドで別々に決まる（ADR-0138）。
     // 型が違っても読めるようにするが、i8へ落とすときは範囲を検査する。
     // 黙って切り詰めると、飽和したネットで気づかず対局してしまう
     let n = FT_IN * FT_OUT;
     let ft_w = if version_is_ft_i8(version) {
-        cur.i8v(n)?.into_iter().map(|x| x as FtWeight).collect()
+        cur.ftv(n)?
     } else {
         ft_w_from_i16(cur.i16v(n)?)?
     };
@@ -325,7 +435,7 @@ pub fn load(r: &mut impl Read) -> Result<(NnueNetwork, String), String> {
     };
     let w_out = cur.i8v(LAST_HIDDEN)?;
     let b_out = cur.i32v(1)?[0];
-    cur.expect_end()?;
+    cur.finish(expect_hash)?;
 
     Ok((
         NnueNetwork {
@@ -695,5 +805,22 @@ mod tests {
         // 末尾切り捨て
         let bad = &buf[..buf.len() - 8];
         assert!(load(&mut &bad[..]).is_err());
+    }
+
+    /// 末尾に余分なバイトがあるファイルは弾く。ストリーム読みでも
+    /// 読み残しを数えて件数を報告する。
+    #[test]
+    fn trailing_bytes_are_rejected() {
+        let net = NnueNetwork::random(5);
+        let mut buf = Vec::new();
+        save(&net, "", &mut buf).unwrap();
+        buf.push(0);
+        let err = load(&mut buf.as_slice())
+            .err()
+            .expect("余分なバイトを受け入れてはいけない");
+        assert!(
+            err.contains("余分な1バイト"),
+            "件数の読める文言にする: {err}"
+        );
     }
 }
