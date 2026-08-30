@@ -131,6 +131,10 @@ SPSAの一括チューニングでこのずれを回収する（[ADR-0143](adr/0
   （[ADR-0191](adr/0191-blindspot-benchmark.md)、大悪手の全量解析の後継）
 - **測定の手順はスキルが持つ**。SPRTはrunning-sprt、ビルド・計測・SPSAは
   himawari-cliを使う
+- **細かい改善のIssueサイクル**。小さな気になりを `micro` ラベルの
+  Issueへ即時に切り、実験の待ち時間に消化する。手順は
+  micro-improvementsスキルが持つ。初日の実績はIssue 9件・PR 6本
+  （静止化5.3倍、学習+22%、CI並列化）
 - **成果物の掃除**（[ADR-0189](adr/0189-artifact-retention.md)）。月1回を
   目安に `hmwr clean --apply` を回す。保持は30日で、現行の評価関数の系列と
   結果の要約は残る
