@@ -23,3 +23,7 @@ harness = false
 [[bench]]
 name = "effect_gen"
 harness = false
+
+[[bench]]
+name = "movegen"
+harness = false
