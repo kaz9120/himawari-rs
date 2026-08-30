@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.44.8](https://github.com/kaz9120/himawari-rs/compare/v0.44.7...v0.44.8) (2026-08-30)
+
+
+### その他の変更
+
+* sprt showが対局開始前のログをエラーにしない ([#419](https://github.com/kaz9120/himawari-rs/issues/419)) ([8276cc1](https://github.com/kaz9120/himawari-rs/commit/8276cc13d010262209f430d85116612b45be8f7d))
+
 ## [0.44.7](https://github.com/kaz9120/himawari-rs/compare/v0.44.6...v0.44.7) (2026-08-30)
 
 
