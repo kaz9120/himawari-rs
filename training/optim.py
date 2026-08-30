@@ -19,6 +19,14 @@ class MaskedAdam(Optimizer):
     bias correctionは `SparseAdam` に合わせてグローバルなstepで行う。
     出現の判定は勾配の行が全要素ゼロかどうかで見る。EmbeddingBagの
     denseな逆伝播では、出現しない行はきっちりゼロになる。
+
+    更新はin-placeで書く。`torch.where` と非in-placeの式で書くと、FT規模
+    （13万行×1024列、f32で513MB）のテンポラリを毎ステップ7個ほど作り、
+    メモリ帯域で律速する。マスクを係数 `1-(1-β)·active` に畳んで
+    `mul_`・`addcmul_`・`addcdiv_` で書くと更新値は変わらないまま
+    テンポラリが2個に減る。MPSの実測で1ステップ106msが53msになった
+    （issue #409）。不活性行は勾配が全要素ゼロなので、`add_` と
+    `addcmul_` が足すのは0で、モーメントも重みも据え置きが保たれる。
     """
 
     def __init__(self, params, lr=1e-3, betas=(0.9, 0.999), eps=1e-8):
@@ -56,18 +64,23 @@ class MaskedAdam(Optimizer):
                     active = (grad != 0).any(dim=1, keepdim=True)
                 else:
                     active = grad != 0
+                af = active.to(grad.dtype)
 
-                new_m = m * beta1 + grad * (1.0 - beta1)
-                new_v = v * beta2 + grad * grad * (1.0 - beta2)
-                m.copy_(torch.where(active, new_m, m))
-                v.copy_(torch.where(active, new_v, v))
+                # 活性なら m·β1 + g·(1-β1)、不活性なら af=0 かつ g=0 で
+                # m がそのまま残る。v も同じ形になる
+                m.mul_(1.0 - (1.0 - beta1) * af).add_(grad, alpha=1.0 - beta1)
+                v.mul_(1.0 - (1.0 - beta2) * af).addcmul_(
+                    grad, grad, value=1.0 - beta2
+                )
 
                 # bias correctionの掛け方は SparseAdam に合わせる。
                 # epsを平方根の外へ出す点が torch.optim.Adam と違う
                 bc1 = 1.0 - beta1 ** state["step"]
                 bc2 = 1.0 - beta2 ** state["step"]
                 step_size = lr * math.sqrt(bc2) / bc1
-                upd = step_size * new_m / (new_v.sqrt() + eps)
-                p.sub_(upd * active)
+                denom = v.sqrt().add_(eps)
+                # 分子に af を掛けて不活性行の更新を0にする。m.mul_(af) と
+                # 書くと状態の m まで消えるので、ここだけテンポラリを許す
+                p.addcdiv_(m * af, denom, value=-step_size)
 
         return loss
