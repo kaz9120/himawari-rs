@@ -749,32 +749,12 @@ fn rank(input: &str, output: &str, limit: u64, skip: u64, hash_mb: usize, eval: 
         std::fs::File::create(output)
             .unwrap_or_else(|e| die(&format!("作れません: {output}: {e}"))),
     );
-    let shared = Arc::new(Shared::new(hash_mb));
     let mut f = std::fs::File::open(eval)
         .unwrap_or_else(|e| die(&format!("評価関数を開けません: {eval}: {e}")));
     let (net, _lineage) = himawari_engine::nnue_io::load(&mut f)
         .unwrap_or_else(|e| die(&format!("評価関数を読めません: {eval}: {e}")));
     let net = Arc::new(net);
-
-    let limits = Limits::default();
-    let start_pos = himawari_core::Position::from_sfen(himawari_core::SFEN_STARTPOS)
-        .unwrap_or_else(|e| die(&format!("初期局面を作れません: {e:?}")));
-    let tm = TimeManager::new(
-        &limits,
-        start_pos.side_to_move(),
-        start_pos.game_ply(),
-        &TimeOptions::default(),
-    );
-    let mut worker = Worker::new(
-        start_pos,
-        Arc::clone(&shared),
-        limits,
-        tm,
-        0,
-        1,
-        Evaluator::nnue(Arc::clone(&net)),
-        Histories::default(),
-    );
+    let mut worker = quiet_worker(&net, hash_mb);
 
     // xorshift。シードはレコードの絶対位置で、0を避けるため定数を混ぜる
     let rng_next = |s: &mut u64| {
