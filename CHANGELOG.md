@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.44.12](https://github.com/kaz9120/himawari-rs/compare/v0.44.11...v0.44.12) (2026-08-30)
+
+
+### その他の変更
+
+* generate_legalの二段フィルタを廃して指し手生成を速くする ([#439](https://github.com/kaz9120/himawari-rs/issues/439)) ([c66a663](https://github.com/kaz9120/himawari-rs/commit/c66a663de98e46b7178e579cac91784c7ded272d)), closes [#435](https://github.com/kaz9120/himawari-rs/issues/435)
+
 ## [0.44.11](https://github.com/kaz9120/himawari-rs/compare/v0.44.10...v0.44.11) (2026-08-30)
 
 
