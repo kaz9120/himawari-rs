@@ -255,11 +255,17 @@ class RankLoader:
     返す。抽出はstrictで行い、1レコードでも落ちたら例外にする。黙って
     落ちると群の整列が壊れ、別の局面と比較してしまうためである。
 
+    読み出しと抽出は先読みスレッドが先回りし、GPU計算と重ねる。学習
+    ループ内の同期呼び出しのままだと、memmapへのランダム読みがページ
+    キャッシュを外れたとき1ステップ300ms規模の待ちになる（issue #409）。
+    乱数を消費するのは先読みスレッドだけなので、seedで決まるバッチの列は
+    先読みの有無で変わらない。
+
     予備バイト（b[39]）は親からの手数の偶奇で、呼び出し側はこれで
     評価値を親視点の符号へ戻す。
     """
 
-    def __init__(self, path, groups_per_step, seed=0):
+    def __init__(self, path, groups_per_step, seed=0, prefetch=2):
         size = os.path.getsize(path)
         if size % 120 != 0:
             raise ValueError(f"ファイルサイズが120の倍数でない: {size}")
@@ -267,11 +273,30 @@ class RankLoader:
         self.batch = groups_per_step
         self.rng = np.random.default_rng(seed)
         self.data = np.memmap(path, dtype=np.uint8, mode="r", shape=(self.n, 120))
+        self.prefetch = prefetch
+        self._queue = None
 
-    def sample(self):
+    def _sample_now(self):
         idx = np.sort(self.rng.integers(0, self.n, size=self.batch))
         recs = np.array(self.data[idx]).reshape(-1, 40)
         parity = torch.from_numpy(recs[:, 39].astype(np.float32).copy())
         arrays = himawari.extract_batch(recs.tobytes(), 0.0, 0, 0, False, True)
         stm_i, stm_o, opp_i, opp_o = (torch.from_numpy(a) for a in arrays[:4])
         return stm_i, stm_o, opp_i, opp_o, parity
+
+    def _produce(self):
+        while True:
+            try:
+                self._queue.put(self._sample_now())
+            except Exception as e:  # 生産側の例外を消費側へ伝える
+                self._queue.put(e)
+                return
+
+    def sample(self):
+        if self._queue is None:
+            self._queue = queue.Queue(maxsize=self.prefetch)
+            threading.Thread(target=self._produce, daemon=True).start()
+        item = self._queue.get()
+        if isinstance(item, Exception):
+            raise item
+        return item
