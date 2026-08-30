@@ -1,5 +1,9 @@
 name: CI
 
+# checkは直列だと7〜10分かかる（#408）。実行するコマンドと合否基準は
+# 変えずにジョブへ分割し、並列に走らせて壁時間を縮める。ブランチ保護と
+# release-pleaseのauto-mergeが見るrequired checkはジョブ名checkなので、
+# checkは分割したジョブの結果を集約する役だけを持つ。
 on:
   push:
     branches: [main]
@@ -8,17 +12,48 @@ on:
 env:
   CARGO_TERM_COLOR: always
 
+# 同じPRへ連続pushしたとき、古いコミットのrunを打ち切る。
+# mainへのpushは打ち切らない（release-pleaseがcheckの通過を待つ）
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
-  check:
+  lint:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: Swatinem/rust-cache@v2
       - run: cargo fmt --all --check
       - run: cargo clippy --all-targets -- -D warnings
+      # 活性ダンプのfeature（ADR-0168）。通常のビルドでは触らないので、
+      # コンパイルが通ることだけ確かめて腐るのを防ぐ
+      - run: cargo check -p himawari-engine --features actdump
+      # hmwrコマンドと解析ツールのPython（ADR-0180）。引数処理は同じ入力から
+      # 同じコマンド列が出ることを、解析はログの読み取りを固定する
+      - run: pip install --quiet pytest
+      - run: python3 -m pytest tests -q
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Swatinem/rust-cache@v2
       - run: cargo test --workspace
-      # perft既知値の照合（debugではignoreされる。ADR-0006/0018）
+
+  # perft既知値の照合（debugではignoreされる。ADR-0006/0018）
+  test-release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Swatinem/rust-cache@v2
       - run: cargo test --workspace --release
+
+  test-arch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Swatinem/rust-cache@v2
       # 既定以外のネットワーク構成（ADR-0127）。L1をパディングする経路と
       # FTを太らせた経路が壊れていないことを、コンパイルとテストで確認する
       - run: HIMAWARI_ARCH=512x16x64 cargo test --workspace
@@ -26,17 +61,29 @@ jobs:
       # （ADR-0067）。既定構成から外れたので、明示して回さないと
       # 互換のテストが1つも走らない（ADR-0170）
       - run: HIMAWARI_ARCH=256x32x32 cargo test -p himawari-engine --lib
-      # 活性ダンプのfeature（ADR-0168）。通常のビルドでは触らないので、
-      # コンパイルが通ることだけ確かめて腐るのを防ぐ
-      - run: cargo check -p himawari-engine --features actdump
-      # SPSAチューニングのfeature（ADR-0143）。setoptionの動作は
-      # engine側の単体テストで確かめる
+
+  # SPSAチューニングのfeature（ADR-0143）。setoptionの動作は
+  # engine側の単体テストで確かめる
+  test-tune:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Swatinem/rust-cache@v2
       - run: cargo test -p himawari-usi --features tune
       - run: cargo test -p himawari-engine --features tune --lib
-      # hmwrコマンドと解析ツールのPython（ADR-0180）。引数処理は同じ入力から
-      # 同じコマンド列が出ることを、解析はログの読み取りを固定する
-      - run: pip install --quiet pytest
-      - run: python3 -m pytest tests -q
+
+  # required checkの集約。上の全ジョブが成功したときだけ成功する
+  check:
+    needs: [lint, test, test-release, test-arch, test-tune]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - env:
+          RESULTS: ${{ join(needs.*.result, ' ') }}
+        run: |
+          for r in $RESULTS; do
+            [ "$r" = "success" ] || exit 1
+          done
 
   # 日本語文書のlint（ADR-0178）。CLAUDE.mdの書き方の規約のうち、
   # 機械が判定できるものをここで見る
