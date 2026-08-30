@@ -5,7 +5,7 @@
 
 ### その他の変更
 
-* EvalHashのエントリ数をビルド時に絞れるようにする ([#433](https://github.com/kaz9120/himawari-rs/issues/433)) ([ae4628f](https://github.com/kaz9120/himawari-rs/commit/ae4628fff1a60dcd19e2828634c00a49d4992edc))
+* EvalHashのエントリ数をビルド時のノブで絞れる形にする ([#433](https://github.com/kaz9120/himawari-rs/issues/433)) ([ae4628f](https://github.com/kaz9120/himawari-rs/commit/ae4628fff1a60dcd19e2828634c00a49d4992edc))
 
 ## [0.44.10](https://github.com/kaz9120/himawari-rs/compare/v0.44.9...v0.44.10) (2026-08-30)
 
