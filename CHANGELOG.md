@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.44.10](https://github.com/kaz9120/himawari-rs/compare/v0.44.9...v0.44.10) (2026-08-30)
+
+
+### その他の変更
+
+* ネット読み込みのピークメモリを定常分まで下げる（issue [#428](https://github.com/kaz9120/himawari-rs/issues/428)） ([#431](https://github.com/kaz9120/himawari-rs/issues/431)) ([3042549](https://github.com/kaz9120/himawari-rs/commit/304254960a0bda5ddbfe7ef909afb22c446941bb))
+
 ## [0.44.9](https://github.com/kaz9120/himawari-rs/compare/v0.44.8...v0.44.9) (2026-08-30)
 
 
