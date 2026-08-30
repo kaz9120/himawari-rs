@@ -111,6 +111,7 @@ fn main() {
     println!("cargo::rerun-if-changed=build.rs");
     println!("cargo::rerun-if-env-changed=HIMAWARI_ARCH");
     println!("cargo::rerun-if-env-changed=HIMAWARI_FT_I8");
+    println!("cargo::rerun-if-env-changed=HIMAWARI_EVAL_HASH_BITS");
     println!("cargo::rustc-check-cfg=cfg(arch_nn_bin)");
     println!("cargo::rustc-check-cfg=cfg(ft_i8)");
 
@@ -123,6 +124,20 @@ fn main() {
     if ft_i8 {
         println!("cargo::rustc-cfg=ft_i8");
     }
+
+    // eval hashのエントリ数の指数（ADR-0049、issue #429）。既定23は64MBで
+    // 従来と同じ。wasmのような小メモリの的に向けてビルド時だけ絞れる。
+    // 実行時オプションは設けない方針（ADR-0049）を変えない
+    let eval_hash_bits: usize = std::env::var("HIMAWARI_EVAL_HASH_BITS")
+        .map(|v| {
+            v.parse()
+                .unwrap_or_else(|_| panic!("HIMAWARI_EVAL_HASH_BITS が整数でない: {v}"))
+        })
+        .unwrap_or(23);
+    assert!(
+        (10..=28).contains(&eval_hash_bits),
+        "HIMAWARI_EVAL_HASH_BITS は10〜28で指定する: {eval_hash_bits}"
+    );
 
     let spec = std::env::var("HIMAWARI_ARCH").unwrap_or_else(|_| DEFAULT_ARCH.to_string());
     let arch = parse(&spec).unwrap_or_else(|e| panic!("HIMAWARI_ARCH: {e}"));
@@ -142,6 +157,8 @@ fn main() {
     )
     .unwrap();
     writeln!(src, "pub const FT_I8: bool = {ft_i8};").unwrap();
+    writeln!(src, "/// eval hashのエントリ数の指数。build.rsが生成する。").unwrap();
+    writeln!(src, "pub const EVAL_HASH_BITS: usize = {eval_hash_bits};").unwrap();
     writeln!(src, "/// FT出力次元（片視点）。build.rsが生成する。").unwrap();
     writeln!(src, "pub const FT_OUT: usize = {};", arch.ft).unwrap();
     writeln!(src, "/// 隠れ層1の出力次元。").unwrap();
