@@ -14,7 +14,7 @@ from pathlib import Path
 
 from .. import paths, proc
 from .. import release as release_mod
-from ..tools import ft_reorder
+from ..tools import dead_dims, ft_reorder
 
 ARCH_RE = re.compile(r"^\d+x\d+(x\d+){0,2}$")
 TRAINER = "training/train.py"
@@ -119,6 +119,20 @@ def add_parser(sub: argparse._SubParsersAction) -> None:
     t.add_argument("--out", metavar="ファイル", help="並べ替えの出力先")
     t.add_argument("--perm", metavar="ファイル", help="既存の並べ替えを当てて評価する")
     t.set_defaults(func=reorder)
+
+    t = ss.add_parser(
+        "dead",
+        help="FT出力の対が死ぬ原因をa側とb側に分けて測る",
+        description="対の積は片側がゼロなら結果もゼロになる。"
+        "積が死ぬ原因が片側の死なのか、両側が同時に発火しないのかを分ける。"
+        "活性は学習器と同じf32で測るので、量子化後の値を見る reorder とは"
+        "ゼロ率が変わる。",
+    )
+    t.add_argument("weights", metavar="重み", help="チェックポイントかネット")
+    t.add_argument("valid", metavar="PSV", help="測る局面")
+    t.add_argument("--batch", type=int, metavar="N", help="バッチの大きさ")
+    t.add_argument("--threads", type=int, metavar="N", help="torchのスレッド数")
+    t.set_defaults(func=dead)
 
     t = ss.add_parser(
         "release",
@@ -437,6 +451,22 @@ def reorder(args: argparse.Namespace) -> int:
     if args.perm:
         argv += ["--perm", args.perm]
     return ft_reorder.main(argv)
+
+
+def dead(args: argparse.Namespace) -> int:
+    """FT出力の対が死ぬ原因を測る。"""
+    if args.dry_run:
+        print(f"[dry-run] 対の死に方を測る: {args.weights} × {args.valid}")
+        return proc.OK
+    for path, what in ((args.weights, "重み"), (args.valid, "局面")):
+        if not Path(path).is_file():
+            raise proc.Fail(f"{what}がない: {path}")
+    argv = [args.weights, args.valid]
+    if args.batch:
+        argv += ["--batch", str(args.batch)]
+    if args.threads:
+        argv += ["--threads", str(args.threads)]
+    return dead_dims.main(argv)
 
 
 # 評価関数ファイルの形式（ADR-0037）。版によって次元の数が変わる
