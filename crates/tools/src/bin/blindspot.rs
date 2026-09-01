@@ -178,8 +178,7 @@ fn measure(labels: &Path, eval: Option<PathBuf>, gap_floor: f64) -> Result<()> {
 
     let text = std::fs::read_to_string(labels)
         .with_context(|| format!("ラベルTSVを開けません: {}", labels.display()))?;
-    // (乖離, 手数, 実戦評価)
-    let mut gaps: Vec<(f64, usize, i32)> = Vec::new();
+    let mut gaps: Vec<Gap> = Vec::new();
     let mut skipped = 0usize;
     for line in text.lines().skip(1) {
         let cols: Vec<&str> = line.split('\t').collect();
@@ -202,19 +201,39 @@ fn measure(labels: &Path, eval: Option<PathBuf>, gap_floor: f64) -> Result<()> {
             skipped += 1;
             continue;
         };
+        // クラス分けは元の局面で決める。walk_to_quietが進めた後の局面は
+        // 手番も駒割も変わる
+        let us = pos.side_to_move();
+        let king_rank = pos.king(us).rank().relative(us).0;
+        let opp_king_rank = pos.king(us.flip()).rank().relative(us.flip()).0;
+        let sign = if us == himawari_core::Color::Black {
+            1
+        } else {
+            -1
+        };
+        let material = pos.state().material * sign;
         worker.set_position(pos);
         let plies = worker.walk_to_quiet(16);
         let raw = worker.evaluator.evaluate(&worker.pos);
         let shallow = if plies % 2 == 1 { -raw } else { raw };
-        let gap = (winprob(shallow) - winprob(deep_cp)).abs();
-        gaps.push((gap, ply, eval_game));
+        let signed = winprob(shallow) - winprob(deep_cp);
+        let gap = signed.abs();
+        gaps.push(Gap {
+            gap,
+            signed,
+            ply,
+            eval_game,
+            king_rank,
+            opp_king_rank,
+            material,
+        });
     }
     if gaps.is_empty() {
         anyhow::bail!("測定対象がない（確定基準で全滅）");
     }
 
     let mean = |v: &[f64]| v.iter().sum::<f64>() / v.len() as f64;
-    let all: Vec<f64> = gaps.iter().map(|g| g.0).collect();
+    let all: Vec<f64> = gaps.iter().map(|g| g.gap).collect();
     let mut sorted = all.clone();
     sorted.sort_by(|a, b| a.partial_cmp(b).unwrap());
     println!("評価関数: {}", eval_path.display());
@@ -228,6 +247,15 @@ fn measure(labels: &Path, eval: Option<PathBuf>, gap_floor: f64) -> Result<()> {
         sorted[sorted.len() / 2],
         sorted[sorted.len() * 9 / 10]
     );
+    // 符号つきで見ると、外し方の向きが分かる。正なら浅い評価が高すぎる
+    let signed: Vec<f64> = gaps.iter().map(|g| g.signed).collect();
+    let over = signed.iter().filter(|v| **v > 0.0).count();
+    println!(
+        "符号つきの乖離: 平均{:+.3}（過大{}件 / 過小{}件）",
+        mean(&signed),
+        over,
+        signed.len() - over
+    );
     for (name, lo, hi) in [
         ("〜60手", 0, 60),
         ("61〜100手", 61, 100),
@@ -235,8 +263,8 @@ fn measure(labels: &Path, eval: Option<PathBuf>, gap_floor: f64) -> Result<()> {
     ] {
         let v: Vec<f64> = gaps
             .iter()
-            .filter(|g| (lo..=hi).contains(&g.1))
-            .map(|g| g.0)
+            .filter(|g| (lo..=hi).contains(&g.ply))
+            .map(|g| g.gap)
             .collect();
         if !v.is_empty() {
             println!("  {name:>9}: 平均{:.3}（{}件）", mean(&v), v.len());
@@ -249,14 +277,72 @@ fn measure(labels: &Path, eval: Option<PathBuf>, gap_floor: f64) -> Result<()> {
     ] {
         let v: Vec<f64> = gaps
             .iter()
-            .filter(|g| (lo..=hi).contains(&g.2))
-            .map(|g| g.0)
+            .filter(|g| (lo..=hi).contains(&g.eval_game))
+            .map(|g| g.gap)
             .collect();
         if !v.is_empty() {
             println!("  実戦評価{name:>10}: 平均{:.3}（{}件）", mean(&v), v.len());
         }
     }
+    // 玉の段は入玉度そのもの。教師データの入玉が薄いなら、ここに乖離が
+    // 集まるはずである（ADR-0190の被覆測定で入玉圏の質量は1.7%だった）
+    for (name, lo, hi) in [
+        ("敵陣（〜3段）", 0, 2),
+        ("中段（4〜6段）", 3, 5),
+        ("自陣（7段〜）", 6, 8),
+    ] {
+        let v: Vec<f64> = gaps
+            .iter()
+            .filter(|g| (lo..=hi).contains(&g.king_rank))
+            .map(|g| g.gap)
+            .collect();
+        if !v.is_empty() {
+            println!("  手番玉{name:>14}: 平均{:.3}（{}件）", mean(&v), v.len());
+        }
+    }
+    let both_in: Vec<f64> = gaps
+        .iter()
+        .filter(|g| g.king_rank <= 2 && g.opp_king_rank <= 2)
+        .map(|g| g.gap)
+        .collect();
+    if !both_in.is_empty() {
+        println!(
+            "  相互入玉          : 平均{:.3}（{}件）",
+            mean(&both_in),
+            both_in.len()
+        );
+    }
+    for (name, keep) in [("駒得", true), ("駒損", false)] {
+        let sel: Vec<&Gap> = gaps.iter().filter(|g| (g.material >= 0) == keep).collect();
+        if !sel.is_empty() {
+            let v: Vec<f64> = sel.iter().map(|g| g.gap).collect();
+            let sv: Vec<f64> = sel.iter().map(|g| g.signed).collect();
+            println!(
+                "  手番側の{name}      : 平均{:.3} 符号つき{:+.3}（{}件）",
+                mean(&v),
+                mean(&sv),
+                v.len()
+            );
+        }
+    }
     Ok(())
+}
+
+/// 1局面の測定結果と、クラス分けの材料。
+struct Gap {
+    /// 浅い評価と正解ラベルの勝率乖離
+    gap: f64,
+    /// 符号つきの乖離。正なら浅い評価が正解より高い（過大評価）
+    signed: f64,
+    ply: usize,
+    /// 実戦時の評価値（手番側から見たcp）
+    eval_game: i32,
+    /// 手番側の玉の相対段。0が敵陣の最奥で、2以下なら入玉圏にいる
+    king_rank: u8,
+    /// 相手玉の相対段。両方が2以下なら相互入玉になる
+    opp_king_rank: u8,
+    /// 手番側から見た駒割
+    material: i32,
 }
 
 /// 候補を1スレッド・固定ノードで再解析し、正解ラベルを追記する。
