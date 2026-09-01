@@ -58,7 +58,7 @@
 - [0160](0160-revisit-rejected-under-better-eval.md) 棄却済みの追従を掘り起こす案（導入済みと判明して棄却）
 - [0162](0162-parallel-group.md) 並列の未測定3件を1群で測る（TTの手番分割は見送り）
 - [0177](0177-tt-probcut-depth-slack.md) TT-ProbCutの深さ差を狭める案（測って棄却）
-- [0186](0186-repetition-precompute.md) 千日手判定をdo_move時の前計算にする
+- [0186](0186-repetition-scan-cap.md) 千日手判定の走査を16手で打ち切る
 
 ### 評価関数（NNUE）
 
@@ -301,7 +301,7 @@
 | [0183](0183-stacked-pairwise-product.md) | FT積を2段にして4駒の相互作用を入れる | 2026-08-22 | −9.8 | rejected |
 | [0184](0184-cross-view-product.md) | 視点をまたぐ対の積で両玉の相互作用を入れる | 2026-08-23 | −9.2 | rejected |
 | [0185](0185-sibling-ranking-loss.md) | 兄弟局面のランキング損失を回帰へ足す | 2026-08-23 | +28.9 | accepted |
-| [0186](0186-repetition-precompute.md) | 千日手判定をdo_move時の前計算にする | 2026-08-26 |  | proposed |
+| [0186](0186-repetition-scan-cap.md) | 千日手判定の走査を16手で打ち切る | 2026-08-26 |  | proposed |
 | [0187](0187-selfplay-gen2.md) | 自前生成の第2世代を診断先行の混合再学習で測る | 2026-08-26 |  | superseded |
 | [0188](0188-selfplay-rl-loop.md) | 自己生成の世代ループを自給自足の継続学習で回す | 2026-08-26 | +13.9 | accepted |
 | [0189](0189-artifact-retention.md) | 成果物の保持を日数で決め、掃除をhmwr cleanに固定する | 2026-08-27 |  | accepted |
