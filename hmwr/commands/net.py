@@ -474,8 +474,10 @@ ACTDUMP_POSITIONS = "openings/actdump_positions.txt"
 ACTDUMP_DEPTH = 16
 # actdump.rs の TARGET と揃える。片方だけ動かすと間引きの見積もりが狂う
 ACTDUMP_TARGET = 12500
-# 深さ16・終盤局面での実測（1局面あたり24万回）。深さを変えたら --stride で渡す
-ACTDUMP_EVALS_PER_POSITION = 240_000
+# 深さ16・終盤局面での実測は1局面あたり24万回だが、局面ごとに上下する。
+# 見積もりが上振れすると目標数に届かずダンプが書かれないので、8割で見込む。
+# 深さを変えたら --stride で渡す
+ACTDUMP_EVALS_PER_POSITION = 190_000
 
 
 def actdump(args: argparse.Namespace) -> int:
