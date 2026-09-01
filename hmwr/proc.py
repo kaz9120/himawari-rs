@@ -46,12 +46,14 @@ def run(
     log: Path | None = None,
     allowed: tuple[int, ...] = (OK,),
     cwd: Path | None = None,
+    stdin_text: str | None = None,
 ) -> int:
     """外部コマンドを実行する。
 
     dry_runなら実行せず、走るはずのコマンドを表示して返る。logを渡すと
     出力を端末とファイルの両方へ流す（追記）。allowedにない終了コードは
-    Failとして投げる。
+    Failとして投げる。stdin_textを渡すと標準入力へ流し込む（USIエンジンの
+    ように行を食わせて動かすコマンド向け）。
     """
     line = show(argv, env)
     if dry_run:
@@ -67,17 +69,26 @@ def run(
     workdir = str(cwd or paths.REPO)
 
     if log is None:
-        code = subprocess.call(argv, cwd=workdir, env=full_env)
+        code = subprocess.run(
+            argv, cwd=workdir, env=full_env, input=stdin_text, text=True, check=False
+        ).returncode
     else:
         print(f"ログ: {paths.rel(log)}", flush=True)
-        code = _tee(argv, workdir, full_env, log, line)
+        code = _tee(argv, workdir, full_env, log, line, stdin_text)
 
     if code not in allowed:
         raise Fail(f"失敗した（終了コード {code}）: {line}", code)
     return code
 
 
-def _tee(argv: list[str], cwd: str, env: dict[str, str], log: Path, header: str) -> int:
+def _tee(
+    argv: list[str],
+    cwd: str,
+    env: dict[str, str],
+    log: Path,
+    header: str,
+    stdin_text: str | None = None,
+) -> int:
     """出力を端末とログの両方へ流す。"""
     with open(log, "ab") as fh:
         fh.write(f"\n=== {header} ===\n".encode())
@@ -85,9 +96,15 @@ def _tee(argv: list[str], cwd: str, env: dict[str, str], log: Path, header: str)
             argv,
             cwd=cwd,
             env=env,
+            stdin=subprocess.PIPE if stdin_text is not None else None,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
         )
+        if stdin_text is not None:
+            assert proc.stdin is not None
+            # 相手が読み終える前に閉じると壊れるので、書いてから閉じる
+            proc.stdin.write(stdin_text.encode())
+            proc.stdin.close()
         assert proc.stdout is not None
         for chunk in proc.stdout:
             sys.stdout.buffer.write(chunk)

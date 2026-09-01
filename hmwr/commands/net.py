@@ -12,7 +12,7 @@ import shutil
 import tempfile
 from pathlib import Path
 
-from .. import paths, proc
+from .. import config, paths, proc
 from .. import release as release_mod
 from ..tools import dead_dims, ft_reorder
 
@@ -119,6 +119,22 @@ def add_parser(sub: argparse._SubParsersAction) -> None:
     t.add_argument("--out", metavar="ファイル", help="並べ替えの出力先")
     t.add_argument("--perm", metavar="ファイル", help="既存の並べ替えを当てて評価する")
     t.set_defaults(func=reorder)
+
+    t = ss.add_parser(
+        "actdump",
+        help="活性ダンプを取る（並べ替えの材料）",
+        description="第1層が飛ばす全ゼロチャンクの分布を集める。"
+        "並べ替えの当たり方はダンプを取った局面の分布で変わるので、"
+        "局面リストはリポジトリが持つ。"
+        "**並べ替えを決めるなら、並べ替え前のネットを --eval-file で渡す。**"
+        "既定の評価関数は並べ替え済みなので、そのまま使うと二重に当たる。",
+    )
+    t.add_argument("name", metavar="名前", help="出力名。data/profile/act-<名前>.bin")
+    t.add_argument("--positions", metavar="パス", help="局面リスト")
+    t.add_argument("--depth", type=int, metavar="N", help="探索の深さ（既定 16）")
+    t.add_argument("--stride", type=int, metavar="N", help="何回の評価につき1つ記録するか")
+    t.add_argument("--eval-file", metavar="パス", help="評価関数")
+    t.set_defaults(func=actdump)
 
     t = ss.add_parser(
         "dead",
@@ -451,6 +467,89 @@ def reorder(args: argparse.Namespace) -> int:
     if args.perm:
         argv += ["--perm", args.perm]
     return ft_reorder.main(argv)
+
+
+# 活性ダンプの既定（ADR-0195）
+ACTDUMP_POSITIONS = "openings/actdump_positions.txt"
+ACTDUMP_DEPTH = 16
+# actdump.rs の TARGET と揃える。片方だけ動かすと間引きの見積もりが狂う
+ACTDUMP_TARGET = 12500
+# 深さ16・終盤局面での実測（1局面あたり24万回）。深さを変えたら --stride で渡す
+ACTDUMP_EVALS_PER_POSITION = 240_000
+
+
+def actdump(args: argparse.Namespace) -> int:
+    """actdump付きのビルドで局面を探索させ、活性ダンプを書く。
+
+    局面リストを固定するのがこのコマンドの主目的である。手打ちのUSI入力で
+    取ると、どの局面で決めた並べ替えかが残らない（ADR-0168の反省）。
+
+    新しい並べ替えを決めるときは、並べ替え前のネットを渡す。既定の評価関数は
+    並べ替え済みなので、そこで決めた置換を当てると二重適用になる。
+    """
+    name = paths.check_name(args.name)
+    positions = Path(args.positions or paths.REPO / ACTDUMP_POSITIONS)
+    out = paths.PROFILE / f"act-{name}.bin"
+    depth = args.depth or ACTDUMP_DEPTH
+    eval_file = args.eval_file or config.get("EVAL_FILE")
+
+    if not positions.is_file() and not args.dry_run:
+        raise proc.Fail(f"局面リストがない: {paths.rel(positions)}")
+
+    print(f"=== 活性ダンプ: {name} ===")
+    print(f"局面    : {paths.rel(positions)}")
+    print(f"深さ    : {depth}")
+    print(f"評価関数: {eval_file}")
+    print(f"出力    : {paths.rel(out)}")
+
+    from .build import cargo_build
+
+    cargo_build(
+        dry_run=args.dry_run,
+        args=[
+            "-p", "himawari-usi", "--bin", "himawari",
+            "--features", "himawari-engine/actdump",
+        ],
+    )
+    if args.dry_run:
+        print(f"[dry-run] 局面を探索させて {paths.rel(out)} を書く")
+        return proc.OK
+
+    lines = [
+        line.strip()
+        for line in positions.read_text().splitlines()
+        if line.strip() and not line.startswith("#")
+    ]
+    if not lines:
+        raise proc.Fail(f"局面リストが空だ: {paths.rel(positions)}")
+    # 間引きが狭いと、リストの先頭だけで目標数に達してリストの残りが
+    # 使われない。既定は「全局面をちょうど使い切る」当たりへ置く
+    stride = args.stride or max(
+        1, len(lines) * ACTDUMP_EVALS_PER_POSITION // ACTDUMP_TARGET
+    )
+    print(f"間引き  : {stride}（{len(lines)}局面ぶんの見積もり）")
+
+    usi = ["usi", "setoption name Threads value 1",
+           f"setoption name EvalFile value {eval_file}", "isready"]
+    for position in lines:
+        usi += ["usinewgame", f"position {position}", f"go depth {depth}"]
+    usi.append("quit")
+
+    out.parent.mkdir(parents=True, exist_ok=True)
+    engine = paths.REPO / "target" / "release" / "himawari"
+    code = proc.run(
+        [str(engine)],
+        env={"HIMAWARI_ACT_OUT": str(out), "HIMAWARI_ACT_STRIDE": str(stride)},
+        log=paths.log("actdump", name),
+        stdin_text="\n".join(usi) + "\n",
+    )
+    if code == proc.OK and not out.is_file():
+        raise proc.Fail(
+            f"ダンプが書かれなかった: {paths.rel(out)}\n"
+            f"目標サンプル数に届いていない。--stride を {stride} より小さくするか、"
+            "局面か深さを増やす"
+        )
+    return code
 
 
 def dead(args: argparse.Namespace) -> int:
