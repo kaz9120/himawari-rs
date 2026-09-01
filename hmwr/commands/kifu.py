@@ -46,6 +46,29 @@ def add_parser(sub: argparse._SubParsersAction) -> None:
     t.add_argument("--seed-max", type=int, default=50, metavar="N", help="1回の定跡追加数")
     t.set_defaults(func=cycle)
 
+    t = ss.add_parser(
+        "blindspot",
+        help="盲点ベンチマークの抽出・ラベル・測定",
+        description="実戦で評価が崩れた局面を集め、深い探索の値を正解として"
+        "浅い評価との乖離を測る。自己対局の外にある分布へ触れる唯一の物差しで、"
+        "ゲートではなく世代の定点観測に使う。",
+    )
+    t.add_argument(
+        "stage",
+        choices=["extract", "label", "measure"],
+        metavar="<段>",
+        help="extract / label / measure",
+    )
+    t.add_argument("--dir", metavar="パス", help="棋譜の置き場（extract）")
+    t.add_argument("--candidates", metavar="パス", help="候補TSV")
+    t.add_argument("--labels", metavar="パス", help="ラベルTSV")
+    t.add_argument("--out", metavar="パス", help="出力先")
+    t.add_argument("--eval-file", metavar="パス", help="評価関数")
+    t.add_argument("--nodes", type=int, metavar="N", help="再解析のノード数（label）")
+    t.add_argument("--limit", type=int, metavar="N", help="先頭のこの件数だけ（label）")
+    t.add_argument("--gap-floor", type=float, metavar="X", help="ベンチに入れる下限（measure）")
+    t.set_defaults(func=blindspot)
+
 
 def _games_dir(year: int) -> Path:
     return paths.RAW / "floodgate" / str(year)
@@ -128,3 +151,30 @@ def cycle(args: argparse.Namespace) -> int:
     print()
     print(f"レポート: {paths.rel(report_path)}")
     return proc.OK
+
+
+# 盲点ベンチの段ごとに意味のあるオプション（ADR-0191）
+BLINDSPOT_OPTIONS = {
+    "extract": ("dir", "out"),
+    "label": ("candidates", "out", "eval_file", "nodes", "limit"),
+    "measure": ("labels", "eval_file", "gap_floor"),
+}
+
+
+def blindspot(args: argparse.Namespace) -> int:
+    """盲点ベンチマークの3段を走らせる。
+
+    既定値はRust側が持つ。ここで重ねると食い違いの種になるので、
+    渡されたものだけを通す。
+    """
+    argv = [args.stage]
+    for name in BLINDSPOT_OPTIONS[args.stage]:
+        value = getattr(args, name, None)
+        if value is not None:
+            argv += [f"--{name.replace('_', '-')}", str(value)]
+    return proc.run(
+        proc.cargo_tool("blindspot", argv),
+        dry_run=args.dry_run,
+        env=config.measure_env(),
+        log=paths.log("blindspot", args.stage),
+    )
