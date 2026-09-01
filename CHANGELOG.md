@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.45.0](https://github.com/kaz9120/himawari-rs/compare/v0.44.12...v0.45.0) (2026-09-01)
+
+
+### 棋力向上
+
+* 教師データをtanuki- 2024の78.6億局面へ移す（+43.2 Elo、ADR-0192） ([#441](https://github.com/kaz9120/himawari-rs/issues/441)) ([c0bd2b4](https://github.com/kaz9120/himawari-rs/commit/c0bd2b4e97bb3a83c815688a88dcc5204028c076))
+
 ## [0.44.12](https://github.com/kaz9120/himawari-rs/compare/v0.44.11...v0.44.12) (2026-08-30)
 
 
