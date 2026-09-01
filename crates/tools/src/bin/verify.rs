@@ -13,7 +13,7 @@ use std::time::Duration;
 use anyhow::{Result, anyhow};
 use clap::Parser;
 
-use himawari_tools::positions::POSITIONS;
+use himawari_tools::positions::{builtin_positions, read_positions};
 use himawari_tools::usi_engine::UsiEngine;
 use himawari_tools::{
     OrBail, ensure_executable, eval_file, exit, path_str, percent_delta, single_thread_options,
@@ -52,6 +52,10 @@ struct Cli {
     /// 評価関数。省略時は環境変数 EVAL_FILE
     #[arg(long, value_name = "パス")]
     eval_file: Option<PathBuf>,
+
+    /// 局面リストのファイル。省略時は組み込みの4局面
+    #[arg(long, value_name = "パス")]
+    positions: Option<PathBuf>,
 }
 
 /// 1局面の測定結果。
@@ -80,18 +84,26 @@ fn run(cli: &Cli) -> Result<u8> {
         ensure_executable(candidate)?;
     }
 
+    let positions = match &cli.positions {
+        Some(path) => read_positions(path)?,
+        None => builtin_positions(),
+    };
+
     println!("=== 機能検証（ADR-0074）: 固定深さ {} ===", cli.depth);
     println!("評価関数: {}", eval.display());
     println!("baseline : {}", cli.baseline.display());
     if let Some(candidate) = &cli.candidate {
         println!("candidate: {}", candidate.display());
     }
+    if let Some(path) = &cli.positions {
+        println!("局面     : {}（{}局面）", path.display(), positions.len());
+    }
     println!();
 
     let Some(candidate) = &cli.candidate else {
         println!("| 局面 | ノード数 | 評価値 | 最善手 |");
         println!("|---|---|---|---|");
-        for (i, pos) in POSITIONS.iter().enumerate() {
+        for (i, pos) in positions.iter().enumerate() {
             let m = measure(cli, &eval, &cli.baseline, pos)?;
             println!(
                 "| {} | {} | {} | {} |",
@@ -107,7 +119,7 @@ fn run(cli: &Cli) -> Result<u8> {
     let mut same = true;
     println!("| 局面 | 変更前 | 変更後 | 変化 | 評価値 | 最善手 |");
     println!("|---|---|---|---|---|---|");
-    for (i, pos) in POSITIONS.iter().enumerate() {
+    for (i, pos) in positions.iter().enumerate() {
         // 局面ごとに交互へ測る。並びを変えると温度差が片方に乗る
         let base = measure(cli, &eval, &cli.baseline, pos)?;
         let cand = measure(cli, &eval, candidate, pos)?;

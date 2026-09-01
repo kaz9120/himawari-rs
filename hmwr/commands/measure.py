@@ -24,6 +24,7 @@ def add_parser(sub: argparse._SubParsersAction) -> None:
     )
     p.add_argument("targets", nargs="+", metavar="<名前 | バイナリ...>")
     p.add_argument("--depth", type=int, metavar="N", help="探索の深さ（既定 13）")
+    p.add_argument("--positions", metavar="パス", help="局面リスト。既定は組み込みの4局面")
     p.add_argument("--eval-file", metavar="パス", help="評価関数")
     p.add_argument("--log", metavar="名前", help="ログを残す名前")
     p.set_defaults(func=verify)
@@ -39,6 +40,7 @@ def add_parser(sub: argparse._SubParsersAction) -> None:
     p.add_argument("--depth", type=int, metavar="N", help="探索の深さ（既定 19）")
     p.add_argument("--nodes", type=int, metavar="N", help="深さの代わりにノード数で打ち切る")
     p.add_argument("--runs", type=int, metavar="N", help="1本を何周測るか")
+    p.add_argument("--positions", metavar="パス", help="局面リスト。既定は組み込みの4局面")
     p.add_argument("--eval-file", metavar="パス", help="評価関数")
     p.add_argument("--log", metavar="名前", help="ログを残す名前")
     p.set_defaults(func=bench)
@@ -64,6 +66,8 @@ def verify(args: argparse.Namespace) -> int:
     extra: list[str] = []
     if args.depth:
         extra += ["--depth", str(args.depth)]
+    if args.positions:
+        extra += ["--positions", args.positions]
     if args.eval_file:
         extra += ["--eval-file", args.eval_file]
     return proc.run(
@@ -83,6 +87,8 @@ def bench(args: argparse.Namespace) -> int:
         extra += ["--nodes", str(args.nodes)]
     if args.runs:
         extra += ["--runs", str(args.runs)]
+    if args.positions:
+        extra += ["--positions", args.positions]
     if args.eval_file:
         extra += ["--eval-file", args.eval_file]
     return proc.run(

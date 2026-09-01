@@ -13,7 +13,7 @@ use std::time::Duration;
 use anyhow::Result;
 use clap::Parser;
 
-use himawari_tools::positions::{POSITIONS, depth_at};
+use himawari_tools::positions::{builtin_positions, depth_at, read_positions};
 use himawari_tools::usi_engine::UsiEngine;
 use himawari_tools::{
     OrBail, basename, ensure_executable, eval_file, exit, nps, path_str, percent_delta,
@@ -58,6 +58,11 @@ struct Cli {
     /// 評価関数。省略時は環境変数 EVAL_FILE
     #[arg(long, value_name = "パス")]
     eval_file: Option<PathBuf>,
+
+    /// 局面リストのファイル。省略時は組み込みの4局面。
+    /// 指定した場合は局面ごとの深さ補正を当てない
+    #[arg(long, value_name = "パス")]
+    positions: Option<PathBuf>,
 }
 
 fn main() -> ExitCode {
@@ -102,6 +107,10 @@ fn targets(cli: &Cli) -> Result<Vec<Target>> {
 
 fn run(cli: &Cli) -> Result<()> {
     let targets = targets(cli)?;
+    let positions = match &cli.positions {
+        Some(path) => read_positions(path)?,
+        None => builtin_positions(),
+    };
 
     match cli.nodes {
         Some(n) => println!(
@@ -109,12 +118,19 @@ fn run(cli: &Cli) -> Result<()> {
             thousands(n),
             cli.runs
         ),
+        None if cli.positions.is_some() => println!(
+            "=== NPS計測: 深さ {}、{}周、1スレッド ===",
+            cli.depth, cli.runs
+        ),
         None => println!(
             "=== NPS計測: 深さ {}（局面3は {}）、{}周、1スレッド ===",
             cli.depth,
             depth_at(cli.depth, 2),
             cli.runs
         ),
+    }
+    if let Some(path) = &cli.positions {
+        println!("局面: {}（{}局面）", path.display(), positions.len());
     }
     for t in &targets {
         println!("{} の評価関数: {}", basename(&t.bin), t.eval.display());
@@ -125,7 +141,7 @@ fn run(cli: &Cli) -> Result<()> {
     // 交互に測る。1本ずつまとめて測ると温度差が系統誤差になる
     for run in 1..=cli.runs {
         for (i, t) in targets.iter().enumerate() {
-            let (nodes, ms) = measure(cli, &t.eval, &t.bin)?;
+            let (nodes, ms) = measure(cli, &positions, &t.eval, &t.bin)?;
             let speed = nps(nodes, ms);
             println!(
                 "  {:<28} run{run}: {} nps（{} nodes / {}ms）",
@@ -156,7 +172,12 @@ fn run(cli: &Cli) -> Result<()> {
 
 /// 1本を1周ぶん測り、(合計ノード数, 合計ミリ秒) を返す。
 /// 4局面を1プロセスで続けて読む（TTは局面をまたいで温まる）。
-fn measure(cli: &Cli, eval: &std::path::Path, engine: &std::path::Path) -> Result<(u64, u64)> {
+fn measure(
+    cli: &Cli,
+    positions: &[String],
+    eval: &std::path::Path,
+    engine: &std::path::Path,
+) -> Result<(u64, u64)> {
     let options = single_thread_options(eval);
     let mut eng = UsiEngine::launch(path_str(engine)?, &options).or_bail()?;
     eng.new_game().or_bail()?;
@@ -164,15 +185,19 @@ fn measure(cli: &Cli, eval: &std::path::Path, engine: &std::path::Path) -> Resul
 
     let mut nodes = 0u64;
     let mut ms = 0u64;
-    for (i, pos) in POSITIONS.iter().enumerate() {
+    for (i, pos) in positions.iter().enumerate() {
         let cmd = format!("position {pos}");
+        // 深さ補正は組み込み4局面の枝の広さに合わせたもので、外から
+        // 渡した局面には当てはまらない
+        let depth = match cli.positions {
+            Some(_) => cli.depth,
+            None => depth_at(cli.depth, i),
+        };
         let result = match cli.nodes {
             Some(n) => eng
                 .think(&cmd, &format!("go nodes {n}"), timeout)
                 .or_bail()?,
-            None => eng
-                .go_depth(&cmd, depth_at(cli.depth, i), timeout)
-                .or_bail()?,
+            None => eng.go_depth(&cmd, depth, timeout).or_bail()?,
         };
         // 最後のinfo行がその局面の読み切り時点の累計
         nodes += result.last_info.nodes.unwrap_or(0);

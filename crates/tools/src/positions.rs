@@ -3,6 +3,11 @@
 //! かつて `verify-feature.sh`・`bench-nps.sh`・`profile.sh` の3本が同じ
 //! 4局面を各自に持っていた。片方だけ足すと条件がずれるため1か所に置く。
 
+use std::fs;
+use std::path::Path;
+
+use anyhow::{Context, Result, bail};
+
 /// 検証局面。初期局面と `openings/start_sfens_ply24.txt` の先頭3行。
 /// 固定して条件を揃える。増やすときは末尾へ足し、既存の並びは変えない。
 /// 文字列はUSIの `position` に続けて渡せる形で持つ。
@@ -21,6 +26,32 @@ pub const DEPTH_ADJUST: [i32; POSITIONS.len()] = [0, 0, -3, 0];
 pub fn depth_at(base: u32, index: usize) -> u32 {
     let adjusted = base as i32 + DEPTH_ADJUST[index];
     adjusted.max(1) as u32
+}
+
+/// 局面リストをファイルから読む（ADR-0186）。1行が `position` に続けて
+/// 渡せる形の文字列で、`#` で始まる行と空行は読み飛ばす。
+///
+/// 組み込みの4局面はすべてSFENで、履歴を持たない。履歴に依存する処理
+/// （千日手・優等局面の判定）は手順つきの局面でしか測れないので、
+/// `sfen <局面> moves <手順>` の形を外から渡せるようにする。
+pub fn read_positions(path: &Path) -> Result<Vec<String>> {
+    let text = fs::read_to_string(path)
+        .with_context(|| format!("局面リストを読めない: {}", path.display()))?;
+    let positions: Vec<String> = text
+        .lines()
+        .map(str::trim)
+        .filter(|line| !line.is_empty() && !line.starts_with('#'))
+        .map(str::to_string)
+        .collect();
+    if positions.is_empty() {
+        bail!("局面リストが空だ: {}", path.display());
+    }
+    Ok(positions)
+}
+
+/// 組み込みの4局面を、ファイル読み込みと同じ型で返す。
+pub fn builtin_positions() -> Vec<String> {
+    POSITIONS.iter().map(|s| s.to_string()).collect()
 }
 
 #[cfg(test)]

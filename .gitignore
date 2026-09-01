@@ -20,8 +20,10 @@ target
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
 
-# 対局用の互角局面集（ADR-0027。リポジトリには含めない）
-/openings/
+# 対局用の互角局面集（ADR-0027。生成物なのでリポジトリには含めない）
+/openings/*
+# 計測条件として固定する局面リストは追跡する（ADR-0186）
+!/openings/longgame_positions.txt
 # 評価関数ファイル（ADR-0037。公開ネット・変換後の独自形式とも含めない）
 /eval/
 *.hmwr
