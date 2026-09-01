@@ -11,7 +11,7 @@ import shutil
 import time
 from pathlib import Path
 
-from .. import config, paths
+from .. import config, paths, proc
 
 
 def add_parser(sub: argparse._SubParsersAction) -> None:
@@ -21,6 +21,7 @@ def add_parser(sub: argparse._SubParsersAction) -> None:
         description="SPRTの棋譜・比較用バイナリ・ネット・チェックポイント・"
         "ログのうち、保持日数を過ぎたものを消す。現行の評価関数の系列と "
         "*.result（結果の要約）は残す。教師データ（data/train）は消さない。"
+        "マージ済みブランチのworktreeも片付ける。"
         "既定は一覧だけを出す下見で、--apply を付けたときだけ消す。",
     )
     p.add_argument("--apply", action="store_true", help="実際に消す（既定は下見）")
@@ -69,11 +70,86 @@ def _candidates(days: int) -> list[tuple[str, Path]]:
     for p in sorted((paths.REPO / "data/train").glob("*.stop")):
         if old(p):
             found.append(("停止ファイル", p))
+    found += _merged_worktrees()
     return found
+
+
+def _prune_worktrees(*, apply: bool) -> None:
+    """登録だけ残ってディレクトリが消えたworktreeを片付ける。
+
+    gitdirの指す先がないものはgitが `prunable` と印を付ける。中身がない
+    ので消して困るものはなく、日数もマージ状態も関係しない。
+    """
+    stale = [
+        line for line in proc.git("worktree", "list", "--porcelain").splitlines()
+        if line.startswith("prunable")
+    ]
+    if not stale:
+        return
+    print(f"登録だけ残ったworktree: {len(stale)}件")
+    if apply:
+        proc.run(["git", "worktree", "prune"])
+
+
+def _merged_worktrees() -> list[tuple[str, Path]]:
+    """役目を終えたworktree。
+
+    日数では決めない。ブランチがmainへ入っていれば、その作業ツリーは
+    いつ作ったかによらず用済みである。逆に、未コミットの変更が残って
+    いれば古くても消せない。判断の材料が日数ではなくgitの状態にある。
+    """
+    main = paths.REPO.resolve()
+    found: list[tuple[str, Path]] = []
+    current = {}
+    for line in proc.git("worktree", "list", "--porcelain").splitlines():
+        if line.startswith("worktree "):
+            current = {"path": Path(line[len("worktree ") :])}
+        elif line.startswith("branch "):
+            current["branch"] = line[len("branch ") :]
+        elif not line.strip() and current.get("path"):
+            _collect_worktree(current, main, found)
+            current = {}
+    if current.get("path"):
+        _collect_worktree(current, main, found)
+    return found
+
+
+def _collect_worktree(wt: dict, main: Path, found: list[tuple[str, Path]]) -> None:
+    path = wt["path"]
+    if path.resolve() == main or not path.is_dir():
+        return
+    branch = wt.get("branch")
+    if not branch:
+        # detached HEADは意図が読めないので触らない
+        return
+    if not _is_merged(branch.removeprefix("refs/heads/")):
+        return
+    if proc.git("-C", str(path), "status", "--porcelain"):
+        print(f"  （未コミットの変更があるので残す: {paths.rel(path)}）")
+        return
+    found.append(("worktree", path))
+
+
+def _is_merged(branch: str) -> bool:
+    """ブランチがmainへ入ったか。
+
+    squashマージなのでコミットの祖先関係では判定できない。取り込まれた
+    後もローカルのコミットはmainの祖先にならないためである。上流が消えて
+    いれば済むが、--delete-branch を使わずマージしたPRでは残る。最後は
+    GitHubへ聞く。聞けないときは「分からない」を「消さない」へ倒す。
+    """
+    if proc.git("rev-parse", "--verify", f"refs/remotes/origin/{branch}") == "":
+        return True
+    merged = proc.capture(
+        ["gh", "pr", "list", "--head", branch, "--state", "merged",
+         "--json", "number", "-q", ".[].number"]
+    ).strip()
+    return bool(merged)
 
 
 def run(args: argparse.Namespace) -> int:
     found = _candidates(args.days)
+    _prune_worktrees(apply=args.apply and not args.dry_run)
     if not found:
         print(f"保持{args.days}日を過ぎた成果物はない")
         return 0
@@ -96,8 +172,11 @@ def run(args: argparse.Namespace) -> int:
         print("\n消すには --apply を付ける")
         return 0
 
-    for _, p in found:
-        if p.is_dir():
+    for kind, p in found:
+        if kind == "worktree":
+            # gitのメタデータも一緒に落とすので、rmtreeでは足りない
+            proc.run(["git", "worktree", "remove", str(p)])
+        elif p.is_dir():
             shutil.rmtree(p)
         else:
             p.unlink()
