@@ -4,7 +4,8 @@
   "description": "日本語文書のlint（ADR-0178）。エンジン本体のビルドには関係しない",
   "scripts": {
     "lint": "textlint 'docs/**/*.md' '*.md' '.claude/**/*.md'",
-    "lint:fix": "textlint --fix 'docs/**/*.md' '*.md' '.claude/**/*.md'"
+    "lint:fix": "textlint --fix 'docs/**/*.md' '*.md' '.claude/**/*.md'",
+    "lint:commit": "textlint --config .textlintrc.commit.json --stdin --stdin-filename commit.md"
   },
   "devDependencies": {
     "textlint": "^15.8.0",

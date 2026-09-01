@@ -54,6 +54,12 @@
             "command": "git log origin/main..HEAD --format=%B 2>/dev/null | grep -qE '\\([^()]*\\(' && { echo 'このブランチのコミット本文に入れ子の半角括弧がある。release-pleaseのパーサが失敗し、その回のリリースが黙って止まる。git commit --amend で直す（CLAUDE.md「コミット規律」）' >&2; exit 2; } || true",
             "statusMessage": "コミット本文を検査中",
             "timeout": 30
+          },
+          {
+            "type": "command",
+            "command": "s=$(git log origin/main..HEAD --format=%s 2>/dev/null); [ -z \"$s\" ] && exit 0; printf '%s\\n' \"$s\" | npx --no-install textlint --config .textlintrc.commit.json --stdin --stdin-filename commit.md || { echo 'コミット件名がtextlintに引っかかっている。件名はrelease-please経由でCHANGELOGへ載るので、後からdocsジョブを全PR巻き添えで壊す。git commit --amend で直す（CLAUDE.md「コミット規律」）' >&2; exit 2; }",
+            "statusMessage": "コミット件名を検査中",
+            "timeout": 60
           }
         ]
       }

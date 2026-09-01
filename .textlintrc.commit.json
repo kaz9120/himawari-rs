@@ -1,0 +1,35 @@
+{
+  "rules": {
+    "preset-ja-technical-writing": {
+      "no-mix-dearu-desumasu": {
+        "preferInHeader": "",
+        "preferInBody": "である",
+        "preferInList": "",
+        "strict": false
+      },
+      "sentence-length": false,
+      "max-ten": false,
+      "max-kanji-continuous-len": {
+        "max": 6,
+        "allow": [
+          "歩香桂銀金角飛",
+          "金歩香桂銀角飛",
+          "敵陣三段目以内"
+        ]
+      },
+      "ja-no-mixed-period": false,
+      "no-exclamation-question-mark": {
+        "allowFullWidthExclamation": false,
+        "allowFullWidthQuestion": false
+      },
+      "no-doubled-joshi": false,
+      "max-comma": false,
+      "ja-unnatural-alphabet": false,
+      "no-unmatched-pair": false
+    },
+    "preset-ai-writing": true
+  },
+  "filters": {
+    "comments": true
+  }
+}
