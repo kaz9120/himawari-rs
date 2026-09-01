@@ -1,6 +1,6 @@
 # 0145: 前世代のネットから継続学習で積む
 
-- Status: proposed
+- Status: accepted（継続学習の作法をConsequencesで決め、[ADR-0188](0188-selfplay-rl-loop.md)が運用している）
 - Date: 2026-08-08
 - 関連ADR: [0130](0130-freeze-ft.md), [0135](0135-teacher-data-3b.md), [0136](0136-quiet-teacher-positions.md), [0138](0138-ft-i8-quantization.md), [0144](0144-selfplay-teacher-loop.md)
 

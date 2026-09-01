@@ -259,7 +259,7 @@
 | [0142](0142-dfpn-mate-search.md) | df-pnの詰み探索をrootへ並走させる | 2026-08-04 |  | proposed |
 | [0143](0143-spsa-tuning.md) | 探索定数をSPSAで一括チューニングする | 2026-08-04 | +32.0 | accepted |
 | [0144](0144-selfplay-teacher-loop.md) | 自前gensfenで教師データの世代ループを始める | 2026-08-04 |  | accepted |
-| [0145](0145-continual-learning.md) | 前世代のネットから継続学習で積む | 2026-08-08 |  | proposed |
+| [0145](0145-continual-learning.md) | 前世代のネットから継続学習で積む | 2026-08-08 |  | accepted |
 | [0146](0146-book-full-width-opening.md) | 定跡の浅い層を全合法手で埋める | 2026-08-08 |  | accepted |
 | [0147](0147-effect-bucket-features.md) | 特徴indexを被利き数でバケット化する（EffectBucket） | 2026-08-08 |  | proposed |
 | [0148](0148-effect-table.md) | 盤面の利きを差分で持つ | 2026-08-08 |  | proposed |
@@ -305,7 +305,7 @@
 | [0188](0188-selfplay-rl-loop.md) | 自己生成の世代ループを自給自足の継続学習で回す | 2026-08-26 | +13.9 | accepted |
 | [0189](0189-artifact-retention.md) | 成果物の保持を日数で決め、掃除をhmwr cleanに固定する | 2026-08-27 |  | accepted |
 | [0190](0190-selfplay-decided-thinning.md) | 自己生成教師の決着圏を間引き、分布の偏りを直す | 2026-08-29 | −12.2 | rejected |
-| [0191](0191-blindspot-benchmark.md) | floodgateの崩壊局面から盲点ベンチマークを作り、世代の定点観測にする | 2026-08-29 |  | proposed |
+| [0191](0191-blindspot-benchmark.md) | floodgateの崩壊局面から盲点ベンチマークを作り、世代の定点観測にする | 2026-08-29 |  | accepted |
 | [0192](0192-tanuki2024-teacher.md) | 教師データをtanuki- 2024の78.6億局面へ置き換える | 2026-08-29 | +43.2 | accepted |
 | [0193](0193-halfka-input.md) | 入力をHalfKAへ拡張し、両玉の関係を1次特徴にする | 2026-08-29 | −3.5 | rejected |
 

@@ -1,6 +1,6 @@
 # 0191: floodgateの崩壊局面から盲点ベンチマークを作り、世代の定点観測にする
 
-- Status: proposed
+- Status: accepted（抽出・ラベル・測定が入り、2世代ぶんの推移を「測定台帳」が持つ）
 - Date: 2026-08-29
 - 関連ADR: [0150](0150-rootstrap-evaluation.md), [0152](0152-floodgate-cycle.md), [0190](0190-selfplay-decided-thinning.md)
 
