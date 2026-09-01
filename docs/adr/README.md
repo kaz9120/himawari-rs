@@ -91,6 +91,7 @@
 - [0192](0192-tanuki2024-teacher.md) 教師データをtanuki- 2024の78.6億局面へ置き換える
 - [0193](0193-halfka-input.md) 入力をHalfKAへ拡張し、両玉の関係を1次特徴にする
 - [0194](0194-dead-dim-measurement.md) 死んだ活性の次元を、測る台を揃えてから数える
+- [0195](0195-reorder-on-late-positions.md) FT次元の並べ替えを実戦の局面分布で決め直す
 - [0144](0144-selfplay-teacher-loop.md) 自前生成による世代ループ
 - [0185](0185-sibling-ranking-loss.md) 兄弟局面のランキング損失を回帰へ足す
 - [0187](0187-selfplay-gen2.md) 自前生成の第2世代を診断先行で測る案（基準の誤りで0188へ）
@@ -310,6 +311,7 @@
 | [0192](0192-tanuki2024-teacher.md) | 教師データをtanuki- 2024の78.6億局面へ置き換える | 2026-08-29 | +43.2 | accepted |
 | [0193](0193-halfka-input.md) | 入力をHalfKAへ拡張し、両玉の関係を1次特徴にする | 2026-08-29 | −3.5 | rejected |
 | [0194](0194-dead-dim-measurement.md) | 死んだ活性の次元を、測る台を揃えてから数える | 2026-09-02 |  | proposed |
+| [0195](0195-reorder-on-late-positions.md) | FT次元の並べ替えを実戦の局面分布で決め直す | 2026-09-02 |  | proposed |
 
 ## バックログ
 
