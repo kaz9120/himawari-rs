@@ -14,7 +14,7 @@ from pathlib import Path
 
 from .. import config, paths, proc
 from .. import release as release_mod
-from ..tools import dead_dims, ft_reorder
+from ..tools import dead_dims, ft_reorder, rank_diag
 
 ARCH_RE = re.compile(r"^\d+x\d+(x\d+){0,2}$")
 TRAINER = "training/train.py"
@@ -135,6 +135,21 @@ def add_parser(sub: argparse._SubParsersAction) -> None:
     t.add_argument("--stride", type=int, metavar="N", help="何回の評価につき1つ記録するか")
     t.add_argument("--eval-file", metavar="パス", help="評価関数")
     t.set_defaults(func=actdump)
+
+    t = ss.add_parser(
+        "rank",
+        help="ランキング損失のヒンジ発火を分ける",
+        description="正例の葉が負例の葉より良いかを群ごとに測り、"
+        "発火を「順序が逆」と「マージン不足」へ分ける。"
+        "前者はαを上げる線、後者はδを動かす線につながる。",
+    )
+    t.add_argument("weights", metavar="重み", help="チェックポイントかネット")
+    t.add_argument("rank_data", metavar="群", help="psv rank が書いた *.rankpsv")
+    t.add_argument("--margin", type=float, metavar="X", help="ヒンジのマージン")
+    t.add_argument("--groups", type=int, metavar="N", help="測る群の数")
+    t.add_argument("--seed", type=int, metavar="N", help="群を引く乱数の種")
+    t.add_argument("--threads", type=int, metavar="N", help="torchのスレッド数")
+    t.set_defaults(func=rank)
 
     t = ss.add_parser(
         "dead",
@@ -552,6 +567,22 @@ def actdump(args: argparse.Namespace) -> int:
             "局面か深さを増やす"
         )
     return code
+
+
+def rank(args: argparse.Namespace) -> int:
+    """ランキング損失のヒンジ発火の内訳を測る。"""
+    if args.dry_run:
+        print(f"[dry-run] ヒンジの発火を分ける: {args.weights} × {args.rank_data}")
+        return proc.OK
+    for path, what in ((args.weights, "重み"), (args.rank_data, "群")):
+        if not Path(path).is_file():
+            raise proc.Fail(f"{what}がない: {path}")
+    argv = [args.weights, args.rank_data]
+    for name in ("margin", "groups", "seed", "threads"):
+        value = getattr(args, name, None)
+        if value is not None:
+            argv += [f"--{name}", str(value)]
+    return rank_diag.main(argv)
 
 
 def dead(args: argparse.Namespace) -> int:
