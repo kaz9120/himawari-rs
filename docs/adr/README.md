@@ -92,6 +92,7 @@
 - [0193](0193-halfka-input.md) 入力をHalfKAへ拡張し、両玉の関係を1次特徴にする
 - [0194](0194-dead-dim-measurement.md) 死んだ活性の次元を、測る台を揃えてから数える
 - [0195](0195-reorder-on-late-positions.md) FT次元の並べ替えを実戦の局面分布で決め直す
+- [0196](0196-rank-hinge-diagnosis.md) ランキング損失のヒンジ発火を分け、後続の方向を決める
 - [0144](0144-selfplay-teacher-loop.md) 自前生成による世代ループ
 - [0185](0185-sibling-ranking-loss.md) 兄弟局面のランキング損失を回帰へ足す
 - [0187](0187-selfplay-gen2.md) 自前生成の第2世代を診断先行で測る案（基準の誤りで0188へ）
@@ -312,6 +313,7 @@
 | [0193](0193-halfka-input.md) | 入力をHalfKAへ拡張し、両玉の関係を1次特徴にする | 2026-08-29 | −3.5 | rejected |
 | [0194](0194-dead-dim-measurement.md) | 死んだ活性の次元を、測る台を揃えてから数える | 2026-09-02 |  | proposed |
 | [0195](0195-reorder-on-late-positions.md) | FT次元の並べ替えを実戦の局面分布で決め直す | 2026-09-02 |  | accepted |
+| [0196](0196-rank-hinge-diagnosis.md) | ランキング損失のヒンジ発火を分け、後続の方向を決める | 2026-09-02 |  | proposed |
 
 ## バックログ
 
