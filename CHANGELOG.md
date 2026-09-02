@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.46.0](https://github.com/kaz9120/himawari-rs/compare/v0.45.0...v0.46.0) (2026-09-02)
+
+
+### 棋力向上
+
+* 千日手判定の走査を16手で打ち切る（+14.3 Elo、ADR-0186） ([#443](https://github.com/kaz9120/himawari-rs/issues/443)) ([e272ef9](https://github.com/kaz9120/himawari-rs/commit/e272ef919ecb5550557af3dd4b345cff21dc14db))
+
 ## [0.45.0](https://github.com/kaz9120/himawari-rs/compare/v0.44.12...v0.45.0) (2026-09-01)
 
 
