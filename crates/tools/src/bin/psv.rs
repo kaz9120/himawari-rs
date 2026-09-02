@@ -738,7 +738,15 @@ fn quiet(
 ///
 /// 乱数はレコードの通し番号（--skipを含む絶対位置）から決定論で引く。
 /// 分割して並列に走らせても、結合結果は1本で走らせた場合と一致する。
-fn rank(input: &str, output: &str, limit: u64, skip: u64, hash_mb: usize, eval: &str) {
+/// 負例を上位から引くとき、候補にする割合（ADR-0197）。
+/// 1位を決め打ちにすると、教師の誤りがそのまま制約へ写る。
+const HARD_TOP_RATIO: usize = 4;
+
+/// 上位から引くときの候補の最小数。合法手が少ない局面で1手に潰れないよう
+/// 下限を置く。
+const HARD_TOP_MIN: usize = 2;
+
+fn rank(input: &str, output: &str, limit: u64, skip: u64, hash_mb: usize, eval: &str, hard: usize) {
     use himawari_core::Move16;
     use std::io::Seek;
 
@@ -805,8 +813,49 @@ fn rank(input: &str, output: &str, limit: u64, skip: u64, hash_mb: usize, eval: 
             continue;
         }
         let mut seed = (skip + n) ^ 0x9E37_79B9_7F4A_7C15;
-        let i1 = (rng_next(&mut seed) as usize) % others.len();
-        let i2 = {
+        // hard本は静的評価で上位の手から、残りは一様に引く（ADR-0197）。
+        // hard=0では並べ替えを通らないので、生成物は従来とバイト単位で同じ
+        let mut others = others;
+        if hard > 0 {
+            let mut scored: Vec<(i32, himawari_core::Move)> = others
+                .iter()
+                .map(|&m| {
+                    let mut child = pos.clone();
+                    child.do_move(m);
+                    worker.set_position(child);
+                    // 子は相手番なので、親から見た良し悪しは符号が逆になる
+                    (-worker.evaluator.evaluate(&worker.pos), m)
+                })
+                .collect();
+            scored.sort_by_key(|&(v, _)| std::cmp::Reverse(v));
+            let top = (scored.len() / HARD_TOP_RATIO)
+                .max(HARD_TOP_MIN)
+                .min(scored.len());
+            let mut picked: Vec<himawari_core::Move> = Vec::with_capacity(hard);
+            for _ in 0..hard.min(top) {
+                let mut j = (rng_next(&mut seed) as usize) % top;
+                // 既に引いた手を避ける。topは小さいので線形で足りる
+                while picked.contains(&scored[j].1) {
+                    j = (j + 1) % top;
+                }
+                picked.push(scored[j].1);
+            }
+            let rest: Vec<himawari_core::Move> = scored
+                .iter()
+                .map(|&(_, m)| m)
+                .filter(|m| !picked.contains(m))
+                .collect();
+            picked.extend(rest);
+            others = picked;
+        }
+        let i1 = if hard > 0 {
+            0
+        } else {
+            (rng_next(&mut seed) as usize) % others.len()
+        };
+        let i2 = if hard > 1 {
+            1
+        } else {
             let mut j = (rng_next(&mut seed) as usize) % (others.len() - 1);
             if j >= i1 {
                 j += 1;
@@ -971,6 +1020,12 @@ fn main() {
             let eval = arg_value(rest, "--eval-file")
                 .or_else(|| std::env::var("EVAL_FILE").ok())
                 .unwrap_or_else(|| die("--eval-file か EVAL_FILE が必要です"));
+            let hard: usize = arg_value(rest, "--hard")
+                .map(|s| s.parse().unwrap_or_else(|_| die("--hard は整数")))
+                .unwrap_or(0);
+            if hard > 2 {
+                die("--hard は0〜2（負例は2本）");
+            }
             rank(
                 &input.unwrap_or_else(|| die("--in が必要です")),
                 &output.unwrap_or_else(|| die("--out が必要です")),
@@ -978,6 +1033,7 @@ fn main() {
                 skip,
                 hash_mb,
                 &eval,
+                hard,
             );
         }
         "thin" => {
