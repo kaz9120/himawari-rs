@@ -179,6 +179,13 @@ pub struct StateInfo {
 #[derive(Debug, PartialEq, Eq)]
 pub struct SfenError(pub String);
 
+/// 探索中の千日手判定がさかのぼる上限（ADR-0186）。
+///
+/// 参照実装（やねうら王 position.cpp）と同じ16手にする。参照は「初手まで
+/// 遡るとR40弱くなる」と記録しており、遠い一致まで拾うと探索が歪む。本
+/// エンジンでの実測では探索木は変わらず、長手数の局面で速度だけが上がった。
+pub const REPETITION_SCAN_MAX: usize = 16;
+
 /// 千日手の分類（ADR-0026）。WinとLoseは連続王手の千日手。
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum Repetition {
@@ -1154,20 +1161,42 @@ impl Position {
 
     // ---- 千日手・優等局面（ADR-0026） ----
 
-    /// 現局面の千日手状態。StateInfoスタックを2plyごとに遡って判定する。
+    /// 探索中の千日手判定。StateInfoスタックを2plyごとに遡って調べる。
+    ///
+    /// 遡る距離は [`REPETITION_SCAN_MAX`] 手で打ち切る（ADR-0186）。上限が
+    /// ないと、長手数の対局で毎ノードの走査が履歴の長さに比例して伸びる。
+    /// 探索木は変わらず速度だけが上がるので、対局ルールの裁定
+    /// （[`Self::repetition_state_all`]）は上限なしのまま残す。
     ///
     /// `ply` はrootからの距離を表す。優等・劣等局面（`Superior` /
     /// `Inferior`）は検出距離 `i < ply` のときだけ返す。つまり同一盤面の
     /// 両方の出現が探索経路内にあるときに限る（ADR-0153）。rootを跨いだ
     /// 比較は「大昔の同一盤面より手駒が多い」だけを意味し、探索の値として
-    /// は誤りになる。千日手系（`Draw` / `Win` / `Lose`）は対局ルールその
-    /// ものなので、`ply` に関係なく全履歴を対象にする。
+    /// は誤りになる。
+    #[inline]
     pub fn repetition_state(&self, ply: usize) -> Repetition {
+        self.scan_repetition(ply, REPETITION_SCAN_MAX)
+    }
+
+    /// 対局ルールの千日手裁定用。遡る距離に上限を置かず、優等・劣等も含めて
+    /// 全履歴を対象にする（ADR-0153。探索ではなくルール判定に使う
+    /// 呼び出し元向け）。
+    ///
+    /// 探索は近傍の一致だけを見れば足りるが、裁定は同一局面の4回目を
+    /// 取りこぼせない。呼び出しは1局面につき1回なので、走査の重さは
+    /// 問題にならない（ADR-0186）。
+    #[inline]
+    pub fn repetition_state_all(&self) -> Repetition {
+        self.scan_repetition(usize::MAX, usize::MAX)
+    }
+
+    /// 千日手・優等局面の走査の本体。`scan_max` 手まで遡って最初の一致を返す。
+    fn scan_repetition(&self, ply: usize, scan_max: usize) -> Repetition {
         let cur = self.states.len() - 1;
         let st = &self.states[cur];
         let us = self.side.index();
         let them = 1 - us;
-        let limit = (st.plies_from_null as usize).min(cur);
+        let limit = (st.plies_from_null as usize).min(cur).min(scan_max);
         let mut i = 4;
         while i <= limit {
             let prev = &self.states[cur - i];
@@ -1198,13 +1227,6 @@ impl Position {
             i += 2;
         }
         Repetition::None
-    }
-
-    /// 対局ルールの千日手裁定用。優等・劣等も含めて全履歴を対象にする
-    /// （ADR-0153。探索ではなくルール判定に使う呼び出し元向け）。
-    #[inline]
-    pub fn repetition_state_all(&self) -> Repetition {
-        self.repetition_state(usize::MAX)
     }
 
     // ---- 擬似合法性（置換表由来の指し手の検査。ADR-0025） ----

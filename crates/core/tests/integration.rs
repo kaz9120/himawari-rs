@@ -297,6 +297,66 @@ fn superior_is_gated_by_search_ply() {
     assert_eq!(pos.repetition_state(0), Repetition::None);
 }
 
+/// 玉が閉路を回って `plies` ply後に開始局面へ戻る手順を作る（ADR-0186）。
+///
+/// 経路のマスはすべて相異なるので、途中の局面が開始局面と一致することは
+/// ない。先手の周期と後手の周期の最小公倍数だけ進んだところで初めて戻る。
+fn king_cycle(black: &[&str], white: &[&str], plies: usize) -> Position {
+    let mut pos = Position::from_sfen("4k4/9/9/9/9/9/9/9/4K4 b - 1").unwrap();
+    for i in 0..plies / 2 {
+        apply(&mut pos, &[black[i % black.len()], white[i % white.len()]]);
+    }
+    pos
+}
+
+/// 探索の判定は距離16の一致まで拾う（ADR-0186）。
+///
+/// 先手・後手とも8手の閉路を回り、16ply後に開始局面へ戻る。
+#[test]
+fn repetition_scan_finds_distance_16() {
+    let pos = king_cycle(
+        &[
+            "5i4i", "4i3i", "3i2i", "2i2h", "2h3h", "3h4h", "4h5h", "5h5i",
+        ],
+        &[
+            "5a4a", "4a3a", "3a2a", "2a2b", "2b3b", "3b4b", "4b5b", "5b5a",
+        ],
+        16,
+    );
+    assert_eq!(pos.repetition_state(usize::MAX), Repetition::Draw);
+    assert_eq!(pos.repetition_state_all(), Repetition::Draw);
+}
+
+/// 距離18の一致は探索の判定から外れ、ルールの裁定だけが拾う（ADR-0186）。
+///
+/// 先手が9手、後手が3手の閉路を回るので、最初の一致は18ply後になる。
+/// 前計算の走査は16手で打ち切るため、探索側は千日手を見ない。
+#[test]
+fn repetition_beyond_scan_max_is_rule_only() {
+    let pos = king_cycle(
+        &[
+            "5i4i", "4i3i", "3i2i", "2i1i", "1i1h", "1h2h", "2h3h", "3h4h", "4h5i",
+        ],
+        &["5a4a", "4a4b", "4b5a"],
+        18,
+    );
+    assert_eq!(pos.repetition_state(usize::MAX), Repetition::None);
+    // 裁定は全履歴を走査するので、ルール上の千日手を取りこぼさない
+    assert_eq!(pos.repetition_state_all(), Repetition::Draw);
+}
+
+/// 千日手はundo_moveで消える（ADR-0026）。
+#[test]
+fn repetition_disappears_after_undo() {
+    let mut pos = Position::from_sfen(SFEN_STARTPOS).unwrap();
+    apply(&mut pos, &["2h3h", "8b7b", "3h2h"]);
+    let m = pos.move_from_usi("7b8b").unwrap();
+    pos.do_move(m);
+    assert_eq!(pos.repetition_state(0), Repetition::Draw);
+    pos.undo_move(m);
+    assert_eq!(pos.repetition_state(0), Repetition::None);
+}
+
 /// null moveの往復一致と、手番だけ違う局面のキー相違（ADR-0028）。
 #[test]
 fn null_move_roundtrip() {
