@@ -301,7 +301,7 @@
 | [0183](0183-stacked-pairwise-product.md) | FT積を2段にして4駒の相互作用を入れる | 2026-08-22 | −9.8 | rejected |
 | [0184](0184-cross-view-product.md) | 視点をまたぐ対の積で両玉の相互作用を入れる | 2026-08-23 | −9.2 | rejected |
 | [0185](0185-sibling-ranking-loss.md) | 兄弟局面のランキング損失を回帰へ足す | 2026-08-23 | +28.9 | accepted |
-| [0186](0186-repetition-scan-cap.md) | 千日手判定の走査を16手で打ち切る | 2026-08-26 |  | proposed |
+| [0186](0186-repetition-scan-cap.md) | 千日手判定の走査を16手で打ち切る | 2026-08-26 | +14.3 | accepted |
 | [0187](0187-selfplay-gen2.md) | 自前生成の第2世代を診断先行の混合再学習で測る | 2026-08-26 |  | superseded |
 | [0188](0188-selfplay-rl-loop.md) | 自己生成の世代ループを自給自足の継続学習で回す | 2026-08-26 | +13.9 | accepted |
 | [0189](0189-artifact-retention.md) | 成果物の保持を日数で決め、掃除をhmwr cleanに固定する | 2026-08-27 |  | accepted |
