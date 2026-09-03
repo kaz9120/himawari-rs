@@ -14,7 +14,7 @@ from pathlib import Path
 
 from .. import config, paths, proc
 from .. import release as release_mod
-from ..tools import dead_dims, ft_reorder, rank_diag
+from ..tools import dead_dims, ft_reorder, phase as phase_tool, rank_diag
 
 ARCH_RE = re.compile(r"^\d+x\d+(x\d+){0,2}$")
 TRAINER = "training/train.py"
@@ -164,6 +164,22 @@ def add_parser(sub: argparse._SubParsersAction) -> None:
     t.add_argument("--batch", type=int, metavar="N", help="バッチの大きさ")
     t.add_argument("--threads", type=int, metavar="N", help="torchのスレッド数")
     t.set_defaults(func=dead)
+
+    t = ss.add_parser(
+        "phase",
+        help="進行度の指標の候補を、評価の系統誤差で比べる",
+        description="psv phase で局面ごとの指標と静的評価をTSVへ書き、"
+        "指標ごとに4クラスへ切ってクラス別の補正が損失を下げる量を比べる。"
+        "補正は出力のアフィン（2パラメータ）と、L2活性の線形ヘッド"
+        "（最終段だけを分岐する案と同じ容量）の2段で測る。"
+        "TSVは data/profile/phase-<名前>.tsv に残る。",
+    )
+    t.add_argument("psv", metavar="PSV", help="測る局面")
+    t.add_argument("--eval-file", metavar="パス", help="評価関数（既定は EVAL_FILE）")
+    t.add_argument("--limit", type=int, metavar="N", help="先頭N局面だけ測る")
+    t.add_argument("--lambda", type=float, dest="lambda_", metavar="X", help="目標の混合比（既定0.7）")
+    t.add_argument("--seed", type=int, metavar="N", help="乱数分割の種")
+    t.set_defaults(func=phase)
 
     t = ss.add_parser(
         "release",
@@ -599,6 +615,44 @@ def dead(args: argparse.Namespace) -> int:
     if args.threads:
         argv += ["--threads", str(args.threads)]
     return dead_dims.main(argv)
+
+
+def phase(args: argparse.Namespace) -> int:
+    """進行度の指標の候補を、クラス別の系統誤差で比べる（ADR-0198）。"""
+    psv = Path(args.psv)
+    if not psv.is_file() and not args.dry_run:
+        raise proc.Fail(f"局面がない: {args.psv}")
+    eval_file = args.eval_file or config.get("EVAL_FILE")
+    if not eval_file and not args.dry_run:
+        raise proc.Fail("評価関数がない。--eval-file で渡す")
+    name = paths.check_name(psv.name.removesuffix(".psv"))
+    tsv = paths.PROFILE / f"phase-{name}.tsv"
+    tsv.parent.mkdir(parents=True, exist_ok=True)
+
+    print(f"=== 進行度の指標: {name} ===")
+    print(f"局面    : {paths.rel(psv)}")
+    print(f"評価関数: {paths.rel(eval_file or '（未設定）')}")
+    print(f"TSV     : {paths.rel(tsv)}")
+    argv = ["--in", str(psv), "--out", str(tsv), "--eval-file", eval_file or "（未設定）"]
+    if args.limit is not None:
+        argv += ["--limit", str(args.limit)]
+    code = proc.run(
+        proc.cargo_tool("psv", ["phase", *argv]),
+        dry_run=args.dry_run,
+        log=paths.log("phase", name),
+    )
+    if code != proc.OK:
+        return code
+    if args.dry_run:
+        print(f"[dry-run] 指標ごとの系統誤差を集計する: {paths.rel(tsv)}")
+        return proc.OK
+    # L2活性の線形ヘッド（ADR-0137の容量）も同じネットで測る
+    tool_argv = [str(tsv), "--weights", eval_file, "--psv", str(psv)]
+    if args.lambda_ is not None:
+        tool_argv += ["--lambda", str(args.lambda_)]
+    if args.seed is not None:
+        tool_argv += ["--seed", str(args.seed)]
+    return phase_tool.main(tool_argv)
 
 
 # 評価関数ファイルの形式（ADR-0037）。版によって次元の数が変わる

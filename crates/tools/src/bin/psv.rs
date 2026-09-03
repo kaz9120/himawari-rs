@@ -17,6 +17,8 @@
 //!                                              兄弟局面の葉の群を作る（ADR-0185）
 //!   psv thin    --in file --out file [--threshold N] [--keep P] [--seed N] [--group B]
 //!                                              決着圏の局面を確率で間引く（ADR-0190）
+//!   psv phase   --in file --out file.tsv [--limit N] [--eval-file NET]
+//!                                              進行度の指標と静的評価をTSVへ書く（ADR-0198）
 //!
 //! shuffleは2パスのバケット法で動く（ADR-0065）。メモリ使用量は
 //! バケット1個分（2GB）に収まるため、入力サイズの制限はない。
@@ -902,10 +904,144 @@ fn rank(input: &str, output: &str, limit: u64, skip: u64, hash_mb: usize, eval: 
     );
 }
 
+/// 進行度の指標の候補（ADR-0198）。TSVの列名で、`phase_features` の
+/// 戻り値と同じ順に並ぶ。
+const PHASE_COLUMNS: [&str; 10] = [
+    "board",
+    "ply",
+    "mixed",
+    "contact",
+    "advanced",
+    "promoted",
+    "majors",
+    "camp",
+    "king_adv",
+    "king_zone",
+];
+
+/// 局面から進行度の指標を10本まとめて計算する。定義はADR-0198の表にある。
+fn phase_features(pos: &himawari_core::Position) -> [u32; 10] {
+    use himawari_core::attacks::king_attacks;
+    use himawari_core::{Bitboard, Color, File, PieceType, Rank, Square};
+
+    let occ = pos.occupied();
+    // 2×2の窓に先手と後手の駒が両方あるか（Lichessの混合度の骨格）
+    let mut mixed = 0;
+    for f in 0..8u8 {
+        for r in 0..8u8 {
+            let mut has = [false; 2];
+            for (df, dr) in [(0, 0), (0, 1), (1, 0), (1, 1)] {
+                let pc = pos.piece_on(Square::new(File(f + df), Rank(r + dr)));
+                if !pc.is_empty() {
+                    has[pc.color().index()] = true;
+                }
+            }
+            if has[0] && has[1] {
+                mixed += 1;
+            }
+        }
+    }
+    let (mut contact, mut advanced, mut promoted, mut majors) = (0, 0, 0, 0);
+    let mut camp = [0u32; 2];
+    for sq in occ {
+        let pc = pos.piece_on(sq);
+        let (c, pt) = (pc.color(), pc.piece_type());
+        if !pos.attackers_to(c.flip(), sq, occ).is_empty() {
+            contact += 1;
+        }
+        let in_enemy = Bitboard::promotion_zone(c).test(sq);
+        if pt != PieceType::KING && in_enemy {
+            advanced += 1;
+        }
+        if pt.is_promoted() {
+            promoted += 1;
+        }
+        let is_major = matches!(
+            pt,
+            PieceType::ROOK | PieceType::BISHOP | PieceType::DRAGON | PieceType::HORSE
+        );
+        if is_major && (pt.is_promoted() || in_enemy) {
+            majors += 1;
+        }
+        // 自陣は相手から見た敵陣
+        if Bitboard::promotion_zone(c.flip()).test(sq) {
+            camp[c.index()] += 1;
+        }
+    }
+    let (mut king_adv, mut king_zone) = (0, 0);
+    for c in [Color::Black, Color::White] {
+        let k = pos.king(c);
+        // relativeは自陣の1段目を8にするので、進出度は8から引く
+        king_adv = king_adv.max(8 - u32::from(k.rank().relative(c).0));
+        let zone: u32 = king_attacks(k)
+            .into_iter()
+            .map(|sq| pos.attackers_to(c.flip(), sq, occ).count())
+            .sum();
+        king_zone = king_zone.max(zone);
+    }
+    [
+        occ.count(),
+        u32::from(pos.game_ply()),
+        mixed,
+        contact,
+        advanced,
+        promoted,
+        majors,
+        camp[0].min(camp[1]),
+        king_adv,
+        king_zone,
+    ]
+}
+
+/// 局面ごとの教師信号・静的評価・進行度の指標をTSVへ書く（ADR-0198）。
+/// 集計は `hmwr net phase` のPython側が持つ。
+fn phase(input: &str, output: &str, limit: u64, eval: &str) {
+    let mut r = open_reader(input);
+    let mut w = BufWriter::new(
+        std::fs::File::create(output)
+            .unwrap_or_else(|e| die(&format!("作れません: {output}: {e}"))),
+    );
+    let mut f = std::fs::File::open(eval)
+        .unwrap_or_else(|e| die(&format!("評価関数を開けません: {eval}: {e}")));
+    let (net, _lineage) = himawari_engine::nnue_io::load(&mut f)
+        .unwrap_or_else(|e| die(&format!("評価関数を読めません: {eval}: {e}")));
+    let mut worker = quiet_worker(&Arc::new(net), 1);
+
+    writeln!(w, "score\tresult\teval\t{}", PHASE_COLUMNS.join("\t"))
+        .unwrap_or_else(|e| die(&format!("書けません: {e}")));
+    let mut buf = [0u8; PSV_BYTES];
+    let (mut n, mut failed) = (0u64, 0u64);
+    while n < limit && r.read_exact(&mut buf).is_ok() {
+        n += 1;
+        let rec = PackedSfenValue::from_bytes(&buf);
+        let Ok(pos) = unpack(&rec.sfen, rec.game_ply) else {
+            failed += 1;
+            continue;
+        };
+        let features = phase_features(&pos);
+        worker.set_position(pos);
+        // 教師のscoreと同じく手番視点の値になる
+        let value = worker.evaluator.evaluate(&worker.pos);
+        let cols: Vec<String> = features.iter().map(u32::to_string).collect();
+        writeln!(
+            w,
+            "{}\t{}\t{}\t{}",
+            rec.score,
+            rec.game_result,
+            value,
+            cols.join("\t")
+        )
+        .unwrap_or_else(|e| die(&format!("書けません: {e}")));
+    }
+    w.flush()
+        .unwrap_or_else(|e| die(&format!("書けません: {e}")));
+    eprintln!("局面数: {n}（復元失敗{failed}）→ {output}");
+}
+
 fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
     let Some(cmd) = args.first() else {
-        die("サブコマンドが必要です: stats / dump / head / shuffle / quiet / rank / thin");
+        die("サブコマンドが必要です: stats / dump / head / shuffle / quiet / rank / thin / phase");
     };
     let rest = &args[1..];
     let input = arg_value(rest, "--in");
@@ -1039,6 +1175,20 @@ fn main() {
                 keep,
                 seed,
                 group,
+            );
+        }
+        "phase" => {
+            let limit = arg_value(rest, "--limit")
+                .map(|s| s.parse().unwrap_or(u64::MAX))
+                .unwrap_or(u64::MAX);
+            let eval = arg_value(rest, "--eval-file")
+                .or_else(|| std::env::var("EVAL_FILE").ok())
+                .unwrap_or_else(|| die("--eval-file か EVAL_FILE が必要です"));
+            phase(
+                &input.unwrap_or_else(|| die("--in が必要です")),
+                &output.unwrap_or_else(|| die("--out が必要です")),
+                limit,
+                &eval,
             );
         }
         other => die(&format!("不明なサブコマンド: {other}")),

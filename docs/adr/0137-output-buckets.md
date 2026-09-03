@@ -1,8 +1,8 @@
 # 0137: 出力層を盤上駒数バケットで分岐する（output bucket）
 
-- Status: proposed（機構は残すが、分岐の指標を決め直す。下の「指標を決め直す」）
+- Status: rejected（[ADR-0198](0198-phase-indicator.md)の測定で閉じた。最終段の分岐では、どの進行度の指標で分けても現行ネットの誤差は当てはめノイズの3倍以下しか減らない）
 - Date: 2026-08-04
-- 関連ADR: [0034](0034-nnue-architecture.md), [0036](0036-nnue-quantization-simd.md), [0037](0037-nnue-file-format.md), [0067](0067-ft-dimension-512.md), [0127](0127-net-shape-bench.md), [0128](0128-round-robin-league.md)
+- 関連ADR: [0034](0034-nnue-architecture.md), [0036](0036-nnue-quantization-simd.md), [0037](0037-nnue-file-format.md), [0067](0067-ft-dimension-512.md), [0127](0127-net-shape-bench.md), [0128](0128-round-robin-league.md), [0198](0198-phase-indicator.md)
 
 ## Context
 
@@ -125,6 +125,10 @@ Lichessの3条件を将棋へ写すなら、次が候補になる。
 次に着手するときは、まず指標の候補を実データで比べる。同じ局面集合に対して
 候補ごとの分類を出し、クラス間で評価の系統誤差が違うかを測る。違いが出ない
 指標でネットを分けても、パラメータが薄まるだけになる。
+
+（2026-09-03の追記）この測定を[ADR-0198](0198-phase-indicator.md)で行った。
+10本の指標のどれで分けても、最終段の分岐の容量では誤差が当てはめノイズの
+3倍以下しか減らない。本ADRはrejectedにする。
 
 ## Decision（保留、2026-08-04の起草時）
 

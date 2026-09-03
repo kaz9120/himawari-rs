@@ -94,6 +94,7 @@
 - [0195](0195-reorder-on-late-positions.md) FT次元の並べ替えを実戦の局面分布で決め直す
 - [0196](0196-rank-hinge-diagnosis.md) ランキング損失のヒンジ発火を分け、後続の方向を決める
 - [0197](0197-hard-negatives.md) ランキング損失の負例に、静的評価で上位の手を混ぜる
+- [0198](0198-phase-indicator.md) 将棋の進行度の指標を、評価の系統誤差で選ぶ（測って出力バケットを閉じた）
 - [0144](0144-selfplay-teacher-loop.md) 自前生成による世代ループ
 - [0185](0185-sibling-ranking-loss.md) 兄弟局面のランキング損失を回帰へ足す
 - [0187](0187-selfplay-gen2.md) 自前生成の第2世代を診断先行で測る案（基準の誤りで0188へ）
@@ -255,7 +256,7 @@
 | [0134](0134-head-capacity.md) | 後段の容量が壁かを、上向きに振って確かめる | 2026-08-04 |  | proposed |
 | [0135](0135-teacher-data-3b.md) | 教師データを29.9億局面へ広げる | 2026-08-04 |  | accepted |
 | [0136](0136-quiet-teacher-positions.md) | 教師局面をqsearchの静止局面へ置き換えて学習する | 2026-08-04 |  | accepted |
-| [0137](0137-output-buckets.md) | 出力層を盤上駒数バケットで分岐する（output bucket） | 2026-08-04 |  | proposed |
+| [0137](0137-output-buckets.md) | 出力層を盤上駒数バケットで分岐する（output bucket） | 2026-08-04 |  | rejected |
 | [0138](0138-ft-i8-quantization.md) | FT重みをi8へ量子化して更新帯域を半減する | 2026-08-04 |  | accepted |
 | [0139](0139-mate1ply-in-search-retry.md) | mate_1plyを通常探索へ入れ直す | 2026-08-04 |  | rejected |
 | [0140](0140-king-line-features.md) | 玉ライン特徴をHalfKPへ追加する | 2026-08-04 |  | proposed |
@@ -316,6 +317,7 @@
 | [0195](0195-reorder-on-late-positions.md) | FT次元の並べ替えを実戦の局面分布で決め直す | 2026-09-02 |  | accepted |
 | [0196](0196-rank-hinge-diagnosis.md) | ランキング損失のヒンジ発火を分け、後続の方向を決める | 2026-09-02 |  | proposed |
 | [0197](0197-hard-negatives.md) | ランキング損失の負例に、静的評価で上位の手を混ぜる | 2026-09-02 | −19.2 | rejected |
+| [0198](0198-phase-indicator.md) | 将棋の進行度の指標を、評価の系統誤差で選ぶ | 2026-09-03 |  | accepted |
 
 ## バックログ
 
