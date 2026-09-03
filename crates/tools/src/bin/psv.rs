@@ -93,14 +93,13 @@ fn stats(input: &str, limit: Option<u64>) {
         }
         ply_max = ply_max.max(rec.game_ply);
         // 復元はSFENの展開を伴うので、先頭の標本だけで分布を見る
-        if piece_n < 200_000 {
-            if let Ok(pos) = unpack(&rec.sfen, rec.game_ply) {
-                let count = pos.occupied().count() as usize;
-                if count < piece_hist.len() {
-                    piece_hist[count] += 1;
-                    piece_n += 1;
-                }
-            }
+        if piece_n < 200_000
+            && let Ok(pos) = unpack(&rec.sfen, rec.game_ply)
+            && let count = pos.occupied().count() as usize
+            && count < piece_hist.len()
+        {
+            piece_hist[count] += 1;
+            piece_n += 1;
         }
         let a = i32::from(rec.score).unsigned_abs();
         let bucket = match a {
