@@ -74,6 +74,9 @@ fn stats(input: &str, limit: Option<u64>) {
     let mut hist = [0u64; 9]; // |score|の桁別ヒストグラム
     let mut wp_hist = [0u64; 100]; // 勝率1%刻み（非詰み）。ADR-0190の診断
     let (mut mate_win, mut mate_lose) = (0u64, 0u64);
+    // 盤上の駒数（玉2枚を含む）。出力バケットの境界を決める材料（ADR-0137）
+    let mut piece_hist = [0u64; 41];
+    let mut piece_n = 0u64;
     while r.read_exact(&mut buf).is_ok() {
         let rec = PackedSfenValue::from_bytes(&buf);
         if n < 1000 && unpack_sfen(&rec.sfen, rec.game_ply).is_err() {
@@ -89,6 +92,16 @@ fn stats(input: &str, limit: Option<u64>) {
             _ => decode_err += 1,
         }
         ply_max = ply_max.max(rec.game_ply);
+        // 復元はSFENの展開を伴うので、先頭の標本だけで分布を見る
+        if piece_n < 200_000 {
+            if let Ok(pos) = unpack(&rec.sfen, rec.game_ply) {
+                let count = pos.occupied().count() as usize;
+                if count < piece_hist.len() {
+                    piece_hist[count] += 1;
+                    piece_n += 1;
+                }
+            }
+        }
         let a = i32::from(rec.score).unsigned_abs();
         let bucket = match a {
             0..=99 => 0,
@@ -181,6 +194,30 @@ fn stats(input: &str, limit: Option<u64>) {
             .sum::<f64>()
             / inner.len() as f64;
         println!("内側5〜95%の変動係数: {:.2}", var.sqrt() / mean);
+    }
+
+    if piece_n > 0 {
+        // 出力バケットの境界は分布の四分位から決める（ADR-0137）
+        println!("盤上の駒数（玉を含む、先頭{piece_n}局面）:");
+        let mut acc = 0u64;
+        let mut quartile = 1;
+        for (count, &c) in piece_hist.iter().enumerate() {
+            if c == 0 {
+                continue;
+            }
+            acc += c;
+            let pct = 100.0 * acc as f64 / piece_n as f64;
+            let mark = if quartile <= 3 && pct >= 25.0 * f64::from(quartile) {
+                quartile += 1;
+                "  ← 四分位"
+            } else {
+                ""
+            };
+            println!(
+                "  {count:2}枚: {:5.1}%（累積{pct:5.1}%）{mark}",
+                100.0 * c as f64 / piece_n as f64
+            );
+        }
     }
 }
 
