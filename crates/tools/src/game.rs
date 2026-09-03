@@ -21,10 +21,29 @@ pub enum TimeControl {
 
 pub struct GameConfig {
     pub tc: TimeControl,
+    /// 持ち時間の倍率（[先手, 後手]）。Fischerの初期時間と加算の両方に
+    /// 掛ける。時間オッズで並列効率を測るときに使う（ADR-0200）
+    pub odds: [f64; 2],
     /// 手数上限（ply数）。到達で引き分け。
     pub max_moves: usize,
     /// スコアによる早期終局 (閾値cp, 連続ply数)。Noneで無効。
     pub adjudicate: Option<(i32, u32)>,
+}
+
+impl GameConfig {
+    /// 色ごとの初期時間と加算[ms]。Nodesのときは0。
+    fn clock_for(&self, c: Color) -> (u64, u64) {
+        match self.tc {
+            TimeControl::Fischer { base_ms, inc_ms } => {
+                let k = self.odds[c.index()];
+                (
+                    (base_ms as f64 * k).round() as u64,
+                    (inc_ms as f64 * k).round() as u64,
+                )
+            }
+            TimeControl::Nodes(_) => (0, 0),
+        }
+    }
 }
 
 pub struct GameRecord {
@@ -59,10 +78,9 @@ pub fn play_game(
     let mut counts: HashMap<u64, u32> = HashMap::new();
     counts.insert(pos.key(), 1);
     let mut moves: Vec<String> = Vec::new();
-    let mut clock: [i64; 2] = match cfg.tc {
-        TimeControl::Fischer { base_ms, .. } => [base_ms as i64; 2],
-        TimeControl::Nodes(_) => [0; 2],
-    };
+    let (black_clock, white_clock) = (cfg.clock_for(Color::Black), cfg.clock_for(Color::White));
+    let mut clock: [i64; 2] = [black_clock.0 as i64, white_clock.0 as i64];
+    let inc: [u64; 2] = [black_clock.1, white_clock.1];
     // スコア打ち切り用: 各エンジンの直近評価値（先手視点）と連続ply数
     let mut last_view: [Option<i32>; 2] = [None, None];
     let mut streak: [u32; 2] = [0, 0];
@@ -87,14 +105,16 @@ pub fn play_game(
             format!("position sfen {opening} moves {}", moves.join(" "))
         };
         let (go_cmd, timeout) = match cfg.tc {
-            TimeControl::Fischer { inc_ms, .. } => (
+            TimeControl::Fischer { .. } => (
                 format!(
-                    "go btime {} wtime {} binc {inc_ms} winc {inc_ms}",
+                    "go btime {} wtime {} binc {} winc {}",
                     clock[0].max(0),
-                    clock[1].max(0)
+                    clock[1].max(0),
+                    inc[0],
+                    inc[1]
                 ),
                 // 残り時間を使い切った上で加算・猶予を上乗せした上限
-                Duration::from_millis(clock[stm.index()].max(0) as u64 + inc_ms + 10_000),
+                Duration::from_millis(clock[stm.index()].max(0) as u64 + inc[stm.index()] + 10_000),
             ),
             TimeControl::Nodes(n) => (format!("go nodes {n}"), Duration::from_secs(600)),
         };
@@ -115,13 +135,13 @@ pub fn play_game(
             None => engine.think(&pos_cmd, &go_cmd, timeout)?,
         };
 
-        if let TimeControl::Fischer { inc_ms, .. } = cfg.tc {
+        if let TimeControl::Fischer { .. } = cfg.tc {
             let c = &mut clock[stm.index()];
             *c -= r.elapsed_ms as i64;
             if *c < 0 {
                 break 'game GameRecord::end(Some(stm.flip()), "timeloss", moves);
             }
-            *c += inc_ms as i64;
+            *c += inc[stm.index()] as i64;
         }
         if r.bestmove == "resign" {
             break 'game GameRecord::end(Some(stm.flip()), "resign", moves);
@@ -186,15 +206,17 @@ pub fn play_game(
         // 指した側の相手番思考を開始する（ADR-0033）。予測手が
         // 現局面で合法なときだけ。ここまでの終局判定を抜けた後に行う
         if ponder[stm.index()]
-            && let TimeControl::Fischer { inc_ms, .. } = cfg.tc
+            && let TimeControl::Fischer { .. } = cfg.tc
             && let Some(pred) = &r.ponder
             && pos.move_from_usi(pred).is_some()
         {
             let ppos = format!("position sfen {opening} moves {} {pred}", moves.join(" "));
             let pgo = format!(
-                "go ponder btime {} wtime {} binc {inc_ms} winc {inc_ms}",
+                "go ponder btime {} wtime {} binc {} winc {}",
                 clock[0].max(0),
-                clock[1].max(0)
+                clock[1].max(0),
+                inc[0],
+                inc[1]
             );
             engine.send(&ppos)?;
             engine.send(&pgo)?;
