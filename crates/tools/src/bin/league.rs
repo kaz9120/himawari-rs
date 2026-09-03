@@ -340,6 +340,7 @@ fn run(cli: &Cli) -> Result<()> {
             Some(n) => TimeControl::Nodes(n),
             None => parse_tc(&cli.tc)?,
         },
+        odds: [1.0, 1.0],
         max_moves: cli.max_moves,
         adjudicate: parse_adjudicate(&cli.adjudicate)?,
     };

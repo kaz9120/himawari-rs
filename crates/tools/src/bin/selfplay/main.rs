@@ -12,9 +12,13 @@
 //!            [--adjudicate CP,PLIES] [--option Name=Value]...
 //!            [--copt Name=Value]... [--bopt Name=Value]...
 //!            [--ponder] [--ponder-both] [--out <path>] [--resume <jsonl>]
+//!            [--codds K] [--bodds K] [--no-stop]
 //!
 //! --copt/--boptは候補側/ベースライン側だけに適用するオプション
-//! （例: --copt Threads=4）。--ponderは候補側だけが相手番思考する
+//! （例: --copt Threads=4）。--codds/--boddsは候補側/ベースライン側の
+//! 持ち時間の倍率（時間オッズ）で、初期時間と加算の両方に掛かる。
+//! --no-stopはSPRTの判定で止めず、--max-pairsまで指す（Eloの推定用。
+//! ADR-0200）。--ponderは候補側だけが相手番思考する
 //! 効果測定モード（ADR-0033）。--ponder-bothは両者に相手番思考させる
 //! （ponder前提の変更を比べるモード。ADR-0104）。1局が2コアを使うため
 //! --concurrencyを物理コアの半分に落とすこと。
@@ -58,6 +62,10 @@ struct Config {
     out: String,
     /// 既存の棋譜jsonlから再開する（ADR-0087）。空なら新規。
     resume: String,
+    /// 持ち時間の倍率（[候補, ベースライン]）。時間オッズ（ADR-0200）。
+    odds: [f64; 2],
+    /// SPRTの判定で止めず、max_pairsまで指す。
+    no_stop: bool,
 }
 
 /// TimeControlはCloneしないため、生成用の仕様を別に持つ。
@@ -98,6 +106,8 @@ fn parse_args() -> Config {
     let mut alpha = 0.05;
     let mut beta = 0.05;
     let mut max_pairs = 0u64;
+    let mut odds = [1.0f64, 1.0f64];
+    let mut no_stop = false;
     let mut max_moves = 320usize;
     let mut adjudicate = None;
     let mut ponder = false;
@@ -189,6 +199,20 @@ fn parse_args() -> Config {
                 };
                 adjudicate = Some(pair);
             }
+            "--codds" | "--bodds" => {
+                let k: f64 = value(&args, i)
+                    .parse()
+                    .unwrap_or_else(|_| usage_exit("--codds/--bodds は正の実数"));
+                if k.is_nan() || k <= 0.0 {
+                    usage_exit("--codds/--bodds は正の実数");
+                }
+                odds[usize::from(args[i] == "--bodds")] = k;
+            }
+            "--no-stop" => {
+                no_stop = true;
+                i += 1;
+                continue;
+            }
             "--option" | "--copt" | "--bopt" => {
                 let v = value(&args, i);
                 let Some((name, val)) = v.split_once('=') else {
@@ -273,6 +297,8 @@ fn parse_args() -> Config {
         bopts,
         out,
         resume,
+        odds,
+        no_stop,
     }
 }
 
@@ -421,11 +447,18 @@ fn worker(
     }
     let mut baseline = UsiEngine::launch(&cfg.baseline, &base_opts)?;
     let mut candidate = UsiEngine::launch(&cfg.candidate, &cand_opts)?;
-    let game_cfg = GameConfig {
+    // 先手・後手の倍率はペアの2局で入れ替わる（候補が先手→後手の順）
+    let game_cfg = |cand_black: bool| GameConfig {
         tc: cfg.tc.to_time_control(),
+        odds: if cand_black {
+            cfg.odds
+        } else {
+            [cfg.odds[1], cfg.odds[0]]
+        },
         max_moves: cfg.max_moves,
         adjudicate: cfg.adjudicate,
     };
+    let (cfg_cand_black, cfg_cand_white) = (game_cfg(true), game_cfg(false));
 
     loop {
         if stop.load(Ordering::Relaxed) {
@@ -448,14 +481,14 @@ fn worker(
             &mut candidate,
             &mut baseline,
             opening,
-            &game_cfg,
+            &cfg_cand_black,
             [p_cand, p_base],
         )?;
         let g2 = play_game(
             &mut baseline,
             &mut candidate,
             opening,
-            &game_cfg,
+            &cfg_cand_white,
             [p_base, p_cand],
         )?;
         let s1 = candidate_score(&g1, Color::Black);
@@ -487,7 +520,7 @@ fn worker(
         );
         // 極小サンプルではε正則化した分散が小さすぎてLLRが振り切れる
         // ため、20ペア未満ではSPRT判定を保留する
-        if a.pent.total() >= 20 {
+        if a.pent.total() >= 20 && !cfg.no_stop {
             match cfg.sprt.decision(llr) {
                 Decision::Continue => {}
                 d => {
