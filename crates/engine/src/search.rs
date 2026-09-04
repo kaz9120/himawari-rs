@@ -575,6 +575,8 @@ pub struct Worker {
     thread_idx: usize,
     /// ワーカーの総数（G9）。bestMoveInstabilityの分母になる
     thread_count: usize,
+    /// ヘルパーの多様化の方式（ADR-0202）。EngineOptions::smp_diversify
+    smp_diversify: u8,
     /// goをまたぐ記憶（G9）。スレッドループが持ち回る
     pub memory: MainMemory,
     /// rootの手番（G10）。引き分けの評価値の符号を決める
@@ -634,6 +636,7 @@ impl Worker {
             root_moves: Vec::new(),
             thread_idx: 0,
             thread_count: 1,
+            smp_diversify: 0,
             memory: MainMemory::default(),
             root_color,
             draw_value_us: VALUE_ZERO,
@@ -658,6 +661,23 @@ impl Worker {
     pub fn set_thread(&mut self, idx: usize, count: usize) {
         self.thread_idx = idx;
         self.thread_count = count.max(1);
+    }
+
+    /// ヘルパーの多様化の方式を渡す（ADR-0202の測定用）。
+    pub fn set_smp_diversify(&mut self, mode: u8) {
+        self.smp_diversify = mode;
+    }
+
+    /// ヘルパーがこの反復を飛ばすか（ADR-0202のI1）。旧Stockfishの
+    /// skipSize/skipPhase表で、メインは飛ばさない。
+    fn skip_iteration(&self, depth: u32) -> bool {
+        const SKIP_SIZE: [u32; 20] = [1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4];
+        const SKIP_PHASE: [u32; 20] = [0, 1, 0, 1, 2, 3, 0, 1, 2, 3, 4, 5, 6, 7, 0, 1, 2, 3, 4, 5];
+        if self.smp_diversify != 1 || self.thread_idx == 0 {
+            return false;
+        }
+        let i = (self.thread_idx - 1) % 20;
+        ((depth + SKIP_PHASE[i]) / SKIP_SIZE[i]) % 2 == 1
     }
 
     /// 深さ1を終えるまではstopを無視する。`iterate` は打ち切り時に
@@ -1168,6 +1188,23 @@ impl Worker {
         };
 
         'deepening: for depth in 1..=max_depth {
+            // ヘルパーの多様化（ADR-0202の測定用）。I1は反復を飛ばし、
+            // I2はroot手の並びをスレッド番号だけ回して最初に深く読む手を
+            // 変える。深さ1は全スレッドが同じ順で読む
+            if self.skip_iteration(depth) {
+                continue;
+            }
+            // 回した後も窓の中心は前反復の最善手に置く。2番目以降の手は
+            // 実の値を持たないことが多く、番兵のままだと窓が全開になる
+            let mut window_center: Option<(Value, Value)> = None;
+            if self.smp_diversify == 2 && !is_main && depth > 1 && self.root_moves.len() > 1 {
+                window_center = Some((
+                    self.root_moves[0].average_score,
+                    self.root_moves[0].mean_squared_score,
+                ));
+                let k = self.thread_idx % self.root_moves.len();
+                self.root_moves.rotate_left(k);
+            }
             // 反復の世代が進んだので、最善手の入れ替わりの重みを半分にする
             // （S:1577-1581）。メインだけが集計する
             if is_main {
@@ -1193,10 +1230,18 @@ impl Worker {
                 // ラインごとのaspiration（G9。S:1669-1673）。窓幅は評価値の
                 // 二乗平均に比例して広がり、中心はスコアの移動平均に置く。
                 // 深さ1では二乗平均が番兵のままなので窓が全開になる
+                // I3（ADR-0202）はスレッドごとの窓幅の差を4倍に広げる
+                let spread_scale: Value = if self.smp_diversify == 3 { 4 } else { 1 };
+                let (avg, mss) = match window_center {
+                    Some(c) if pv_idx == 0 => c,
+                    _ => (
+                        self.root_moves[pv_idx].average_score,
+                        self.root_moves[pv_idx].mean_squared_score,
+                    ),
+                };
                 let mut delta = ASPIRATION_BASE()
-                    + (self.thread_idx % ASPIRATION_THREAD_SPREAD) as Value
-                    + self.root_moves[pv_idx].mean_squared_score.abs() / ASPIRATION_MSS_DIV();
-                let avg = self.root_moves[pv_idx].average_score;
+                    + (self.thread_idx % ASPIRATION_THREAD_SPREAD) as Value * spread_scale
+                    + mss.abs() / ASPIRATION_MSS_DIV();
                 let mut alpha = (avg - delta).max(-VALUE_INFINITE);
                 let mut beta = (avg + delta).min(VALUE_INFINITE);
                 // fail highした回数。1回ごとに実効深さを1段削る（S:1705-1706）

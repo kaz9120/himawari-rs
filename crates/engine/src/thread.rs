@@ -50,6 +50,9 @@ pub struct EngineOptions {
     /// 後手番のときの引き分けの評価値（S:152）
     pub draw_value_white: i32,
     pub eval_file: String,
+    /// ヘルパーの多様化の方式（ADR-0202の測定用）。0=なし、1=深さの
+    /// ずらし、2=root手順のずらし、3=窓のずらしの拡大
+    pub smp_diversify: u8,
 }
 
 impl Default for EngineOptions {
@@ -69,6 +72,7 @@ impl Default for EngineOptions {
             draw_value_black: -2,
             draw_value_white: -2,
             eval_file: String::new(),
+            smp_diversify: 0,
         }
     }
 }
@@ -382,6 +386,7 @@ fn spawn_worker(
                         hist,
                     );
                     worker.set_thread(thread_idx, thread_count);
+                    worker.set_smp_diversify(j.opts.smp_diversify);
                     worker.set_draw_value(j.opts.draw_value_black, j.opts.draw_value_white);
                     worker.memory = memory;
                     let result = worker.iterate(&mut |info| {
