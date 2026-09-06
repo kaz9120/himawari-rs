@@ -660,6 +660,23 @@ impl Worker {
         self.thread_count = count.max(1);
     }
 
+    /// ヘルパーがこの反復を飛ばすか（ADR-0202）。旧Stockfish（8〜11）の
+    /// skipSize/skipPhase表で、ヘルパーは番号ごとに違う周期で反復を
+    /// 飛ばし、同じ深さを同時に読む重複を減らす。メインは飛ばさない。
+    ///
+    /// 8スレッドで同じ深さに使うノードが3.66倍から2.81倍に減り、8対8の
+    /// 既定SPRTで+19.8 Elo。参照実装は2020年前後にこの表を外したが、
+    /// 本エンジンでは多様化なしだと重複が大きかった（ADR-0202の診断）
+    fn skip_iteration(&self, depth: u32) -> bool {
+        const SKIP_SIZE: [u32; 20] = [1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4];
+        const SKIP_PHASE: [u32; 20] = [0, 1, 0, 1, 2, 3, 0, 1, 2, 3, 4, 5, 6, 7, 0, 1, 2, 3, 4, 5];
+        if self.thread_idx == 0 {
+            return false;
+        }
+        let i = (self.thread_idx - 1) % 20;
+        ((depth + SKIP_PHASE[i]) / SKIP_SIZE[i]) % 2 == 1
+    }
+
     /// 深さ1を終えるまではstopを無視する。`iterate` は打ち切り時に
     /// `root_moves[0]` を返すが、root手は生成順に並んでいるため、深さ1の
     /// 途中で止まると探索していない手が出てしまう。深さ1は数msで終わる
@@ -1168,6 +1185,10 @@ impl Worker {
         };
 
         'deepening: for depth in 1..=max_depth {
+            // ヘルパーは反復を深さでずらす（ADR-0202）
+            if self.skip_iteration(depth) {
+                continue;
+            }
             // 反復の世代が進んだので、最善手の入れ替わりの重みを半分にする
             // （S:1577-1581）。メインだけが集計する
             if is_main {
