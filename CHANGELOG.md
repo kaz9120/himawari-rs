@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.47.0](https://github.com/kaz9120/himawari-rs/compare/v0.46.0...v0.47.0) (2026-09-06)
+
+
+### 棋力向上
+
+* ヘルパーの反復を深さでずらす（+19.8 Elo、ADR-0202） ([#474](https://github.com/kaz9120/himawari-rs/issues/474)) ([9e1c84b](https://github.com/kaz9120/himawari-rs/commit/9e1c84b8fc39b245de7c9c232fa888514edc793b))
+
 ## [0.46.0](https://github.com/kaz9120/himawari-rs/compare/v0.45.0...v0.46.0) (2026-09-02)
 
 
