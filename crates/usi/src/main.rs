@@ -408,6 +408,12 @@ fn load_eval(path: &str) -> Option<(String, std::sync::Arc<NnueNetwork>)> {
 }
 
 fn main() {
+    // `himawari threadtune ...` は動作環境の最適なスレッド数を測るモード
+    // （ADR-0203）。引数なしならUSIエンジンとして動く
+    let args: Vec<String> = std::env::args().skip(1).collect();
+    if args.first().map(String::as_str) == Some("threadtune") {
+        std::process::exit(i32::from(himawari_usi::threadtune::main(&args[1..])));
+    }
     // stdin読み取り専用スレッド（ADR-0019）
     let (tx, rx) = mpsc::channel::<String>();
     std::thread::spawn(move || {

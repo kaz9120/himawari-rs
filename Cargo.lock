@@ -342,6 +342,7 @@ dependencies = [
  "clap",
  "himawari-core",
  "himawari-engine",
+ "himawari-usi",
 ]
 
 [[package]]

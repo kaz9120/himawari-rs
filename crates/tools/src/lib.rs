@@ -5,10 +5,12 @@
 //! かつて3本のshellが同じ起動処理を各自に持ち、後始末を落としていた。
 
 pub mod csa;
-pub mod game;
 pub mod positions;
 pub mod stop_file;
-pub mod usi_engine;
+
+// USIクライアントと対局ループはエンジン側へ移した（ADR-0203）。
+// 既存のツールは同じパスで参照できるように再輸出する
+pub use himawari_usi::{game, usi_engine};
 
 use std::path::{Path, PathBuf};
 

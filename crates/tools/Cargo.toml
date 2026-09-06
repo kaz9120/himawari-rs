@@ -12,6 +12,8 @@ path = "src/bin/perft.rs"
 [dependencies]
 himawari-core = { path = "../core" }
 himawari-engine = { path = "../engine" }
+# USIクライアントと対局ループ（ADR-0203でエンジン側へ移した）
+himawari-usi = { path = "../usi" }
 # 開発用ツールだけの依存。配布する himawari バイナリ（core・engine・usi）は
 # 依存ゼロを保つ（ADR-0122）
 anyhow = "1"
