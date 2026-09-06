@@ -325,7 +325,7 @@
 | [0199](0199-roadmap-inventory.md) | ROADMAPを棚卸しし、注力を並列の実戦化とデータの質へ組み替える | 2026-09-03 |  | accepted |
 | [0200](0200-thread-scaling.md) | スレッド数ごとのElo曲線を時間オッズで較正し、並列効率を測る | 2026-09-03 |  | accepted |
 | [0201](0201-loop-recipe.md) | 自己生成と継続学習のループを型にし、資源の投資対効果を見積もる | 2026-09-04 |  | proposed |
-| [0202](0202-smp-loss-diagnosis.md) | Lazy SMPの損失を深さ到達で切り分け、ヘルパーの多様化で減らす | 2026-09-04 |  | proposed |
+| [0202](0202-smp-loss-diagnosis.md) | Lazy SMPの損失を深さ到達で切り分け、ヘルパーの多様化で減らす | 2026-09-04 | +19.8 | accepted |
 
 ## バックログ
 

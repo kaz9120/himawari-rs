@@ -98,8 +98,6 @@ fn print_options() {
     print_line("option name DrawValueBlack type spin default -2 min -30000 max 30000");
     print_line("option name DrawValueWhite type spin default -2 min -30000 max 30000");
     print_line("option name EvalFile type string default <empty>");
-    // ADR-0202の測定用。決まったら固定して外す
-    print_line("option name SmpDiversify type spin default 0 min 0 max 3");
     print_line("option name BookFile type string default <empty>");
     print_line("option name BookDepth type spin default 24 min 0 max 1000");
     // 定跡の引き方（ADR-0109のG10。既定値はbook.cpp:1308-1392）
@@ -246,11 +244,6 @@ fn set_option(opts: &mut EngineOptions, bopts: &mut BookOptions, tokens: &[&str]
         "MaxMovesToDraw" => {
             if let Ok(v) = value.parse() {
                 opts.max_moves_to_draw = v;
-            }
-        }
-        "SmpDiversify" => {
-            if let Ok(v) = value.parse::<u8>() {
-                opts.smp_diversify = v.min(3);
             }
         }
         "MultiPV" => {
