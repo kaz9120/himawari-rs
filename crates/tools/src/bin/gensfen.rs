@@ -13,7 +13,7 @@
 //!   gensfen --out <path> --eval <hmwr> [--games 1000] [--depth 8]
 //!           [--openings <sfen列挙>] [--random-plies 8] [--min-ply 8]
 //!           [--max-moves 320] [--resign 3000] [--threads N] [--hash 256]
-//!           [--seed 1] [--save-every 100] [--stop-file <path>]
+//!           [--seed 1] [--save-every 100] [--stop-file <path>] [--max-nodes N]
 //!
 //! --openings は開始局面の列挙（1行1 SFEN、`sfen ` 接頭辞は付いていてもよい）
 //! で、各対局の開始局面をここから一様に引く。訓練の分布を測定（SPRT・実戦）
@@ -22,6 +22,11 @@
 //! --random-plies は開始局面を散らすためにランダムへ指す手数。同じ局面ばかり
 //! 生成しても学習の役に立たない。--min-ply より前の局面は記録しない。乱数で
 //! 指した区間には教師にできる評価値が付かないためである。
+//!
+//! --max-nodes は1手の探索のノード上限（既定0＝上限なし）。深さ指定だけだと
+//! 極端な評価値の局面で1反復が数千万ノードに膨れ、深さ12では8本全部が
+//! 1局も終えられずに嵌まった（ADR-0201のE1、Issue #471）。上限に当たった
+//! 手は到達した深さの評価値で記録する。
 //!
 //! --resign を超える評価値が出たら投了する。既定は0（投了しない）である。
 //! 3000で打ち切ると終盤が丸ごと欠け、詰みスコアの局面が0.19%しか出ない
@@ -61,6 +66,8 @@ struct Config {
     eval: String,
     games: usize,
     depth: u32,
+    /// 1手のノード上限。0は上限なし
+    max_nodes: u64,
     openings: Option<String>,
     random_plies: usize,
     min_ply: u16,
@@ -122,6 +129,7 @@ fn search(pos: &Position, cfg: &Config, pool: &ThreadPool, sink: &Sink) -> Optio
     sink.lock().expect("sink").clear();
     let limits = Limits {
         depth: cfg.depth,
+        nodes: cfg.max_nodes,
         ..Limits::default()
     };
     let opts = EngineOptions {
@@ -269,9 +277,10 @@ fn generate(cfg: &Config) -> std::io::Result<()> {
     // 生成条件をログの先頭に残す。教師データは条件を変えて何度も作るので、
     // どの設定で作ったかを後から追えないと混ぜる判断ができない
     eprintln!(
-        "GenSfen: games={} depth={} openings={} random_plies={} min_ply={} quiet_plies={} max_moves={} resign={} workers={} hash={}MB seed={}",
+        "GenSfen: games={} depth={} max_nodes={} openings={} random_plies={} min_ply={} quiet_plies={} max_moves={} resign={} workers={} hash={}MB seed={}",
         cfg.games,
         cfg.depth,
+        cfg.max_nodes,
         cfg.openings.as_deref().unwrap_or("-"),
         cfg.random_plies,
         cfg.min_ply,
@@ -473,6 +482,7 @@ fn main() {
         eval: String::new(),
         games: 1000,
         depth: 8,
+        max_nodes: 0,
         openings: None,
         random_plies: 8,
         min_ply: 8,
@@ -494,6 +504,7 @@ fn main() {
             "--openings" => cfg.openings = Some(val),
             "--games" => cfg.games = val.parse().unwrap_or(cfg.games),
             "--depth" => cfg.depth = val.parse().unwrap_or(cfg.depth),
+            "--max-nodes" => cfg.max_nodes = val.parse().unwrap_or(cfg.max_nodes),
             "--random-plies" => cfg.random_plies = val.parse().unwrap_or(cfg.random_plies),
             "--min-ply" => cfg.min_ply = val.parse().unwrap_or(cfg.min_ply),
             "--quiet-plies" => cfg.quiet_plies = val.parse().unwrap_or(cfg.quiet_plies),
