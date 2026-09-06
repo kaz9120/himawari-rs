@@ -8,4 +8,5 @@
 //! 依存ゼロ（ADR-0122）は保つ。
 
 pub mod game;
+pub mod threadtune;
 pub mod usi_engine;
