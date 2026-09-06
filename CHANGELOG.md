@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.47.1](https://github.com/kaz9120/himawari-rs/compare/v0.47.0...v0.47.1) (2026-09-06)
+
+
+### その他の変更
+
+* himawari threadtune で動作環境の最適なスレッド数を測る（ADR-0203） ([#477](https://github.com/kaz9120/himawari-rs/issues/477)) ([22ca1a5](https://github.com/kaz9120/himawari-rs/commit/22ca1a59520b9f71ba53e68cfa432298bc3a40ac))
+
 ## [0.47.0](https://github.com/kaz9120/himawari-rs/compare/v0.46.0...v0.47.0) (2026-09-06)
 
 
