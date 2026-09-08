@@ -269,12 +269,21 @@ fn run(a: &Args) -> Result<(), String> {
         return Err(format!("評価関数がない: {}", a.eval));
     }
     let logical = std::thread::available_parallelism().map_or(1, |n| n.get());
-    let max = a.max_threads.unwrap_or(logical).max(1);
+    // 既定は論理コアから2本を空ける。実戦では指し手を中継するクライアントが
+    // 別プロセスで動き、全論理コアを埋めると中継が数秒遅れて切れ負けする
+    // （放流機で12スレッドを試して発生。ADR-0203の追記）。この道具は
+    // 自分が中継役なのでその遅れを見られない。上限を上げるなら --max-threads
+    let max = a
+        .max_threads
+        .unwrap_or_else(|| logical.saturating_sub(2))
+        .max(1);
     let tc = parse_tc(&a.tc)?;
     let openings: Vec<&str> = OPENINGS.lines().filter(|l| !l.trim().is_empty()).collect();
 
     println!("エンジン: {engine}");
-    println!("論理コア: {logical}　候補の上限: {max}");
+    println!(
+        "論理コア: {logical}　候補の上限: {max}（既定は論理コア−2。中継のクライアントの分を空ける）"
+    );
     println!("注意: 放流と同じ電源モード（最適なパフォーマンス）とAC接続で測る。");
     println!("      混成コアの機械では、電源の設定のほうがスレッド数より効くことがある。");
     println!();
