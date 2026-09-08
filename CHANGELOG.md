@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.48.0](https://github.com/kaz9120/himawari-rs/compare/v0.47.2...v0.48.0) (2026-09-08)
+
+
+### 棋力向上
+
+* PVが1手で終わったとき、置換表からponder手を補う（+34.9 Elo、ADR-0204） ([#482](https://github.com/kaz9120/himawari-rs/issues/482)) ([4409480](https://github.com/kaz9120/himawari-rs/commit/44094809d56d1fd832b0d99867e7f7d0aab120be))
+
 ## [0.47.2](https://github.com/kaz9120/himawari-rs/compare/v0.47.1...v0.47.2) (2026-09-08)
 
 
