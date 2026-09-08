@@ -209,6 +209,28 @@ fn is_loss(v: Value) -> bool {
 /// `get_best_thread`）。呼び出し側は全スレッドのPVが空でないことを保証する。
 ///
 /// 得票は「最小スコアからの差に14を足した値 × 確定深さ」の合計で、同じ手を
+impl ThreadPool {
+    /// 最善手を指した後の局面を置換表で引き、合法な手をponder手として返す。
+    /// 引けなければNONE。
+    fn ponder_from_tt(shared: &Shared, root: &Position, best: Move) -> Move {
+        if best == Move::NONE {
+            return Move::NONE;
+        }
+        let mut pos = root.clone();
+        if !pos.pseudo_legal(best) || !pos.is_legal(best) {
+            return Move::NONE;
+        }
+        pos.do_move(best);
+        let Some(data) = shared.tt.probe(pos.key()) else {
+            return Move::NONE;
+        };
+        match pos.to_move(data.mv) {
+            Some(m) if pos.pseudo_legal(m) && pos.is_legal(m) => m,
+            _ => Move::NONE,
+        }
+    }
+}
+
 /// 選んだスレッドの分を足し合わせる。優先順位は3段ある。勝ち確定なら短い
 /// 詰みへ、負け確定なら短い詰まされへ、それ以外は得票数で選ぶ。
 fn get_best_thread(results: &[SearchResult]) -> usize {
@@ -368,6 +390,8 @@ fn spawn_worker(
                         (inf, tm)
                     };
                     let was_ponder = j.ponder;
+                    // ponder手を置換表から補うときに要る（conclude）
+                    let root = j.pos.clone();
                     let evaluator = match &net {
                         Some(n) => Evaluator::nnue(Arc::clone(n)),
                         None => Evaluator::material(),
@@ -428,6 +452,7 @@ fn spawn_worker(
                         ThreadPool::conclude(
                             on_line.as_ref(),
                             &shared,
+                            &root,
                             &all,
                             &j.opts,
                             &j.limits,
@@ -473,9 +498,11 @@ impl ThreadPool {
     /// 全スレッドの結論から最終手を決め、bestmoveまで出す（G10, ADR-0125。
     /// S:1239-1348）。投票・投了判定・bestmove出力の3つを行う。
     /// 次のgoへ持ち越す記憶も、best threadのもので上書きする（S:1249-1253）。
+    #[allow(clippy::too_many_arguments)]
     fn conclude(
         out: Option<&OnLine>,
         shared: &Shared,
+        root: &Position,
         all: &[SearchResult],
         opts: &EngineOptions,
         limits: &Limits,
@@ -539,9 +566,18 @@ impl ThreadPool {
             out("bestmove resign");
         } else {
             // ponderhitでも探索を継続するので、ここで得た結論が
-            // そのまま本番の結論になる。常に出してよい
-            let ponder_hint = if opts.ponder && result.ponder != himawari_core::Move::NONE {
-                format!(" ponder {}", result.ponder.to_usi())
+            // そのまま本番の結論になる。常に出してよい。
+            // PVが1手で終わったら（最後の反復が途中で止まり、fail highした
+            // 手のPVだけが残る型。10+0.1の自己対局で13〜33%）、指した後の
+            // 局面を置換表で引いて相手の応手を補う（S:1350-1356の
+            // extract_ponder_from_tt）。補えないと相手番の思考を丸ごと失う
+            let ponder = if result.ponder != Move::NONE {
+                result.ponder
+            } else {
+                Self::ponder_from_tt(shared, root, result.best)
+            };
+            let ponder_hint = if opts.ponder && ponder != Move::NONE {
+                format!(" ponder {}", ponder.to_usi())
             } else {
                 String::new()
             };
