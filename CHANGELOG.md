@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.47.2](https://github.com/kaz9120/himawari-rs/compare/v0.47.1...v0.47.2) (2026-09-08)
+
+
+### その他の変更
+
+* threadtuneの候補の上限を論理コア−2にする ([#480](https://github.com/kaz9120/himawari-rs/issues/480)) ([ccf926c](https://github.com/kaz9120/himawari-rs/commit/ccf926ced031031007806f540e3cbd1dcad813e3))
+
 ## [0.47.1](https://github.com/kaz9120/himawari-rs/compare/v0.47.0...v0.47.1) (2026-09-06)
 
 
