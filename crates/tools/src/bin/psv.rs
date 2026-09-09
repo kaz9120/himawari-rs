@@ -19,6 +19,9 @@
 //!                                              決着圏の局面を確率で間引く（ADR-0190）
 //!   psv phase   --in file --out file.tsv [--limit N] [--eval-file NET]
 //!                                              進行度の指標と静的評価をTSVへ書く（ADR-0198）
+//!   psv relabel --in file --out file [--depth N] [--max-nodes N] [--jobs N] [--hash MB]
+//!               [--limit N] [--eval-file NET]  現行エンジンで読み直し、scoreと教師手を
+//!                                              付け替える（ADR-0205）。勝敗と手数は残す
 //!
 //! shuffleは2パスのバケット法で動く（ADR-0065）。メモリ使用量は
 //! バケット1個分（2GB）に収まるため、入力サイズの制限はない。
@@ -904,6 +907,203 @@ fn rank(input: &str, output: &str, limit: u64, skip: u64, hash_mb: usize, eval: 
     );
 }
 
+/// 1局面を深さ指定で読み直し、(手番視点の評価値, 最善手のmove16) を返す（ADR-0205）。
+/// 探索は `ThreadPool`（1スレッド）で行い、info行の最終値を読む。
+fn relabel_one(
+    pool: &himawari_engine::ThreadPool,
+    sink: &Arc<std::sync::Mutex<Vec<String>>>,
+    pos: &himawari_core::Position,
+    depth: u32,
+    max_nodes: u64,
+    hash_mb: usize,
+) -> Option<(i32, u16)> {
+    use himawari_engine::{EngineOptions, Limits};
+    sink.lock().expect("sink").clear();
+    let limits = Limits {
+        depth,
+        nodes: max_nodes,
+        ..Limits::default()
+    };
+    let opts = EngineOptions {
+        multi_pv: 1,
+        threads: 1,
+        hash_mb,
+        ..EngineOptions::default()
+    };
+    pool.go(pos.clone(), limits, opts);
+    pool.wait_idle();
+    let mut best: Option<(u32, i32, String)> = None;
+    for line in sink.lock().expect("sink").iter() {
+        let t: Vec<&str> = line.split_whitespace().collect();
+        let at = |k: &str| t.iter().position(|&x| x == k);
+        let (Some(di), Some(si), Some(pi)) = (at("depth"), at("score"), at("pv")) else {
+            continue;
+        };
+        let Some(d) = t.get(di + 1).and_then(|v| v.parse::<u32>().ok()) else {
+            continue;
+        };
+        let score = match t.get(si + 1).copied() {
+            Some("cp") => t.get(si + 2).and_then(|v| v.parse::<i32>().ok()),
+            Some("mate") => t
+                .get(si + 2)
+                .and_then(|v| v.parse::<i32>().ok())
+                .map(|p| if p >= 0 { 30000 - p } else { -30000 - p }),
+            _ => None,
+        };
+        let (Some(score), Some(mv)) = (score, t.get(pi + 1)) else {
+            continue;
+        };
+        if best.as_ref().is_none_or(|b| d >= b.0) {
+            best = Some((d, score, (*mv).to_string()));
+        }
+    }
+    let (_, score, mv) = best?;
+    let m16 = himawari_core::Move16::from_usi(&mv)?.to_yaneura();
+    Some((score, m16))
+}
+
+/// relabelの探索条件。
+struct RelabelCfg {
+    depth: u32,
+    max_nodes: u64,
+    jobs: usize,
+    hash_mb: usize,
+}
+
+/// 現行エンジンで全局面を読み直し、scoreと教師手を付け替える（ADR-0205）。
+/// 勝敗と手数は元のまま。並列はチャンクをワーカーへ固定に配る（quietと同じ）。
+fn relabel(input: &str, output: &str, limit: u64, cfg: RelabelCfg, eval: &str) {
+    use himawari_engine::ThreadPool;
+    let RelabelCfg {
+        depth,
+        max_nodes,
+        jobs,
+        hash_mb,
+    } = cfg;
+    let jobs = jobs.max(1);
+    let mut r = open_reader(input);
+    let mut w = BufWriter::new(
+        std::fs::File::create(output)
+            .unwrap_or_else(|e| die(&format!("作れません: {output}: {e}"))),
+    );
+    let mut f = std::fs::File::open(eval)
+        .unwrap_or_else(|e| die(&format!("評価関数を開けません: {eval}: {e}")));
+    let (net, _lineage) = himawari_engine::nnue_io::load(&mut f)
+        .unwrap_or_else(|e| die(&format!("評価関数を読めません: {eval}: {e}")));
+    let net = Arc::new(net);
+    let start = std::time::Instant::now();
+    let (mut n, mut failed) = (0u64, 0u64);
+    let hash_each = (hash_mb / jobs).max(16);
+
+    std::thread::scope(|scope| {
+        let (out_tx, out_rx) = std::sync::mpsc::sync_channel::<(u64, Vec<u8>, u64)>(jobs * 2);
+        let mut in_txs = Vec::with_capacity(jobs);
+        for _ in 0..jobs {
+            let (tx, rx) = std::sync::mpsc::sync_channel::<(u64, Vec<u8>)>(2);
+            in_txs.push(tx);
+            let out_tx = out_tx.clone();
+            let net = Arc::clone(&net);
+            let eval = eval.to_string();
+            scope.spawn(move || {
+                let sink = Arc::new(std::sync::Mutex::new(Vec::<String>::new()));
+                let on_line: himawari_engine::thread::OnLine = {
+                    let s = Arc::clone(&sink);
+                    Arc::new(move |line: &str| {
+                        if line.starts_with("info depth") {
+                            s.lock().expect("sink").push(line.to_string());
+                        }
+                    })
+                };
+                let pool = ThreadPool::new(hash_each, 1, Some((eval, Arc::clone(&net))), on_line);
+                for (id, data) in rx {
+                    let mut out = Vec::with_capacity(data.len());
+                    let mut fails = 0u64;
+                    for chunk in data.as_chunks::<PSV_BYTES>().0 {
+                        let mut rec = PackedSfenValue::from_bytes(chunk);
+                        match unpack(&rec.sfen, rec.game_ply) {
+                            Ok(pos) => {
+                                match relabel_one(&pool, &sink, &pos, depth, max_nodes, hash_each) {
+                                    Some((score, m16)) => {
+                                        rec.score = score.clamp(-32000, 32000) as i16;
+                                        rec.move16 = m16;
+                                    }
+                                    None => fails += 1,
+                                }
+                            }
+                            Err(_) => fails += 1,
+                        }
+                        out.extend_from_slice(&rec.to_bytes());
+                    }
+                    if out_tx.send((id, out, fails)).is_err() {
+                        return;
+                    }
+                }
+                pool.quit();
+            });
+        }
+        drop(out_tx);
+
+        scope.spawn(move || {
+            let mut id = 0u64;
+            let mut left = limit;
+            let mut buf = [0u8; PSV_BYTES];
+            'read: loop {
+                let take = (RELABEL_CHUNK as u64).min(left) as usize;
+                if take == 0 {
+                    break;
+                }
+                let mut data = Vec::with_capacity(take * PSV_BYTES);
+                for _ in 0..take {
+                    if r.read_exact(&mut buf).is_err() {
+                        if !data.is_empty() {
+                            let dest = (id % jobs as u64) as usize;
+                            let _ = in_txs[dest].send((id, data));
+                        }
+                        break 'read;
+                    }
+                    data.extend_from_slice(&buf);
+                }
+                left -= (data.len() / PSV_BYTES) as u64;
+                let dest = (id % jobs as u64) as usize;
+                if in_txs[dest].send((id, data)).is_err() {
+                    break;
+                }
+                id += 1;
+            }
+            drop(in_txs);
+        });
+
+        let mut pending: std::collections::BTreeMap<u64, (Vec<u8>, u64)> =
+            std::collections::BTreeMap::new();
+        let mut next = 0u64;
+        for (id, data, fails) in out_rx {
+            pending.insert(id, (data, fails));
+            while let Some((data, fails)) = pending.remove(&next) {
+                w.write_all(&data)
+                    .unwrap_or_else(|e| die(&format!("書けません: {e}")));
+                let before_m = n / 100_000;
+                n += (data.len() / PSV_BYTES) as u64;
+                failed += fails;
+                if n / 100_000 != before_m {
+                    let sec = start.elapsed().as_secs_f64();
+                    eprintln!("{n}局面 失敗{failed} {:.0}局面/秒", n as f64 / sec);
+                }
+                next += 1;
+            }
+        }
+    });
+    w.flush()
+        .unwrap_or_else(|e| die(&format!("書けません: {e}")));
+    let sec = start.elapsed().as_secs_f64();
+    eprintln!(
+        "所要: {sec:.0}秒（{:.0}局面/秒）　局面数{n} 失敗{failed} 深さ{depth} 上限{max_nodes}ノード → {output}",
+        n as f64 / sec.max(0.001)
+    );
+}
+
+/// relabelのチャンク。小さいほど並列の偏りが減り、大きいほど置換表が温まる
+const RELABEL_CHUNK: usize = 256;
+
 /// 進行度の指標の候補（ADR-0198）。TSVの列名で、`phase_features` の
 /// 戻り値と同じ順に並ぶ。
 const PHASE_COLUMNS: [&str; 10] = [
@@ -1041,7 +1241,9 @@ fn phase(input: &str, output: &str, limit: u64, eval: &str) {
 fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
     let Some(cmd) = args.first() else {
-        die("サブコマンドが必要です: stats / dump / head / shuffle / quiet / rank / thin / phase");
+        die(
+            "サブコマンドが必要です: stats / dump / head / shuffle / quiet / rank / thin / phase / relabel",
+        );
     };
     let rest = &args[1..];
     let input = arg_value(rest, "--in");
@@ -1175,6 +1377,38 @@ fn main() {
                 keep,
                 seed,
                 group,
+            );
+        }
+        "relabel" => {
+            let limit = arg_value(rest, "--limit")
+                .map(|s| s.parse().unwrap_or(u64::MAX))
+                .unwrap_or(u64::MAX);
+            let depth: u32 = arg_value(rest, "--depth")
+                .map(|s| s.parse().unwrap_or_else(|_| die("--depth は整数")))
+                .unwrap_or(9);
+            let max_nodes: u64 = arg_value(rest, "--max-nodes")
+                .map(|s| s.parse().unwrap_or_else(|_| die("--max-nodes は整数")))
+                .unwrap_or(1_000_000);
+            let jobs: usize = arg_value(rest, "--jobs")
+                .map(|s| s.parse().unwrap_or_else(|_| die("--jobs は整数")))
+                .unwrap_or(1);
+            let hash_mb: usize = arg_value(rest, "--hash")
+                .map(|s| s.parse().unwrap_or(256))
+                .unwrap_or(256);
+            let eval = arg_value(rest, "--eval-file")
+                .or_else(|| std::env::var("EVAL_FILE").ok())
+                .unwrap_or_else(|| die("--eval-file か EVAL_FILE が必要です"));
+            relabel(
+                &input.unwrap_or_else(|| die("--in が必要です")),
+                &output.unwrap_or_else(|| die("--out が必要です")),
+                limit,
+                RelabelCfg {
+                    depth,
+                    max_nodes,
+                    jobs,
+                    hash_mb,
+                },
+                &eval,
             );
         }
         "phase" => {
