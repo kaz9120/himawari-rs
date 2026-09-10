@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.49.0](https://github.com/kaz9120/himawari-rs/compare/v0.48.0...v0.49.0) (2026-09-10)
+
+
+### 棋力向上
+
+* 自己生成4,700万局面の継続学習ネットへ切り替える（+20.2 Elo、ADR-0201） ([#488](https://github.com/kaz9120/himawari-rs/issues/488)) ([7cc61f2](https://github.com/kaz9120/himawari-rs/commit/7cc61f23bd640638ddf45cbd679b3210d64b8157))
+
 ## [0.48.0](https://github.com/kaz9120/himawari-rs/compare/v0.47.2...v0.48.0) (2026-09-08)
 
 
