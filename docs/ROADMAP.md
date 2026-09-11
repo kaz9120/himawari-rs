@@ -68,8 +68,8 @@ Issue #430、false sharing [ADR-0151](adr/0151-speedup-sweep.md)群E）。
 
 **計算を積む線は現実的でない**（[ADR-0199](adr/0199-roadmap-inventory.md)の
 2026-09-10の追記）。自己生成の継続学習は深さ・量・世代のどれを増やしても
-1回+15で頭打ちで（[ADR-0201](adr/0201-loop-recipe.md)）、教師80億の
-付け直しは本機で69日かかる（[ADR-0205](adr/0205-relabel-loop.md)）。
+1回+15で頭打ちになり（[ADR-0201](adr/0201-loop-recipe.md)）、教師80億の
+付け直しは本機だと69日かかる（[ADR-0205](adr/0205-relabel-loop.md)）。
 本エンジンのラベルはtanukiと同等以上と分かったが、資源の前提が変わる
 までこの線は閉じる。
 
