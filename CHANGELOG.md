@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.49.1](https://github.com/kaz9120/himawari-rs/compare/v0.49.0...v0.49.1) (2026-09-14)
+
+
+### その他の変更
+
+* panicをログへ残してプロセスを終える ([#492](https://github.com/kaz9120/himawari-rs/issues/492)) ([a5f47d5](https://github.com/kaz9120/himawari-rs/commit/a5f47d5719769d2798c8097325ce05e3dd4ab7c1))
+
 ## [0.49.0](https://github.com/kaz9120/himawari-rs/compare/v0.48.0...v0.49.0) (2026-09-10)
 
 
