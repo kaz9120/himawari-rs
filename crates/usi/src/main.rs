@@ -414,6 +414,16 @@ fn main() {
     if args.first().map(String::as_str) == Some("threadtune") {
         std::process::exit(i32::from(himawari_usi::threadtune::main(&args[1..])));
     }
+    // panicは黙って止めない。探索スレッドが落ちるとbestmoveが永久に返らず、
+    // 実戦では残り時間を抱えたまま時間切れになる（floodgateで60手以上の
+    // 時間切れ19局、ADR-0199）。原因をログとstderrへ残し、プロセスごと
+    // 終える。落ちたことがGUIとログから見えるようにする
+    std::panic::set_hook(Box::new(|info| {
+        let msg = format!("panic: {info}");
+        log_line('!', &msg);
+        eprintln!("info string error: {msg}");
+        std::process::exit(101);
+    }));
     // stdin読み取り専用スレッド（ADR-0019）
     let (tx, rx) = mpsc::channel::<String>();
     std::thread::spawn(move || {
