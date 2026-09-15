@@ -42,6 +42,8 @@ def add_parser(sub: argparse._SubParsersAction) -> None:
     p.add_argument("--runs", type=int, metavar="N", help="1本を何周測るか")
     p.add_argument("--positions", metavar="パス", help="局面リスト。既定は組み込みの4局面")
     p.add_argument("--eval-file", metavar="パス", help="評価関数")
+    p.add_argument("--threads", type=int, metavar="N", help="探索スレッド数。2以上で深さ到達の計測になる")
+    p.add_argument("--hash", type=int, metavar="MB", help="置換表の大きさ")
     p.add_argument("--log", metavar="名前", help="ログを残す名前")
     p.set_defaults(func=bench)
 
@@ -89,6 +91,10 @@ def bench(args: argparse.Namespace) -> int:
         extra += ["--runs", str(args.runs)]
     if args.positions:
         extra += ["--positions", args.positions]
+    if args.threads:
+        extra += ["--threads", str(args.threads)]
+    if args.hash:
+        extra += ["--hash", str(args.hash)]
     if args.eval_file:
         extra += ["--eval-file", args.eval_file]
     return proc.run(

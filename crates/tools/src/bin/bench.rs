@@ -63,6 +63,15 @@ struct Cli {
     /// 指定した場合は局面ごとの深さ補正を当てない
     #[arg(long, value_name = "パス")]
     positions: Option<PathBuf>,
+
+    /// 探索スレッド数。2以上にすると深さ到達（同じ深さに使うノードと
+    /// 所要時間）を測る用途になる（ADR-0202）。ノード数は全スレッドの合計
+    #[arg(long, default_value_t = 1, value_parser = clap::value_parser!(u32).range(1..))]
+    threads: u32,
+
+    /// 置換表[MB]。深さ到達は置換表の飽和で変わる
+    #[arg(long, default_value_t = 256)]
+    hash: u32,
 }
 
 fn main() -> ExitCode {
@@ -114,19 +123,23 @@ fn run(cli: &Cli) -> Result<()> {
 
     match cli.nodes {
         Some(n) => println!(
-            "=== NPS計測: {}ノード、{}周、1スレッド ===",
+            "=== NPS計測: {}ノード、{}周、{}スレッド、置換表{}MB ===",
             thousands(n),
-            cli.runs
+            cli.runs,
+            cli.threads,
+            cli.hash
         ),
         None if cli.positions.is_some() => println!(
-            "=== NPS計測: 深さ {}、{}周、1スレッド ===",
-            cli.depth, cli.runs
+            "=== NPS計測: 深さ {}、{}周、{}スレッド、置換表{}MB ===",
+            cli.depth, cli.runs, cli.threads, cli.hash
         ),
         None => println!(
-            "=== NPS計測: 深さ {}（局面3は {}）、{}周、1スレッド ===",
+            "=== NPS計測: 深さ {}（局面3は {}）、{}周、{}スレッド、置換表{}MB ===",
             cli.depth,
             depth_at(cli.depth, 2),
-            cli.runs
+            cli.runs,
+            cli.threads,
+            cli.hash
         ),
     }
     if let Some(path) = &cli.positions {
@@ -138,6 +151,8 @@ fn run(cli: &Cli) -> Result<()> {
     println!();
 
     let mut sums = vec![0u64; targets.len()];
+    let mut node_sums = vec![0u64; targets.len()];
+    let mut ms_sums = vec![0u64; targets.len()];
     // 交互に測る。1本ずつまとめて測ると温度差が系統誤差になる
     for run in 1..=cli.runs {
         for (i, t) in targets.iter().enumerate() {
@@ -151,12 +166,17 @@ fn run(cli: &Cli) -> Result<()> {
                 thousands(ms)
             );
             sums[i] += speed;
+            node_sums[i] += nodes;
+            ms_sums[i] += ms;
         }
     }
 
     println!();
-    println!("| バイナリ | NPS（{}周の平均） | 1本目比 |", cli.runs);
-    println!("|---|---|---|");
+    println!(
+        "| バイナリ | NPS（{}周の平均） | 1本目比 | ノード合計 | 所要ms |",
+        cli.runs
+    );
+    println!("|---|---|---|---|---|");
     let base = sums[0] / u64::from(cli.runs);
     for (i, t) in targets.iter().enumerate() {
         let avg = sums[i] / u64::from(cli.runs);
@@ -165,7 +185,13 @@ fn run(cli: &Cli) -> Result<()> {
         } else {
             percent_delta(base as f64, avg as f64, 2)
         };
-        println!("| {} | {} | {ratio} |", basename(&t.bin), thousands(avg));
+        println!(
+            "| {} | {} | {ratio} | {} | {} |",
+            basename(&t.bin),
+            thousands(avg),
+            thousands(node_sums[i] / u64::from(cli.runs)),
+            thousands(ms_sums[i] / u64::from(cli.runs))
+        );
     }
     Ok(())
 }
@@ -178,7 +204,9 @@ fn measure(
     eval: &std::path::Path,
     engine: &std::path::Path,
 ) -> Result<(u64, u64)> {
-    let options = single_thread_options(eval);
+    let mut options = single_thread_options(eval);
+    options.push(("Threads".to_string(), cli.threads.to_string()));
+    options.push(("USI_Hash".to_string(), cli.hash.to_string()));
     let mut eng = UsiEngine::launch(path_str(engine)?, &options).or_bail()?;
     eng.new_game().or_bail()?;
     let timeout = Duration::from_secs(cli.timeout);
