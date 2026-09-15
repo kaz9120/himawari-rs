@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.50.0](https://github.com/kaz9120/himawari-rs/compare/v0.49.1...v0.50.0) (2026-09-15)
+
+
+### 棋力向上
+
+* SPSA第1群を再走して探索定数24項目を焼き込む（+21.2 Elo、ADR-0143） ([#494](https://github.com/kaz9120/himawari-rs/issues/494)) ([0087fc9](https://github.com/kaz9120/himawari-rs/commit/0087fc911843fb3ef314ef3747cf98db923434e3))
+
 ## [0.49.1](https://github.com/kaz9120/himawari-rs/compare/v0.49.0...v0.49.1) (2026-09-14)
 
 
