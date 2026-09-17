@@ -60,6 +60,7 @@
 - [0160](0160-revisit-rejected-under-better-eval.md) 棄却済みの追従を掘り起こす案（導入済みと判明して棄却）
 - [0162](0162-parallel-group.md) 並列の未測定3件を1群で測る（TTの手番分割は見送り）
 - [0177](0177-tt-probcut-depth-slack.md) TT-ProbCutの深さ差を狭める案（測って棄却）
+- [0211](0211-check-extension-see.md) 王手延長を損をしない王手に限る
 - [0186](0186-repetition-scan-cap.md) 千日手判定の走査を16手で打ち切る
 
 ### 評価関数（NNUE）
@@ -342,6 +343,7 @@
 | [0208](0208-hmwr-resource-verbs.md) | hmwrのコマンドを手順の固定から資源への操作へ切り直す | 2026-09-17 |  | accepted |
 | [0209](0209-workflow-layers.md) | 仕事を4つの層へ振り分け、実験をIssueのキューで無人実行する | 2026-09-17 |  | accepted |
 | [0210](0210-teacher-mix-control.md) | 入玉混合の+37.3を、量・系列・入玉の3つの説明へ統制群で分ける | 2026-09-17 |  | proposed |
+| [0211](0211-check-extension-see.md) | 王手延長を損をしない王手に限る | 2026-09-18 |  | proposed |
 
 ## バックログ
 
