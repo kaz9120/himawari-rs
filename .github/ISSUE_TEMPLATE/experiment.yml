@@ -1,0 +1,31 @@
+name: 実験
+description: 開発機の実験キューへ1件積む（ADR-0209）
+title: "実験: "
+labels: ["experiment", "queued"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        specとADRをmainへマージしてから出してください。実行器はorigin/mainのspecだけを実行します。
+        順番は古いIssueからです。取り消すときは `queued` ラベルを外すか、Issueを閉じます。
+  - type: input
+    id: spec
+    attributes:
+      label: spec
+      description: 実行するspecのパス。実行器はこの欄を読みます
+      placeholder: experiments/adr0210-teacher-mix-control.toml
+    validations:
+      required: true
+  - type: input
+    id: adr
+    attributes:
+      label: ADR
+      description: 仮説と読み方を事前登録したADR
+      placeholder: docs/adr/0210-teacher-mix-control.md
+    validations:
+      required: true
+  - type: textarea
+    id: note
+    attributes:
+      label: メモ
+      description: 所要の見込み、ディスクの使用量、先に終わっていてほしい実験など

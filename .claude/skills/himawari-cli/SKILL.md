@@ -167,6 +167,26 @@ run = "hmwr data mix mixhao20_300M --in train_300M_q1 --in hao_extra_60M_q1"
 それぞれの再開の口から続く。完了したステップのコマンドをspecで書き換えると
 止まる。手順を変えるなら、別の名前のspecにする。
 
+### 実験をキューで無人実行する
+
+```
+hmwr queue status      待ち行列と一時停止の状態
+hmwr queue pause       次のステップを始めさせない（開発機を空けたいとき）
+hmwr queue resume      一時停止を解く
+hmwr queue install     専用のworktreeとlaunchdの常駐を用意する
+hmwr exp reset <名前>  完了印を消し、最初から走り直せるようにする
+```
+
+実験を積むには、specとADRをmainへマージしてから、Issueフォーム「実験」で
+Issueを出す。launchdが5分おきに待ち行列を見て、古い順に1件ずつ実行する。
+状態はラベルで読める（`queued`→`running`→`done` か `failed`）。失敗したら
+ログの末尾がIssueへコメントされる。原因を直してラベルを `queued` へ戻すと、
+続きから走る。
+
+**計測や対話セッションのSPRTの前に `hmwr queue pause` を打つ**。キューの実験と
+同時に走ると、どちらの対局も持ち時間の消化が乱れる。走っているステップは
+止まらないので、`hmwr queue status` で実行中の実験が無いことを確かめてから測る。
+
 ### 単発の診断
 
 ```

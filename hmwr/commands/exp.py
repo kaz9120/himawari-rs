@@ -44,6 +44,15 @@ def add_parser(sub: argparse._SubParsersAction) -> None:
     t.set_defaults(func=show)
 
     t = ss.add_parser(
+        "reset",
+        help="完了印を消し、最初から走り直せるようにする",
+        description="消すのはステップの完了印だけで、成果物には触らない。"
+        "各コマンドの完了印が残っていれば、走り直しても作り直しは起きない。",
+    )
+    t.add_argument("name", help="specの名前")
+    t.set_defaults(func=reset)
+
+    t = ss.add_parser(
         "check",
         help="作業ツリーのspecを検査する",
         description="書き方の規約と、全ステップが予行演習を通ることを確かめる。"
@@ -51,6 +60,11 @@ def add_parser(sub: argparse._SubParsersAction) -> None:
     )
     t.add_argument("names", nargs="*", metavar="名前", help="省くと全部")
     t.set_defaults(func=check)
+
+
+def pause_file() -> Path:
+    """一時停止の印。置いてある間は、次のステップを始めない（hmwr queue pause）。"""
+    return paths.QUEUE / "PAUSE"
 
 
 def state_dir(name: str) -> Path:
@@ -94,6 +108,10 @@ def run(args: argparse.Namespace) -> int:
         if not args.dry_run and _is_done(s.name, step):
             print(f"{head}: 済み")
             continue
+        if not args.dry_run and pause_file().exists():
+            # 走っているステップは止めない。切れ目で止まり、再開は同じコマンドで行う
+            print(f"{head}: 一時停止中なので始めない（hmwr queue resume で解除）")
+            return proc.JUDGE
         print(f"{head}: {step.run}", flush=True)
         if args.dry_run:
             code = _dry(step)
@@ -152,6 +170,18 @@ def show(args: argparse.Namespace) -> int:
             pending += 1
         print(f"{paths.pad(step.id, 20)}{state}")
     return proc.OK if pending == 0 else proc.JUDGE
+
+
+def reset(args: argparse.Namespace) -> int:
+    marks = sorted(state_dir(args.name).glob("*.done"))
+    for mark in marks:
+        if args.dry_run:
+            print(f"[dry-run] rm {paths.rel(mark)}")
+        else:
+            mark.unlink()
+    if not args.dry_run:
+        print(f"完了印を{len(marks)}個消した: {args.name}")
+    return proc.OK
 
 
 def check(args: argparse.Namespace) -> int:
