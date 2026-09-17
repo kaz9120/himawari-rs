@@ -52,6 +52,10 @@ def _candidates(days: int) -> list[tuple[str, Path]]:
     for p in sorted((paths.REPO / "data/sprt").glob("*.jsonl")):
         if old(p):
             found.append(("sprt棋譜", p))
+    for p in sorted((paths.REPO / "data/sprt").glob("*.cond")):
+        # 対局条件の記録は棋譜と対で意味を持つ。棋譜と同じ基準で消す
+        if old(p):
+            found.append(("対局条件", p))
     for p in sorted((paths.REPO / "data/bin").iterdir()):
         if old(p):
             found.append(("バイナリ", p))

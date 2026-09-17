@@ -37,7 +37,8 @@ DEFAULT_HYPOTHESIS = ("0", "5")
 NON_INFERIORITY_HYPOTHESIS = ("-5", "0")
 
 # 判定を終了コードへ写す。0=H1、1=H0、2=判定に至らず
-EXIT_BY_VERDICT = {"H1": 0, "H0": 1, "打ち切り": 2, "判定前": 2}
+# 「指し切り」は固定ペア数を指し終えた走行で、Eloの推定が成果になる
+EXIT_BY_VERDICT = {"H1": 0, "H0": 1, "指し切り": 0, "打ち切り": 2, "判定前": 2}
 
 
 class Unreadable(Exception):
@@ -135,7 +136,9 @@ def build_report(name: str, verdict: str, fields: dict, note: str = "") -> str:
     elo_num, elo_ci = fields["elo_num"], fields["elo_ci"]
     llr, wdl, games = fields["llr"], fields["wdl"], fields["games"]
 
-    if verdict == "打ち切り":
+    if verdict == "指し切り":
+        row = f"| {name} | **{elo_num} {elo_ci}**（{games}局を指し切り）{note} |"
+    elif verdict == "打ち切り":
         row = f"| {name} | **{elo_num} {elo_ci}**（{games}局、LLR {llr}で打ち切り）{note} |"
     elif verdict == "判定前":
         row = (
@@ -200,10 +203,13 @@ def write_result(path: Path, name: str, verdict: str, fields: dict, hyp) -> None
     os.replace(tmp, path)
 
 
-def report(log: Path, name: str, result: Path | None = None) -> tuple[str, str]:
+def report(
+    log: Path, name: str, result: Path | None = None, fixed_pairs: int = 0
+) -> tuple[str, str]:
     """ログを読んで (整形した報告, 判定) を返す。
 
-    resultを渡し、判定が出ていればその場所へ結果ファイルを書く。
+    resultを渡し、判定が出ていればその場所へ結果ファイルを書く。fixed_pairsを
+    渡すと、そのペア数を指し終えた走行を「指し切り」として完了に数える。
     """
     if not log.is_file():
         raise Unreadable(f"ログがない: {log}")
@@ -217,9 +223,11 @@ def report(log: Path, name: str, result: Path | None = None) -> tuple[str, str]:
         raise Unreadable(f"結果行が見つからない: {log}")
 
     fields = parse_fields(src)
+    if fixed_pairs and verdict == "打ち切り" and fields["games"] >= fixed_pairs * 2:
+        verdict = "指し切り"
     hyp = find_hypothesis(lines)
     text = build_report(name, verdict, fields, hypothesis_note(hyp))
 
-    if result is not None and verdict in ("H1", "H0"):
+    if result is not None and verdict in ("H1", "H0", "指し切り"):
         write_result(result, name, verdict, fields, hyp)
     return text, verdict
