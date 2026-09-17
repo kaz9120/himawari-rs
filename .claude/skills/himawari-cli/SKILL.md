@@ -245,7 +245,11 @@ hmwr clean --apply    30日を過ぎた成果物を消す（ADR-0189）
 ```
 hmwr doc lint          CIと同じ検査を回す
 hmwr doc lint --fix    自動で直せるものを直す
+hmwr doc check         ADRのStatusと索引の一致、相対リンクの行き先を見る
 ```
+
+ADRを足したりStatusを変えたりしたら `doc check` も通す。索引の更新漏れと、
+リンク先のファイル名の間違いがここで落ちる。
 
 PRを出す前に通す。CIが落ちてから直すより速い（ADR-0178）。
 

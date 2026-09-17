@@ -1,0 +1,51 @@
+# 文書の健康診断（ADR-0209）。週次で整合を検査し、食い違いをIssueへ起票する。
+#
+# PRでの検査はpytestが担う（tests/test_doccheck.py）。ここで足すのは、時間の
+# 経過でしか現れない違反である。proposedのまま動いていないADRがそれに当たる。
+# 判断が要らない仕事なので、LLMを通さない。
+name: doc-health
+
+on:
+  schedule:
+    - cron: "0 0 * * 1" # 月曜 09:00 JST
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # proposedの古さは最後のコミットの日付で測る。浅いcloneでは測れない
+          fetch-depth: 0
+      - id: check
+        run: |
+          set +e
+          python3 bin/hmwr doc check --stale-days 30 > report.txt
+          echo "code=$?" >> "$GITHUB_OUTPUT"
+          cat report.txt
+      - if: steps.check.outputs.code != '0'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TITLE: "文書の整合: 週次の検査で食い違いが出た"
+        run: |
+          {
+            echo "週次の \`hmwr doc check --stale-days 30\` が食い違いを見つけました。"
+            echo
+            echo '```'
+            cat report.txt
+            echo '```'
+            echo
+            echo "実行: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          } > body.md
+          # 同じ題のIssueが開いていれば、そこへ追記する。毎週増やさない
+          number=$(gh issue list --state open --search "in:title \"$TITLE\"" --json number -q '.[0].number')
+          if [ -n "$number" ]; then
+            gh issue comment "$number" --body-file body.md
+          else
+            gh issue create --title "$TITLE" --label micro --body-file body.md
+          fi

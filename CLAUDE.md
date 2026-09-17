@@ -85,7 +85,12 @@ READMEとROADMAPには変わり続ける事実を書かない（[ADR-0182](docs/
 ```
 hmwr doc lint        # docs/ と *.md と .claude/ を検査する
 hmwr doc lint --fix  # 自動で直せるものだけ直す
+hmwr doc check       # ADRのStatusと索引の一致、相対リンクの行き先を検査する
 ```
+
+`doc check` は文書どうしの食い違いを見る（[ADR-0209](docs/adr/0209-workflow-layers.md)）。
+PRではpytestが同じ検査を走らせる。週次のGitHub Actionsは、proposedのまま
+30日動いていないADRも挙げて `micro` Issueへ起票する。
 
 強調の中に句点を書かない。`**要点である**。` と書き、`**要点である。**`
 とは書かない。textlintの文の分割器は `。**` で文を切らないため、後者だと
