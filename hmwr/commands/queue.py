@@ -76,8 +76,9 @@ def add_parser(sub: argparse._SubParsersAction) -> None:
     t = ss.add_parser(
         "install",
         help="専用のworktreeとlaunchdの常駐を用意する",
-        description="<リポジトリ>-runner にworktreeを作り、data/ と学習の成果物を"
-        "リンクでつなぐ。launchdが5分おきに hmwr queue run を呼ぶ。",
+        description="<リポジトリ>-runner にworktreeを作り、data/ と学習の成果物と"
+        "開始局面集をリンクでつなぐ。もう一度実行すると、足りないリンクを足して"
+        "常駐を入れ直す。launchdが5分おきに hmwr queue run を呼ぶ。",
     )
     t.set_defaults(func=install)
 
@@ -301,6 +302,8 @@ def resume(args: argparse.Namespace) -> int:
 
 # worktreeには無く、開発用の作業ツリーと共有するもの。どれもgitignoreの対象
 SHARED = ("data", "training/checkpoints", "training/runs")
+# 一部のファイルだけがgit管理のディレクトリ。管理外のファイルを1つずつつなぐ
+PARTLY_TRACKED = ("openings",)
 
 
 def runner_dir() -> Path:
@@ -355,6 +358,19 @@ def install(args: argparse.Namespace) -> int:
             raise proc.Fail(f"リンクを張る場所に実体がある: {link}")
         link.parent.mkdir(parents=True, exist_ok=True)
         link.symlink_to(source)
+
+    for rel in PARTLY_TRACKED:
+        for source in sorted((paths.REPO / rel).iterdir()):
+            if source.is_symlink() or proc.succeeds(
+                ["git", "ls-files", "--error-unmatch", str(source.relative_to(paths.REPO))]
+            ):
+                continue
+            link = runner / rel / source.name
+            if dry:
+                print(f"[dry-run] ln -s {source} {link}")
+            elif not link.is_symlink() and not link.exists():
+                link.parent.mkdir(parents=True, exist_ok=True)
+                link.symlink_to(source)
 
     target = plist_path()
     if dry:
