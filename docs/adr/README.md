@@ -31,6 +31,8 @@
 - [0089](0089-improvement-criteria.md) 探索改善を速度・ノード効率・終盤の正確さの3軸で選ぶ
 - [0109](0109-reference-parity.md) 参照実装への追従は1群1SPRTで進める
 - [0149](0149-experiment-runner.md) 実験の実行とログを規約で固定する
+- [0208](0208-hmwr-resource-verbs.md) hmwrのコマンドを手順の固定から資源への操作へ切り直す
+- [0209](0209-workflow-layers.md) 仕事を4つの層へ振り分け、実験をIssueのキューで無人実行する
 
 ### 盤面表現と指し手
 
@@ -336,6 +338,8 @@
 | [0205](0205-relabel-loop.md) | 教師の局面を自分の探索で付け直し、ゼロから学習し直す世代を試す | 2026-09-09 |  | accepted |
 | [0206](0206-entering-king-mix.md) | 入玉5億局面を教師へ混ぜ、入玉局面の弱さを埋める | 2026-09-15 |  | rejected |
 | [0207](0207-roadmap-focus-eval.md) | ROADMAPを再び棚卸しし、注力を評価関数の学習と構造の1本に絞る | 2026-09-17 |  | accepted |
+| [0208](0208-hmwr-resource-verbs.md) | hmwrのコマンドを手順の固定から資源への操作へ切り直す | 2026-09-17 |  | proposed |
+| [0209](0209-workflow-layers.md) | 仕事を4つの層へ振り分け、実験をIssueのキューで無人実行する | 2026-09-17 |  | proposed |
 
 ## バックログ
 
