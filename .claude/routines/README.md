@@ -4,11 +4,15 @@
 Routineのプロンプトは「このディレクトリの手順を実行する」の1行にする。手順の
 中身をここへ置くのは、PRでレビューでき、履歴が残るためである。
 
-| 手順 | 周期 | やること |
-|---|---|---|
-| [micro-digest.md](micro-digest.md) | 毎晩 | `micro` と `cloud` の付いたIssueを古い順に1件消化し、PRを出す |
-| [patrol.md](patrol.md) | 週次 | 固定の観点でコードと文書を読み、`micro` Issueを切る |
-| [stockfish-watch.md](stockfish-watch.md) | 週次 | Stockfishの新着PRを読み、本エンジンで成り立つ理由を書けるものをIssueにする |
+| 手順 | 周期（日本時間） | やること | Routine |
+|---|---|---|---|
+| [micro-digest.md](micro-digest.md) | 毎日 03:00 | `micro` と `cloud` の付いたIssueを古い順に1件消化し、PRを出す | [trig_01PDkdQ3tFKWi2Ak3uyKCjJt](https://claude.ai/code/routines/trig_01PDkdQ3tFKWi2Ak3uyKCjJt) |
+| [patrol.md](patrol.md) | 月曜 04:00 | 固定の観点でコードと文書を読み、`micro` Issueを切る | [trig_01L4faVCfNjCjsYHE68MQtzL](https://claude.ai/code/routines/trig_01L4faVCfNjCjsYHE68MQtzL) |
+| [stockfish-watch.md](stockfish-watch.md) | 木曜 04:00 | Stockfishの新着PRを読み、本エンジンで成り立つ理由を書けるものをIssueにする | [trig_017okz4pZg7NbTvhnf8u8cJi](https://claude.ai/code/routines/trig_017okz4pZg7NbTvhnf8u8cJi) |
+
+実装を伴う消化と、根拠を書く調査はOpus、手順の決まった巡回はSonnetで回している。
+止めるときは、Routineのページで無効にする。消すのもそのページからで、APIからは
+消せない。実行の記録は同じページにあり、動きがおかしいときはそこから辿る。
 
 ## 共通の約束
 

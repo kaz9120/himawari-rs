@@ -89,6 +89,10 @@ floodgateのレートが上がることに置く**（[ADR-0207](adr/0207-roadmap
   走らせる。手順は `hmwr` のコマンド列で書く
   （[ADR-0208](adr/0208-hmwr-resource-verbs.md)）。止まっていたら
   `hmwr queue status` と `data/logs/queue-launchd.log` を見る
+- **クラウドの定期実行**（[ADR-0209](adr/0209-workflow-layers.md)）。Claude Code
+  Routinesが `micro` の消化（毎晩）、巡回（週次）、Stockfishの未採用PRの
+  調査（週次）を回す。手順と止め方は `.claude/routines/README.md` にある。
+  GitHub Actionsは文書の整合検査とレートの定点記録を週次で回す
 - **測定の手順はスキルが持つ**。SPRTはrunning-sprt、ビルド・計測・SPSAは
   himawari-cliを使う
 - **細かい改善のIssueサイクル**。小さな気になりを `micro` ラベルの
@@ -108,8 +112,7 @@ tanukiを足す群の2本を統制群にして分ける。読み方はADR-0210�
 ある。効いたのが量でなければ、次はtanukiの測定台を作り、本学習へ移るかを測る。
 
 並行して、開発プロセスの見直し（[ADR-0209](adr/0209-workflow-layers.md)）の
-残りを進める。結果の記録の無人化（Issue #506）、GitHub Actionsの文書検査と
-レートの定点記録（Issue #507）、Claude Code Routines（Issue #508）である。
+残りを進める。結果の記録の無人化（Issue #506）である。
 
 ## 候補
 

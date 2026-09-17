@@ -1,6 +1,6 @@
 # 0209: 仕事を4つの層へ振り分け、実験をIssueのキューで無人実行する
 
-- Status: accepted（開発機の線を実装。結果の記録はIssue #506、クラウドの線はIssue #507・#508に残る）
+- Status: accepted（4つの層を実装。結果の記録の無人化だけがIssue #506に残る）
 - Date: 2026-09-17
 - 関連ADR: [0070](0070-pr-based-workflow.md), [0123](0123-stop-and-resume.md), [0149](0149-experiment-runner.md), [0152](0152-floodgate-cycle.md), [0175](0175-sprt-until-decision.md), [0181](0181-agent-surface.md), [0189](0189-artifact-retention.md), [0207](0207-roadmap-focus-eval.md), [0208](0208-hmwr-resource-verbs.md)
 
@@ -390,3 +390,7 @@ GitHubのツールで操作する。
 足場になる。作成の直後に `clear_mcp_connections` で外し、手順にも書いた。
 
 使用量がサブスクリプションの上限に収まるかは、定期実行を回してから見る。
+
+定期実行を3本作った（2026-09-18）。`micro` の消化が毎日03:00、巡回が月曜
+04:00、Stockfishの未採用PRの調査が木曜04:00（日本時間）である。Routineの
+IDと止め方は `.claude/routines/README.md` にある。
