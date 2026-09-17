@@ -407,8 +407,8 @@ recording-experimentスキルを書き、キューが実験の完了の後に `c
 セッションに残す（Decisionのとおり）。記録が失敗したら、Issueへ書き戻して
 次の実験へ進む。実験の完了そのものは変わらないためである。
 
-`claude -p` の許可はEdit・Write・`hmwr`・`git`・`gh` に限り、専用のworktreeの
-`.claude/settings.json`（リポジトリのもの）のhookがそのまま効く。記録の
+`claude -p` の許可はEdit・Write・`hmwr`・`git`・`gh` だけである。専用のworktreeでも
+リポジトリの `.claude/settings.json` のhookがそのまま効く。記録の
 途中で止まっても、worktreeをorigin/mainへ戻してから次へ進む。
 
 最初の記録は、ADR-0211のSPRTが終わったときに走る。記録の質はそこで見る。
