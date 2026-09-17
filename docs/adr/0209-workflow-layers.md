@@ -280,3 +280,33 @@ Decisionから変えた点が3つある。
 
 CIの検査は `hmwr exp check` で、pytestから呼ぶ。書き方の規約、ADRの存在、
 全ステップの予行演習を見る。
+
+### Issueのキューとlaunchd（2026-09-18）
+
+`hmwr queue` を作った。`tick` が待ち行列を1回見て、実験を1件実行する。
+実行中のIssueがあれば続きから、無ければ `queued` の先頭を取る。`run` は
+launchdの入口で、コードをorigin/mainへ揃えてから `tick` を呼ぶ。
+
+Decisionに無く、実装で決めたことが5つある。
+
+- **専用のworktreeから走らせる**（`<リポジトリ>-runner`、detached HEAD）。開発用の
+  作業ツリーはブランチを頻繁に切り替えるので、そこで走らせると実験のコードが
+  途中で変わる。`build pair` が `crates/` を一時的に差し替える操作も、開発中の
+  作業と衝突しなくなる。`data/`・`training/checkpoints`・`training/runs` は
+  gitignoreの対象なので、リンクで共有する。`hmwr queue install` が用意する
+- **作者を見る**。リポジトリは公開で、Issueフォームは誰が出してもラベルが付く。
+  作者がオーナーでないIssueは実行せず `failed` にする。実行できるのは
+  mainにあるspecだけなので実害は小さいが、開発機の時間を使わせない
+- 道具のビルドは、走らせる実験があるときだけ行う。mainが進むたびに作り直すと、
+  待ちが無いのにビルドが走り、対話セッションの計測を乱す
+- 一時停止はステップの切れ目で効く。走っているステップは止めない。止まった
+  実験のラベルは `running` のまま残り、解除の後に続きから走る。走行中の学習や
+  対局まで止めたいときは、各コマンドの停止の口を使う
+- launchdは5分おきに `run` を呼ぶ。`caffeinate -i` で包み、走っている間の
+  スリープを防ぐ。種別は `Standard` にした。`Background` だとCPUを絞られ、
+  対局の持ち時間の消化が乱れる
+
+`failed` の実験は、原因を直してラベルを `queued` へ戻すと続きから走る。
+受け入れ試験のspec（`experiments/adr0209-queue-smoke.toml`）を置いた。
+キューの仕組みを変えたら、`hmwr exp reset` で完了印を消し、このspecを指す
+Issueを積んで通ることを確かめる。

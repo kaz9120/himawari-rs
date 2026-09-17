@@ -1,0 +1,15 @@
+# 実験キューの受け入れ試験（ADR-0209）。数秒で終わり、成果物を残さない。
+# キューの仕組みを変えたら、このspecを指すIssueを積んで通ることを確かめる。
+adr = "0209"
+
+[[step]]
+id = "split"
+run = "hmwr data split queue_smoke --in bench200k --count 1000"
+
+[[step]]
+id = "stats"
+run = "hmwr data stats queue_smoke"
+
+[[step]]
+id = "rm"
+run = "hmwr data rm queue_smoke"

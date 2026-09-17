@@ -149,6 +149,14 @@ def test_a_spec_changed_after_running_is_refused(runner, monkeypatch):
     assert cli.main(["exp", "run", "x"]) == proc.RUNTIME
 
 
+def test_reset_lets_the_experiment_run_again(runner):
+    calls, _ = runner
+    assert cli.main(["exp", "run", "x"]) == proc.OK
+    assert cli.main(["exp", "reset", "x"]) == proc.OK
+    assert cli.main(["exp", "run", "x"]) == proc.OK
+    assert len(calls) == 6
+
+
 def test_dry_run_leaves_no_marks(runner):
     assert cli.main(["--dry-run", "exp", "run", "x"]) == proc.OK
     assert not (paths.QUEUE / "x").exists()
