@@ -1,6 +1,6 @@
 # 0209: 仕事を4つの層へ振り分け、実験をIssueのキューで無人実行する
 
-- Status: proposed
+- Status: accepted（開発機の線を実装。結果の記録はIssue #506、クラウドの線はIssue #507・#508に残る）
 - Date: 2026-09-17
 - 関連ADR: [0070](0070-pr-based-workflow.md), [0123](0123-stop-and-resume.md), [0149](0149-experiment-runner.md), [0152](0152-floodgate-cycle.md), [0175](0175-sprt-until-decision.md), [0181](0181-agent-surface.md), [0189](0189-artifact-retention.md), [0207](0207-roadmap-focus-eval.md), [0208](0208-hmwr-resource-verbs.md)
 
@@ -310,3 +310,15 @@ Decisionに無く、実装で決めたことが5つある。
 受け入れ試験のspec（`experiments/adr0209-queue-smoke.toml`）を置いた。
 キューの仕組みを変えたら、`hmwr exp reset` で完了印を消し、このspecを指す
 Issueを積んで通ることを確かめる。
+
+### 受け入れ試験（2026-09-18）
+
+`hmwr queue install` で常駐させ、受け入れ試験のspecを指すIssue #518を積んだ。
+launchdの次の回が拾い、ラベルが `queued`→`running`→`done` と動いた。所要は
+41秒で、そのうち約30秒は専用のworktreeでの初回のビルドである。開始と完了の
+コメントがIssueへ書き戻された。launchdの環境から `gh` の認証が通ることも、
+ここで確かめた。
+
+確かめていないことが2つ残る。再起動をまたいだ再開（`running` のIssueを
+続きから走らせる経路は、テストでしか見ていない）と、数時間かかる実験での
+スリープの抑止である。最初の本物の実験で見る。
