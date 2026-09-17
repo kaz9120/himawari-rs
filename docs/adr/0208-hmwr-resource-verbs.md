@@ -1,6 +1,6 @@
 # 0208: hmwrのコマンドを手順の固定から資源への操作へ切り直す
 
-- Status: proposed
+- Status: accepted（段取り1〜5を実装。league runとdata genはIssue #502・#509に残る）
 - Date: 2026-09-17
 - 関連ADR: [0149](0149-experiment-runner.md), [0175](0175-sprt-until-decision.md), [0180](0180-hmwr-cli-in-python.md), [0181](0181-agent-surface.md), [0128](0128-round-robin-league.md), [0168](0168-ft-dim-reorder.md), [0192](0192-tanuki2024-teacher.md)
 
@@ -227,3 +227,28 @@ split・mix・quiet・rankの5つである。等価性は小さな実データ�
 変えていない。`--dry-run` の出力は、3つとも移す前と一致した。旧名の別名は
 残さない。過去のADRに残る `hmwr net rank` などの記述は、当時の記録として
 そのままにする。
+
+## 段取り4と5の実装（2026-09-18）
+
+ADR-0206のチェーンを `hmwr` のコマンド列へ書き直した。15行になり、
+`tests/test_experiment_chain.py` が全行の予行演習を検査する。書き直しで
+足りないと分かった操作は4つあり、同じPRで足した。
+
+- `net train` が教師・検証集合・兄弟群を名前で受ける（`--rank` を新設）
+- `data rm`。学習が済んだ混合データを消す。完了印のある出力だけを消すので、
+  消しても完了印に残るコマンドで作り直せる。由来の記録がないファイルには
+  触らない
+- `data openings`。教師データから手数の条件で開始局面集を作る。ADR-0206の
+  `entering_king_ply40.txt` をバイト単位で再現できた
+- `data stats`。読むだけの確認も直接実行の理由になるので包んだ
+
+hookを有効にした（`.claude/hooks/no_direct_tools.py`）。**止めるのは `hmwr` に
+同じ操作があるものだけにした**。`selfplay` と、`psv` のhead・shuffle・quiet・
+rank・statsである。`psv` のrelabel・thin・phase・dumpと `gensfen` は通す。
+被覆の前に止めると抜け道が作られる、というDecisionの条件に沿う。`hmwr` へ
+包んだら、hookの一覧へ足す。コマンドの位置にある実行だけを見るので、
+`ls` や `grep` の引数に出るパスは止めない。
+
+残りは2つである。`league run` の載せ替え（Issue #502）と `data gen`
+（Issue #509）で、どちらも次に使う実験が出たときに着手する。`sprt` の別名は、
+running-sprtスキルの手順を書き換えるまで残す。

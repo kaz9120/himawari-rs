@@ -118,9 +118,9 @@ hmwr build shapes 256x16 512x16x32  構成ごとにエンジンと評価ファ�
 ### 評価関数を扱う
 
 ```
-hmwr net train <名前> --data data/train/train_2990M_q1.psv \
-                      --valid data/train/valid_385M_q1.psv
-hmwr net train <名前> --data d.psv --init-ckpt <ckpt> --lr 1e-4
+hmwr net train <名前> --data train_300M_q1 --valid valid_385M_q1 \
+                      --rank rank_300M_100M       3億の測定台のレシピ
+hmwr net train <名前> --data <名前> --init-ckpt <ckpt> --lr 1e-4
 hmwr net shapes 256x16 512x16x32 --seed 1   構成ごとに小さく学習して比べる
 hmwr net eval data/nets/*.hmwr.best
 hmwr net release data/nets/x.hmwr.best 5 --apply
@@ -160,6 +160,9 @@ hmwr data split <出力名> --in <入力名> --count N     先頭から区間を
 hmwr data mix <出力名> --in <入力名> --in <入力名>   複数の教師を混ぜる
 hmwr data quiet <出力名> --in <入力名>               静止局面へ置き換える
 hmwr data rank <出力名> --in <入力名> --limit N --jobs 4   兄弟局面の群を作る
+hmwr data openings <出力名> --in <入力名> --min-ply 40 --count 2000   開始局面集を作る
+hmwr data stats <名前>                               局面数・評価値の分布を見る
+hmwr data rm <名前>...                               中間ファイルを消す
 ```
 
 **引数は名前で渡す**。`<名前>` は `data/train/<名前>.psv` に決まる（rankの出力は
@@ -170,6 +173,10 @@ hmwr data rank <出力名> --in <入力名> --limit N --jobs 4   兄弟局面の
 出力は `.part` へ書いてから改名し、`<出力>.done` に走らせたコマンドを控える。
 同じ条件の再実行は何もせず成功で終わる。同じ名前で条件が違うと止まるので、
 名前を変えるか `--force` で作り直す。完了印のない古い出力も同じ扱いになる。
+
+`data rm` が消すのは完了印のある出力だけである。完了印に作り方が残っているので、
+消しても同じコマンドで作り直せる。由来の記録がないファイルには触らない。
+**学習が読んでいる最中のpsvを消さない**。
 
 `data quiet` は並列8で6,000万局面に2〜12分かかる（ADR-0210・ADR-0206の実測。
 取り合いの多い局面ほど遅い）。停止ファイルを持たないので、途中で止めたら最初からやり直す。`--limit` で先頭だけ試せる。並列数を変えると出力が変わる。
