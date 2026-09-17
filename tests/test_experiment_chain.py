@@ -45,6 +45,8 @@ def empty_dirs(tmp_path, monkeypatch):
     monkeypatch.setattr(paths, "SPRT", tmp_path / "sprt")
     monkeypatch.setattr(paths, "TRAIN", tmp_path / "train")
     monkeypatch.setattr(paths, "LOGS", tmp_path / "logs")
+    monkeypatch.setattr(paths, "CHECKPOINTS", tmp_path / "checkpoints")
+    monkeypatch.setattr(paths, "NETS", tmp_path / "nets")
 
 
 @pytest.mark.parametrize("step", STEPS)

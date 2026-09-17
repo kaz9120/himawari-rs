@@ -16,7 +16,6 @@
 from __future__ import annotations
 
 import argparse
-import json
 import os
 import subprocess
 import sys
@@ -24,7 +23,7 @@ import time
 from dataclasses import dataclass, field, replace
 from pathlib import Path
 
-from .. import config, paths, proc, sprt_log
+from .. import conditions, config, paths, proc, sprt_log
 
 # 異常終了からの再開を数える上限。判定に至らないまま無限に試し続けない
 MAX_RETRY = 20
@@ -453,29 +452,10 @@ def _selfplay(spec: Spec, *, dry_run: bool, attempt: int) -> int:
 
 
 def check_conditions(cond: Path, line: str, games: int, *, adopt: bool, dry_run: bool) -> None:
-    """同じ名前の棋譜へ、違う条件の対局を積まない。
-
-    再開は棋譜の有無だけで決まるので、名前が既存の走行とぶつかると、条件の
-    違う対局が黙って続きに積まれる。最初の起動で条件を控え、再開のたびに比べる。
-    """
-    if games and cond.is_file():
-        before = json.loads(cond.read_text(encoding="utf-8"))["command"]
-        if before != line:
-            raise proc.Fail(
-                f"同じ名前で条件の違う棋譜がある: {paths.rel(cond.with_suffix('.jsonl'))}\n"
-                f"前回: {before}\n今回: {line}\n名前を変える"
-            )
-        return
-    if games and not adopt:
-        raise proc.Fail(
-            f"条件の記録がない棋譜がある: {paths.rel(cond.with_suffix('.jsonl'))}\n"
-            "続きから指すなら --adopt を付ける。条件が同じであることは、"
-            "ログの起動行で確かめる"
-        )
-    if not dry_run:
-        cond.write_text(
-            json.dumps({"command": line}, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
-        )
+    """同じ名前の棋譜へ、違う条件の対局を積まない。"""
+    conditions.check(
+        cond, line, resuming=games > 0, adopt=adopt, dry_run=dry_run, what="棋譜"
+    )
 
 
 def _finish(spec: Spec) -> int:
