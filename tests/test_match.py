@@ -52,7 +52,9 @@ def test_fixed_pairs_matches_the_adr0206_chain(capsys):
     assert "--bopt EvalFile=" in play and "data/nets/pairrank_300M_q1.hmwr" in play
     assert "--copt EvalFile=" in play and "data/nets/mixhao20_300M.hmwr" in play
     assert "--option EvalFile=" not in play
-    assert "--tc 10+0.1 --concurrency 8 --hash 64 --max-moves 400 --adjudicate 2000,8" in play
+    # 並列数はマシンのコア数で決まるので、ここでは見ない
+    assert "--tc 10+0.1 --concurrency " in play
+    assert "--hash 64 --max-moves 400 --adjudicate 2000,8" in play
     assert "--no-stop" in play
     assert "--max-pairs 1000" in play
 
