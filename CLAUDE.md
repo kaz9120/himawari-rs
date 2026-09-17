@@ -206,12 +206,17 @@ PRテンプレートで種別を選び、種別ごとにマージ条件とバー
 ビルドや計測をしない）。詳細は[ADR-0070](docs/adr/0070-pr-based-workflow.md)
 の「ブランチ運用」にある。
 
-PRの作成はテンプレートを明示して行う。
+PRは種別を明示して作る。本文のひな形を出して各節を埋め、`hmwr pr create` へ渡す。
+テンプレートの見出しが本文に揃っていなければ、PRは作られない。
 
 ```
-gh pr create --template strength.md   # 棋力向上
-gh pr create --template chore.md      # その他
+hmwr pr template chore > body.md      # ひな形（chore か strength）
+hmwr pr create --kind chore --title "chore: …" --body-file body.md
+hmwr ci wait <PR番号>                 # CIが確定するまで待つ
 ```
+
+`gh pr create --template` は使わない。エディタを開く前提で、非対話の環境では
+本文を渡せない。
 
 ## バージョニング（[ADR-0068](docs/adr/0068-sprt-driven-versioning.md)・[ADR-0071](docs/adr/0071-release-please.md)）
 
