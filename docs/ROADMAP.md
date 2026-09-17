@@ -84,6 +84,11 @@ floodgateのレートが上がることに置く**（[ADR-0207](adr/0207-roadmap
 - **探索定数のSPSA**（[ADR-0143](adr/0143-spsa-tuning.md)、第1群+32.0）。
   再走は毎世代ではなく機を見て行う（大きな構造変更の後や選手権前）。
   残る作業はSEE駒価値の配線判断と第2群の対象決め
+- **実験キュー**（[ADR-0209](adr/0209-workflow-layers.md)）。specとADRをmainへ
+  入れてIssueフォーム「実験」で積むと、開発機のlaunchdが古い順に1件ずつ
+  走らせる。手順は `hmwr` のコマンド列で書く
+  （[ADR-0208](adr/0208-hmwr-resource-verbs.md)）。止まっていたら
+  `hmwr queue status` と `data/logs/queue-launchd.log` を見る
 - **測定の手順はスキルが持つ**。SPRTはrunning-sprt、ビルド・計測・SPSAは
   himawari-cliを使う
 - **細かい改善のIssueサイクル**。小さな気になりを `micro` ラベルの
@@ -102,8 +107,9 @@ floodgateのレートが上がることに置く**（[ADR-0207](adr/0207-roadmap
 tanukiを足す群の2本を統制群にして分ける。読み方はADR-0210に事前登録して
 ある。効いたのが量でなければ、次はtanukiの測定台を作り、本学習へ移るかを測る。
 
-並行して、開発プロセスの見直し（[ADR-0208](adr/0208-hmwr-resource-verbs.md)・
-[ADR-0209](adr/0209-workflow-layers.md)）をIssue #502〜#508の順で進める。
+並行して、開発プロセスの見直し（[ADR-0209](adr/0209-workflow-layers.md)）の
+残りを進める。結果の記録の無人化（Issue #506）、GitHub Actionsの文書検査と
+レートの定点記録（Issue #507）、Claude Code Routines（Issue #508）である。
 
 ## 候補
 
