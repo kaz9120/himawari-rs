@@ -412,3 +412,15 @@ def test_measure_env_includes_rustflags():
     from hmwr import config
 
     assert config.measure_env()["RUSTFLAGS"]
+
+
+# --- diag --------------------------------------------------------------
+
+
+def test_one_off_diagnoses_live_under_diag(capsys):
+    """単発の診断は net に置かない。正規の表面と寿命が違う。"""
+    _, lines = dry(capsys, ["diag", "rank", "a.ckpt", "g.rankpsv"])
+    assert "ヒンジの発火を分ける" in lines[0]
+    for name in ("rank", "dead", "phase"):
+        with pytest.raises(SystemExit):
+            cli.main(["--dry-run", "net", name, "x", "y"])
