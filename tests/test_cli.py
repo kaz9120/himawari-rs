@@ -424,3 +424,15 @@ def test_one_off_diagnoses_live_under_diag(capsys):
     for name in ("rank", "dead", "phase"):
         with pytest.raises(SystemExit):
             cli.main(["--dry-run", "net", name, "x", "y"])
+
+
+def test_build_pair_can_build_the_candidate_from_a_ref(capsys):
+    """実験キューの作業ツリーはorigin/mainなので、候補をrefで指せるようにする。"""
+    _, lines = dry(capsys, ["build", "pair", "adr0211-x", "--candidate", "0cd8205"])
+    checkouts = [x for x in lines if "git checkout" in x]
+    assert checkouts[0].endswith("git checkout 0cd8205 -- crates/")
+    assert checkouts[1].endswith("git checkout origin/main -- crates/")
+    assert checkouts[-1].endswith("git checkout HEAD -- crates/")
+    copies = [x for x in lines if " cp " in x]
+    assert copies[0].endswith("data/bin/cand-adr0211-x")
+    assert copies[1].endswith("data/bin/base-adr0211-x")
