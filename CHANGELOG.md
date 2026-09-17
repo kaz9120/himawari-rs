@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.50.1](https://github.com/kaz9120/himawari-rs/compare/v0.50.0...v0.50.1) (2026-09-17)
+
+
+### その他の変更
+
+* 実験キューの専用worktreeへ、git管理外の開始局面集をリンクで共有する ([#537](https://github.com/kaz9120/himawari-rs/issues/537)) ([4811804](https://github.com/kaz9120/himawari-rs/commit/4811804b6d4c7a8f317da52d255aa284393f01e0))
+
 ## [0.50.0](https://github.com/kaz9120/himawari-rs/compare/v0.49.1...v0.50.0) (2026-09-15)
 
 
