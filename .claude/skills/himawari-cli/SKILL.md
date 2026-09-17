@@ -148,6 +148,8 @@ hmwr net release data/nets/x.hmwr.best 5 --apply
 hmwr exp check                 作業ツリーのspecを検査する（CIと同じ）
 hmwr exp run <名前>            origin/mainのspecを上から順に実行する
 hmwr exp show <名前>           ステップごとの進み具合
+hmwr exp report <名前>         対局・学習・データの数値をMarkdownの表にする
+hmwr exp report --match <対局名> --net <ネット名>   specの無い実験の表
 ```
 
 specは `experiments/<名前>.toml` に置き、ADRと同じPRで入れる。ステップは
@@ -162,6 +164,10 @@ adr = "0210"
 id = "mix"
 run = "hmwr data mix mixhao20_300M --in train_300M_q1 --in hao_extra_60M_q1"
 ```
+
+**結果をADRへ書くときは `exp report` の表を貼る**。ログを目で読んで数値を
+書き写さない。対局は結果ファイル、学習は実験台帳、データは完了印から読むので、
+転記の誤りが構造的に起きない。
 
 止まったら同じコマンドで続きから走る。完了したステップは飛ばし、学習と対局は
 それぞれの再開の口から続く。完了したステップのコマンドをspecで書き換えると

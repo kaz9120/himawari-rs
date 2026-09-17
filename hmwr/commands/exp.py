@@ -16,7 +16,7 @@ import sys
 import time
 from pathlib import Path
 
-from .. import paths, proc, spec
+from .. import paths, proc, report as report_mod, spec
 
 
 def add_parser(sub: argparse._SubParsersAction) -> None:
@@ -42,6 +42,19 @@ def add_parser(sub: argparse._SubParsersAction) -> None:
     t.add_argument("name", help="specの名前")
     t.add_argument("--worktree", action="store_true", help="作業ツリーのspecを読む")
     t.set_defaults(func=show)
+
+    t = ss.add_parser(
+        "report",
+        help="実験の数値をMarkdownの表にする",
+        description="対局は結果ファイル、学習は実験台帳、データは完了印から読む。"
+        "結果の記録には、この表をそのまま貼る。数値を手で書き写さない。"
+        "specの無い実験は --match と --net で名前を渡す。",
+    )
+    t.add_argument("name", nargs="?", help="specの名前。省いたら --match と --net だけを表にする")
+    t.add_argument("--match", action="append", default=[], metavar="名前", help="対局の名前")
+    t.add_argument("--net", action="append", default=[], metavar="名前", help="学習したネットの名前")
+    t.add_argument("--worktree", action="store_true", help="作業ツリーのspecを読む")
+    t.set_defaults(func=report)
 
     t = ss.add_parser(
         "reset",
@@ -170,6 +183,19 @@ def show(args: argparse.Namespace) -> int:
             pending += 1
         print(f"{paths.pad(step.id, 20)}{state}")
     return proc.OK if pending == 0 else proc.JUDGE
+
+
+def report(args: argparse.Namespace) -> int:
+    matches, nets, data = [], [], []
+    if args.name:
+        s = _load(args)
+        matches, nets, data = report_mod.from_steps([step.argv for step in s.steps])
+    elif not (args.match or args.net):
+        raise proc.Fail("specの名前か、--match・--net を渡す", proc.USAGE)
+    matches += [(name, "") for name in args.match]
+    nets += args.net
+    print(report_mod.render(matches, nets, data))
+    return proc.OK
 
 
 def reset(args: argparse.Namespace) -> int:
