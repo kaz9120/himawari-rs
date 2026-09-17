@@ -29,6 +29,11 @@ SPRT_ADJUDICATE = "2000,8"
 # +0.5のときの必要局数（約48,000ペア）を上回る値として置く
 SPRT_HARD_MAX_PAIRS = "60000"
 
+# 対局の置換表と、引き分けにする手数。selfplayの既定と同じ値を明示して渡す。
+# チェーンごとに320と400へ割れた事故があり、既定は1か所で持つ（ADR-0208）
+MATCH_HASH = "64"
+MATCH_MAX_MOVES = "320"
+
 # 現行の評価関数。**ここが正の場所である**（ROADMAPとREADMEはここを指す。
 # ADR-0182）。ネットの世代を替えるときはこの1行を更新する
 EVAL_FILE = "data/nets/rl_e1d8_reorder.hmwr"

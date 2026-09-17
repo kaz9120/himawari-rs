@@ -48,6 +48,8 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
+    # 切り離した子が同じ引数で自分を呼び直すために控える
+    args.argv = list(argv) if argv is not None else sys.argv[1:]
 
     if not getattr(args, "func", None):
         # サブコマンドが要る領域で操作を省いた場合は、その領域のヘルプを出す

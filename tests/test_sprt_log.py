@@ -201,7 +201,13 @@ def test_report_puts_note_into_the_trailer():
 
 
 def test_exit_codes_follow_the_verdict():
-    assert sprt_log.EXIT_BY_VERDICT == {"H1": 0, "H0": 1, "打ち切り": 2, "判定前": 2}
+    assert sprt_log.EXIT_BY_VERDICT == {
+        "H1": 0,
+        "H0": 1,
+        "指し切り": 0,
+        "打ち切り": 2,
+        "判定前": 2,
+    }
 
 
 # --- 結果ファイル ------------------------------------------------------
