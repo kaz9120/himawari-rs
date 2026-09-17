@@ -397,8 +397,8 @@ IDと止め方は `.claude/routines/README.md` にある。
 
 ### 結果の記録の無人化（2026-09-18）
 
-recording-experimentスキルを書き、キューが実験の完了の後に `claude -p` で
-呼ぶようにした。手順は、[ADR-0210](0210-teacher-mix-control.md)の結果を
+recording-experimentスキルを書いた。実験が完了すると、キューが `claude -p` で
+このスキルを呼ぶ。手順は、[ADR-0210](0210-teacher-mix-control.md)の結果を
 対話セッションで記録したときの型をそのまま写している。`hmwr exp report` の
 表を貼り、事前登録の表の行に当てはめ、その行の次の一手を書く。登録外の結果は
 「登録外」と明記し、解釈は1段落までにする。
