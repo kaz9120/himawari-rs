@@ -36,6 +36,8 @@ def world(tmp_path, monkeypatch):
     monkeypatch.setattr(queue, "comment", lambda n, body: state["comments"].append((n, body)))
     monkeypatch.setattr(queue, "_progress", lambda name: f"{name}: 進み具合")
     monkeypatch.setattr(queue, "_build_if_moved", lambda: None)
+    monkeypatch.setattr(queue, "_record", lambda name, number: state["recorded"].append(name))
+    state["recorded"] = []
 
     class Result:
         def __init__(self, code):
@@ -60,6 +62,7 @@ def test_the_oldest_queued_experiment_runs_first(world):
     assert world["ran"] == ["adr0211-a"]
     assert world["edits"] == [(11, "running", "queued,failed"), (11, "done", "running")]
     assert "完了" in world["comments"][-1][1]
+    assert world["recorded"] == ["adr0211-a"]
 
 
 def test_an_interrupted_experiment_is_resumed_before_new_ones(world):
@@ -75,6 +78,7 @@ def test_a_failure_is_written_back_and_the_queue_moves_on(world):
     world["queued"] = [issue(11, "adr0211-a")]
     world["exit"] = proc.RUNTIME
     assert cli.main(["queue", "tick"]) == proc.RUNTIME
+    assert world["recorded"] == []
     assert world["edits"][-1] == (11, "failed", "running")
     assert "queued" in world["comments"][-1][1]
 

@@ -1,6 +1,6 @@
 # 0209: 仕事を4つの層へ振り分け、実験をIssueのキューで無人実行する
 
-- Status: accepted（4つの層を実装。結果の記録の無人化だけがIssue #506に残る）
+- Status: accepted（4つの層と結果の記録の無人化を実装）
 - Date: 2026-09-17
 - 関連ADR: [0070](0070-pr-based-workflow.md), [0123](0123-stop-and-resume.md), [0149](0149-experiment-runner.md), [0152](0152-floodgate-cycle.md), [0175](0175-sprt-until-decision.md), [0181](0181-agent-surface.md), [0189](0189-artifact-retention.md), [0207](0207-roadmap-focus-eval.md), [0208](0208-hmwr-resource-verbs.md)
 
@@ -394,3 +394,21 @@ GitHubのツールで操作する。
 定期実行を3本作った（2026-09-18）。`micro` の消化が毎日03:00、巡回が月曜
 04:00、Stockfishの未採用PRの調査が木曜04:00（日本時間）である。Routineの
 IDと止め方は `.claude/routines/README.md` にある。
+
+### 結果の記録の無人化（2026-09-18）
+
+recording-experimentスキルを書いた。実験が完了すると、キューが `claude -p` で
+このスキルを呼ぶ。手順は、[ADR-0210](0210-teacher-mix-control.md)の結果を
+対話セッションで記録したときの型をそのまま写している。`hmwr exp report` の
+表を貼り、事前登録の表の行に当てはめ、その行の次の一手を書く。登録外の結果は
+「登録外」と明記し、解釈は1段落までにする。
+
+無人にする範囲はdocsのPRを出すところまでで、マージと採用の操作は対話
+セッションに残す（Decisionのとおり）。記録が失敗したら、Issueへ書き戻して
+次の実験へ進む。実験の完了そのものは変わらないためである。
+
+`claude -p` の許可はEdit・Write・`hmwr`・`git`・`gh` だけである。専用のworktreeでも
+リポジトリの `.claude/settings.json` のhookがそのまま効く。記録の
+途中で止まっても、worktreeをorigin/mainへ戻してから次へ進む。
+
+最初の記録は、ADR-0211のSPRTが終わったときに走る。記録の質はそこで見る。
