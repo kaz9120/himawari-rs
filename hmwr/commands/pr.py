@@ -47,7 +47,7 @@ def add_parser(sub: argparse._SubParsersAction) -> None:
 
 
 def template_text(kind: str) -> str:
-    file = paths.REPO / ".github" / "pull_request_template" / f"{kind}.md"
+    file = paths.REPO / ".github" / "PULL_REQUEST_TEMPLATE" / f"{kind}.md"
     return file.read_text(encoding="utf-8")
 
 
