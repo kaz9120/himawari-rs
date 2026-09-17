@@ -17,7 +17,6 @@ from pathlib import Path
 from .. import config, paths, proc
 
 ARCH_RE = re.compile(r"^\d+x\d+(x\d+){0,2}$")
-ENGINE = "target/release/himawari"
 
 
 def add_parser(sub: argparse._SubParsersAction) -> None:
@@ -176,12 +175,12 @@ def make_pair(name: str, *, baseline: str, candidate: str | None = None, dry_run
         if candidate:
             proc.run(["git", "checkout", candidate, "--", "crates/"], dry_run=dry_run)
         cargo_build(dry_run=dry_run)
-        _copy(paths.REPO / ENGINE, cand_out, dry_run=dry_run)
+        _copy(paths.release_bin("himawari"), cand_out, dry_run=dry_run)
 
         print("baselineをビルド中...")
         proc.run(["git", "checkout", baseline, "--", "crates/"], dry_run=dry_run)
         cargo_build(dry_run=dry_run)
-        _copy(paths.REPO / ENGINE, base_out, dry_run=dry_run)
+        _copy(paths.release_bin("himawari"), base_out, dry_run=dry_run)
     finally:
         # 失敗しても作業木を必ず戻す
         proc.run(["git", "checkout", "HEAD", "--", "crates/"], dry_run=dry_run)
@@ -226,10 +225,10 @@ def pgo(args: argparse.Namespace) -> int:
 
     print(f"2/3: 学習走行（ベンチ4局面、深さ{args.depth}）")
     instr = pgo_dir / "himawari-instr"
-    _copy(paths.REPO / ENGINE, instr, dry_run=args.dry_run)
+    _copy(paths.release_bin("himawari"), instr, dry_run=args.dry_run)
     proc.run(
         [
-            str(paths.REPO / "target" / "release" / "bench"),
+            str(paths.release_bin("bench")),
             str(instr),
             "--depth",
             str(args.depth),
@@ -250,7 +249,7 @@ def pgo(args: argparse.Namespace) -> int:
 
     print("3/3: 最適化ビルド")
     cargo_build(f"-C profile-use={merged}", dry_run=args.dry_run)
-    _copy(paths.REPO / ENGINE, out, dry_run=args.dry_run)
+    _copy(paths.release_bin("himawari"), out, dry_run=args.dry_run)
 
     print()
     print(f"できた: {paths.rel(out)}")

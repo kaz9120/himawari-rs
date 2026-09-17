@@ -102,13 +102,13 @@ def fetch(args: argparse.Namespace) -> int:
 def report(args: argparse.Namespace) -> int:
     games = Path(args.games) if args.games else _games_dir(2026)
     out = Path(args.out) if args.out else _default_report()
-    binary = paths.REPO / "target" / "release" / "kifu"
+    binary = paths.release_bin("kifu")
     if not binary.is_file() and not args.dry_run:
         raise proc.Fail(f"{paths.rel(binary)} がない。先に cargo build --release を実行する")
     return proc.run(
         [
             str(binary),
-            str(paths.REPO / "target" / "release" / "himawari"),
+            str(paths.release_bin("himawari")),
             str(games),
             "--eval-file", config.get("EVAL_FILE", "（未設定）"),
             "--out", str(out),

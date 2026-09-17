@@ -51,7 +51,7 @@ def _db_path(args: argparse.Namespace) -> Path:
 
 
 def _tool() -> str:
-    binary = paths.REPO / "target" / "release" / "book"
+    binary = paths.release_bin("book")
     if not binary.is_file():
         raise proc.Fail(f"{paths.rel(binary)} がない。先に cargo build --release を実行する")
     return str(binary)
