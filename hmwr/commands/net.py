@@ -12,7 +12,7 @@ import shutil
 import tempfile
 from pathlib import Path
 
-from .. import config, paths, proc
+from .. import conditions, config, paths, proc
 from .. import release as release_mod
 from ..tools import ft_reorder
 
@@ -67,6 +67,12 @@ def add_parser(sub: argparse._SubParsersAction) -> None:
         "--halfka",
         action="store_true",
         help="HalfKA拡張のwheelで学習する。省くとHalfKPを検査して使う",
+    )
+    t.add_argument("--force", action="store_true", help="同じ名前のネットがあっても最初から学習し直す")
+    t.add_argument(
+        "--adopt",
+        action="store_true",
+        help="条件の記録がないチェックポイントを、この条件の続きとして引き継ぐ",
     )
     t.set_defaults(func=train)
 
@@ -255,12 +261,36 @@ def train(args: argparse.Namespace) -> int:
     for directory in (paths.NETS, paths.REPO / RUNS, paths.CHECKPOINTS / name):
         directory.mkdir(parents=True, exist_ok=True)
 
+    # 備考は台帳のメモで、学習の条件ではない
+    at = argv.index("--notes")
+    line = proc.show(argv[:at] + argv[at + 2 :])
+    record = paths.CHECKPOINTS / name / "train.cond"
+    latest = paths.CHECKPOINTS / name / "latest.ckpt"
+
+    if out.is_file() and not args.force and not args.dry_run:
+        if conditions.recorded(record) == line:
+            print(f"済み: {paths.rel(out)}（同じ条件で学習済み。何もしない）")
+            return proc.OK
+        raise proc.Fail(
+            f"同じ名前のネットが既にある: {paths.rel(out)}\n"
+            "名前を変えるか、--force で最初から学習し直す"
+        )
+    resuming = latest.is_file() and not args.force
+    conditions.check(
+        record, line, resuming=resuming, adopt=args.adopt, dry_run=args.dry_run,
+        what="チェックポイント",
+    )  # fmt: skip
+
     print(f"=== 学習: {name} ===")
     print(f"学習データ: {paths.rel(data)}")
     print(f"検証データ: {paths.rel(valid)}")
     print(f"出力      : {paths.rel(out)}")
     if args.init_ckpt:
         print(f"初期値    : {args.init_ckpt}（継続学習、学習率 {lr}）")
+    if resuming:
+        # 止まった学習の続き。エポック内の位置まで戻る（ADR-0159）
+        print(f"再開      : {paths.rel(latest)}")
+        argv += ["--resume", str(latest)]
     return proc.run(argv, dry_run=args.dry_run, log=paths.log("train", name))
 
 
