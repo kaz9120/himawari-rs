@@ -220,3 +220,10 @@ split・mix・quiet・rankの5つである。等価性は小さな実データ�
   ある。`match` の下へ移す作業はIssue #502に残す
 
 `sprt` の別名を消すのは、running-sprtスキルとCLAUDE.mdを書き換える段取り5で行う。
+
+## 段取り3の実装（2026-09-18）
+
+`net rank`・`net dead`・`net phase` を `hmwr diag` へ移した。引数と動作は
+変えていない。`--dry-run` の出力は、3つとも移す前と一致した。旧名の別名は
+残さない。過去のADRに残る `hmwr net rank` などの記述は、当時の記録として
+そのままにする。
