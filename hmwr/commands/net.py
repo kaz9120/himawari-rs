@@ -45,8 +45,13 @@ def add_parser(sub: argparse._SubParsersAction) -> None:
         "土俵がずれると最良チェックポイントの選択が歪む。",
     )
     t.add_argument("name", help="ネット名。ログと台帳の名前にもなる")
-    t.add_argument("--data", required=True, metavar="PSV", help="学習データ")
-    t.add_argument("--valid", metavar="PSV", help=f"検証データ（既定 {DEFAULT_VALID}）")
+    t.add_argument(
+        "--data", required=True, metavar="名前", help="学習データ。data/train/<名前>.psv"
+    )
+    t.add_argument("--valid", metavar="名前", help=f"検証データ（既定 {DEFAULT_VALID}）")
+    t.add_argument(
+        "--rank", metavar="名前", help="ランキング損失の兄弟群。data/train/<名前>.rankpsv"
+    )
     t.add_argument("--init-ckpt", metavar="パス", help="継続学習の初期値")
     t.add_argument("--lr", metavar="値", help="学習率の頂点。継続学習の既定は1e-4")
     t.add_argument("--warmup", type=int, metavar="N", help="学習率を上げきるまでのステップ数")
@@ -200,12 +205,13 @@ def _ensure_extension(*, halfka: bool, dry_run: bool) -> None:
 def train(args: argparse.Namespace) -> int:
     """本番規模の学習。既定はADRの結論に揃えてある。"""
     name = paths.check_name(args.name)
-    data = Path(args.data)
-    valid = Path(args.valid or DEFAULT_VALID)
+    data = _train_file(args.data, ".psv")
+    valid = _train_file(args.valid or DEFAULT_VALID, ".psv")
+    rank = _train_file(args.rank, ".rankpsv") if args.rank else None
 
     if not args.dry_run:
-        for path, label in ((data, "学習データ"), (valid, "検証データ")):
-            if not path.is_file():
+        for path, label in ((data, "学習データ"), (valid, "検証データ"), (rank, "兄弟群")):
+            if path is not None and not path.is_file():
                 raise proc.Fail(f"{label}がない: {path}")
 
     _ensure_extension(halfka=args.halfka, dry_run=args.dry_run)
@@ -241,6 +247,8 @@ def train(args: argparse.Namespace) -> int:
         argv += _continual_args(data, args, dry_run=args.dry_run)
     if lr:
         argv += ["--peak-lr", lr]
+    if rank is not None:
+        argv += ["--rank-data", str(rank)]
     if args.extra:
         argv += args.extra.split()
 
@@ -254,6 +262,17 @@ def train(args: argparse.Namespace) -> int:
     if args.init_ckpt:
         print(f"初期値    : {args.init_ckpt}（継続学習、学習率 {lr}）")
     return proc.run(argv, dry_run=args.dry_run, log=paths.log("train", name))
+
+
+def _train_file(value: str, suffix: str) -> Path:
+    """名前を data/train/ のファイルへ解決する。区切りか拡張子があればパスとして通す。
+
+    学習器へはリポジトリからの相対パスで渡す。実験台帳の備考に載るので、
+    マシンの置き場に依存させない。
+    """
+    if "/" in value or value.endswith(suffix):
+        return Path(value)
+    return Path("data/train") / f"{paths.check_name(value)}{suffix}"
 
 
 def _continual_args(data: Path, args: argparse.Namespace, *, dry_run: bool) -> list[str]:

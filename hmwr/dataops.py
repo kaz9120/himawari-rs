@@ -13,6 +13,8 @@ from __future__ import annotations
 
 import argparse
 import json
+import struct
+import tempfile
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -168,6 +170,34 @@ def add_parsers(ss: argparse._SubParsersAction) -> None:
             "--force", action="store_true", help="出力が既にあっても作り直す"
         )
         t.set_defaults(func=lambda args, op=op: run(op, args))
+
+    t = ss.add_parser("stats", help="局面数・評価値の分布・勝敗を表示する")
+    t.add_argument("name", metavar="名前", help="data/train/<名前>.psv")
+    t.add_argument("--limit", type=int, metavar="N", help="先頭のこの件数だけ読む")
+    t.set_defaults(func=stats)
+
+    t = ss.add_parser(
+        "rm",
+        help="hmwr data が作った中間ファイルを消す",
+        description="完了印のある出力だけを消す。完了印に作り方が残っているので、"
+        "消しても同じコマンドで作り直せる。由来の記録がないファイルには触らない。",
+    )
+    t.add_argument("names", nargs="+", metavar="名前", help="data/train/<名前>.psv か .rankpsv")
+    t.set_defaults(func=remove)
+
+    t = ss.add_parser(
+        "openings",
+        help="教師データから開始局面集を作る",
+        description="手数の条件を満たす局面を先頭から拾い、openings/<出力名>.txt へ"
+        "1行1局面のSFENで書く。入力はシャッフル済みのものを使う。",
+    )
+    t.add_argument("name", metavar="出力名", help="openings/<出力名>.txt へ書く")
+    t.add_argument("--in", dest="inputs", action="append", default=[], metavar="入力名")
+    t.add_argument("--count", type=int, required=True, metavar="N", help="拾う局面数")
+    t.add_argument("--min-ply", type=int, default=0, metavar="N", help="この手数以上の局面だけ拾う")
+    t.add_argument("--skip", type=int, default=0, metavar="N", help="先頭から飛ばす件数")
+    t.add_argument("--force", action="store_true", help="出力が既にあっても作り直す")
+    t.set_defaults(func=openings)
 
 
 # --- 実行 --------------------------------------------------------------
@@ -325,4 +355,108 @@ def _already(out: Path, done: Path, record: list[str]) -> int:
             "名前を変えるか、--force で作り直す"
         )
     print(f"済み: {paths.rel(out)}（同じ条件で作成済み。何もしない）")
+    return proc.OK
+
+
+# --- 確認 --------------------------------------------------------------
+
+
+def stats(args: argparse.Namespace) -> int:
+    source = paths.TRAIN / f"{paths.check_name(args.name)}.psv"
+    if not source.is_file() and not args.dry_run:
+        raise proc.Fail(f"入力のpsvがない: {paths.rel(source)}")
+    argv = [str(psv_bin()), "stats", "--in", paths.rel(source)]
+    if args.limit is not None:
+        argv += ["--limit", str(args.limit)]
+    return proc.run(argv, dry_run=args.dry_run)
+
+
+# --- 片付け ------------------------------------------------------------
+
+
+def remove(args: argparse.Namespace) -> int:
+    """完了印のある出力だけを消す。消す前に全部の対象を確かめる。"""
+    targets: list[tuple[Path, Path]] = []
+    for name in args.names:
+        paths.check_name(name)
+        found = [
+            p
+            for suffix in (".psv", ".rankpsv")
+            if (p := paths.TRAIN / f"{name}{suffix}").exists()
+        ]
+        if not found:
+            raise proc.Fail(f"消す対象がない: {name}")
+        for out in found:
+            done = out.with_name(out.name + ".done")
+            if not done.is_file():
+                raise proc.Fail(
+                    f"由来の記録がないので消さない: {paths.rel(out)}\n"
+                    "hmwr data が作ったファイルだけを消せる"
+                )
+            targets.append((out, done))
+
+    for out, done in targets:
+        if args.dry_run:
+            print(f"[dry-run] rm {paths.rel(out)} {paths.rel(done)}")
+            continue
+        size = out.stat().st_size
+        out.unlink()
+        done.unlink()
+        print(f"消した: {paths.rel(out)}（{size:,}バイト）")
+    return proc.OK
+
+
+# --- 開始局面集 --------------------------------------------------------
+
+PSV_BYTES = 40
+PLY_OFFSET = 36  # game_ply（u16、リトルエンディアン）
+
+
+def openings(args: argparse.Namespace) -> int:
+    """手数の条件で局面を拾い、SFENの列挙へ書き出す。"""
+    if len(args.inputs) != 1:
+        raise proc.Fail(f"--in は1個要る（{len(args.inputs)}個渡された）", proc.USAGE)
+    source = paths.TRAIN / f"{paths.check_name(args.inputs[0])}.psv"
+    out = paths.REPO / "openings" / f"{paths.check_name(args.name)}.txt"
+
+    if args.dry_run:
+        print(
+            f"[dry-run] {paths.rel(source)} の{args.skip}件目から、"
+            f"{args.min_ply}手目以降を{args.count}局面拾う"
+        )
+        print(f"[dry-run] {paths.rel(psv_bin())} dump で復元し {paths.rel(out)} へ書く")
+        return proc.OK
+    if not source.is_file():
+        raise proc.Fail(f"入力のpsvがない: {paths.rel(source)}")
+    if out.exists() and not args.force:
+        raise proc.Fail(f"出力が既にある: {paths.rel(out)}\n名前を変えるか、--force で作り直す")
+
+    picked = bytearray()
+    with open(source, "rb") as fh:
+        fh.seek(args.skip * PSV_BYTES)
+        while len(picked) < args.count * PSV_BYTES:
+            chunk = fh.read(PSV_BYTES * 65536)
+            if not chunk:
+                break
+            for i in range(0, len(chunk) - PSV_BYTES + 1, PSV_BYTES):
+                (ply,) = struct.unpack_from("<H", chunk, i + PLY_OFFSET)
+                if ply >= args.min_ply:
+                    picked += chunk[i : i + PSV_BYTES]
+                    if len(picked) >= args.count * PSV_BYTES:
+                        break
+    found = len(picked) // PSV_BYTES
+    if found < args.count:
+        raise proc.Fail(f"条件を満たす局面が足りない（{found}/{args.count}）")
+
+    with tempfile.NamedTemporaryFile(suffix=".psv") as tmp:
+        tmp.write(picked)
+        tmp.flush()
+        dumped, err = proc.capture_both(
+            [str(psv_bin()), "dump", "--in", tmp.name, "--limit", str(args.count)]
+        )
+    lines = [f"sfen {row.split(' | ')[0]}" for row in dumped.splitlines() if " | " in row]
+    if len(lines) != args.count:
+        raise proc.Fail(f"局面を復元できなかった（{len(lines)}/{args.count}）: {err.strip()}")
+    out.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    print(f"完了: {paths.rel(out)}（{len(lines)}局面）")
     return proc.OK
