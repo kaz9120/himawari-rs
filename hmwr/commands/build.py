@@ -34,6 +34,12 @@ def add_parser(sub: argparse._SubParsersAction) -> None:
     )
     t.add_argument("name", help="実験名")
     t.add_argument("--baseline", metavar="REF", default="origin/main", help="比較元のref")
+    t.add_argument(
+        "--candidate",
+        metavar="REF",
+        help="候補のref（既定は現在のHEAD）。実験のspecからは、事前登録した"
+        "コミットのSHAを渡す。手元に無ければoriginから取る",
+    )
     t.set_defaults(func=pair)
 
     t = ss.add_parser(
@@ -117,15 +123,33 @@ def _copy(src: Path, dst: Path, *, dry_run: bool) -> None:
 
 def pair(args: argparse.Namespace) -> int:
     return make_pair(
-        args.name, baseline=args.baseline or "origin/main", dry_run=args.dry_run
+        args.name,
+        baseline=args.baseline or "origin/main",
+        candidate=args.candidate,
+        dry_run=args.dry_run,
     )
 
 
-def make_pair(name: str, *, baseline: str, dry_run: bool) -> int:
+def _resolve(ref: str, what: str) -> None:
+    """refが手元にあることを確かめる。無ければoriginから取る。
+
+    実験キューの作業ツリーはorigin/mainしか取っていない。候補のブランチは
+    マージ前なので、SHAで指された先を取りに行く。
+    """
+    verify = ["git", "rev-parse", "--verify", "--quiet", f"{ref}^{{commit}}"]
+    if proc.succeeds(verify):
+        return
+    proc.succeeds(["git", "fetch", "--quiet", "origin", ref])
+    if not proc.succeeds(verify):
+        raise proc.Fail(f"{what}のrefが見つからない: {ref}")
+
+
+def make_pair(name: str, *, baseline: str, candidate: str | None = None, dry_run: bool) -> int:
     """比較用の2本を同じ条件で作る。
 
-    比較元は crates/ だけを差し替えて作る。作業コピーを別に切ると
-    ビルドキャッシュが分かれて遅くなるためである。
+    crates/ だけを差し替えて作る。作業コピーを別に切るとビルドキャッシュが
+    分かれて遅くなるためである。候補は既定で現在のHEADから作る。candidateを
+    渡すと、そのrefの crates/ から作る。
 
     2本が同一になったら終了コード1を返す。探索に差がない可能性がある。
     """
@@ -135,23 +159,27 @@ def make_pair(name: str, *, baseline: str, dry_run: bool) -> int:
 
     if not dry_run:
         require_clean_crates()
-        if not proc.succeeds(["git", "rev-parse", "--verify", "--quiet", baseline]):
-            raise proc.Fail(f"比較元のrefが見つからない: {baseline}")
+        _resolve(baseline, "比較元")
+        if candidate:
+            _resolve(candidate, "候補")
 
     print(f"=== 比較用バイナリの作成: {name} ===")
     if not dry_run:
-        print(f"candidate: {proc.git('rev-parse', '--short', 'HEAD')} （現在のHEAD）")
+        shown = candidate or "現在のHEAD"
+        print(f"candidate: {proc.git('rev-parse', '--short', candidate or 'HEAD')} （{shown}）")
         print(
             f"baseline : {proc.git('rev-parse', '--short', baseline)} （{baseline}）"
         )
 
-    print("candidateをビルド中...")
-    cargo_build(dry_run=dry_run)
-    _copy(paths.REPO / ENGINE, cand_out, dry_run=dry_run)
-
-    print("baselineをビルド中...")
-    proc.run(["git", "checkout", baseline, "--", "crates/"], dry_run=dry_run)
     try:
+        print("candidateをビルド中...")
+        if candidate:
+            proc.run(["git", "checkout", candidate, "--", "crates/"], dry_run=dry_run)
+        cargo_build(dry_run=dry_run)
+        _copy(paths.REPO / ENGINE, cand_out, dry_run=dry_run)
+
+        print("baselineをビルド中...")
+        proc.run(["git", "checkout", baseline, "--", "crates/"], dry_run=dry_run)
         cargo_build(dry_run=dry_run)
         _copy(paths.REPO / ENGINE, base_out, dry_run=dry_run)
     finally:

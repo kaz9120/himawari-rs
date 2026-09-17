@@ -107,9 +107,29 @@ hmwr bench <bin> --nodes 5000000           ノード数で打ち切る
 ```
 hmwr build pair <名前>              比較用の2本を同条件で作る
 hmwr build pair <名前> --baseline v0.12.0
+hmwr build pair <名前> --candidate <SHA>   候補をrefから作る（実験のspec用）
 hmwr build pgo                      配布・対局用の単体ビルド
 hmwr build engine --arch 512x16x64  構成を変えてビルドする
 hmwr build shapes 256x16 512x16x32  構成ごとにエンジンと評価ファイルを対で作る
+```
+
+棋力が変わる変更をキューで測るときは、候補のブランチをpushし、specの
+`build pair` に**コミットのSHA**を渡す。キューの作業ツリーは常にorigin/mainで、
+候補はマージ前だからである。ブランチ名ではなくSHAにするのは、事前登録の後に
+候補が動かないようにするためである。specの形は次のとおり。
+
+```toml
+[[step]]
+id = "pair"
+run = "hmwr build pair adr0211-x --candidate 0cd8205aa6a0…"
+
+[[step]]
+id = "verify"
+run = "hmwr verify adr0211-x"
+
+[[step]]
+id = "sprt"
+run = "hmwr match run adr0211-x --foreground"
 ```
 
 **比較用のペアにPGOを使わない**。両側を同条件（PGOなし）で作るほうが公平で、
