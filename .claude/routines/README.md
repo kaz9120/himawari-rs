@@ -21,8 +21,24 @@ Routineのプロンプトは「このディレクトリの手順を実行する�
 - `Cargo.toml`・`.claude/settings.json`・`.github/workflows/` の変更
 - mainへの直接push、force push
 
+## クラウドの環境
+
+2026-09-18の試験実行で確かめた。
+
+- **`gh` は入っていない**。GitHubの操作（Issueの一覧・作成・コメント、PRの作成・
+  状態の確認・マージ）は、セッションに付いているGitHubのツールで行う。手順の
+  中の `gh` の例は、何を取るかを示すもので、そのまま打つものではない
+- 同じ理由で `hmwr pr create` と `hmwr ci wait` は使えない（中で `gh` を呼ぶ）。
+  PRの本文は `./bin/hmwr pr template chore` のひな形から作り、見出しを全部残す
+- pytestは入っていない。`pip install --quiet pytest` で入れる（CIと同じ）
+- Rustのビルドは約40秒、`npm ci` と文書のlintは約45秒で通る
+
+Routineを作るときは、MCPのコネクタを付けない（作成の後に
+`clear_mcp_connections` で外す）。既定ではアカウントのコネクタが全部付く。
+外部のPRやIssueの本文を読むエージェントに、メールやチャットの権限を持たせない。
+
 ブランチは `claude/` で始まる名前になる（[ADR-0070](../../docs/adr/0070-pr-based-workflow.md)の
-命名規則の例外）。PRは `hmwr pr create --kind chore` で作る。コミットの型は
+命名規則の例外）。PRの種別は「その他」にする。コミットの型は
 `fix`・`docs`・`chore` のどれかで、`feat` は使わない。
 
 push前に、CIと同じ検査をローカルで通す。
@@ -30,15 +46,13 @@ push前に、CIと同じ検査をローカルで通す。
 ```
 cargo fmt --all --check && cargo clippy --all-targets -- -D warnings
 cargo test --release
-python3 -m pytest tests -q
-./bin/hmwr doc lint && ./bin/hmwr doc check
+pip install --quiet pytest && python3 -m pytest tests -q
+npm ci && ./bin/hmwr doc lint && ./bin/hmwr doc check
 ```
 
 通らない検査があり、直し方が分からなければ、PRを出さずにIssueへ状況を
 コメントして終わる。**緑にならないPRを置いていかない**。
 
-CIが緑になったら、自分でsquashマージする（2026-09-17オーナー判断）。
-
-```
-./bin/hmwr ci wait <PR番号> && gh pr merge <PR番号> --squash --delete-branch
-```
+CIが緑になったら、自分でsquashマージする（2026-09-17オーナー判断）。PRの
+チェックが全部passになるのをGitHubのツールで確かめてから、squashでマージし、
+ブランチを消す。チェックが終わる前にマージしない。
