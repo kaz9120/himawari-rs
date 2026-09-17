@@ -48,7 +48,7 @@ himawari-rsで作業するエージェントの規約。詳細は各文書へリ
 |---|---|---|
 | このファイル | 毎回 | 作業の規約 |
 | [docs/adr/](docs/adr/README.md) | 判断の根拠を探すとき | 設計判断と経緯・測定の詳細 |
-| [docs/ROADMAP.md](docs/ROADMAP.md) | 着手を決めるとき | 現行構成・次の方向・候補 |
+| [docs/ROADMAP.md](docs/ROADMAP.md) | 着手を決めるとき | 現在地・注力・次に着手する・候補 |
 | [docs/DATASETS.md](docs/DATASETS.md) | データを扱うとき | データの所在と前処理 |
 | [README.md](README.md) | 使い方や環境を知るとき | 概要・対局での使い方・開発環境 |
 | [CHANGELOG.md](CHANGELOG.md) | 何が入ったか見るとき | release-pleaseが生成 |
@@ -61,7 +61,8 @@ himawari-rsで作業するエージェントの規約。詳細は各文書へリ
 案は ROADMAPの候補 → ADR → 完了 の順に動く。着手を決めたらADRを起こして
 候補から消す。完了・棄却した案も候補には残さない。
 
-ROADMAPは3節で構成する。現行構成・次の方向・候補。過去の経緯は書かない。
+ROADMAPは5節で構成する。現在地・注力・運用・次に着手する・候補。過去の経緯は
+書かない。
 
 READMEとROADMAPには変わり続ける事実を書かない（[ADR-0182](docs/adr/0182-readme-audience.md)）。
 棋力はfloodgateの対局者ページ（URLは `hmwr/tools/floodgate.py`）が正になる。
