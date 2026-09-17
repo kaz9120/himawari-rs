@@ -18,7 +18,7 @@
 |---|---|
 | ネットワーク構成の既定 | `crates/engine/build.rs` の `DEFAULT_ARCH` |
 | 対局・計測に使う評価関数 | `hmwr/config.py` の `EVAL_FILE` |
-| 実戦のレートと棋譜 | floodgateの対局者ページ。URLは `hmwr/tools/floodgate.py` の `DEFAULT_PLAYER_URL` |
+| 実戦のレートと棋譜 | floodgateの対局者ページ。URLは `hmwr/tools/floodgate.py` の `DEFAULT_PLAYER_URL`。レートの推移は `hmwr kifu rate` |
 | 配布物の版 | [GitHub Releases](https://github.com/kaz9120/himawari-rs/releases) |
 | 定跡の生成条件 | [ADR-0146](adr/0146-book-full-width-opening.md)、実戦分の追加は[ADR-0152](adr/0152-floodgate-cycle.md) |
 

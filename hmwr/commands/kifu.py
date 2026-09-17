@@ -11,7 +11,7 @@ import argparse
 import datetime
 from pathlib import Path
 
-from .. import config, paths, proc
+from .. import config, paths, proc, rating
 from ..tools import floodgate
 from . import book as book_cmd
 
@@ -25,6 +25,18 @@ def add_parser(sub: argparse._SubParsersAction) -> None:
     t.add_argument("--out", metavar="ディレクトリ", help="置き場")
     t.add_argument("--max-files", type=int, metavar="N", help="取得の上限")
     t.set_defaults(func=fetch)
+
+    t = ss.add_parser(
+        "rate",
+        help="対局場でのレートの推移を出す",
+        description="対局者ページのグラフの元データ（日毎と、直近2週間の対局だけで"
+        "計算したレート）を読む。どちらも初日からの全履歴を持つので、いつ取っても"
+        "同じ系列が得られる。",
+    )
+    t.add_argument("--player-url", metavar="URL", help="対局者ページ")
+    t.add_argument("--days", type=int, default=14, metavar="N", help="直近の何日を出すか（既定 14）")
+    t.add_argument("--csv", action="store_true", help="全履歴をCSVで出す")
+    t.set_defaults(func=rate)
 
     t = ss.add_parser(
         "report",
@@ -178,3 +190,20 @@ def blindspot(args: argparse.Namespace) -> int:
         env=config.measure_env(),
         log=paths.log("blindspot", args.stage),
     )
+
+
+def rate(args: argparse.Namespace) -> int:
+    """レートの推移を出す。読むだけなので、予行演習でも取得する先だけを見せる。"""
+    url = args.player_url or floodgate.DEFAULT_PLAYER_URL
+    if args.dry_run:
+        for target in rating.csv_urls(url).values():
+            print(f"[dry-run] GET {target}")
+        return proc.OK
+    days = rating.load(url)
+    if args.csv:
+        print("date,daily,two_weeks")
+        for d in days:
+            print(f"{d.date},{d.daily or ''},{d.two_weeks or ''}")
+    else:
+        print(rating.markdown(days, args.days))
+    return proc.OK
