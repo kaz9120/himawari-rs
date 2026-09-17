@@ -379,6 +379,10 @@ def remove(args: argparse.Namespace) -> int:
     targets: list[tuple[Path, Path]] = []
     for name in args.names:
         paths.check_name(name)
+        if args.dry_run:
+            # 消す対象は、手順の前のステップが実行時に作る。予行では存在を問わない
+            print(f"[dry-run] rm {paths.rel(paths.TRAIN / name)}.psv か .rankpsv と、その完了印")
+            continue
         found = [
             p
             for suffix in (".psv", ".rankpsv")
@@ -396,9 +400,6 @@ def remove(args: argparse.Namespace) -> int:
             targets.append((out, done))
 
     for out, done in targets:
-        if args.dry_run:
-            print(f"[dry-run] rm {paths.rel(out)} {paths.rel(done)}")
-            continue
         size = out.stat().st_size
         out.unlink()
         done.unlink()
