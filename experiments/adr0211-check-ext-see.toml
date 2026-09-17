@@ -1,0 +1,15 @@
+# ADR-0211: 王手延長を損をしない王手に限る。既定条件のSPRT。
+# 候補はマージ前のコミットなので、SHAで固定する。
+adr = "0211"
+
+[[step]]
+id = "pair"
+run = "hmwr build pair adr0211-check-ext-see --candidate 0cd8205aa6a00a2545d669e071c63b54a54f5774"
+
+[[step]]
+id = "verify"
+run = "hmwr verify adr0211-check-ext-see"
+
+[[step]]
+id = "sprt"
+run = "hmwr match run adr0211-check-ext-see --foreground"
