@@ -21,6 +21,7 @@ BOOK = REPO / "data" / "book"
 TRAIN = REPO / "data" / "train"
 PROFILE = REPO / "data" / "profile"
 RAW = REPO / "data" / "raw"
+QUEUE = REPO / "data" / "queue"
 
 SCRIPTS = REPO / "scripts"
 CHECKPOINTS = REPO / "training" / "checkpoints"

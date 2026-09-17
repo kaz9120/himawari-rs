@@ -142,6 +142,31 @@ hmwr net release data/nets/x.hmwr.best 5 --apply
 `--extra` にハイフンで始まる値を渡すときは `--extra=--mirror-factor` のように
 = でつなぐ。
 
+### 実験を手順ごと走らせる
+
+```
+hmwr exp check                 作業ツリーのspecを検査する（CIと同じ）
+hmwr exp run <名前>            origin/mainのspecを上から順に実行する
+hmwr exp show <名前>           ステップごとの進み具合
+```
+
+specは `experiments/<名前>.toml` に置き、ADRと同じPRで入れる。ステップは
+`hmwr` のコマンド1つで、シェルは通らない。対局のステップには `--foreground` を
+付ける。**`exp run` が読むのはorigin/mainのspecである**。事前登録のPRを
+マージしてから走らせる。
+
+```toml
+adr = "0210"
+
+[[step]]
+id = "mix"
+run = "hmwr data mix mixhao20_300M --in train_300M_q1 --in hao_extra_60M_q1"
+```
+
+止まったら同じコマンドで続きから走る。完了したステップは飛ばし、学習と対局は
+それぞれの再開の口から続く。完了したステップのコマンドをspecで書き換えると
+止まる。手順を変えるなら、別の名前のspecにする。
+
 ### 単発の診断
 
 ```

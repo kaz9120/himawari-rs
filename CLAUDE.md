@@ -304,6 +304,7 @@ RUSTFLAGS="-C target-cpu=native" cargo build --release
 | `data/bin/` | 比較用に残すビルド済みバイナリ |
 | `data/profile/` | プロファイル結果 |
 | `data/logs/` | hmwrの実行ログ |
+| `data/queue/` | 実験のステップの完了印（ADR-0209） |
 
 ログのリダイレクト先を手で決めない。`hmwr` が `data/logs/<領域>-<名前>.log`
 へ追記する（[ADR-0149](docs/adr/0149-experiment-runner.md)・[ADR-0180](docs/adr/0180-hmwr-cli-in-python.md)）。

@@ -53,8 +53,4 @@ def empty_dirs(tmp_path, monkeypatch):
 def test_every_step_is_an_hmwr_command_that_dry_runs(step, capsys):
     argv = shlex.split(step)
     assert argv[0] == "hmwr"
-    if argv[1:3] == ["data", "rm"]:
-        # 消す対象は実行時にしか存在しない。引数の解析だけを見る
-        assert cli.build_parser().parse_args(argv[1:]).names == [argv[3]]
-        return
     assert cli.main(["--dry-run", *argv[1:]]) == proc.OK
