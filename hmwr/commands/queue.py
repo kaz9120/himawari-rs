@@ -17,6 +17,7 @@ import json
 import os
 import plistlib
 import re
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -36,6 +37,9 @@ SPEC_RE = re.compile(r"experiments/([A-Za-z0-9][A-Za-z0-9._-]*)\.toml")
 AGENT = "com.kaz9120.himawari-queue"
 INTERVAL = 300
 LOG_TAIL = 30
+# 結果の記録に使うclaude。PATHのshimは端末の環境に依存するので、実体を先に探す
+CLAUDE_CANDIDATES = (Path.home() / ".local" / "bin" / "claude",)
+RECORD_TIMEOUT = 40 * 60
 
 
 def add_parser(sub: argparse._SubParsersAction) -> None:
@@ -186,7 +190,61 @@ def _tick(*, dry_run: bool) -> int:
 
     relabel(number, add=DONE, remove=RUNNING)
     comment(number, f"全ステップが完了した。\n\n```\n{_progress(name)}\n```")
+    _record(name, number)
     return proc.OK
+
+
+def _claude() -> str | None:
+    for path in CLAUDE_CANDIDATES:
+        if path.is_file():
+            return str(path)
+    return shutil.which("claude")
+
+
+def _record(name: str, number: int) -> None:
+    """結果の記録をclaude -pに任せる。出すのはdocsのPRまでで、マージはしない。
+
+    失敗しても実験の完了は変わらないので、Issueへ書き戻して次へ進む。
+    """
+    claude = _claude()
+    if claude is None:
+        comment(number, "結果の記録: claude が見つからないので、対話セッションで記録する。")
+        return
+    prompt = (
+        f"recording-experimentスキルを使って、実験 {name}（Issue #{number}）の結果を"
+        "ADRへ記録するPRを出してください。スキルの「しないこと」を守ってください。"
+    )
+    log = paths.log("record", name)
+    print(f"結果の記録を始める（ログ: {paths.rel(log)}）", flush=True)
+    with open(log, "ab") as fh:
+        try:
+            result = subprocess.run(
+                [
+                    claude, "-p", prompt,
+                    "--permission-mode", "acceptEdits",
+                    "--allowedTools",
+                    "Read", "Edit", "Write", "Glob", "Grep",
+                    "Bash(./bin/hmwr:*)", "Bash(hmwr:*)", "Bash(git:*)", "Bash(gh:*)", "Bash(cat:*)",
+                ],  # fmt: skip
+                cwd=str(paths.REPO),
+                stdout=fh,
+                stderr=subprocess.STDOUT,
+                stdin=subprocess.DEVNULL,
+                timeout=RECORD_TIMEOUT,
+                check=False,
+            )
+            code = result.returncode
+        except subprocess.TimeoutExpired:
+            code = -1
+    # 記録の途中で止まっても、次の実験のためにworktreeをorigin/mainへ戻す
+    proc.succeeds(["git", "switch", "--quiet", "--detach", "origin/main"])
+    proc.succeeds(["git", "checkout", "--quiet", "--", "."])
+    if code != proc.OK:
+        comment(
+            number,
+            f"結果の記録が終了コード {code} で止まった。対話セッションで記録する。\n\n"
+            f"ログ: `{paths.rel(log)}`",
+        )
 
 
 def _fail(number: int, state: str, reason: str, name: str | None = None) -> int:
