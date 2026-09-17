@@ -326,8 +326,8 @@ launchdの次の回が拾い、ラベルが `queued`→`running`→`done` と動
 ### 数値の表（2026-09-18）
 
 `hmwr exp report` を作った。specのステップから対局・学習・データの名前を拾い、
-対局は結果ファイル、学習は実験台帳（`training/runs/registry.tsv`）、データは
-完了印から読んで、Markdownの表にする。specの無い実験は `--match` と `--net` で
+Markdownの表にする。読む場所は、対局が結果ファイル、学習が実験台帳
+（`training/runs/registry.tsv`）、データが完了印である。specの無い実験は `--match` と `--net` で
 名前を渡す。ADR-0206の対局2本で試し、ADRに記録した数値と一致する表が出た。
 
 `claude -p` による記録の無人化とrecording-experimentスキルは、まだ作って
