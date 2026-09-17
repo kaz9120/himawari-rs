@@ -113,6 +113,30 @@ def _tee(
         return proc.wait()
 
 
+def run_all(argvs: list[list[str]], *, log: Path) -> None:
+    """複数のコマンドを並列に走らせ、全部の終了を待つ。
+
+    出力は端末へ流さず、ログへ追記する。行は混ざるが、単スレッドの道具を
+    区間で割って回す用途なので、読むのは件数の要約だけで足りる。1つでも
+    失敗したらFailを投げる。
+    """
+    print(f"ログ: {paths.rel(log)}", flush=True)
+    with open(log, "ab") as fh:
+        procs = []
+        for argv in argvs:
+            line = show(argv)
+            print(f"$ {line}", flush=True)
+            fh.write(f"\n=== {line} ===\n".encode())
+            fh.flush()
+            procs.append(
+                subprocess.Popen(argv, cwd=str(paths.REPO), stdout=fh, stderr=subprocess.STDOUT)
+            )
+        codes = [p.wait() for p in procs]
+    bad = [show(a) for a, c in zip(argvs, codes) if c != OK]
+    if bad:
+        raise Fail("失敗した: " + " / ".join(bad))
+
+
 def capture(argv: list[str], *, cwd: Path | None = None) -> str:
     """出力を取り込む。失敗しても投げず、空文字を返す。"""
     return capture_both(argv, cwd=cwd)[0]
