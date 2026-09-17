@@ -246,6 +246,17 @@ hmwr clean --apply    30日を過ぎた成果物を消す（ADR-0189）
 現行の評価関数の系列と `.result` は残る。教師データ（data/train）は
 対象外で、消すなら個別判断になる。月1回を目安に回す。
 
+### PRを出す
+
+```
+hmwr pr template chore > body.md     本文のひな形（chore か strength）
+hmwr pr create --kind chore --title "chore: …" --body-file body.md
+hmwr ci wait <PR番号>                CIが確定するまで待つ
+```
+
+本文にテンプレートの見出しが揃っていなければ、PRは作られない。本文のファイルは
+スクラッチパッドに置く。リポジトリの中に置くとコミットへ紛れる。
+
 ### 文書を書いたら
 
 ```
