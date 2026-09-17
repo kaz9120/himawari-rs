@@ -573,7 +573,7 @@ def actdump(args: argparse.Namespace) -> int:
     usi.append("quit")
 
     out.parent.mkdir(parents=True, exist_ok=True)
-    engine = paths.REPO / "target" / "release" / "himawari"
+    engine = paths.release_bin("himawari")
     code = proc.run(
         [str(engine)],
         env={"HIMAWARI_ACT_OUT": str(out), "HIMAWARI_ACT_STRIDE": str(stride)},

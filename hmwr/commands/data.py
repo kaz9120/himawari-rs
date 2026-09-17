@@ -211,7 +211,7 @@ def _verify(manifest: list[tuple[str, int | None]], raw: Path) -> bool:
 
 def _prepare(raw: Path, train: Path, *, dry_run: bool) -> None:
     """検証データを切り出し、残りをシャッフルして学習データにする。"""
-    psv = paths.REPO / "target" / "release" / "psv"
+    psv = paths.release_bin("psv")
     if not psv.is_file() and not dry_run:
         raise proc.Fail(f"{paths.rel(psv)} がない。先に cargo build --release を実行する")
     train.mkdir(parents=True, exist_ok=True)

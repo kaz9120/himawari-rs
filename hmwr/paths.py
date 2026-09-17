@@ -55,6 +55,15 @@ def log(area: str, name: str) -> Path:
     return LOGS / f"{area}-{check_name(name)}.log"
 
 
+def release_bin(name: str) -> Path:
+    """`cargo build --release` が置くバイナリの場所を決める。
+
+    呼び出し側が `target/release` を書かないようにする。出力先の命名が
+    変わったとき、直す場所をここ1か所にするためである。
+    """
+    return REPO / "target" / "release" / name
+
+
 def rel(path: str | Path) -> str:
     """リポジトリの中のパスは相対で見せる。表示が長いと読み飛ばされる。"""
     s = str(path)

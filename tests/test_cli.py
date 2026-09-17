@@ -5,6 +5,8 @@
 出ることなので、そこを測る。**
 """
 
+import re
+
 import pytest
 
 from hmwr import cli, paths, proc
@@ -106,6 +108,27 @@ def test_log_path_has_area_prefix():
 def test_log_path_validates_name():
     with pytest.raises(paths.BadName):
         paths.log("sprt", "../escape")
+
+
+def test_release_bin_points_at_cargo_output():
+    """ビルド生成物の場所は1か所で決める。呼び出し側は名前だけを渡す。"""
+    assert paths.release_bin("himawari") == paths.REPO / "target" / "release" / "himawari"
+    assert paths.rel(paths.release_bin("psv")) == "target/release/psv"
+
+
+def test_only_paths_builds_the_release_directory():
+    """`target/release` の組み立てを paths.release_bin へ集める。
+
+    同じ3セグメントが8ファイル11か所へ散っていた（issue #532）。出力先の
+    命名が変わったときに直す場所を1か所へ保つ。
+    """
+    pattern = re.compile(r'"target"\s*/\s*"release"')
+    offenders = [
+        paths.rel(f)
+        for f in sorted((paths.REPO / "hmwr").rglob("*.py"))
+        if f.name != "paths.py" and pattern.search(f.read_text(encoding="utf-8"))
+    ]
+    assert offenders == []
 
 
 def test_tools_resolve_the_repository_root():

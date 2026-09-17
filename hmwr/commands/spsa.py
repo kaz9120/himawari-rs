@@ -87,7 +87,7 @@ def init(args: argparse.Namespace) -> int:
     f = files(args.name)
     build.require_clean_crates()
     build.cargo_build(dry_run=args.dry_run, args=["-p", "himawari-usi", "--features", "tune"])
-    build._copy(paths.REPO / "target" / "release" / "himawari", f["bin"], dry_run=args.dry_run)
+    build._copy(paths.release_bin("himawari"), f["bin"], dry_run=args.dry_run)
     if args.dry_run:
         return proc.OK
 
@@ -204,7 +204,7 @@ def until_done(args: argparse.Namespace, *, log_to_file: bool) -> int:
     concurrency = args.concurrency or config.concurrency()
     log = _logger(f["log"] if log_to_file else None)
 
-    selfplay = paths.REPO / "target" / "release" / "selfplay"
+    selfplay = paths.release_bin("selfplay")
     if not selfplay.is_file() and not args.dry_run:
         raise proc.Fail(f"{paths.rel(selfplay)} がない。cargo build --release を実行する")
 

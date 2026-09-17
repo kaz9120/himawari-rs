@@ -122,7 +122,7 @@ OPS: tuple[Op, ...] = (
 
 
 def psv_bin() -> Path:
-    return paths.REPO / "target" / "release" / "psv"
+    return paths.release_bin("psv")
 
 
 def dest(flag: str) -> str:

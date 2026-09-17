@@ -174,7 +174,7 @@ def default_builds(name: str) -> tuple[str, str]:
         return str(f["base"]), str(f["cand"])
     if f["base"].is_file():
         return str(f["base"]), str(f["base"])
-    engine = str(paths.REPO / "target" / "release" / "himawari")
+    engine = str(paths.release_bin("himawari"))
     return engine, engine
 
 
@@ -395,7 +395,7 @@ def _games(jsonl: Path) -> int:
 def _selfplay(spec: Spec, *, dry_run: bool, attempt: int) -> int:
     """対局を1回走らせる。棋譜があれば続きから測る。"""
     f = files(spec.name)
-    binary = paths.REPO / "target" / "release" / "selfplay"
+    binary = paths.release_bin("selfplay")
     if not binary.is_file() and not dry_run:
         raise proc.Fail(f"{paths.rel(binary)} がない。cargo build --release を実行する")
 

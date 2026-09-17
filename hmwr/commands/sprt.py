@@ -181,4 +181,4 @@ def _default_bin(name: str) -> str:
     fixed = paths.BIN / f"base-{name}"
     if fixed.is_file():
         return str(fixed)
-    return str(paths.REPO / "target" / "release" / "himawari")
+    return str(paths.release_bin("himawari"))
