@@ -5,9 +5,12 @@
       "Bash(hmwr bench:*)",
       "Bash(hmwr book stats:*)",
       "Bash(hmwr ci wait:*)",
+      "Bash(hmwr data stats:*)",
       "Bash(hmwr doc lint:*)",
       "Bash(hmwr env:*)",
       "Bash(hmwr league summary:*)",
+      "Bash(hmwr match show:*)",
+      "Bash(hmwr match wait:*)",
       "Bash(hmwr net eval:*)",
       "Bash(hmwr profile report:*)",
       "Bash(hmwr sprt show:*)",
@@ -15,7 +18,10 @@
       "Bash(hmwr verify:*)",
       "Bash(./bin/hmwr --dry-run:*)",
       "Bash(./bin/hmwr ci wait:*)",
+      "Bash(./bin/hmwr data stats:*)",
       "Bash(./bin/hmwr doc lint:*)",
+      "Bash(./bin/hmwr match show:*)",
+      "Bash(./bin/hmwr match wait:*)",
       "Bash(./bin/hmwr sprt show:*)",
       "Bash(./bin/hmwr sprt wait:*)",
       "Bash(awk *)",
@@ -40,6 +46,19 @@
     ]
   },
   "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/no_direct_tools.py",
+            "statusMessage": "道具の直接実行を検査中",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
     "Stop": [
       {
         "hooks": [

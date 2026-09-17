@@ -156,3 +156,65 @@ def test_rank_pieces_are_joined_in_order(fake):
     assert cli.main(argv) == proc.OK
     assert (fake / "r.rankpsv").read_text().split() == ["0", "30", "60"]
     assert list(fake.glob("r.rankpsv.part*")) == []
+
+
+# --- 片付けと確認 ------------------------------------------------------
+
+
+def test_rm_only_touches_outputs_with_a_done_mark(fake):
+    assert cli.main(["data", "split", "t", "--in", "s", "--count", "10"]) == proc.OK
+    assert cli.main(["data", "rm", "t"]) == proc.OK
+    assert not (fake / "t.psv").exists() and not (fake / "t.psv.done").exists()
+    # 由来の記録がない入力は消さない
+    assert cli.main(["data", "rm", "s"]) == proc.RUNTIME
+    assert (fake / "s.psv").is_file()
+
+
+def test_rm_checks_every_target_before_deleting(fake):
+    assert cli.main(["data", "split", "t", "--in", "s", "--count", "10"]) == proc.OK
+    assert cli.main(["data", "rm", "t", "s"]) == proc.RUNTIME
+    assert (fake / "t.psv").is_file()
+
+
+def test_rm_dry_run_deletes_nothing(fake):
+    assert cli.main(["data", "split", "t", "--in", "s", "--count", "10"]) == proc.OK
+    assert cli.main(["--dry-run", "data", "rm", "t"]) == proc.OK
+    assert (fake / "t.psv").is_file()
+
+
+def test_stats_reads_by_name(capsys):
+    _, lines = dry(capsys, ["stats", "t", "--limit", "5"])
+    assert lines[0].endswith("psv stats --in data/train/t.psv --limit 5")
+
+
+def test_openings_picks_by_ply(tmp_path, monkeypatch):
+    """手数の条件で拾う。復元はpsv dumpに任せるので、ここでは偽物で受ける。"""
+    import struct
+
+    train = tmp_path / "train"
+    train.mkdir()
+    records = b"".join(
+        bytes(36) + struct.pack("<H", ply) + bytes(2) for ply in (10, 50, 39, 40, 99)
+    )
+    (train / "s.psv").write_bytes(records)
+    script = tmp_path / "psv"
+    script.write_text(
+        "#!/bin/sh\n"
+        'while [ $# -gt 0 ]; do case "$1" in --in) f="$2";; esac; shift; done\n'
+        'n=$(($(wc -c < "$f") / 40)); i=0\n'
+        'while [ $i -lt $n ]; do echo "SFEN$i b - 1 | score 0 result 0 ply 0"; i=$((i+1)); done\n'
+    )
+    script.chmod(script.stat().st_mode | stat.S_IXUSR)
+    monkeypatch.setattr(paths, "TRAIN", train)
+    monkeypatch.setattr(paths, "REPO", tmp_path)
+    monkeypatch.setattr(dataops, "psv_bin", lambda: script)
+    (tmp_path / "openings").mkdir()
+
+    argv = ["data", "openings", "o", "--in", "s", "--min-ply", "40", "--count", "3"]
+    assert cli.main(argv) == proc.OK
+    lines = (tmp_path / "openings" / "o.txt").read_text().splitlines()
+    assert lines == ["sfen SFEN0 b - 1", "sfen SFEN1 b - 1", "sfen SFEN2 b - 1"]
+    # 既にある出力は黙って上書きしない
+    assert cli.main(argv) == proc.RUNTIME
+    # 条件を満たす局面が足りなければ失敗する
+    assert cli.main(["data", "openings", "o2", "--in", "s", "--min-ply", "40", "--count", "4"]) == proc.RUNTIME

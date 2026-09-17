@@ -39,7 +39,7 @@ himawari-rsで作業するエージェントの規約。詳細は各文書へリ
 この前提を守らせる仕組みは `.claude/settings.json` にある
 （[ADR-0181](docs/adr/0181-agent-surface.md)）。読むだけの `hmwr` は確認なしで
 通り、force pushと履歴の書き換えと `Cargo.toml` の編集は確認を通る。mainへの
-直接pushは拒否される。セッションの終わりに `cargo fmt` とコミット本文の括弧を
+直接pushは拒否される。`hmwr` が包んだ道具の直接実行も拒否される。セッションの終わりに `cargo fmt` とコミット本文の括弧を
 検査する。
 
 ## 文書の役割分担
@@ -251,17 +251,27 @@ MAJOR（選手権への参加。次回2027年5月を1.0.0）は
 `hmwr --help` を見る。パスが通っていなければ `./bin/hmwr` で呼ぶ。
 
 ```
-hmwr sprt run <名前>                ペア作成→機能検証→SPRT起動
-hmwr verify <名前>                  固定深さで探索の変化を比べる
-hmwr net train <名前> --data <psv>  ネットを学習する
-hmwr --dry-run <...>                走るはずのコマンドを表示する
+hmwr sprt run <名前>                  ペア作成→機能検証→SPRT起動
+hmwr match run <名前> --stop pairs:N  固定ペア数を指し切ってEloを推定する
+hmwr verify <名前>                    固定深さで探索の変化を比べる
+hmwr data mix <名前> --in a --in b    教師データを加工する
+hmwr net train <名前> --data <名前>   ネットを学習する
+hmwr --dry-run <...>                  走るはずのコマンドを表示する
 ```
 
-覚えることは3つある。
+覚えることは4つある。
 
 - オプションはフラグで渡す。環境変数への変換はCLIが行う
+- 対象は名前で渡す。教師は `data/train/<名前>.psv`、ネットは
+  `data/nets/<名前>.hmwr`、ビルドは `data/bin/<名前>` に決まる
 - ログの置き場は書かない。`data/logs/<領域>-<名前>.log` へ決まる
 - 終了コードは0=成功・1=判定結果・2=引数・3=実行時（ADR-0122）
+
+**実験の手順は `hmwr` のコマンド列で書く**（[ADR-0208](docs/adr/0208-hmwr-resource-verbs.md)）。
+`psv` と `selfplay` を直接叩かない。直接叩いたチェーンでは、既定値が
+チェーンごとにずれた。`hmwr` が包んだ操作の直接実行はhookが止める
+（`.claude/hooks/no_direct_tools.py`）。足りない操作があれば、`hmwr` へ
+足すか `micro` Issueを切る。
 
 使い方の詳細は himawari-cli スキルにある。実装は `hmwr/` のPythonパッケージに
 あり、`scripts/` に残るのは環境構築の `setup.sh` だけである。
