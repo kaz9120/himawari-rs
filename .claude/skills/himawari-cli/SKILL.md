@@ -120,12 +120,25 @@ hmwr net release data/nets/x.hmwr.best 5 --apply
 ### 教師データを扱う
 
 ```
-hmwr data fetch all               取得→検査→psv作成
-hmwr data quiet <入力> <出力>     静止局面へ置き換える
+hmwr data fetch all                                  取得→検査→psv作成
+hmwr data shuffle <出力名> --raw <データセット>      生データを全体シャッフルする
+hmwr data split <出力名> --in <入力名> --count N     先頭から区間を切り出す
+hmwr data mix <出力名> --in <入力名> --in <入力名>   複数の教師を混ぜる
+hmwr data quiet <出力名> --in <入力名>               静止局面へ置き換える
+hmwr data rank <出力名> --in <入力名> --limit N --jobs 4   兄弟局面の群を作る
 ```
 
-`data quiet` は29.9億で7.0時間、3億で50分かかる。停止ファイルを持たないので、
-途中で止めたら最初からやり直す。`--limit` で先頭だけ試せる。
+**引数は名前で渡す**。`<名前>` は `data/train/<名前>.psv` に決まる（rankの出力は
+`.rankpsv`）。`psv` を直接叩かない。既定値（シャッフルのseed 1、静止化の
+1手・並列8）がここに集まっているためである。足りない操作は
+`hmwr/dataops.py` の対応表へ1行足す。
+
+出力は `.part` へ書いてから改名し、`<出力>.done` に走らせたコマンドを控える。
+同じ条件の再実行は何もせず成功で終わる。同じ名前で条件が違うと止まるので、
+名前を変えるか `--force` で作り直す。完了印のない古い出力も同じ扱いになる。
+
+`data quiet` は並列8で6,000万局面に12分かかる（ADR-0206の実測）。停止ファイルを
+持たないので、途中で止めたら最初からやり直す。`--limit` で先頭だけ試せる。並列数を変えると出力が変わる。
 
 ### 掃除する
 

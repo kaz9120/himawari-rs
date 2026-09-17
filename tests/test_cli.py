@@ -376,18 +376,6 @@ def test_book_release_is_dry_by_default(capsys, tmp_path):
 # --- data --------------------------------------------------------------
 
 
-def test_data_quiet_builds_the_psv_command(capsys):
-    _, lines = dry(capsys, ["data", "quiet", "in.psv", "out.psv", "--max-plies", "16"])
-    assert "psv quiet" in lines[0]
-    assert "--max-plies 16" in lines[0]
-    assert "--in in.psv --out out.psv" in lines[0]
-
-
-def test_data_quiet_names_the_log_from_the_output(capsys):
-    _, lines = dry(capsys, ["data", "quiet", "in.psv", "train_2990M_q1.psv"])
-    assert any("data/logs/quiet-train_2990M_q1.log" in x for x in lines)
-
-
 def test_data_fetch_covers_every_source_file(capsys):
     """3つの供給元それぞれ127ファイル、計381ファイルを対象にする。"""
     from hmwr.commands import data as data_cmd

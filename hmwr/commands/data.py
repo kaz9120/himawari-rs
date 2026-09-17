@@ -1,5 +1,8 @@
 """教師データの取得と前処理。
 
+取得（fetch）はここが持つ。psvの加工（shuffle・split・mix・quiet・rank）は
+`dataops` の対応表から作る（ADR-0208）。
+
 公開データセットを取り、学習用と検証用のpsvを作る。開発機を移すときは
 これで再現できる。hao_depth9は固定の381ファイル、その他のデータセットは
 HuggingFaceのAPIでファイル一覧とサイズを引いて取得・検査する。
@@ -13,7 +16,7 @@ import urllib.request
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
-from .. import config, paths, proc
+from .. import dataops, paths, proc
 
 BASE_URL = "https://huggingface.co/datasets/nodchip/shogi_hao_depth9/resolve/main"
 PREFIX = "kifu.tag=train.depth=9.num_positions=1000000000"
@@ -78,21 +81,7 @@ def add_parser(sub: argparse._SubParsersAction) -> None:
     )
     t.set_defaults(func=fetch)
 
-    t = ss.add_parser(
-        "quiet",
-        help="教師局面を静止局面へ置き換える",
-        description="評価関数が探索中に見るのは静止局面だが、公開データは"
-        "取り合いの途中の局面へ収束後の評価値を付けて配られている。"
-        "そのずれを消す。29.9億で7.0時間、3億で50分かかる。"
-        "**学習データを静止化したら、検証集合も同じ設定で静止化する。**",
-    )
-    t.add_argument("input", metavar="入力psv")
-    t.add_argument("output", metavar="出力psv")
-    t.add_argument("--name", metavar="名前", help="ログ名。省くと出力名から作る")
-    t.add_argument("--max-plies", type=int, default=1, metavar="N", help="進める手数の上限")
-    t.add_argument("--limit", type=int, metavar="N", help="先頭のこの件数だけ処理する")
-    t.add_argument("--eval-file", metavar="パス", help="評価関数")
-    t.set_defaults(func=quiet)
+    dataops.add_parsers(ss)
 
 
 # --- fetch -------------------------------------------------------------
@@ -258,41 +247,3 @@ def _prepare(raw: Path, train: Path, *, dry_run: bool) -> None:
         dry_run=dry_run,
         allowed=(0, 1, 2, 3),
     )
-
-
-# --- quiet -------------------------------------------------------------
-
-
-def quiet(args: argparse.Namespace) -> int:
-    """教師局面をqsearchの静止局面へ置き換える。"""
-    source, out = Path(args.input), Path(args.output)
-    if not source.is_file() and not args.dry_run:
-        raise proc.Fail(f"入力のpsvがない: {source}")
-
-    eval_file = args.eval_file or config.get("EVAL_FILE")
-    if not eval_file and not args.dry_run:
-        raise proc.Fail("評価関数がない。--eval-file で渡す")
-
-    psv = paths.REPO / "target" / "release" / "psv"
-    if not psv.is_file() and not args.dry_run:
-        raise proc.Fail(f"{paths.rel(psv)} がない。先に cargo build --release を実行する")
-
-    name = args.name or out.name.removesuffix(".psv")
-    paths.check_name(name)
-    out.parent.mkdir(parents=True, exist_ok=True)
-
-    print(f"=== 教師局面の静止化: {name} ===")
-    print(f"入力    : {paths.rel(source)}")
-    print(f"出力    : {paths.rel(out)}")
-    print(f"上限手数: {args.max_plies}")
-
-    argv = [
-        str(psv), "quiet",
-        "--in", str(source),
-        "--out", str(out),
-        "--max-plies", str(args.max_plies),
-        "--eval-file", eval_file or "（未設定）",
-    ]
-    if args.limit is not None:
-        argv += ["--limit", str(args.limit)]
-    return proc.run(argv, dry_run=args.dry_run, log=paths.log("quiet", name))
