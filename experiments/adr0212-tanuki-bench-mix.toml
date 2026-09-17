@@ -1,0 +1,63 @@
+# ADR-0212: tanukiの3億の測定台に、別系列を20%混ぜて測る。
+# 混合データは学習が済むたびに消す。対局は統制との3本。
+adr = "0212"
+
+[[step]]
+id = "base-data"
+run = "hmwr data split tanuki_300M_q1 --in train_7860M_q1 --count 300000000"
+
+[[step]]
+id = "extra-data"
+run = "hmwr data split tanuki_extra_60M_q1 --in train_7860M_q1 --count 60000000 --skip 300000000"
+
+[[step]]
+id = "train-base"
+run = "hmwr net train tbase_300M --data tanuki_300M_q1 --valid valid_tanuki_q1 --rank rank_tanuki_210M --seed 0 --notes \"ADR-0212 tanukiの3億の測定台、ゼロから\""
+
+[[step]]
+id = "mix-t60"
+run = "hmwr data mix tmix_t60_300M --in tanuki_300M_q1 --in tanuki_extra_60M_q1"
+
+[[step]]
+id = "train-t60"
+run = "hmwr net train tmix_t60_300M --data tmix_t60_300M --valid valid_tanuki_q1 --rank rank_tanuki_210M --seed 0 --notes \"ADR-0212 量の統制、tanukiを6,000万足す\""
+
+[[step]]
+id = "rm-t60"
+run = "hmwr data rm tmix_t60_300M"
+
+[[step]]
+id = "mix-hao60"
+run = "hmwr data mix tmix_hao60_300M --in tanuki_300M_q1 --in hao_extra_60M_q1"
+
+[[step]]
+id = "train-hao60"
+run = "hmwr net train tmix_hao60_300M --data tmix_hao60_300M --valid valid_tanuki_q1 --rank rank_tanuki_210M --seed 0 --notes \"ADR-0212 系列hao、6,000万を混ぜる\""
+
+[[step]]
+id = "rm-hao60"
+run = "hmwr data rm tmix_hao60_300M"
+
+[[step]]
+id = "mix-ek60"
+run = "hmwr data mix tmix_ek60_300M --in tanuki_300M_q1 --in ek_60M_q1"
+
+[[step]]
+id = "train-ek60"
+run = "hmwr net train tmix_ek60_300M --data tmix_ek60_300M --valid valid_tanuki_q1 --rank rank_tanuki_210M --seed 0 --notes \"ADR-0212 系列入玉、6,000万を混ぜる\""
+
+[[step]]
+id = "rm-ek60"
+run = "hmwr data rm tmix_ek60_300M"
+
+[[step]]
+id = "match-t60"
+run = "hmwr match run adr0212-t60-normal --build adr0200-himawari --base-net tbase_300M --cand-net tmix_t60_300M --stop pairs:1000 --max-moves 400 --foreground"
+
+[[step]]
+id = "match-hao60"
+run = "hmwr match run adr0212-hao60-normal --build adr0200-himawari --base-net tbase_300M --cand-net tmix_hao60_300M --stop pairs:1000 --max-moves 400 --foreground"
+
+[[step]]
+id = "match-ek60"
+run = "hmwr match run adr0212-ek60-normal --build adr0200-himawari --base-net tbase_300M --cand-net tmix_ek60_300M --stop pairs:1000 --max-moves 400 --foreground"

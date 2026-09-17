@@ -107,6 +107,7 @@
 - [0205](0205-relabel-loop.md) 教師の局面を自分の探索で付け直し、ゼロから学習し直す世代を試す
 - [0206](0206-entering-king-mix.md) 入玉5億局面を教師へ混ぜ、入玉局面の弱さを埋める
 - [0210](0210-teacher-mix-control.md) 入玉混合の+37.3を、量・系列・入玉の3つの説明へ統制群で分ける
+- [0212](0212-tanuki-bench-mix.md) tanukiの測定台で、別系列の混合が本学習の教師でも効くかを測る
 - [0207](0207-roadmap-focus-eval.md) ROADMAPを再び棚卸しし、注力を評価関数の学習と構造の1本に絞る
 - [0144](0144-selfplay-teacher-loop.md) 自前生成による世代ループ
 - [0185](0185-sibling-ranking-loss.md) 兄弟局面のランキング損失を回帰へ足す
@@ -342,7 +343,8 @@
 | [0207](0207-roadmap-focus-eval.md) | ROADMAPを再び棚卸しし、注力を評価関数の学習と構造の1本に絞る | 2026-09-17 |  | accepted |
 | [0208](0208-hmwr-resource-verbs.md) | hmwrのコマンドを手順の固定から資源への操作へ切り直す | 2026-09-17 |  | accepted |
 | [0209](0209-workflow-layers.md) | 仕事を4つの層へ振り分け、実験をIssueのキューで無人実行する | 2026-09-17 |  | accepted |
-| [0210](0210-teacher-mix-control.md) | 入玉混合の+37.3を、量・系列・入玉の3つの説明へ統制群で分ける | 2026-09-17 |  | proposed |
+| [0210](0210-teacher-mix-control.md) | 入玉混合の+37.3を、量・系列・入玉の3つの説明へ統制群で分ける | 2026-09-17 |  | accepted |
+| [0212](0212-tanuki-bench-mix.md) | tanukiの測定台で、別系列の混合が本学習の教師でも効くかを測る | 2026-09-18 |  | proposed |
 | [0211](0211-check-extension-see.md) | 王手延長を損をしない王手に限る | 2026-09-18 |  | proposed |
 
 ## バックログ
