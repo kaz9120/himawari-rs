@@ -1,0 +1,33 @@
+# floodgateのレートの定点記録（ADR-0209）。日々の物差しをレートに置いたので
+# （ADR-0207）、推移を週次で追跡用のIssueへ貼る。
+#
+# 元データは対局者ページのグラフが読むCSVで、初日からの全履歴を持つ。貼るのは
+# 直近14日の日毎の表なので、取得のタイミングに依存せず、1回飛んでも欠けない。
+# 判断が要らない仕事なので、LLMを通さない。
+name: floodgate-rate
+
+on:
+  schedule:
+    - cron: "0 0 * * 1" # 月曜 09:00 JST
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  record:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 bin/hmwr kifu rate --days 14 > body.md && cat body.md
+      - env:
+          GH_TOKEN: ${{ github.token }}
+          TITLE: "floodgateのレートの定点記録"
+        run: |
+          number=$(gh issue list --state open --search "in:title \"$TITLE\"" --json number -q '.[0].number')
+          if [ -n "$number" ]; then
+            gh issue comment "$number" --body-file body.md
+          else
+            gh issue create --title "$TITLE" --body-file body.md
+          fi
