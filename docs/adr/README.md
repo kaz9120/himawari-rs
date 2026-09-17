@@ -103,6 +103,7 @@
 - [0204](0204-ponder-from-tt.md) PVが1手で終わったとき、置換表からponder手を補う
 - [0205](0205-relabel-loop.md) 教師の局面を自分の探索で付け直し、ゼロから学習し直す世代を試す
 - [0206](0206-entering-king-mix.md) 入玉5億局面を教師へ混ぜ、入玉局面の弱さを埋める
+- [0207](0207-roadmap-focus-eval.md) ROADMAPを再び棚卸しし、注力を評価関数の学習と構造の1本に絞る
 - [0144](0144-selfplay-teacher-loop.md) 自前生成による世代ループ
 - [0185](0185-sibling-ranking-loss.md) 兄弟局面のランキング損失を回帰へ足す
 - [0187](0187-selfplay-gen2.md) 自前生成の第2世代を診断先行で測る案（基準の誤りで0188へ）
@@ -247,7 +248,7 @@
 | [0117](0117-g8-ponder.md) | ponderの会計・継続・予約を参照実装へ揃える（G8） | 2026-07-31 | +19.3 | accepted |
 | [0118](0118-g9-aspiration.md) | 反復深化とaspirationを参照実装へ揃える（G9） | 2026-07-31 | +55.6 | accepted |
 | [0119](0119-g10-book.md) | 定跡・投票・実務オプションを参照実装へ揃える（G10） | 2026-08-01 | +8.0 | accepted |
-| [0120](0120-after-parity.md) | 追従一巡後の方向を評価関数と探索の結合へ置く | 2026-08-01 |  | proposed |
+| [0120](0120-after-parity.md) | 追従一巡後の方向を評価関数と探索の結合へ置く | 2026-08-01 |  | superseded |
 | [0121](0121-book-scale-up.md) | 定跡を損失の小さい順に掘り、上限と再開を付ける | 2026-08-01 |  | accepted |
 | [0122](0122-tooling-language-split.md) | 開発スクリプトを役割で3言語に分ける | 2026-08-01 |  | accepted |
 | [0123](0123-stop-and-resume.md) | 長時間走る処理は停止と再開ができること | 2026-08-01 |  | accepted |
@@ -269,13 +270,13 @@
 | [0139](0139-mate1ply-in-search-retry.md) | mate_1plyを通常探索へ入れ直す | 2026-08-04 |  | rejected |
 | [0140](0140-king-line-features.md) | 玉ライン特徴をHalfKPへ追加する | 2026-08-04 |  | proposed |
 | [0141](0141-singular-rate-calibration.md) | singular率を設計点へ較正し、多段延長を再訪する | 2026-08-04 |  | rejected |
-| [0142](0142-dfpn-mate-search.md) | df-pnの詰み探索をrootへ並走させる | 2026-08-04 |  | proposed |
+| [0142](0142-dfpn-mate-search.md) | df-pnの詰み探索をrootへ並走させる | 2026-08-04 |  | proposed（保留。注力の外、[0207](0207-roadmap-focus-eval.md)） |
 | [0143](0143-spsa-tuning.md) | 探索定数をSPSAで一括チューニングする | 2026-08-04 | +32.0、再走+21.2 | accepted |
 | [0144](0144-selfplay-teacher-loop.md) | 自前gensfenで教師データの世代ループを始める | 2026-08-04 |  | accepted |
 | [0145](0145-continual-learning.md) | 前世代のネットから継続学習で積む | 2026-08-08 |  | accepted |
 | [0146](0146-book-full-width-opening.md) | 定跡の浅い層を全合法手で埋める | 2026-08-08 |  | accepted |
 | [0147](0147-effect-bucket-features.md) | 特徴indexを被利き数でバケット化する（EffectBucket） | 2026-08-08 |  | proposed |
-| [0148](0148-effect-table.md) | 盤面の利きを差分で持つ | 2026-08-08 |  | proposed |
+| [0148](0148-effect-table.md) | 盤面の利きを差分で持つ | 2026-08-08 |  | proposed（保留。注力の外、[0207](0207-roadmap-focus-eval.md)） |
 | [0149](0149-experiment-runner.md) | 実験の実行とログを規約で固定する | 2026-08-08 |  | accepted |
 | [0150](0150-rootstrap-evaluation.md) | 世代ループでの検証損失の読み方 | 2026-08-08 |  | accepted |
 | [0151](0151-speedup-sweep.md) | 挙動を変えない高速化の第2弾をプロファイル起点で洗い出す | 2026-08-09 |  | accepted |
@@ -334,6 +335,7 @@
 | [0204](0204-ponder-from-tt.md) | PVが1手で終わったとき、置換表からponder手を補う | 2026-09-08 | +34.9 | accepted |
 | [0205](0205-relabel-loop.md) | 教師の局面を自分の探索で付け直し、ゼロから学習し直す世代を試す | 2026-09-09 |  | accepted |
 | [0206](0206-entering-king-mix.md) | 入玉5億局面を教師へ混ぜ、入玉局面の弱さを埋める | 2026-09-15 |  | rejected |
+| [0207](0207-roadmap-focus-eval.md) | ROADMAPを再び棚卸しし、注力を評価関数の学習と構造の1本に絞る | 2026-09-17 |  | accepted |
 
 ## バックログ
 

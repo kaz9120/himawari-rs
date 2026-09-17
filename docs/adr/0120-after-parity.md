@@ -1,6 +1,6 @@
 # 0120: 追従一巡後の方向を評価関数と探索の結合へ置く
 
-- Status: proposed
+- Status: superseded（方向の判断は[ADR-0199](0199-roadmap-inventory.md)と[ADR-0207](0207-roadmap-focus-eval.md)が上書きした）
 - Date: 2026-08-01
 - 関連ADR: [0109](0109-reference-parity.md), [0089](0089-improvement-criteria.md), [0066](0066-halfkp-factorizer.md), [0067](0067-ft-dimension-512.md), [0068](0068-sprt-driven-versioning.md)
 

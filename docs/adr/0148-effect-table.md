@@ -1,6 +1,6 @@
 # 0148: 盤面の利きを差分で持つ
 
-- Status: proposed
+- Status: proposed（保留。注力の外、[ADR-0207](0207-roadmap-focus-eval.md)）
 - Date: 2026-08-08
 - 関連ADR: [0018](0018-sfen-perft.md), [0035](0035-nnue-accumulator.md), [0093](0093-mate1ply-in-search.md), [0124](0124-hot-path-allocs.md), [0133](0133-effect-pretraining.md), [0139](0139-mate1ply-in-search-retry.md), [0147](0147-effect-bucket-features.md)
 

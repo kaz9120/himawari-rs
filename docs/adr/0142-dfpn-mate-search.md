@@ -1,6 +1,6 @@
 # 0142: df-pnの詰み探索をrootへ並走させる
 
-- Status: proposed
+- Status: proposed（保留。注力の外、[ADR-0207](0207-roadmap-focus-eval.md)）
 - Date: 2026-08-04
 - 関連ADR: [0020](0020-search-threading.md), [0029](0029-mate-search.md), [0030](0030-nyugyoku-declaration.md), [0088](0088-mate-early-stop.md), [0089](0089-improvement-criteria.md)
 
