@@ -1,0 +1,52 @@
+# ADR-0215: 公開dlshogiの探索なし評価値で、E4の1億局面のラベルを付け直す。
+# 推論は1回（約11時間）で、スケールの水準は既存のscoreを比率で縮めて作る。
+# 統制は e4_ctrl（ADR-0205、既存）。対局は統制との3本。
+adr = "0215"
+
+[[step]]
+id = "relabel-600"
+run = "hmwr data relabel e4_dl600_train_q1 --in e4_ctrl_train_q1 --scale 600"
+
+[[step]]
+id = "relabel-valid-600"
+run = "hmwr data relabel e4_dl600_valid_q1 --in e4_ctrl_valid_q1 --scale 600"
+
+[[step]]
+id = "rescale-430"
+run = "hmwr data relabel e4_dl430_train_q1 --in e4_dl600_train_q1 --labeler rescale --scale 430"
+
+[[step]]
+id = "rescale-valid-430"
+run = "hmwr data relabel e4_dl430_valid_q1 --in e4_dl600_valid_q1 --labeler rescale --scale 430"
+
+[[step]]
+id = "rescale-340"
+run = "hmwr data relabel e4_dl340_train_q1 --in e4_dl600_train_q1 --labeler rescale --scale 340"
+
+[[step]]
+id = "rescale-valid-340"
+run = "hmwr data relabel e4_dl340_valid_q1 --in e4_dl600_valid_q1 --labeler rescale --scale 340"
+
+[[step]]
+id = "train-600"
+run = "hmwr net train e4_dl600 --data e4_dl600_train_q1 --valid e4_dl600_valid_q1 --rank e4_ctrl --seed 0 --notes \"ADR-0215 dlshogi 2021版の推論1回、S=600\""
+
+[[step]]
+id = "train-430"
+run = "hmwr net train e4_dl430 --data e4_dl430_train_q1 --valid e4_dl430_valid_q1 --rank e4_ctrl --seed 0 --notes \"ADR-0215 dlshogi 2021版の推論1回、S=430\""
+
+[[step]]
+id = "train-340"
+run = "hmwr net train e4_dl340 --data e4_dl340_train_q1 --valid e4_dl340_valid_q1 --rank e4_ctrl --seed 0 --notes \"ADR-0215 dlshogi 2021版の推論1回、S=340\""
+
+[[step]]
+id = "match-600"
+run = "hmwr match run adr0215-dl600 --build adr0200-himawari --base-net e4_ctrl --cand-net e4_dl600 --stop pairs:1000 --max-moves 400 --foreground"
+
+[[step]]
+id = "match-430"
+run = "hmwr match run adr0215-dl430 --build adr0200-himawari --base-net e4_ctrl --cand-net e4_dl430 --stop pairs:1000 --max-moves 400 --foreground"
+
+[[step]]
+id = "match-340"
+run = "hmwr match run adr0215-dl340 --build adr0200-himawari --base-net e4_ctrl --cand-net e4_dl340 --stop pairs:1000 --max-moves 400 --foreground"

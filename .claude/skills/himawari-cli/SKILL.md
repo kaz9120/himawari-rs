@@ -236,6 +236,7 @@ hmwr data mix <出力名> --in <入力名> --in <入力名>   複数の教師を
 hmwr data quiet <出力名> --in <入力名>               静止局面へ置き換える
 hmwr data rank <出力名> --in <入力名> --limit N --jobs 4   兄弟局面の群を作る
 hmwr data openings <出力名> --in <入力名> --min-ply 40 --count 2000   開始局面集を作る
+hmwr data relabel <出力名> --in <入力名> --scale 600    DL系モデルの推論1回でscoreを付け直す
 hmwr data stats <名前>                               局面数・評価値の分布を見る
 hmwr data rm <名前>...                               中間ファイルを消す
 ```
@@ -255,6 +256,11 @@ hmwr data rm <名前>...                               中間ファイルを消�
 
 `data quiet` は並列8で6,000万局面に2〜12分かかる（ADR-0210・ADR-0206の実測。
 取り合いの多い局面ほど遅い）。停止ファイルを持たないので、途中で止めたら最初からやり直す。`--limit` で先頭だけ試せる。並列数を変えると出力が変わる。
+
+`data relabel` はdlshogiのONNXで勝率を取り、`cp = scale × logit(p)` をscoreへ書く。
+モデルは配布元のライセンスに同意して `data/models/dlshogi/` へ置く。cshogiと
+onnxruntimeが要る。MacのCoreMLで約2,600局面/秒、1億局面に約11時間かかる。
+進み具合は `data/logs/relabel-<名前>.log` へ1分ごとに出る。
 
 ### 掃除する
 

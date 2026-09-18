@@ -31,7 +31,7 @@ jobs:
       - run: cargo check -p himawari-engine --features actdump
       # hmwrコマンドと解析ツールのPython（ADR-0180）。引数処理は同じ入力から
       # 同じコマンド列が出ることを、解析はログの読み取りを固定する
-      - run: pip install --quiet pytest
+      - run: pip install --quiet pytest numpy
       - run: python3 -m pytest tests -q
 
   test:
