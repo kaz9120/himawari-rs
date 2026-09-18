@@ -97,9 +97,9 @@ himawari threadtune --eval <評価関数> --current 6 --hours 8
 
 `DebugLogFile` にファイルのパス（ディレクトリではない）を入れると、USIの
 入出力が1行ごとにミリ秒のUNIX時刻つきで残る。`<` が受信、`>` が送信である。
-`go` の持ち時間、`info ... time`、`bestmove` の時刻に加え、bestmoveの直前に
-時間管理の計画と実績（`info string time plan: ...`）が出るので、切れ負けが
-エンジンの計画の内か外かをこのログだけで分けられる。
+`go` の持ち時間、`info ... time`、`bestmove` の時刻が読める。bestmoveの直前には
+時間管理の計画と実績（`info string time plan: ...`）も出る。切れ負けがエンジンの
+計画の内か外かは、このログだけで分けられる。
 
 ```
 1758160000123 < go btime 120000 wtime 12000 binc 10000 winc 10000
