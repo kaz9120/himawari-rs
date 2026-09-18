@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.50.8](https://github.com/kaz9120/himawari-rs/compare/v0.50.7...v0.50.8) (2026-09-18)
+
+
+### その他の変更
+
+* hmwr net probeで焦点の熱地図を当てるprobeを測る ([#567](https://github.com/kaz9120/himawari-rs/issues/567)) ([b17582f](https://github.com/kaz9120/himawari-rs/commit/b17582f754aff10e9ad01a1d3bc3a36fe5892c6d))
+
 ## [0.50.7](https://github.com/kaz9120/himawari-rs/compare/v0.50.6...v0.50.7) (2026-09-18)
 
 
