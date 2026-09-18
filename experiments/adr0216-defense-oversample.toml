@@ -1,62 +1,84 @@
 # ADR-0216: 攻撃的な受けの局面を3倍に重くして学習し、盲点が埋まるかを測る。
-# 統制と処置は同じ生データの先頭3億から作る。判定に教師手が要るので、複製は
-# 静止化の前に置く。
-#
-# 手元のtanuki2024の生データは1.1億局面しかない。3億に届かせるため、名前順の
-# 先頭40ファイル（3.15億局面）まで取り直してから始める。
-#
-# 中間ファイルは使い終わった時点で消す。それでもピークは約55GBになるので、
-# 走らせる前に data/ の空きを確かめる。
+# 測定台はE4の1.1億（e4_ctrl_train、静止化前）。統制・処置・量の統制の3群を
+# 同じ元から作り、静止化はすべて現行ネットで行う。ディスクのピークは約16GB。
 adr = "0216"
 
 [[step]]
-id = "fetch-raw"
-run = "hmwr data fetch download --dataset tanuki2024 --limit-files 40"
-
-[[step]]
-id = "src"
-run = "hmwr data shuffle tdef_src_300M --raw tanuki2024 --limit 300000000"
-
-[[step]]
-id = "oversample"
-run = "hmwr data oversample tdef3_300M --in tdef_src_300M --kind defense --times 3"
-
-[[step]]
-id = "oversample-shuffle"
-run = "hmwr data shuffle tdef3_300M_s --in tdef3_300M"
-
-[[step]]
-id = "rm-oversample"
-run = "hmwr data rm tdef3_300M"
-
-[[step]]
-id = "oversample-quiet"
-run = "hmwr data quiet tdef3_300M_q1 --in tdef3_300M_s"
-
-[[step]]
-id = "rm-oversample-shuffle"
-run = "hmwr data rm tdef3_300M_s"
+id = "valid-quiet"
+run = "hmwr data quiet e4d_valid_q1 --in e4_ctrl_valid"
 
 [[step]]
 id = "ctrl-quiet"
-run = "hmwr data quiet tdef_ctrl_300M_q1 --in tdef_src_300M"
+run = "hmwr data quiet e4d_ctrl_q1 --in e4_ctrl_train"
+
+[[step]]
+id = "oversample"
+run = "hmwr data oversample e4d_def3 --in e4_ctrl_train --kind defense --times 3"
+
+[[step]]
+id = "oversample-shuffle"
+run = "hmwr data shuffle e4d_def3_s --in e4d_def3"
+
+[[step]]
+id = "rm-oversample"
+run = "hmwr data rm e4d_def3"
+
+[[step]]
+id = "def3-quiet"
+run = "hmwr data quiet e4d_def3_q1 --in e4d_def3_s"
+
+[[step]]
+id = "rm-oversample-shuffle"
+run = "hmwr data rm e4d_def3_s"
+
+[[step]]
+id = "dup-head"
+run = "hmwr data split e4d_head --in e4_ctrl_train --count 9900000"
+
+[[step]]
+id = "dup-mix"
+run = "hmwr data mix e4d_dup_s --in e4_ctrl_train --in e4d_head --in e4d_head"
+
+[[step]]
+id = "rm-dup-head"
+run = "hmwr data rm e4d_head"
+
+[[step]]
+id = "dup-quiet"
+run = "hmwr data quiet e4d_dup_q1 --in e4d_dup_s"
+
+[[step]]
+id = "rm-dup-mix"
+run = "hmwr data rm e4d_dup_s"
 
 [[step]]
 id = "train-ctrl"
-run = "hmwr net train tdef_ctrl_300M --data tdef_ctrl_300M_q1 --valid valid_tanuki_q1 --rank rank_tanuki_210M --seed 0 --notes \"ADR-0216 統制、生データの先頭3億\""
+run = "hmwr net train e4d_ctrl --data e4d_ctrl_q1 --valid e4d_valid_q1 --rank e4_ctrl --seed 0 --notes \"ADR-0216 統制、E4の1.1億を現行ネットで静止化\""
 
 [[step]]
 id = "train-def3"
-run = "hmwr net train tdef3_300M --data tdef3_300M_q1 --valid valid_tanuki_q1 --rank rank_tanuki_210M --seed 0 --notes \"ADR-0216 処置、攻撃的な受けを3倍に重くした3億\""
+run = "hmwr net train e4d_def3 --data e4d_def3_q1 --valid e4d_valid_q1 --rank e4_ctrl --seed 0 --notes \"ADR-0216 処置、攻撃的な受けを3倍に重くした1.3億\""
+
+[[step]]
+id = "train-dup"
+run = "hmwr net train e4d_dup --data e4d_dup_q1 --valid e4d_valid_q1 --rank e4_ctrl --seed 0 --notes \"ADR-0216 量の統制、先頭990万を2回足した1.3億\""
 
 [[step]]
 id = "match-def3"
-run = "hmwr match run adr0216-def3 --build adr0200-himawari --base-net tdef_ctrl_300M --cand-net tdef3_300M --stop pairs:1000 --max-moves 400 --foreground"
+run = "hmwr match run adr0216-def3 --build adr0200-himawari --base-net e4d_ctrl --cand-net e4d_def3 --stop pairs:1000 --max-moves 400 --foreground"
+
+[[step]]
+id = "match-dup"
+run = "hmwr match run adr0216-dup --build adr0200-himawari --base-net e4d_ctrl --cand-net e4d_dup --stop pairs:1000 --max-moves 400 --foreground"
 
 [[step]]
 id = "defend-ctrl"
-run = "hmwr diag defend adr0216-ctrl --in e4_ctrl_train --limit 500000 --eval-file data/nets/tdef_ctrl_300M.hmwr"
+run = "hmwr diag defend adr0216-ctrl --in e4_ctrl_valid --limit 200000 --eval-file data/nets/e4d_ctrl.hmwr"
 
 [[step]]
 id = "defend-def3"
-run = "hmwr diag defend adr0216-def3 --in e4_ctrl_train --limit 500000 --eval-file data/nets/tdef3_300M.hmwr"
+run = "hmwr diag defend adr0216-def3 --in e4_ctrl_valid --limit 200000 --eval-file data/nets/e4d_def3.hmwr"
+
+[[step]]
+id = "defend-dup"
+run = "hmwr diag defend adr0216-dup --in e4_ctrl_valid --limit 200000 --eval-file data/nets/e4d_dup.hmwr"
