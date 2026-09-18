@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.50.9](https://github.com/kaz9120/himawari-rs/compare/v0.50.8...v0.50.9) (2026-09-18)
+
+
+### その他の変更
+
+* net probeに対照を足し、ADR-0213にprobeの結果と判定を書く ([#570](https://github.com/kaz9120/himawari-rs/issues/570)) ([1ade746](https://github.com/kaz9120/himawari-rs/commit/1ade7465adb27a40ec70de308bd967b3c005a6d6))
+
 ## [0.50.8](https://github.com/kaz9120/himawari-rs/compare/v0.50.7...v0.50.8) (2026-09-18)
 
 
