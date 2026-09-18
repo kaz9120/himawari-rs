@@ -12,7 +12,13 @@ import argparse
 from pathlib import Path
 
 from .. import config, paths, proc
-from ..tools import dead_dims, phase as phase_tool, rank_diag, replay as replay_tool
+from ..tools import (
+    dead_dims,
+    phase as phase_tool,
+    rank_diag,
+    replay as replay_tool,
+    shadow_flips,
+)
 
 
 def add_parser(sub: argparse._SubParsersAction) -> None:
@@ -87,6 +93,20 @@ def add_parser(sub: argparse._SubParsersAction) -> None:
     t.add_argument("--seed", type=int, metavar="N", help="乱数分割の種")
     t.set_defaults(func=phase)
 
+    t = ss.add_parser(
+        "shadow",
+        help="影の利き属性の、1手あたりの反転数を測る",
+        description="駒トークンに利きの数を属性として足す案のコストを測る。"
+        "飛び駒の利きは遮りを無視した「影の利き」として数え、短い利きは厳密に数える。"
+        "対局順のpsvを再生し、前後で同じマスに残った駒のうち属性が変わった数を"
+        "粒度ごとに集計する。動いた駒と取られた駒は、属性がなくてもFTが触れるので"
+        "数に入れない。",
+    )
+    t.add_argument("inputs", nargs="+", metavar="入力", help="対局順のpsv（data/raw/<名前>/*.bin）")
+    t.add_argument("--limit", type=int, default=1000000, metavar="N", help="先頭N局面だけ読む")
+    t.add_argument("--name", metavar="名前", help="ログの名前（既定は入力の置き場の名前）")
+    t.set_defaults(func=shadow)
+
 
 def rank(args: argparse.Namespace) -> int:
     """ランキング損失のヒンジ発火の内訳を測る。"""
@@ -156,6 +176,37 @@ def phase(args: argparse.Namespace) -> int:
     if args.seed is not None:
         tool_argv += ["--seed", str(args.seed)]
     return phase_tool.main(tool_argv)
+
+
+def _shadow_name(inputs: list[str]) -> str:
+    """ログの名前を入力から決める。置き場の名前を使い、駄目なら stem を使う。"""
+    first = Path(inputs[0])
+    for candidate in (first.parent.name, first.stem):
+        try:
+            return paths.check_name(candidate)
+        except paths.BadName:
+            continue
+    return "shadow"
+
+
+def shadow(args: argparse.Namespace) -> int:
+    """影の利き属性の、1手あたりの反転数を測る（ADR-0213）。"""
+    name = paths.check_name(args.name) if args.name else _shadow_name(args.inputs)
+    if args.dry_run:
+        for path in args.inputs:
+            print(f"[dry-run] 入力: {paths.rel(path)}")
+        print(f"[dry-run] 先頭{args.limit:,}局面の反転数を測る")
+        print(f"[dry-run] ログ: {paths.rel(paths.log('diag-shadow', name))}")
+        return proc.OK
+    for path in args.inputs:
+        if not Path(path).is_file():
+            raise proc.Fail(f"入力がない: {path}")
+    log = paths.log("diag-shadow", name)
+    argv = [*args.inputs, "--limit", str(args.limit), "--log", str(log)]
+    code = shadow_flips.main(argv)
+    if code == proc.OK:
+        print(f"ログ: {paths.rel(log)}")
+    return code
 
 
 def replay(args: argparse.Namespace) -> int:
