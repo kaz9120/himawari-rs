@@ -1853,6 +1853,10 @@ impl Worker {
                 // TT手はその結果を使う。王手延長（ADR-0024）は参照実装が持たない
                 // 本エンジンの機能なので残すが、singularの判定が付いた手では
                 // singular側を採る（多段化した延長量を王手延長で潰さない）。
+                // 王手延長は損をしない王手に限る（ADR-0211）。タダで取られる
+                // 捨て駒の王手は強制手順を作らない。将棋は持ち駒で王手を続け
+                // られるので、無条件に延長すると王手の連続で深さが減らず、
+                // 終盤の1反復が10倍以上に膨れる（Issue #471）
                 // 参照実装は延長をムーブループの枝刈りの後で加えるので、枝刈りの
                 // 尺度（lmr_depth）はこの値でなく `depth - 1` を基準にする
                 let (extension, base_depth) = match singular_ext {
@@ -1861,7 +1865,10 @@ impl Worker {
                     // 増えた1手はTT手自身には乗らない
                     // （yaneuraou-search.cpp:3556, 3788）
                     Some(e) if m == tt.mv => (e, depth_pre_singular),
-                    _ => (i32::from(gives_check), depth as i32),
+                    _ => (
+                        i32::from(gives_check && self.pos.see_ge(m, 0)),
+                        depth as i32,
+                    ),
                 };
                 let mut new_depth = base_depth - 1 + extension;
 
