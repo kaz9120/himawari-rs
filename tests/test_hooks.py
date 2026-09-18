@@ -21,6 +21,9 @@ spec.loader.exec_module(hook)
         "nohup ./target/release/selfplay --baseline a &",
         "cargo run --release -q -p himawari-tools --bin psv -- rank --in a",
         "cargo run --release -p himawari-tools --bin selfplay -- --baseline a",
+        # 単発の診断も hmwr diag が包んでいる
+        "./target/release/psv defend --in a --out b.tsv",
+        "./target/release/psv phase --in a --out b.tsv",
     ],
 )
 def test_covered_operations_are_blocked(command):
