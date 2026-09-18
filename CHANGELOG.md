@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.50.4](https://github.com/kaz9120/himawari-rs/compare/v0.50.3...v0.50.4) (2026-09-18)
+
+
+### その他の変更
+
+* hmwr data relabelにdlshogiのONNXで勝率を付ける裏側を足す（ADR-0215） ([#557](https://github.com/kaz9120/himawari-rs/issues/557)) ([b3bc641](https://github.com/kaz9120/himawari-rs/commit/b3bc6419ea875b0fb03026864c2dd2e0215576fa))
+
 ## [0.50.3](https://github.com/kaz9120/himawari-rs/compare/v0.50.2...v0.50.3) (2026-09-18)
 
 
