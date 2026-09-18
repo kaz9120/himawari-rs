@@ -103,7 +103,7 @@ def test_cli_relabel_writes_output_and_done_mark(train):
 
 def test_cli_relabel_dry_run(capsys):
     assert cli.main(["--dry-run", "data", "relabel", "t", "--in", "s"]) == proc.OK
-    lines = [l for l in capsys.readouterr().out.splitlines() if l.startswith("[dry-run]")]
+    lines = [x for x in capsys.readouterr().out.splitlines() if x.startswith("[dry-run]")]
     assert lines[0].startswith("[dry-run] relabel --labeler dlshogi")
     assert lines[1] == "[dry-run] mv data/train/t.psv.part data/train/t.psv"
     assert lines[2] == "[dry-run] ログ: data/logs/relabel-t.log"
