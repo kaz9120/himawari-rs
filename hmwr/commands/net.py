@@ -14,7 +14,7 @@ from pathlib import Path
 
 from .. import conditions, config, paths, proc
 from .. import release as release_mod
-from ..tools import ft_reorder
+from ..tools import focus_labels, ft_reorder
 
 ARCH_RE = re.compile(r"^\d+x\d+(x\d+){0,2}$")
 TRAINER = "training/train.py"
@@ -30,6 +30,13 @@ DEFAULT_VALID = "data/train/valid_385M.psv"
 DEFAULT_EVAL_VALID = "data/train/valid_385M_q1.psv"
 FT_CLIP = "1.0"
 BASE_FLAGS = ["--batch-loader", "--dense-ft", "--factorized"]
+
+# probeの既定（ADR-0213）。末尾10万局面を検証へ回し、残りで後段だけを学習する
+PROBE_VALID = 100_000
+PROBE_LAMBDA = "1.0"
+# 検証と学習ログを1エポックの中で何回出すか。既定の刻みは本番規模に
+# 合わせてあり、90万局面では1回も出ないまま終わる
+PROBE_REPORTS = 10
 
 
 def add_parser(sub: argparse._SubParsersAction) -> None:
@@ -75,6 +82,49 @@ def add_parser(sub: argparse._SubParsersAction) -> None:
         help="条件の記録がないチェックポイントを、この条件の続きとして引き継ぐ",
     )
     t.set_defaults(func=train)
+
+    t = ss.add_parser(
+        "probe",
+        help="FTを凍結して焦点の熱地図を当てる",
+        description="後段だけを学習し、上位5マスの的中率でFTの表現を測る。"
+        "**自明解を必ず並記する。** 頻度事前は検証行に出るので、"
+        "乱数初期値のFTは --init-net none で別に測る。"
+        "書き出すネットは捨てる。学習するのは焦点ヘッドだけである。",
+    )
+    t.add_argument("name", help="probeの名前。ログと実験台帳の名前になる")
+    t.add_argument(
+        "--focus",
+        required=True,
+        metavar="名前",
+        help=f"熱地図つき局面集。data/train/<名前>{focus_labels.SUFFIX}",
+    )
+    t.add_argument(
+        "--init-net",
+        metavar="ネット",
+        help=f"FTの出どころ。none で乱数初期値（既定 {config.EVAL_FILE}）",
+    )
+    t.add_argument(
+        "--valid-count",
+        type=int,
+        default=PROBE_VALID,
+        metavar="N",
+        help=f"末尾のこの件数を検証へ回す（既定 {PROBE_VALID}）",
+    )
+    t.add_argument("--epochs", type=int, default=1, metavar="N", help="エポック数")
+    t.add_argument(
+        "--batch", type=int, default=BATCH, metavar="N", help=f"バッチ（既定 {BATCH}）"
+    )
+    t.add_argument("--lr", metavar="値", help="学習率の頂点")
+    t.add_argument("--head", default="linear", choices=["linear"], help="ヘッドの型")
+    t.add_argument(
+        "--orient",
+        default="board",
+        choices=["board", "stm"],
+        help="熱地図の向き。boardは盤の向きのまま、stmは手番側から見た向きへ揃える",
+    )
+    t.add_argument("--device", metavar="名前", help="mps か cpu（既定 mps）")
+    t.add_argument("--seed", type=int, default=0, metavar="N", help="乱数種")
+    t.set_defaults(func=probe)
 
     t = ss.add_parser(
         "shapes",
@@ -319,6 +369,107 @@ def _continual_args(data: Path, args: argparse.Namespace, *, dry_run: bool) -> l
     interval = max(steps // 20, 50)
     print(f"総ステップ {steps}、warmup {warmup}、検証間隔 {interval}")
     return ["--warmup-steps", str(warmup), "--valid-interval", str(interval)]
+
+
+# --- probe -------------------------------------------------------------
+
+
+def _probe_init(value: str | None) -> str | None:
+    """probeが読むFTの出どころを決める。
+
+    `none` は乱数初期値を表す。自明解Rの測定で、学習した表現を何も読まない。
+    名前だけ渡されたら `data/nets/<名前>.hmwr` に解決する。
+    """
+    if value is None:
+        return config.get("EVAL_FILE")
+    if value == "none":
+        return None
+    if "/" in value or value.endswith(".hmwr"):
+        return value
+    return str(paths.NETS / f"{paths.check_name(value)}.hmwr")
+
+
+def probe(args: argparse.Namespace) -> int:
+    """FTを凍結し、焦点の熱地図を当てる後段だけを学習する（ADR-0213）。
+
+    測るのは上位5マスの的中率で、比べる相手は2つの自明解である。頻度事前は
+    学習器が検証行へ並記し、乱数初期値のFTは `--init-net none` の別の走行で
+    測る。**判定はADRの事前登録に従う。この道具は数字を出すだけである。**
+    """
+    name = paths.check_name(args.name)
+    data = _train_file(args.focus, focus_labels.SUFFIX)
+    init = _probe_init(args.init_net)
+
+    if not args.dry_run:
+        if not data.is_file():
+            raise proc.Fail(f"熱地図つき局面集がない: {data}")
+        if init is not None and not Path(init).is_file():
+            raise proc.Fail(f"初期値のネットがない: {init}")
+
+    _ensure_extension(halfka=False, dry_run=args.dry_run)
+
+    rows = (
+        data.stat().st_size // focus_labels.RECORD_BYTES if data.is_file() else 0
+    )
+    train_rows = rows - args.valid_count
+    if rows and train_rows <= 0:
+        raise proc.Fail(
+            f"--valid-count が大きすぎる（全{rows:,}件、学習に残るのは{train_rows:,}件）",
+            proc.USAGE,
+        )
+    # 刻みは局面数から決める。既定の100ステップ／2000ステップは本番規模の
+    # 値で、90万局面では検証も学習ログも1回も出ないまま終わる
+    steps = max(train_rows // args.batch, 1) * args.epochs
+    interval = max(steps // PROBE_REPORTS, 1)
+
+    print(f"=== probe: {name} ===")
+    print(f"局面集  : {paths.rel(data)}（{rows:,}件）")
+    print(f"初期値  : {'乱数（自明解R）' if init is None else paths.rel(init)}")
+    print(f"学習    : {max(train_rows, 0):,}局面 × {args.epochs}エポック（{steps}ステップ）")
+    print(f"検証    : 末尾{args.valid_count:,}局面、{interval}ステップおき")
+    print(f"熱地図  : 向き {args.orient}")
+    print("出力    : なし（FTは動かず、学習した焦点ヘッドは捨てる）")
+
+    argv = [
+        "python3",
+        TRAINER,
+        "--data", str(data),
+        *BASE_FLAGS,
+        "--focus-head", args.head,
+        "--lambda-focus", PROBE_LAMBDA,
+        # 評価値を切り、焦点だけを的にする。FTは動かさない
+        "--lambda-value", "0",
+        "--freeze-ft",
+        "--focus-orient", args.orient,
+        "--focus-valid-count", str(args.valid_count),
+        "--epochs", str(args.epochs),
+        "--batch", str(args.batch),
+        "--warmup-steps", str(max(steps * 4 // 100, 1)),
+        "--valid-interval", str(interval),
+        "--log-interval", str(interval),
+        "--device", args.device or "mps",
+        "--seed", str(args.seed),
+        "--log-file", f"{RUNS}/probe-{name}.tsv",
+        "--registry", REGISTRY,
+        "--name", f"probe_{name}",
+        "--notes",
+        f"焦点probe: {paths.rel(data)}、FT={paths.rel(init) if init else '乱数'}",
+    ]
+    if init is not None:
+        argv += ["--init-net", str(init)]
+    if args.lr:
+        argv += ["--peak-lr", args.lr]
+
+    (paths.REPO / RUNS).mkdir(parents=True, exist_ok=True)
+    if args.dry_run:
+        argv += ["--out", "<一時ファイル>"]
+        return proc.run(argv, dry_run=True, log=paths.log("probe", name))
+    # 学習器は必ずネットを書き出すが、probeのそれは捨てるものである。
+    # FTは凍結していて1ビットも変わらず、学習した焦点ヘッドは載らない。
+    # data/nets/ へ置くと128MBの使い道のないファイルが走行ごとに増える
+    with tempfile.TemporaryDirectory() as tmp:
+        argv += ["--out", str(Path(tmp) / f"probe-{name}.hmwr")]
+        return proc.run(argv, log=paths.log("probe", name))
 
 
 # --- shapes ------------------------------------------------------------

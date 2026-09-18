@@ -11,6 +11,15 @@ from torch.utils.data import Dataset
 
 import himawari
 
+#: psvの1レコード（ADR-0038）
+PSV_BYTES = 40
+#: .focus の1レコード（ADR-0213）。psv40＋熱地図81＋関与81
+FOCUS_BYTES = 202
+#: 盤の升数。熱地図と関与フラグの長さになる
+SQUARES = 81
+#: 熱地図の向き。盤の向きのまま使うか、手番側から見た向きへ揃えるか
+FOCUS_ORIENTS = ("board", "stm")
+
 
 class PsvDataset(Dataset):
     """Memory-mapped PSV dataset with Rust feature extraction."""
@@ -137,6 +146,109 @@ class PsvBatchLoader:
                     if i < skip:
                         continue
                     q.put(self._extract(raw))
+            except Exception as e:  # 生産側の例外を消費側へ伝える
+                q.put(e)
+            q.put(None)
+
+        t = threading.Thread(target=produce, daemon=True)
+        t.start()
+        while True:
+            item = q.get()
+            if item is None:
+                break
+            if isinstance(item, Exception):
+                raise item
+            yield item
+
+
+class FocusBatchLoader:
+    """.focus を読み、psvの特徴と焦点の熱地図を返す（ADR-0213）。
+
+    レコードは202バイト固定長で、先頭40バイトがpsv、続く81バイトが熱地図、
+    残りの81バイトが駒ごとの関与フラグである。psvの部分は `PsvBatchLoader` と
+    同じRustの抽出へ流し、熱地図を10本目のテンソルとして足す。バッチの形が
+    9本から10本に増えるだけなので、学習ループの受け取り方は変わらない。
+
+    抽出はstrictで行う。**黙って落ちるとラベルとの整列が壊れ、別の局面の
+    熱地図を当てることになる。** 落ちたら即座に失敗させる。
+
+    `lo` と `hi` でレコードの区間を切る。学習と検証の分割はこの区間で行い、
+    同じファイルの先頭を学習、末尾を検証に回す。
+
+    `orient` は熱地図の向きを選ぶ。`board` は書かれたまま、`stm` は後手番の
+    局面で180度回す。**蓄積器は手番側から見た向きで並ぶ**ので、盤の向きの
+    ままだと的と表現の向きが局面の半分でずれる。
+    """
+
+    def __init__(self, path, batch, *, lo=0, hi=None, lambda_=0.7,
+                 shuffle=True, seed=0, prefetch=3, orient="board"):
+        size = os.path.getsize(path)
+        if size % FOCUS_BYTES != 0:
+            raise ValueError(f"ファイルサイズが{FOCUS_BYTES}の倍数でない: {size}")
+        total = size // FOCUS_BYTES
+        hi = total if hi is None else min(hi, total)
+        if not 0 <= lo < hi:
+            raise ValueError(f"レコードの区間が空だ: [{lo}, {hi}) / 全{total}件")
+        self.data = np.memmap(
+            path, dtype=np.uint8, mode="r", shape=(total, FOCUS_BYTES),
+        )[lo:hi]
+        if orient not in FOCUS_ORIENTS:
+            raise ValueError(f"熱地図の向きが不明: {orient}")
+        self.n = hi - lo
+        self.batch = batch
+        self.orient = orient
+        self.lambda_ = lambda_
+        self.shuffle = shuffle
+        self.seed = seed
+        self.prefetch = prefetch
+        self.epoch = 0
+        # エポック内で読み飛ばすバッチ数（ADR-0159）。他のローダと揃える
+        self.skip_batches = 0
+
+    def __len__(self):
+        return math.ceil(self.n / self.batch)
+
+    def _heat(self, raw):
+        """レコードの束から熱地図を取り出し、指定の向きへ揃える。
+
+        後手番の180度回転は升の並びを逆にするだけでよい。升は
+        `(筋 - 1) * 9 + (段 - 1)` なので、回した先は `80 - 升` になる。
+        手番はpacked sfenの先頭ビットにある。
+        """
+        heat = np.array(raw[:, PSV_BYTES:PSV_BYTES + SQUARES])
+        if self.orient == "stm":
+            white = (raw[:, 0] & 1).astype(bool)
+            heat[white] = heat[white][:, ::-1]
+        return heat
+
+    def heat_mean(self):
+        """区間の熱地図の平均。升ごとの頻度事前で、probeの自明解になる。"""
+        return self._heat(self.data).mean(axis=0, dtype=np.float64)
+
+    def _extract(self, raw):
+        arrays = himawari.extract_batch(
+            raw[:, :PSV_BYTES].tobytes(), self.lambda_, 0, 0, False, True,
+        )
+        heat = torch.from_numpy(self._heat(raw).astype(np.float32))
+        return (*(torch.from_numpy(a) for a in arrays), heat)
+
+    def __iter__(self):
+        rng = np.random.default_rng(self.seed + self.epoch)
+        self.epoch += 1
+        order = rng.permutation(self.n) if self.shuffle else np.arange(self.n)
+        skip = self.skip_batches
+        self.skip_batches = 0
+        q = queue.Queue(maxsize=self.prefetch)
+
+        def produce():
+            try:
+                for i, s in enumerate(range(0, self.n, self.batch)):
+                    if i < skip:
+                        continue
+                    # バッチの中は昇順に読む。集合は変わらないので学習には
+                    # 影響せず、memmapの読み出しだけが素直になる
+                    idx = np.sort(order[s:s + self.batch])
+                    q.put(self._extract(np.asarray(self.data[idx])))
             except Exception as e:  # 生産側の例外を消費側へ伝える
                 q.put(e)
             q.put(None)

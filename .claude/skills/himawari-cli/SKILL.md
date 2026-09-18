@@ -143,6 +143,7 @@ hmwr net train <名前> --data train_300M_q1 --valid valid_385M_q1 \
 hmwr net train <名前> --data <名前> --init-ckpt <ckpt> --lr 1e-4
 hmwr net shapes 256x16 512x16x32 --seed 1   構成ごとに小さく学習して比べる
 hmwr net eval data/nets/*.hmwr.best
+hmwr net probe <名前> --focus focus_1M      FTを凍結して焦点の熱地図を当てる
 hmwr net release data/nets/x.hmwr.best 5 --apply
 ```
 
@@ -156,6 +157,11 @@ hmwr net release data/nets/x.hmwr.best 5 --apply
 
 **検証損失を足切りに使わない**（ADR-0158）。初期値の系列が違うだけで0.00136
 動く。**採否は対局で決める。**
+
+`net probe` は表現の測定で、ネットを作らない。FTを凍結して熱地図を当てる
+後段だけを学習し、上位5マスの的中率を検証行へ出す。**自明解と並べて読む。**
+頻度事前は同じ行に並び、乱数初期値のFTは `--init-net none` で別に測る。
+probeの的中率は学習の刻みで動くので、条件を揃えて比べる（ADR-0213）。
 
 配布は既定で予行演習になる。`--apply` を付けたときだけ作る。
 
