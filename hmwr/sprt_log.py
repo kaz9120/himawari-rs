@@ -10,10 +10,17 @@
 
 from __future__ import annotations
 
+import collections
 import datetime
+import json
 import os
 import re
 from pathlib import Path
+
+# 切れ負けがこの割合を超えたら、対局の環境を疑う。判定の向きは両側に同じ
+# ように出るぶん歪まないが、感度が落ちる。過去の走行は0.5%未満で、2026-09-18の
+# 走行で6%が出た（CPUの取り合いが疑われた）
+TIMELOSS_WARN_RATE = 0.01
 
 # 判定行の例:
 #   H1採択（候補は有意に強い） | pairs 525 games 1050 | +602 =46 -402 | Elo +67.0 [...] | LLR +3.05
@@ -175,7 +182,35 @@ def build_report(name: str, verdict: str, fields: dict, note: str = "") -> str:
     )
 
 
-def write_result(path: Path, name: str, verdict: str, fields: dict, hyp) -> None:
+def reasons(jsonl: Path) -> collections.Counter:
+    """棋譜から終局理由を数える。無ければ空。"""
+    counts: collections.Counter = collections.Counter()
+    if not jsonl.is_file():
+        return counts
+    with open(jsonl, encoding="utf-8", errors="replace") as fh:
+        for line in fh:
+            try:
+                counts[json.loads(line).get("reason", "?")] += 1
+            except ValueError:
+                continue
+    return counts
+
+
+def timeloss_note(counts: collections.Counter) -> str:
+    """切れ負けの割合が閾値を超えていれば、警告の1行を返す。"""
+    games = sum(counts.values())
+    lost = counts.get("timeloss", 0)
+    if not games or lost / games <= TIMELOSS_WARN_RATE:
+        return ""
+    return (
+        f"警告: 切れ負けが{lost}局（{100 * lost / games:.1f}%）ある。対局中にCPUを"
+        "使う仕事が重なっていないか、電源の状態を確かめる"
+    )
+
+
+def write_result(
+    path: Path, name: str, verdict: str, fields: dict, hyp, counts=None
+) -> None:
     """判定が出た走行の結果を key=value のファイルへ書く（ADR-0175）。
 
     書き込みは一時ファイル経由のrenameで行う。途中まで書けたファイルを
@@ -197,6 +232,10 @@ def write_result(path: Path, name: str, verdict: str, fields: dict, hyp) -> None
         f"elo1={elo1}",
         f"finished_at={stamp:%Y-%m-%dT%H:%M:%SZ}",
     ]
+    if counts:
+        # 終局理由の内訳。切れ負けの多い走行を後から見分けるために残す
+        lines.append(f"timeloss={counts.get('timeloss', 0)}")
+        lines.append("reasons=" + ",".join(f"{k}:{v}" for k, v in sorted(counts.items())))
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_suffix(path.suffix + ".tmp")
     tmp.write_text("\n".join(lines) + "\n", encoding="utf-8")
@@ -204,7 +243,11 @@ def write_result(path: Path, name: str, verdict: str, fields: dict, hyp) -> None
 
 
 def report(
-    log: Path, name: str, result: Path | None = None, fixed_pairs: int = 0
+    log: Path,
+    name: str,
+    result: Path | None = None,
+    fixed_pairs: int = 0,
+    jsonl: Path | None = None,
 ) -> tuple[str, str]:
     """ログを読んで (整形した報告, 判定) を返す。
 
@@ -227,7 +270,14 @@ def report(
         verdict = "指し切り"
     hyp = find_hypothesis(lines)
     text = build_report(name, verdict, fields, hypothesis_note(hyp))
+    counts = reasons(jsonl) if jsonl else collections.Counter()
+    if counts:
+        summary = "、".join(f"{k} {v}" for k, v in sorted(counts.items()))
+        text += f"\n\n終局理由: {summary}"
+        note = timeloss_note(counts)
+        if note:
+            text += "\n" + note
 
     if result is not None and verdict in ("H1", "H0", "指し切り"):
-        write_result(result, name, verdict, fields, hyp)
+        write_result(result, name, verdict, fields, hyp, counts)
     return text, verdict

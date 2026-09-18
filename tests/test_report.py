@@ -19,6 +19,8 @@ wdl=+1010 =60 -930
 llr=+0.91
 elo0=0
 elo1=5
+timeloss=0
+reasons=adjudication:1990,mate:10
 """
 LOG = (
     "selfplay: a vs b | tc 10+0.1 | 並列 8 | SPRT elo[0, 5] α=0.05 β=0.05\n"
@@ -44,18 +46,18 @@ def test_a_finished_match_is_read_from_its_result_file(artifacts):
     (paths.SPRT / "adr0210-x.result").write_text(RESULT, encoding="utf-8")
     row = report.match_row("adr0210-x", "a → b")
     assert row == [
-        "adr0210-x", "a → b", "2000", "+1010 =60 -930", "+12.3 [-2.6, +27.3]", "+0.91", "指し切り",
+        "adr0210-x", "a → b", "2000", "+1010 =60 -930", "+12.3 [-2.6, +27.3]", "+0.91", "指し切り", "0",
     ]  # fmt: skip
 
 
 def test_a_running_match_is_read_from_its_log(artifacts):
     (paths.LOGS / "sprt-adr0210-y.log").write_text(LOG, encoding="utf-8")
     row = report.match_row("adr0210-y")
-    assert row[2:] == ["600", "+310 =20 -270", "+23.2 [-4.1, +50.9]", "+0.80", "途中"]
+    assert row[2:] == ["600", "+310 =20 -270", "+23.2 [-4.1, +50.9]", "+0.80", "途中", ""]
 
 
 def test_a_match_that_never_started_says_so(artifacts):
-    assert report.match_row("nope")[-1] == "未着手"
+    assert report.match_row("nope")[-2:] == ["未着手", ""]
 
 
 def test_training_is_read_from_the_registry_and_the_last_row_wins(artifacts):
@@ -99,3 +101,12 @@ def test_report_prints_markdown_tables(artifacts, capsys):
     out = capsys.readouterr().out
     assert "### 対局" in out and "| adr0210-x |" in out
     assert "### 学習" in out
+
+
+def test_many_time_losses_are_flagged(artifacts):
+    import json
+
+    rows = [json.dumps({"reason": "timeloss" if i < 20 else "mate"}) for i in range(200)]
+    (paths.SPRT / "z.jsonl").write_text("\n".join(rows) + "\n")
+    (paths.LOGS / "sprt-z.log").write_text(LOG, encoding="utf-8")
+    assert report.match_row("z")[-1] == "**20**"

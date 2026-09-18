@@ -33,6 +33,7 @@ def match_row(name: str, note: str = "") -> list[str]:
         return [
             name, note, f["games"], f["wdl"],
             f"{f['elo']} [{f['ci_low']}, {f['ci_high']}]", f["llr"], f["decision"],
+            _timeloss(name, f.get("timeloss")),
         ]  # fmt: skip
     try:
         lines = sprt_log.last_run_lines(
@@ -43,15 +44,31 @@ def match_row(name: str, note: str = "") -> list[str]:
     except (OSError, sprt_log.Unreadable):
         f = None
     if f is None:
-        return [name, note, "", "", "", "", "未着手"]
+        return [name, note, "", "", "", "", "未着手", ""]
     # 結果ファイルが無い走行。判定行まで出ていれば打ち切り、無ければ走行中か中断
     state = "打ち切り" if verdict == "打ち切り" else "途中"
     ci = str(f["elo_ci"]).strip("[]").replace(",", ", ")
     elo = f"{f['elo_num']} [{ci}]"
-    return [name, note, str(f["games"]), str(f["wdl"]), elo, str(f["llr"]), state]
+    return [name, note, str(f["games"]), str(f["wdl"]), elo, str(f["llr"]), state, _timeloss(name)]
 
 
-MATCH_HEAD = ["対局", "baseline → candidate", "局数", "W-D-L", "Elo [95%CI]", "LLR", "判定"]
+def _timeloss(name: str, recorded: str | None = None) -> str:
+    """切れ負けの局数。結果ファイルに無い古い走行は、棋譜を数える。"""
+    if recorded is None:
+        counts = sprt_log.reasons(paths.SPRT / f"{name}.jsonl")
+        if not counts:
+            return ""
+        recorded = str(counts.get("timeloss", 0))
+        games = sum(counts.values())
+    else:
+        games = 0
+    lost = int(recorded)
+    if games and lost / games > sprt_log.TIMELOSS_WARN_RATE:
+        return f"**{lost}**"
+    return recorded
+
+
+MATCH_HEAD = ["対局", "baseline → candidate", "局数", "W-D-L", "Elo [95%CI]", "LLR", "判定", "切れ負け"]
 
 
 # --- 学習 --------------------------------------------------------------

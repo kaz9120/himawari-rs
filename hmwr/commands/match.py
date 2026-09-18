@@ -463,7 +463,7 @@ def _finish(spec: Spec) -> int:
     f = files(spec.name)
     try:
         text, verdict = sprt_log.report(
-            f["log"], spec.name, result=f["result"], fixed_pairs=spec.stop_pairs
+            f["log"], spec.name, result=f["result"], fixed_pairs=spec.stop_pairs, jsonl=f["jsonl"]
         )
     except sprt_log.Unreadable as e:
         raise proc.Fail(f"結果は出たが読めない: {e}") from e
@@ -488,7 +488,7 @@ def show(args: argparse.Namespace) -> int:
 
     f = files(args.name)
     try:
-        text, verdict = sprt_log.report(f["log"], args.name)
+        text, verdict = sprt_log.report(f["log"], args.name, jsonl=f["jsonl"])
     except sprt_log.Unreadable as e:
         raise proc.Fail(str(e)) from e
     print(text)

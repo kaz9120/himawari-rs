@@ -188,3 +188,16 @@ def test_sprt_runs_are_unchanged_by_the_fixed_pairs_rule(tmp_path):
     _, verdict = sprt_log.report(log, "x", result=result)
     assert verdict == "打ち切り"
     assert not result.exists()
+
+
+def test_conditions_do_not_depend_on_where_the_repository_lives(tmp_path):
+    """開発用の作業ツリーと専用worktreeで、同じ条件が食い違わない。"""
+    cond = tmp_path / "x.cond"
+    here = f"selfplay --option EvalFile={paths.REPO}/data/nets/a.hmwr"
+    there = f"selfplay --option EvalFile={paths.REPO.parent}/{paths.REPO.name}-runner/data/nets/a.hmwr"
+    other = "selfplay --option EvalFile=/elsewhere/data/nets/a.hmwr"
+    match.check_conditions(cond, here, 0, adopt=False, dry_run=False)
+    match.check_conditions(cond, "selfplay --option EvalFile=data/nets/a.hmwr", 10, adopt=False, dry_run=False)
+    match.check_conditions(cond, there, 10, adopt=False, dry_run=False)
+    with pytest.raises(proc.Fail):
+        match.check_conditions(cond, other, 10, adopt=False, dry_run=False)

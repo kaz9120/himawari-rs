@@ -268,7 +268,7 @@ def train(args: argparse.Namespace) -> int:
     latest = paths.CHECKPOINTS / name / "latest.ckpt"
 
     if out.is_file() and not args.force and not args.dry_run:
-        if conditions.recorded(record) == line:
+        if conditions.recorded(record) == conditions.normalize(line):
             print(f"済み: {paths.rel(out)}（同じ条件で学習済み。何もしない）")
             return proc.OK
         raise proc.Fail(
