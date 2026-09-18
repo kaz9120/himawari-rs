@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.50.11](https://github.com/kaz9120/himawari-rs/compare/v0.50.10...v0.50.11) (2026-09-18)
+
+
+### その他の変更
+
+* DebugLogFileのパスの%dを日付へ置き換え、日毎に開き直す ([#577](https://github.com/kaz9120/himawari-rs/issues/577)) ([a0ee31a](https://github.com/kaz9120/himawari-rs/commit/a0ee31a4ea73766eb48d813b5db92cb6030f0000)), closes [#548](https://github.com/kaz9120/himawari-rs/issues/548)
+
 ## [0.50.10](https://github.com/kaz9120/himawari-rs/compare/v0.50.9...v0.50.10) (2026-09-18)
 
 
