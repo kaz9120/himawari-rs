@@ -237,12 +237,13 @@ hmwr data quiet <出力名> --in <入力名>               静止局面へ置き
 hmwr data rank <出力名> --in <入力名> --limit N --jobs 4   兄弟局面の群を作る
 hmwr data openings <出力名> --in <入力名> --min-ply 40 --count 2000   開始局面集を作る
 hmwr data relabel <出力名> --in <入力名> --scale 600    DL系モデルの推論1回でscoreを付け直す
+hmwr data focus <出力名> --raw <データセット> --count N   先8手の焦点の熱地図を付けた局面集を作る
 hmwr data stats <名前>                               局面数・評価値の分布を見る
 hmwr data rm <名前>...                               中間ファイルを消す
 ```
 
 **引数は名前で渡す**。`<名前>` は `data/train/<名前>.psv` に決まる（rankの出力は
-`.rankpsv`）。`psv` を直接叩かない。既定値（シャッフルのseed 1、静止化の
+`.rankpsv`、focusの出力は `.focus`）。`psv` を直接叩かない。既定値（シャッフルのseed 1、静止化の
 1手・並列8）がここに集まっているためである。足りない操作は
 `hmwr/dataops.py` の対応表へ1行足す。
 
@@ -261,6 +262,11 @@ hmwr data rm <名前>...                               中間ファイルを消�
 モデルは配布元のライセンスに同意して `data/models/dlshogi/` へ置く。cshogiと
 onnxruntimeが要る。MacのCoreMLで約2,600局面/秒、1億局面に約11時間かかる。
 進み具合は `data/logs/relabel-<名前>.log` へ1分ごとに出る。
+
+`data focus` は対局順のままの生データだけを読む。シャッフル済みの教師は続きの
+手を持たないので使えない。出力は202バイト固定長で、元のpsvの40バイトに熱地図の
+81バイトと関与フラグの81バイトが続く。読み手は
+`np.fromfile(パス, dtype=np.uint8).reshape(-1, 202)` で読める。復元にcshogiが要る。
 
 ### 掃除する
 
