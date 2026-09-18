@@ -24,6 +24,7 @@ spec.loader.exec_module(hook)
         # 単発の診断も hmwr diag が包んでいる
         "./target/release/psv defend --in a --out b.tsv",
         "./target/release/psv phase --in a --out b.tsv",
+        "./target/release/psv oversample --in a --out b --kind defense --times 3",
     ],
 )
 def test_covered_operations_are_blocked(command):
