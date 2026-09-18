@@ -16,8 +16,8 @@ import json
 import re
 import sys
 
-# hmwr data が包んだ psv のサブコマンド
-PSV_COVERED = "head|shuffle|quiet|rank|stats"
+# hmwr が包んだ psv のサブコマンド。data と diag の両方を見る
+PSV_COVERED = "head|shuffle|quiet|rank|stats|phase|defend"
 # コマンドの位置にあるものだけを見る。ls や grep の引数に出てくるパスは止めない
 COMMAND_START = r"(?:^|[;&|(\n]|\$\(|\bexec\s|\bnohup\s|\btime\s)\s*(?:\w+=\S+\s+)*"
 BINARY = r"(?:\S*/)?target/release/"
@@ -31,6 +31,7 @@ VIA_CARGO = re.compile(
 MESSAGE = """\
 この操作は直接実行しない。hmwr 経由で実行する（ADR-0208）。
   psv      → hmwr data shuffle / split / mix / quiet / rank / stats / openings
+  psv      → hmwr diag phase / defend（単発の診断）
   selfplay → hmwr match run（固定ペア数は --stop pairs:N）
 足りない操作は hmwr/dataops.py の対応表へ足すか、micro Issueを切る。
 """
