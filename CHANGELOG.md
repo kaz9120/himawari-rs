@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.50.2](https://github.com/kaz9120/himawari-rs/compare/v0.50.1...v0.50.2) (2026-09-18)
+
+
+### その他の変更
+
+* 時間管理の計画と実績をbestmoveの前にinfo stringで出す ([#542](https://github.com/kaz9120/himawari-rs/issues/542)) ([929f627](https://github.com/kaz9120/himawari-rs/commit/929f627e2ac993a73607c0fa29160f1ff715d2fc)), closes [#471](https://github.com/kaz9120/himawari-rs/issues/471)
+
 ## [0.50.1](https://github.com/kaz9120/himawari-rs/compare/v0.50.0...v0.50.1) (2026-09-17)
 
 
