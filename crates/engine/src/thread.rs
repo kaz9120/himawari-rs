@@ -481,6 +481,9 @@ impl ThreadPool {
             SearchInfo::CurrMove { depth, mv } => {
                 out(&format!("info depth {} currmove {}", depth, mv.to_usi()));
             }
+            SearchInfo::Note(text) => {
+                out(&format!("info string {text}"));
+            }
             SearchInfo::Iteration(info) => {
                 out(&format_pv_line(&info, ""));
             }
