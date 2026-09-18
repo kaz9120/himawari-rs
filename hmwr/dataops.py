@@ -30,6 +30,11 @@ SHUFFLE_SEED = 1
 # 既定値の印。評価関数は実行時に config から引く
 EVAL = object()
 
+# DL系モデルによる付け直し（ADR-0215）。モデルは配布元のライセンスに従って
+# 手元に置く。パスワードつきの配布なので、取得の手順はIssue #556にある
+DL_MODEL = "data/models/dlshogi/model-dr2_exhi.onnx"
+DL_SCALE = 600.0
+
 
 @dataclass(frozen=True)
 class Opt:
@@ -201,6 +206,46 @@ def add_parsers(ss: argparse._SubParsersAction) -> None:
     t.add_argument("--skip", type=int, default=0, metavar="N", help="先頭から飛ばす件数")
     t.add_argument("--force", action="store_true", help="出力が既にあっても作り直す")
     t.set_defaults(func=openings)
+
+    t = ss.add_parser(
+        "relabel",
+        help="DL系モデルの推論1回の評価値でscoreを付け直す",
+        description="局面・指し手・勝敗・手数は残し、scoreだけをモデルの勝率から"
+        "戻した値へ書き換える。勝率→評価値の変換は `cp = scale × logit(p)` で、"
+        "scaleを600から下げることは推論側の FV_SCALE を上げることに当たる。"
+        "本エンジンの探索で付け直す `psv relabel` と違い、こちらは探索しない。",
+    )
+    t.add_argument("name", metavar="出力名", help="data/train/<出力名>.psv へ書く")
+    t.add_argument("--in", dest="inputs", action="append", default=[], metavar="入力名")
+    t.add_argument(
+        "--labeler",
+        default="dlshogi",
+        choices=("dlshogi", "rescale"),
+        help="裏側のモデルの種類（既定 dlshogi）。rescale は推論せず、既存のscoreを "
+        "scale/600 倍に縮める。スケールの水準を振るとき推論を1回で済ませる",
+    )
+    t.add_argument(
+        "--model",
+        default=DL_MODEL,
+        metavar="パス",
+        help=f"モデルのファイル（既定 {DL_MODEL}）",
+    )
+    t.add_argument(
+        "--scale",
+        type=float,
+        default=DL_SCALE,
+        metavar="S",
+        help=f"勝率→評価値の変換のスケール（既定 {DL_SCALE:g}）",
+    )
+    t.add_argument(
+        "--device",
+        choices=("cpu", "coreml", "cuda"),
+        help="推論のデバイス。省くと使えるものを選ぶ",
+    )
+    t.add_argument("--batch", type=int, default=4096, metavar="N", help="推論のバッチ（既定 4096）")
+    t.add_argument("--limit", type=int, metavar="N", help="先頭のこの件数だけ処理する")
+    t.add_argument("--force", action="store_true", help="出力が既にあっても作り直す")
+    t.set_defaults(func=relabel)
 
     t = ss.add_parser(
         "focus",
@@ -493,6 +538,94 @@ def openings(args: argparse.Namespace) -> int:
         raise proc.Fail(f"局面を復元できなかった（{len(lines)}/{args.count}）: {err.strip()}")
     out.write_text("\n".join(lines) + "\n", encoding="utf-8")
     print(f"完了: {paths.rel(out)}（{len(lines)}局面）")
+    return proc.OK
+
+
+# --- DL系モデルによる付け直し ------------------------------------------
+
+
+def make_labeler(args: argparse.Namespace):
+    """裏側のモデルを作る。テストでは差し替える。"""
+    from .tools import dl_relabel
+
+    if args.labeler == "rescale":
+        return dl_relabel.RescaleLabeler()
+    model = paths.REPO / args.model
+    if not model.is_file():
+        raise proc.Fail(
+            f"モデルがない: {paths.rel(model)}\n"
+            "配布元からライセンスに同意して取得し、この場所へ置く（Issue #556）"
+        )
+    return dl_relabel.DlshogiLabeler(model, args.device)
+
+
+def relabel(args: argparse.Namespace) -> int:
+    """scoreだけをDL系モデルの値へ書き換える。完了印の扱いは他の操作と同じ。"""
+    from .tools import dl_relabel
+
+    if len(args.inputs) != 1:
+        raise proc.Fail(f"--in は1個要る（{len(args.inputs)}個渡された）", proc.USAGE)
+    source = paths.TRAIN / f"{paths.check_name(args.inputs[0])}.psv"
+    out = paths.TRAIN / f"{paths.check_name(args.name)}.psv"
+    part = out.with_name(out.name + ".part")
+    done = out.with_name(out.name + ".done")
+    model = "" if args.labeler == "rescale" else f" --model {args.model}"
+    record = [
+        f"relabel --labeler {args.labeler}{model} --scale {args.scale:g}"
+        f" --in {paths.rel(source)}"
+        + (f" --limit {args.limit}" if args.limit is not None else "")
+    ]
+    log = paths.log("relabel", args.name)
+
+    if args.dry_run:
+        print(f"[dry-run] {record[0]} → {paths.rel(part)}")
+        print(f"[dry-run] mv {paths.rel(part)} {paths.rel(out)}")
+        print(f"[dry-run] ログ: {paths.rel(log)}")
+        return proc.OK
+    if not source.is_file():
+        raise proc.Fail(f"入力のpsvがない: {paths.rel(source)}")
+    if out.exists() and not args.force:
+        return _already(out, done, record)
+
+    labeler = make_labeler(args)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    done.unlink(missing_ok=True)
+    print(f"=== data relabel: {args.name} ===")
+    device = getattr(labeler, "device", None)
+    if device:
+        print(f"デバイス: {device}")
+    with open(log, "a", encoding="utf-8") as fh:
+
+        def report(line: str) -> None:
+            stamp = time.strftime("%Y-%m-%dT%H:%M:%S")
+            print(line)
+            fh.write(f"{stamp} {line}\n")
+            fh.flush()
+
+        report(f"開始: {record[0]}")
+        stats = dl_relabel.relabel(
+            source, part, labeler, scale=args.scale, batch=args.batch, limit=args.limit, report=report
+        )
+        report(
+            f"終了: {stats['positions']:,}局面 {stats['positions_per_second']:,}局面/秒 "
+            f"相関 {stats['corr_old_new']} 平均|score| {stats['mean_abs_old']}→{stats['mean_abs_new']}"
+        )
+    part.replace(out)
+    done.write_text(
+        json.dumps(
+            {
+                "commands": record,
+                "bytes": out.stat().st_size,
+                "seconds": stats["seconds"],
+                "stats": stats,
+                "finished": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
+            },
+            ensure_ascii=False,
+            indent=2,
+        )
+        + "\n"
+    )
+    print(f"完了: {paths.rel(out)}（{out.stat().st_size:,}バイト）")
     return proc.OK
 
 

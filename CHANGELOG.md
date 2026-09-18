@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.50.5](https://github.com/kaz9120/himawari-rs/compare/v0.50.4...v0.50.5) (2026-09-18)
+
+
+### その他の変更
+
+* hmwr diag shadowで影の利き属性の反転数を測れるようにする ([#560](https://github.com/kaz9120/himawari-rs/issues/560)) ([e42b2f9](https://github.com/kaz9120/himawari-rs/commit/e42b2f94ad2d7f8c95c60b70091aa61342f9bb55))
+
+## [0.50.4](https://github.com/kaz9120/himawari-rs/compare/v0.50.3...v0.50.4) (2026-09-18)
+
+
+### その他の変更
+
+* hmwr data relabelにdlshogiのONNXで勝率を付ける裏側を足す（ADR-0215） ([#557](https://github.com/kaz9120/himawari-rs/issues/557)) ([b3bc641](https://github.com/kaz9120/himawari-rs/commit/b3bc6419ea875b0fb03026864c2dd2e0215576fa))
+
 ## [0.50.3](https://github.com/kaz9120/himawari-rs/compare/v0.50.2...v0.50.3) (2026-09-18)
 
 
