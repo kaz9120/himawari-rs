@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.50.10](https://github.com/kaz9120/himawari-rs/compare/v0.50.9...v0.50.10) (2026-09-18)
+
+
+### その他の変更
+
+* psv oversampleとADR-0216の実験specを足す ([#573](https://github.com/kaz9120/himawari-rs/issues/573)) ([d2f98ed](https://github.com/kaz9120/himawari-rs/commit/d2f98eddb26d7417be0e6dbf0416dba4486b9c4b))
+
 ## [0.50.9](https://github.com/kaz9120/himawari-rs/compare/v0.50.8...v0.50.9) (2026-09-18)
 
 
