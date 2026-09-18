@@ -81,6 +81,23 @@ def test_shuffle_reads_a_raw_dataset(capsys):
     assert "--in data/raw/no-such-dataset/*.bin" in lines[0]
 
 
+def test_shuffle_can_take_only_the_head_of_the_raw_data(capsys):
+    """生データの先頭だけを元にする（ADR-0216）。"""
+    _, lines = dry(capsys, ["shuffle", "s", "--raw", "no-such-dataset", "--limit", "300000000"])
+    assert lines[0].endswith("--out data/train/s.psv.part --seed 1 --limit 300000000")
+
+
+def test_oversample_passes_the_kind_and_the_multiplier(capsys):
+    """該当の型と倍率は既定でも明示して渡す（ADR-0216）。"""
+    _, lines = dry(capsys, ["oversample", "t3", "--in", "t", "--kind", "defense", "--times", "3"])
+    assert lines[0] == (
+        "[dry-run] target/release/psv oversample --in data/train/t.psv "
+        "--out data/train/t3.psv.part --kind defense --times 3"
+    )
+    assert lines[1] == "[dry-run] mv data/train/t3.psv.part data/train/t3.psv"
+    assert lines[2] == "[dry-run] ログ: data/logs/oversample-t3.log"
+
+
 # --- 表とpsvの食い違い -------------------------------------------------
 
 
