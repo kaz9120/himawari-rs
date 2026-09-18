@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.50.6](https://github.com/kaz9120/himawari-rs/compare/v0.50.5...v0.50.6) (2026-09-18)
+
+
+### その他の変更
+
+* hmwr data focusで焦点の熱地図つき局面集を切り出す ([#561](https://github.com/kaz9120/himawari-rs/issues/561)) ([598b7ee](https://github.com/kaz9120/himawari-rs/commit/598b7ee50820dd50b2025d54a4fb897315eb33f7))
+
 ## [0.50.5](https://github.com/kaz9120/himawari-rs/compare/v0.50.4...v0.50.5) (2026-09-18)
 
 
