@@ -69,6 +69,7 @@ USIオプション `EvalFile` に評価関数のパスを設定する。
 | `USI_Ponder` | false | 相手番の思考 |
 | `MinimumThinkingTime` | 2000 | 最小思考時間[ms] |
 | `MultiPV` | 1 | 検討モードのライン数 |
+| `DebugLogFile` | （空） | USIの入出力をこのファイルへ追記する。切れ負けなど時間の調査に使う |
 
 全オプションと値域は、エンジンへ `usi` と入力したときの出力が正になる。
 
@@ -91,6 +92,20 @@ himawari threadtune --eval <評価関数> --current 6 --hours 8
 候補の上限は既定で論理コア−2にしてある。実戦では指し手を中継する
 クライアントが別プロセスで動くので、全論理コアを埋めると中継が遅れて
 切れ負けする。この道具は自分が中継役なのでその遅れを見られない。
+
+### 時間の問題を調べるとき
+
+`DebugLogFile` にファイルのパス（ディレクトリではない）を入れると、USIの
+入出力が1行ごとにミリ秒のUNIX時刻つきで残る。`<` が受信、`>` が送信である。
+`go` の持ち時間、`info ... time`、`bestmove` の時刻が読める。bestmoveの直前には
+時間管理の計画と実績（`info string time plan: ...`）も出る。切れ負けがエンジンの
+計画の内か外かは、このログだけで分けられる。
+
+```
+1758160000123 < go btime 120000 wtime 12000 binc 10000 winc 10000
+1758160010998 > info string time plan: minimum 1880 optimum 4880 maximum 10880 end 10880 elapsed 10875 ponderhit 0 stop true
+1758160011001 > bestmove 4b5b
+```
 
 ### うまく動かないとき
 
