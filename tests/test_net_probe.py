@@ -198,6 +198,20 @@ def test_probe_passes_the_orientation_through(capsys):
     assert "--focus-orient stm" in line
 
 
+def test_probe_mlp_head_is_passed_through(capsys):
+    _, line = dry(capsys, ["net", "probe", "x", "--focus", "focus_1M", "--head", "mlp"])
+    assert "--focus-head mlp" in line
+
+
+def test_probe_train_ft_unfreezes_and_clips(capsys):
+    """FTを動かす対照は、凍結を外してクリップを入れる。書き出しがi8に収まるため。"""
+    _, line = dry(
+        capsys, ["net", "probe", "x", "--focus", "focus_1M", "--train-ft", "--init-net", "none"]
+    )
+    assert "--freeze-ft" not in line
+    assert "--ft-clip" in line
+
+
 def test_the_focus_loader_refuses_a_file_of_the_wrong_length(trainer_model, tmp_path):
     from dataset import FocusBatchLoader
 
