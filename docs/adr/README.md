@@ -109,6 +109,8 @@
 - [0210](0210-teacher-mix-control.md) 入玉混合の+37.3を、量・系列・入玉の3つの説明へ統制群で分ける
 - [0212](0212-tanuki-bench-mix.md) tanukiの測定台で、別系列の混合が本学習の教師でも効くかを測る
 - [0207](0207-roadmap-focus-eval.md) ROADMAPを再び棚卸しし、注力を評価関数の学習と構造の1本に絞る
+- [0213](0213-freeze-structure-focus.md) 評価関数の構造を凍結し、「焦点」を学習側で掘る
+- [0214](0214-epochs-bench.md) 3億の測定台で、同じデータの2周が新規データの追加に匹敵するかを測る
 - [0144](0144-selfplay-teacher-loop.md) 自前生成による世代ループ
 - [0185](0185-sibling-ranking-loss.md) 兄弟局面のランキング損失を回帰へ足す
 - [0187](0187-selfplay-gen2.md) 自前生成の第2世代を診断先行で測る案（基準の誤りで0188へ）
@@ -346,6 +348,8 @@
 | [0210](0210-teacher-mix-control.md) | 入玉混合の+37.3を、量・系列・入玉の3つの説明へ統制群で分ける | 2026-09-17 |  | accepted |
 | [0212](0212-tanuki-bench-mix.md) | tanukiの測定台で、別系列の混合が本学習の教師でも効くかを測る | 2026-09-18 |  | proposed |
 | [0211](0211-check-extension-see.md) | 王手延長を損をしない王手に限る | 2026-09-18 |  | proposed |
+| [0213](0213-freeze-structure-focus.md) | 評価関数の構造を凍結し、「焦点」を学習側で掘る | 2026-09-18 |  | proposed |
+| [0214](0214-epochs-bench.md) | 3億の測定台で、同じデータの2周が新規データの追加に匹敵するかを測る | 2026-09-18 |  | proposed |
 
 ## バックログ
 
