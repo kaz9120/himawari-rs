@@ -13,11 +13,28 @@ from pathlib import Path
 from . import paths, proc
 
 
+def normalize(line: str) -> str:
+    """リポジトリの絶対パスを相対にする。
+
+    開発用の作業ツリーと実験キューのworktreeは置き場が違い、`data/` をリンクで
+    共有している。絶対パスのまま控えると、同じ条件が置き場の違いで食い違う。
+    """
+    repo = paths.REPO
+    # 実験キューのworktreeは <リポジトリ>-runner に置く（hmwr queue install）。
+    # どちらの側から見ても、もう一方の置き場を相対にできるようにする
+    twin = repo.parent / (
+        repo.name.removesuffix("-runner") if repo.name.endswith("-runner") else f"{repo.name}-runner"
+    )
+    for root in (repo, repo.resolve(), twin):
+        line = line.replace(f"{root}/", "")
+    return line
+
+
 def recorded(record: Path) -> str | None:
     """控えてある条件。記録がなければNone。"""
     if not record.is_file():
         return None
-    return json.loads(record.read_text(encoding="utf-8"))["command"]
+    return normalize(json.loads(record.read_text(encoding="utf-8"))["command"])
 
 
 def check(
@@ -27,6 +44,7 @@ def check(
 
     whatは途中の成果物の呼び名（「棋譜」「チェックポイント」）で、エラー文に使う。
     """
+    line = normalize(line)
     before = recorded(record) if resuming else None
     if before is not None:
         if before != line:
