@@ -160,6 +160,44 @@ def test_the_focus_loader_splits_by_record_range(trainer_model, tmp_path):
     assert tail.heat_mean()[1] == 1.0
 
 
+def test_the_focus_loader_turns_the_heat_map_for_the_side_to_move(
+    trainer_model, tmp_path
+):
+    """蒸留器は手番側から見た向きで並ぶので、後手番の熱地図は180度回す。"""
+    import numpy as np
+
+    from dataset import FocusBatchLoader
+
+    raw = np.zeros((2, fl.RECORD_BYTES), dtype=np.uint8)
+    # 1行目は先手番、2行目は後手番。どちらも0番の升だけを立てる
+    raw[1, 0] = 1
+    raw[:, fl.PSV_BYTES] = 1
+    path = tmp_path / "turn.focus"
+    path.write_bytes(raw.tobytes())
+
+    board = FocusBatchLoader(str(path), 2, orient="board").heat_mean()
+    stm = FocusBatchLoader(str(path), 2, orient="stm").heat_mean()
+    assert (board[0], board[80]) == (1.0, 0.0)
+    # 後手番の1件だけが80番へ移る
+    assert (stm[0], stm[80]) == (0.5, 0.5)
+
+
+def test_the_focus_loader_refuses_an_unknown_orientation(trainer_model, tmp_path):
+    from dataset import FocusBatchLoader
+
+    path = tmp_path / "x.focus"
+    path.write_bytes(b"\0" * fl.RECORD_BYTES)
+    with pytest.raises(ValueError, match="向きが不明"):
+        FocusBatchLoader(str(path), 2, orient="white")
+
+
+def test_probe_passes_the_orientation_through(capsys):
+    _, line = dry(
+        capsys, ["net", "probe", "x", "--focus", "focus_1M", "--orient", "stm"]
+    )
+    assert "--focus-orient stm" in line
+
+
 def test_the_focus_loader_refuses_a_file_of_the_wrong_length(trainer_model, tmp_path):
     from dataset import FocusBatchLoader
 

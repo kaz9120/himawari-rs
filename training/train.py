@@ -21,8 +21,8 @@ from model import (
 )
 from optim import MaskedAdam
 from dataset import (
-    FOCUS_BYTES, FocusBatchLoader, RankLoader, GeneratedBatchLoader,
-    PsvBatchLoader, PsvDataset, collate_psv,
+    FOCUS_BYTES, FOCUS_ORIENTS, FocusBatchLoader, RankLoader,
+    GeneratedBatchLoader, PsvBatchLoader, PsvDataset, collate_psv,
 )
 from quantize import save_hmwr
 
@@ -241,6 +241,15 @@ def main():
         help="焦点損失の重み（ADR-0213）。--focus-head と対で渡す",
     )
     p.add_argument(
+        "--focus-orient",
+        dest="focus_orient",
+        choices=list(FOCUS_ORIENTS),
+        default="board",
+        help="熱地図の向き（ADR-0213）。boardは書かれたまま、stmは後手番の局面で"
+             "180度回して手番側の向きへ揃える。**蓄積器は手番側から見た向きで"
+             "並ぶ**ので、boardでは的と表現の向きが局面の半分でずれる",
+    )
+    p.add_argument(
         "--focus-valid-count",
         type=int,
         default=100_000,
@@ -386,15 +395,16 @@ def main():
         train_loader = FocusBatchLoader(
             args.data, args.batch, lo=0, hi=split,
             lambda_=args.lambda_, shuffle=True, seed=args.seed or 0,
+            orient=args.focus_orient,
         )
         focus_valid_loader = FocusBatchLoader(
             args.data, args.batch, lo=split, hi=focus_rows,
-            lambda_=args.lambda_, shuffle=False,
+            lambda_=args.lambda_, shuffle=False, orient=args.focus_orient,
         )
         data_n = train_loader.n
         print(
             f"焦点データ: 学習 {data_n}局面 / 検証 {focus_valid_loader.n}局面"
-            f"（{args.data}）",
+            f"（{args.data}、向き {args.focus_orient}）",
             file=sys.stderr,
         )
     elif args.eval_only:

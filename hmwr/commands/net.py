@@ -116,6 +116,12 @@ def add_parser(sub: argparse._SubParsersAction) -> None:
     )
     t.add_argument("--lr", metavar="値", help="学習率の頂点")
     t.add_argument("--head", default="linear", choices=["linear"], help="ヘッドの型")
+    t.add_argument(
+        "--orient",
+        default="board",
+        choices=["board", "stm"],
+        help="熱地図の向き。boardは盤の向きのまま、stmは手番側から見た向きへ揃える",
+    )
     t.add_argument("--device", metavar="名前", help="mps か cpu（既定 mps）")
     t.add_argument("--seed", type=int, default=0, metavar="N", help="乱数種")
     t.set_defaults(func=probe)
@@ -421,6 +427,7 @@ def probe(args: argparse.Namespace) -> int:
     print(f"初期値  : {'乱数（自明解R）' if init is None else paths.rel(init)}")
     print(f"学習    : {max(train_rows, 0):,}局面 × {args.epochs}エポック（{steps}ステップ）")
     print(f"検証    : 末尾{args.valid_count:,}局面、{interval}ステップおき")
+    print(f"熱地図  : 向き {args.orient}")
     print("出力    : なし（FTは動かず、学習した焦点ヘッドは捨てる）")
 
     argv = [
@@ -433,6 +440,7 @@ def probe(args: argparse.Namespace) -> int:
         # 評価値を切り、焦点だけを的にする。FTは動かさない
         "--lambda-value", "0",
         "--freeze-ft",
+        "--focus-orient", args.orient,
         "--focus-valid-count", str(args.valid_count),
         "--epochs", str(args.epochs),
         "--batch", str(args.batch),

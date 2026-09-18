@@ -17,6 +17,8 @@ PSV_BYTES = 40
 FOCUS_BYTES = 202
 #: 盤の升数。熱地図と関与フラグの長さになる
 SQUARES = 81
+#: 熱地図の向き。盤の向きのまま使うか、手番側から見た向きへ揃えるか
+FOCUS_ORIENTS = ("board", "stm")
 
 
 class PsvDataset(Dataset):
@@ -172,10 +174,14 @@ class FocusBatchLoader:
 
     `lo` と `hi` でレコードの区間を切る。学習と検証の分割はこの区間で行い、
     同じファイルの先頭を学習、末尾を検証に回す。
+
+    `orient` は熱地図の向きを選ぶ。`board` は書かれたまま、`stm` は後手番の
+    局面で180度回す。**蓄積器は手番側から見た向きで並ぶ**ので、盤の向きの
+    ままだと的と表現の向きが局面の半分でずれる。
     """
 
     def __init__(self, path, batch, *, lo=0, hi=None, lambda_=0.7,
-                 shuffle=True, seed=0, prefetch=3):
+                 shuffle=True, seed=0, prefetch=3, orient="board"):
         size = os.path.getsize(path)
         if size % FOCUS_BYTES != 0:
             raise ValueError(f"ファイルサイズが{FOCUS_BYTES}の倍数でない: {size}")
@@ -186,8 +192,11 @@ class FocusBatchLoader:
         self.data = np.memmap(
             path, dtype=np.uint8, mode="r", shape=(total, FOCUS_BYTES),
         )[lo:hi]
+        if orient not in FOCUS_ORIENTS:
+            raise ValueError(f"熱地図の向きが不明: {orient}")
         self.n = hi - lo
         self.batch = batch
+        self.orient = orient
         self.lambda_ = lambda_
         self.shuffle = shuffle
         self.seed = seed
@@ -199,18 +208,28 @@ class FocusBatchLoader:
     def __len__(self):
         return math.ceil(self.n / self.batch)
 
+    def _heat(self, raw):
+        """レコードの束から熱地図を取り出し、指定の向きへ揃える。
+
+        後手番の180度回転は升の並びを逆にするだけでよい。升は
+        `(筋 - 1) * 9 + (段 - 1)` なので、回した先は `80 - 升` になる。
+        手番はpacked sfenの先頭ビットにある。
+        """
+        heat = np.array(raw[:, PSV_BYTES:PSV_BYTES + SQUARES])
+        if self.orient == "stm":
+            white = (raw[:, 0] & 1).astype(bool)
+            heat[white] = heat[white][:, ::-1]
+        return heat
+
     def heat_mean(self):
         """区間の熱地図の平均。升ごとの頻度事前で、probeの自明解になる。"""
-        heat = np.asarray(self.data[:, PSV_BYTES:PSV_BYTES + SQUARES])
-        return heat.mean(axis=0, dtype=np.float64)
+        return self._heat(self.data).mean(axis=0, dtype=np.float64)
 
     def _extract(self, raw):
         arrays = himawari.extract_batch(
             raw[:, :PSV_BYTES].tobytes(), self.lambda_, 0, 0, False, True,
         )
-        heat = torch.from_numpy(
-            raw[:, PSV_BYTES:PSV_BYTES + SQUARES].astype(np.float32)
-        )
+        heat = torch.from_numpy(self._heat(raw).astype(np.float32))
         return (*(torch.from_numpy(a) for a in arrays), heat)
 
     def __iter__(self):
