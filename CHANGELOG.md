@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.50.3](https://github.com/kaz9120/himawari-rs/compare/v0.50.2...v0.50.3) (2026-09-18)
+
+
+### その他の変更
+
+* selfplayで切れ負けした対局を結果に数えず、同じ対局を指し直す ([#544](https://github.com/kaz9120/himawari-rs/issues/544)) ([1ff5de5](https://github.com/kaz9120/himawari-rs/commit/1ff5de54aff4e727b8ce31d45e0e064d9aef4cf2))
+
 ## [0.50.2](https://github.com/kaz9120/himawari-rs/compare/v0.50.1...v0.50.2) (2026-09-18)
 
 
