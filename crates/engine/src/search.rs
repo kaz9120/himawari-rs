@@ -258,6 +258,9 @@ pub enum SearchInfo {
     Bound(IterInfo, ScoreBound),
     /// rootで今読んでいる手（ADR-0086）。長考中の可視化に使う。
     CurrMove { depth: u32, mv: Move },
+    /// 診断の1行（`info string`）。時間管理の計画と実績など、指し手の
+    /// 判断には使わないが、事後の調査で要る情報を出す。
+    Note(String),
 }
 
 /// aspiration窓を外れたときのスコアの確からしさ（ADR-0091）。
@@ -1383,6 +1386,20 @@ impl Worker {
         }
         // 今回goのtimeReductionを次のgoへ持ち越す（S:2062）
         self.memory.previous_time_reduction = time_reduction;
+        // 時間管理の計画と実績を残す。切れ負けの調査で「計画が過大だったのか、
+        // 計画の外で遅れたのか」を分けるために要る。GUIのログに残る
+        if is_main && self.tm.use_time_management() {
+            on_info(SearchInfo::Note(format!(
+                "time plan: minimum {} optimum {} maximum {} end {} elapsed {} ponderhit {} stop {}",
+                self.tm.minimum(),
+                self.tm.optimum(),
+                self.tm.maximum(),
+                self.tm.search_end,
+                self.tm.elapsed_ms(),
+                self.shared.ponderhit_offset.load(Ordering::SeqCst),
+                self.shared.stop.load(Ordering::Relaxed),
+            )));
+        }
         // 中断した探索で得た詰み負けのスコアは信用できない（S:1864-1887）。
         // 残りのroot手を読めば、負けが延びたり反証されたりしうる。前の
         // 反復で確定したPVとスコアへ戻す。

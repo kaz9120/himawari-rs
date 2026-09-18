@@ -284,7 +284,7 @@ fn does_not_end_on_an_unresolved_aspiration_bound() {
             last_was_bound = false;
             last_pv_head = i.pv.first().copied();
         }
-        SearchInfo::CurrMove { .. } => {}
+        SearchInfo::CurrMove { .. } | SearchInfo::Note(_) => {}
     });
     assert!(saw_bound, "この局面で窓外れが起きることを前提にしている");
     assert!(
