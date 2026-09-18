@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.50.7](https://github.com/kaz9120/himawari-rs/compare/v0.50.6...v0.50.7) (2026-09-18)
+
+
+### その他の変更
+
+* hmwr diag defendで攻撃的な受けの順位を測れるようにする ([#565](https://github.com/kaz9120/himawari-rs/issues/565)) ([1ed9a7a](https://github.com/kaz9120/himawari-rs/commit/1ed9a7a076bbf5f043b95796d59dbd0b5a963a4f))
+
 ## [0.50.6](https://github.com/kaz9120/himawari-rs/compare/v0.50.5...v0.50.6) (2026-09-18)
 
 
