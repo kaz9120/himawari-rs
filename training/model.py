@@ -31,6 +31,10 @@ EFFECT_OUT = EFFECT_LEN * 2
 EFFECT_MLP_HIDDEN = 256
 # 利き数の正規化に使う。1升に8枚も利いていれば十分に多い
 EFFECT_SCALE = 8.0
+# 焦点の熱地図の長さ（ADR-0213）。盤の81升をそのまま並べる
+FOCUS_OUT = 81
+# 的中率を測る上位マスの数（ADR-0213の測定の設計）
+FOCUS_TOPK = 5
 ARCH = himawari.ARCH
 FE_END = FT_IN // 81
 # 第1層の入力幅。片視点のFT出力を2つに割って掛けるので、視点あたり
@@ -63,7 +67,8 @@ class NnueModel(nn.Module):
     """
 
     def __init__(self, sparse_ft=True, factorized=False, policy=False,
-                 pretrain=False, distill_out=0, effect_head=None):
+                 pretrain=False, distill_out=0, effect_head=None,
+                 focus_head=None):
         super().__init__()
         self.ft = nn.EmbeddingBag(FT_IN, FT_OUT, mode="sum", sparse=sparse_ft)
         self.ft_p = (
@@ -96,7 +101,20 @@ class NnueModel(nn.Module):
         # SimCLRは非線形の写像のほうが良い表現になると報告している。
         # このヘッドも書き出しには載らないので推論は変わらない
         self.effect = self._build_effect_head(effect_head)
+        # 焦点の熱地図を当てるヘッド（ADR-0213）。利きヘッドと同じCONCATから
+        # 生やす線形1層で、probeの物差しになる。深くするとヘッド自身が
+        # タスクを解いてしまい、「FTが焦点を持っているか」を測れなくなる。
+        # 書き出しには載らないので推論は変わらない
+        self.focus = self._build_focus_head(focus_head)
         self._init_weights()
+
+    @staticmethod
+    def _build_focus_head(kind):
+        if kind is None:
+            return None
+        if kind == "linear":
+            return nn.Linear(CONCAT, FOCUS_OUT)
+        raise ValueError(f"焦点ヘッドの種類が不明: {kind}")
 
     @staticmethod
     def _build_effect_head(kind):
@@ -127,7 +145,7 @@ class NnueModel(nn.Module):
         nn.init.uniform_(self.out.weight, -0.3, 0.3)
         nn.init.zeros_(self.out.bias)
         heads = [self.policy_from, self.policy_to, self.pretrain_value,
-                 self.distill]
+                 self.distill, self.focus]
         # 利きヘッドはMLPのこともある。線形層を取り出して同じ初期化を当てる
         if self.effect is not None:
             heads.extend(m for m in self.effect.modules() if isinstance(m, nn.Linear))
@@ -212,6 +230,26 @@ class NnueModel(nn.Module):
 
 def loss_fn(output, target):
     return F.binary_cross_entropy_with_logits(output, target)
+
+
+def focus_loss_fn(pred, heat):
+    """焦点の熱地図のBCE（ADR-0213）。
+
+    的は升ごとの0/1で、「続くk手で駒が動いたか取られたか」を表す。
+    81升を独立に当てるので、多ラベル分類のBCEになる。
+    """
+    return F.binary_cross_entropy_with_logits(pred, heat.float())
+
+
+def top_k_precision(pred, heat, k=FOCUS_TOPK):
+    """局面ごとに予測の上位k升を取り、熱地図が1だった割合を平均する。
+
+    ADR-0213がprobeの指標に選んだ「上位5マスの的中率」である。**自明解も
+    同じ関数で測る。** 局面によらない予測（頻度事前）を全局面へ広げて渡せば、
+    どの局面でも同じk升が選ばれ、比較の土俵が揃う。
+    """
+    idx = pred.topk(k, dim=1).indices
+    return heat.gather(1, idx).float().mean()
 
 
 def effect_loss_fn(pred, eff_short, eff_long):

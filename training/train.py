@@ -15,9 +15,15 @@ from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 
 import himawari
-from model import EFFECT_LEN, EFFECT_SCALE, FT_IN, NnueModel, effect_loss_fn, loss_fn
+from model import (
+    EFFECT_LEN, EFFECT_SCALE, FOCUS_TOPK, FT_IN, NnueModel, effect_loss_fn,
+    focus_loss_fn, loss_fn, top_k_precision,
+)
 from optim import MaskedAdam
-from dataset import RankLoader, GeneratedBatchLoader, PsvBatchLoader, PsvDataset, collate_psv
+from dataset import (
+    FOCUS_BYTES, FocusBatchLoader, RankLoader, GeneratedBatchLoader,
+    PsvBatchLoader, PsvDataset, collate_psv,
+)
 from quantize import save_hmwr
 
 
@@ -59,6 +65,40 @@ def teacher_repr(ft, bias, stm_i, stm_o, opp_i, opp_o):
         z_stm = (ft(stm_i, stm_o) + bias).clamp(0.0, 1.0)
         z_opp = (ft(opp_i, opp_o) + bias).clamp(0.0, 1.0)
         return torch.cat([z_stm, z_opp], dim=1)
+
+
+def validate_focus(model, valid_loader, device, prior):
+    """焦点ヘッドを検証する（ADR-0213）。
+
+    返すのは3つ。熱地図のBCE、上位5マスの的中率、同じ検証集合で測った
+    頻度事前の的中率である。**自明解を並記しないと的中率を読めない。**
+    """
+    model.eval()
+    loss_sum = hit_sum = base_sum = 0.0
+    total = 0
+    with torch.no_grad():
+        for batch in valid_loader:
+            if batch is None:
+                continue
+            stm_i, stm_o, opp_i, opp_o = [x.to(device) for x in batch[:4]]
+            heat = batch[9].to(device)
+            n = heat.size(0)
+            pred = model.focus(model.transform_both(stm_i, stm_o, opp_i, opp_o))
+            loss_sum += focus_loss_fn(pred, heat).item() * n
+            hit_sum += top_k_precision(pred, heat).item() * n
+            base_sum += top_k_precision(prior.expand(n, -1), heat).item() * n
+            total += n
+    model.train()
+    n = max(total, 1)
+    return loss_sum / n, hit_sum / n, base_sum / n
+
+
+def focus_line(bce, top5, base):
+    """検証行に出す焦点の指標。学習中と最終報告で同じ書式を使う。"""
+    return (
+        f"focus bce {bce:.5f} top{FOCUS_TOPK} {100.0 * top5:.2f}% "
+        f"頻度事前 {100.0 * base:.2f}%"
+    )
 
 
 def validate(model, valid_loader, device):
@@ -185,6 +225,30 @@ def main():
              "λは値ではなく λ×利き損失÷value損失 の割合で決める",
     )
     p.add_argument(
+        "--focus-head",
+        dest="focus_head",
+        choices=["linear"],
+        help="焦点の熱地図を当てるヘッドを付ける（ADR-0213）。--data に.focusを"
+             "渡したときだけ使える。--freeze-ft と --lambda-value 0 と組むと、"
+             "FTが焦点を持っているかを測るprobeになる。ヘッドは書き出し時に"
+             "捨てるので推論は変わらない",
+    )
+    p.add_argument(
+        "--lambda-focus",
+        type=float,
+        default=0.0,
+        dest="lambda_focus",
+        help="焦点損失の重み（ADR-0213）。--focus-head と対で渡す",
+    )
+    p.add_argument(
+        "--focus-valid-count",
+        type=int,
+        default=100_000,
+        dest="focus_valid_count",
+        help=".focus の末尾この件数を検証に回す（ADR-0213）。残りが学習になる。"
+             "レコードは対局順なので、境目の1局を除いて学習と検証は別の対局になる",
+    )
+    p.add_argument(
         "--init-net",
         help="既存の.hmwrを初期値に読む。FTは常に読み、後段は形が一致する層だけ"
              "読む（ADR-0130）",
@@ -258,9 +322,18 @@ def main():
         p.error("--lambda-effect には --effect-head が要る（ヘッドがない）")
     if args.effect_head is not None and args.lambda_effect <= 0:
         p.error("--effect-head には正の --lambda-effect が要る（重み0では学べない）")
-    if args.lambda_value <= 0 and args.effect_head is None:
-        p.error("--lambda-value 0 には別の的が要る（--effect-head を渡す）")
+    # 焦点も同じ扱いにする（ADR-0213）。ヘッドと重みは対で要る
+    if args.lambda_focus > 0 and args.focus_head is None:
+        p.error("--lambda-focus には --focus-head が要る（ヘッドがない）")
+    if args.focus_head is not None and args.lambda_focus <= 0:
+        p.error("--focus-head には正の --lambda-focus が要る（重み0では学べない）")
+    if args.lambda_value <= 0 and args.effect_head is None and args.focus_head is None:
+        p.error("--lambda-value 0 には別の的が要る（--effect-head か --focus-head を渡す）")
     use_effect = args.effect_head is not None
+    use_focus = args.focus_head is not None
+    # 熱地図は.focusにしか入っていない（ADR-0213）
+    if use_focus and not (args.data or "").endswith(".focus"):
+        p.error("--focus-head には .focus の学習データが要る（熱地図の的がない）")
 
     # 局面の出どころは1つに決める（ADR-0133）。両方渡せるとどちらで学習した
     # のか記録から読めなくなる
@@ -299,7 +372,32 @@ def main():
         torch.manual_seed(args.seed)
         print(f"Seed: {args.seed}", file=sys.stderr)
 
-    if args.eval_only:
+    # .focus は学習と検証を同じファイルから切る（ADR-0213）。検証集合を
+    # 別に用意すると、熱地図の作り方が学習側とずれても気づけない
+    focus_valid_loader = None
+    if use_focus and not args.eval_only:
+        focus_rows = os.path.getsize(args.data) // FOCUS_BYTES
+        split = focus_rows - args.focus_valid_count
+        if split <= 0:
+            p.error(
+                f"--focus-valid-count が大きすぎる（全{focus_rows}件、"
+                f"学習に残るのは{split}件）"
+            )
+        train_loader = FocusBatchLoader(
+            args.data, args.batch, lo=0, hi=split,
+            lambda_=args.lambda_, shuffle=True, seed=args.seed or 0,
+        )
+        focus_valid_loader = FocusBatchLoader(
+            args.data, args.batch, lo=split, hi=focus_rows,
+            lambda_=args.lambda_, shuffle=False,
+        )
+        data_n = train_loader.n
+        print(
+            f"焦点データ: 学習 {data_n}局面 / 検証 {focus_valid_loader.n}局面"
+            f"（{args.data}）",
+            file=sys.stderr,
+        )
+    elif args.eval_only:
         train_loader = None
         data_n = 0
     elif args.generate:
@@ -337,7 +435,13 @@ def main():
     total_steps = args.epochs * steps_per_epoch
 
     valid_loader = None
-    if args.valid:
+    if focus_valid_loader is not None:
+        # 同じファイルの末尾を使う。--valid は受け取らない
+        valid_loader = focus_valid_loader
+        if args.valid:
+            print("--focus-head では.focusの末尾を検証に使う。--valid は無視する",
+                  file=sys.stderr)
+    elif args.valid:
         if args.batch_loader:
             # validには score_limit も score_clamp も適用しない。
             # 教師信号の作り方を変えると物差しが変わり、条件間で
@@ -388,6 +492,7 @@ def main():
         pretrain=args.pretrain,
         distill_out=distill_out,
         effect_head=args.effect_head,
+        focus_head=args.focus_head,
     ).to(device)
 
     if args.init_net and args.init_checkpoint:
@@ -411,7 +516,16 @@ def main():
         print(f"初期値: {load_into(model, args.init_net, args.freeze_ft)}",
               file=sys.stderr)
     elif args.freeze_ft:
-        p.error("--freeze-ft には --init-net か --init-checkpoint が要る（凍結する重みがない）")
+        # probeの自明解Rは「乱数初期値のFT」を凍結して測る（ADR-0213）。
+        # 学習済みの表現がなくても意味があるのはこの用途だけなので、
+        # 焦点ヘッドを付けているときに限って許す
+        if not use_focus:
+            p.error("--freeze-ft には --init-net か --init-checkpoint が要る（凍結する重みがない）")
+        print("初期値: 乱数のまま凍結（probeの自明解R）", file=sys.stderr)
+        model.ft.weight.requires_grad_(False)
+        model.ft_bias.requires_grad_(False)
+        if model.ft_p is not None:
+            model.ft_p.weight.requires_grad_(False)
 
     if args.eval_only:
         vl = validate(model, valid_loader, device)
@@ -437,6 +551,9 @@ def main():
     # 利きヘッドはMLPのこともあるので、パラメータをまとめて足す（ADR-0133）
     if model.effect is not None:
         dense_params.extend(model.effect.parameters())
+    # 焦点ヘッド（ADR-0213）。probeではここだけが学習対象になる
+    if model.focus is not None:
+        dense_params.extend(model.focus.parameters())
     ft_params = [model.ft.weight]
     if model.ft_p is not None:
         ft_params.append(model.ft_p.weight)
@@ -540,6 +657,25 @@ def main():
     samples_done = step * args.batch
     early_stopped = False
 
+    # 頻度事前（ADR-0213）。学習側の熱地図の平均で、局面によらない自明解に
+    # なる。**検証集合から作らない。** 測る相手の答えを覗くことになる
+    focus_prior = None
+    focus_acc = 0.0
+    focus_hit = 0.0
+    focus_n = 0
+    if use_focus:
+        rates = torch.from_numpy(train_loader.heat_mean()).float()
+        focus_prior = rates.view(1, -1).to(device)
+        top = rates.topk(FOCUS_TOPK)
+        print(
+            f"頻度事前の上位{FOCUS_TOPK}升: "
+            + " ".join(
+                f"{sq}:{rate * 100:.1f}%"
+                for sq, rate in zip(top.indices.tolist(), top.values.tolist())
+            ),
+            file=sys.stderr,
+        )
+
     rank_loader = None
     if args.rank_data:
         rank_loader = RankLoader(args.rank_data, args.rank_batch, seed=args.seed)
@@ -553,9 +689,12 @@ def main():
             if batch is None:
                 continue
 
-            # 末尾2本は利きラベル（ADR-0133）。抽出させていなければ空で来る
+            # 末尾2本は利きラベル（ADR-0133）。抽出させていなければ空で来る。
+            # .focus のローダはさらに熱地図を1本足す（ADR-0213）
+            tensors = [x.to(device) for x in batch]
             stm_i, stm_o, opp_i, opp_o, targets, mv_from, mv_to, \
-                eff_short, eff_long = [x.to(device) for x in batch]
+                eff_short, eff_long = tensors[:9]
+            heat = tensors[9] if len(tensors) > 9 else None
             n = targets.size(0)
 
             optimizer_dense.zero_grad()
@@ -631,6 +770,16 @@ def main():
                         eff_long.float().pow(2).mean().item() / scale * n
                     )
                 effect_n += n
+            if model.focus is not None and heat is not None:
+                # 焦点の熱地図を当てる（ADR-0213）。的中率も一緒に測る。
+                # 損失だけでは「上位5マスが当たっているか」が読めない
+                focus_pred = model.focus(x)
+                focus_loss = focus_loss_fn(focus_pred, heat)
+                loss = loss + args.lambda_focus * focus_loss
+                focus_acc += focus_loss.item() * n
+                with torch.no_grad():
+                    focus_hit += top_k_precision(focus_pred, heat).item() * n
+                focus_n += n
             loss.backward()
             optimizer_dense.step()
             if optimizer_ft is not None:
@@ -686,10 +835,18 @@ def main():
                     if rank_n
                     else ""
                 )
+                # 焦点は損失と的中率を並べる（ADR-0213）。λを掛ける前の値を
+                # 出すのは蒸留・利き・ランキングと同じ
+                focus_str = (
+                    f" focus {focus_acc / focus_n:.5f}"
+                    f" top{FOCUS_TOPK} {100.0 * focus_hit / focus_n:.2f}%"
+                    if focus_n
+                    else ""
+                )
                 print(
                     f"step {step} samples {samples_done} "
                     f"loss {avg_loss:.5f} lr {current_lr:.6f}"
-                    f"{hit_rate}{distill_str}{effect_str}{rank_str} "
+                    f"{hit_rate}{distill_str}{effect_str}{rank_str}{focus_str} "
                     f"({sps:.0f} samples/s)",
                     file=sys.stderr,
                 )
@@ -726,6 +883,9 @@ def main():
                 eff_short_base = 0.0
                 eff_long_base = 0.0
                 effect_n = 0
+                focus_acc = 0.0
+                focus_hit = 0.0
+                focus_n = 0
                 t_log = time.time()
                 samples_log = 0
 
@@ -733,8 +893,20 @@ def main():
                 # 検証と書き出しは制約を満たした状態で行う（ADR-0138）
                 if args.ft_clip > 0:
                     model.clip_ft_weights(args.ft_clip)
-                vl = validate(model, valid_loader, device)
-                print(f"  valid loss {vl:.5f}", file=sys.stderr)
+                if use_focus:
+                    focus_vl, top5, base = validate_focus(
+                        model, valid_loader, device, focus_prior,
+                    )
+                    print(f"  valid {focus_line(focus_vl, top5, base)}",
+                          file=sys.stderr)
+                # probeはλ_value=0で評価値ヘッドを学習しない（ADR-0213）。
+                # 評価値の損失で最良チェックポイントを選んでも意味がないので、
+                # 焦点のBCEを物差しにする
+                if use_focus and args.lambda_value <= 0:
+                    vl = focus_vl
+                else:
+                    vl = validate(model, valid_loader, device)
+                    print(f"  valid loss {vl:.5f}", file=sys.stderr)
                 if writer:
                     writer.add_scalar("valid/loss", vl, step)
                 if log_file:
@@ -794,7 +966,20 @@ def main():
         print(f"epoch {epoch + 1} 完了", file=sys.stderr)
 
     elapsed_total = time.time() - t0
-    if valid_loader:
+    if valid_loader and use_focus:
+        # probeの答えはこの1行にある（ADR-0213）。自明解を並べて出す
+        final_valid, top5, base = validate_focus(
+            model, valid_loader, device, focus_prior,
+        )
+        print(f"最終 {focus_line(final_valid, top5, base)}", file=sys.stderr)
+        print(
+            f"probeの結果: top{FOCUS_TOPK} {100.0 * top5:.2f}% "
+            f"頻度事前 {100.0 * base:.2f}% "
+            f"（差 {100.0 * (top5 - base):+.2f}ポイント、"
+            f"検証 {valid_loader.n}局面、{step}ステップ）",
+            file=sys.stderr,
+        )
+    elif valid_loader:
         final_valid = validate(model, valid_loader, device)
         print(
             f"最終valid loss {final_valid:.5f} "
