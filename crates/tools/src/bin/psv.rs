@@ -19,6 +19,9 @@
 //!                                              決着圏の局面を確率で間引く（ADR-0190）
 //!   psv phase   --in file --out file.tsv [--limit N] [--eval-file NET]
 //!                                              進行度の指標と静的評価をTSVへ書く（ADR-0198）
+//!   psv defend  --in file --out file.tsv [--limit N] [--skip N] [--hash MB] [--eval-file NET]
+//!                                              教師の最善手が全合法手の中で何位に置かれるかを
+//!                                              TSVへ書く（ADR-0213）。攻撃的な受けの印も付ける
 //!   psv relabel --in file --out file [--depth N] [--max-nodes N] [--jobs N] [--hash MB]
 //!               [--limit N] [--eval-file NET]  現行エンジンで読み直し、scoreと教師手を
 //!                                              付け替える（ADR-0205）。勝敗と手数は残す
@@ -1238,11 +1241,153 @@ fn phase(input: &str, output: &str, limit: u64, eval: &str) {
     eprintln!("局面数: {n}（復元失敗{failed}）→ {output}");
 }
 
+/// 最善手が「攻撃的な受け」かを判定する（ADR-0213）。
+///
+/// 判定は手を指した後の局面で行う。動いた駒が利いている相手の駒のうち、
+/// 自玉の周囲8マス（玉のマス自身を含む）へ利いているものが1枚でもあれば
+/// 該当とする。利きは遮りを見る本物の利きで、ピンは見ない。
+fn is_aggressive_defense(
+    after: &himawari_core::Position,
+    us: himawari_core::Color,
+    to: himawari_core::Square,
+) -> bool {
+    use himawari_core::Bitboard;
+    use himawari_core::attacks::{attacks, king_attacks};
+
+    let mover = after.piece_on(to);
+    if mover.is_empty() {
+        return false;
+    }
+    let occ = after.occupied();
+    let ksq = after.king(us);
+    let zone = king_attacks(ksq) | Bitboard::from_square(ksq);
+    for sq in attacks(mover, to, occ) & after.color_bb(us.flip()) {
+        let pc = after.piece_on(sq);
+        if !(attacks(pc, sq, occ) & zone).is_empty() {
+            return true;
+        }
+    }
+    false
+}
+
+/// 子局面をqsearchの葉まで進め、親の手番から見た評価値を返す。
+///
+/// 経路は `psv rank` と同じで、`do_move` のあと `walk_to_quiet(16)` で
+/// 葉へ降りる。葉の手番が親と逆（進めた手数が奇数）なら符号を戻す。
+fn leaf_value(worker: &mut Worker, pos: &himawari_core::Position, m: himawari_core::Move) -> i32 {
+    let mut child = pos.clone();
+    child.do_move(m);
+    worker.set_position(child);
+    let plies = 1 + worker.walk_to_quiet(16);
+    let value = worker.evaluator.evaluate(&worker.pos);
+    if plies % 2 == 1 { -value } else { value }
+}
+
+/// 教師の最善手が、全合法手の中で静的評価の何位に置かれるかをTSVへ書く（ADR-0213）。
+///
+/// 負例を2手に絞る `rank` と違い、全合法手の子を葉まで進めて並べる。
+/// 順位は「厳密に良い手の数 + 1」で、同値は同順位になる。
+/// 集計は `hmwr diag defend` のPython側が持つ。
+fn defend(input: &str, output: &str, limit: u64, skip: u64, hash_mb: usize, eval: &str) {
+    use himawari_core::Move16;
+
+    let mut r = open_reader(input);
+    r.seek(SeekFrom::Start(skip * PSV_BYTES as u64))
+        .unwrap_or_else(|e| die(&format!("シークできません: {e}")));
+    let mut w = BufWriter::new(
+        std::fs::File::create(output)
+            .unwrap_or_else(|e| die(&format!("作れません: {output}: {e}"))),
+    );
+    let mut f = std::fs::File::open(eval)
+        .unwrap_or_else(|e| die(&format!("評価関数を開けません: {eval}: {e}")));
+    let (net, _lineage) = himawari_engine::nnue_io::load(&mut f)
+        .unwrap_or_else(|e| die(&format!("評価関数を読めません: {eval}: {e}")));
+    let mut worker = quiet_worker(&Arc::new(net), hash_mb);
+
+    writeln!(w, "index\tdefend\tmoves\trank\tvalue\tbest")
+        .unwrap_or_else(|e| die(&format!("書けません: {e}")));
+    let mut buf = [0u8; PSV_BYTES];
+    let (mut n, mut written, mut skipped) = (0u64, 0u64, 0u64);
+    let mut skip_why = [0u64; 3];
+    let start = std::time::Instant::now();
+    while n < limit && r.read_exact(&mut buf).is_ok() {
+        let rec = PackedSfenValue::from_bytes(&buf);
+        n += 1;
+        let Ok(pos) = unpack(&rec.sfen, rec.game_ply) else {
+            skipped += 1;
+            skip_why[0] += 1;
+            continue;
+        };
+        let best = Move16::from_yaneura(rec.move16).and_then(|m16| pos.to_move(m16));
+        let Some(best) = best else {
+            skipped += 1;
+            skip_why[1] += 1;
+            continue;
+        };
+        if !pos.pseudo_legal(best) || !pos.is_legal(best) {
+            skipped += 1;
+            skip_why[2] += 1;
+            continue;
+        }
+        let us = pos.side_to_move();
+        let mut after = pos.clone();
+        after.do_move(best);
+        let defended = is_aggressive_defense(&after, us, best.to());
+
+        let mut list = himawari_core::MoveList::default();
+        himawari_core::generate_legal(&pos, true, &mut list);
+        let mut values = Vec::with_capacity(list.len());
+        let mut value = 0;
+        for &m in list.as_slice() {
+            let v = leaf_value(&mut worker, &pos, m);
+            if m == best {
+                value = v;
+            }
+            values.push(v);
+        }
+        // 同値は同順位にする。順位は「厳密に良い手の数 + 1」である
+        let better = values.iter().filter(|&&v| v > value).count();
+        let top = values.iter().copied().max().unwrap_or(value);
+        writeln!(
+            w,
+            "{}\t{}\t{}\t{}\t{}\t{}",
+            skip + n,
+            u8::from(defended),
+            list.len(),
+            better + 1,
+            value,
+            top
+        )
+        .unwrap_or_else(|e| die(&format!("書けません: {e}")));
+        written += 1;
+        if n % 10_000 == 0 {
+            let sec = start.elapsed().as_secs_f64();
+            eprintln!(
+                "{n}局面 書いた{written} ({:.0}局面/秒)",
+                n as f64 / sec.max(1e-9)
+            );
+        }
+    }
+    w.flush()
+        .unwrap_or_else(|e| die(&format!("書けません: {e}")));
+    let sec = start.elapsed().as_secs_f64();
+    eprintln!("読んだ局面 : {n}");
+    eprintln!("書いた局面 : {written} → {output}");
+    eprintln!(
+        "捨てた局面 : {skipped}（復元{} 手復号{} 非合法{}）",
+        skip_why[0], skip_why[1], skip_why[2]
+    );
+    eprintln!(
+        "所要       : {sec:.1}秒（{:.0}局面/秒）",
+        n as f64 / sec.max(1e-9)
+    );
+}
+
 fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
     let Some(cmd) = args.first() else {
         die(
-            "サブコマンドが必要です: stats / dump / head / shuffle / quiet / rank / thin / phase / relabel",
+            "サブコマンドが必要です: stats / dump / head / shuffle / quiet / rank / thin / phase / relabel / defend",
         );
     };
     let rest = &args[1..];
@@ -1425,6 +1570,73 @@ fn main() {
                 &eval,
             );
         }
+        "defend" => {
+            let limit = arg_value(rest, "--limit")
+                .map(|s| s.parse().unwrap_or(u64::MAX))
+                .unwrap_or(u64::MAX);
+            let skip: u64 = arg_value(rest, "--skip")
+                .map(|s| s.parse().unwrap_or(0))
+                .unwrap_or(0);
+            let hash_mb = arg_value(rest, "--hash")
+                .map(|s| s.parse().unwrap_or(64))
+                .unwrap_or(64);
+            let eval = arg_value(rest, "--eval-file")
+                .or_else(|| std::env::var("EVAL_FILE").ok())
+                .unwrap_or_else(|| die("--eval-file か EVAL_FILE が必要です"));
+            defend(
+                &input.unwrap_or_else(|| die("--in が必要です")),
+                &output.unwrap_or_else(|| die("--out が必要です")),
+                limit,
+                skip,
+                hash_mb,
+                &eval,
+            );
+        }
         other => die(&format!("不明なサブコマンド: {other}")),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::is_aggressive_defense;
+    use himawari_core::{Move16, Position};
+
+    /// sfenの局面でusiの手を指し、「攻撃的な受け」の判定を返す。
+    fn defends(sfen: &str, usi: &str) -> bool {
+        let pos = Position::from_sfen(sfen).expect("局面");
+        let m16 = Move16::from_usi(usi).expect("指し手");
+        let m = pos.to_move(m16).expect("駒の復元");
+        assert!(
+            pos.pseudo_legal(m) && pos.is_legal(m),
+            "合法手でない: {usi}"
+        );
+        let us = pos.side_to_move();
+        let mut after = pos.clone();
+        after.do_move(m);
+        is_aggressive_defense(&after, us, m.to())
+    }
+
+    /// 後手の飛車が4筋を下まで利かせ、先手玉の隣の4hを差している局面。
+    /// 先手玉は5i、飛車は4eで、先手の持ち駒は銀1枚である。
+    const ROOK_AT_KING: &str = "4k4/9/9/9/5r3/9/9/9/4K4 b S 1";
+    /// 同じ配置のまま、先手玉だけを1iへ遠ざけた局面。
+    const ROOK_AWAY: &str = "4k4/9/9/9/5r3/9/9/9/8K b S 1";
+
+    #[test]
+    fn silver_hitting_a_rook_that_eyes_the_king_zone_counts() {
+        // 5fの銀は4eの飛車に当たり、その飛車は4hで先手玉の周囲を差す
+        assert!(defends(ROOK_AT_KING, "S*5f"));
+    }
+
+    #[test]
+    fn hitting_a_rook_that_ignores_the_king_zone_does_not_count() {
+        // 当てている駒は同じでも、玉が1iなら飛車は周囲8マスへ利かない
+        assert!(!defends(ROOK_AWAY, "S*5f"));
+    }
+
+    #[test]
+    fn a_move_that_hits_nothing_does_not_count() {
+        // 5hの銀はどの相手の駒にも当たらない
+        assert!(!defends(ROOK_AT_KING, "S*5h"));
     }
 }

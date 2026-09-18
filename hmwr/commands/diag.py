@@ -14,6 +14,7 @@ from pathlib import Path
 from .. import config, paths, proc
 from ..tools import (
     dead_dims,
+    defend_rank,
     phase as phase_tool,
     rank_diag,
     replay as replay_tool,
@@ -106,6 +107,28 @@ def add_parser(sub: argparse._SubParsersAction) -> None:
     t.add_argument("--limit", type=int, default=1000000, metavar="N", help="先頭N局面だけ読む")
     t.add_argument("--name", metavar="名前", help="ログの名前（既定は入力の置き場の名前）")
     t.set_defaults(func=shadow)
+
+    t = ss.add_parser(
+        "defend",
+        help="攻撃的な受けの局面で、最善手の順位を一般の局面と比べる",
+        description="教師の最善手が相手の駒に当たり、その駒が自玉の周囲8マスへ利いている"
+        "局面を機械的に抽出する。全合法手の子をqsearchの葉まで進めて静的評価で並べ、"
+        "教師手が何位に置かれるかを群ごとに集計する。"
+        "入力は静止化前のpsvに限る。静止化した局面では教師の手が親と対応しない。"
+        "TSVは data/profile/defend-<名前>.tsv に残る。",
+    )
+    t.add_argument("name", metavar="名前", help="測定の名前。TSVとログの名前になる")
+    t.add_argument(
+        "--in",
+        dest="input",
+        required=True,
+        metavar="名前",
+        help="入力のpsv（data/train/<名前>.psv）",
+    )
+    t.add_argument("--limit", type=int, default=200000, metavar="N", help="先頭N局面だけ測る")
+    t.add_argument("--skip", type=int, metavar="N", help="先頭N局面を飛ばす")
+    t.add_argument("--eval-file", metavar="パス", help="評価関数（既定は EVAL_FILE）")
+    t.set_defaults(func=defend)
 
 
 def rank(args: argparse.Namespace) -> int:
@@ -204,6 +227,44 @@ def shadow(args: argparse.Namespace) -> int:
     log = paths.log("diag-shadow", name)
     argv = [*args.inputs, "--limit", str(args.limit), "--log", str(log)]
     code = shadow_flips.main(argv)
+    if code == proc.OK:
+        print(f"ログ: {paths.rel(log)}")
+    return code
+
+
+def defend(args: argparse.Namespace) -> int:
+    """攻撃的な受けの局面で、最善手の順位を数える（ADR-0213）。"""
+    name = paths.check_name(args.name)
+    psv = paths.TRAIN / f"{paths.check_name(args.input)}.psv"
+    eval_file = args.eval_file or config.get("EVAL_FILE")
+    if not args.dry_run:
+        if not psv.is_file():
+            raise proc.Fail(f"入力のpsvがない: {paths.rel(psv)}")
+        if not eval_file:
+            raise proc.Fail("評価関数がない。--eval-file で渡す")
+    tsv = paths.PROFILE / f"defend-{name}.tsv"
+    tsv.parent.mkdir(parents=True, exist_ok=True)
+    log = paths.log("diag-defend", name)
+
+    print(f"=== 攻撃的な受けの順位: {name} ===")
+    print(f"局面    : {paths.rel(psv)}")
+    print(f"評価関数: {paths.rel(eval_file or '（未設定）')}")
+    print(f"TSV     : {paths.rel(tsv)}")
+    argv = [
+        "--in", str(psv),
+        "--out", str(tsv),
+        "--eval-file", eval_file or "（未設定）",
+        "--limit", str(args.limit),
+    ]  # fmt: skip
+    if args.skip is not None:
+        argv += ["--skip", str(args.skip)]
+    code = proc.run(proc.cargo_tool("psv", ["defend", *argv]), dry_run=args.dry_run, log=log)
+    if code != proc.OK:
+        return code
+    if args.dry_run:
+        print(f"[dry-run] 群ごとに最善手の順位を集計する: {paths.rel(tsv)}")
+        return proc.OK
+    code = defend_rank.main([str(tsv), "--log", str(log)])
     if code == proc.OK:
         print(f"ログ: {paths.rel(log)}")
     return code

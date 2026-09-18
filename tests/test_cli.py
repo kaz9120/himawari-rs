@@ -449,6 +449,15 @@ def test_one_off_diagnoses_live_under_diag(capsys):
             cli.main(["--dry-run", "net", name, "x", "y"])
 
 
+def test_diag_defend_runs_psv_and_keeps_the_tsv_under_profile(capsys):
+    """名前からTSVとログの置き場が決まる。呼び出し側はパスを書かない。"""
+    _, lines = dry(capsys, ["diag", "defend", "adr0213", "--in", "e4_ctrl_train", "--limit", "1000"])
+    assert "--bin psv -- defend" in lines[0]
+    assert "data/train/e4_ctrl_train.psv" in lines[0]
+    assert "data/profile/defend-adr0213.tsv" in lines[0]
+    assert "data/logs/diag-defend-adr0213.log" in lines[1]
+
+
 def test_build_pair_can_build_the_candidate_from_a_ref(capsys):
     """実験キューの作業ツリーはorigin/mainなので、候補をrefで指せるようにする。"""
     _, lines = dry(capsys, ["build", "pair", "adr0211-x", "--candidate", "0cd8205"])
