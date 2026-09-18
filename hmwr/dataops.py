@@ -20,6 +20,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from . import config, paths, proc
+from .tools import focus_labels
 
 # 静止化の並列数。**並列の出力はjobs固定で決定論になる**（逐次とは一致しない）
 # ので、既定を1か所で持つ。ADR-0200〜0206のチェーン11回はすべて8だった
@@ -182,7 +183,9 @@ def add_parsers(ss: argparse._SubParsersAction) -> None:
         description="完了印のある出力だけを消す。完了印に作り方が残っているので、"
         "消しても同じコマンドで作り直せる。由来の記録がないファイルには触らない。",
     )
-    t.add_argument("names", nargs="+", metavar="名前", help="data/train/<名前>.psv か .rankpsv")
+    t.add_argument(
+        "names", nargs="+", metavar="名前", help="data/train/<名前>の.psv・.rankpsv・.focus"
+    )
     t.set_defaults(func=remove)
 
     t = ss.add_parser(
@@ -198,6 +201,33 @@ def add_parsers(ss: argparse._SubParsersAction) -> None:
     t.add_argument("--skip", type=int, default=0, metavar="N", help="先頭から飛ばす件数")
     t.add_argument("--force", action="store_true", help="出力が既にあっても作り直す")
     t.set_defaults(func=openings)
+
+    t = ss.add_parser(
+        "focus",
+        help="対局順の生データから焦点の熱地図つき局面集を作る",
+        description="ある局面から先のk手で駒が動いたマスと取られたマスを"
+        "9×9の熱地図にし、盤上の駒ごとの関与フラグを付ける。"
+        "入力は対局順のままの生データに限る。シャッフル済みの教師は続きを"
+        "持たないので使えない。出力は202バイト固定長で、"
+        "data/train/<出力名>.focus へ書く。",
+    )
+    t.add_argument("name", metavar="出力名", help=f"data/train/<出力名>{focus_labels.SUFFIX} へ書く")
+    t.add_argument(
+        "--raw",
+        required=True,
+        metavar="データセット",
+        help="data/raw/<データセット>/ の生データ（*.bin）を名前順に読む",
+    )
+    t.add_argument("--count", type=int, required=True, metavar="N", help="切り出す局面数")
+    t.add_argument(
+        "--plies",
+        type=int,
+        default=focus_labels.PLIES,
+        metavar="N",
+        help=f"先を見る手数（既定 {focus_labels.PLIES}）",
+    )
+    t.add_argument("--force", action="store_true", help="出力が既にあっても作り直す")
+    t.set_defaults(func=focus)
 
 
 # --- 実行 --------------------------------------------------------------
@@ -381,11 +411,14 @@ def remove(args: argparse.Namespace) -> int:
         paths.check_name(name)
         if args.dry_run:
             # 消す対象は、手順の前のステップが実行時に作る。予行では存在を問わない
-            print(f"[dry-run] rm {paths.rel(paths.TRAIN / name)}.psv か .rankpsv と、その完了印")
+            print(
+                f"[dry-run] rm {paths.rel(paths.TRAIN / name)} の"
+                ".psv・.rankpsv・.focus と、その完了印"
+            )
             continue
         found = [
             p
-            for suffix in (".psv", ".rankpsv")
+            for suffix in (".psv", ".rankpsv", focus_labels.SUFFIX)
             if (p := paths.TRAIN / f"{name}{suffix}").exists()
         ]
         if not found:
@@ -460,4 +493,67 @@ def openings(args: argparse.Namespace) -> int:
         raise proc.Fail(f"局面を復元できなかった（{len(lines)}/{args.count}）: {err.strip()}")
     out.write_text("\n".join(lines) + "\n", encoding="utf-8")
     print(f"完了: {paths.rel(out)}（{len(lines)}局面）")
+    return proc.OK
+
+
+# --- 焦点の熱地図 ------------------------------------------------------
+
+
+def focus(args: argparse.Namespace) -> int:
+    """対局順の生データから、先k手の焦点を付けた局面集を作る（ADR-0213）。"""
+    name = paths.check_name(args.name)
+    dataset = paths.check_name(args.raw)
+    raw_dir = paths.RAW / dataset
+    out = paths.TRAIN / f"{name}{focus_labels.SUFFIX}"
+    part = out.with_name(out.name + ".part")
+    done = out.with_name(out.name + ".done")
+    record = [f"focus --raw {dataset} --count {args.count} --plies {args.plies}"]
+    log = paths.log("focus", name)
+    sources = sorted(raw_dir.glob("*.bin"))
+
+    if args.dry_run:
+        print(f"[dry-run] {record[0]} → {paths.rel(part)}")
+        print(f"[dry-run] 入力: {paths.rel(raw_dir)}/*.bin（{len(sources)}ファイル）")
+        print(f"[dry-run] mv {paths.rel(part)} {paths.rel(out)}")
+        print(f"[dry-run] ログ: {paths.rel(log)}")
+        return proc.OK
+    if not sources:
+        raise proc.Fail(f"生データがない: {paths.rel(raw_dir)}")
+    if out.exists() and not args.force:
+        return _already(out, done, record)
+
+    out.parent.mkdir(parents=True, exist_ok=True)
+    done.unlink(missing_ok=True)
+    print(f"=== data focus: {name} ===")
+    with open(log, "a", encoding="utf-8") as fh:
+
+        def report(line: str) -> None:
+            print(line)
+            fh.write(f"{time.strftime('%Y-%m-%dT%H:%M:%S')} {line}\n")
+            fh.flush()
+
+        report(f"開始: {record[0]}")
+        stats = focus_labels.write(
+            sources, part, count=args.count, plies=args.plies, report=report
+        )
+        if stats.rows < args.count:
+            raise proc.Fail(f"切り出せた局面が足りない（{stats.rows}/{args.count}）")
+        focus_labels.report_stats(stats, plies=args.plies, report=report)
+
+    part.replace(out)
+    done.write_text(
+        json.dumps(
+            {
+                "commands": record,
+                "bytes": out.stat().st_size,
+                "seconds": round(stats.seconds),
+                "stats": stats.summary(),
+                "finished": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
+            },
+            ensure_ascii=False,
+            indent=2,
+        )
+        + "\n"
+    )
+    print(f"完了: {paths.rel(out)}（{out.stat().st_size:,}バイト）")
     return proc.OK
