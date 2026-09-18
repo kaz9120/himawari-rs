@@ -34,25 +34,83 @@ fn version_string() -> String {
 /// すぐ分かる。探索の中には入れず、USI層の行だけを写すので、1手あたり
 /// 数十行にしかならない。無指定なら分岐1つ分のコストで済む。
 static LOG_ON: AtomicBool = AtomicBool::new(false);
-static LOG_FILE: Mutex<Option<std::io::BufWriter<std::fs::File>>> = Mutex::new(None);
+static LOG_FILE: Mutex<Option<DebugLog>> = Mutex::new(None);
 
-fn log_open(path: &str) -> Result<(), String> {
+/// 開いているログ。パスに `%d` があると日付で開き直す。
+struct DebugLog {
+    /// setoptionで受けたパス。`%d` を含むと日毎のローテーションになる
+    template: String,
+    /// いま開いているファイルの通日。`%d` が無いときは使わない
+    day: i64,
+    writer: std::io::BufWriter<std::fs::File>,
+}
+
+/// UNIX時刻の秒を通日（1970-01-01を0とするUTCの日数）にする。
+fn days_from_epoch(secs: i64) -> i64 {
+    secs.div_euclid(86_400)
+}
+
+/// 通日をYYYY-MM-DDにする（Howard Hinnantのcivil_from_days）。
+fn date_string(days: i64) -> String {
+    let z = days + 719_468;
+    let era = if z >= 0 { z } else { z - 146_096 } / 146_097;
+    let doe = z - era * 146_097;
+    let yoe = (doe - doe / 1_460 + doe / 36_524 - doe / 146_096) / 365;
+    let y = yoe + era * 400;
+    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+    let mp = (5 * doy + 2) / 153;
+    let d = doy - (153 * mp + 2) / 5 + 1;
+    let m = if mp < 10 { mp + 3 } else { mp - 9 };
+    let y = y + i64::from(m <= 2);
+    format!("{y:04}-{m:02}-{d:02}")
+}
+
+/// `%d` を日付へ置き換える。含まなければそのまま返す。
+fn resolve_log_path(template: &str, day: i64) -> String {
+    if template.contains("%d") {
+        template.replace("%d", &date_string(day))
+    } else {
+        template.to_string()
+    }
+}
+
+fn open_log_writer(path: &str) -> Result<std::io::BufWriter<std::fs::File>, String> {
+    let f = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(path)
+        .map_err(|e| format!("{path} を開けない: {e}"))?;
+    Ok(std::io::BufWriter::new(f))
+}
+
+/// いまのUNIX時刻をミリ秒で返す。
+fn now_millis() -> i64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_millis() as i64)
+        .unwrap_or(0)
+}
+
+/// ログを開き直す。開いたファイルのパス（`%d` を解決した後）を返す。
+fn log_open(path: &str) -> Result<String, String> {
     let mut guard = LOG_FILE
         .lock()
         .map_err(|_| "ログの排他に失敗".to_string())?;
     if path.is_empty() {
         LOG_ON.store(false, Ordering::Relaxed);
         *guard = None;
-        return Ok(());
+        return Ok(String::new());
     }
-    let f = std::fs::OpenOptions::new()
-        .create(true)
-        .append(true)
-        .open(path)
-        .map_err(|e| format!("{path} を開けない: {e}"))?;
-    *guard = Some(std::io::BufWriter::new(f));
+    let day = days_from_epoch(now_millis().div_euclid(1_000));
+    let resolved = resolve_log_path(path, day);
+    let writer = open_log_writer(&resolved)?;
+    *guard = Some(DebugLog {
+        template: path.to_string(),
+        day,
+        writer,
+    });
     LOG_ON.store(true, Ordering::Relaxed);
-    Ok(())
+    Ok(resolved)
 }
 
 /// 行を1本書く。`dir` は `<`（受信）か `>`（送信）。
@@ -61,15 +119,23 @@ fn log_line(dir: char, s: &str) {
     if !LOG_ON.load(Ordering::Relaxed) {
         return;
     }
-    let ms = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map(|d| d.as_millis())
-        .unwrap_or(0);
+    let ms = now_millis();
     if let Ok(mut guard) = LOG_FILE.lock()
-        && let Some(w) = guard.as_mut()
+        && let Some(log) = guard.as_mut()
     {
-        let _ = writeln!(w, "{ms} {dir} {s}");
-        let _ = w.flush();
+        let day = days_from_epoch(ms.div_euclid(1_000));
+        // 日付が変わったら開き直す。開けなければ元のファイルへ書き続ける。
+        // ここからprint_lineを呼ぶとログの排他で詰まるので、失敗は黙って捨てる。
+        if day != log.day
+            && log.template.contains("%d")
+            && let Ok(w) = open_log_writer(&resolve_log_path(&log.template, day))
+        {
+            let _ = log.writer.flush();
+            log.writer = w;
+            log.day = day;
+        }
+        let _ = writeln!(log.writer, "{ms} {dir} {s}");
+        let _ = log.writer.flush();
     }
 }
 
@@ -334,8 +400,8 @@ fn set_option(opts: &mut EngineOptions, bopts: &mut BookOptions, tokens: &[&str]
                 value.as_ref()
             };
             match log_open(path) {
-                Ok(()) if path.is_empty() => print_line("info string debug log off"),
-                Ok(()) => print_line(&format!("info string debug log -> {path}")),
+                Ok(_) if path.is_empty() => print_line("info string debug log off"),
+                Ok(resolved) => print_line(&format!("info string debug log -> {resolved}")),
                 Err(e) => print_line(&format!("info string {e}")),
             }
         }
@@ -587,5 +653,90 @@ fn main() {
     }
     if let Some(p) = pool.take() {
         p.quit();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn date_string_matches_known_days() {
+        assert_eq!(date_string(0), "1970-01-01");
+        assert_eq!(date_string(20_714), "2026-09-18");
+        // 閏日の前後と、400年規則の閏年
+        assert_eq!(date_string(19_782), "2024-02-29");
+        assert_eq!(date_string(19_783), "2024-03-01");
+        assert_eq!(date_string(11_016), "2000-02-29");
+        // 1970より前は通日が負になる
+        assert_eq!(date_string(-1), "1969-12-31");
+        assert_eq!(date_string(-25_508), "1900-03-01");
+    }
+
+    #[test]
+    fn days_from_epoch_rounds_down() {
+        assert_eq!(days_from_epoch(0), 0);
+        assert_eq!(days_from_epoch(86_399), 0);
+        assert_eq!(days_from_epoch(86_400), 1);
+        assert_eq!(days_from_epoch(-1), -1);
+    }
+
+    #[test]
+    fn resolve_log_path_replaces_placeholder() {
+        assert_eq!(
+            resolve_log_path("/var/log/usi-%d.log", 20_714),
+            "/var/log/usi-2026-09-18.log"
+        );
+        assert_eq!(
+            resolve_log_path("/var/log/usi.log", 20_714),
+            "/var/log/usi.log"
+        );
+    }
+
+    /// ローテーションはグローバルなログを触るので、1つのテストにまとめる。
+    #[test]
+    fn debug_log_reopens_when_day_changes() {
+        let dir = std::env::temp_dir().join(format!("himawari-usilog-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).expect("create_dir_all");
+
+        let today = days_from_epoch(now_millis().div_euclid(1_000));
+        let template = dir.join("usi-%d.log").to_string_lossy().to_string();
+
+        // %dつきのパスは、開いた時点の日付のファイルになる
+        let opened = log_open(&template).expect("log_open");
+        assert_eq!(opened, resolve_log_path(&template, today));
+
+        // 昨日から開きっぱなしの状態を作る
+        set_open_day(&template, today - 1);
+        log_line('<', "after midnight");
+        let yesterday =
+            std::fs::read_to_string(resolve_log_path(&template, today - 1)).expect("read");
+        let current = std::fs::read_to_string(&opened).expect("read");
+        assert!(!yesterday.contains("after midnight"));
+        assert!(current.contains("after midnight"));
+
+        // %dが無いパスは日付が変わっても開き直さない
+        let plain = dir.join("usi.log").to_string_lossy().to_string();
+        log_open(&plain).expect("log_open");
+        set_open_day(&plain, today - 1);
+        log_line('>', "same file");
+        assert!(
+            std::fs::read_to_string(&plain)
+                .expect("read")
+                .contains("same file")
+        );
+
+        log_open("").expect("log_open");
+        assert!(!LOG_ON.load(Ordering::Relaxed));
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// 開いている日付を過去へずらし、その日のファイルを書き先にする。
+    fn set_open_day(template: &str, day: i64) {
+        let mut guard = LOG_FILE.lock().expect("lock");
+        let log = guard.as_mut().expect("open");
+        log.writer = open_log_writer(&resolve_log_path(template, day)).expect("open_log_writer");
+        log.day = day;
     }
 }

@@ -69,7 +69,7 @@ USIオプション `EvalFile` に評価関数のパスを設定する。
 | `USI_Ponder` | false | 相手番の思考 |
 | `MinimumThinkingTime` | 2000 | 最小思考時間[ms] |
 | `MultiPV` | 1 | 検討モードのライン数 |
-| `DebugLogFile` | （空） | USIの入出力をこのファイルへ追記する。切れ負けなど時間の調査に使う |
+| `DebugLogFile` | （空） | USIの入出力をこのファイルへ追記する。切れ負けなど時間の調査に使う。`%d` を入れると日毎に分ける |
 
 全オプションと値域は、エンジンへ `usi` と入力したときの出力が正になる。
 
@@ -106,6 +106,11 @@ himawari threadtune --eval <評価関数> --current 6 --hours 8
 1758160010998 > info string time plan: minimum 1880 optimum 4880 maximum 10880 end 10880 elapsed 10875 ponderhit 0 stop true
 1758160011001 > bestmove 4b5b
 ```
+
+パスに `%d` を入れると、日毎のファイルへ分かれる。`usi-%d.log` は
+`usi-2026-09-18.log` になり、日付が変わった最初の1行で次のファイルを開く。
+日付はUTCで決まり、行の先頭に出るUNIX時刻と土俵が揃う。常時取るときは
+これを入れて、古い日のファイルを消す。
 
 ### うまく動かないとき
 
