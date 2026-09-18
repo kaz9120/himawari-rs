@@ -114,6 +114,14 @@ class NnueModel(nn.Module):
             return None
         if kind == "linear":
             return nn.Linear(CONCAT, FOCUS_OUT)
+        if kind == "mlp":
+            # 線形で当たらない焦点が非線形なら当たるかを分けるための対照。
+            # 中間は利きヘッドのmlpと同じ256にする
+            return nn.Sequential(
+                nn.Linear(CONCAT, EFFECT_MLP_HIDDEN),
+                nn.ReLU(),
+                nn.Linear(EFFECT_MLP_HIDDEN, FOCUS_OUT),
+            )
         raise ValueError(f"焦点ヘッドの種類が不明: {kind}")
 
     @staticmethod
@@ -145,10 +153,11 @@ class NnueModel(nn.Module):
         nn.init.uniform_(self.out.weight, -0.3, 0.3)
         nn.init.zeros_(self.out.bias)
         heads = [self.policy_from, self.policy_to, self.pretrain_value,
-                 self.distill, self.focus]
-        # 利きヘッドはMLPのこともある。線形層を取り出して同じ初期化を当てる
-        if self.effect is not None:
-            heads.extend(m for m in self.effect.modules() if isinstance(m, nn.Linear))
+                 self.distill]
+        # 利きヘッドと焦点ヘッドはMLPのこともある。線形層を取り出して同じ初期化を当てる
+        for head in (self.effect, self.focus):
+            if head is not None:
+                heads.extend(m for m in head.modules() if isinstance(m, nn.Linear))
         for head in heads:
             if head is not None:
                 nn.init.uniform_(head.weight, -0.05, 0.05)

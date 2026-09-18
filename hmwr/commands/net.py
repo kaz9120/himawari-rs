@@ -115,12 +115,23 @@ def add_parser(sub: argparse._SubParsersAction) -> None:
         "--batch", type=int, default=BATCH, metavar="N", help=f"バッチ（既定 {BATCH}）"
     )
     t.add_argument("--lr", metavar="値", help="学習率の頂点")
-    t.add_argument("--head", default="linear", choices=["linear"], help="ヘッドの型")
+    t.add_argument(
+        "--head",
+        default="linear",
+        choices=["linear", "mlp"],
+        help="ヘッドの型。mlpは中間256の2層で、線形で当たらない焦点が非線形なら当たるかを分ける",
+    )
     t.add_argument(
         "--orient",
         default="board",
         choices=["board", "stm"],
         help="熱地図の向き。boardは盤の向きのまま、stmは手番側から見た向きへ揃える",
+    )
+    t.add_argument(
+        "--train-ft",
+        action="store_true",
+        help="FTを凍結せず、焦点だけで学習する。FTが焦点をどこまで表せるかの上限を測る"
+        "対照で、probeではない",
     )
     t.add_argument("--device", metavar="名前", help="mps か cpu（既定 mps）")
     t.add_argument("--seed", type=int, default=0, metavar="N", help="乱数種")
@@ -428,7 +439,11 @@ def probe(args: argparse.Namespace) -> int:
     print(f"学習    : {max(train_rows, 0):,}局面 × {args.epochs}エポック（{steps}ステップ）")
     print(f"検証    : 末尾{args.valid_count:,}局面、{interval}ステップおき")
     print(f"熱地図  : 向き {args.orient}")
-    print("出力    : なし（FTは動かず、学習した焦点ヘッドは捨てる）")
+    print(
+        "出力    : なし（学習した焦点ヘッドは捨てる。FTは"
+        + ("焦点で学習するが残さない" if args.train_ft else "動かない")
+        + "）"
+    )
 
     argv = [
         "python3",
@@ -437,9 +452,10 @@ def probe(args: argparse.Namespace) -> int:
         *BASE_FLAGS,
         "--focus-head", args.head,
         "--lambda-focus", PROBE_LAMBDA,
-        # 評価値を切り、焦点だけを的にする。FTは動かさない
+        # 評価値を切り、焦点だけを的にする。FTは既定で動かさない
         "--lambda-value", "0",
-        "--freeze-ft",
+        # FTを動かすときはクリップを入れる。書き出しがi8に収まるため（ADR-0138）
+        *(["--ft-clip", FT_CLIP] if args.train_ft else ["--freeze-ft"]),
         "--focus-orient", args.orient,
         "--focus-valid-count", str(args.valid_count),
         "--epochs", str(args.epochs),

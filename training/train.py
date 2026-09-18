@@ -227,7 +227,7 @@ def main():
     p.add_argument(
         "--focus-head",
         dest="focus_head",
-        choices=["linear"],
+        choices=["linear", "mlp"],
         help="焦点の熱地図を当てるヘッドを付ける（ADR-0213）。--data に.focusを"
              "渡したときだけ使える。--freeze-ft と --lambda-value 0 と組むと、"
              "FTが焦点を持っているかを測るprobeになる。ヘッドは書き出し時に"
