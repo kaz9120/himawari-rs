@@ -1,0 +1,35 @@
+# ADR-0214: 3億の測定台で、同じデータの2周が新規データの追加に匹敵するかを測る。
+# 統制はADR-0212の測定台と同一で、あれば学習は省かれる。6億のpsvは学習が済んだら消す。
+adr = "0214"
+
+[[step]]
+id = "base-data"
+run = "hmwr data split tanuki_300M_q1 --in train_7860M_q1 --count 300000000"
+
+[[step]]
+id = "train-base"
+run = "hmwr net train tbase_300M --data tanuki_300M_q1 --valid valid_tanuki_q1 --rank rank_tanuki_210M --seed 0 --notes \"ADR-0212 tanukiの3億の測定台、ゼロから\""
+
+[[step]]
+id = "new-data"
+run = "hmwr data split tanuki_600M_q1 --in train_7860M_q1 --count 600000000"
+
+[[step]]
+id = "train-rep2"
+run = "hmwr net train trep2_300M --data tanuki_300M_q1 --valid valid_tanuki_q1 --rank rank_tanuki_210M --seed 0 --extra=\"--epochs 2\" --notes \"ADR-0214 反復、同じ3億を2周\""
+
+[[step]]
+id = "train-new"
+run = "hmwr net train tnew_600M --data tanuki_600M_q1 --valid valid_tanuki_q1 --rank rank_tanuki_210M --seed 0 --notes \"ADR-0214 新規、先頭6億を1周\""
+
+[[step]]
+id = "rm-new-data"
+run = "hmwr data rm tanuki_600M_q1"
+
+[[step]]
+id = "match-rep2"
+run = "hmwr match run adr0214-rep2 --build adr0200-himawari --base-net tbase_300M --cand-net trep2_300M --stop pairs:1000 --max-moves 400 --foreground"
+
+[[step]]
+id = "match-new"
+run = "hmwr match run adr0214-new --build adr0200-himawari --base-net tbase_300M --cand-net tnew_600M --stop pairs:1000 --max-moves 400 --foreground"
