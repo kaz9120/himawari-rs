@@ -5,9 +5,11 @@
 //!   psv dump    --in file [--limit N]          SFENと教師信号を1行ずつ表示
 //!   psv head    --in file --out file --count N [--skip M]   部分抽出
 //!   psv shuffle --in file[,file...] --out file [--seed N] [--tmp DIR]
-//!               [--consume] [--parts N]        全体シャッフル。--consumeは読み終えた
+//!               [--consume] [--parts N] [--limit N]
+//!                                              全体シャッフル。--consumeは読み終えた
 //!                                              入力を消してピークを約1倍に抑える。
-//!                                              --parts Nは出力を.partNNNへ分割する
+//!                                              --parts Nは出力を.partNNNへ分割する。
+//!                                              --limit Nは入力の先頭N局面だけを読む
 //!   psv quiet   --in file --out file [--limit N] [--max-plies N（既定1）] [--hash MB]
 //!               [--append] [--consume] [--jobs N]  qsearchのPV葉へ置き換える（ADR-0136）。
 //!                                              --appendは出力へ追記、--consumeは完了後に
@@ -25,6 +27,10 @@
 //!   psv relabel --in file --out file [--depth N] [--max-nodes N] [--jobs N] [--hash MB]
 //!               [--limit N] [--eval-file NET]  現行エンジンで読み直し、scoreと教師手を
 //!                                              付け替える（ADR-0205）。勝敗と手数は残す
+//!   psv oversample --in file --out file --kind defense --times N [--limit N]
+//!                                              該当する型の局面を複製して重くする
+//!                                              （ADR-0216）。判定に教師手が要るので
+//!                                              静止化の前に通す
 //!
 //! shuffleは2パスのバケット法で動く（ADR-0065）。メモリ使用量は
 //! バケット1個分（2GB）に収まるため、入力サイズの制限はない。
@@ -326,6 +332,18 @@ fn shuffle_in_place(buf: &mut [u8], rng: &mut Rng) {
     }
 }
 
+/// shuffleの走らせ方。
+struct ShuffleCfg {
+    seed: u64,
+    /// 一時ファイルの置き場。省くと出力と同じディレクトリになる
+    tmp_dir: Option<String>,
+    consume: bool,
+    parts: usize,
+    bucket_bytes: u64,
+    /// 入力の先頭から読む局面数
+    limit: u64,
+}
+
 /// 2パスのバケット法で全体をシャッフルする（ADR-0065）。
 ///
 /// パス1で各レコードをランダムなバケットへ振り分け、パス2でバケット単位に
@@ -336,16 +354,20 @@ fn shuffle_in_place(buf: &mut [u8], rng: &mut Rng) {
 /// partsが2以上なら、出力を `<出力名>.partNNN` のほぼ等分な連番へ分ける。
 /// 分割してもレコードの割り付けはseedだけで決まり、連結すればparts=1と
 /// 同じ並びになる。
-fn shuffle(
-    inputs: &[&str],
-    output: &str,
-    seed: u64,
-    tmp_dir: Option<&str>,
-    consume: bool,
-    parts: usize,
-    bucket_bytes: u64,
-) {
-    let total: u64 = inputs
+///
+/// limitは入力の先頭からこの局面数だけを読む。生データの先頭だけを元にする
+/// ときに使う（ADR-0216）。上限で読み止めた入力は、consumeでも消さない。
+fn shuffle(inputs: &[&str], output: &str, cfg: ShuffleCfg) {
+    let ShuffleCfg {
+        seed,
+        tmp_dir,
+        consume,
+        parts,
+        bucket_bytes,
+        limit,
+    } = cfg;
+    let tmp_dir = tmp_dir.as_deref();
+    let bytes: u64 = inputs
         .iter()
         .map(|p| {
             std::fs::metadata(p)
@@ -353,9 +375,10 @@ fn shuffle(
                 .len()
         })
         .sum();
-    if !total.is_multiple_of(PSV_BYTES as u64) {
-        die(&format!("入力サイズが40の倍数でない: {total}バイト"));
+    if !bytes.is_multiple_of(PSV_BYTES as u64) {
+        die(&format!("入力サイズが40の倍数でない: {bytes}バイト"));
     }
+    let total = bytes.min(limit.saturating_mul(PSV_BYTES as u64));
     let n_buckets = (total.div_ceil(bucket_bytes)).max(1) as usize;
     let dir = tmp_dir.map(std::path::PathBuf::from).unwrap_or_else(|| {
         std::path::Path::new(output)
@@ -386,15 +409,21 @@ fn shuffle(
             })
             .collect();
         let mut buf = [0u8; PSV_BYTES];
+        let mut left = limit;
         for path in inputs {
+            if left == 0 {
+                break;
+            }
             let mut r = open_reader(path);
-            while r.read_exact(&mut buf).is_ok() {
+            while left > 0 && r.read_exact(&mut buf).is_ok() {
                 let b = (rng.next() % n_buckets as u64) as usize;
                 writers[b]
                     .write_all(&buf)
                     .unwrap_or_else(|e| die(&format!("書き込み失敗: {e}")));
+                left -= 1;
             }
-            if consume {
+            // 上限で止めた入力はまだ読み残しがあるので、consumeでも消さない
+            if consume && left > 0 {
                 // バケットへ写し終えた入力から順に消し、ピークを抑える
                 for w in &mut writers {
                     w.flush()
@@ -1270,6 +1299,108 @@ fn is_aggressive_defense(
     false
 }
 
+/// 教師の最善手が「攻撃的な受け」である局面かを判定する（ADR-0216）。
+///
+/// 判定は `psv defend` と同じ `is_aggressive_defense` に委ねる。全合法手の
+/// 展開も探索もしないので、1局面あたりの費用は復元と `do_move` 1回と
+/// 利きの計算に収まる。復元できない局面と非合法な教師手は非該当にする。
+fn is_defense_record(buf: &[u8; PSV_BYTES]) -> bool {
+    use himawari_core::Move16;
+
+    let rec = PackedSfenValue::from_bytes(buf);
+    let Ok(pos) = unpack(&rec.sfen, rec.game_ply) else {
+        return false;
+    };
+    let best = Move16::from_yaneura(rec.move16).and_then(|m16| pos.to_move(m16));
+    let Some(best) = best else {
+        return false;
+    };
+    if !pos.pseudo_legal(best) || !pos.is_legal(best) {
+        return false;
+    }
+    let us = pos.side_to_move();
+    let mut after = pos.clone();
+    after.do_move(best);
+    is_aggressive_defense(&after, us, best.to())
+}
+
+/// 該当する型の局面を複製して重くする（ADR-0216）。
+///
+/// 入力を先頭から1回だけ読み、レコードをそのまま出力へ写す。並行して該当
+/// 局面を一時ファイルへ控え、読み終えてから（times−1）回だけ末尾へ足す。
+/// 出力の並びは「元の全件 → 複製」になるので、学習の前にシャッフルを掛ける。
+///
+/// 控えを一時ファイルに置くのは、該当が数千万件になってもメモリを使わない
+/// ためである。戻り値は（入力, 該当, 出力）の件数になる。
+fn oversample(
+    input: &str,
+    output: &str,
+    is_target: fn(&[u8; PSV_BYTES]) -> bool,
+    times: u32,
+    limit: u64,
+) -> (u64, u64, u64) {
+    let mut r = open_reader(input);
+    let mut w = BufWriter::new(
+        std::fs::File::create(output)
+            .unwrap_or_else(|e| die(&format!("作れません: {output}: {e}"))),
+    );
+    let dup_path = format!("{output}.dup");
+    let mut dup = BufWriter::new(
+        std::fs::File::create(&dup_path)
+            .unwrap_or_else(|e| die(&format!("作れません: {dup_path}: {e}"))),
+    );
+
+    let mut buf = [0u8; PSV_BYTES];
+    let (mut n, mut hit) = (0u64, 0u64);
+    let start = std::time::Instant::now();
+    while n < limit && r.read_exact(&mut buf).is_ok() {
+        n += 1;
+        w.write_all(&buf)
+            .unwrap_or_else(|e| die(&format!("書けません: {e}")));
+        if is_target(&buf) {
+            hit += 1;
+            if times > 1 {
+                dup.write_all(&buf)
+                    .unwrap_or_else(|e| die(&format!("書けません: {e}")));
+            }
+        }
+        if n % 1_000_000 == 0 {
+            let sec = start.elapsed().as_secs_f64();
+            eprintln!(
+                "{n}局面 該当{hit} ({:.2}%) {:.0}局面/秒",
+                hit as f64 * 100.0 / n as f64,
+                n as f64 / sec.max(1e-9)
+            );
+        }
+    }
+    dup.flush()
+        .unwrap_or_else(|e| die(&format!("書けません: {e}")));
+    drop(dup);
+
+    for _ in 1..times {
+        let mut src = open_reader(&dup_path);
+        std::io::copy(&mut src, &mut w).unwrap_or_else(|e| die(&format!("書けません: {e}")));
+    }
+    w.flush()
+        .unwrap_or_else(|e| die(&format!("書けません: {e}")));
+    std::fs::remove_file(&dup_path)
+        .unwrap_or_else(|e| die(&format!("控えを消せません: {dup_path}: {e}")));
+
+    let written = n + hit * u64::from(times - 1);
+    let sec = start.elapsed().as_secs_f64();
+    eprintln!("入力       : {n}");
+    eprintln!(
+        "該当       : {hit}（{:.2}%）を{times}倍にした",
+        hit as f64 * 100.0 / n.max(1) as f64
+    );
+    eprintln!("出力       : {written} → {output}");
+    eprintln!(
+        "所要       : {sec:.1}秒（{:.0}局面/秒）",
+        n as f64 / sec.max(1e-9)
+    );
+    (n, hit, written)
+}
+
 /// 子局面をqsearchの葉まで進め、親の手番から見た評価値を返す。
 ///
 /// 経路は `psv rank` と同じで、`do_move` のあと `walk_to_quiet(16)` で
@@ -1387,7 +1518,7 @@ fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
     let Some(cmd) = args.first() else {
         die(
-            "サブコマンドが必要です: stats / dump / head / shuffle / quiet / rank / thin / phase / relabel / defend",
+            "サブコマンドが必要です: stats / dump / head / shuffle / quiet / rank / thin / phase / relabel / defend / oversample",
         );
     };
     let rest = &args[1..];
@@ -1434,14 +1565,20 @@ fn main() {
             let bucket_bytes: u64 = arg_value(rest, "--bucket-bytes")
                 .map(|s| s.parse().unwrap_or_else(|_| die("--bucket-bytes は整数")))
                 .unwrap_or(BUCKET_BYTES);
+            let limit = arg_value(rest, "--limit")
+                .map(|s| s.parse().unwrap_or_else(|_| die("--limit は整数")))
+                .unwrap_or(u64::MAX);
             shuffle(
                 &inputs,
                 &output.unwrap_or_else(|| die("--out が必要です")),
-                seed,
-                tmp.as_deref(),
-                consume,
-                parts,
-                bucket_bytes,
+                ShuffleCfg {
+                    seed,
+                    tmp_dir: tmp,
+                    consume,
+                    parts,
+                    bucket_bytes,
+                    limit,
+                },
             );
         }
         "quiet" => {
@@ -1592,13 +1729,37 @@ fn main() {
                 &eval,
             );
         }
+        "oversample" => {
+            let limit = arg_value(rest, "--limit")
+                .map(|s| s.parse().unwrap_or_else(|_| die("--limit は整数")))
+                .unwrap_or(u64::MAX);
+            let times: u32 = arg_value(rest, "--times")
+                .map(|s| s.parse().unwrap_or_else(|_| die("--times は整数")))
+                .unwrap_or(3);
+            if times < 1 {
+                die("--times は1以上");
+            }
+            let kind = arg_value(rest, "--kind").unwrap_or_else(|| "defense".to_string());
+            let is_target: fn(&[u8; PSV_BYTES]) -> bool = match kind.as_str() {
+                "defense" => is_defense_record,
+                other => die(&format!("不明な --kind: {other}（使えるのは defense）")),
+            };
+            oversample(
+                &input.unwrap_or_else(|| die("--in が必要です")),
+                &output.unwrap_or_else(|| die("--out が必要です")),
+                is_target,
+                times,
+                limit,
+            );
+        }
         other => die(&format!("不明なサブコマンド: {other}")),
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::is_aggressive_defense;
+    use super::{is_aggressive_defense, is_defense_record, oversample};
+    use himawari_core::packed_sfen::{PSV_BYTES, PackedSfenValue, pack};
     use himawari_core::{Move16, Position};
 
     /// sfenの局面でusiの手を指し、「攻撃的な受け」の判定を返す。
@@ -1638,5 +1799,108 @@ mod tests {
     fn a_move_that_hits_nothing_does_not_count() {
         // 5hの銀はどの相手の駒にも当たらない
         assert!(!defends(ROOK_AT_KING, "S*5h"));
+    }
+
+    /// packed sfenは40駒全数の局面しか表せないので、oversampleの検査には
+    /// 平手由来の局面を使う。後手の飛車が4eから4筋を差し、先手玉は5i、
+    /// 4g・4h は空いている。先手の飛車は2hにいる。
+    const MIDGAME: &str = "lnsgkgsnl/7b1/ppppppppp/9/5r3/9/PPPPP1PPP/1B5R1/LNSGKGSNL b p 1";
+
+    /// 1レコード作る。scoreは並びの検査で個体を見分ける印に使う。
+    fn record(sfen: &str, usi: Option<&str>, score: i16) -> [u8; PSV_BYTES] {
+        let pos = Position::from_sfen(sfen).expect("局面");
+        let move16 = usi.map_or(0, |u| Move16::from_usi(u).expect("指し手").to_yaneura());
+        PackedSfenValue {
+            sfen: pack(&pos).expect("pack"),
+            score,
+            move16,
+            game_ply: pos.game_ply(),
+            game_result: 0,
+        }
+        .to_bytes()
+    }
+
+    /// 出力のscoreを順に並べて返す。
+    fn scores(bytes: &[u8]) -> Vec<i16> {
+        bytes
+            .as_chunks::<PSV_BYTES>()
+            .0
+            .iter()
+            .map(|c| i16::from_le_bytes([c[32], c[33]]))
+            .collect()
+    }
+
+    fn tmp_file(tag: &str) -> std::path::PathBuf {
+        std::env::temp_dir().join(format!("psv-oversample-{}-{tag}.psv", std::process::id()))
+    }
+
+    #[test]
+    fn a_rook_move_hitting_the_rook_that_eyes_the_king_zone_is_a_target() {
+        // 2hの飛車が4hへ寄ると4eの飛車に当たり、その飛車は4hを差している
+        assert!(is_defense_record(&record(MIDGAME, Some("2h4h"), 0)));
+    }
+
+    #[test]
+    fn a_quiet_pawn_push_is_not_a_target() {
+        // 7fの歩は相手のどの駒にも当たらない
+        assert!(!is_defense_record(&record(MIDGAME, Some("7g7f"), 0)));
+    }
+
+    #[test]
+    fn a_record_without_a_teacher_move_is_not_a_target() {
+        assert!(!is_defense_record(&record(MIDGAME, None, 0)));
+    }
+
+    #[test]
+    fn duplicates_follow_the_original_records() {
+        let input = tmp_file("in");
+        let output = tmp_file("out");
+        let rows = [
+            record(MIDGAME, Some("2h4h"), 0), // 該当
+            record(MIDGAME, Some("7g7f"), 1), // 非該当
+            record(MIDGAME, Some("2h4h"), 2), // 該当
+            record(MIDGAME, None, 3),         // 教師手がないので非該当
+        ];
+        std::fs::write(&input, rows.concat()).expect("入力");
+
+        let counts = oversample(
+            input.to_str().expect("パス"),
+            output.to_str().expect("パス"),
+            is_defense_record,
+            3,
+            u64::MAX,
+        );
+        let written = std::fs::read(&output).expect("出力");
+        let _ = std::fs::remove_file(&input);
+        let _ = std::fs::remove_file(&output);
+
+        assert_eq!(counts, (4, 2, 8));
+        // 元の4件がそのまま並び、そのあとに該当の2件が2巡ぶん続く
+        assert_eq!(scores(&written), vec![0, 1, 2, 3, 0, 2, 0, 2]);
+    }
+
+    #[test]
+    fn times_one_copies_the_input_as_is() {
+        let input = tmp_file("in1");
+        let output = tmp_file("out1");
+        let rows = [
+            record(MIDGAME, Some("2h4h"), 0),
+            record(MIDGAME, Some("7g7f"), 1),
+        ];
+        std::fs::write(&input, rows.concat()).expect("入力");
+
+        let counts = oversample(
+            input.to_str().expect("パス"),
+            output.to_str().expect("パス"),
+            is_defense_record,
+            1,
+            u64::MAX,
+        );
+        let written = std::fs::read(&output).expect("出力");
+        let _ = std::fs::remove_file(&input);
+        let _ = std::fs::remove_file(&output);
+
+        assert_eq!(counts, (2, 1, 2));
+        assert_eq!(scores(&written), vec![0, 1]);
     }
 }

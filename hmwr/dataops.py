@@ -72,8 +72,9 @@ OPS: tuple[Op, ...] = (
         "shuffle",
         "全体をシャッフルする",
         "2パスのバケット法で動き、入力の大きさに制限はない。"
-        "一時ファイルは出力と同じ場所に作る。",
-        opts=(Opt("--seed", "乱数種", default=SHUFFLE_SEED),),
+        "一時ファイルは出力と同じ場所に作る。--limit を渡すと、入力の先頭"
+        "この件数だけを読む。生データの先頭だけを元にするときに使う。",
+        opts=(Opt("--seed", "乱数種", default=SHUFFLE_SEED), LIMIT_OPT),
         raw=True,
     ),
     Op(
@@ -123,6 +124,19 @@ OPS: tuple[Op, ...] = (
         opts=(Opt("--skip", "先頭から飛ばす件数"), LIMIT_OPT, EVAL_OPT, HASH_OPT),
         suffix=".rankpsv",
         split_jobs=True,
+    ),
+    Op(
+        "oversample",
+        "oversample",
+        "該当する型の局面を複製して重くする",
+        "教師の最善手から型を判定し、該当する局面を末尾へ（--times−1）回"
+        "書き足す。判定に教師手が要るので、静止化の前に通す。出力の並びは"
+        "元の全件のあとに複製が続くので、学習の前に shuffle を掛ける。",
+        opts=(
+            Opt("--kind", "重くする型", "型", str, "defense"),
+            Opt("--times", "該当局面を何倍にするか", default=3),
+            LIMIT_OPT,
+        ),
     ),
 )
 

@@ -241,6 +241,7 @@ hmwr data split <出力名> --in <入力名> --count N     先頭から区間を
 hmwr data mix <出力名> --in <入力名> --in <入力名>   複数の教師を混ぜる
 hmwr data quiet <出力名> --in <入力名>               静止局面へ置き換える
 hmwr data rank <出力名> --in <入力名> --limit N --jobs 4   兄弟局面の群を作る
+hmwr data oversample <出力名> --in <入力名> --kind defense --times 3   該当する型の局面を複製する
 hmwr data openings <出力名> --in <入力名> --min-ply 40 --count 2000   開始局面集を作る
 hmwr data relabel <出力名> --in <入力名> --scale 600    DL系モデルの推論1回でscoreを付け直す
 hmwr data focus <出力名> --raw <データセット> --count N   先8手の焦点の熱地図を付けた局面集を作る
@@ -268,6 +269,12 @@ hmwr data rm <名前>...                               中間ファイルを消�
 モデルは配布元のライセンスに同意して `data/models/dlshogi/` へ置く。cshogiと
 onnxruntimeが要る。MacのCoreMLで約2,600局面/秒、1億局面に約11時間かかる。
 進み具合は `data/logs/relabel-<名前>.log` へ1分ごとに出る。
+
+`data oversample` は教師の最善手から型を判定し、該当する局面を末尾へ
+`--times` −1 回書き足す。判定に教師手が要るので、静止化の前に通す。出力は
+元の全件のあとに複製が続く並びなので、学習の前に `data shuffle` を掛ける。
+`data shuffle` の `--limit` は入力の先頭だけを読む。生データの先頭から
+決まった件数を切り出すときに使う。
 
 `data focus` は対局順のままの生データだけを読む。シャッフル済みの教師は続きの
 手を持たないので使えない。出力は202バイト固定長で、元のpsvの40バイトに熱地図の
