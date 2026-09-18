@@ -422,6 +422,35 @@ fn record_game(agg: &mut Aggregate, rec: &GameRecord, candidate_color: Color) {
     agg.wdl[idx] += 1;
 }
 
+/// 切れ負けの対局を結果に数えず、同じ対局を指し直す。
+///
+/// エンジンの計画は残り時間より1.12秒短く、開発機が空いていれば72,380手で
+/// 切れ負けは0だった（2026-09-18の測定）。対局中に出る切れ負けは、機体が
+/// 他の仕事で詰まった時間帯に集中する（同日の走行で最初の200ペアの46%）。
+/// 環境の詰まりを判定に混ぜないため、少し待ってから同じ対局を指し直す。
+/// 3回続けて切れ負けなら、そのまま記録して環境の異常を目に見える形で残す。
+fn play_valid(
+    black: &mut UsiEngine,
+    white: &mut UsiEngine,
+    opening: &str,
+    cfg: &GameConfig,
+    ponder: [bool; 2],
+) -> Result<GameRecord, String> {
+    const RETRIES: usize = 3;
+    for attempt in 1..=RETRIES {
+        let g = play_game(black, white, opening, cfg, ponder)?;
+        if g.reason != "timeloss" || attempt == RETRIES {
+            return Ok(g);
+        }
+        eprintln!(
+            "切れ負け（{}手目）。環境の詰まりとみなし、2秒おいて同じ対局を指し直す（{attempt}/{RETRIES}）",
+            g.moves.len() + 1
+        );
+        std::thread::sleep(std::time::Duration::from_secs(2));
+    }
+    unreachable!("RETRIES回で必ず返る")
+}
+
 fn worker(
     cfg: &Config,
     stop: &AtomicBool,
@@ -477,14 +506,14 @@ fn worker(
         } else {
             (cfg.ponder, false)
         };
-        let g1 = play_game(
+        let g1 = play_valid(
             &mut candidate,
             &mut baseline,
             opening,
             &cfg_cand_black,
             [p_cand, p_base],
         )?;
-        let g2 = play_game(
+        let g2 = play_valid(
             &mut baseline,
             &mut candidate,
             opening,
