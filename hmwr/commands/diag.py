@@ -12,7 +12,7 @@ import argparse
 from pathlib import Path
 
 from .. import config, paths, proc
-from ..tools import dead_dims, phase as phase_tool, rank_diag
+from ..tools import dead_dims, phase as phase_tool, rank_diag, replay as replay_tool
 
 
 def add_parser(sub: argparse._SubParsersAction) -> None:
@@ -23,6 +23,24 @@ def add_parser(sub: argparse._SubParsersAction) -> None:
         "使わなくなったものは消す。",
     )
     ss = p.add_subparsers(dest="sub", metavar="<診断>")
+
+    t = ss.add_parser(
+        "replay",
+        help="CSAの棋譜を、実戦の持ち時間のまま指し直す",
+        description="単発の局面では出ないが対局の流れの中で出る問題を再現する。"
+        "置換表・時間管理・ponderの状態は前の手から持ち越されるので、"
+        "局面だけを渡す検討では見えない。自分の手番ごとに残り時間で go を送り、"
+        "返るまでの時間と最終の反復を出す。時間制の対局と重ねて走らせない。",
+    )
+    t.add_argument("csa", metavar="CSA", help="棋譜")
+    t.add_argument("--engine", metavar="パス", help="エンジン（既定 target/release/himawari）")
+    t.add_argument("--eval-file", metavar="パス", help="評価関数（既定は EVAL_FILE）")
+    t.add_argument("--player", default="Himawari", metavar="名前", help="自分の側の名前")
+    t.add_argument("--threads", type=int, default=4, metavar="N")
+    t.add_argument("--from", dest="start_ply", type=int, default=1, metavar="手数", help="この手から探索する")
+    t.add_argument("--initial", type=int, default=300, metavar="秒", help="持ち時間")
+    t.add_argument("--inc", type=int, default=10, metavar="秒", help="1手ごとの加算")
+    t.set_defaults(func=replay)
 
     t = ss.add_parser(
         "rank",
@@ -138,3 +156,20 @@ def phase(args: argparse.Namespace) -> int:
     if args.seed is not None:
         tool_argv += ["--seed", str(args.seed)]
     return phase_tool.main(tool_argv)
+
+
+def replay(args: argparse.Namespace) -> int:
+    """対局の流れを再現する。"""
+    engine = args.engine or str(paths.release_bin("himawari"))
+    eval_file = args.eval_file or config.get("EVAL_FILE")
+    if args.dry_run:
+        print(f"[dry-run] {paths.rel(engine)} で {args.csa} を{args.start_ply}手目から指し直す")
+        return proc.OK
+    for path, what in ((engine, "エンジン"), (eval_file, "評価関数"), (args.csa, "棋譜")):
+        if not Path(path).is_file():
+            raise proc.Fail(f"{what}がない: {path}")
+    return replay_tool.replay(
+        engine, eval_file, Path(args.csa),
+        player=args.player, threads=args.threads, start_ply=args.start_ply, hash_mb=256,
+        initial_ms=args.initial * 1000, inc_ms=args.inc * 1000,
+    )  # fmt: skip
