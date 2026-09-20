@@ -45,7 +45,9 @@ NON_INFERIORITY_HYPOTHESIS = ("-5", "0")
 
 # 判定を終了コードへ写す。0=H1、1=H0、2=判定に至らず
 # 「指し切り」は固定ペア数を指し終えた走行で、Eloの推定が成果になる
-EXIT_BY_VERDICT = {"H1": 0, "H0": 1, "指し切り": 0, "打ち切り": 2, "判定前": 2}
+# 「見送り」は上限のペア数まで走って判定に至らなかった走行（ADR-0217）。
+# H1ではないのでmainへ入れないが、途中経過は成果として結果ファイルに残す
+EXIT_BY_VERDICT = {"H1": 0, "H0": 1, "指し切り": 0, "見送り": 2, "打ち切り": 2, "判定前": 2}
 
 
 class Unreadable(Exception):
@@ -145,6 +147,8 @@ def build_report(name: str, verdict: str, fields: dict, note: str = "") -> str:
 
     if verdict == "指し切り":
         row = f"| {name} | **{elo_num} {elo_ci}**（{games}局を指し切り）{note} |"
+    elif verdict == "見送り":
+        row = f"| {name} | {elo_num} {elo_ci}（{games}局、LLR {llr}で上限に達し見送り）{note} |"
     elif verdict == "打ち切り":
         row = f"| {name} | **{elo_num} {elo_ci}**（{games}局、LLR {llr}で打ち切り）{note} |"
     elif verdict == "判定前":
@@ -247,12 +251,15 @@ def report(
     name: str,
     result: Path | None = None,
     fixed_pairs: int = 0,
+    capped_pairs: int = 0,
     jsonl: Path | None = None,
 ) -> tuple[str, str]:
     """ログを読んで (整形した報告, 判定) を返す。
 
     resultを渡し、判定が出ていればその場所へ結果ファイルを書く。fixed_pairsを
     渡すと、そのペア数を指し終えた走行を「指し切り」として完了に数える。
+    capped_pairsを渡すと、そのペア数に達して判定に至らない走行を「見送り」
+    として完了に数える（ADR-0217）。
     """
     if not log.is_file():
         raise Unreadable(f"ログがない: {log}")
@@ -268,6 +275,8 @@ def report(
     fields = parse_fields(src)
     if fixed_pairs and verdict == "打ち切り" and fields["games"] >= fixed_pairs * 2:
         verdict = "指し切り"
+    elif capped_pairs and verdict == "打ち切り" and fields["games"] >= capped_pairs * 2:
+        verdict = "見送り"
     hyp = find_hypothesis(lines)
     text = build_report(name, verdict, fields, hypothesis_note(hyp))
     counts = reasons(jsonl) if jsonl else collections.Counter()
@@ -278,6 +287,6 @@ def report(
         if note:
             text += "\n" + note
 
-    if result is not None and verdict in ("H1", "H0", "指し切り"):
+    if result is not None and verdict in ("H1", "H0", "指し切り", "見送り"):
         write_result(result, name, verdict, fields, hyp, counts)
     return text, verdict

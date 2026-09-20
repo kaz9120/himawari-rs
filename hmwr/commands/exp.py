@@ -111,6 +111,28 @@ def _is_done(name: str, step: spec.Step) -> bool:
     return True
 
 
+# 対局のステップは判定が成果である。H0（1）と見送り（2）も完了として受け、
+# 読み方はADRの事前登録に任せる（ADR-0217）
+MATCH_STEPS = (("match", "run"), ("sprt", "run"), ("sprt", "net"))
+
+
+def _is_match(step) -> bool:
+    return tuple(step.argv[:2]) in MATCH_STEPS
+
+
+def _allowed_codes(step) -> tuple[int, ...]:
+    return (proc.OK, 1, 2) if _is_match(step) else (proc.OK,)
+
+
+def _has_result(step) -> bool:
+    """対局の名前で決まる結果ファイルがあるか。見送りは結果ファイルを持つ。"""
+    if not _is_match(step) or len(step.argv) < 3:
+        return False
+    from . import match
+
+    return match.files(step.argv[2])["result"].is_file()
+
+
 def run(args: argparse.Namespace) -> int:
     s = _load(args)
     log = paths.log("exp", s.name)
@@ -135,9 +157,12 @@ def run(args: argparse.Namespace) -> int:
         started = time.time()
         argv = [sys.executable, str(paths.REPO / "bin" / "hmwr"), *step.argv]
         try:
-            proc.run(argv, log=log)
+            code = proc.run(argv, log=log, allowed=_allowed_codes(step))
         except proc.Fail as e:
             raise proc.Fail(f"ステップが失敗した: {s.name}/{step.id}\n{e}", e.code) from e
+        if code == 2 and not _has_result(step):
+            # 対局が判定に至らず、見送りの結果も書けていない。中断なので次回に続ける
+            raise proc.Fail(f"対局が途中で止まった: {s.name}/{step.id}", proc.RUNTIME)
         mark = _mark(s.name, step)
         mark.parent.mkdir(parents=True, exist_ok=True)
         mark.write_text(
