@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.50.12](https://github.com/kaz9120/himawari-rs/compare/v0.50.11...v0.50.12) (2026-09-20)
+
+
+### その他の変更
+
+* SPRTの既定の上限を10,000ペアにし、判定に至らない走行を見送りにする（ADR-0217） ([#582](https://github.com/kaz9120/himawari-rs/issues/582)) ([4776009](https://github.com/kaz9120/himawari-rs/commit/4776009eda98986a71c6d1a436dcbf3388a89e82))
+
 ## [0.50.11](https://github.com/kaz9120/himawari-rs/compare/v0.50.10...v0.50.11) (2026-09-18)
 
 
