@@ -142,6 +142,33 @@ def test_a_failed_step_stops_the_run_and_is_retried_next_time(runner):
     assert cli.main(["exp", "show", "x"]) == proc.OK
 
 
+def test_a_match_step_completes_on_a_verdict_code(runner, monkeypatch, tmp_path):
+    """対局のステップはH0（1）でも完了で、見送り（2）は結果ファイルがあるときだけ完了する。"""
+    calls, _ = runner
+    codes = {"match": 1}
+
+    def fake_run(argv, allowed=(proc.OK,), **_):
+        step = argv[2:4]
+        calls.append(step)
+        code = codes.get(step[0], proc.OK)
+        if code not in allowed:
+            raise proc.Fail("落ちた", code)
+        return code
+
+    monkeypatch.setattr(proc, "run", fake_run)
+    assert cli.main(["exp", "run", "x"]) == proc.OK
+    assert calls[-1] == ["match", "run"]
+
+    # 見送り（2）は結果ファイルが無ければ中断で、あれば完了
+    calls.clear()
+    codes["match"] = 2
+    monkeypatch.setattr(spec, "load", lambda name, ref="origin/main": spec.parse(GOOD, "y"))
+    assert cli.main(["exp", "run", "y"]) == proc.RUNTIME
+    (paths.SPRT).mkdir(parents=True, exist_ok=True)
+    (paths.SPRT / "x.result").write_text("decision=見送り\n", encoding="utf-8")
+    assert cli.main(["exp", "run", "y"]) == proc.OK
+
+
 def test_a_spec_changed_after_running_is_refused(runner, monkeypatch):
     assert cli.main(["exp", "run", "x"]) == proc.OK
     changed = GOOD.replace("--in a --in b", "--in a --in c")

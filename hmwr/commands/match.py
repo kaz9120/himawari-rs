@@ -104,7 +104,8 @@ def add_parser(sub: argparse._SubParsersAction) -> None:
         "--max-pairs",
         type=int,
         metavar="N",
-        help="--stop sprt の見送り上限。H1だけを採択するゲート用途",
+        help=f"--stop sprt の見送りの上限。判定に至らなければ見送りとして記録する"
+        f"（既定 {config.SPRT_MAX_PAIRS} ペア）",
     )
     t.add_argument(
         "--adopt",
@@ -190,7 +191,7 @@ def settings(args: argparse.Namespace) -> dict[str, str]:
     if getattr(args, "max_pairs", None):
         env["SPRT_MAX_PAIRS"] = str(args.max_pairs)
     # 未知の鍵は黙って無視されると誤設定に気づけない。上限3,000ペアの
-    # つもりが安全弁の60,000まで走った事故が実例（2026-08-29）
+    # つもりが当時の安全弁の60,000まで走った事故が実例（2026-08-29）
     allowed = set(config.DEFAULTS) | {"SPRT_MAX_PAIRS"}
     for item in getattr(args, "set", None) or []:
         if "=" not in item:
@@ -324,8 +325,9 @@ def until_decision(spec: Spec, *, dry_run: bool) -> int:
     2つを自動化する。落ちたら棋譜から拾い直すことと、上限に達しても
     判定が出ていなければそのまま走り続けることである（ADR-0087・0175）。
 
-    上限は収束の判定基準ではなく暴走を止める安全弁である。真のEloが
-    対立仮説の中点ちょうどだと理論上収束しないため、無制限にはしない。
+    上限は見送りの線である（ADR-0217）。判定に至らないまま上限に達したら、
+    途中経過を「見送り」として結果ファイルへ書き、終了コード2で返す。
+    真のEloが対立仮説の中点の近くにあり、その仮説では答えが出ない走行である。
 
     効く範囲と効かない範囲がある。対局プロセスだけが落ちた場合はここが
     拾い直す。この処理自体が止められた場合はループごと消えるが、棋譜は
@@ -353,9 +355,9 @@ def until_decision(spec: Spec, *, dry_run: bool) -> int:
             if spec.stop_pairs:
                 print(f"{spec.stop_pairs} ペアを指し切る前に止まった。同じコマンドで続きから走る。")
                 return 2
-            print(f"安全弁（{hard_max} ペア）まで走って判定に至らなかった。")
+            print(f"上限（{hard_max} ペア）まで走って判定に至らなかった。見送りとして記録する。")
             print("局数を積むより対立仮説の立て方を見直す。")
-            return 2
+            return _finish(spec, capped_pairs=int(hard_max))
 
         # **1局も進まなかった再試行は繰り返さない。** 設定の誤りやバイナリの
         # 欠落なら、何度試しても同じところで落ちる。棋譜が増えているときだけ
@@ -373,15 +375,11 @@ def until_decision(spec: Spec, *, dry_run: bool) -> int:
 
 
 def _with_hard_max(spec: Spec) -> Spec:
-    """ペア数の上限を決める。固定ペア数ならその数、SPRTなら安全弁になる。"""
+    """ペア数の上限を決める。固定ペア数ならその数、SPRTなら見送りの上限になる。"""
     if spec.stop_pairs:
         hard_max = str(spec.stop_pairs)
     else:
-        hard_max = (
-            spec.env.get("SPRT_MAX_PAIRS")
-            or spec.env.get("SPRT_HARD_MAX_PAIRS")
-            or config.get("SPRT_HARD_MAX_PAIRS", "60000")
-        )
+        hard_max = spec.env.get("SPRT_MAX_PAIRS") or config.get("SPRT_MAX_PAIRS", "10000")
     return replace(spec, env={**spec.env, "SPRT_MAX_PAIRS": hard_max})
 
 
@@ -441,7 +439,7 @@ def _selfplay(spec: Spec, *, dry_run: bool, attempt: int) -> int:
     check_conditions(f["cond"], proc.show(argv), games, adopt=spec.adopt, dry_run=dry_run)
 
     # ペア数の上限は条件に数えない。続きを積むときに変わるのが正常である
-    argv += ["--max-pairs", setting("SPRT_MAX_PAIRS", "60000"), "--out", str(f["jsonl"])]
+    argv += ["--max-pairs", setting("SPRT_MAX_PAIRS", "10000"), "--out", str(f["jsonl"])]
     if games:
         print(f"試行 {attempt}: 既存の棋譜から再開する（{games} 局）")
         argv += ["--resume", str(f["jsonl"])]
@@ -458,12 +456,21 @@ def check_conditions(cond: Path, line: str, games: int, *, adopt: bool, dry_run:
     )
 
 
-def _finish(spec: Spec) -> int:
-    """結果が出た。結果ファイルを書き、判定を終了コードで返す。"""
+def _finish(spec: Spec, capped_pairs: int = 0) -> int:
+    """結果が出た。結果ファイルを書き、判定を終了コードで返す。
+
+    capped_pairsを渡すと、そのペア数に達して判定に至らない走行を「見送り」
+    として結果ファイルへ書く（ADR-0217）。
+    """
     f = files(spec.name)
     try:
         text, verdict = sprt_log.report(
-            f["log"], spec.name, result=f["result"], fixed_pairs=spec.stop_pairs, jsonl=f["jsonl"]
+            f["log"],
+            spec.name,
+            result=f["result"],
+            fixed_pairs=spec.stop_pairs,
+            capped_pairs=capped_pairs,
+            jsonl=f["jsonl"],
         )
     except sprt_log.Unreadable as e:
         raise proc.Fail(f"結果は出たが読めない: {e}") from e

@@ -23,11 +23,11 @@ SPRT_ALPHA = "0.05"
 SPRT_BETA = "0.05"
 SPRT_ADJUDICATE = "2000,8"
 
-# 判定が出るまで走らせるときの硬い上限（ADR-0175）。収束の判定基準ではなく
-# 暴走を止める安全弁である。真のEloが対立仮説の中点ちょうどだと理論上
-# 収束しないため、無制限にはしない。60,000ペア＝12万局は、非劣性で真のEloが
-# +0.5のときの必要局数（約48,000ペア）を上回る値として置く
-SPRT_HARD_MAX_PAIRS = "60000"
+# 判定に至らない走行を「見送り」にするペア数の上限（ADR-0217）。判定済みの
+# 過去17本は最長8,061ペアで決着しており、それを超えて漂う走行は真のEloが
+# 対立仮説の中点の近くにある。H1を採択しないので誤採択率は増えない。
+# 10,000ペア＝2万局は8並列の10+0.1で約20時間になる
+SPRT_MAX_PAIRS = "10000"
 
 # 対局の置換表と、引き分けにする手数。selfplayの既定と同じ値を明示して渡す。
 # チェーンごとに320と400へ割れた事故があり、既定は1か所で持つ（ADR-0208）
@@ -54,7 +54,7 @@ DEFAULTS = {
     "SPRT_ALPHA": SPRT_ALPHA,
     "SPRT_BETA": SPRT_BETA,
     "SPRT_ADJUDICATE": SPRT_ADJUDICATE,
-    "SPRT_HARD_MAX_PAIRS": SPRT_HARD_MAX_PAIRS,
+    "SPRT_MAX_PAIRS": SPRT_MAX_PAIRS,
 }
 
 
@@ -136,6 +136,6 @@ def summary() -> list[tuple[str, str]]:
         ("持ち時間", get("SPRT_TC")),
         ("対立仮説", f'elo0={get("SPRT_ELO0")} elo1={get("SPRT_ELO1")}'),
         ("裁定", get("SPRT_ADJUDICATE")),
-        ("安全弁", f'{get("SPRT_HARD_MAX_PAIRS")} ペア'),
+        ("見送りの上限", f'{get("SPRT_MAX_PAIRS")} ペア'),
         ("ビルドフラグ", rustflags()),
     ]

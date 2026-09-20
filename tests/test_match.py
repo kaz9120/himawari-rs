@@ -73,7 +73,7 @@ def test_defaults_are_passed_explicitly(capsys):
     assert "--hash 64 --max-moves 320" in play
     assert "--option EvalFile=" in play
     assert "--no-stop" not in play
-    assert "--max-pairs 60000" in play
+    assert "--max-pairs 10000" in play
 
 
 def test_per_side_options_and_odds(capsys):

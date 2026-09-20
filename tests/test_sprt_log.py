@@ -205,9 +205,31 @@ def test_exit_codes_follow_the_verdict():
         "H1": 0,
         "H0": 1,
         "指し切り": 0,
+        "見送り": 2,
         "打ち切り": 2,
         "判定前": 2,
     }
+
+
+def test_capped_pairs_turn_an_undecided_run_into_a_pass(tmp_path):
+    """上限のペア数まで走って判定に至らなければ「見送り」で、結果ファイルを書く（ADR-0217）。"""
+    log = tmp_path / "sprt-x.log"
+    log.write_text(
+        "selfplay: --baseline a --candidate b\n"
+        "pairs  10000 | +9500 =1000 -9500 | [1,2,3,4,5] | Elo +2.7 [-0.3,+5.7] | LLR +0.44 [-2.94,2.94]\n"
+        "判定に至らず | pairs 10000 games 20000 | Elo +2.7 [-0.3,+5.7] | LLR +0.44 | +9500 =1000 -9500\n",
+        encoding="utf-8",
+    )
+    result = tmp_path / "x.result"
+    text, verdict = sprt_log.report(log, "x", result=result, capped_pairs=10000)
+    assert verdict == "見送り"
+    assert "上限に達し見送り" in text
+    assert "decision=見送り" in result.read_text(encoding="utf-8")
+    # 上限に届いていなければ打ち切りのままで、結果ファイルは書かない
+    result2 = tmp_path / "y.result"
+    _, verdict2 = sprt_log.report(log, "y", result=result2, capped_pairs=20000)
+    assert verdict2 == "打ち切り"
+    assert not result2.exists()
 
 
 # --- 結果ファイル ------------------------------------------------------
