@@ -1,0 +1,11 @@
+# ADR-0218: 本学習の78.5億を2周し、1周のネット（pairrank_7860M_q1）とSPRTで比べる。
+# 学習は約101時間。落ちたら同じコマンドでエポック内の位置から続く。
+adr = "0218"
+
+[[step]]
+id = "train-2ep"
+run = "hmwr net train main2ep_7860M --data train_7860M_q1 --valid valid_tanuki_q1 --rank rank_tanuki_210M --seed 0 --extra=\"--epochs 2\" --notes \"ADR-0218 本学習の78.5億を2周、ゼロから\""
+
+[[step]]
+id = "sprt-2ep"
+run = "hmwr sprt net data/nets/pairrank_7860M_q1.hmwr data/nets/main2ep_7860M.hmwr adr0218-2ep --foreground"
