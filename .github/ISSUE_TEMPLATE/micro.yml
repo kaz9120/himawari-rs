@@ -1,0 +1,28 @@
+name: micro
+description: ロードマップ外の細かい改善を1件積む（開発者向け）
+title: ""
+labels: ["micro"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        小さな気になり（既定値の食い違い、表示の粗、重複コード、CIの遅さ）を、
+        見つけたその場で切ります。実験の待ち時間に消化します。
+  - type: textarea
+    id: concern
+    attributes:
+      label: 気になり
+      description: 何がどう気になるか。どこで見つけたか
+    validations:
+      required: true
+  - type: textarea
+    id: fix
+    attributes:
+      label: 直し方の案
+      description: 分かる範囲で。決めきれない点はそのまま書く
+  - type: input
+    id: axis
+    attributes:
+      label: 判断軸
+      description: 何を良くするための変更か。棋力に関わるならその旨
+      placeholder: 運用のしやすさ。棋力には無関係
