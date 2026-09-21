@@ -10,13 +10,10 @@ from __future__ import annotations
 
 import argparse
 import filecmp
-import re
 import shutil
 from pathlib import Path
 
 from .. import config, paths, proc
-
-ARCH_RE = re.compile(r"^\d+x\d+(x\d+){0,2}$")
 
 
 def add_parser(sub: argparse._SubParsersAction) -> None:
@@ -291,10 +288,7 @@ def shapes(args: argparse.Namespace) -> int:
         raise proc.Fail(f"元の評価関数がない: {source}")
 
     for spec in args.specs:
-        if not ARCH_RE.match(spec):
-            raise proc.Fail(
-                f"構成の書き方が違う: {spec}（<FT>x<L1>[x<L2>[x<L3>]]）", proc.USAGE
-            )
+        paths.check_arch(spec)
 
     print(f"=== 構成ごとのビルド（{len(args.specs)}件、名前 {tag}） ===")
     if source:
