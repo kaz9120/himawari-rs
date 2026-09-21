@@ -1,0 +1,48 @@
+name: 不具合の報告
+description: 対局中や導入時に起きた問題を報告する
+title: "不具合: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        分かる範囲で埋めてください。全部埋まっていなくて大丈夫です。
+        エラー文やログは画像ではなくテキストで貼ってもらえると、そのまま検索できて助かります。
+  - type: input
+    id: version
+    attributes:
+      label: エンジンと評価関数の版
+      description: Releasesのタグ名。分からなければ、zipや.hmwrのファイル名
+      placeholder: himawari-v0.50.4-windows-x64-avx2.zip、net-v12
+    validations:
+      required: true
+  - type: input
+    id: env
+    attributes:
+      label: 環境
+      description: OS、CPU、GUI（将棋所・ShogiGUIなど）
+      placeholder: Windows 11、Ryzen 7 5800X、ShogiGUI 0.0.7.29
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: 起きたことと再現の手順
+      description: 何をしたら何が起きたか。期待していた動きと違う点
+      placeholder: |
+        1. ShogiGUIにエンジンを登録し、EvalFileを設定した
+        2. 対局を始めた
+        3. 思考ログの日本語が「縺薙?」のように化けた。棋譜には影響しない
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: ログ・エラー文
+      description: USIの送受信ログや、`DebugLogFile` の内容。長ければ抜粋
+      render: text
+  - type: textarea
+    id: options
+    attributes:
+      label: USIオプションの設定
+      description: 既定から変えたもの（Threads、USI_Hash、EvalFileのパスなど）
