@@ -7,7 +7,6 @@
 from __future__ import annotations
 
 import argparse
-import re
 import shutil
 import tempfile
 from pathlib import Path
@@ -16,7 +15,6 @@ from .. import conditions, config, paths, proc
 from .. import release as release_mod
 from ..tools import focus_labels, ft_reorder
 
-ARCH_RE = re.compile(r"^\d+x\d+(x\d+){0,2}$")
 TRAINER = "training/train.py"
 REGISTRY = "training/runs/registry.tsv"
 RUNS = "training/runs/net_shape"
@@ -494,10 +492,7 @@ def probe(args: argparse.Namespace) -> int:
 def shapes(args: argparse.Namespace) -> int:
     """構成ごとに拡張をビルドし直して学習する。"""
     for spec in args.specs:
-        if not ARCH_RE.match(spec):
-            raise proc.Fail(
-                f"構成の書き方が違う: {spec}（<FT>x<L1>[x<L2>[x<L3>]]）", proc.USAGE
-            )
+        paths.check_arch(spec)
     if args.effect_head and not args.lambda_effect:
         raise proc.Fail("--effect-head には --lambda-effect が要る", proc.USAGE)
 

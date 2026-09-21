@@ -30,9 +30,20 @@ CHECKPOINTS = REPO / "training" / "checkpoints"
 # アンダースコアを含むため（pairprod_2990M_q1）、そこは許す
 NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
 
+# ネットワークの構成。<FT>x<L1>[x<L2>[x<L3>]] の形だけを通す（512x16x64など）
+ARCH_RE = re.compile(r"^\d+x\d+(x\d+){0,2}$")
+
 
 class BadName(ValueError):
     """実験名として使えない文字列。"""
+
+
+class BadArch(BadName):
+    """ネットワークの構成として使えない文字列。
+
+    BadNameを継承するのは、入口の `cli.main` が1か所で拾って終了コード2を
+    返すためである。検査を足すたびにcliのexcept節を増やさない。
+    """
 
 
 def check_name(name: str) -> str:
@@ -43,6 +54,13 @@ def check_name(name: str) -> str:
             "英数字で始め、英数字・ハイフン・アンダースコア・ドットだけを使う"
         )
     return name
+
+
+def check_arch(spec: str) -> str:
+    """ネットワークの構成を検証する。ビルドと学習で同じ書式を使う。"""
+    if not ARCH_RE.match(spec):
+        raise BadArch(f"構成の書き方が違う: {spec}（<FT>x<L1>[x<L2>[x<L3>]]）")
+    return spec
 
 
 def log(area: str, name: str) -> Path:
