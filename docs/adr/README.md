@@ -349,7 +349,7 @@
 | [0208](0208-hmwr-resource-verbs.md) | hmwrのコマンドを手順の固定から資源への操作へ切り直す | 2026-09-17 |  | accepted |
 | [0209](0209-workflow-layers.md) | 仕事を4つの層へ振り分け、実験をIssueのキューで無人実行する | 2026-09-17 |  | accepted |
 | [0210](0210-teacher-mix-control.md) | 入玉混合の+37.3を、量・系列・入玉の3つの説明へ統制群で分ける | 2026-09-17 |  | accepted |
-| [0212](0212-tanuki-bench-mix.md) | tanukiの測定台で、別系列の混合が本学習の教師でも効くかを測る | 2026-09-18 |  | proposed |
+| [0212](0212-tanuki-bench-mix.md) | tanukiの測定台で、別系列の混合が本学習の教師でも効くかを測る | 2026-09-18 |  | rejected |
 | [0211](0211-check-extension-see.md) | 王手延長を損をしない王手に限る | 2026-09-18 |  | rejected（判定に至らず打ち切り） |
 | [0213](0213-freeze-structure-focus.md) | 評価関数の構造を凍結し、「焦点」を学習側で掘る | 2026-09-18 |  | proposed |
 | [0214](0214-epochs-bench.md) | 3億の測定台で、同じデータの2周が新規データの追加に匹敵するかを測る | 2026-09-18 |  | proposed |
