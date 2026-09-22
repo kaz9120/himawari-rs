@@ -10,6 +10,7 @@ import re
 import pytest
 
 from hmwr import cli, paths, proc
+from hmwr import release as release_mod
 
 
 def dry(capsys, argv):
@@ -394,6 +395,15 @@ def test_book_release_is_dry_by_default(capsys, tmp_path):
     out = capsys.readouterr().out
     assert "予行演習のため作成しない" in out
     assert "| 局面数 | 2 |" in out
+
+
+def test_book_release_dry_run_does_not_need_gh(capsys, tmp_path, monkeypatch):
+    """予行演習はghを呼ばないので、ghの無い環境でも通る。"""
+    monkeypatch.setattr(release_mod.shutil, "which", lambda _name: None)
+    db = tmp_path / "main.db"
+    db.write_text("#YANEURAOU-DB2016 1.00\nsfen a\n", encoding="utf-8")
+    assert cli.main(["--dry-run", "book", "release", str(db), "1"]) == proc.OK
+    assert "予行演習のため作成しない" in capsys.readouterr().out
 
 
 # --- data --------------------------------------------------------------
