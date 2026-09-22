@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.50.15](https://github.com/kaz9120/himawari-rs/compare/v0.50.14...v0.50.15) (2026-09-22)
+
+
+### その他の変更
+
+* リリースの予行演習でghの存在を求めない ([#604](https://github.com/kaz9120/himawari-rs/issues/604)) ([faa5f20](https://github.com/kaz9120/himawari-rs/commit/faa5f204c3023a3843181cb96db1da9e80ff5f00)), closes [#595](https://github.com/kaz9120/himawari-rs/issues/595)
+
 ## [0.50.14](https://github.com/kaz9120/himawari-rs/compare/v0.50.13...v0.50.14) (2026-09-22)
 
 
