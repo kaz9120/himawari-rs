@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.50.14](https://github.com/kaz9120/himawari-rs/compare/v0.50.13...v0.50.14) (2026-09-22)
+
+
+### その他の変更
+
+* 心拍の形式とhmwr statusを足す（ADR-0220の1段目） ([#602](https://github.com/kaz9120/himawari-rs/issues/602)) ([6e51e77](https://github.com/kaz9120/himawari-rs/commit/6e51e77275f0cf3f0d8dd76f4d70b70549b8ad4a))
+
 ## [0.50.13](https://github.com/kaz9120/himawari-rs/compare/v0.50.12...v0.50.13) (2026-09-22)
 
 
