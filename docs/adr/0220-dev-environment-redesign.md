@@ -117,9 +117,9 @@ pr_inboxの骨組みを流用する。serverはBunで `127.0.0.1` だけを待�
 | 結果 | 直近の結果（対局・学習）と、記録PRへのリンク |
 | 資源 | ディスクの空き、launchdの生死、GPUの使用、開いているPR |
 
-制御はserverが `hmwr` の動詞を呼ぶ。外からの入り口はCloudflare Tunnelだけで、
-手前にCloudflare Accessを置き、serverもJWTを検証する（pr_inboxの
-`docs/operations.md` と同じ守り）。常駐はlaunchd。
+制御はserverが `hmwr` の動詞を呼ぶ。外からの入り口はCloudflare Tunnelだけにする。
+手前にCloudflare Accessを置き、serverもJWTを検証する。pr_inboxの
+`docs/operations.md` と同じ守りである。常駐はlaunchd。
 
 ### 5. 記録の無人化の続き
 
