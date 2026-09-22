@@ -12,7 +12,9 @@ onnxruntimeで推論する）だけがある。cshogiとonnxruntimeは学習の�
 
 from __future__ import annotations
 
+import json
 import math
+import os
 import time
 from pathlib import Path
 from typing import Callable, Protocol
@@ -119,6 +121,112 @@ class RescaleLabeler:
     def __call__(self, records: np.ndarray) -> np.ndarray:
         old = records[:, SCORE_OFFSET : SCORE_OFFSET + 2].copy().view("<i2").ravel()
         return 1.0 / (1.0 + np.exp(-old.astype(np.float64) / self.scale))
+
+
+# --- その場で書き換える ----------------------------------------------------
+
+
+def progress_path(path: Path) -> Path:
+    return path.with_name(path.name + ".relabel.json")
+
+
+def sidecar_path(path: Path) -> Path:
+    """書き換える前のscoreを控える場所。レコードの通し番号×2バイトの位置に置く。"""
+    return path.with_name(path.name + ".scores-before.i16")
+
+
+def _fsync(fh) -> None:
+    fh.flush()
+    os.fsync(fh.fileno())
+
+
+def relabel_in_place(
+    path: Path,
+    labeler: Labeler,
+    *,
+    scale: float,
+    start: int,
+    count: int,
+    record: dict,
+    batch: int = 4096,
+    report: Callable[[str], None] = print,
+) -> dict:
+    """pathのscoreを、レコード[start, start+count)の範囲でその場で書き換える。
+
+    出力を別に作らないので、314GBのpsvでも空きが要らない。書き換える前の
+    scoreはsidecarへ控え、進み具合はprogressへ書く。順序は、sidecar→psvの
+    順で書き、それぞれfsyncしてからprogressを進める。途中で落ちても、
+    sidecarに控えた後のレコードしか書き換えていない。
+
+    recordには条件（labeler、model、scale）を入れる。progressがあれば条件を
+    照合し、同じなら続きから、違えば止める。
+    """
+    total = path.stat().st_size // PSV_BYTES
+    if start < 0 or count <= 0 or start + count > total:
+        raise ValueError(f"範囲が外れている: [{start}, {start + count}) / {total}")
+    prog = progress_path(path)
+    state = {
+        **record,
+        "start": start,
+        "count": count,
+        "done": 0,
+        "sidecar_done": 0,
+        "started": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
+        "finished": None,
+    }
+    if prog.is_file():
+        before = json.loads(prog.read_text(encoding="utf-8"))
+        keys = ("labeler", "model", "scale", "start", "count")
+        if any(before.get(k) != state[k] for k in keys):
+            raise ValueError(
+                f"進み具合の記録と条件が違う: {prog}\n前回: "
+                + ", ".join(f"{k}={before.get(k)}" for k in keys)
+            )
+        if before.get("finished"):
+            report(f"済み: {path}（{before['done']:,}局面を書き換え済み）")
+            return before
+        state.update(done=before["done"], sidecar_done=before["sidecar_done"], started=before["started"])
+        report(f"再開: {state['done']:,}/{count:,} から")
+
+    def save() -> None:
+        state["updated"] = time.strftime("%Y-%m-%dT%H:%M:%S%z")
+        tmp = prog.with_name(prog.name + ".tmp")
+        tmp.write_text(json.dumps(state, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        tmp.replace(prog)
+
+    began = time.time()
+    began_done = state["done"]
+    last = began
+    with open(path, "r+b") as psv, open(sidecar_path(path), "r+b" if sidecar_path(path).exists() else "w+b") as side:
+        while state["done"] < count:
+            i = start + state["done"]
+            want = min(batch, count - state["done"])
+            psv.seek(i * PSV_BYTES)
+            rows = np.frombuffer(psv.read(want * PSV_BYTES), dtype=np.uint8).reshape(-1, PSV_BYTES).copy()
+            if state["sidecar_done"] <= state["done"]:
+                old = rows[:, SCORE_OFFSET : SCORE_OFFSET + 2].copy()
+                side.seek(i * 2)
+                side.write(old.tobytes())
+                _fsync(side)
+                state["sidecar_done"] = state["done"] + want
+                save()
+            new = to_score(labeler(rows), scale)
+            rows[:, SCORE_OFFSET : SCORE_OFFSET + 2] = new.astype("<i2").view(np.uint8).reshape(-1, 2)
+            psv.seek(i * PSV_BYTES)
+            psv.write(rows.tobytes())
+            _fsync(psv)
+            state["done"] += want
+            save()
+            now = time.time()
+            if now - last >= 60:
+                rate = (state["done"] - began_done) / (now - began)
+                eta = (count - state["done"]) / rate if rate > 0 else float("inf")
+                report(f"{state['done']:,}/{count:,} 局面 {rate:,.0f} 局面/秒 残り {eta / 3600:.1f} 時間")
+                last = now
+    state["finished"] = time.strftime("%Y-%m-%dT%H:%M:%S%z")
+    state["seconds"] = round(time.time() - began, 1)
+    save()
+    return state
 
 
 # --- dlshogi --------------------------------------------------------------

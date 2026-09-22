@@ -64,6 +64,12 @@ def add_parser(sub: argparse._SubParsersAction) -> None:
     t.add_argument("--seed", type=int, default=0, metavar="N", help="乱数種")
     t.add_argument("--notes", metavar="文", help="実験台帳へ書く備考")
     t.add_argument(
+        "--positions",
+        type=int,
+        metavar="N",
+        help="学習データの先頭のこの件数だけを使う。大きなpsvの一部をコピーなしで学習する",
+    )
+    t.add_argument(
         "--extra",
         metavar="引数",
         help="学習器へ素通しする追加引数。ハイフンで始まる値は --extra=--flag と書く",
@@ -314,6 +320,8 @@ def train(args: argparse.Namespace) -> int:
         argv += ["--peak-lr", lr]
     if rank is not None:
         argv += ["--rank-data", str(rank)]
+    if args.positions:
+        argv += ["--positions", str(args.positions)]
     if args.extra:
         argv += args.extra.split()
 

@@ -133,6 +133,11 @@ def main():
     p.add_argument("--valid", help="Validation PSV file")
     p.add_argument("--out", help="Output .hmwr path（--eval-only 以外では必須）")
     p.add_argument("--epochs", type=int, default=1)
+    p.add_argument(
+        "--positions",
+        type=int,
+        help="学習データの先頭のこの件数だけを使う（ADR-0219）。--batch-loader のときだけ効く",
+    )
     p.add_argument("--batch", type=int, default=16384)
     p.add_argument("--peak-lr", type=float, default=1e-3)
     p.add_argument("--min-lr", type=float, default=1e-6)
@@ -421,7 +426,7 @@ def main():
             args.data, args.batch, lambda_=args.lambda_,
             score_limit=args.score_limit, mmap=args.mmap, shuffle=True,
             score_clamp=args.score_clamp, seed=args.seed or 0,
-            effect=use_effect,
+            effect=use_effect, positions=args.positions,
         )
         data_n = train_loader.n
     else:

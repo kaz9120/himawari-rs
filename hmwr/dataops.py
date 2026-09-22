@@ -258,6 +258,15 @@ def add_parsers(ss: argparse._SubParsersAction) -> None:
     )
     t.add_argument("--batch", type=int, default=4096, metavar="N", help="推論のバッチ（既定 4096）")
     t.add_argument("--limit", type=int, metavar="N", help="先頭のこの件数だけ処理する")
+    t.add_argument(
+        "--in-place",
+        action="store_true",
+        help="出力名のpsvをその場で書き換える。--in は要らない。書き換える前のscoreは "
+        "<名前>.psv.scores-before.i16 へ控え、進み具合を <名前>.psv.relabel.json に記録して"
+        "途中から続けられる。大きなpsvで空きが無いときに使う",
+    )
+    t.add_argument("--start", type=int, default=0, metavar="N", help="--in-place の範囲の先頭（既定 0）")
+    t.add_argument("--count", type=int, metavar="N", help="--in-place の範囲の件数（既定は末尾まで）")
     t.add_argument("--force", action="store_true", help="出力が既にあっても作り直す")
     t.set_defaults(func=relabel)
 
@@ -573,10 +582,61 @@ def make_labeler(args: argparse.Namespace):
     return dl_relabel.DlshogiLabeler(model, args.device)
 
 
+def relabel_in_place(args: argparse.Namespace) -> int:
+    """出力名のpsvをその場で書き換える。進み具合は relabel.json が持つ。"""
+    from .tools import dl_relabel
+
+    if args.inputs:
+        raise proc.Fail("--in-place では --in を渡さない。書き換える名前だけを渡す", proc.USAGE)
+    target = paths.TRAIN / f"{paths.check_name(args.name)}.psv"
+    model = "" if args.labeler == "rescale" else f" --model {args.model}"
+    record = {"labeler": args.labeler, "model": args.model if args.labeler != "rescale" else None,
+              "scale": args.scale}
+    log = paths.log("relabel", args.name)
+    if args.dry_run:
+        rng = f"[{args.start}, {args.start + args.count})" if args.count else f"[{args.start}, 末尾)"
+        print(f"[dry-run] relabel --in-place --labeler {args.labeler}{model} --scale {args.scale:g}"
+              f" {paths.rel(target)} の {rng} をその場で書き換える")
+        print(f"[dry-run] 元のscore: {paths.rel(dl_relabel.sidecar_path(target))}")
+        print(f"[dry-run] 進み具合: {paths.rel(dl_relabel.progress_path(target))}")
+        print(f"[dry-run] ログ: {paths.rel(log)}")
+        return proc.OK
+    if not target.is_file():
+        raise proc.Fail(f"psvがない: {paths.rel(target)}")
+    total = target.stat().st_size // dl_relabel.PSV_BYTES
+    count = args.count or (total - args.start)
+    labeler = make_labeler(args)
+    print(f"=== data relabel（その場）: {args.name} [{args.start}, {args.start + count}) ===")
+    device = getattr(labeler, "device", None)
+    if device:
+        print(f"デバイス: {device}")
+    with open(log, "a", encoding="utf-8") as fh:
+
+        def report(line: str) -> None:
+            stamp = time.strftime("%Y-%m-%dT%H:%M:%S")
+            print(line)
+            fh.write(f"{stamp} {line}\n")
+            fh.flush()
+
+        report(f"開始: in-place {record} start={args.start} count={count}")
+        try:
+            state = dl_relabel.relabel_in_place(
+                target, labeler, scale=args.scale, start=args.start, count=count,
+                record=record, batch=args.batch, report=report,
+            )
+        except ValueError as e:
+            raise proc.Fail(str(e)) from e
+        report(f"終了: {state['done']:,}局面を書き換えた")
+    print(f"完了: {paths.rel(target)}（元のscoreは {paths.rel(dl_relabel.sidecar_path(target))}）")
+    return proc.OK
+
+
 def relabel(args: argparse.Namespace) -> int:
     """scoreだけをDL系モデルの値へ書き換える。完了印の扱いは他の操作と同じ。"""
     from .tools import dl_relabel
 
+    if args.in_place:
+        return relabel_in_place(args)
     if len(args.inputs) != 1:
         raise proc.Fail(f"--in は1個要る（{len(args.inputs)}個渡された）", proc.USAGE)
     source = paths.TRAIN / f"{paths.check_name(args.inputs[0])}.psv"
