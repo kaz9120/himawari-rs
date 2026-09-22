@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.50.13](https://github.com/kaz9120/himawari-rs/compare/v0.50.12...v0.50.13) (2026-09-22)
+
+
+### その他の変更
+
+* 付け直しをその場で書き換える--in-placeを足し、先頭20億の付け直しをADR-0219に事前登録する ([#597](https://github.com/kaz9120/himawari-rs/issues/597)) ([1797e26](https://github.com/kaz9120/himawari-rs/commit/1797e269ad79132c0878f3d40c6c5cbf64c27be0))
+
 ## [0.50.12](https://github.com/kaz9120/himawari-rs/compare/v0.50.11...v0.50.12) (2026-09-20)
 
 
