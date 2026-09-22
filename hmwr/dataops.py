@@ -19,7 +19,7 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 
-from . import config, paths, proc
+from . import config, heartbeat, paths, proc
 from .tools import focus_labels
 
 # 静止化の並列数。**並列の出力はjobs固定で決定論になる**（逐次とは一致しない）
@@ -619,13 +619,22 @@ def relabel_in_place(args: argparse.Namespace) -> int:
             fh.flush()
 
         report(f"開始: in-place {record} start={args.start} count={count}")
+        beat = heartbeat.Heartbeat(
+            "relabel", args.name, total=count, unit="局面", log=log,
+            detail={"labeler": args.labeler, "scale": args.scale, "start": args.start, "device": device, "in_place": True},
+        )
         try:
             state = dl_relabel.relabel_in_place(
                 target, labeler, scale=args.scale, start=args.start, count=count,
-                record=record, batch=args.batch, report=report,
+                record=record, batch=args.batch, report=report, progress=beat.update,
             )
         except ValueError as e:
+            beat.finish("failed", error=str(e).splitlines()[0])
             raise proc.Fail(str(e)) from e
+        except BaseException as e:
+            beat.finish("failed", error=type(e).__name__)
+            raise
+        beat.finish("done")
         report(f"終了: {state['done']:,}局面を書き換えた")
     print(f"完了: {paths.rel(target)}（元のscoreは {paths.rel(dl_relabel.sidecar_path(target))}）")
     return proc.OK
@@ -677,9 +686,20 @@ def relabel(args: argparse.Namespace) -> int:
             fh.flush()
 
         report(f"開始: {record[0]}")
-        stats = dl_relabel.relabel(
-            source, part, labeler, scale=args.scale, batch=args.batch, limit=args.limit, report=report
+        total = source.stat().st_size // dl_relabel.PSV_BYTES
+        beat = heartbeat.Heartbeat(
+            "relabel", args.name, total=min(total, args.limit) if args.limit else total, unit="局面",
+            log=log, detail={"labeler": args.labeler, "scale": args.scale, "device": device},
         )
+        try:
+            stats = dl_relabel.relabel(
+                source, part, labeler, scale=args.scale, batch=args.batch, limit=args.limit,
+                report=report, progress=beat.update,
+            )
+        except BaseException as e:
+            beat.finish("failed", error=type(e).__name__)
+            raise
+        beat.finish("done", **{k: stats[k] for k in ("positions_per_second", "corr_old_new")})
         report(
             f"終了: {stats['positions']:,}局面 {stats['positions_per_second']:,}局面/秒 "
             f"相関 {stats['corr_old_new']} 平均|score| {stats['mean_abs_old']}→{stats['mean_abs_new']}"

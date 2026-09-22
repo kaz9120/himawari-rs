@@ -50,8 +50,12 @@ def relabel(
     batch: int = 4096,
     limit: int | None = None,
     report: Callable[[str], None] = print,
+    progress: Callable[[int], None] | None = None,
 ) -> dict:
-    """srcのscoreを付け直してdstへ書く。元と新しいscoreの相関と規模を返す。"""
+    """srcのscoreを付け直してdstへ書く。元と新しいscoreの相関と規模を返す。
+
+    progressを渡すと、バッチごとに処理済みの件数で呼ぶ（心拍用）。
+    """
     total = src.stat().st_size // PSV_BYTES
     if limit is not None:
         total = min(total, limit)
@@ -84,6 +88,8 @@ def relabel(
             abs_x += np.abs(x).sum()
             abs_y += np.abs(y).sum()
             done += len(rows)
+            if progress:
+                progress(done)
             now = time.time()
             if now - last >= 60:
                 rate = done / (now - started)
@@ -150,6 +156,7 @@ def relabel_in_place(
     record: dict,
     batch: int = 4096,
     report: Callable[[str], None] = print,
+    progress: Callable[[int], None] | None = None,
 ) -> dict:
     """pathのscoreを、レコード[start, start+count)の範囲でその場で書き換える。
 
@@ -217,6 +224,8 @@ def relabel_in_place(
             _fsync(psv)
             state["done"] += want
             save()
+            if progress:
+                progress(state["done"])
             now = time.time()
             if now - last >= 60:
                 rate = (state["done"] - began_done) / (now - began)

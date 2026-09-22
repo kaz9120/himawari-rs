@@ -19,6 +19,7 @@ SPRT = REPO / "data" / "sprt"
 SPSA = REPO / "data" / "spsa"
 BOOK = REPO / "data" / "book"
 TRAIN = REPO / "data" / "train"
+STATUS = REPO / "data" / "status"  # 心拍（ADR-0220）
 PROFILE = REPO / "data" / "profile"
 RAW = REPO / "data" / "raw"
 QUEUE = REPO / "data" / "queue"

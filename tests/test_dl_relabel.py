@@ -79,6 +79,7 @@ def train(tmp_path, monkeypatch):
     (train / "s.psv").write_bytes(records([100, -100]))
     monkeypatch.setattr(paths, "TRAIN", train)
     monkeypatch.setattr(paths, "LOGS", tmp_path / "logs")
+    monkeypatch.setattr(paths, "STATUS", tmp_path / "status")
     monkeypatch.setattr(
         dataops, "make_labeler", lambda args: (lambda rows: np.full(len(rows), 0.5))
     )
@@ -126,6 +127,7 @@ def test_cli_rescale_runs_without_a_model(tmp_path, monkeypatch):
     (train / "s.psv").write_bytes(records([600, -600]))
     monkeypatch.setattr(paths, "TRAIN", train)
     monkeypatch.setattr(paths, "LOGS", tmp_path / "logs")
+    monkeypatch.setattr(paths, "STATUS", tmp_path / "status")
     monkeypatch.setattr(paths, "REPO", tmp_path)  # モデルの既定パスが存在しない
     argv = ["data", "relabel", "t", "--in", "s", "--labeler", "rescale", "--scale", "300"]
     assert cli.main(argv) == proc.OK

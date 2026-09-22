@@ -12,7 +12,9 @@ description: himawari-rsの開発コマンドhmwrを使う。ビルド・機能�
 ```
 hmwr --help              全体
 hmwr <領域>              その領域のヘルプ
-hmwr env                 並列度・評価関数・持ち時間の既定を表示する
+hmwr status              キュー・走行中・心拍・直近の結果・資源・設定を1画面で出す
+hmwr status --json       同じ内容を機械向けに出す（ポータルはこれを読む）
+hmwr status --config     設定だけ（旧 hmwr env）
 hmwr --dry-run <...>     走るはずのコマンドを表示して終わる
 ```
 
@@ -203,6 +205,7 @@ run = "hmwr data mix mixhao20_300M --in train_300M_q1 --in hao_extra_60M_q1"
 
 ```
 hmwr queue status      待ち行列と一時停止の状態
+hmwr status            キューに加え、走行中のステップ・心拍・直近の結果・資源も1画面で
 hmwr queue pause       次のステップを始めさせない（開発機を空けたいとき）
 hmwr queue resume      一時停止を解く
 hmwr queue install     専用のworktreeとlaunchdの常駐を用意する

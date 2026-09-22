@@ -1,6 +1,6 @@
 # 0220: 開発環境を再設計する。状態の契約・ポータル・コマンドの棚卸し・遠隔制御
 
-- Status: proposed
+- Status: accepted（2026-09-22、オーナーが4点を決めた。下の「決定」）
 - Date: 2026-09-22
 - 関連ADR: [0053](0053-docs-structure.md), [0149](0149-experiment-runner.md), [0175](0175-sprt-until-decision.md), [0180](0180-hmwr-cli-in-python.md), [0181](0181-agent-surface.md), [0208](0208-hmwr-resource-verbs.md), [0209](0209-workflow-layers.md), [0217](0217-sprt-pass-cap.md), [0219](0219-relabel-2b-in-place.md)
 
@@ -143,14 +143,14 @@ pr_inboxの骨組みを流用する。serverはBunで `127.0.0.1` だけを待�
 3以降はUIの情報設計（`portal/docs/ui-design.md`）を先に書き、オーナーに見て
 もらってから作る。
 
-## オーナーに決めてほしいこと
+## 決定（2026-09-22、オーナー）
 
-1. ポータルの認証。Cloudflare Accessだけで足りるか。手元のLANから
-   Accessなしで見る入り口も要るか
-2. `sprt` を `match` へ統一してよいか。スキル（running-sprt）と過去のspecの
+1. ポータルの認証はCloudflare Accessだけにする。LANからAccessなしの入り口は
+   作らない
+2. `sprt` を `match` へ統一する。スキル（running-sprt）と過去のspecの
    `sprt run` は別名で1版残す
-3. `hmwr env` を `hmwr status` に吸収してよいか
-4. 段3の画面の情報設計を、実装の前に見るか、動くものを見てから直すか
+3. `hmwr env` を `hmwr status` に吸収する
+4. 画面の情報設計は、動くものを見てから直す。実装前の確認は要らない
 
 ## Consequences
 
