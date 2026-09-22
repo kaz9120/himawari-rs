@@ -1,0 +1,27 @@
+# ADR-0219: 本学習の先頭20億をdlshogiの評価値でその場で付け直す。
+# 統制（tanukiラベルの20億）は書き換えの前に学習する。書き換えは約10日。
+adr = "0219"
+
+[[step]]
+id = "train-t20"
+run = "hmwr net train t20_7860M --data train_7860M_q1 --valid valid_tanuki_q1 --rank rank_tanuki_210M --seed 0 --positions 2000000000 --notes \"ADR-0219 統制、tanukiラベルの先頭20億\""
+
+[[step]]
+id = "relabel-valid"
+run = "hmwr data relabel valid_tanuki_dl430_q1 --in valid_tanuki_q1 --scale 430"
+
+[[step]]
+id = "relabel-2b"
+run = "hmwr data relabel train_7860M_q1 --in-place --start 0 --count 2000000000 --scale 430"
+
+[[step]]
+id = "train-dl20"
+run = "hmwr net train dl20_7860M --data train_7860M_q1 --valid valid_tanuki_dl430_q1 --rank rank_tanuki_210M --seed 0 --positions 2000000000 --notes \"ADR-0219 処置、dlshogiラベルの先頭20億、S=430\""
+
+[[step]]
+id = "sprt-main"
+run = "hmwr sprt net data/nets/pairrank_7860M_q1.hmwr data/nets/dl20_7860M.hmwr adr0219-dl20-vs-main --foreground"
+
+[[step]]
+id = "sprt-ctrl"
+run = "hmwr sprt net data/nets/t20_7860M.hmwr data/nets/dl20_7860M.hmwr adr0219-dl20-vs-t20 --foreground"
