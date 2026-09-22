@@ -25,10 +25,16 @@ def check_version(version: int) -> None:
 
 
 def check_prereqs(tag: str, *, dry_run: bool) -> None:
-    """ghの存在とタグの重複を確かめる。"""
+    """ghの存在とタグの重複を確かめる。
+
+    予行演習ではghを1回も呼ばないので、存在も確かめない。ghの無い環境でも
+    ノート本文の確認は通る。
+    """
+    if dry_run:
+        return
     if shutil.which("gh") is None:
         raise proc.Fail("gh コマンドが要る")
-    if not dry_run and proc.succeeds(["gh", "release", "view", tag]):
+    if proc.succeeds(["gh", "release", "view", tag]):
         raise proc.Fail(f"{tag} は既にある。番号を上げる")
 
 
