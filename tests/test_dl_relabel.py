@@ -133,3 +133,66 @@ def test_cli_rescale_runs_without_a_model(tmp_path, monkeypatch):
     assert [struct.unpack_from("<h", out, i * 40 + 32)[0] for i in range(2)] == [300, -300]
     done = json.loads((train / "t.psv.done").read_text())
     assert done["commands"][0].startswith("relabel --labeler rescale --scale 300 --in ")
+
+
+def test_in_place_rewrites_scores_keeps_a_sidecar_and_resumes(tmp_path):
+    """その場の書き換えは、元のscoreをsidecarへ控え、進み具合から続けられる。"""
+    src = tmp_path / "s.psv"
+    src.write_bytes(records([100, -200, 300, -400, 500]))
+    rec = {"labeler": "rescale", "model": None, "scale": 300.0}
+    # 先に2件だけ書き換えたところで止まった状態を作る
+    state = dl_relabel.relabel_in_place(
+        src, dl_relabel.RescaleLabeler(), scale=300.0, start=1, count=2, record=rec,
+        batch=1, report=lambda _: None,
+    )
+    assert state["done"] == 2 and state["finished"]
+    out = src.read_bytes()
+    got = [struct.unpack_from("<h", out, i * 40 + 32)[0] for i in range(5)]
+    assert got == [100, -100, 150, -400, 500]
+    side = dl_relabel.sidecar_path(src).read_bytes()
+    assert struct.unpack_from("<hh", side, 2) == (-200, 300)
+    # 同じ条件で呼び直すと済みで何もしない
+    again = dl_relabel.relabel_in_place(
+        src, dl_relabel.RescaleLabeler(), scale=300.0, start=1, count=2, record=rec,
+        report=lambda _: None,
+    )
+    assert again["done"] == 2
+    assert src.read_bytes() == out
+    # 条件が違えば止まる
+    with pytest.raises(ValueError):
+        dl_relabel.relabel_in_place(
+            src, dl_relabel.RescaleLabeler(), scale=600.0, start=1, count=2, record={**rec, "scale": 600.0},
+            report=lambda _: None,
+        )
+
+
+def test_in_place_resumes_from_progress(tmp_path, monkeypatch):
+    src = tmp_path / "s.psv"
+    src.write_bytes(records([600, 600, 600, 600]))
+    rec = {"labeler": "rescale", "model": None, "scale": 300.0}
+    calls = []
+
+    def labeler(rows):
+        calls.append(len(rows))
+        if len(calls) == 2:
+            raise RuntimeError("落ちた")
+        return dl_relabel.RescaleLabeler()(rows)
+
+    with pytest.raises(RuntimeError):
+        dl_relabel.relabel_in_place(src, labeler, scale=300.0, start=0, count=4, record=rec,
+                                    batch=2, report=lambda _: None)
+    prog = json.loads(dl_relabel.progress_path(src).read_text())
+    assert prog["done"] == 2 and prog["sidecar_done"] == 4
+    state = dl_relabel.relabel_in_place(src, dl_relabel.RescaleLabeler(), scale=300.0, start=0, count=4,
+                                        record=rec, batch=2, report=lambda _: None)
+    assert state["done"] == 4
+    out = src.read_bytes()
+    assert [struct.unpack_from("<h", out, i * 40 + 32)[0] for i in range(4)] == [300] * 4
+    side = dl_relabel.sidecar_path(src).read_bytes()
+    assert struct.unpack_from("<hhhh", side, 0) == (600, 600, 600, 600)
+
+
+def test_cli_in_place_dry_run(capsys):
+    assert cli.main(["--dry-run", "data", "relabel", "t", "--in-place", "--start", "0", "--count", "10"]) == proc.OK
+    out = capsys.readouterr().out
+    assert "その場で書き換える" in out and "scores-before.i16" in out

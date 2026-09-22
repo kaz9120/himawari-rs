@@ -65,11 +65,18 @@ class PsvBatchLoader:
     """
 
     def __init__(self, path, batch, lambda_=0.7, score_limit=0, mmap=False, score_clamp=0,
-                 shuffle=True, chunk_positions=1 << 20, seed=0, prefetch=3, effect=False):
+                 shuffle=True, chunk_positions=1 << 20, seed=0, prefetch=3, effect=False,
+                 positions=None):
         size = os.path.getsize(path)
         if size % 40 != 0:
             raise ValueError(f"ファイルサイズが40の倍数でない: {size}")
         self.n = size // 40
+        # 先頭のこの件数だけを使う（ADR-0219）。大きなpsvの一部を、コピーを
+        # 作らずに学習するためのもので、バッチの並びは件数だけで決まる
+        if positions is not None:
+            if positions <= 0 or positions > self.n:
+                raise ValueError(f"positionsが範囲外: {positions}（ファイルは{self.n}件）")
+            self.n = positions
         self.batch = batch
         self.lambda_ = lambda_
         self.score_limit = score_limit
@@ -90,7 +97,7 @@ class PsvBatchLoader:
         if mmap:
             self.data = np.memmap(path, dtype=np.uint8, mode="r", shape=(self.n, 40))
         else:
-            self.data = np.fromfile(path, dtype=np.uint8).reshape(-1, 40)
+            self.data = np.fromfile(path, dtype=np.uint8, count=self.n * 40).reshape(-1, 40)
 
     def __len__(self):
         return math.ceil(self.n / self.batch)
