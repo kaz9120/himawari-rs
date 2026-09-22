@@ -9,6 +9,7 @@
       "Bash(hmwr doc check:*)",
       "Bash(hmwr doc lint:*)",
       "Bash(hmwr env:*)",
+      "Bash(hmwr status:*)",
       "Bash(hmwr exp check:*)",
       "Bash(hmwr exp report:*)",
       "Bash(hmwr exp show:*)",
