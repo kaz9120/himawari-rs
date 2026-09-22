@@ -185,7 +185,7 @@ HIMAWARI_ARCH=256x32x32 cargo build --release
 ```sh
 hmwr --help                         全体を見る
 hmwr --dry-run <...>                走るはずのコマンドを表示する
-hmwr env                            並列度・評価関数・持ち時間の既定
+hmwr status                         今の状態（キュー・走行中・直近の結果・資源・設定）
 hmwr sprt run <名前>                ペア作成→機能検証→SPRT起動
 hmwr sprt show <名前>               途中経過・結果
 hmwr verify <名前>                  固定深さで探索の変化を比べる
