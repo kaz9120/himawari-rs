@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.50.16](https://github.com/kaz9120/himawari-rs/compare/v0.50.15...v0.50.16) (2026-09-23)
+
+
+### その他の変更
+
+* 学習・対局・実験・SPSAに心拍を配線する（ADR-0220の2段目） ([#606](https://github.com/kaz9120/himawari-rs/issues/606)) ([495cf73](https://github.com/kaz9120/himawari-rs/commit/495cf730ff76598f6adddcd74cd31a2469485508))
+
 ## [0.50.15](https://github.com/kaz9120/himawari-rs/compare/v0.50.14...v0.50.15) (2026-09-22)
 
 
