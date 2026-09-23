@@ -138,6 +138,7 @@
 - [0175](0175-sprt-until-decision.md) SPRTを判定が出るまで走らせ、完了をファイルで検知する
 - [0189](0189-artifact-retention.md) 成果物の保持を日数で決め、掃除をhmwr cleanに固定する
 - [0191](0191-blindspot-benchmark.md) floodgateの崩壊局面から盲点ベンチマークを作る
+- [0221](0221-public-site.md) 開発の記録と実戦のテレメトリを、himawari.y-kaz.com で公開する
 
 ## 全ADR
 
@@ -362,6 +363,7 @@
 | [0218](0218-main-two-epochs.md) | 本学習の78.5億を2周し、1周のネットとSPRTで比べる | 2026-09-21 |  | proposed |
 | [0219](0219-relabel-2b-in-place.md) | 本学習の先頭20億をdlshogiの評価値へその場で付け直し、量に対する質を測る | 2026-09-22 |  | proposed |
 | [0220](0220-dev-environment-redesign.md) | 開発環境を再設計する。状態の出力仕様・ポータル・コマンドの棚卸し・遠隔制御 | 2026-09-22 |  | accepted |
+| [0221](0221-public-site.md) | 開発の記録と実戦のテレメトリを、himawari.y-kaz.com で公開する | 2026-09-24 |  | accepted |
 
 ## バックログ
 
