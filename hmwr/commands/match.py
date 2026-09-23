@@ -23,7 +23,7 @@ import time
 from dataclasses import dataclass, field, replace
 from pathlib import Path
 
-from .. import conditions, config, paths, proc, sprt_log
+from .. import conditions, config, heartbeat, paths, proc, sprt_log
 
 # 異常終了からの再開を数える上限。判定に至らないまま無限に試し続けない
 MAX_RETRY = 20
@@ -341,23 +341,33 @@ def until_decision(spec: Spec, *, dry_run: bool) -> int:
 
     spec = _with_hard_max(spec)
     hard_max = spec.env["SPRT_MAX_PAIRS"]
+    with heartbeat.running(
+        "match", spec.name, dry_run=dry_run, unit="ペア", log=f["log"],
+        # SPRTはいつ判定に至るか分からない。総量は指し切りのときだけ持つ
+        total=spec.stop_pairs or None,
+        detail={"stop": f"pairs:{spec.stop_pairs}" if spec.stop_pairs else "sprt", "max_pairs": int(hard_max)},
+    ) as beat:  # fmt: skip
+        return _until_decision(spec, f, hard_max, beat, dry_run=dry_run)
 
+
+def _until_decision(spec: Spec, f: dict[str, Path], hard_max: str, beat, *, dry_run: bool) -> int:
     for attempt in range(1, MAX_RETRY + 1):
         before = _games(f["jsonl"])
-        code = _selfplay(spec, dry_run=dry_run, attempt=attempt)
+        code = _selfplay(spec, dry_run=dry_run, attempt=attempt, on_line=match_progress(beat))
         if dry_run:
             return proc.OK
         if code in (0, 1):
-            return _finish(spec)
+            return _finish(spec, beat)
         if code == 2:
             if spec.stop_pairs and _games(f["jsonl"]) >= spec.stop_pairs * 2:
-                return _finish(spec)
+                return _finish(spec, beat)
             if spec.stop_pairs:
                 print(f"{spec.stop_pairs} ペアを指し切る前に止まった。同じコマンドで続きから走る。")
+                beat.finish("stopped")
                 return 2
             print(f"上限（{hard_max} ペア）まで走って判定に至らなかった。見送りとして記録する。")
             print("局数を積むより対立仮説の立て方を見直す。")
-            return _finish(spec, capped_pairs=int(hard_max))
+            return _finish(spec, beat, capped_pairs=int(hard_max))
 
         # **1局も進まなかった再試行は繰り返さない。** 設定の誤りやバイナリの
         # 欠落なら、何度試しても同じところで落ちる。棋譜が増えているときだけ
@@ -390,7 +400,33 @@ def _games(jsonl: Path) -> int:
     return sum(1 for _ in jsonl.open("rb"))
 
 
-def _selfplay(spec: Spec, *, dry_run: bool, attempt: int) -> int:
+def match_progress(beat):
+    """selfplayの途中経過の行を心拍へ写す関数を返す。"""
+
+    def on_line(line: str) -> None:
+        if not line.startswith(sprt_log.PAIRS_LINE_PREFIX):
+            return
+        try:
+            fields = sprt_log.parse_fields(line)
+        except sprt_log.Unreadable:
+            return
+        ci = str(fields["elo_ci"]).strip("[]").split(",")
+        beat.update(
+            int(fields["games"]) // 2,
+            detail={
+                "elo": float(fields["elo_num"]),
+                "ci_low": float(ci[0]),
+                "ci_high": float(ci[1]),
+                "llr": float(fields["llr"]),
+                "wdl": fields["wdl"],
+                "games": fields["games"],
+            },
+        )
+
+    return on_line
+
+
+def _selfplay(spec: Spec, *, dry_run: bool, attempt: int, on_line=None) -> int:
     """対局を1回走らせる。棋譜があれば続きから測る。"""
     f = files(spec.name)
     binary = paths.release_bin("selfplay")
@@ -446,7 +482,7 @@ def _selfplay(spec: Spec, *, dry_run: bool, attempt: int) -> int:
     else:
         print(f"試行 {attempt}: 新規に開始する")
 
-    return proc.run(argv, dry_run=dry_run, log=f["log"], allowed=(0, 1, 2, 3))
+    return proc.run(argv, dry_run=dry_run, log=f["log"], allowed=(0, 1, 2, 3), on_line=on_line)
 
 
 def check_conditions(cond: Path, line: str, games: int, *, adopt: bool, dry_run: bool) -> None:
@@ -456,11 +492,11 @@ def check_conditions(cond: Path, line: str, games: int, *, adopt: bool, dry_run:
     )
 
 
-def _finish(spec: Spec, capped_pairs: int = 0) -> int:
+def _finish(spec: Spec, beat, capped_pairs: int = 0) -> int:
     """結果が出た。結果ファイルを書き、判定を終了コードで返す。
 
     capped_pairsを渡すと、そのペア数に達して判定に至らない走行を「見送り」
-    として結果ファイルへ書く（ADR-0217）。
+    として結果ファイルへ書く（ADR-0217）。心拍には判定を添えてdoneと書く。
     """
     f = files(spec.name)
     try:
@@ -475,6 +511,7 @@ def _finish(spec: Spec, capped_pairs: int = 0) -> int:
     except sprt_log.Unreadable as e:
         raise proc.Fail(f"結果は出たが読めない: {e}") from e
     print(text)
+    beat.finish("done", decision=verdict)
     return sprt_log.EXIT_BY_VERDICT[verdict]
 
 

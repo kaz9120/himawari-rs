@@ -10,6 +10,7 @@ from __future__ import annotations
 import os
 import subprocess
 import sys
+from collections.abc import Callable
 from pathlib import Path
 
 from . import paths
@@ -47,13 +48,15 @@ def run(
     allowed: tuple[int, ...] = (OK,),
     cwd: Path | None = None,
     stdin_text: str | None = None,
+    on_line: Callable[[str], None] | None = None,
 ) -> int:
     """外部コマンドを実行する。
 
     dry_runなら実行せず、走るはずのコマンドを表示して返る。logを渡すと
     出力を端末とファイルの両方へ流す（追記）。allowedにない終了コードは
     Failとして投げる。stdin_textを渡すと標準入力へ流し込む（USIエンジンの
-    ように行を食わせて動かすコマンド向け）。
+    ように行を食わせて動かすコマンド向け）。on_lineを渡すと、出力の各行で
+    呼ぶ（心拍の更新用。logを渡したときだけ効く）。
     """
     line = show(argv, env)
     if dry_run:
@@ -74,7 +77,7 @@ def run(
         ).returncode
     else:
         print(f"ログ: {paths.rel(log)}", flush=True)
-        code = _tee(argv, workdir, full_env, log, line, stdin_text)
+        code = _tee(argv, workdir, full_env, log, line, stdin_text, on_line)
 
     if code not in allowed:
         raise Fail(f"失敗した（終了コード {code}）: {line}", code)
@@ -88,6 +91,7 @@ def _tee(
     log: Path,
     header: str,
     stdin_text: str | None = None,
+    on_line: Callable[[str], None] | None = None,
 ) -> int:
     """出力を端末とログの両方へ流す。"""
     with open(log, "ab") as fh:
@@ -110,6 +114,8 @@ def _tee(
             sys.stdout.buffer.write(chunk)
             sys.stdout.flush()
             fh.write(chunk)
+            if on_line is not None:
+                on_line(chunk.decode("utf-8", errors="replace").rstrip("\n"))
         return proc.wait()
 
 

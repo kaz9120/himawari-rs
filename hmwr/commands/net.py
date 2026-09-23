@@ -7,11 +7,12 @@
 from __future__ import annotations
 
 import argparse
+import re
 import shutil
 import tempfile
 from pathlib import Path
 
-from .. import conditions, config, paths, proc
+from .. import conditions, config, heartbeat, paths, proc
 from .. import release as release_mod
 from ..tools import focus_labels, ft_reorder
 
@@ -28,6 +29,11 @@ DEFAULT_VALID = "data/train/valid_385M.psv"
 DEFAULT_EVAL_VALID = "data/train/valid_385M_q1.psv"
 FT_CLIP = "1.0"
 BASE_FLAGS = ["--batch-loader", "--dense-ft", "--factorized"]
+
+# 学習器の出力から心拍を拾う（ADR-0220）。形式は training/train.py の print にある
+TOTAL_STEPS_RE = re.compile(r"total_steps=([0-9]+)")
+STEP_RE = re.compile(r"^step ([0-9]+) samples [0-9]+ loss ([0-9.]+)")
+VALID_RE = re.compile(r"^\s*valid loss ([0-9.]+)")
 
 # probeの既定（ADR-0213）。末尾10万局面を検証へ回し、残りで後段だけを学習する
 PROBE_VALID = 100_000
@@ -358,7 +364,31 @@ def train(args: argparse.Namespace) -> int:
         # 止まった学習の続き。エポック内の位置まで戻る（ADR-0159）
         print(f"再開      : {paths.rel(latest)}")
         argv += ["--resume", str(latest)]
-    return proc.run(argv, dry_run=args.dry_run, log=paths.log("train", name))
+    log = paths.log("train", name)
+    with heartbeat.running(
+        "train", name, dry_run=args.dry_run, unit="step", log=log,
+        detail={"data": paths.rel(data), "valid_data": paths.rel(valid)},
+    ) as beat:  # fmt: skip
+        return proc.run(argv, dry_run=args.dry_run, log=log, on_line=train_progress(beat))
+
+
+def train_progress(beat):
+    """学習器の出力行を心拍へ写す関数を返す。"""
+
+    def on_line(line: str) -> None:
+        if m := STEP_RE.match(line):
+            beat.update(int(m.group(1)), detail={"loss": float(m.group(2))})
+        elif m := VALID_RE.match(line):
+            valid = float(m.group(1))
+            best = beat.data["detail"].get("best_valid")
+            detail = {"valid": valid}
+            if best is None or valid < best:
+                detail["best_valid"] = valid
+            beat.update(detail=detail, force=True)
+        elif m := TOTAL_STEPS_RE.search(line):
+            beat.set_total(int(m.group(1)))
+
+    return on_line
 
 
 def _train_file(value: str, suffix: str) -> Path:

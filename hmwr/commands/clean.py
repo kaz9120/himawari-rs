@@ -71,6 +71,12 @@ def _candidates(days: int) -> list[tuple[str, Path]]:
     for p in sorted((paths.REPO / "data/logs").iterdir()):
         if old(p):
             found.append(("ログ", p))
+    if paths.STATUS.is_dir():
+        # 心拍は終わった後も残し、日数で消す（ADR-0220）。60秒ごとに書くので、
+        # 走行中のものは古くならない
+        for p in sorted(paths.STATUS.glob("*.json")):
+            if old(p):
+                found.append(("心拍", p))
     for p in sorted((paths.REPO / "data/train").glob("*.stop")):
         if old(p):
             found.append(("停止ファイル", p))

@@ -16,7 +16,7 @@ import sys
 import time
 from pathlib import Path
 
-from .. import paths, proc, report as report_mod, spec
+from .. import heartbeat, paths, proc, report as report_mod, spec
 
 
 def add_parser(sub: argparse._SubParsersAction) -> None:
@@ -137,7 +137,15 @@ def run(args: argparse.Namespace) -> int:
     s = _load(args)
     log = paths.log("exp", s.name)
     print(f"=== 実験: {s.name}（ADR-{s.adr}、{len(s.steps)}ステップ） ===")
+    # ステップの所要は数分から数日まで揃わないので、残り時間は見積もらない
+    with heartbeat.running(
+        "exp", s.name, dry_run=args.dry_run, total=len(s.steps), unit="ステップ",
+        log=log, estimate=False, detail={"adr": s.adr},
+    ) as beat:  # fmt: skip
+        return _run_steps(args, s, log, beat)
 
+
+def _run_steps(args: argparse.Namespace, s: spec.Spec, log: Path, beat) -> int:
     for i, step in enumerate(s.steps, 1):
         head = f"[{i}/{len(s.steps)}] {step.id}"
         if not args.dry_run and _is_done(s.name, step):
@@ -146,8 +154,10 @@ def run(args: argparse.Namespace) -> int:
         if not args.dry_run and pause_file().exists():
             # 走っているステップは止めない。切れ目で止まり、再開は同じコマンドで行う
             print(f"{head}: 一時停止中なので始めない（hmwr queue resume で解除）")
+            beat.finish("stopped", reason="paused")
             return proc.JUDGE
         print(f"{head}: {step.run}", flush=True)
+        beat.update(i - 1, detail={"step": step.id, "run": step.run}, force=True)
         if args.dry_run:
             code = _dry(step)
             if code != proc.OK:
