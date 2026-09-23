@@ -17,6 +17,11 @@
 
 `state` は running・done・failed・stopped の4つ。書き込みは一時ファイルへ
 書いてから改名するので、読み手が途中の内容を見ることはない。
+
+コマンドは `running` で包む。例外で抜ければfailed、何も言わずに抜ければ
+doneを書く。止めた・見送ったは、抜ける前に `finish` で書き分ける。
+SIGKILLのように例外を経ずに消えた走行は、running のまま残る。読み手は
+pidの生死で見分ける（`read_all` の `alive`）。
 """
 
 from __future__ import annotations
@@ -24,9 +29,11 @@ from __future__ import annotations
 import json
 import os
 import time
+from collections.abc import Iterator
+from contextlib import contextmanager
 from pathlib import Path
 
-from . import paths
+from . import paths, proc
 
 STATES = ("running", "done", "failed", "stopped")
 INTERVAL = 60.0
@@ -57,9 +64,13 @@ class Heartbeat:
         log: Path | str | None = None,
         detail: dict | None = None,
         interval: float = INTERVAL,
+        estimate: bool = True,
     ):
         self.path = path_of(kind, name)
         self.interval = interval
+        # 残り時間を見積もるか。1単位の所要が揃わないもの（実験のステップ）は
+        # 速さから外挿すると誤った残り時間を出すので、見積もらない
+        self.estimate = estimate
         self._t0 = time.time()
         self._last_write = 0.0
         self._done0: int | None = None
@@ -87,7 +98,7 @@ class Heartbeat:
                 self._t_done0 = now
             self.data["progress"]["done"] = done
             elapsed = now - self._t_done0
-            if elapsed > 0 and done > self._done0:
+            if self.estimate and elapsed > 0 and done > self._done0:
                 rate = (done - self._done0) / elapsed
                 self.data["rate"] = round(rate, 2)
                 total = self.data["progress"]["total"]
@@ -97,6 +108,14 @@ class Heartbeat:
             self.data["detail"].update(detail)
         if force or now - self._last_write >= self.interval:
             self._write()
+
+    def set_total(self, total: int) -> None:
+        """総量を後から決める。子プロセスの出力で初めて分かるときに使う。"""
+        self.data["progress"]["total"] = total
+
+    @property
+    def finished(self) -> bool:
+        return self.data["state"] != "running"
 
     def finish(self, state: str = "done", **detail) -> None:
         if state not in STATES:
@@ -116,6 +135,50 @@ class Heartbeat:
         tmp.write_text(json.dumps(self.data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
         tmp.replace(self.path)
         self._last_write = time.time()
+
+
+class _Quiet:
+    """予行演習で渡す心拍。何も書かない。"""
+
+    finished = False
+
+    def update(self, *args, **kwargs) -> None:
+        pass
+
+    def set_total(self, total: int) -> None:
+        pass
+
+    def finish(self, state: str = "done", **detail) -> None:
+        self.finished = True
+
+
+@contextmanager
+def running(kind: str, name: str, *, dry_run: bool = False, **kwargs) -> Iterator[Heartbeat]:
+    """走行を心拍で包む。抜け方で終わりの状態を書く。
+
+    例外で抜ければfailed（中断はstopped）、そのまま抜ければdoneになる。
+    中で `finish` を呼んでいれば、それを優先する。dry_runなら何も書かない。
+    """
+    if dry_run:
+        yield _Quiet()  # type: ignore[misc]
+        return
+    beat = Heartbeat(kind, name, **kwargs)
+    try:
+        yield beat
+    except KeyboardInterrupt:
+        if not beat.finished:
+            beat.finish("stopped", error="KeyboardInterrupt")
+        raise
+    except proc.Fail as e:
+        if not beat.finished:
+            beat.finish("failed", error=str(e).splitlines()[0])
+        raise
+    except BaseException as e:
+        if not beat.finished:
+            beat.finish("failed", error=type(e).__name__)
+        raise
+    if not beat.finished:
+        beat.finish("done")
 
 
 def _alive(pid: int | None) -> bool:

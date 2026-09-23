@@ -17,7 +17,7 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-from .. import config, paths, proc, spsa_core
+from .. import config, heartbeat, paths, proc, spsa_core
 from ..spsa_core import Param
 from . import build
 
@@ -208,11 +208,21 @@ def until_done(args: argparse.Namespace, *, log_to_file: bool) -> int:
     if not selfplay.is_file() and not args.dry_run:
         raise proc.Fail(f"{paths.rel(selfplay)} がない。cargo build --release を実行する")
 
+    with heartbeat.running(
+        "spsa", args.name, dry_run=args.dry_run, total=total, unit="ペア",
+        log=f["log"] if log_to_file else None, detail={"params": len(params)},
+    ) as beat:  # fmt: skip
+        return _loop(args, f, state, params, total, concurrency, selfplay, log, beat)
+
+
+def _loop(args, f, state, params, total, concurrency, selfplay, log, beat) -> int:
     failed_batches = 0
+    beat.update(state["pairs_done"])
     while state["pairs_done"] < total:
         if f["stop"].is_file():
             log(f"停止ファイルを見つけた。{state['pairs_done']}/{total}ペアで中断する")
             f["stop"].unlink(missing_ok=True)
+            beat.finish("stopped")
             return proc.OK
 
         batch = min(concurrency, total - state["pairs_done"])
@@ -256,6 +266,7 @@ def until_done(args: argparse.Namespace, *, log_to_file: bool) -> int:
 
         state["pairs_done"] += batch
         _save_state(f, state)
+        beat.update(state["pairs_done"], detail={"moved": _moved(state, params)})
         if (state["pairs_done"] // concurrency) % 25 == 0:
             log(_progress_line(state, params, total))
 
@@ -363,9 +374,13 @@ def _logger(log: Path | None):
     return emit
 
 
+def _moved(state: dict, params: list[Param]) -> int:
+    """初期値から動いた項目の数。"""
+    return sum(1 for p in params if round(state["theta"][p.name]) != round(p.default))
+
+
 def _progress_line(state: dict, params: list[Param], total: int) -> str:
-    moved = sum(1 for p in params if round(state["theta"][p.name]) != round(p.default))
-    return f"{state['pairs_done']}/{total}ペア（初期値から動いた項目 {moved}/{len(params)}）"
+    return f"{state['pairs_done']}/{total}ペア（初期値から動いた項目 {_moved(state, params)}/{len(params)}）"
 
 
 def _finish(f: dict[str, Path], state: dict, params: list[Param], log) -> None:
