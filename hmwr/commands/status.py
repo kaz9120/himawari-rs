@@ -10,6 +10,7 @@ GitHubに届かないときは、その部分だけ `error` を入れて他は�
 from __future__ import annotations
 
 import argparse
+import datetime
 import json
 import shutil
 import subprocess
@@ -134,6 +135,22 @@ def _resources(use_github: bool) -> dict:
     return out
 
 
+def _rate_eta(d: dict) -> tuple[float | None, int | None]:
+    """付け直しの記録から、開始以来の平均の速さと残り時間を出す。"""
+    try:
+        # Python 3.10のfromisoformatは+0900の形を読めない
+        t0 = datetime.datetime.strptime(d["started"], "%Y-%m-%dT%H:%M:%S%z")
+        t1 = datetime.datetime.strptime(d["updated"], "%Y-%m-%dT%H:%M:%S%z")
+        done, total = int(d["done"]), int(d["count"])
+    except (KeyError, TypeError, ValueError):
+        return None, None
+    seconds = (t1 - t0).total_seconds()
+    if seconds <= 0 or done <= 0:
+        return None, None
+    rate = done / seconds
+    return round(rate, 2), (0 if d.get("finished") else round((total - done) / rate))
+
+
 def _relabel_progress() -> list[dict]:
     """その場の付け直しの進み具合（ADR-0219）。状態ファイルを持たない旧い実行の代わりに読む。"""
     out = []
@@ -142,12 +159,15 @@ def _relabel_progress() -> list[dict]:
             d = json.loads(p.read_text(encoding="utf-8"))
         except (OSError, ValueError):
             continue
+        rate, eta = _rate_eta(d)
         out.append(
             {
                 "kind": "relabel",
                 "name": p.name.split(".psv")[0],
                 "state": "done" if d.get("finished") else "running",
                 "progress": {"done": d.get("done"), "total": d.get("count"), "unit": "局面"},
+                "rate": rate,
+                "eta_seconds": eta,
                 "started": d.get("started"),
                 "updated": d.get("updated"),
                 "detail": {k: d.get(k) for k in ("labeler", "scale", "start")},

@@ -102,3 +102,14 @@ def test_status_config_replaces_env(capsys):
     assert "評価関数" in capsys.readouterr().out
     assert cli.main(["env"]) == proc.OK
     assert "hmwr status --config" in capsys.readouterr().out
+
+
+def test_relabel_record_gives_rate_and_eta(home):
+    """状態ファイルを持たない付け直しでも、記録の時刻から速さと残り時間を出す。"""
+    (home / "train" / "big.psv.relabel.json").write_text(
+        json.dumps({"labeler": "dlshogi", "scale": 430, "start": 0, "count": 1000, "done": 100,
+                    "started": "2026-09-23T00:00:00+0900", "updated": "2026-09-23T00:01:40+0900",
+                    "finished": None})
+    )
+    (beat,) = status._relabel_progress()
+    assert beat["rate"] == 1.0 and beat["eta_seconds"] == 900

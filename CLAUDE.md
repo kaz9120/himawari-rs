@@ -57,6 +57,7 @@ mainへの直接pushは拒否される。`hmwr` が呼び出すツールの直�
 | [docs/ROADMAP.md](docs/ROADMAP.md) | 着手を決めるとき | 現在地・注力・次に着手する・候補 |
 | [docs/DATASETS.md](docs/DATASETS.md) | データを扱うとき | データの所在と前処理 |
 | [README.md](README.md) | 使い方や環境を知るとき | 概要・対局での使い方・開発環境 |
+| [portal/README.md](portal/README.md) | ポータルを起動・運用するとき | 画面・起動・設定・入口の守り |
 | [CHANGELOG.md](CHANGELOG.md) | 何が入ったか見るとき | release-pleaseが生成 |
 | `.claude/skills/` | 定型作業を回すとき | 手順の固定（SPRT運用は[ADR-0154](docs/adr/0154-sprt-ops.md)、CLIは[ADR-0180](docs/adr/0180-hmwr-cli-in-python.md)） |
 
