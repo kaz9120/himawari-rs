@@ -26,7 +26,7 @@ STATUS_RE = re.compile(r"^- Status: (.+)$", re.M)
 LINK_RE = re.compile(r"(?<!\!)\[[^\]]*\]\(([^)\s]+)\)")
 FENCE_RE = re.compile(r"^(```|~~~).*?^\1", re.M | re.S)
 INLINE_CODE_RE = re.compile(r"`[^`\n]*`")
-DOC_GLOBS = ("*.md", "docs/**/*.md", ".claude/**/*.md", ".github/**/*.md", "portal/*.md")
+DOC_GLOBS = ("*.md", "docs/**/*.md", ".claude/**/*.md", ".github/**/*.md")
 
 
 @dataclass(frozen=True)
