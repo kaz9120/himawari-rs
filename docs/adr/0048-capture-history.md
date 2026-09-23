@@ -4,23 +4,23 @@
 - Date: 2026-07-21
 
 2026-07-21追記: SPRT 872局（436ペア）で Elo -2.4 [-25.4,+20.6]、
-LLR -0.18。効果なしと判断し、オーナー決定で打ち切り・不採択。
-反証レビューが指摘した「履歴値域±16,384がMVV-LVAの駒得序列を
-跨ぐ」スケール不均衡が疑い先。スケール再設計での再挑戦は
+LLR -0.18。効果なしと判断し、オーナー決定で打ち切り・棄却。
+原因の候補は、反証レビューが指摘したスケールの不均衡である。
+履歴の値域±16,384が、MVV-LVAの駒得の序列を跨ぐ。スケール再設計での再挑戦は
 ROADMAPの候補に残す。
 - 関連ADR: [0025](0025-move-ordering.md), [0028](0028-pruning-extensions.md), [0047](0047-continuation-history.md)
 
 ## Context
 
-探索改善キャンペーンの第3弾。取る手のオーダリングは現在、
+一連の探索改善の第3弾。取る手のオーダリングは現在、
 MVV-LVA + 成り加点の静的スコアだけで決めている
 （`movepick.rs:183-191`のcapture_score）。同点の取る手が
 多い局面で、実際にカットを生んだ手を優先する情報がない。
-quiet手はADR-0047までで履歴3本（main + 文脈2本）を持つのに、
+静かな手はADR-0047までで履歴3本（main + 文脈2本）を持つのに、
 取る手は履歴ゼロという非対称も残っている。
 
 capture historyは「この駒がこのマスでこの駒種を取る」ことの
-成否を履歴で持つ。SF系ではcapture ordering・SEE枝刈りの
+成否を履歴で持つ。Stockfish系ではcapture ordering・SEE枝刈りの
 補助として定着している。
 
 ## 選択肢と比較
@@ -32,8 +32,8 @@ capture historyは「この駒がこのマスでこの駒種を取る」こと�
 
 ### 案B: 案A + SEE閾値やLMRへの波及
 
-SFはcapture historyを枝刈り閾値にも使うが、閾値系は
-パラメータ調整と不可分で、キャンペーンの「チューニングなし」
+Stockfishはcapture historyを枝刈り閾値にも使うが、閾値系は
+パラメータ調整と不可分で、一連の改善の「チューニングなし」
 方針に反する。オーダリング専用の案Aで判定し、波及は
 効果を見てから別ADRにする。
 
@@ -49,14 +49,14 @@ SFはcapture historyを枝刈り閾値にも使うが、閾値系は
 - 添字: 取る側の（piece_after、to）と、取られる駒の
   piece_type（成りは成りのまま。piece_type 16種）
 - 更新はgravity（クランプ±4000、divisor 16384。既存と同一）
-- 保持はスレッドローカル（貸し出し・回収・NewGameクリア）
+- 保持はスレッドローカル（goごとに渡し・回収・NewGameクリア）
 
 スコアリング:
 - 取る手のスコアを `capture_score(pos, m) + capt_hist.get(...)` に
   変更する。適用箇所は3つあり、いずれも読み取りのみになる
   - CapturesInit（`movepick.rs:286`）
   - QCapturesInit（`movepick.rs:381`）
-  - evasionの捕獲部（`movepick.rs:360`）
+  - evasionの取る手の部分（`movepick.rs:360`）
 
 更新（main searchのみ）:
 - 探索ループでtried_captures（試行した取る手）を記録する
@@ -64,7 +64,7 @@ SFはcapture historyを枝刈り閾値にも使うが、閾値系は
   （`depth*depth + 2*depth`、quietと同一式）、tried_capturesの
   他の手に-bonus
 - best_moveがquietのときも、tried_capturesに-bonusを与える
-  （SFと同じ。取る手を差し置いてquietが勝った事実の反映）
+  （Stockfishと同じ。取る手を差し置いてquietが勝った事実の反映）
 - qsearchでは更新しない
 
 初期定数（チューニングしない）: bonus式・クランプ・divisorは

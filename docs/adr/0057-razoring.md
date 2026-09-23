@@ -6,7 +6,7 @@
 
 ## Context
 
-探索改善キャンペーンの続行。静的評価がalphaを大きく下回る浅い
+一連の探索改善の続行。静的評価がalphaを大きく下回る浅い
 ノードでは、通常探索を省略してqsearchの結果だけで返す枝刈りが
 有効である。reverse futility（ADR-0028）がbeta側で「良すぎる
 なら刈る」のに対し、razoringはalpha側で「悪すぎるなら手を抜く」
@@ -14,17 +14,17 @@
 
 現在のsearch.rsには、depth==0でqsearchへ落ちる処理（464行）がある。
 depth 1〜3の浅いノードで静的評価が絶望的なとき、早めにqsearchへ委ねる
-仕組みはない。SF系ではrazoring（またはそれに
+仕組みはない。Stockfish系ではrazoring（またはそれに
 相当する浅い深さのqsearch降格）が標準装備されている。
 
 ## 選択肢と比較
 
-### 案A: 直接qsearchに降格する（SF現代形）
+### 案A: 直接qsearchに降格する（Stockfish現代形）
 
 `static_eval + margin <= alpha`のとき、qsearchの結果をそのまま
 返す。二段階チェック（先にqsearchしてからalpha超えか判定）を
-省いた簡潔な形。qsearchは取る手と王手を網羅するため、タクティ
-カルな救済があればそこで拾える。
+省いた簡潔な形。qsearchは取る手と王手を網羅する。駒得や王手による
+逆転があれば、そこで見つかる。
 
 ### 案B: 二段階チェック（古典形）
 
@@ -64,11 +64,11 @@ if excluded == Move::NONE
 条件パターンはRFP・ProbCut等の既存枝刈りに揃える（non-PV、
 非王手、除外手なし、mate scoreガード）。マージンは固定300で
 depth非依存とする。depth 1〜3の範囲では、静的評価がalphaから
-300以上離れていればタクティカルな救済以外に逆転の見込みがなく、
-qsearchがその救済を検出する。
+300以上離れていれば、駒得や王手による逆転以外に見込みがない。
+qsearchがその逆転を検出する。
 
 初期定数（チューニングしない）: RAZOR_MAX_DEPTH=3、
-RAZOR_MARGIN=300。SF系の実績値に基づく。
+RAZOR_MARGIN=300。Stockfish系の実績値に基づく。
 
 ### 検証
 

@@ -32,7 +32,7 @@ let after = PIECE_VALUE[m.piece_after().piece_type().index()];
 )
 ```
 
-成りの利得を取り分（`captured`）へ足し、取り返される駒（`placed`）を
+成りの利得を、取って得る価値（`captured`）へ足し、取り返される駒（`placed`）を
 成ったあとの価値にする。
 
 ## なぜほぼ等価なのか（2026-07-29）
@@ -46,7 +46,7 @@ let after = PIECE_VALUE[m.piece_after().piece_type().index()];
 | 変更前 | `captured - threshold` | `before - captured + threshold` |
 | 変更後 | `captured + gain - threshold` | `(before + gain) - (captured + gain - threshold)` = `before - captured + threshold` |
 
-**2段目は一致する**。取り分と失う駒の両方へ同じ `gain` を足すため、
+**2段目は一致する**。得る価値と失う駒の両方へ同じ `gain` を足すため、
 差し引きで消える。以降のswapループは2段目の値から始まるので、結果も
 同じになる。
 
@@ -79,7 +79,7 @@ SPRTにかけても中立にしかならないため、対局は行わない。
 
 それでも入れるのは、SEEの意味論が式のうえで正しくなるためである。
 将来 `see_ge` を正の閾値で使う場面（capture historyのスケール設計など）
-が来たとき、成りを含む取り分で判定できる。コメントの誤解も解ける。
+が来たとき、成りを含む利得で判定できる。コメントの誤解も解ける。
 
 得られた知見は「近似を正しても、式のうえで相殺されるなら結果は変わらない」
 ことである。[ADR-0091](0091-see-drop.md)が+67.0だったのを見て同じ路線を

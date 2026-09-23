@@ -8,10 +8,10 @@
 
 Positionは局面のすべてを持ち、do_move/undo_moveは探索で最も頻繁に
 実行される操作になる。ここでの決定は3つ。局面の巻き戻し方式、
-付随情報（StateInfo）の持ち方、そしてNNUE差分計算（P4）の要件を
-どう先読みするかである。
+付随情報（StateInfo）の持ち方、そしてNNUE差分更新（P4）の要件を
+どう見越しておくかである。
 
-先読みが必要な理由は2つある。NNUEのaccumulatorは1手ごとの差分
+要件を見越しておく理由は2つある。NNUEのaccumulatorは1手ごとの差分
 （動いた駒の増減 = DirtyPiece）から更新するため、do_moveが差分を
 記録する構造になっていないとP4で手戻りする。また、coreクレートは
 探索・評価へ依存しない方針（ADR-0002）のため、NNUE固有の型を
@@ -84,7 +84,7 @@ material:         i32               // 駒割の差分累計（評価v1用）
 dirty:            DirtyPiece        // NNUE差分の材料（下記）
 ```
 
-### DirtyPiece（NNUE要件の先読み）
+### DirtyPiece（NNUEの要件を見越した設計）
 
 1手で状態が変わる駒は最大2枚（動かした駒＋取られた駒）。
 玉の移動はaccumulator全再計算になるためフラグで区別する。
@@ -100,11 +100,11 @@ DirtyPiece {
 }
 ```
 
-BonaPiece番号への変換はnnueクレート側で行い、coreは盤・手駒の
-語彙だけで差分を記録する。do_moveは常にDirtyPieceを埋める（契約）。
+BonaPiece番号への変換はnnueクレート側で行い、coreは盤上の駒と
+手駒の変化だけで差分を記録する。do_moveは常にDirtyPieceを埋める（契約）。
 NNUEのaccumulator本体はcoreに置かず、nnueクレートが探索plyに
 沿った自前のスタックを持ち、StateInfoのDirtyPieceを読んで更新する。
-これでcoreの探索非依存（ADR-0002）とP4の差分計算が両立する。
+これでcoreの探索非依存（ADR-0002）とP4の差分更新が両立する。
 
 ### do_move / undo_move
 

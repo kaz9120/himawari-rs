@@ -39,7 +39,7 @@
 
 ## Consequences
 
-[ADR-0074](0074-feature-verification.md)の機能検証が2例目の役割を果たした。
+[ADR-0074](0074-feature-verification.md)の機能検証が役に立った2例目である。
 1例目（[ADR-0072](0072-history-pruning.md)）は「実装したが動いていない」の
 検出だった。今回は「実装したが逆効果」の検出である。SPRTを回していれば
 数時間を失っていた。

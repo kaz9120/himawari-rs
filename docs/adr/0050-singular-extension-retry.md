@@ -6,7 +6,7 @@
 
 ## Context
 
-探索改善キャンペーンの第5弾で、過去失敗組の再挑戦第1号。
+一連の探索改善の第5弾で、過去に棄却した案への最初の再挑戦である。
 P3では2546局で-16.0 [-29.4,-2.6]の明確なマイナスだった
 （4c8e538）。当時の分析は「除外手つき検証探索のコストに
 TTエントリの質が釣り合っていない」。
@@ -15,21 +15,21 @@ TTエントリの質が釣り合っていない」。
 correction history・continuation historyでTTに入る値と
 オーダリングの質が上がった。TT手が本当に「唯一の良い手」で
 ある局面を検証するコストが、当時より回収しやすい。
-SF系ではsingular extensionは延長系で最大の利得源であり、
+Stockfish系ではsingular extensionは延長系で最大の利得源であり、
 ROADMAPの候補でも再挑戦を予定していた。
 
 ## 選択肢と比較
 
-### 案A: SF簡易形（単独延長のみ）
+### 案A: Stockfish簡易形（単独延長のみ）
 
 TT手の除外手つき検証探索を行い、fail-lowなら+1延長する。
 double extension・negative extension・multi-cutは入れない。
-判定単位が明確で、キャンペーンのチューニングなし方針に合う。
+判定単位が明確で、一連の改善のチューニングなし方針に合う。
 
-### 案B: SF完全形（double/negative extension、multi-cut込み）
+### 案B: Stockfish完全形（double/negative extension、multi-cut込み）
 
 利得は最大だが、係数が多くチューニングと不可分。案Aで
-土台の成否を判定してから積む。
+基本形の効果を確かめてから拡張する。
 
 ### 案C: P3実装の条件再現
 
@@ -48,7 +48,7 @@ double extension・negative extension・multi-cutは入れない。
 - TT手あり、かつ`pos.is_legal(tt_move)`
 - TTのboundがUPPERでない（lower/exact）
 - TTのdepth >= depth - 3
-- |TT値| が詰み圏でない
+- |TT値| が詰みスコアでない
 
 検証探索:
 - `singular_beta = tt_value - 2 * depth`（cpスケール）
@@ -58,7 +58,7 @@ double extension・negative extension・multi-cutは入れない。
   TT手の探索深さを+1する（王手延長とは重複させず、
   `max(王手延長, singular延長)`とする）
 
-除外手（excluded move）の配管:
+除外手（excluded move）の受け渡し:
 - 探索関数に除外手を渡す（plyごとのスタックでもパラメータでも、
   既存の流儀に合わせる）
 - 除外手つき探索では次の5つを行う
@@ -69,7 +69,7 @@ double extension・negative extension・multi-cutは入れない。
   - correction history更新をスキップする
 
 初期定数（チューニングしない）: depth >= 7、tt_depth >= depth-3、
-margin = 2*depth、検証深さ = depth/2。SF系の実績値。
+margin = 2*depth、検証深さ = depth/2。Stockfish系の実績値。
 
 ### 検証
 
@@ -82,7 +82,7 @@ margin = 2*depth、検証深さ = depth/2。SF系の実績値。
 
 - 検証探索のコストで生ノードあたりの速度は下がる。延長の
   質で回収する構造なので、NPSでなくSPRTだけで判定する
-- 除外手の配管は将来のmulti-cut（検証探索でbeta超えなら
+- 除外手の受け渡しは将来のmulti-cut（検証探索でbeta超えなら
   複数手が良い=カット）にも流用できる。案Bの拡張は本ADRの
   H1採択後に別ADRで検討する
 - H0の場合、P3の分析（TT質不足）に加えて「NNUE時代でも

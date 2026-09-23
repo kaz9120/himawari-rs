@@ -58,7 +58,7 @@ mate_1plyの通常探索組み込み（[ADR-0139](0139-mate1ply-in-search-retry.
 
 **撤退ライン**。詰将棋集で実用的な解答率（5手詰め99%・9手詰め9割以上を
 目安）に達しない実装は対局へ進めない。SPRTで両条件H0なら、宣言勝ち
-（[ADR-0030](0030-nyugyoku-declaration.md)）周りの限定用途だけ残して閉じる。
+（[ADR-0030](0030-nyugyoku-declaration.md)）周りの限定用途だけ残して打ち切る。
 
 ## Consequences
 

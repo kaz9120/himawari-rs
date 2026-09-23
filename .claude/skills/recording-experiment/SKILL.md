@@ -1,6 +1,6 @@
 ---
 name: recording-experiment
-description: 実験キューで走り終えた実験の結果を、ADRへ記録するPRを1本出す。hmwr exp reportの表を貼り、事前登録の読み方に照らして判断を書き、Statusと索引を更新する。実験のspecの名前とIssue番号を受け取って動く。キューがclaude -pで起動するほか、対話セッションで結果を記録するときも使う。
+description: 実験キューで走り終えた実験の結果を、ADRへ記録するPRを1本出す。hmwr exp reportの表を貼り、事前登録の解釈に照らして判断を書き、Statusと索引を更新する。実験のspecの名前とIssue番号を受け取って動く。キューがclaude -pで起動するほか、対話セッションで結果を記録するときも使う。
 ---
 
 # 実験の結果を記録する
@@ -22,14 +22,14 @@ description: 実験キューで走り終えた実験の結果を、ADRへ記録�
    cat experiments/<名前>.toml       # adr = "NNNN" を読む
    ```
 
-   ADRは `docs/adr/NNNN-*.md` にある。「仮説」「測定の設計」「読み方の
+   ADRは `docs/adr/NNNN-*.md` にある。「仮説」「測定の設計」「解釈の
    事前登録」の節を読む。対局の数値は `data/sprt/<対局名>.result` が正で、
    表はそこから作られている
 
 2. ブランチを切る。名前は `docs-adrNNNN-result` にする。専用のworktreeで
    走っているときは、いまのHEAD（origin/main）から切る
 
-3. ADRへ「## 測定（日付）」の節を足す。置き場は「読み方の事前登録」の
+3. ADRへ「## 測定（日付）」の節を足す。置き場は「解釈の事前登録」の
    直後、「Consequences」の前にする。中身は次の順で書く
 
    - 走った条件のうち、事前登録から変わったものがあれば先に書く
@@ -64,7 +64,7 @@ description: 実験キューで走り終えた実験の結果を、ADRへ記録�
 7. Issueへ、PRのURLと結論を1行ずつコメントする
 
 8. 専用のworktreeで走っているときは、最後に `git switch --detach origin/main` で
-   戻す。作業ツリーに変更を残さない
+   戻す。worktreeに変更を残さない
 
 ## しないこと
 

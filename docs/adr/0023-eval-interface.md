@@ -20,13 +20,13 @@ DirtyPieceの消費、玉移動時のrefresh）を先取りした形にする。
 
 ### 案B: ジェネリクス（探索関数をEvalで単相化）
 
-コストゼロだが探索コード全体に型パラメータが感染し、
+コストゼロだが探索コード全体に型パラメータが波及し、
 ビルド時間とコードサイズが倍々になる。
 
 ### 案C: enumディスパッチ
 
 `enum Evaluator { Material(..), Nnue(..) }` をスレッドローカルに
-持ち、matchで分岐する。分岐は1回で予測が効き、型の感染がない。
+持ち、matchで分岐する。分岐は1回で予測が効き、型パラメータの波及がない。
 バリアント追加時はenumに1行足す。
 
 ## Decision
@@ -43,7 +43,7 @@ evaluate(&mut self, pos: &Position) -> Value  // 手番視点の評価値
 - 探索はdo_move/undo_moveと対にpush/popを必ず呼ぶ（契約）。
   NNUE（P4）はこのフックでaccumulatorスタックを進める。
   ADR-0014の「accumulatorはnnueクレートのplyスタック」への布石
-- P2の実装は `Material`: StateInfoのmaterial（差分計算済み、
+- P2の実装は `Material`: StateInfoのmaterial（差分更新済み、
   ADR-0014）に手番ボーナス（tempo、初期値20）を加えて返す。
   push/popは何もしない
 - 評価値のスケールは歩=90を基準とするセンチポーン風の整数

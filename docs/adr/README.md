@@ -56,7 +56,7 @@
 - [0025](0025-move-ordering.md) 指し手オーダリング
 - [0110](0110-g1-history.md)〜[0119](0119-g10-book.md) 参照実装への追従（G1〜G10、単純加算+525.5 Elo）
 - [0125](0125-search-decomposition.md) 探索本体を責務ごとに切り出す
-- [0155](0155-reference-walkthrough.md) 残った乖離の監査と、整列を見送った判断
+- [0155](0155-reference-walkthrough.md) 残った乖離の監査と、追従を見送った判断
 - [0160](0160-revisit-rejected-under-better-eval.md) 棄却済みの追従を掘り起こす案（導入済みと判明して棄却）
 - [0162](0162-parallel-group.md) 並列の未測定3件を1群で測る（TTの手番分割は見送り）
 - [0177](0177-tt-probcut-depth-slack.md) TT-ProbCutの深さ差を狭める案（測って棄却）
@@ -67,14 +67,14 @@
 
 構造の決定と、幅・量子化をめぐる測定。
 
-- [0034](0034-nnue-architecture.md) NNUE特徴量とネットワーク構成
+- [0034](0034-nnue-architecture.md) NNUE特徴量とネットの構成
 - [0035](0035-nnue-accumulator.md) 差分計算（accumulator）
 - [0036](0036-nnue-quantization-simd.md) 量子化とSIMD実装
 - [0127](0127-net-shape-bench.md) 構造の探索は学習前の速度計測から始める
 - [0138](0138-ft-i8-quantization.md) FT重みのi8量子化
 - [0156](0156-bucket-accumulator-cache.md) 玉位置ごとのaccumulatorキャッシュ
 - [0159](0159-ft-width-1024.md) FT幅を1024へ拡大する
-- [0168](0168-ft-dim-reorder.md) FT出力次元の並べ替えで第1層の空回りを減らす
+- [0168](0168-ft-dim-reorder.md) FT出力次元の並べ替えで第1層の無駄な計算を減らす
 - [0170](0170-l1-half.md) 後段のL1を16へ半減する
 - [0171](0171-ft-pairwise-product.md) FT出力の対を掛けて駒対の相互作用を入れる
 - [0172](0172-multihot-input.md) 入力を玉と駒のマルチホットにする案（測って棄却）
@@ -93,12 +93,12 @@
 - [0136](0136-quiet-teacher-positions.md) 教師局面をqsearchの静止局面へ置き換える
 - [0192](0192-tanuki2024-teacher.md) 教師データをtanuki- 2024の78.6億局面へ置き換える
 - [0193](0193-halfka-input.md) 入力をHalfKAへ拡張し、両玉の関係を1次特徴にする
-- [0194](0194-dead-dim-measurement.md) 死んだ活性の次元を、測る台を揃えてから数える
+- [0194](0194-dead-dim-measurement.md) 死んだ活性の次元を、測定用の局面集合を揃えてから数える
 - [0195](0195-reorder-on-late-positions.md) FT次元の並べ替えを実戦の局面分布で決め直す
 - [0196](0196-rank-hinge-diagnosis.md) ランキング損失のヒンジ発火を分け、後続の方向を決める
 - [0197](0197-hard-negatives.md) ランキング損失の負例に、静的評価で上位の手を混ぜる
 - [0198](0198-phase-indicator.md) 将棋の進行度の指標を、評価の系統誤差で選ぶ（測って出力バケットを閉じた）
-- [0199](0199-roadmap-inventory.md) ROADMAPを棚卸しし、注力を並列の実戦化とデータの質へ組み替える
+- [0199](0199-roadmap-inventory.md) ROADMAPを棚卸しし、注力を複数スレッドでの測定と改善、データの質へ組み替える
 - [0200](0200-thread-scaling.md) スレッド数ごとのElo曲線を時間オッズで較正し、並列効率を測る
 - [0201](0201-loop-recipe.md) 自己生成と継続学習のループを型にし、資源の投資対効果を見積もる
 - [0202](0202-smp-loss-diagnosis.md) Lazy SMPの損失を深さ到達で切り分け、ヘルパーの多様化で減らす
@@ -107,19 +107,19 @@
 - [0205](0205-relabel-loop.md) 教師の局面を自分の探索で付け直し、ゼロから学習し直す世代を試す
 - [0206](0206-entering-king-mix.md) 入玉5億局面を教師へ混ぜ、入玉局面の弱さを埋める
 - [0210](0210-teacher-mix-control.md) 入玉混合の+37.3を、量・系列・入玉の3つの説明へ統制群で分ける
-- [0212](0212-tanuki-bench-mix.md) tanukiの測定台で、別系列の混合が本学習の教師でも効くかを測る
+- [0212](0212-tanuki-bench-mix.md) tanukiの小規模学習で、別系列の混合が本学習の教師でも効くかを測る
 - [0207](0207-roadmap-focus-eval.md) ROADMAPを再び棚卸しし、注力を評価関数の学習と構造の1本に絞る
 - [0213](0213-freeze-structure-focus.md) 評価関数の構造を凍結し、「焦点」を学習側で掘る
-- [0214](0214-epochs-bench.md) 3億の測定台で、同じデータの2周が新規データの追加に匹敵するかを測る
+- [0214](0214-epochs-bench.md) 3億局面の小規模学習で、同じデータの2周が新規データの追加に匹敵するかを測る
 - [0215](0215-dl-relabel-pilot.md) 公開dlshogiの探索なし評価値で教師を付け直し、E4の1億で効きを測る
 - [0216](0216-defense-oversample.md) 攻撃的な受けの局面を3倍に重くして学習し、盲点が埋まるかを測る
-- [0217](0217-sprt-pass-cap.md) SPRTの既定に10,000ペアの上限を置き、判定に至らない走行を見送りにする
+- [0217](0217-sprt-pass-cap.md) SPRTの既定に10,000ペアの上限を置き、判定に至らない実行を見送りにする
 - [0218](0218-main-two-epochs.md) 本学習の78.5億を2周し、1周のネットとSPRTで比べる
 - [0219](0219-relabel-2b-in-place.md) 本学習の先頭20億をdlshogiの評価値へその場で付け直し、量に対する質を測る
-- [0220](0220-dev-environment-redesign.md) 開発環境を再設計する。状態の契約・ポータル・コマンドの棚卸し・遠隔制御
-- [0144](0144-selfplay-teacher-loop.md) 自前生成による世代ループ
+- [0220](0220-dev-environment-redesign.md) 開発環境を再設計する。状態の出力仕様・ポータル・コマンドの棚卸し・遠隔制御
+- [0144](0144-selfplay-teacher-loop.md) 自己生成による世代ループ
 - [0185](0185-sibling-ranking-loss.md) 兄弟局面のランキング損失を回帰へ足す
-- [0187](0187-selfplay-gen2.md) 自前生成の第2世代を診断先行で測る案（基準の誤りで0188へ）
+- [0187](0187-selfplay-gen2.md) 自己生成の第2世代を診断先行で測る案（基準の誤りで0188へ）
 - [0188](0188-selfplay-rl-loop.md) 自己生成の世代ループを自給自足の継続学習で回す
 - [0190](0190-selfplay-decided-thinning.md) 自己生成教師の決着圏を間引き、分布の偏りを直す
 
@@ -176,18 +176,18 @@
 | [0031](0031-lazy-smp.md) | Lazy SMP | 2026-07-19 |  | accepted |
 | [0032](0032-multipv.md) | MultiPV | 2026-07-19 |  | accepted |
 | [0033](0033-ponder.md) | ponder | 2026-07-19 |  | accepted |
-| [0034](0034-nnue-architecture.md) | NNUE特徴量とネットワーク構成 | 2026-07-19 |  | accepted |
-| [0035](0035-nnue-accumulator.md) | NNUE差分計算（accumulator） | 2026-07-19 |  | accepted |
+| [0034](0034-nnue-architecture.md) | NNUE特徴量とネットの構成 | 2026-07-19 |  | accepted |
+| [0035](0035-nnue-accumulator.md) | NNUE差分更新（accumulator） | 2026-07-19 |  | accepted |
 | [0036](0036-nnue-quantization-simd.md) | NNUE量子化とSIMD実装 | 2026-07-19 |  | accepted |
-| [0037](0037-nnue-file-format.md) | NNUE評価ファイルフォーマット | 2026-07-19 |  | accepted |
+| [0037](0037-nnue-file-format.md) | NNUE評価関数ファイルのフォーマット | 2026-07-19 |  | accepted |
 | [0038](0038-training-data-format.md) | 教師データフォーマット（PackedSfenValue互換） | 2026-07-20 |  | accepted（2026-07-20オーナー承認） |
 | [0039](0039-trainer-v1.md) | 学習器v1（教師あり） | 2026-07-20 |  | superseded |
 | [0040](0040-training-infra-v2.md) | 学習器v2（PyTorch移行） | 2026-07-20 |  | accepted（2026-07-20オーナー承認） |
 | [0041](0041-checkpoint-format.md) | 学習チェックポイント形式 | 2026-07-20 |  | rejected（ADR-0040のPyTorch移行により、torch.save/torch.loadで代替） |
 | [0042](0042-training-log-registry.md) | 学習ログと実験レジストリ | 2026-07-20 |  | rejected（ADR-0040のPyTorch移行により、TensorBoard等で代替） |
 | [0043](0043-pyo3-bridge.md) | PyO3ブリッジ（学習パイプラインのRust-Python連携） | 2026-07-20 |  | accepted（2026-07-20オーナー承認） |
-| [0044](0044-p7-feature-experiments.md) | P7特徴量実験（玉ライン特徴・利き塔有無の比較） | 2026-07-21 |  | accepted（2026-07-21オーナー承認） |
-| [0045](0045-remove-effect-tower.md) | 利き塔の除去 | 2026-07-21 |  | accepted（2026-07-21オーナー承認） |
+| [0044](0044-p7-feature-experiments.md) | P7特徴量実験（玉ライン特徴・利き入力有無の比較） | 2026-07-21 |  | accepted（2026-07-21オーナー承認） |
+| [0045](0045-remove-effect-tower.md) | 利き入力の除去 | 2026-07-21 |  | accepted（2026-07-21オーナー承認） |
 | [0046](0046-correction-history.md) | correction history（静的評価の履歴補正）を導入する | 2026-07-21 |  | accepted |
 | [0047](0047-continuation-history.md) | continuation history（手系列条件の履歴）を導入する | 2026-07-21 |  | accepted |
 | [0048](0048-capture-history.md) | capture history（取る手の履歴）を導入する | 2026-07-21 |  | rejected |
@@ -203,11 +203,11 @@
 | [0058](0058-iteration-start-cutoff.md) | 反復深化の次イテレーション開始を時間予測で抑止する | 2026-07-25 |  | rejected（固定比率はADR-0059の係数積の粗い近似にすぎず、統合した） |
 | [0059](0059-easy-move-scaling.md) | 思考時間を局面の難易度でスケールする | 2026-07-25 |  | accepted |
 | [0060](0060-opening-book-policy.md) | 定跡の方針 | 2026-07-25 |  | accepted |
-| [0061](0061-psv-memmap-dataset.md) | 学習データの事前シャッフルを廃止し、読み込みをRAM常駐＋forkに統一する | 2026-07-25 |  | superseded（[0065](0065-large-scale-dataloader.md)） |
+| [0061](0061-psv-memmap-dataset.md) | 教師データの事前シャッフルを廃止し、読み込みをRAM常駐＋forkに統一する | 2026-07-25 |  | superseded（[0065](0065-large-scale-dataloader.md)） |
 | [0062](0062-root-move-nodes.md) | root手ごとの探索ノード数を集計する | 2026-07-25 |  | accepted |
 | [0063](0063-book-loader-and-mini-book.md) | 定跡ローダと最小規模の定跡生成 | 2026-07-25 |  | accepted |
 | [0064](0064-dense-ft-gradient-mps.md) | FT勾配をdenseにし、学習をMPSで回す | 2026-07-26 |  | accepted |
-| [0065](0065-large-scale-dataloader.md) | 学習データをバッチ一括抽出とチャンク読みで供給する | 2026-07-26 |  | accepted |
+| [0065](0065-large-scale-dataloader.md) | 教師データをバッチ一括抽出とチャンク読みで供給する | 2026-07-26 |  | accepted |
 | [0066](0066-halfkp-factorizer.md) | 学習時だけ駒単独の仮想特徴を併用する（factorizer） | 2026-07-26 |  | accepted |
 | [0067](0067-ft-dimension-512.md) | FT次元を256から512へ拡大する | 2026-07-26 |  | accepted |
 | [0068](0068-sprt-driven-versioning.md) | バージョニングをSPRT採択基準に切り替え、フェーズ管理を終える | 2026-07-27 |  | accepted |
@@ -225,7 +225,7 @@
 | [0081](0081-portability.md) | 開発環境をスクリプトで再現可能にする | 2026-07-28 |  | accepted |
 | [0082](0082-book-release.md) | 定跡をGitHub Releaseで配布し、生成条件を成果物に残す | 2026-07-28 |  | accepted |
 | [0083](0083-windows-static-crt.md) | WindowsバイナリをMSVCランタイム静的リンクで配布する | 2026-07-28 |  | accepted |
-| [0084](0084-lmr-cutnode.md) | LMRにcutNode項を入れる（cutNodeの配管を含む） | 2026-07-28 |  | rejected |
+| [0084](0084-lmr-cutnode.md) | LMRにcutNode項を入れる（cutNodeの受け渡しを含む） | 2026-07-28 |  | rejected |
 | [0085](0085-correction-history-multi.md) | correction historyを3系統に増やす | 2026-07-28 |  | accepted |
 | [0086](0086-search-observability.md) | 探索の可観測性を上げる（seldepth・currmove） | 2026-07-28 |  | accepted |
 | [0087](0087-sprt-resume.md) | 中断したSPRTを棋譜から再開できるようにする | 2026-07-28 |  | accepted |
@@ -246,19 +246,19 @@
 | [0102](0102-move-horizon.md) | 残り手数の見積もりをmove horizon方式にする | 2026-07-29 | -107.2 | rejected |
 | [0103](0103-root-score-gap.md) | rootの1位2位差を打ち切りの判定材料に足す案（実装前に棄却） | 2026-07-29 |  | rejected |
 | [0104](0104-ponderhit-time-accounting.md) | ponderで読んだ時間を持ち時間の予算に数える | 2026-07-29 | -117.8 | rejected |
-| [0105](0105-ttpv-propagation.md) | ttPvの伝播を直しRFPの安全弁に使う案（発動率不足で棄却） | 2026-07-29 |  | rejected |
+| [0105](0105-ttpv-propagation.md) | ttPvの伝播を直しRFPの除外条件に使う案（発動率不足で棄却） | 2026-07-29 |  | rejected |
 | [0106](0106-ponderhit-continue.md) | ponderhitで探索を止めずに時間制限だけ差し替える | 2026-07-29 | -54.3 | rejected |
 | [0107](0107-ponder-optimum-bonus.md) | USI_Ponderが有効なとき思考時間を1.25倍する | 2026-07-29 | -1.1 | rejected |
 | [0108](0108-license-gplv3.md) | ライセンスをMITからGPLv3へ変更する | 2026-07-30 |  | accepted |
 | [0109](0109-reference-parity.md) | 参照実装への追従を群単位で進める | 2026-07-30 |  | accepted |
-| [0110](0110-g1-history.md) | historyの面と更新を参照実装へ揃える（G1） | 2026-07-30 | +88.5 | accepted |
+| [0110](0110-g1-history.md) | historyの添字の構成と更新を参照実装へ揃える（G1） | 2026-07-30 | +88.5 | accepted |
 | [0111](0111-g2-lmr.md) | statScoreとLMRのリダクションを参照実装へ揃える（G2） | 2026-07-30 | +124.0 | accepted |
 | [0112](0112-g3-pruning.md) | ムーブループの枝刈りを参照実装へ揃える（G3） | 2026-07-30 | +95.2 | accepted |
 | [0113](0113-g4-eval-pruning.md) | improvingの再定義とevalベース枝刈りを参照実装へ揃える（G4） | 2026-07-30 | +41.1 | accepted |
 | [0114](0114-g5-singular.md) | singularの条件とmulti-cut・negative extensionを参照実装へ揃える（G5） | 2026-07-30 | +48.2 | accepted |
 | [0115](0115-g6-qsearch.md) | qsearchを参照実装へ揃え、mate_1plyを指さない方式へ書き換える（G6） | 2026-07-30 | +45.6 | accepted |
 | [0116](0116-g7-timeman.md) | 停止を予約する構造へ移し最小思考時間を入れる（G7） | 2026-07-31 | ±0（非劣性） | accepted |
-| [0117](0117-g8-ponder.md) | ponderの会計・継続・予約を参照実装へ揃える（G8） | 2026-07-31 | +19.3 | accepted |
+| [0117](0117-g8-ponder.md) | ponder時間の計上・継続・予約を参照実装へ揃える（G8） | 2026-07-31 | +19.3 | accepted |
 | [0118](0118-g9-aspiration.md) | 反復深化とaspirationを参照実装へ揃える（G9） | 2026-07-31 | +55.6 | accepted |
 | [0119](0119-g10-book.md) | 定跡・投票・実務オプションを参照実装へ揃える（G10） | 2026-08-01 | +8.0 | accepted |
 | [0120](0120-after-parity.md) | 追従一巡後の方向を評価関数と探索の結合へ置く | 2026-08-01 |  | superseded |
@@ -268,12 +268,12 @@
 | [0124](0124-hot-path-allocs.md) | 挙動を変えない高速化を群でまとめて測る | 2026-08-01 |  | accepted |
 | [0125](0125-search-decomposition.md) | 探索本体を責務ごとに切り出す | 2026-08-01 |  | accepted |
 | [0126](0126-mate-score-in-training.md) | 教師データの詰みスコアをどう扱うか | 2026-08-01 |  | accepted（2026-08-01オーナー判断。現行の素通しを維持する） |
-| [0127](0127-net-shape-bench.md) | ネットワーク構造の探索は、学習前の速度計測から始める | 2026-08-01 |  | accepted |
+| [0127](0127-net-shape-bench.md) | ネットの構造の探索は、学習前の速度計測から始める | 2026-08-01 |  | accepted |
 | [0128](0128-round-robin-league.md) | 3つ以上の候補は総当たりリーグ戦で順位づける | 2026-08-01 |  | accepted |
-| [0129](0129-auxiliary-heads.md) | 学習時だけの補助ヘッドでFTの表現を厚くする | 2026-08-02 |  | accepted |
+| [0129](0129-auxiliary-heads.md) | 学習時だけの補助ヘッドでFTの表現の情報量を増やす | 2026-08-02 |  | accepted |
 | [0130](0130-freeze-ft.md) | FTを固定して、後段の実験を一桁速くする | 2026-08-02 |  | accepted |
 | [0131](0131-frozen-ft-light-head.md) | 良いFTを凍結して軽量ヘッドを載せる作り方を、本番規模で確かめる | 2026-08-03 |  | accepted |
-| [0132](0132-ft-distillation.md) | 太いFTの表現を、細いFTへ蒸留する | 2026-08-03 |  | proposed |
+| [0132](0132-ft-distillation.md) | 大きいFTの表現を、小さいFTへ蒸留する | 2026-08-03 |  | proposed |
 | [0133](0133-effect-pretraining.md) | 利き予測でFTを自己教師あり事前学習する | 2026-08-03 |  | accepted |
 | [0134](0134-head-capacity.md) | 後段の容量が壁かを、上向きに振って確かめる | 2026-08-04 |  | proposed |
 | [0135](0135-teacher-data-3b.md) | 教師データを29.9億局面へ広げる | 2026-08-04 |  | accepted |
@@ -282,7 +282,7 @@
 | [0138](0138-ft-i8-quantization.md) | FT重みをi8へ量子化して更新帯域を半減する | 2026-08-04 |  | accepted |
 | [0139](0139-mate1ply-in-search-retry.md) | mate_1plyを通常探索へ入れ直す | 2026-08-04 |  | rejected |
 | [0140](0140-king-line-features.md) | 玉ライン特徴をHalfKPへ追加する | 2026-08-04 |  | proposed |
-| [0141](0141-singular-rate-calibration.md) | singular率を設計点へ較正し、多段延長を再訪する | 2026-08-04 |  | rejected |
+| [0141](0141-singular-rate-calibration.md) | singular率を想定値へ較正し、多段延長を再訪する | 2026-08-04 |  | rejected |
 | [0142](0142-dfpn-mate-search.md) | df-pnの詰み探索をrootへ並走させる | 2026-08-04 |  | proposed（保留。注力の外、[0207](0207-roadmap-focus-eval.md)） |
 | [0143](0143-spsa-tuning.md) | 探索定数をSPSAで一括チューニングする | 2026-08-04 | +32.0、再走+21.2 | accepted |
 | [0144](0144-selfplay-teacher-loop.md) | 自前gensfenで教師データの世代ループを始める | 2026-08-04 |  | accepted |
@@ -309,7 +309,7 @@
 | [0165](0165-bona-block-layout.md) | BonaPiece集合をブロック単位のレイアウトへ変える | 2026-08-15 |  | accepted |
 | [0166](0166-movepick-frame.md) | MovePickerの生成段を切り出してフレームを縮める | 2026-08-15 |  | accepted |
 | [0167](0167-nnue-kernel-instructions.md) | NNUE推論の命令数を削る2案を測り、どちらも見送る | 2026-08-15 |  | rejected |
-| [0168](0168-ft-dim-reorder.md) | FT出力次元を並べ替えて第1層の空回りを減らす | 2026-08-15 |  | accepted |
+| [0168](0168-ft-dim-reorder.md) | FT出力次元を並べ替えて第1層の無駄な計算を減らす | 2026-08-15 |  | accepted |
 | [0169](0169-clip-nnz-fusion.md) | 活性の構築と非ゼロチャンクの列挙を1パスにまとめる案を棄却する | 2026-08-15 |  | rejected |
 | [0170](0170-l1-half.md) | 後段のL1を16へ半減する | 2026-08-16 | +13.4 | accepted |
 | [0171](0171-ft-pairwise-product.md) | FT出力の対を掛けて駒対の相互作用を入れる | 2026-08-16 | +65.4 | accepted |
@@ -322,25 +322,25 @@
 | [0178](0178-textlint-gate.md) | 日本語文書の書き方をtextlintでCIゲートにする | 2026-08-20 |  | accepted |
 | [0179](0179-hmwr-cli.md) | 日常操作をhmwrコマンドひとつの入口にまとめる | 2026-08-20 |  | superseded |
 | [0180](0180-hmwr-cli-in-python.md) | hmwrを独立コマンドにし、実処理をPythonへ移す | 2026-08-20 |  | accepted |
-| [0181](0181-agent-surface.md) | エージェントの作業面を実態へ合わせ、規律を設定へ移す | 2026-08-20 |  | accepted |
+| [0181](0181-agent-surface.md) | エージェント向けの設定を実態へ合わせ、規律を設定ファイルへ移す | 2026-08-20 |  | accepted |
 | [0182](0182-readme-audience.md) | READMEの読み手を2つに固定し、変わり続ける事実を置かない | 2026-08-20 |  | accepted |
 | [0183](0183-stacked-pairwise-product.md) | FT積を2段にして4駒の相互作用を入れる | 2026-08-22 | −9.8 | rejected |
 | [0184](0184-cross-view-product.md) | 視点をまたぐ対の積で両玉の相互作用を入れる | 2026-08-23 | −9.2 | rejected |
 | [0185](0185-sibling-ranking-loss.md) | 兄弟局面のランキング損失を回帰へ足す | 2026-08-23 | +28.9 | accepted |
 | [0186](0186-repetition-scan-cap.md) | 千日手判定の走査を16手で打ち切る | 2026-08-26 | +14.3 | accepted |
-| [0187](0187-selfplay-gen2.md) | 自前生成の第2世代を診断先行の混合再学習で測る | 2026-08-26 |  | superseded |
+| [0187](0187-selfplay-gen2.md) | 自己生成の第2世代を診断先行の混合再学習で測る | 2026-08-26 |  | superseded |
 | [0188](0188-selfplay-rl-loop.md) | 自己生成の世代ループを自給自足の継続学習で回す | 2026-08-26 | +13.9 | accepted |
 | [0189](0189-artifact-retention.md) | 成果物の保持を日数で決め、掃除をhmwr cleanに固定する | 2026-08-27 |  | accepted |
 | [0190](0190-selfplay-decided-thinning.md) | 自己生成教師の決着圏を間引き、分布の偏りを直す | 2026-08-29 | −12.2 | rejected |
 | [0191](0191-blindspot-benchmark.md) | floodgateの崩壊局面から盲点ベンチマークを作り、世代の定点観測にする | 2026-08-29 |  | accepted |
 | [0192](0192-tanuki2024-teacher.md) | 教師データをtanuki- 2024の78.6億局面へ置き換える | 2026-08-29 | +43.2 | accepted |
 | [0193](0193-halfka-input.md) | 入力をHalfKAへ拡張し、両玉の関係を1次特徴にする | 2026-08-29 | −3.5 | rejected |
-| [0194](0194-dead-dim-measurement.md) | 死んだ活性の次元を、測る台を揃えてから数える | 2026-09-02 |  | proposed |
+| [0194](0194-dead-dim-measurement.md) | 死んだ活性の次元を、測定用の局面集合を揃えてから数える | 2026-09-02 |  | proposed |
 | [0195](0195-reorder-on-late-positions.md) | FT次元の並べ替えを実戦の局面分布で決め直す | 2026-09-02 |  | accepted |
 | [0196](0196-rank-hinge-diagnosis.md) | ランキング損失のヒンジ発火を分け、後続の方向を決める | 2026-09-02 |  | proposed |
 | [0197](0197-hard-negatives.md) | ランキング損失の負例に、静的評価で上位の手を混ぜる | 2026-09-02 | −19.2 | rejected |
 | [0198](0198-phase-indicator.md) | 将棋の進行度の指標を、評価の系統誤差で選ぶ | 2026-09-03 |  | accepted |
-| [0199](0199-roadmap-inventory.md) | ROADMAPを棚卸しし、注力を並列の実戦化とデータの質へ組み替える | 2026-09-03 |  | accepted |
+| [0199](0199-roadmap-inventory.md) | ROADMAPを棚卸しし、注力を複数スレッドでの測定と改善、データの質へ組み替える | 2026-09-03 |  | accepted |
 | [0200](0200-thread-scaling.md) | スレッド数ごとのElo曲線を時間オッズで較正し、並列効率を測る | 2026-09-03 |  | accepted |
 | [0201](0201-loop-recipe.md) | 自己生成と継続学習のループを型にし、資源の投資対効果を見積もる | 2026-09-04 | +20.2 | accepted |
 | [0202](0202-smp-loss-diagnosis.md) | Lazy SMPの損失を深さ到達で切り分け、ヘルパーの多様化で減らす | 2026-09-04 | +19.8 | accepted |
@@ -352,16 +352,16 @@
 | [0208](0208-hmwr-resource-verbs.md) | hmwrのコマンドを手順の固定から資源への操作へ切り直す | 2026-09-17 |  | accepted |
 | [0209](0209-workflow-layers.md) | 仕事を4つの層へ振り分け、実験をIssueのキューで無人実行する | 2026-09-17 |  | accepted |
 | [0210](0210-teacher-mix-control.md) | 入玉混合の+37.3を、量・系列・入玉の3つの説明へ統制群で分ける | 2026-09-17 |  | accepted |
-| [0212](0212-tanuki-bench-mix.md) | tanukiの測定台で、別系列の混合が本学習の教師でも効くかを測る | 2026-09-18 |  | rejected |
+| [0212](0212-tanuki-bench-mix.md) | tanukiの小規模学習で、別系列の混合が本学習の教師でも効くかを測る | 2026-09-18 |  | rejected |
 | [0211](0211-check-extension-see.md) | 王手延長を損をしない王手に限る | 2026-09-18 |  | rejected（判定に至らず打ち切り） |
 | [0213](0213-freeze-structure-focus.md) | 評価関数の構造を凍結し、「焦点」を学習側で掘る | 2026-09-18 |  | proposed |
-| [0214](0214-epochs-bench.md) | 3億の測定台で、同じデータの2周が新規データの追加に匹敵するかを測る | 2026-09-18 |  | accepted（2周は+32.2 Eloで効いたが、新規データの+70.4に劣る） |
+| [0214](0214-epochs-bench.md) | 3億局面の小規模学習で、同じデータの2周が新規データの追加に匹敵するかを測る | 2026-09-18 |  | accepted（2周は+32.2 Eloで効いたが、新規データの+70.4に劣る） |
 | [0215](0215-dl-relabel-pilot.md) | 公開dlshogiの探索なし評価値で教師を付け直し、E4の1億で効きを測る | 2026-09-18 |  | accepted（スケール3水準とも+90超。スケールは600〜340では効きを左右しない） |
 | [0216](0216-defense-oversample.md) | 攻撃的な受けの局面を3倍に重くして学習し、盲点が埋まるかを測る | 2026-09-18 |  | rejected（3倍の複製は−23.8 Elo、順位の差も+1.90から+2.18へ広がった） |
-| [0217](0217-sprt-pass-cap.md) | SPRTの既定に10,000ペアの上限を置き、判定に至らない走行を見送りにする | 2026-09-20 |  | accepted |
+| [0217](0217-sprt-pass-cap.md) | SPRTの既定に10,000ペアの上限を置き、判定に至らない実行を見送りにする | 2026-09-20 |  | accepted |
 | [0218](0218-main-two-epochs.md) | 本学習の78.5億を2周し、1周のネットとSPRTで比べる | 2026-09-21 |  | proposed |
 | [0219](0219-relabel-2b-in-place.md) | 本学習の先頭20億をdlshogiの評価値へその場で付け直し、量に対する質を測る | 2026-09-22 |  | proposed |
-| [0220](0220-dev-environment-redesign.md) | 開発環境を再設計する。状態の契約・ポータル・コマンドの棚卸し・遠隔制御 | 2026-09-22 |  | accepted |
+| [0220](0220-dev-environment-redesign.md) | 開発環境を再設計する。状態の出力仕様・ポータル・コマンドの棚卸し・遠隔制御 | 2026-09-22 |  | accepted |
 
 ## バックログ
 

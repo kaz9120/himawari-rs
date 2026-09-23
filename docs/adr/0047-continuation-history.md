@@ -6,7 +6,7 @@
 
 ## Context
 
-探索改善キャンペーンの第2弾。quiet手のオーダリングは現在、main history だけでスコアしている。
+一連の探索改善の第2弾。静かな手のオーダリングは現在、main history だけでスコアしている。
 main historyは移動後の駒32×移動先81である（`movepick.rs:9-38`、
 `movepick.rs:270-278` のQuietsInit）。counter moveは
 「直前の手→応手1手」の上書きテーブル（`movepick.rs:76`）で、
@@ -15,7 +15,7 @@ main historyは移動後の駒32×移動先81である（`movepick.rs:9-38`、
 continuation historyは「直前の手（または2手前の自分の手）が
 これだったとき、この応手が良かったか」をスコアで持つ。
 文脈条件付きのオーダリングでmain historyより解像度が高く、
-SF系ではオーダリング改善の主力になっている。
+Stockfish系ではオーダリング改善の主力になっている。
 
 ## 選択肢と比較
 
@@ -26,12 +26,12 @@ SF系ではオーダリング改善の主力になっている。
 
 ### 案B: 1-ply + 2-ply（counter + follow-up）
 
-SFと同じく、条件手の（駒、移動先）を外側添字にした単一テーブルを
+Stockfishと同じく、条件手の（駒、移動先）を外側添字にした単一テーブルを
 共有し、1手前と2手前の両方から引いて加算する。ROADMAPの候補でも
 counter/follow-upを1案として扱っており、1SPRTで判定する
 単位として自然。
 
-### 案C: SF完全形（王手中・捕獲別の分離、offset 3/4/6も）
+### 案C: Stockfish完全形（王手中・取る手別の分離、offset 3/4/6も）
 
 効果は最大だが実装・メモリが重く、初回導入の判定単位としては
 過剰。案Bで効果を確認してから拡張を検討すればよい。
@@ -49,7 +49,7 @@ counter/follow-upを1案として扱っており、1SPRTで判定する
 - 更新はmain historyと同形式のgravity
   （クランプ±4000、divisor 16384。`movepick.rs:33-37`と同じ）
 - 保持はHistory/CounterMovesと同じ流儀: スレッドローカル、
-  goごとに貸し出し、NewGameでクリア
+  goごとに探索器へ渡し、NewGameでクリア
 
 search.rs:
 - plyごとの指し手スタック`move_stack`をWorkerに追加
@@ -58,8 +58,8 @@ search.rs:
   `history.get(m) + cont.get(prev1, m) + cont.get(prev2, m)` とする。
   prev1が1手前、prev2が2手前で、NONEなら加算しない。
   MovePicker::nextにcontと前2手を渡す
-- 更新は `update_quiet_stats` で行う。成功したquiet手にbonus、
-  試行済みquiet手に-bonusを与える。main historyと同時に
+- 更新は `update_quiet_stats` で行う。成功した静かな手にbonus、
+  試行済み静かな手に-bonusを与える。main historyと同時に
   prev1/prev2の両方の文脈へ与える（bonus式は既存の
   `depth*depth + 2*depth` のまま）
 
@@ -81,5 +81,5 @@ adjudicate 2000,8）。両エンジンに
 - H1採択後、既存のCounterMoves（候補1手のテーブル）が
   冗長になる可能性がある。除去は別途、非劣性SPRT
   （elo0=-5/elo1=0）で判定する
-- 見直しトリガー: 案C（王手中・捕獲別の分離、深いoffset）は
+- 見直しトリガー: 案C（王手中・取る手別の分離、深いoffset）は
   本テーブルの効果が確認できたら検討する
