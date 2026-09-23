@@ -1,6 +1,6 @@
 """NNUE model definition (ADR-0034, ADR-0040, ADR-0045).
 
-ADR-0045で利き塔を除去し、純粋HalfKP構成にした。
+ADR-0045で利き入力を除去し、純粋HalfKP構成にした。
 """
 
 import torch
@@ -31,7 +31,7 @@ EFFECT_OUT = EFFECT_LEN * 2
 EFFECT_MLP_HIDDEN = 256
 # 利き数の正規化に使う。1升に8枚も利いていれば十分に多い
 EFFECT_SCALE = 8.0
-# 焦点の熱地図の長さ（ADR-0213）。盤の81升をそのまま並べる
+# 焦点のヒートマップの長さ（ADR-0213）。盤の81升をそのまま並べる
 FOCUS_OUT = 81
 # 的中率を測る上位マスの数（ADR-0213の測定の設計）
 FOCUS_TOPK = 5
@@ -101,8 +101,8 @@ class NnueModel(nn.Module):
         # SimCLRは非線形の写像のほうが良い表現になると報告している。
         # このヘッドも書き出しには載らないので推論は変わらない
         self.effect = self._build_effect_head(effect_head)
-        # 焦点の熱地図を当てるヘッド（ADR-0213）。利きヘッドと同じCONCATから
-        # 生やす線形1層で、probeの物差しになる。深くするとヘッド自身が
+        # 焦点のヒートマップを当てるヘッド（ADR-0213）。利きヘッドと同じCONCATから
+        # 生やす線形1層で、probeの指標になる。深くするとヘッド自身が
         # タスクを解いてしまい、「FTが焦点を持っているか」を測れなくなる。
         # 書き出しには載らないので推論は変わらない
         self.focus = self._build_focus_head(focus_head)
@@ -242,7 +242,7 @@ def loss_fn(output, target):
 
 
 def focus_loss_fn(pred, heat):
-    """焦点の熱地図のBCE（ADR-0213）。
+    """焦点のヒートマップのBCE（ADR-0213）。
 
     的は升ごとの0/1で、「続くk手で駒が動いたか取られたか」を表す。
     81升を独立に当てるので、多ラベル分類のBCEになる。
@@ -251,11 +251,11 @@ def focus_loss_fn(pred, heat):
 
 
 def top_k_precision(pred, heat, k=FOCUS_TOPK):
-    """局面ごとに予測の上位k升を取り、熱地図が1だった割合を平均する。
+    """局面ごとに予測の上位k升を取り、ヒートマップが1だった割合を平均する。
 
-    ADR-0213がprobeの指標に選んだ「上位5マスの的中率」である。**自明解も
-    同じ関数で測る。** 局面によらない予測（頻度事前）を全局面へ広げて渡せば、
-    どの局面でも同じk升が選ばれ、比較の土俵が揃う。
+    ADR-0213がprobeの指標に選んだ「上位5マスの的中率」である。**ベースラインも
+    同じ関数で測る。** 局面によらない予測（頻度ベースライン）を全局面へ広げて渡せば、
+    どの局面でも同じk升が選ばれ、比較の条件が揃う。
     """
     idx = pred.topk(k, dim=1).indices
     return heat.gather(1, idx).float().mean()

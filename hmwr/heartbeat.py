@@ -1,6 +1,6 @@
-"""長く走るコマンドの心拍（ADR-0220）。
+"""長く走るコマンドの状態ファイル（ADR-0220）。
 
-ログは人が読む用のまま残し、機械は心拍だけを読む。心拍は
+ログは人が読む用のまま残し、機械は状態ファイルだけを読む。状態ファイルは
 `data/status/<領域>-<名前>.json` に、60秒ごとと開始・終了時に書く。
 `hmwr status` とポータルはこのファイルだけを見て、ログを解釈しない。
 
@@ -18,9 +18,9 @@
 `state` は running・done・failed・stopped の4つ。書き込みは一時ファイルへ
 書いてから改名するので、読み手が途中の内容を見ることはない。
 
-コマンドは `running` で包む。例外で抜ければfailed、何も言わずに抜ければ
+コマンドは `running` でラップする。例外で抜ければfailed、何も言わずに抜ければ
 doneを書く。止めた・見送ったは、抜ける前に `finish` で書き分ける。
-SIGKILLのように例外を経ずに消えた走行は、running のまま残る。読み手は
+SIGKILLのように例外を経ずに消えた実行は、running のまま残る。読み手は
 pidの生死で見分ける（`read_all` の `alive`）。
 """
 
@@ -52,7 +52,7 @@ def _now() -> str:
 
 
 class Heartbeat:
-    """1つの走行の心拍。`update` は間隔を守り、`finish` は必ず書く。"""
+    """1つの実行の状態ファイル。`update` は間隔を守り、`finish` は必ず書く。"""
 
     def __init__(
         self,
@@ -138,7 +138,7 @@ class Heartbeat:
 
 
 class _Quiet:
-    """予行演習で渡す心拍。何も書かない。"""
+    """dry-runで渡す状態ファイル。何も書かない。"""
 
     finished = False
 
@@ -154,7 +154,7 @@ class _Quiet:
 
 @contextmanager
 def running(kind: str, name: str, *, dry_run: bool = False, **kwargs) -> Iterator[Heartbeat]:
-    """走行を心拍で包む。抜け方で終わりの状態を書く。
+    """実行を状態ファイルの更新でラップする。抜け方で終わりの状態を書く。
 
     例外で抜ければfailed（中断はstopped）、そのまま抜ければdoneになる。
     中で `finish` を呼んでいれば、それを優先する。dry_runなら何も書かない。
@@ -194,7 +194,7 @@ def _alive(pid: int | None) -> bool:
 
 
 def read_all(stale_after: float = 600.0) -> list[dict]:
-    """心拍をすべて読み、走行中のものに `alive`（プロセスの生死）と
+    """状態ファイルをすべて読み、実行中のものに `alive`（プロセスの生死）と
     `stale`（更新が途絶えた）を付けて、更新の新しい順に返す。"""
     out = []
     for p in status_dir().glob("*.json"):

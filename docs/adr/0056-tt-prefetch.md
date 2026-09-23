@@ -6,7 +6,7 @@
 
 ## Context
 
-探索改善キャンペーンの続行。ROADMAPの候補の「TTのbucket化・prefetch」
+一連の探索改善の続行。ROADMAPの候補の「TTのbucket化・prefetch」
 のうち、bucket化は4-way クラスタとしてADR-0022で実装済みである。
 本ADRはprefetchの導入を扱う。
 
@@ -15,7 +15,7 @@ TTのprobeはメモリアクセスを伴い、キャッシュミス時のレイ�
 ADR-0022の設計で1クラスタ=64B=1キャッシュラインに収まっているが、
 probeの直前までアクセスしないため、キャッシュに載っていないことが多い。
 
-SF系ではdo_moveの直後にprefetch命令を発行し、再帰呼び出し先で
+Stockfish系ではdo_moveの直後にprefetch命令を発行し、再帰呼び出し先で
 probeに到達するまでの間にメモリフェッチを完了させる手法が
 標準装備されている。qsearch TT（ADR-0054）の導入でTTアクセス
 頻度が増えており、prefetchの恩恵はさらに大きい。
@@ -28,7 +28,7 @@ search.rsのムーブループ内でdo_moveの直後、再帰探索の直前に
 `tt.prefetch(pos.key())`を呼ぶ。再帰先の先頭でtt.probe()に
 到達するまでに前処理（mate distance pruning等）が挟まり、
 メモリフェッチの時間を確保できる。main searchとqsearchの
-両方に挿入する。SF系の標準配置。
+両方に挿入する。Stockfish系の標準配置。
 
 ### 案B: MovePickerの手生成時にprefetch
 

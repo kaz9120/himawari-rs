@@ -38,7 +38,7 @@ Stockfish・やねうら王と同じ構造。
 - 出力: bestmove/infoは探索スレッドからも出るため、行単位の
   排他を `Stdout::lock` で行い、毎行flushする
 - `position`: sfen（またはstartpos）＋moves列を毎回ゼロから
-  再構築する。差分適用の最適化はしない（1局面数μsで足りる）
+  再構築する。差分更新の最適化はしない（1局面数μsで足りる）
 - `setoption`: 宣言的なオプションレジストリを持つ。型は
   spin / check / string / combo / button。P2で載せるのは
   USI_Hash、USI_Ponder、Threads、NetworkDelay、NetworkDelay2、

@@ -6,12 +6,12 @@
 
 ## Context
 
-探索改善キャンペーンの第8弾。qsearchは現在TTを一切使わない
+一連の探索改善の第8弾。qsearchは現在TTを一切使わない
 （probeもstoreもない。`search.rs:872-`）。探索ノードの大半は
-qsearchであり、置換の多い将棋では同一局面のqsearch木を
+qsearchであり、合流の多い将棋では同一局面のqsearch木を
 何度も読み直している。eval hash（ADR-0049）は評価1回分しか
-省けないが、TTなら静止探索の結論（boundとbest move）ごと
-再利用できる。SF系ではqsearchのTT probe/storeは標準装備で、
+省けないが、TTならqsearchの結論（boundとbest move）ごと
+再利用できる。Stockfish系ではqsearchのTT probe/storeは標準装備で、
 ROADMAPの候補の「qsearchのTT保存拡充」に当たる。
 
 ## 選択肢と比較
@@ -20,7 +20,7 @@ ROADMAPの候補の「qsearchのTT保存拡充」に当たる。
 
 qsearch入口でprobeし、boundが許せば即カット。TT手は
 qsearchのMovePickerで最初に試す。出口でdepth 0として
-bound付きstoreする。SFと同じ完全形。
+bound付きstoreする。Stockfishと同じ完全形。
 
 ### 案B: storeのみ（カットしない）
 

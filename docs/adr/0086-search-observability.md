@@ -29,7 +29,7 @@ USIの `info` で出している項目は `depth` `score` `nodes` `nps` `time`
 ### 案A: 報告のコールバックを種別付きにする
 
 `iterate` が呼ぶコールバックの引数を `IterInfo` から `SearchInfo` へ
-変える。`SearchInfo` は列挙で、反復深化1周分の `Iteration` と、
+変える。`SearchInfo` は列挙で、反復深化1イテレーション分の `Iteration` と、
 rootで今読んでいる手の `CurrMove` を持つ。
 
 ```rust
@@ -58,7 +58,7 @@ pub enum SearchInfo {
 
 `IterInfo` にフィールドを1つ増やせば済む。`currmove` は見送る。
 
-`currmove` は長考中の唯一の生存信号になる。反復深化1周に数十秒かかる
+長考中に動作中を示す出力は、`currmove` だけになる。1イテレーションに数十秒かかる
 深さでは、`Iteration` の報告が来ない時間は長い。ここを埋めたい。
 
 ## Decision
@@ -66,7 +66,7 @@ pub enum SearchInfo {
 案Aを採る。
 
 `seldepth` は `search` と `qsearch` の入口で `ply` の最大を記録する。
-イテレーションごとに0へ戻し、その周の到達深さを表す。出力時は `depth`
+イテレーションごとに0へ戻し、そのイテレーションの到達深さを表す。出力時は `depth`
 との大きいほうを採る（rootだけで結論が出たとき `seldepth < depth` と
 なるのを防ぐ）。
 
@@ -80,7 +80,7 @@ UCIには `currmovenumber`（今何手目を読んでいるか）があり、や
 
 USIの規定に `currmovenumber` は見当たらない。UCI由来の項目である。
 GUIが未知の項目を無視する保証はなく、規定外の項目を出す利点は薄い。
-`currmove` だけで「今どの手を読んでいるか」は伝わり、長考中の生存信号と
+`currmove` だけで「今どの手を読んでいるか」は伝わり、長考中に動作中を示す出力と
 いう目的は満たせる。
 
 必要になれば足せる。`SearchInfo::CurrMove` に番号を持たせるだけで済む。

@@ -35,7 +35,7 @@ CIはシンプルに始める。ubuntu-latestの単一ジョブで3つを回す�
 | 層 | 内容 | 実行場所 |
 |---|---|---|
 | unit | 型のエンコード/デコード、テーブル生成の正しさ | CI（debug） |
-| property | do/undo往復一致、差分計算=全計算、SIMD=スカラー（proptest） | CI（debug、ケース数は控えめに） |
+| property | do/undo往復一致、差分更新=全計算、SIMD=スカラー（proptest） | CI（debug、ケース数は控えめに） |
 | integration | perftテーブル駆動（P1〜）、USIゴールデンテスト（P2〜） | CI（release、perftはdepth 5まで） |
 | 対局 | SPRT（P3で基盤を作る） | ローカル/専用機。CIには載せない |
 

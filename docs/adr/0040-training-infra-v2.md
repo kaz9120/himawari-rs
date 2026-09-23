@@ -10,7 +10,7 @@ P6で学習基盤を完成させるにあたり、lr schedule・チェックポ�
 学習ログ・early stoppingの実装が必要になった。これらはML
 フレームワークの標準機能である。
 
-P7ではネットワーク構造の変更実験に入る。自動微分なしでは構造を
+P7ではネットの構造の変更実験に入る。自動微分なしでは構造を
 変えるたびに逆伝播を手で書き直すことになる。ADR-0039で
 「構造をいじる実験段階に入ったらフレームワーク移行を再検討する」
 と定めている。
@@ -47,7 +47,7 @@ P7の構造実験にも自動微分で即対応できる。ADR-0039で想定済�
 
 Pythonに移すもの:
 - 学習ループ全体（optimizer, lr schedule, checkpoint, logging）
-- モデル定義（HalfKP + 利き塔 + 隠れ層）
+- モデル定義（HalfKP + 利き入力 + 隠れ層）
 - 量子化・.hmwr書き出し
 
 Rustに残すもの:
@@ -79,7 +79,7 @@ nn.Moduleで現アーキテクチャ（ADR-0034）を再現する。
 
 - FT層: nn.EmbeddingBag(FT_IN, FT_OUT, mode='sum', sparse=True)
   × 2。sparse=Trueでtouched行のみ勾配更新
-- 利き塔: nn.EmbeddingBag(EFFECT_IN, EFFECT_OUT, mode='sum',
+- 利き入力: nn.EmbeddingBag(EFFECT_IN, EFFECT_OUT, mode='sum',
   sparse=True)
 - 隠れ層: Linear(CONCAT, 32) → clamp(0,1) → Linear(32, 32)
   → clamp(0,1) → Linear(32, 1)
@@ -92,12 +92,12 @@ PyTorch標準機能で構成する。
 - lr schedule: LambdaLRでwarmup + cosine decay
 - チェックポイント: torch.save / torch.load
 - ログ: TensorBoard（SummaryWriter）
-- early stopping: valid loss監視のPythonロジック
+- early stopping: 検証損失監視のPythonロジック
 
 ### 検証
 
 1. Rust参照実装との順伝播一致: 同一重み・同一局面で評価値を比較
-2. P5のhao_v6相当の学習再現: valid lossが同等以下であることを確認
+2. P5のhao_v6相当の学習再現: 検証損失が同等以下であることを確認
 3. 量子化のroundtrip一致: Python書き出し→Rust読み込み→評価一致
 
 ## Consequences

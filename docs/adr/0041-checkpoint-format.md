@@ -87,7 +87,7 @@ arch情報でロード時にアーキテクチャ互換性を検証する。
 | --resume | なし | 復元元ファイル |
 
 保存ファイル: {checkpoint-dir}/latest.ckpt を上書き保存する。
-best valid loss更新時は {checkpoint-dir}/best.ckpt もコピーする。
+最良の検証損失を更新したときは {checkpoint-dir}/best.ckpt もコピーする。
 
 ### 再開時の動作
 
@@ -104,5 +104,5 @@ best valid loss更新時は {checkpoint-dir}/best.ckpt もコピーする。
   ロード+lr変更で実現できる
 - 190MBのファイルI/Oがcheckpoint-intervalごとに発生する。
   数百ステップに1回なら学習スループットへの影響は軽微
-- ネットワーク構造の変更（P7）でフォーマットが非互換になる。
+- ネットの構造の変更（P7）でフォーマットが非互換になる。
   arch検証で誤ロードを防ぎ、version番号で管理する

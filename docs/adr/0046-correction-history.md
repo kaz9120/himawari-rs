@@ -6,7 +6,7 @@
 
 ## Context
 
-探索改善キャンペーン（2026-07-21オーナー決定、ROADMAP参照）の
+一連の探索改善（2026-07-21オーナー決定、ROADMAP参照）の
 第1弾。パラメータチューニングはせず、固定の初期定数で導入して
 SPRTで効果を判定する。
 
@@ -28,7 +28,7 @@ Stockfish 16以降で最も利得の大きい改善の1つになっている。
 ### 論点1: 補正テーブルを引くキー
 
 **案A: 歩構造キー（新設）**。盤上の歩（と金は含めない）と
-持ち歩の枚数から作るincrementalなzobristキー。SFのpawn
+持ち歩の枚数から作るincrementalなzobristキー。Stockfishのpawn
 correction historyに相当する。将棋では歩形と歩切れが評価の
 骨格であり、局面クラスの代表として妥当性が高い。欠点は
 coreにキー1本を追加する変更が要ること。
@@ -38,7 +38,7 @@ splitmix64で分散させて使う。core変更が不要な一方、盤上の歩
 区別できず、手駒は終盤ほど激しく変わるのでクラスの安定性が低い。
 
 **案C: 多本立て（歩構造+手駒+continuation等）**。効果は最大だが、
-1SPRTでどのテーブルが効いたか切り分けられない。キャンペーンの
+1SPRTでどのテーブルが効いたか切り分けられない。一連の改善の
 1アイデア1ADR方針に反する。
 
 ### 論点2: キーの計算方式
@@ -64,7 +64,7 @@ board_key/hand_keyと同じ扱いなのでundo系は変更不要
 - 盤上の歩は既存`zobrist::PSQ`の歩エントリをそのまま流用してXOR
 - 持ち歩は新テーブル`HAND_PAWN[2][19]`（zobrist.rsに追加）を
   枚数遷移でXOR
-- 更新箇所: `do_move()`の打ち・移動・捕獲の各分岐、
+- 更新箇所: `do_move()`の駒打ち・移動・駒を取る手の各分岐、
   `do_null_move()`（引き継ぎ）、`from_sfen()`（全計算）
 - 検証: 全計算関数`compute_pawn_key()`を用意し、perft系テストで
   差分=全計算の一致をdebug_assertする（board_keyと同じ流儀）
@@ -73,7 +73,7 @@ correction historyテーブル（engine側）:
 - `CorrectionHistory { table: Box<[[i16; 16384]; 2]> }`
   （手番 × pawn_key下位14bit。64KB/スレッド）
 - 保持はHistory/CounterMovesと同じ流儀: thread.rsのスレッド
-  ローカルに置き、goごとに貸し出し、NewGameでクリア
+  ローカルに置き、goごとに探索器へ渡し、NewGameでクリア
   （`thread.rs:138-159`）
 
 適用（search.rs）:
@@ -84,8 +84,8 @@ correction historyテーブル（engine側）:
   変わるため、TTヒット時に再補正する）
 
 更新（search()のノード終了時）:
-- 条件: 王手中でない、best_moveがない or 静かな手、スコアが
-  詰み圏でない、boundが矛盾しない
+- 条件: 王手中でない、best_moveがない or 静かな手、
+  詰みスコアでない、boundが矛盾しない
   （`best >= beta && best <= corrected`の場合と
   `best_moveなし && best >= corrected`の場合は更新しない）
 - `bonus = clamp(diff * depth / 8, -128, 128)`

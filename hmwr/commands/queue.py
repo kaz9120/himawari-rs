@@ -1,6 +1,6 @@
-"""実験の待ち行列。GitHubのIssueを順に取り、specを無人で実行する（ADR-0209）。
+"""実験のキュー。GitHubのIssueを順に取り、specを無人で実行する（ADR-0209）。
 
-待ち行列と状態はIssueのラベルが持つ。`experiment` と `queued` の付いたIssueを
+キューと状態はIssueのラベルが持つ。`experiment` と `queued` の付いたIssueを
 古い順に取り、`running`、`done` か `failed` へ付け替える。順番の入れ替えと
 取り消しは、オーナーがIssueから行える。
 
@@ -43,12 +43,12 @@ RECORD_TIMEOUT = 40 * 60
 
 
 def add_parser(sub: argparse._SubParsersAction) -> None:
-    p = sub.add_parser("queue", help="実験の待ち行列を回す")
+    p = sub.add_parser("queue", help="実験のキューを回す")
     ss = p.add_subparsers(dest="sub", metavar="<操作>")
 
     t = ss.add_parser(
         "run",
-        help="コードをorigin/mainへ揃えてから、待ち行列を1回見る",
+        help="コードをorigin/mainへ揃えてから、キューを1回見る",
         description="launchdが定期的に呼ぶ入口。専用のworktreeをorigin/mainへ揃えてから "
         "tick を呼ぶ。開発中の作業ツリーでは走らない。",
     )
@@ -56,14 +56,14 @@ def add_parser(sub: argparse._SubParsersAction) -> None:
 
     t = ss.add_parser(
         "tick",
-        help="待ち行列を1回見て、実験を1件実行する",
+        help="キューを1回見て、実験を1件実行する",
         description="実行中のIssueがあれば続きから、無ければ待ちの先頭を取る。"
-        "専用のworktreeでは、コミットが進んでいたら道具を作り直してから走らせる。"
+        "専用のworktreeでは、コミットが進んでいたらツールを作り直してから走らせる。"
         "終わるまで戻らない。一時停止中と、別の実行が走っている間は何もしない。",
     )
     t.set_defaults(func=tick)
 
-    t = ss.add_parser("status", help="待ち行列と一時停止の状態を出す")
+    t = ss.add_parser("status", help="キューと一時停止の状態を出す")
     t.set_defaults(func=status)
 
     t = ss.add_parser(
@@ -173,7 +173,7 @@ def _tick(*, dry_run: bool) -> int:
         # 失敗から戻したIssueには failed が残っていることがある
         relabel(number, add=RUNNING, remove=f"{QUEUED},{FAILED}")
         comment(number, f"開発機で実行を始めた。spec: `experiments/{name}.toml`")
-    # 道具を作り直すのは、走らせる実験があるときだけにする。待ちが無いのに
+    # ツールを作り直すのは、走らせる実験があるときだけにする。待ちが無いのに
     # ビルドが走ると、対話セッションの計測を乱す
     _build_if_moved()
 
@@ -307,7 +307,7 @@ def run(args: argparse.Namespace) -> int:
 
 
 def _build_if_moved() -> None:
-    """コミットが進んでいたら道具を作り直す。計測と同じフラグで作る。
+    """コミットが進んでいたらツールを作り直す。計測と同じフラグで作る。
 
     専用のworktreeでだけ行う。開発用の作業ツリーのビルドは、開発者が管理する。
     """

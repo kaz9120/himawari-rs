@@ -1,11 +1,11 @@
 """`hmwr data` の操作を、`psv` のサブコマンドへの対応表から作る（ADR-0208）。
 
-**1操作は表の1行である。** 名前からのパス解決・既定値・ログ・完了印は
+**1操作は表の1行である。** 名前からのパス解決・既定値・ログ・完了マーカーは
 ここの共通の実装が足す。部品を足すコストを1行にすることが、`psv` を
 直接叩かせないための本体になる。
 
-完了印は `<出力>.done` に置く。出力は `.part` へ書いてから改名するので、
-出力があれば最後まで書けている。完了印には走らせたコマンドを控え、同じ名前で
+完了マーカーは `<出力>.done` に置く。出力は `.part` へ書いてから改名するので、
+出力があれば最後まで書けている。完了マーカーには走らせたコマンドを控え、同じ名前で
 条件の違う再実行を止める。
 """
 
@@ -199,7 +199,7 @@ def add_parsers(ss: argparse._SubParsersAction) -> None:
     t = ss.add_parser(
         "rm",
         help="hmwr data が作った中間ファイルを消す",
-        description="完了印のある出力だけを消す。完了印に作り方が残っているので、"
+        description="完了マーカーのある出力だけを消す。完了マーカーに作り方が残っているので、"
         "消しても同じコマンドで作り直せる。由来の記録がないファイルには触らない。",
     )
     t.add_argument(
@@ -272,9 +272,9 @@ def add_parsers(ss: argparse._SubParsersAction) -> None:
 
     t = ss.add_parser(
         "focus",
-        help="対局順の生データから焦点の熱地図つき局面集を作る",
+        help="対局順の生データから焦点のヒートマップつき局面集を作る",
         description="ある局面から先のk手で駒が動いたマスと取られたマスを"
-        "9×9の熱地図にし、盤上の駒ごとの関与フラグを付ける。"
+        "9×9のヒートマップにし、盤上の駒ごとの関与フラグを付ける。"
         "入力は対局順のままの生データに限る。シャッフル済みの教師は続きを"
         "持たないので使えない。出力は202バイト固定長で、"
         "data/train/<出力名>.focus へ書く。",
@@ -353,7 +353,7 @@ def _commands(op: Op, args: argparse.Namespace, part: Path) -> tuple[list[list[s
     """走らせるpsvのコマンド列と、結合する区間の出力を返す。
 
     入力はリポジトリからの相対パスで渡す（実行時のcwdはリポジトリ）。
-    コンマで連結した引数は `proc.show` が相対にできず、完了印の記録が
+    コンマで連結した引数は `proc.show` が相対にできず、完了マーカーの記録が
     マシンの置き場に依存してしまう。
     """
     head = [str(psv_bin()), op.psv, "--in", ",".join(paths.rel(p) for p in _inputs(op, args))]
@@ -473,7 +473,7 @@ def stats(args: argparse.Namespace) -> int:
 
 
 def remove(args: argparse.Namespace) -> int:
-    """完了印のある出力だけを消す。消す前に全部の対象を確かめる。"""
+    """完了マーカーのある出力だけを消す。消す前に全部の対象を確かめる。"""
     targets: list[tuple[Path, Path]] = []
     for name in args.names:
         paths.check_name(name)
@@ -481,7 +481,7 @@ def remove(args: argparse.Namespace) -> int:
             # 消す対象は、手順の前のステップが実行時に作る。予行では存在を問わない
             print(
                 f"[dry-run] rm {paths.rel(paths.TRAIN / name)} の"
-                ".psv・.rankpsv・.focus と、その完了印"
+                ".psv・.rankpsv・.focus と、その完了マーカー"
             )
             continue
         found = [
@@ -641,7 +641,7 @@ def relabel_in_place(args: argparse.Namespace) -> int:
 
 
 def relabel(args: argparse.Namespace) -> int:
-    """scoreだけをDL系モデルの値へ書き換える。完了印の扱いは他の操作と同じ。"""
+    """scoreだけをDL系モデルの値へ書き換える。完了マーカーの扱いは他の操作と同じ。"""
     from .tools import dl_relabel
 
     if args.in_place:
@@ -723,7 +723,7 @@ def relabel(args: argparse.Namespace) -> int:
     return proc.OK
 
 
-# --- 焦点の熱地図 ------------------------------------------------------
+# --- 焦点のヒートマップ --------------------------------------------------
 
 
 def focus(args: argparse.Namespace) -> int:

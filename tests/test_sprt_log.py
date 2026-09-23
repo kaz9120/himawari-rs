@@ -270,7 +270,7 @@ def test_leaves_no_temporary_file(tmp_path):
 
 
 def test_does_not_write_result_before_a_verdict(tmp_path):
-    """判定に至っていない走行を完了として記録しない（ADR-0175）。"""
+    """判定に至っていない実行を完了として記録しない（ADR-0175）。"""
     log = tmp_path / "sprt-x.log"
     log.write_text(
         "selfplay: c vs b | tc 10+0.1 | SPRT elo[-5, 0] a=0.05\n"

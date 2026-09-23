@@ -126,7 +126,7 @@ def add_parser(sub: argparse._SubParsersAction) -> None:
 def add_show_wait(ss: argparse._SubParsersAction) -> None:
     t = ss.add_parser("show", help="途中経過や結果を出す。名前を省くと一覧")
     t.add_argument("name", nargs="?", help="実験名")
-    t.add_argument("--all", action="store_true", help="完了した走行も並べる")
+    t.add_argument("--all", action="store_true", help="完了した実行も並べる")
     t.set_defaults(func=show)
 
     t = ss.add_parser("wait", help="結果が出るまで待つ")
@@ -327,7 +327,7 @@ def until_decision(spec: Spec, *, dry_run: bool) -> int:
 
     上限は見送りの線である（ADR-0217）。判定に至らないまま上限に達したら、
     途中経過を「見送り」として結果ファイルへ書き、終了コード2で返す。
-    真のEloが対立仮説の中点の近くにあり、その仮説では答えが出ない走行である。
+    真のEloが対立仮説の中点の近くにあり、その仮説では答えが出ない実行である。
 
     効く範囲と効かない範囲がある。対局プロセスだけが落ちた場合はここが
     拾い直す。この処理自体が止められた場合はループごと消えるが、棋譜は
@@ -401,7 +401,7 @@ def _games(jsonl: Path) -> int:
 
 
 def match_progress(beat):
-    """selfplayの途中経過の行を心拍へ写す関数を返す。"""
+    """selfplayの途中経過の行を状態ファイルへ反映する関数を返す。"""
 
     def on_line(line: str) -> None:
         if not line.startswith(sprt_log.PAIRS_LINE_PREFIX):
@@ -495,8 +495,8 @@ def check_conditions(cond: Path, line: str, games: int, *, adopt: bool, dry_run:
 def _finish(spec: Spec, beat, capped_pairs: int = 0) -> int:
     """結果が出た。結果ファイルを書き、判定を終了コードで返す。
 
-    capped_pairsを渡すと、そのペア数に達して判定に至らない走行を「見送り」
-    として結果ファイルへ書く（ADR-0217）。心拍には判定を添えてdoneと書く。
+    capped_pairsを渡すと、そのペア数に達して判定に至らない実行を「見送り」
+    として結果ファイルへ書く（ADR-0217）。状態ファイルには判定を添えてdoneと書く。
     """
     f = files(spec.name)
     try:
@@ -526,7 +526,7 @@ def _exit_code(result: Path) -> int:
 
 
 def show(args: argparse.Namespace) -> int:
-    """途中経過を出す。名前を省くと走行を新しい順に並べる。"""
+    """途中経過を出す。名前を省くと実行を新しい順に並べる。"""
     if not args.name:
         return _list(args.all)
 
@@ -540,9 +540,9 @@ def show(args: argparse.Namespace) -> int:
 
 
 def _list(show_all: bool) -> int:
-    """走行の一覧。完了は結果ファイルの有無で決まる（ADR-0175）。"""
+    """実行の一覧。完了は結果ファイルの有無で決まる（ADR-0175）。"""
     if not paths.SPRT.is_dir():
-        print("走行はまだない")
+        print("実行記録はまだない")
         return proc.OK
 
     rows = []
@@ -552,7 +552,7 @@ def _list(show_all: bool) -> int:
         games = sum(1 for _ in jsonl.open("rb"))
         rows.append((jsonl.stat().st_mtime, name, "完了" if done else "未完了", games))
     if not rows:
-        print("走行はまだない")
+        print("実行記録はまだない")
         return proc.OK
 
     rows.sort(reverse=True)

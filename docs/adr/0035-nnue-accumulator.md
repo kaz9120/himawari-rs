@@ -1,4 +1,4 @@
-# 0035: NNUE差分計算（accumulator）
+# 0035: NNUE差分更新（accumulator）
 
 - Status: accepted
 - Date: 2026-07-19
@@ -6,7 +6,7 @@
 
 ## Context
 
-本ADRの対象は第1塔（KP系FT）のみ。利き塔（ADR-0034）は
+本ADRの対象はFT側（KP系）のみ。利き入力（ADR-0034）は
 差分状態を持たず毎回全計算するため、accumulatorと無関係。
 
 NNUEの速度はFT出力（accumulator）の差分更新で決まる。
@@ -41,8 +41,8 @@ refreshの扱い。
   玉移動（DirtyPiece.king_moved）を挟む場合は当該視点を
   全計算（refresh）する。相手視点は差分でよい
 - null move（ADR-0028）はDirtyPiece空で積み、視点の入れ替えのみ
-- 検証: ランダムプレイアウトで「差分計算 = 全計算」の完全一致を
-  全局面で照合する（P4出口条件）。玉移動・駒打ち・成り・捕獲の
+- 検証: ランダムプレイアウトで「差分更新 = 全計算」の完全一致を
+  全局面で照合する（P4出口条件）。玉移動・駒打ち・成り・取る手の
   組み合わせを網羅するケースも固定で持つ
 
 ## Consequences

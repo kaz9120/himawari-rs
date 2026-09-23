@@ -54,7 +54,7 @@ def relabel(
 ) -> dict:
     """srcのscoreを付け直してdstへ書く。元と新しいscoreの相関と規模を返す。
 
-    progressを渡すと、バッチごとに処理済みの件数で呼ぶ（心拍用）。
+    progressを渡すと、バッチごとに処理済みの件数で呼ぶ（状態ファイル用）。
     """
     total = src.stat().st_size // PSV_BYTES
     if limit is not None:

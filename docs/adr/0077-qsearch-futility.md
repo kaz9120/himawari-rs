@@ -75,7 +75,7 @@ futility_base = stand + QS_FUTILITY_MARGIN      (QS_FUTILITY_MARGIN = 328)
 ここを刈ると評価が歪む。
 
 本エンジンのqsearchは1手前の情報を持たないため、`move_stack` を
-qsearch内でも更新する配管を足す。[ADR-0047](0047-continuation-history.md)で
+qsearch内でも更新する処理を組み込む。[ADR-0047](0047-continuation-history.md)で
 導入したスタックをそのまま使う。
 
 王手中（`in_check`）は適用しない。stand patが無く `futility_base` を
@@ -138,7 +138,7 @@ W-D-L は +699 =47 -496。
 `move_stack` をqsearchでも更新するため、continuation historyを
 静止探索へ広げる道が開く。現在qsearchのオーダリングは
 `cont` を使っていない（[ADR-0047](0047-continuation-history.md)の
-スコープ外）。本ADRの配管はその前提になる。
+スコープ外）。本ADRで足した更新処理はその前提になる。
 
 H0だった場合は案Bへ後退し、movecount制限を外してfutility判定だけを測る。
 それも中立ならマージン328を将棋向けに調整する。

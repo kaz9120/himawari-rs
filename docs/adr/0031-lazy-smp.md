@@ -51,7 +51,7 @@ Stockfishは明示的なずらしを廃止して案Bに移行した経緯があ�
 
 ## Consequences
 
-- selfplayゲートは今後もThreads=1で行う（変更の効果測定に
+- selfplayのSPRTは今後もThreads=1で行う（変更の効果測定に
   並列の揺らぎを混ぜない）。並列自体の検証だけThreads指定で行う
 - TTの世代・置換ポリシーが並列で劣化する可能性がある。
   hashfullとNPSスケーリングの計測で監視する

@@ -3,9 +3,9 @@
 毎回ログを目で読んでコミットトレーラと表の行を書き写していた。数字の転記
 ミスは後から気づけないので、ここで機械的に作る。
 
-判定が出た走行は結果ファイル（`data/sprt/<名前>.result`）を残す。
+判定が出た実行は結果ファイル（`data/sprt/<名前>.result`）を残す。
 **このファイルの有無が「完了したか」の定義になる**（ADR-0175）。判定に
-至っていない走行では書かない。中途半端な結果を完了として記録しないためである。
+至っていない実行では書かない。中途半端な結果を完了として記録しないためである。
 """
 
 from __future__ import annotations
@@ -18,8 +18,8 @@ import re
 from pathlib import Path
 
 # 切れ負けがこの割合を超えたら、対局の環境を疑う。判定の向きは両側に同じ
-# ように出るぶん歪まないが、感度が落ちる。過去の走行は0.5%未満で、2026-09-18の
-# 走行で6%が出た（CPUの取り合いが疑われた）
+# ように出るぶん歪まないが、感度が落ちる。過去の実行は0.5%未満で、2026-09-18の
+# 実行で6%が出た（CPUの取り合いが疑われた）
 TIMELOSS_WARN_RATE = 0.01
 
 # 判定行の例:
@@ -43,9 +43,9 @@ DEFAULT_HYPOTHESIS = ("0", "5")
 # 非劣性の対立仮説（ADR-0163）
 NON_INFERIORITY_HYPOTHESIS = ("-5", "0")
 
-# 判定を終了コードへ写す。0=H1、1=H0、2=判定に至らず
-# 「指し切り」は固定ペア数を指し終えた走行で、Eloの推定が成果になる
-# 「見送り」は上限のペア数まで走って判定に至らなかった走行（ADR-0217）。
+# 判定を終了コードへ対応させる。0=H1、1=H0、2=判定に至らず
+# 「指し切り」は固定ペア数を指し終えた実行で、Eloの推定が成果になる
+# 「見送り」は上限のペア数まで走って判定に至らなかった実行（ADR-0217）。
 # H1ではないのでmainへ入れないが、途中経過は成果として結果ファイルに残す
 EXIT_BY_VERDICT = {"H1": 0, "H0": 1, "指し切り": 0, "見送り": 2, "打ち切り": 2, "判定前": 2}
 
@@ -57,9 +57,9 @@ class Unreadable(Exception):
 def last_run_lines(lines: list[str]) -> list[str]:
     """最後の起動行以降だけを返す。起動行が無ければ全体を返す。
 
-    ログは追記式で、再開分も同じファイルへ積む（ADR-0087）。前の走行の
+    ログは追記式で、再開分も同じファイルへ積む（ADR-0087）。前の実行の
     判定行が残っているので、全体から探すと古い結果を拾う。再開後の行は
-    通算値を出すため、最後の走行だけを見れば累積の結果になる。
+    通算値を出すため、最後の実行だけを見れば累積の結果になる。
     """
     start = 0
     for i, line in enumerate(lines):
@@ -215,7 +215,7 @@ def timeloss_note(counts: collections.Counter) -> str:
 def write_result(
     path: Path, name: str, verdict: str, fields: dict, hyp, counts=None
 ) -> None:
-    """判定が出た走行の結果を key=value のファイルへ書く（ADR-0175）。
+    """判定が出た実行の結果を key=value のファイルへ書く（ADR-0175）。
 
     書き込みは一時ファイル経由のrenameで行う。途中まで書けたファイルを
     完了と誤読させないためである。
@@ -237,7 +237,7 @@ def write_result(
         f"finished_at={stamp:%Y-%m-%dT%H:%M:%SZ}",
     ]
     if counts:
-        # 終局理由の内訳。切れ負けの多い走行を後から見分けるために残す
+        # 終局理由の内訳。切れ負けの多い実行を後から見分けるために残す
         lines.append(f"timeloss={counts.get('timeloss', 0)}")
         lines.append("reasons=" + ",".join(f"{k}:{v}" for k, v in sorted(counts.items())))
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -257,8 +257,8 @@ def report(
     """ログを読んで (整形した報告, 判定) を返す。
 
     resultを渡し、判定が出ていればその場所へ結果ファイルを書く。fixed_pairsを
-    渡すと、そのペア数を指し終えた走行を「指し切り」として完了に数える。
-    capped_pairsを渡すと、そのペア数に達して判定に至らない走行を「見送り」
+    渡すと、そのペア数を指し終えた実行を「指し切り」として完了に数える。
+    capped_pairsを渡すと、そのペア数に達して判定に至らない実行を「見送り」
     として完了に数える（ADR-0217）。
     """
     if not log.is_file():
@@ -267,7 +267,7 @@ def report(
     lines = last_run_lines(log.read_text(encoding="utf-8").splitlines())
     src, verdict = find_source_line(lines)
     if src is None or verdict is None:
-        # 起動直後はpairs行がまだない。エラーではなく走行前として報告する
+        # 起動直後はpairs行がまだない。エラーではなく実行前として報告する
         if any(line.startswith("selfplay:") or "--baseline" in line for line in lines):
             return f"=== {name}（判定前） ===\n\nまだ対局結果がない（起動直後）。", "判定前"
         raise Unreadable(f"結果行が見つからない: {log}")

@@ -33,7 +33,7 @@ def add_parser(sub: argparse._SubParsersAction) -> None:
         "bench",
         help="固定深さでNPSを測る",
         description="2本以上を並べると交互に測る。"
-        "機体の温度や背景の負荷でNPSは数%動くため、1本ずつ別に測った値を"
+        "マシンの温度や背景の負荷でNPSは数%動くため、1本ずつ別に測った値を"
         "比べない。評価関数をまたぐときは --nodes で打ち切る。",
     )
     p.add_argument("binaries", nargs="+", metavar="バイナリ")

@@ -13,11 +13,11 @@ import himawari
 
 #: psvの1レコード（ADR-0038）
 PSV_BYTES = 40
-#: .focus の1レコード（ADR-0213）。psv40＋熱地図81＋関与81
+#: .focus の1レコード（ADR-0213）。psv40＋ヒートマップ81＋関与81
 FOCUS_BYTES = 202
-#: 盤の升数。熱地図と関与フラグの長さになる
+#: 盤の升数。ヒートマップと関与フラグの長さになる
 SQUARES = 81
-#: 熱地図の向き。盤の向きのまま使うか、手番側から見た向きへ揃えるか
+#: ヒートマップの向き。盤の向きのまま使うか、手番側から見た向きへ揃えるか
 FOCUS_ORIENTS = ("board", "stm")
 
 
@@ -169,21 +169,21 @@ class PsvBatchLoader:
 
 
 class FocusBatchLoader:
-    """.focus を読み、psvの特徴と焦点の熱地図を返す（ADR-0213）。
+    """.focus を読み、psvの特徴と焦点のヒートマップを返す（ADR-0213）。
 
-    レコードは202バイト固定長で、先頭40バイトがpsv、続く81バイトが熱地図、
+    レコードは202バイト固定長で、先頭40バイトがpsv、続く81バイトがヒートマップ、
     残りの81バイトが駒ごとの関与フラグである。psvの部分は `PsvBatchLoader` と
-    同じRustの抽出へ流し、熱地図を10本目のテンソルとして足す。バッチの形が
+    同じRustの抽出へ流し、ヒートマップを10本目のテンソルとして足す。バッチの形が
     9本から10本に増えるだけなので、学習ループの受け取り方は変わらない。
 
     抽出はstrictで行う。**黙って落ちるとラベルとの整列が壊れ、別の局面の
-    熱地図を当てることになる。** 落ちたら即座に失敗させる。
+    ヒートマップを当てることになる。** 落ちたら即座に失敗させる。
 
     `lo` と `hi` でレコードの区間を切る。学習と検証の分割はこの区間で行い、
     同じファイルの先頭を学習、末尾を検証に回す。
 
-    `orient` は熱地図の向きを選ぶ。`board` は書かれたまま、`stm` は後手番の
-    局面で180度回す。**蓄積器は手番側から見た向きで並ぶ**ので、盤の向きの
+    `orient` はヒートマップの向きを選ぶ。`board` は書かれたまま、`stm` は後手番の
+    局面で180度回す。**アキュムレータは手番側から見た向きで並ぶ**ので、盤の向きの
     ままだと的と表現の向きが局面の半分でずれる。
     """
 
@@ -200,7 +200,7 @@ class FocusBatchLoader:
             path, dtype=np.uint8, mode="r", shape=(total, FOCUS_BYTES),
         )[lo:hi]
         if orient not in FOCUS_ORIENTS:
-            raise ValueError(f"熱地図の向きが不明: {orient}")
+            raise ValueError(f"ヒートマップの向きが不明: {orient}")
         self.n = hi - lo
         self.batch = batch
         self.orient = orient
@@ -216,7 +216,7 @@ class FocusBatchLoader:
         return math.ceil(self.n / self.batch)
 
     def _heat(self, raw):
-        """レコードの束から熱地図を取り出し、指定の向きへ揃える。
+        """レコードの束からヒートマップを取り出し、指定の向きへ揃える。
 
         後手番の180度回転は升の並びを逆にするだけでよい。升は
         `(筋 - 1) * 9 + (段 - 1)` なので、回した先は `80 - 升` になる。
@@ -229,7 +229,7 @@ class FocusBatchLoader:
         return heat
 
     def heat_mean(self):
-        """区間の熱地図の平均。升ごとの頻度事前で、probeの自明解になる。"""
+        """区間のヒートマップの平均。升ごとの頻度ベースラインで、probeのベースラインになる。"""
         return self._heat(self.data).mean(axis=0, dtype=np.float64)
 
     def _extract(self, raw):

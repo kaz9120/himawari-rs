@@ -22,9 +22,9 @@ def add_parser(sub: argparse._SubParsersAction) -> None:
         "ログのうち、保持日数を過ぎたものを消す。現行の評価関数の系列と "
         "*.result（結果の要約）は残す。教師データ（data/train）は消さない。"
         "マージ済みブランチのworktreeも片付ける。"
-        "既定は一覧だけを出す下見で、--apply を付けたときだけ消す。",
+        "既定は一覧を出すだけ（dry-run）で、--apply を付けたときだけ消す。",
     )
-    p.add_argument("--apply", action="store_true", help="実際に消す（既定は下見）")
+    p.add_argument("--apply", action="store_true", help="実際に消す（既定は一覧を出すだけ）")
     p.add_argument("--days", type=int, default=30, metavar="N", help="保持日数（既定30）")
     p.set_defaults(func=run)
 
@@ -72,11 +72,11 @@ def _candidates(days: int) -> list[tuple[str, Path]]:
         if old(p):
             found.append(("ログ", p))
     if paths.STATUS.is_dir():
-        # 心拍は終わった後も残し、日数で消す（ADR-0220）。60秒ごとに書くので、
-        # 走行中のものは古くならない
+        # 状態ファイルは終わった後も残し、日数で消す（ADR-0220）。60秒ごとに書くので、
+        # 実行中のものは古くならない
         for p in sorted(paths.STATUS.glob("*.json")):
             if old(p):
-                found.append(("心拍", p))
+                found.append(("状態ファイル", p))
     for p in sorted((paths.REPO / "data/train").glob("*.stop")):
         if old(p):
             found.append(("停止ファイル", p))

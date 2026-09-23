@@ -6,7 +6,7 @@
 現行の教師はtanuki- 2024の78.6億局面である（[ADR-0192](adr/0192-tanuki2024-teacher.md)、
 +43.2）。前の教師hao_depth9の生データと加工済みpsvは2026-09-08に消した
 （容量の都合。再取得は `hmwr data fetch --dataset hao` で通る）。公開データの
-残り手は入玉5億の混合で、生データは取得済み。次の増量は自前生成の
+残り手は入玉5億の混合で、生データは取得済み。次の増量は自己生成の
 ループ（[ADR-0201](adr/0201-loop-recipe.md)）になる。
 
 ## 手元にあるもの（2026-09-08）
@@ -16,10 +16,10 @@
 | `data/train/train_7860M_q1.psv` | tanuki 2024の学習データ、1手静止化済み | 314GB |
 | `data/train/rank_tanuki_210M.rankpsv` | 同じシャッフル出力の先頭から作った兄弟群（[ADR-0185](adr/0185-sibling-ranking-loss.md)） | 24GB |
 | `data/train/valid_tanuki.psv` / `_q1.psv` | tanukiの検証集合20万局面（非静止・静止化） | 8MB×2 |
-| `data/train/train_300M.psv` / `_q1.psv`、`rank_300M_100M.rankpsv` | hao由来の3億の測定台（[ADR-0135](adr/0135-teacher-data-3b.md)）。静止化前は兄弟群の作り直しに要る | 36GB |
-| `data/train/valid_385M*.psv` | hao由来の検証集合。テレメトリとして残す（[ADR-0150](adr/0150-rootstrap-evaluation.md)） | 8MB×3 |
+| `data/train/train_300M.psv` / `_q1.psv`、`rank_300M_100M.rankpsv` | hao由来の3億局面の小規模学習用（[ADR-0135](adr/0135-teacher-data-3b.md)）。静止化前は兄弟群の作り直しに要る | 36GB |
+| `data/train/valid_385M*.psv` | hao由来の検証集合。参考指標として残す（[ADR-0150](adr/0150-rootstrap-evaluation.md)） | 8MB×3 |
 | `data/raw/entering_king/` | 入玉5億の生データ127ファイル（下の「入玉」） | 19GB |
-| `data/train/rl_*.psv` など | 自前生成の世代データと中間ファイル。実験ごとにADRが持つ | 実験による |
+| `data/train/rl_*.psv` など | 自己生成の世代データと中間ファイル。実験ごとにADRが持つ | 実験による |
 
 ## 利用中: nodchip/tanuki-.nnue-pytorch-2024-07-30.1
 
@@ -78,7 +78,7 @@ RAM 48GBに対し78.6億のpsvは293GBあり、ページキャッシュに載ら
 | ライセンス | MIT |
 
 3グループすべてを取得して使い切った（[ADR-0135](adr/0135-teacher-data-3b.md)）。
-生データと `train_2990M*.psv` は消してあり、3億の測定台と検証集合だけを
+生データと `train_2990M*.psv` は消してあり、3億局面の小規模学習用データと検証集合だけを
 残している。取得と前処理は `hmwr data fetch --dataset hao` の1本で通る。
 19.9億から29.9億への増量で+24.8、静止化で+13.9だった。過去世代
 （180M・370M・1900M）の前処理条件は[ADR-0061](adr/0061-psv-memmap-dataset.md)と
@@ -97,5 +97,5 @@ RAM 48GBに対し78.6億のpsvは293GBあり、ページキャッシュに載ら
 `hmwr data fetch --dataset entering-king` で取得済み。教師の入玉の薄さ
 （1.65%、[ADR-0190](adr/0190-selfplay-decided-thinning.md)）と宣言負け
 （floodgateで8局、[ADR-0199](adr/0199-roadmap-inventory.md)）へ効かせる
-混合が候補表にある。
+混合がROADMAPの候補にある。
 
