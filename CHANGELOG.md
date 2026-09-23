@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.50.17](https://github.com/kaz9120/himawari-rs/compare/v0.50.16...v0.50.17) (2026-09-23)
+
+
+### その他の変更
+
+* portal/ を足し、読むだけの3画面を出す（ADR-0220の3段目） ([#609](https://github.com/kaz9120/himawari-rs/issues/609)) ([d7915fe](https://github.com/kaz9120/himawari-rs/commit/d7915fe048a6f88daeaf4c81aa61dcbd10c8fdf3))
+
 ## [0.50.16](https://github.com/kaz9120/himawari-rs/compare/v0.50.15...v0.50.16) (2026-09-23)
 
 
