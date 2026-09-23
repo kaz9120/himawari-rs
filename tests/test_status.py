@@ -1,6 +1,6 @@
-"""心拍と `hmwr status`（ADR-0220）を検証する。
+"""状態ファイルと `hmwr status`（ADR-0220）を検証する。
 
-心拍は形式と間隔と生死の判定を見る。statusはGitHubを読まずに、心拍・
+状態ファイルは形式と間隔と生死の判定を見る。statusはGitHubを読まずに、状態ファイル・
 結果・資源・設定が1つのJSONにまとまることを見る。
 """
 
@@ -93,7 +93,7 @@ def test_status_renders_a_readable_table(home, monkeypatch, capsys):
     heartbeat.Heartbeat("net", "train1", total=1000, unit="step")
     assert cli.main(["status", "--no-github"]) == proc.OK
     out = capsys.readouterr().out
-    assert "== キュー" in out and "== 心拍" in out and "net:train1" in out
+    assert "== キュー" in out and "== 状態ファイル" in out and "net:train1" in out
     assert "キューの常駐: あり（pid 1）" in out
 
 

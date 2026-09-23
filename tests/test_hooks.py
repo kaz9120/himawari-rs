@@ -1,4 +1,4 @@
-"""道具の直接実行を止めるhookを検証する（ADR-0208）。"""
+"""ツールの直接実行を止めるhookを検証する（ADR-0208）。"""
 
 import importlib.util
 from pathlib import Path

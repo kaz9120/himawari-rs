@@ -40,7 +40,7 @@ def test_probe_reads_the_current_net_by_default(capsys):
 
 
 def test_probe_with_none_leaves_the_ft_random(capsys):
-    """自明解Rは学習した表現を何も読まない。"""
+    """ベースラインRは学習した表現を何も読まない。"""
     _, line = dry(
         capsys, ["net", "probe", "x", "--focus", "focus_1M", "--init-net", "none"]
     )
@@ -101,7 +101,7 @@ def trainer_model():
 
 
 def test_top_k_precision_counts_hits_among_the_top_squares(trainer_model):
-    """局面ごとに上位k升を取り、熱地図が1だった割合を平均する。"""
+    """局面ごとに上位k升を取り、ヒートマップが1だった割合を平均する。"""
     import torch
 
     pred = torch.tensor([[5.0, 4.0, 3.0, 2.0, 1.0, 0.0],
@@ -113,7 +113,7 @@ def test_top_k_precision_counts_hits_among_the_top_squares(trainer_model):
 
 
 def test_a_position_independent_prediction_picks_the_same_squares(trainer_model):
-    """頻度事前も同じ関数で測る。全局面へ広げれば同じk升が選ばれる。"""
+    """頻度ベースラインも同じ関数で測る。全局面へ広げれば同じk升が選ばれる。"""
     import torch
 
     prior = torch.tensor([[0.1, 0.9, 0.5, 0.0, 0.0, 0.0]])
@@ -147,7 +147,7 @@ def test_the_focus_loader_splits_by_record_range(trainer_model, tmp_path):
 
     rows = 10
     raw = np.zeros((rows, fl.RECORD_BYTES), dtype=np.uint8)
-    # 熱地図の先頭の升だけを立て、後ろ半分のレコードで頻度を変える
+    # ヒートマップの先頭の升だけを立て、後ろ半分のレコードで頻度を変える
     raw[:, fl.PSV_BYTES] = 1
     raw[rows // 2 :, fl.PSV_BYTES + 1] = 1
     path = tmp_path / "split.focus"
@@ -163,7 +163,7 @@ def test_the_focus_loader_splits_by_record_range(trainer_model, tmp_path):
 def test_the_focus_loader_turns_the_heat_map_for_the_side_to_move(
     trainer_model, tmp_path
 ):
-    """蒸留器は手番側から見た向きで並ぶので、後手番の熱地図は180度回す。"""
+    """蒸留器は手番側から見た向きで並ぶので、後手番のヒートマップは180度回す。"""
     import numpy as np
 
     from dataset import FocusBatchLoader

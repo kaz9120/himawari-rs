@@ -41,12 +41,12 @@ def add_parser(sub: argparse._SubParsersAction) -> None:
     t = ss.add_parser(
         "pgo",
         help="配布・対局用の単体ビルドを作る",
-        description="計測用ビルド・学習走行・最適化ビルドの3段で作る。"
+        description="計測用ビルド・プロファイル収集・最適化ビルドの3段で作る。"
         "NPSが+10%前後上がる。比較用のペアには使わない。"
         "両側を同条件（最適化なし）で作るほうが公平である。",
     )
     t.add_argument("--out", metavar="パス", help="出力先（既定 data/bin/himawari-pgo）")
-    t.add_argument("--depth", type=int, default=22, metavar="N", help="学習走行の深さ")
+    t.add_argument("--depth", type=int, default=22, metavar="N", help="プロファイル収集の深さ")
     t.set_defaults(func=pgo)
 
     t = ss.add_parser(
@@ -201,7 +201,7 @@ def make_pair(name: str, *, baseline: str, candidate: str | None = None, dry_run
 
 
 def pgo(args: argparse.Namespace) -> int:
-    """計測付きビルド・学習走行・最適化ビルドの3段で作る。"""
+    """計測付きビルド・プロファイル収集・最適化ビルドの3段で作る。"""
     out = Path(args.out) if args.out else paths.BIN / "himawari-pgo"
     if not out.is_absolute():
         out = paths.REPO / out
@@ -220,7 +220,7 @@ def pgo(args: argparse.Namespace) -> int:
     print("1/3: 計測用ビルド")
     cargo_build(f"-C profile-generate={pgo_dir}/raw", dry_run=args.dry_run)
 
-    print(f"2/3: 学習走行（ベンチ4局面、深さ{args.depth}）")
+    print(f"2/3: プロファイル収集（ベンチ4局面、深さ{args.depth}）")
     instr = pgo_dir / "himawari-instr"
     _copy(paths.release_bin("himawari"), instr, dry_run=args.dry_run)
     proc.run(
@@ -237,7 +237,7 @@ def pgo(args: argparse.Namespace) -> int:
     )
     raws = sorted(str(p) for p in (pgo_dir / "raw").glob("*.profraw"))
     if not raws and not args.dry_run:
-        raise proc.Fail("計測データが出ていない。学習走行が失敗している")
+        raise proc.Fail("計測データが出ていない。プロファイル収集が失敗している")
     merged = pgo_dir / "merged.profdata"
     proc.run(
         [profdata, "merge", "-o", str(merged), *(raws or [f"{pgo_dir}/raw/*.profraw"])],

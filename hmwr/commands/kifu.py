@@ -62,7 +62,7 @@ def add_parser(sub: argparse._SubParsersAction) -> None:
         "blindspot",
         help="盲点ベンチマークの抽出・ラベル・測定",
         description="実戦で評価が崩れた局面を集め、深い探索の値を正解として"
-        "浅い評価との乖離を測る。自己対局の外にある分布へ触れる唯一の物差しで、"
+        "浅い評価との乖離を測る。自己対局の外にある分布へ触れる唯一の指標で、"
         "ゲートではなく世代の定点観測に使う。",
     )
     t.add_argument(
@@ -193,7 +193,7 @@ def blindspot(args: argparse.Namespace) -> int:
 
 
 def rate(args: argparse.Namespace) -> int:
-    """レートの推移を出す。読むだけなので、予行演習でも取得する先だけを見せる。"""
+    """レートの推移を出す。読むだけなので、dry-runでも取得する先だけを見せる。"""
     url = args.player_url or floodgate.DEFAULT_PLAYER_URL
     if args.dry_run:
         for target in rating.csv_urls(url).values():

@@ -1,7 +1,7 @@
 """実験のspecと実行器を検証する（ADR-0209）。
 
 ステップの中身は走らせない。`proc.run` を差し替え、どのステップがどの順で
-呼ばれ、完了印がどう裁くかを見る。
+呼ばれ、完了マーカーがどう裁くかを見る。
 """
 
 import pytest
@@ -103,7 +103,7 @@ def runner(tmp_path, monkeypatch):
     calls, failing = [], set()
     monkeypatch.setattr(paths, "QUEUE", tmp_path / "queue")
     monkeypatch.setattr(paths, "LOGS", tmp_path / "logs")
-    # 予行演習が手元の成果物を拾わないようにする
+    # dry-runが手元の成果物を拾わないようにする
     for area in ("SPRT", "TRAIN", "NETS", "CHECKPOINTS", "BIN"):
         monkeypatch.setattr(paths, area, tmp_path / area.lower())
     monkeypatch.setattr(spec, "load", lambda name, ref="origin/main": spec.parse(GOOD, name))
@@ -190,5 +190,5 @@ def test_dry_run_leaves_no_marks(runner):
 
 
 def test_every_spec_in_the_repository_passes_the_check():
-    """リポジトリのspecは、全ステップが予行演習を通る。CIでの検査を兼ねる。"""
+    """リポジトリのspecは、全ステップがdry-runを通る。CIでの検査を兼ねる。"""
     assert exp.check(cli.build_parser().parse_args(["exp", "check"])) == proc.OK

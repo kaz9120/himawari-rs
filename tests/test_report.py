@@ -69,7 +69,7 @@ def test_training_is_read_from_the_registry_and_the_last_row_wins(artifacts):
     assert report.train_row("n") == [
         "n", "data/train/m.psv", "360,000,000", "21973", "0.49123（step 20000）", "0.49117", "2.1時間",
     ]  # fmt: skip
-    assert "台帳に無い" in report.train_row("other")[-1]
+    assert "学習の記録に無い" in report.train_row("other")[-1]
 
 
 def test_data_is_read_from_the_done_mark(artifacts):

@@ -1,6 +1,6 @@
-"""焦点の熱地図つき局面集の切り出し（ADR-0213）を検証する。
+"""焦点のヒートマップつき局面集の切り出し（ADR-0213）を検証する。
 
-見るのは3つ。盤面の差から手を取れること、熱地図と関与フラグが手順どおりに
+見るのは3つ。盤面の差から手を取れること、ヒートマップと関与フラグが手順どおりに
 付くこと、対局の切れ目をまたがないことである。盤は手で組んだものと、
 `cshogi` で短い対局を進めたものの両方で確かめる。cshogiはCIに入れていないので、
 そちらの検査は入っている環境でだけ走る。
@@ -149,7 +149,7 @@ def test_a_game_shorter_than_the_window_yields_nothing():
     assert list(fl.iter_focus(walk(1, "7g", "7f"), plies=8)) == []
 
 
-# --- 書き出しと完了印 --------------------------------------------------
+# --- 書き出しと完了マーカー --------------------------------------------------
 
 
 @pytest.fixture
@@ -180,7 +180,7 @@ def test_focus_writes_fixed_length_records_and_a_done_mark(fake, capsys):
     assert done["stats"]["rows"] == 3
     assert done["stats"]["heat_mean"] == 3.0
     assert done["stats"]["involved_mean"] == 1.0
-    assert "マスごとの熱地図の頻度" in capsys.readouterr().out
+    assert "マスごとのヒートマップの頻度" in capsys.readouterr().out
 
     # 同じ条件なら何もしない。条件が違えば止まる
     assert cli.main(argv) == proc.OK

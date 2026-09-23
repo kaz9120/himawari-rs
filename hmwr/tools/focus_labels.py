@@ -1,7 +1,7 @@
-"""対局順の生データから、焦点の熱地図つき局面集を切り出す（ADR-0213）。
+"""対局順の生データから、焦点のヒートマップつき局面集を切り出す（ADR-0213）。
 
 焦点のラベルはルールを書かずに棋譜から取る。ある局面から先のk手（既定8、
-両者4手ずつ）で駒が動いたマスと取られたマスを9×9の熱地図にし、盤上の駒ごとに
+両者4手ずつ）で駒が動いたマスと取られたマスを9×9のヒートマップにし、盤上の駒ごとに
 「続くk手で動いたか、取られたか」を関与フラグにする。probeの学習器が読む。
 
 ## 出力の形式
@@ -12,7 +12,7 @@
 | 位置 | 大きさ | 中身 |
 |---|---|---|
 | 0-39 | 40 | 元のpsvのレコード |
-| 40-120 | 81 | 熱地図。続くk手で動いたマスと取られたマスが1 |
+| 40-120 | 81 | ヒートマップ。続くk手で動いたマスと取られたマスが1 |
 | 121-201 | 81 | 関与フラグ。そのマスの駒がk手以内に動いたか取られたら1 |
 
 psvのレコードは、先頭32バイトがpacked sfen、32-33がscore（i16）、
@@ -20,7 +20,7 @@ psvのレコードは、先頭32バイトがpacked sfen、32-33がscore（i16）
 39が詰めである。
 
 マスの番号は `cshogi` に合わせ、`sq = (筋 - 1) * 9 + (段 - 1)` とする。
-0が1一、80が9九になる。熱地図と関与フラグは、その局面の手番ではなく
+0が1一、80が9九になる。ヒートマップと関与フラグは、その局面の手番ではなく
 盤の向きで並ぶ。
 
 ## 指し手の取り方
@@ -75,17 +75,17 @@ class Move:
 
 @dataclass
 class Stats:
-    """切り出しの結果。完了印にそのまま入れる。"""
+    """切り出しの結果。完了マーカーにそのまま入れる。"""
 
     positions: int = 0  # 読んだ局面
     rows: int = 0  # 書いたレコード
-    heat: int = 0  # 熱地図の1の総数
+    heat: int = 0  # ヒートマップの1の総数
     involved: int = 0  # 関与フラグの1の総数
     per_square: list[int] = field(default_factory=lambda: [0] * SQUARES)
     seconds: float = 0.0
 
     def summary(self) -> dict:
-        """完了印へ入れる要約。マスごとの頻度は率で残す。"""
+        """完了マーカーへ入れる要約。マスごとの頻度は率で残す。"""
         rows = max(self.rows, 1)
         return {
             "positions_read": self.positions,
@@ -132,7 +132,7 @@ def transition(before: Position, after: Position) -> Move | None:
 
 
 def labels(moves: Sequence[Move]) -> tuple[bytes, bytes]:
-    """窓の先頭の局面から見た熱地図と関与フラグを作る。
+    """窓の先頭の局面から見たヒートマップと関与フラグを作る。
 
     関与は駒を追って決める。`origin` は「今このマスにいる駒が、先頭の局面で
     どのマスにいたか」を持ち、後から打たれた駒はNoneで印を付ける。追わずに
@@ -269,12 +269,12 @@ def square_grid(rate: Sequence[float]) -> list[str]:
 
 
 def report_stats(stats: Stats, *, plies: int, report: Callable[[str], None] = print) -> None:
-    """平均の個数と、マスごとの頻度を出す。頻度事前はprobeの自明解になる。"""
+    """平均の個数と、マスごとの頻度を出す。頻度ベースラインはprobeの比較基準になる。"""
     rows = max(stats.rows, 1)
     rate = [n / rows for n in stats.per_square]
     report(f"局面: {stats.rows:,}件（読んだ生データ {stats.positions:,}件、先{plies}手）")
-    report(f"熱地図: 平均 {stats.heat / rows:.2f} マス")
+    report(f"ヒートマップ: 平均 {stats.heat / rows:.2f} マス")
     report(f"関与  : 平均 {stats.involved / rows:.2f} 駒")
-    report("マスごとの熱地図の頻度（%）")
+    report("マスごとのヒートマップの頻度（%）")
     for line in square_grid(rate):
         report(line)

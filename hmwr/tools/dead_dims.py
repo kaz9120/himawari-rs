@@ -41,7 +41,7 @@ def build_parser():
     parser = ArgParser(
         prog="dead-dims.py",
         description="FT出力の対が死ぬ原因をa側とb側に分けて測る（ADR-0194）。",
-        epilog="検証集合は学習データと同じ土俵へ揃える（ADR-0136）。",
+        epilog="検証集合は学習データと同じ条件へ揃える（ADR-0136）。",
     )
     parser.add_argument(
         "weights",

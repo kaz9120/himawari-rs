@@ -1,6 +1,6 @@
 """今の状態を1つにまとめて出す（ADR-0220）。
 
-キュー、走行中の実験とステップ、心拍、直近の結果、資源、設定を集める。
+キュー、実行中の実験とステップ、状態ファイル、直近の結果、資源、設定を集める。
 `--json` は機械向けで、ポータルはこれだけを読む。人向けは同じ内容を表で
 出す。`hmwr env` の設定の表示はここに吸収した。
 
@@ -24,7 +24,7 @@ RECENT = 10
 
 
 def add_parser(sub: argparse._SubParsersAction) -> None:
-    p = sub.add_parser("status", help="キュー・走行中・心拍・直近の結果・資源・設定を1つにまとめて出す")
+    p = sub.add_parser("status", help="キュー・実行中・状態ファイル・直近の結果・資源・設定を1つにまとめて出す")
     p.add_argument("--json", action="store_true", help="機械向けにJSONで出す")
     p.add_argument("--no-github", action="store_true", help="GitHubを読まない（キューと開いているPRを省く）")
     p.add_argument("--config", action="store_true", help="設定（旧 hmwr env）だけを出す")
@@ -53,7 +53,7 @@ def _queue(use_github: bool) -> dict:
 
 
 def _steps(spec_name: str) -> list[dict]:
-    """実験のステップと完了の印。specはorigin/mainのものを読む。"""
+    """実験のステップと完了マーカー。specはorigin/mainのものを読む。"""
     name = Path(spec_name).stem
     try:
         s = spec.load(name)
@@ -135,7 +135,7 @@ def _resources(use_github: bool) -> dict:
 
 
 def _relabel_progress() -> list[dict]:
-    """その場の付け直しの進み具合（ADR-0219）。心拍を持たない旧い走行の代わりに読む。"""
+    """その場の付け直しの進み具合（ADR-0219）。状態ファイルを持たない旧い実行の代わりに読む。"""
     out = []
     for p in paths.TRAIN.glob("*.psv.relabel.json"):
         try:
@@ -193,10 +193,10 @@ def render(d: dict) -> str:
             lines.append(f"  {paths.pad(state, 9)}#{item['number']} {item.get('spec') or ''}  {item['title']}")
             for step in item.get("steps", []):
                 if step["state"] == "running":
-                    lines.append(f"            → {step['id']}（走行中）")
+                    lines.append(f"            → {step['id']}（実行中）")
                 elif step["state"] == "pending":
                     lines.append(f"              {step['id']}")
-    lines.append("== 心拍")
+    lines.append("== 状態ファイル")
     beats = d["heartbeats"]
     if not beats:
         lines.append("  なし")

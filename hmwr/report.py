@@ -1,6 +1,6 @@
-"""実験の数値を、成果物からMarkdownの表へ写す（ADR-0209）。
+"""実験の数値を、成果物からMarkdownの表へまとめる（ADR-0209）。
 
-**LLMを通さない。** 対局は結果ファイル、学習は実験台帳、データは完了印から
+**LLMを通さない。** 対局は結果ファイル、学習は学習の記録、データは完了マーカーから
 読む。ログを目で読んで書き写すと、転記の誤りに後から気づけない。結果の記録を
 書く側（人でもLLMでも）は、ここが出した表をそのまま貼る。
 """
@@ -45,7 +45,7 @@ def match_row(name: str, note: str = "") -> list[str]:
         f = None
     if f is None:
         return [name, note, "", "", "", "", "未着手", ""]
-    # 結果ファイルが無い走行。判定行まで出ていれば打ち切り、無ければ走行中か中断
+    # 結果ファイルが無い実行。判定行まで出ていれば打ち切り、無ければ実行中か中断
     state = "打ち切り" if verdict == "打ち切り" else "途中"
     ci = str(f["elo_ci"]).strip("[]").replace(",", ", ")
     elo = f"{f['elo_num']} [{ci}]"
@@ -53,7 +53,7 @@ def match_row(name: str, note: str = "") -> list[str]:
 
 
 def _timeloss(name: str, recorded: str | None = None) -> str:
-    """切れ負けの局数。結果ファイルに無い古い走行は、棋譜を数える。"""
+    """切れ負けの局数。結果ファイルに無い古い実行は、棋譜を数える。"""
     if recorded is None:
         counts = sprt_log.reasons(paths.SPRT / f"{name}.jsonl")
         if not counts:
@@ -75,7 +75,7 @@ MATCH_HEAD = ["対局", "baseline → candidate", "局数", "W-D-L", "Elo [95%CI
 
 
 def train_row(name: str) -> list[str]:
-    """学習1本を表の1行にする。台帳に同じ名前が複数あれば、最後の行を使う。"""
+    """学習1本を表の1行にする。学習の記録に同じ名前が複数あれば、最後の行を使う。"""
     registry = paths.REPO / REGISTRY
     row = None
     if registry.is_file():
@@ -84,7 +84,7 @@ def train_row(name: str) -> list[str]:
                 if r.get("name") == name:
                     row = r
     if row is None:
-        return [name, "", "", "", "", "", "台帳に無い（未了か失敗）"]
+        return [name, "", "", "", "", "", "学習の記録に無い（未完了か失敗）"]
     hours = f"{int(row['elapsed_s']) / 3600:.1f}時間" if row.get("elapsed_s") else ""
     return [
         name, row["data"], f"{int(row['data_n']):,}", row["total_steps"],

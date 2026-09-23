@@ -1,7 +1,7 @@
 """探索定数のSPSAチューニング（ADR-0143）。
 
 init（tuneビルドと対象一覧の生成）→ run（判定なしの対局ループ）→
-結果の定数焼き込みとheld-out SPRT、の順で使う。runは切り離して走り、
+結果の定数の反映とheld-out SPRT、の順で使う。runは切り離して走り、
 状態は data/spsa/<名前>.state.json にある。落ちても同じコマンドで
 続きから走る（ADR-0123）。乱数はペア番号から決定論で引くので、
 再開しても摂動列は変わらない。
@@ -384,14 +384,14 @@ def _progress_line(state: dict, params: list[Param], total: int) -> str:
 
 
 def _finish(f: dict[str, Path], state: dict, params: list[Param], log) -> None:
-    """最終θを結果ファイルへ書く。焼き込みとheld-out検収は人（エージェント）が行う。"""
+    """最終θを結果ファイルへ書く。反映とheld-out検収は人（エージェント）が行う。"""
     rows = ["name\tdefault\ttuned"]
     for p in params:
         rows.append(f"{p.name}\t{round(p.default)}\t{round(state['theta'][p.name])}")
     body = "\n".join(rows) + "\n"
     f["result"].write_text(body, encoding="utf-8")
     log(f"完了: {state['pairs_done']}ペア。結果: {paths.rel(f['result'])}")
-    log("次の手順: 動いた定数をtunables.rsへ焼き込み、SPRT既定条件で検収する（ADR-0143）")
+    log("次の手順: 動いた定数をtunables.rsへ反映し、SPRT既定条件で検収する（ADR-0143）")
     for stale in f["tmp"].glob("*.jsonl"):
         stale.unlink()
 

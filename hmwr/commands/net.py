@@ -30,7 +30,7 @@ DEFAULT_EVAL_VALID = "data/train/valid_385M_q1.psv"
 FT_CLIP = "1.0"
 BASE_FLAGS = ["--batch-loader", "--dense-ft", "--factorized"]
 
-# 学習器の出力から心拍を拾う（ADR-0220）。形式は training/train.py の print にある
+# 学習器の出力から状態ファイルの値を拾う（ADR-0220）。形式は training/train.py の print にある
 TOTAL_STEPS_RE = re.compile(r"total_steps=([0-9]+)")
 STEP_RE = re.compile(r"^step ([0-9]+) samples [0-9]+ loss ([0-9.]+)")
 VALID_RE = re.compile(r"^\s*valid loss ([0-9.]+)")
@@ -53,9 +53,9 @@ def add_parser(sub: argparse._SubParsersAction) -> None:
         description="data/nets/<名前>.hmwr へ書き出し、"
         "training/checkpoints/<名前>/ へ途中経過を残す。"
         "検証データは学習データと同じ前処理に揃える。"
-        "土俵がずれると最良チェックポイントの選択が歪む。",
+        "条件がずれると最良チェックポイントの選択が歪む。",
     )
-    t.add_argument("name", help="ネット名。ログと台帳の名前にもなる")
+    t.add_argument("name", help="ネット名。ログと学習の記録の名前にもなる")
     t.add_argument(
         "--data", required=True, metavar="名前", help="学習データ。data/train/<名前>.psv"
     )
@@ -68,7 +68,7 @@ def add_parser(sub: argparse._SubParsersAction) -> None:
     t.add_argument("--warmup", type=int, metavar="N", help="学習率を上げきるまでのステップ数")
     t.add_argument("--device", metavar="名前", help="mps か cpu（既定 mps）")
     t.add_argument("--seed", type=int, default=0, metavar="N", help="乱数種")
-    t.add_argument("--notes", metavar="文", help="実験台帳へ書く備考")
+    t.add_argument("--notes", metavar="文", help="学習の記録へ書く備考")
     t.add_argument(
         "--positions",
         type=int,
@@ -95,18 +95,18 @@ def add_parser(sub: argparse._SubParsersAction) -> None:
 
     t = ss.add_parser(
         "probe",
-        help="FTを凍結して焦点の熱地図を当てる",
+        help="FTを凍結して焦点のヒートマップを当てる",
         description="後段だけを学習し、上位5マスの的中率でFTの表現を測る。"
-        "**自明解を必ず並記する。** 頻度事前は検証行に出るので、"
+        "**ベースラインを必ず並記する**。頻度ベースラインは検証行に出るので、"
         "乱数初期値のFTは --init-net none で別に測る。"
         "書き出すネットは捨てる。学習するのは焦点ヘッドだけである。",
     )
-    t.add_argument("name", help="probeの名前。ログと実験台帳の名前になる")
+    t.add_argument("name", help="probeの名前。ログと学習の記録の名前になる")
     t.add_argument(
         "--focus",
         required=True,
         metavar="名前",
-        help=f"熱地図つき局面集。data/train/<名前>{focus_labels.SUFFIX}",
+        help=f"ヒートマップつき局面集。data/train/<名前>{focus_labels.SUFFIX}",
     )
     t.add_argument(
         "--init-net",
@@ -135,7 +135,7 @@ def add_parser(sub: argparse._SubParsersAction) -> None:
         "--orient",
         default="board",
         choices=["board", "stm"],
-        help="熱地図の向き。boardは盤の向きのまま、stmは手番側から見た向きへ揃える",
+        help="ヒートマップの向き。boardは盤の向きのまま、stmは手番側から見た向きへ揃える",
     )
     t.add_argument(
         "--train-ft",
@@ -334,7 +334,7 @@ def train(args: argparse.Namespace) -> int:
     for directory in (paths.NETS, paths.REPO / RUNS, paths.CHECKPOINTS / name):
         directory.mkdir(parents=True, exist_ok=True)
 
-    # 備考は台帳のメモで、学習の条件ではない
+    # 備考は学習の記録のメモで、学習の条件ではない
     at = argv.index("--notes")
     line = proc.show(argv[:at] + argv[at + 2 :])
     record = paths.CHECKPOINTS / name / "train.cond"
@@ -373,7 +373,7 @@ def train(args: argparse.Namespace) -> int:
 
 
 def train_progress(beat):
-    """学習器の出力行を心拍へ写す関数を返す。"""
+    """学習器の出力行を状態ファイルへ反映する関数を返す。"""
 
     def on_line(line: str) -> None:
         if m := STEP_RE.match(line):
@@ -394,7 +394,7 @@ def train_progress(beat):
 def _train_file(value: str, suffix: str) -> Path:
     """名前を data/train/ のファイルへ解決する。区切りか拡張子があればパスとして通す。
 
-    学習器へはリポジトリからの相対パスで渡す。実験台帳の備考に載るので、
+    学習器へはリポジトリからの相対パスで渡す。学習の記録の備考に載るので、
     マシンの置き場に依存させない。
     """
     if "/" in value or value.endswith(suffix):
@@ -424,7 +424,7 @@ def _continual_args(data: Path, args: argparse.Namespace, *, dry_run: bool) -> l
 def _probe_init(value: str | None) -> str | None:
     """probeが読むFTの出どころを決める。
 
-    `none` は乱数初期値を表す。自明解Rの測定で、学習した表現を何も読まない。
+    `none` は乱数初期値を表す。乱数ベースラインの測定で、学習した表現を何も読まない。
     名前だけ渡されたら `data/nets/<名前>.hmwr` に解決する。
     """
     if value is None:
@@ -437,11 +437,11 @@ def _probe_init(value: str | None) -> str | None:
 
 
 def probe(args: argparse.Namespace) -> int:
-    """FTを凍結し、焦点の熱地図を当てる後段だけを学習する（ADR-0213）。
+    """FTを凍結し、焦点のヒートマップを当てる後段だけを学習する（ADR-0213）。
 
-    測るのは上位5マスの的中率で、比べる相手は2つの自明解である。頻度事前は
-    学習器が検証行へ並記し、乱数初期値のFTは `--init-net none` の別の走行で
-    測る。**判定はADRの事前登録に従う。この道具は数字を出すだけである。**
+    測るのは上位5マスの的中率で、比べる相手は2つのベースラインである。頻度ベースラインは
+    学習器が検証行へ並記し、乱数初期値のFTは `--init-net none` の別の実行で
+    測る。**判定はADRの事前登録に従う**。このツールは数字を出すだけである。
     """
     name = paths.check_name(args.name)
     data = _train_file(args.focus, focus_labels.SUFFIX)
@@ -449,7 +449,7 @@ def probe(args: argparse.Namespace) -> int:
 
     if not args.dry_run:
         if not data.is_file():
-            raise proc.Fail(f"熱地図つき局面集がない: {data}")
+            raise proc.Fail(f"ヒートマップつき局面集がない: {data}")
         if init is not None and not Path(init).is_file():
             raise proc.Fail(f"初期値のネットがない: {init}")
 
@@ -471,10 +471,10 @@ def probe(args: argparse.Namespace) -> int:
 
     print(f"=== probe: {name} ===")
     print(f"局面集  : {paths.rel(data)}（{rows:,}件）")
-    print(f"初期値  : {'乱数（自明解R）' if init is None else paths.rel(init)}")
+    print(f"初期値  : {'乱数ベースライン' if init is None else paths.rel(init)}")
     print(f"学習    : {max(train_rows, 0):,}局面 × {args.epochs}エポック（{steps}ステップ）")
     print(f"検証    : 末尾{args.valid_count:,}局面、{interval}ステップおき")
-    print(f"熱地図  : 向き {args.orient}")
+    print(f"ヒートマップ: 向き {args.orient}")
     print(
         "出力    : なし（学習した焦点ヘッドは捨てる。FTは"
         + ("焦点で学習するが残さない" if args.train_ft else "動かない")
@@ -518,7 +518,7 @@ def probe(args: argparse.Namespace) -> int:
         return proc.run(argv, dry_run=True, log=paths.log("probe", name))
     # 学習器は必ずネットを書き出すが、probeのそれは捨てるものである。
     # FTは凍結していて1ビットも変わらず、学習した焦点ヘッドは載らない。
-    # data/nets/ へ置くと128MBの使い道のないファイルが走行ごとに増える
+    # data/nets/ へ置くと128MBの使い道のないファイルが実行ごとに増える
     with tempfile.TemporaryDirectory() as tmp:
         argv += ["--out", str(Path(tmp) / f"probe-{name}.hmwr")]
         return proc.run(argv, log=paths.log("probe", name))
@@ -635,8 +635,8 @@ def _install_wheel(wheels: Path, spec: str, *, dry_run: bool) -> None:
 def evaluate(args: argparse.Namespace) -> int:
     """書き出したネットを検証集合で測って表にする。
 
-    土俵を跨いで比べたいときだけ検証集合を複数渡す。教師データの分布を
-    変える実験では物差しも一緒に動く（ADR-0136）。
+    条件をまたいで比べたいときだけ検証集合を複数渡す。教師データの分布を
+    変える実験では評価基準も一緒に動く（ADR-0136）。
     """
     valids = [v for v in (args.valid or DEFAULT_EVAL_VALID).split(",") if v]
     if not args.dry_run:
