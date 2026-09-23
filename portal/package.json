@@ -1,0 +1,14 @@
+{
+  "name": "himawari-portal",
+  "private": true,
+  "description": "himawari-rsの状態を外から見るポータル（ADR-0220）。エンジンのビルドには関係しない",
+  "workspaces": ["shared", "server", "web"],
+  "scripts": {
+    "dev:server": "bun run --cwd server dev",
+    "dev:web": "bun run --cwd web dev",
+    "build": "bun run --cwd web build",
+    "start": "bun run --cwd server start",
+    "test": "bun test",
+    "typecheck": "bun run --cwd shared typecheck && bun run --cwd server typecheck && bun run --cwd web typecheck"
+  }
+}
