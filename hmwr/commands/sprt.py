@@ -34,6 +34,12 @@ def add_parser(sub: argparse._SubParsersAction) -> None:
     )
     t.add_argument("--tc", metavar="持ち時間", help="例 60+0.6（既定 10+0.1）")
     t.add_argument(
+        "--concurrency",
+        type=int,
+        metavar="N",
+        help="同時に指す局数（既定は物理コア数から決まる）。多スレッドの対局で下げる",
+    )
+    t.add_argument(
         "--set",
         action="append",
         metavar="KEY=VALUE",
@@ -77,6 +83,12 @@ def add_parser(sub: argparse._SubParsersAction) -> None:
     )
     t.add_argument("--noninferiority", action="store_true", help="非劣性で測る")
     t.add_argument("--tc", metavar="持ち時間", help="例 60+0.6")
+    t.add_argument(
+        "--concurrency",
+        type=int,
+        metavar="N",
+        help="同時に指す局数（既定は物理コア数から決まる）。多スレッドの対局で下げる",
+    )
     t.add_argument("--set", action="append", metavar="KEY=VALUE", help="測定条件")
     t.add_argument(
         "--max-pairs",

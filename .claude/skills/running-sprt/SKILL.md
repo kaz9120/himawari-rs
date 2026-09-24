@@ -28,6 +28,7 @@ description: SPRT（マージ判定の対局）の起動・監視・終了後の
 hmwr sprt run <名前>                     # 既定条件
 hmwr sprt run <名前> --noninferiority    # 非劣性（ADR-0163）
 hmwr sprt run <名前> --tc 60+0.6         # 条件を変える
+hmwr sprt run <名前> --concurrency 2     # 並列度を下げる（多スレッドの対局）
 ```
 
 **この1コマンドが3つを順に行う**（ADR-0179）。ペアのビルド、機能検証、

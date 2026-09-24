@@ -116,6 +116,28 @@ def test_sprt_only_flags_are_refused_with_fixed_pairs():
     assert cli.main(argv) == proc.USAGE
 
 
+def test_concurrency_flag_matches_the_environment_variable(capsys, monkeypatch):
+    """`--concurrency N` は SPRT_CONCURRENCY=N と同じ条件を組み立てる。"""
+    _, by_flag = dry(capsys, ["match", "run", "x", "--concurrency", "2"])
+    monkeypatch.setenv("SPRT_CONCURRENCY", "2")
+    _, by_env = dry(capsys, ["match", "run", "x"])
+    assert "--concurrency 2 " in play_line(by_flag)
+    assert play_line(by_flag) == play_line(by_env)
+
+
+@pytest.mark.parametrize("value", ["0", "-1"])
+def test_concurrency_is_validated(value):
+    assert cli.main(["--dry-run", "match", "run", "x", "--concurrency", value]) == proc.USAGE
+
+
+def test_sprt_hands_the_concurrency_to_the_detached_worker(capsys):
+    """sprtは畳んだ条件を --set で子へ渡す。鍵を許していないと子が落ちる。"""
+    _, lines = dry(capsys, ["sprt", "run", "x", "--concurrency", "3", "--no-verify"])
+    worker = [x for x in lines if "--worker" in x][0]
+    assert "--set SPRT_CONCURRENCY=3" in worker
+    assert cli.main(["--dry-run", "match", "run", "x", "--set", "SPRT_CONCURRENCY=3"]) == proc.OK
+
+
 def test_missing_files_fail_before_starting():
     assert cli.main(["match", "run", "x", "--cand-net", "no_such_net"]) == proc.RUNTIME
 
