@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.50.18](https://github.com/kaz9120/himawari-rs/compare/v0.50.17...v0.50.18) (2026-09-24)
+
+
+### その他の変更
+
+* ヘルパーは深さ1の途中でもstopに従い、bestmoveを止めない ([#614](https://github.com/kaz9120/himawari-rs/issues/614)) ([7ada5f7](https://github.com/kaz9120/himawari-rs/commit/7ada5f7abacb72ee14f6b3e48b58fb9dd31b121c))
+
 ## [0.50.17](https://github.com/kaz9120/himawari-rs/compare/v0.50.16...v0.50.17) (2026-09-23)
 
 
