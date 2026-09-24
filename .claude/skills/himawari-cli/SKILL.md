@@ -55,6 +55,7 @@ hmwr sprt wait <名前>                 判定が出るまで待つ
 hmwr match run <名前> --build <ビルド名> --base-net <ネット名> --cand-net <ネット名> \
   --stop pairs:1000                   固定ペア数を指し切り、Eloを推定する
 hmwr match run <名前> --cand-opt Threads=8 --cand-odds 0.5   片側だけ条件を変える
+hmwr match run <名前> --opt Threads=4 --concurrency 2        並列度を下げる
 hmwr match show <名前>                途中経過・結果（sprt show と同じ）
 ```
 

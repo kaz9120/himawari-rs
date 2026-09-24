@@ -90,6 +90,13 @@ def add_parser(sub: argparse._SubParsersAction) -> None:
     )
     t.add_argument("--openings", metavar="名前", help="開始局面集。openings/<名前>.txt")
     t.add_argument("--tc", metavar="持ち時間", help="例 60+0.6（既定 10+0.1）")
+    t.add_argument(
+        "--concurrency",
+        type=int,
+        metavar="N",
+        help=f"同時に指す局数（省くと物理コア数から決まり、最大{config.MAX_CONCURRENCY}になる）。"
+        "多スレッドの対局で下げる",
+    )
     t.add_argument("--hash", metavar="MB", help=f"置換表（既定 {config.MATCH_HASH}）")
     t.add_argument(
         "--max-moves", metavar="N", help=f"引き分けにする手数（既定 {config.MATCH_MAX_MOVES}）"
@@ -188,11 +195,19 @@ def settings(args: argparse.Namespace) -> dict[str, str]:
         env["SPRT_ELO1"] = "0"
     if getattr(args, "tc", None):
         env["SPRT_TC"] = args.tc
+    concurrency = getattr(args, "concurrency", None)
+    if concurrency is not None:
+        if concurrency < 1:
+            raise proc.Fail(f"--concurrency は1以上で書く: {concurrency}", proc.USAGE)
+        env["SPRT_CONCURRENCY"] = str(concurrency)
     if getattr(args, "max_pairs", None):
         env["SPRT_MAX_PAIRS"] = str(args.max_pairs)
     # 未知の鍵は黙って無視されると誤設定に気づけない。上限3,000ペアの
     # つもりが当時の安全弁の60,000まで走った事故が実例（2026-08-29）
-    allowed = set(config.DEFAULTS) | {"SPRT_MAX_PAIRS"}
+    # 並列度は既定の一覧になく（マシンのコア数から決まる）、鍵の一覧にも
+    # 載らなかった。sprtは畳んだ条件を --set で子へ渡し直すので、ここで
+    # 許していないと `--concurrency` を付けた実行が子で落ちる
+    allowed = set(config.DEFAULTS) | {"SPRT_MAX_PAIRS", "SPRT_CONCURRENCY"}
     for item in getattr(args, "set", None) or []:
         if "=" not in item:
             raise proc.Fail(f"--set はKEY=VALUEで書く: {item}", proc.USAGE)
