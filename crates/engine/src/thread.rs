@@ -10,7 +10,13 @@
 use std::sync::atomic::Ordering;
 use std::sync::{Arc, Condvar, Mutex};
 use std::thread::JoinHandle;
-use std::time::Instant;
+use std::time::{Duration, Instant};
+
+/// ヘルパーの結論を待つ間、この周期で起きて経過を見る
+const HELPER_WAIT_POLL: Duration = Duration::from_millis(50);
+/// 待ちがこれを超えたら、待っているスレッドを出す。以後は倍ごとに出す。
+/// stopを立てたヘルパーは通常1ms以内に抜けるので、200msは異常の徴候である
+const HELPER_WAIT_REPORT: Duration = Duration::from_millis(200);
 
 use himawari_core::{Move, Position};
 
@@ -442,10 +448,38 @@ fn spawn_worker(
                         // 全スレッドの結論が揃うのを待つ（S:1195-1197の
                         // `wait_for_search_finished`）。stopは既に立てたので
                         // ヘルパーはすぐ抜ける
+                        //
+                        // 待ちが長引いたら、待っているスレッドを出す。bestmoveが
+                        // 出ずに切れ負けた事象（Issue #545）は、GUIのログに
+                        // time planの行だけが残り、どのスレッドかが分からなかった
                         let all: Vec<SearchResult> = {
                             let mut g = results.slots.lock().expect("results lock");
+                            let waited = Instant::now();
+                            let mut report_at = HELPER_WAIT_REPORT;
                             while g.iter().any(|r| r.is_none()) {
-                                g = results.cv.wait(g).expect("results wait");
+                                g = results
+                                    .cv
+                                    .wait_timeout(g, HELPER_WAIT_POLL)
+                                    .expect("results wait")
+                                    .0;
+                                if waited.elapsed() >= report_at
+                                    && let Some(out) = &on_line
+                                {
+                                    let pending: Vec<String> = g
+                                        .iter()
+                                        .enumerate()
+                                        .filter(|(_, r)| r.is_none())
+                                        .map(|(i, _)| i.to_string())
+                                        .collect();
+                                    if !pending.is_empty() {
+                                        out(&format!(
+                                            "info string waiting for threads {} elapsed {}",
+                                            pending.join(","),
+                                            waited.elapsed().as_millis()
+                                        ));
+                                    }
+                                    report_at *= 2;
+                                }
                             }
                             g.iter_mut().filter_map(|r| r.take()).collect()
                         };
@@ -514,12 +548,19 @@ impl ThreadPool {
     ) {
         // 投票で最終手を選ぶ（S:1239-1246）。MultiPVや
         // go depthのときは参照実装も投票しない
+        //
+        // 深さ1を終えずにstopで抜けたヘルパーは、root手をまだ読み切って
+        // いない。その結論は投票に入れない（Issue #545）
+        let voters: Vec<usize> = (0..all.len())
+            .filter(|&i| i == 0 || all[i].completed_depth > 0)
+            .collect();
         let chosen = if thread_count > 1
             && opts.multi_pv == 1
             && limits.depth == 0
-            && all.iter().all(|r| !r.pv.is_empty())
+            && voters.iter().all(|&i| !all[i].pv.is_empty())
         {
-            get_best_thread(all)
+            let ballots: Vec<SearchResult> = voters.iter().map(|&i| all[i].clone()).collect();
+            voters[get_best_thread(&ballots)]
         } else {
             0
         };
