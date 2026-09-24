@@ -344,6 +344,7 @@ impl Default for MainMemory {
     }
 }
 
+#[derive(Clone)]
 pub struct SearchResult {
     pub best: Move,
     pub score: Value,
@@ -680,13 +681,18 @@ impl Worker {
         ((depth + SKIP_PHASE[i]) / SKIP_SIZE[i]) % 2 == 1
     }
 
-    /// 深さ1を終えるまではstopを無視する。`iterate` は打ち切り時に
+    /// メインは深さ1を終えるまでstopを無視する。`iterate` は打ち切り時に
     /// `root_moves[0]` を返すが、root手は生成順に並んでいるため、深さ1の
-    /// 途中で止まると探索していない手が出てしまう。深さ1は数msで終わる
-    /// ので、待つ代償は小さい
+    /// 途中で止まると探索していない手が出てしまう。
+    ///
+    /// ヘルパーには同じ保護を掛けない。メインはbestmoveの前に全ヘルパーの
+    /// 結論を待つので、深さ1が膨れたヘルパーが1本あるとbestmoveが出ない。
+    /// 2026-09-24のfloodgate戦で、time planの行の後にbestmoveが31秒出ず
+    /// 切れ負けた（Issue #545）。深さ1を終えずに抜けたヘルパーの結論は、
+    /// 投票から外す（`ThreadPool::conclude`）
     #[inline]
     fn stopped(&self) -> bool {
-        self.depth1_done && self.shared.stop.load(Ordering::Relaxed)
+        (self.depth1_done || self.thread_idx != 0) && self.shared.stop.load(Ordering::Relaxed)
     }
 
     /// 定期的な時間・ノード制限の検査（S:5480-5560）。時間制限を持つのは

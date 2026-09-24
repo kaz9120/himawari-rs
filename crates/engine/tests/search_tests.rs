@@ -297,3 +297,46 @@ fn does_not_end_on_an_unresolved_aspiration_bound() {
         "最後に報告したPVの先頭とbestmoveが食い違う"
     );
 }
+
+/// stopが立っているとき、ヘルパーは深さ1の途中でも抜ける（Issue #545）。
+/// メインは深さ1を読み切ってから抜ける。メインはbestmoveの前に全ヘルパーを
+/// 待つので、深さ1が膨れたヘルパーがbestmoveを止めないようにする。
+/// 区別は読んだノード数で見る。修正前はヘルパーもメインと同じだけ読んでいた
+#[test]
+fn helper_honors_stop_before_depth1_but_main_does_not() {
+    use std::sync::atomic::Ordering;
+    let run = |thread_idx: usize| {
+        let pos = Position::from_sfen(SFEN_STARTPOS).unwrap();
+        let shared = Arc::new(Shared::new(16));
+        shared.stop.store(true, Ordering::Relaxed);
+        let limits = Limits::default();
+        let tm = TimeManager::new(
+            &limits,
+            pos.side_to_move(),
+            pos.game_ply(),
+            &TimeOptions::default(),
+        );
+        let mut worker = Worker::new(
+            pos,
+            Arc::clone(&shared),
+            limits,
+            tm,
+            0,
+            1,
+            Evaluator::material(),
+            Histories::default(),
+        );
+        worker.set_thread(thread_idx, 2);
+        let result = worker.iterate(&mut |_| {});
+        (result, shared.nodes.load(Ordering::Relaxed))
+    };
+    let (main, main_nodes) = run(0);
+    let (_, helper_nodes) = run(1);
+    // 初期局面の合法手は30手ある。メインは全root手を1回は読む
+    assert!(main_nodes >= 30, "メインは深さ1を読み切る: {main_nodes}");
+    assert!(main.best != Move::NONE);
+    assert!(
+        helper_nodes < main_nodes / 2,
+        "ヘルパーは深さ1を待たずに抜ける: {helper_nodes} vs {main_nodes}"
+    );
+}
