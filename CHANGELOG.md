@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.50.19](https://github.com/kaz9120/himawari-rs/compare/v0.50.18...v0.50.19) (2026-09-24)
+
+
+### その他の変更
+
+* 前の探索の終了待ちが長引いたら、待っているスレッドを出す ([#617](https://github.com/kaz9120/himawari-rs/issues/617)) ([72d8e80](https://github.com/kaz9120/himawari-rs/commit/72d8e809bb95819297102f72de8011f9054da7e4))
+
 ## [0.50.18](https://github.com/kaz9120/himawari-rs/compare/v0.50.17...v0.50.18) (2026-09-24)
 
 
