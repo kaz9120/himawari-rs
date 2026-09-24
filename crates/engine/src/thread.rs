@@ -17,6 +17,9 @@ const HELPER_WAIT_POLL: Duration = Duration::from_millis(50);
 /// 待ちがこれを超えたら、待っているスレッドを出す。以後は倍ごとに出す。
 /// stopを立てたヘルパーは通常1ms以内に抜けるので、200msは異常の徴候である
 const HELPER_WAIT_REPORT: Duration = Duration::from_millis(200);
+/// 前の探索の終了を待つ時間がこれを超えたら、終わっていないスレッドを出す。
+/// 以後は倍ごとに出す。stopの後は数msで終わるので、1秒は異常の徴候である
+const IDLE_WAIT_REPORT: Duration = Duration::from_secs(1);
 
 use himawari_core::{Move, Position};
 
@@ -168,6 +171,8 @@ pub struct ThreadPool {
     pub threads: usize,
     /// 読み込み済みの評価関数の識別（EvalFileパス）。
     pub eval_file: String,
+    /// USIへの出力。待ちが長引いたときの報告に使う
+    on_line: OnLine,
 }
 
 /// USIのscore表記（cp / mate）を組み立てる。
@@ -678,6 +683,7 @@ impl ThreadPool {
             hash_mb,
             threads: n,
             eval_file,
+            on_line,
         }
     }
 
@@ -781,11 +787,29 @@ impl ThreadPool {
     }
 
     /// 探索が終わる（bestmoveを出す）まで待つ。
+    ///
+    /// 待ちが長引いたら、終わっていないスレッドを出す。2026-09-25の
+    /// floodgate戦では、前局で固まった探索が残ったまま次の局の
+    /// usinewgameがここで止まり、1手も指せずに切れ負けた（Issue #545）
     pub fn wait_idle(&self) {
-        for w in &self.workers {
+        let waited = Instant::now();
+        let mut report_at = IDLE_WAIT_REPORT;
+        for (i, w) in self.workers.iter().enumerate() {
             let mut idle = w.ctl.idle.lock().expect("idle lock");
             while !*idle {
-                idle = w.ctl.idle_cv.wait(idle).expect("idle wait");
+                idle = w
+                    .ctl
+                    .idle_cv
+                    .wait_timeout(idle, HELPER_WAIT_POLL)
+                    .expect("idle wait")
+                    .0;
+                if !*idle && waited.elapsed() >= report_at {
+                    (self.on_line)(&format!(
+                        "info string waiting for previous search: thread {i} elapsed {}",
+                        waited.elapsed().as_millis()
+                    ));
+                    report_at *= 2;
+                }
             }
         }
     }
