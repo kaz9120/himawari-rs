@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.50.20](https://github.com/kaz9120/himawari-rs/compare/v0.50.19...v0.50.20) (2026-09-24)
+
+
+### その他の変更
+
+* 対局の並列度をフラグで指定できるようにする ([#619](https://github.com/kaz9120/himawari-rs/issues/619)) ([0e5c1bd](https://github.com/kaz9120/himawari-rs/commit/0e5c1bd28aeaaace9835f0ad56cb05153740a13b)), closes [#615](https://github.com/kaz9120/himawari-rs/issues/615)
+
 ## [0.50.19](https://github.com/kaz9120/himawari-rs/compare/v0.50.18...v0.50.19) (2026-09-24)
 
 
