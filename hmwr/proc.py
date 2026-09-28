@@ -188,11 +188,12 @@ def git(*args: str) -> str:
     return capture(["git", *args]).strip()
 
 
-def cargo_tool(binary: str, args: list[str]) -> list[str]:
-    """crates/tools のバイナリを走らせるコマンドを組み立てる。
+def cargo_tool(binary: str, args: list[str], *, package: str = "himawari-tools") -> list[str]:
+    """クレートのバイナリを走らせるコマンドを組み立てる。
 
     毎回 `cargo run --release -q -p himawari-tools --bin <名前> --` と
-    書かずに済ませることが目的である。
+    書かずに済ませることが目的である。エンジン本体のモード（threadtune）を
+    呼ぶときだけ package を差し替える。
     """
     return [
         "cargo",
@@ -200,7 +201,7 @@ def cargo_tool(binary: str, args: list[str]) -> list[str]:
         "--release",
         "-q",
         "-p",
-        "himawari-tools",
+        package,
         "--bin",
         binary,
         "--",

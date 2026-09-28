@@ -21,11 +21,16 @@ PSV_COVERED = "head|shuffle|quiet|rank|stats|phase|defend|oversample"
 # コマンドの位置にあるものだけを見る。ls や grep の引数に出てくるパスは止めない
 COMMAND_START = r"(?:^|[;&|(\n]|\$\(|\bexec\s|\bnohup\s|\btime\s)\s*(?:\w+=\S+\s+)*"
 BINARY = r"(?:\S*/)?target/release/"
+# threadtune はエンジン本体のモードなので、ビルドの置き場が2つある
+ENGINE = r"(?:\S*/)?(?:target/release|data/bin)/\S+"
 DIRECT = re.compile(
     COMMAND_START + BINARY + rf"(?:selfplay(?=\s|$)|psv\s+(?:{PSV_COVERED})\b)"
 )
+THREADTUNE = re.compile(COMMAND_START + ENGINE + r"\s+threadtune(?=\s|$)")
 VIA_CARGO = re.compile(
-    rf"\bcargo\s+run\b[^;&|\n]*--bin\s+(?:selfplay\b|psv\s+--\s+(?:{PSV_COVERED})\b)"
+    r"\bcargo\s+run\b[^;&|\n]*--bin\s+(?:selfplay\b"
+    rf"|psv\s+--\s+(?:{PSV_COVERED})\b"
+    r"|himawari\s+--\s+threadtune\b)"
 )
 
 MESSAGE = """\
@@ -33,12 +38,17 @@ MESSAGE = """\
   psv      → hmwr data shuffle / split / mix / quiet / rank / oversample / stats / openings
   psv      → hmwr diag phase / defend（単発の診断）
   selfplay → hmwr match run（固定ペア数は --stop pairs:N）
+  himawari threadtune → hmwr threadtune（ビルドを選ぶなら --build <名前>）
 足りない操作は hmwr/dataops.py の対応表へ足すか、micro Issueを切る。
 """
 
 
 def blocked(command: str) -> bool:
-    return bool(DIRECT.search(command) or VIA_CARGO.search(command))
+    return bool(
+        DIRECT.search(command)
+        or THREADTUNE.search(command)
+        or VIA_CARGO.search(command)
+    )
 
 
 def main() -> int:

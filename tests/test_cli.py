@@ -9,7 +9,7 @@ import re
 
 import pytest
 
-from hmwr import cli, paths, proc
+from hmwr import cli, config, paths, proc
 from hmwr import release as release_mod
 
 
@@ -297,6 +297,30 @@ def test_bench_forwards_options(capsys):
     _, lines = dry(capsys, ["bench", "a", "b", "--nodes", "5000", "--runs", "3"])
     assert "--nodes 5000" in lines[0]
     assert "--runs 3" in lines[0]
+
+
+def test_threadtune_defaults_to_the_current_network(capsys):
+    """評価関数を省いたら現行のネットで測る。ログも名前から決まる。"""
+    _, lines = dry(capsys, ["threadtune", "--current", "6", "--hours", "8"])
+    assert "--bin himawari -- threadtune" in lines[0]
+    assert f"--eval {paths.rel(config.get('EVAL_FILE'))}" in lines[0]
+    assert "--current 6" in lines[0]
+    assert "logs/threadtune-" in lines[1]
+
+
+def test_threadtune_resolves_the_network_name(capsys):
+    """評価関数はパスではなく名前で受ける。"""
+    _, lines = dry(capsys, ["threadtune", "--eval", "adr0203-x", "--nps-only"])
+    assert "--eval data/nets/adr0203-x.hmwr" in lines[0]
+    assert "--nps-only" in lines[0]
+    assert "data/logs/threadtune-adr0203-x.log" in lines[1]
+
+
+def test_threadtune_can_measure_a_kept_build(capsys):
+    """配布用のビルドで測れる。放流と同じ条件を選べるようにする。"""
+    _, lines = dry(capsys, ["threadtune", "--build", "himawari-pgo"])
+    assert "data/bin/himawari-pgo threadtune" in lines[0]
+    assert "cargo run" not in lines[0]
 
 
 # --- net ---------------------------------------------------------------
