@@ -25,6 +25,11 @@ spec.loader.exec_module(hook)
         "./target/release/psv defend --in a --out b.tsv",
         "./target/release/psv phase --in a --out b.tsv",
         "./target/release/psv oversample --in a --out b --kind defense --times 3",
+        # スレッド数の測定も hmwr threadtune が包んでいる
+        "./target/release/himawari threadtune --eval data/nets/x.hmwr --hours 8",
+        "data/bin/himawari-pgo threadtune --eval data/nets/x.hmwr",
+        "nohup ./data/bin/base-x threadtune --nps-only &",
+        "cargo run --release -p himawari-usi --bin himawari -- threadtune --eval x",
     ],
 )
 def test_covered_operations_are_blocked(command):
@@ -44,6 +49,11 @@ def test_covered_operations_are_blocked(command):
         "./target/release/psv dump --in a --limit 3",
         "./target/release/gensfen --out x --eval y",
         "cargo run --release -p himawari-tools --bin verify -- a b",
+        # エンジンをUSIとして起動するのは止めない。包んだのは threadtune だけである
+        "./target/release/himawari",
+        "echo 'usi' | ./data/bin/himawari-pgo",
+        "hmwr threadtune --current 6 --hours 8",
+        "grep -n threadtune crates/usi/src/main.rs",
     ],
 )
 def test_everything_else_passes(command):
