@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.50.21](https://github.com/kaz9120/himawari-rs/compare/v0.50.20...v0.50.21) (2026-09-28)
+
+
+### その他の変更
+
+* hmwr threadtuneでスレッド数の測定を包み、直接実行を止める ([#626](https://github.com/kaz9120/himawari-rs/issues/626)) ([dd0522e](https://github.com/kaz9120/himawari-rs/commit/dd0522ee92f6170e44e5ace515452854a8f3a82d)), closes [#621](https://github.com/kaz9120/himawari-rs/issues/621)
+
 ## [0.50.20](https://github.com/kaz9120/himawari-rs/compare/v0.50.19...v0.50.20) (2026-09-24)
 
 
