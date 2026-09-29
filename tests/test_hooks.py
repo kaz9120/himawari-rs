@@ -25,6 +25,9 @@ spec.loader.exec_module(hook)
         "./target/release/psv defend --in a --out b.tsv",
         "./target/release/psv phase --in a --out b.tsv",
         "./target/release/psv oversample --in a --out b --kind defense --times 3",
+        # 探索での付け直しも hmwr data rescore が包んでいる
+        "./target/release/psv relabel --in a --out b --depth 9 --jobs 8",
+        "cargo run --release -p himawari-tools --bin psv -- relabel --in a --out b",
         # スレッド数の測定も hmwr threadtune が包んでいる
         "./target/release/himawari threadtune --eval data/nets/x.hmwr --hours 8",
         "data/bin/himawari-pgo threadtune --eval data/nets/x.hmwr",
@@ -45,7 +48,7 @@ def test_covered_operations_are_blocked(command):
         "grep -n rank crates/tools/src/bin/psv.rs",
         "cargo build --release -p himawari-tools --bin psv",
         # hmwr にまだ無い操作は止めない。止めると抜け道が作られる
-        "./target/release/psv relabel --in a --out b",
+        "./target/release/psv thin --in a --out b --threshold 2000",
         "./target/release/psv dump --in a --limit 3",
         "./target/release/gensfen --out x --eval y",
         "cargo run --release -p himawari-tools --bin verify -- a b",

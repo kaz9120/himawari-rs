@@ -98,6 +98,18 @@ def test_oversample_passes_the_kind_and_the_multiplier(capsys):
     assert lines[2] == "[dry-run] ログ: data/logs/oversample-t3.log"
 
 
+def test_rescore_matches_the_adr0205_invocation(capsys):
+    """ADR-0205が記録した探索条件を、既定のまま明示して渡す。"""
+    _, lines = dry(capsys, ["rescore", "t_r9", "--in", "t", "--eval-file", "data/nets/x.hmwr"])
+    assert lines[0] == (
+        "[dry-run] target/release/psv relabel --in data/train/t.psv "
+        "--out data/train/t_r9.psv.part --depth 9 --max-nodes 1000000 "
+        f"--jobs {dataops.RESCORE_JOBS} --hash {dataops.RESCORE_HASH} "
+        "--eval-file data/nets/x.hmwr"
+    )
+    assert lines[2] == "[dry-run] ログ: data/logs/rescore-t_r9.log"
+
+
 # --- 表とpsvの食い違い -------------------------------------------------
 
 
