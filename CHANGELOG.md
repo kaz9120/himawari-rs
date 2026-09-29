@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.50.22](https://github.com/kaz9120/himawari-rs/compare/v0.50.21...v0.50.22) (2026-09-29)
+
+
+### その他の変更
+
+* hmwr data rescoreで探索の付け直しを包み、直接実行を止める ([#628](https://github.com/kaz9120/himawari-rs/issues/628)) ([ddcd6f3](https://github.com/kaz9120/himawari-rs/commit/ddcd6f3e949f129a5d47d2edf5c4a25485ff2b5e)), closes [#622](https://github.com/kaz9120/himawari-rs/issues/622)
+
 ## [0.50.21](https://github.com/kaz9120/himawari-rs/compare/v0.50.20...v0.50.21) (2026-09-28)
 
 
