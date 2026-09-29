@@ -27,6 +27,13 @@ from .tools import focus_labels
 QUIET_JOBS = 8
 SHUFFLE_SEED = 1
 
+# 探索で付け直すときの既定（ADR-0205）。置換表は --hash を --jobs で割って
+# ワーカーへ配るので、どちらを変えても出力が変わる。既定をここで持つ
+RESCORE_DEPTH = 9
+RESCORE_MAX_NODES = 1_000_000
+RESCORE_JOBS = 8
+RESCORE_HASH = 256
+
 # 既定値の印。評価関数は実行時に config から引く
 EVAL = object()
 
@@ -124,6 +131,23 @@ OPS: tuple[Op, ...] = (
         opts=(Opt("--skip", "先頭から飛ばす件数"), LIMIT_OPT, EVAL_OPT, HASH_OPT),
         suffix=".rankpsv",
         split_jobs=True,
+    ),
+    Op(
+        "rescore",
+        "relabel",
+        "現行エンジンの探索でscoreと教師手を付け直す",
+        "1局面ずつ深さを指定して読み直し、info行の最終値からscoreと最善手を取る。"
+        "mateは±30000へ丸め、勝敗と手数は元のまま残す。"
+        "8ワーカーで1,346局面/秒だったので、1億局面に20時間強かかる。"
+        "DL系モデルの推論で付け直すのは `hmwr data relabel` である。",
+        opts=(
+            Opt("--depth", "読み直す深さ", default=RESCORE_DEPTH),
+            Opt("--max-nodes", "1局面あたりのノード上限", default=RESCORE_MAX_NODES),
+            Opt("--jobs", "並列数。変えると出力が変わる", default=RESCORE_JOBS),
+            Opt("--hash", "置換表の大きさ。jobsで割って配る", "MB", default=RESCORE_HASH),
+            EVAL_OPT,
+            LIMIT_OPT,
+        ),
     ),
     Op(
         "oversample",
@@ -227,7 +251,7 @@ def add_parsers(ss: argparse._SubParsersAction) -> None:
         description="局面・指し手・勝敗・手数は残し、scoreだけをモデルの勝率から"
         "戻した値へ書き換える。勝率→評価値の変換は `cp = scale × logit(p)` で、"
         "scaleを600から下げることは推論側の FV_SCALE を上げることに当たる。"
-        "本エンジンの探索で付け直す `psv relabel` と違い、こちらは探索しない。",
+        "本エンジンの探索で付け直す `hmwr data rescore` と違い、こちらは探索しない。",
     )
     t.add_argument("name", metavar="出力名", help="data/train/<出力名>.psv へ書く")
     t.add_argument("--in", dest="inputs", action="append", default=[], metavar="入力名")

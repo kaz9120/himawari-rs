@@ -261,6 +261,7 @@ hmwr data rank <出力名> --in <入力名> --limit N --jobs 4   兄弟局面の
 hmwr data oversample <出力名> --in <入力名> --kind defense --times 3   該当する型の局面を複製する
 hmwr data openings <出力名> --in <入力名> --min-ply 40 --count 2000   開始局面集を作る
 hmwr data relabel <出力名> --in <入力名> --scale 600    DL系モデルの推論1回でscoreを付け直す
+hmwr data rescore <出力名> --in <入力名>             現行エンジンの探索でscoreと教師手を付け直す
 hmwr data focus <出力名> --raw <データセット> --count N   先8手の焦点のヒートマップを付けた局面集を作る
 hmwr data stats <名前>                               局面数・評価値の分布を見る
 hmwr data rm <名前>...                               中間ファイルを消す
@@ -286,6 +287,11 @@ hmwr data rm <名前>...                               中間ファイルを消�
 モデルは配布元のライセンスに同意して `data/models/dlshogi/` へ置く。cshogiと
 onnxruntimeが要る。MacのCoreMLで約2,600局面/秒、1億局面に約11時間かかる。
 進み具合は `data/logs/relabel-<名前>.log` へ1分ごとに出る。
+
+`data rescore` は名前が似ているが別物で、現行エンジンの探索で読み直し、scoreと
+教師手を付け替える（ADR-0205）。勝敗と手数は元のまま残る。8ワーカーで
+1,346局面/秒なので、1億局面に20時間強かかる。置換表は `--hash` を `--jobs` で
+割って配るため、どちらを変えても出力が変わる。
 
 `data oversample` は教師の最善手から型を判定し、該当する局面を末尾へ
 `--times` −1 回書き足す。判定に教師手が要るので、静止化の前に通す。出力は
