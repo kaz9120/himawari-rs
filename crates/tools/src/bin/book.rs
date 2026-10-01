@@ -12,6 +12,9 @@
 //!   book refresh 定跡が持つ局面はそのままに、指し手と評価値を引き直す
 //!   book stats   plyごとの網羅率を数える
 //!
+//! `book --help` でサブコマンドと有効なオプションの一覧を出す。配布バイナリ
+//! だけを持つ環境では、このコメントの代わりにそちらを読む（issue #624）。
+//!
 //!   book gen --out <path> [--eval <hmwr>] [--ply 24] [--width 4]
 //!            [--full-ply 0] [--depth 24] [--hash 256] [--threads N]
 //!            [--max-positions 2000] [--margin 100] [--save-every 25]
@@ -1233,13 +1236,64 @@ fn stats(cfg: &Config) -> std::io::Result<()> {
     Ok(())
 }
 
-fn main() {
-    let args: Vec<String> = std::env::args().skip(1).collect();
-    let sub = args.first().map(String::as_str).unwrap_or("");
-    if sub != "gen" && sub != "seed" && sub != "refresh" && sub != "stats" {
-        eprintln!("使い方は crates/tools/src/bin/book.rs 冒頭のコメントを参照");
-        std::process::exit(3);
+/// サブコマンドと一行の説明。使い方の表示とパーサが同じ出典を読む。
+const SUBCOMMANDS: &[(&str, &str)] = &[
+    ("gen", "定跡を掘り広げる（新しい局面を足す）"),
+    ("seed", "棋譜に現れた局面を種にして定跡へ足す"),
+    ("refresh", "局面の集合は変えずに、指し手と評価値を引き直す"),
+    ("stats", "plyごとの網羅率を数える"),
+];
+
+/// パーサが受け付けるフラグと一行の説明。一覧と実装のずれはテストが見る。
+const FLAGS: &[(&str, &str)] = &[
+    ("--out", "定跡ファイル（既定 data/book/mini.db）"),
+    ("--eval", "評価関数のhmwrファイル"),
+    ("--ply", "genが展開しstatsが数える手数（既定 24）"),
+    ("--max-ply", "seedが種として拾う手数の上限（既定 24）"),
+    ("--width", "各局面で記録する候補手数（既定 4）"),
+    ("--full-ply", "全合法手を展開する深さ（既定 0）"),
+    ("--depth", "探索の深さ（既定 24）"),
+    ("--hash", "置換表のMB（既定 256）"),
+    ("--threads", "探索スレッド数（seedは受け付けない）"),
+    ("--max-positions", "追加する局面数の上限（既定 2000）"),
+    ("--margin", "最善手との評価差の上限cp（既定 100）"),
+    ("--save-every", "書き出す間隔の局面数（既定 25）"),
+    (
+        "--stop-file",
+        "置くと切れ目で止まるファイル（既定 <out>.stop）",
+    ),
+    (
+        "--games",
+        "seedの入力のCSA。ディレクトリとファイルを並べられる",
+    ),
+];
+
+/// 使い方を組み立てる。配布バイナリだけを持つ環境ではソースのコメントを
+/// 読めないので、コマンドラインの上で復帰できる案内を出す（issue #624）。
+fn usage() -> String {
+    let mut s = String::from("使い方: book <サブコマンド> [オプション]\n\nサブコマンド:\n");
+    for (name, desc) in SUBCOMMANDS {
+        s.push_str(&format!("  {name:<10}{desc}\n"));
     }
+    s.push_str("\nオプション:\n");
+    for (flag, desc) in FLAGS {
+        s.push_str(&format!("  {flag:<17}{desc}\n"));
+    }
+    s.push_str("\nサブコマンドごとの組み合わせと既定値の由来は");
+    s.push_str(" crates/tools/src/bin/book.rs 冒頭のコメントにある。");
+    s
+}
+
+/// 引数を解く。異常は終了せずメッセージで返し、呼び出し側が使い方を添える。
+fn parse(args: &[String]) -> Result<(&'static str, Config), String> {
+    let given = args.first().map(String::as_str).unwrap_or("");
+    let Some((sub, _)) = SUBCOMMANDS.iter().copied().find(|(name, _)| *name == given) else {
+        return Err(if given.is_empty() {
+            "サブコマンドが要る".to_string()
+        } else {
+            format!("不明なサブコマンド: {given}")
+        });
+    };
     let mut cfg = Config {
         out: "data/book/mini.db".to_string(),
         eval: String::new(),
@@ -1291,10 +1345,7 @@ fn main() {
             "--save-every" => {
                 cfg.save_every = val.parse::<usize>().unwrap_or(cfg.save_every).max(1);
             }
-            other => {
-                eprintln!("不明な引数: {other}");
-                std::process::exit(3);
-            }
+            other => return Err(format!("不明な引数: {other}")),
         }
         i += 2;
     }
@@ -1302,15 +1353,32 @@ fn main() {
         // マルチスレッド探索は同じ局面でも選ぶ手が揺れる。決定論を優先して
         // 1スレッドに固定し、指定されたら黙って落とさずに知らせる（ADR-0152）
         if threads_given {
-            eprintln!("seed は --threads を受け付けない（決定論のため1スレッド固定）");
-            std::process::exit(3);
+            return Err(
+                "seed は --threads を受け付けない（決定論のため1スレッド固定）".to_string(),
+            );
         }
         cfg.threads = 1;
         if cfg.games.is_empty() {
-            eprintln!("seed には --games が要る");
-            std::process::exit(3);
+            return Err("seed には --games が要る".to_string());
         }
     }
+    Ok((sub, cfg))
+}
+
+fn main() {
+    let args: Vec<String> = std::env::args().skip(1).collect();
+    if args.iter().any(|a| a == "--help" || a == "-h") {
+        println!("{}", usage());
+        return;
+    }
+    let (sub, cfg) = match parse(&args) {
+        Ok(parsed) => parsed,
+        Err(msg) => {
+            eprintln!("{msg}");
+            eprintln!("{}", usage());
+            std::process::exit(3);
+        }
+    };
     if let Some(dir) = std::path::Path::new(&cfg.out).parent() {
         let _ = std::fs::create_dir_all(dir);
     }
@@ -1624,5 +1692,67 @@ P9+KY+KE+GI+KI+OU+KI+GI+KE+KY
         assert_eq!(full, again, "全部持っていれば定跡は変わらない");
 
         let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    fn parse_args(args: &[&str]) -> Result<(&'static str, Config), String> {
+        let owned: Vec<String> = args.iter().map(|s| s.to_string()).collect();
+        parse(&owned)
+    }
+
+    /// 通ってはいけない引数のメッセージを取る。ConfigにDebugを足さずに済む
+    fn parse_err(args: &[&str]) -> String {
+        match parse_args(args) {
+            Ok(_) => panic!("通ってはいけない: {args:?}"),
+            Err(msg) => msg,
+        }
+    }
+
+    #[test]
+    fn usage_covers_everything_the_parser_accepts() {
+        let text = usage();
+        for (name, _) in SUBCOMMANDS {
+            assert!(text.contains(*name), "使い方に {name} が無い");
+            // --games を要るのはseedだけなので、4つを同じ形で通せる
+            assert!(
+                parse_args(&[name, "--games", "x"]).is_ok(),
+                "{name} を受け付けない"
+            );
+        }
+        for (flag, _) in FLAGS {
+            assert!(text.contains(*flag), "使い方に {flag} が無い");
+            // 一覧に並べたフラグをパーサが知らなければ「不明な引数」で落ちる
+            assert!(
+                parse_args(&["gen", flag, "1"]).is_ok(),
+                "{flag} を受け付けない"
+            );
+        }
+        assert!(text.contains("book.rs"), "詳細の在り処を残す");
+    }
+
+    #[test]
+    fn bad_arguments_name_what_was_wrong() {
+        assert!(parse_err(&[]).contains("サブコマンド"));
+        assert!(parse_err(&["dig"]).contains("dig"));
+        assert!(parse_err(&["gen", "--widht", "4"]).contains("--widht"));
+        assert!(parse_err(&["seed", "--games", "x", "--threads", "4"]).contains("--threads"));
+        assert!(parse_err(&["seed"]).contains("--games"));
+    }
+
+    #[test]
+    fn parse_keeps_the_defaults_and_reads_the_values() {
+        let (sub, cfg) = parse_args(&["gen"]).expect("既定で通る");
+        assert_eq!(sub, "gen");
+        assert_eq!(cfg.out, "data/book/mini.db");
+        assert_eq!((cfg.ply, cfg.width, cfg.depth), (24, 4, 24));
+        assert_eq!(
+            (cfg.max_positions, cfg.margin, cfg.save_every),
+            (2000, 100, 25)
+        );
+
+        let (sub, cfg) = parse_args(&["seed", "--games", "a", "b", "--width", "6"]).expect("通る");
+        assert_eq!(sub, "seed");
+        assert_eq!(cfg.games, ["a", "b"]);
+        assert_eq!(cfg.width, 6);
+        assert_eq!(cfg.threads, 1, "seedは1スレッドに固定する");
     }
 }
