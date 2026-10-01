@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.50.23](https://github.com/kaz9120/himawari-rs/compare/v0.50.22...v0.50.23) (2026-10-01)
+
+
+### その他の変更
+
+* bookの引数エラーで使い方とオプションの一覧を出す ([#632](https://github.com/kaz9120/himawari-rs/issues/632)) ([068655a](https://github.com/kaz9120/himawari-rs/commit/068655a0283f4a5adb20cec17ca366e1e053caa6)), closes [#624](https://github.com/kaz9120/himawari-rs/issues/624)
+
 ## [0.50.22](https://github.com/kaz9120/himawari-rs/compare/v0.50.21...v0.50.22) (2026-09-29)
 
 
