@@ -288,6 +288,9 @@ fn check_len(name: &str, got: usize, want: usize) -> PyResult<()> {
 
 #[pyfunction]
 #[pyo3(signature = (path, lineage, ft_w, ft_b, w2, b2, w3, b3, w_out, b_out, w4=None, b4=None))]
+// 引数の並びがそのままPython側の呼び出し規約になる（上のsignature）。層ごとの
+// 重みとバイアスを構造体へまとめるには、受け渡す型をpyclassにしてquantize.pyの
+// 呼び出しも書き換えることになるので、平らな引数で受ける
 #[allow(clippy::too_many_arguments)]
 fn save_hmwr(
     path: &str,

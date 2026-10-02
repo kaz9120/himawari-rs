@@ -160,6 +160,9 @@ def running(kind: str, name: str, *, dry_run: bool = False, **kwargs) -> Iterato
     中で `finish` を呼んでいれば、それを優先する。dry_runなら何も書かない。
     """
     if dry_run:
+        # _QuietはHeartbeatを継承せず同じメソッドだけを持つ。名前での部分型では
+        # 戻りのIterator[Heartbeat]と合わず、mypyが misc で
+        # 「Incompatible types in "yield"」を出すため外す
         yield _Quiet()  # type: ignore[misc]
         return
     beat = Heartbeat(kind, name, **kwargs)

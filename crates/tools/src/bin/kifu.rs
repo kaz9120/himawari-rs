@@ -275,10 +275,12 @@ fn analyse_game(cli: &Cli, eval: &Path, path: &Path) -> Result<Section> {
         &game,
         me,
         path,
-        &analysed,
-        &blunders,
-        &mate_misses,
-        &time,
+        &Analysis {
+            all: &analysed,
+            blunders: &blunders,
+            mate_misses: &mate_misses,
+            time: &time,
+        },
     );
     write_flips_and_curve(&mut text, cli, &turns, &flips);
     Ok(Section {
@@ -643,18 +645,29 @@ fn time_stat(cli: &Cli, game: &CsaGame, me: Color) -> TimeStat {
     stat
 }
 
-#[allow(clippy::too_many_arguments)]
+/// 1局の解析結果。節の書き出しへまとめて渡す。
+struct Analysis<'a> {
+    /// 各局面の再解析結果。初期局面から最終局面まで（指し手数+1個）。
+    all: &'a [Analysed],
+    blunders: &'a [Blunder],
+    mate_misses: &'a [MateMiss],
+    time: &'a TimeStat,
+}
+
 fn write_section(
     out: &mut String,
     cli: &Cli,
     game: &CsaGame,
     me: Color,
     path: &Path,
-    a: &[Analysed],
-    blunders: &[Blunder],
-    mate_misses: &[MateMiss],
-    time: &TimeStat,
+    an: &Analysis,
 ) {
+    let Analysis {
+        all: a,
+        blunders,
+        mate_misses,
+        time,
+    } = *an;
     let side_name = if me == Color::Black {
         "先手"
     } else {
