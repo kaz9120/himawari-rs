@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.50.24](https://github.com/kaz9120/himawari-rs/compare/v0.50.23...v0.50.24) (2026-10-02)
+
+
+### その他の変更
+
+* 理由の書かれていない抑止を3か所とも解消する ([#635](https://github.com/kaz9120/himawari-rs/issues/635)) ([81b64cf](https://github.com/kaz9120/himawari-rs/commit/81b64cffa94f05d090b693234b10d8177aa1ce50)), closes [#625](https://github.com/kaz9120/himawari-rs/issues/625)
+
 ## [0.50.23](https://github.com/kaz9120/himawari-rs/compare/v0.50.22...v0.50.23) (2026-10-01)
 
 
