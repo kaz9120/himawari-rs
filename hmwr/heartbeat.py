@@ -28,6 +28,7 @@ from __future__ import annotations
 
 import json
 import os
+import threading
 import time
 from collections.abc import Iterator
 from contextlib import contextmanager
@@ -73,6 +74,7 @@ class Heartbeat:
         self.estimate = estimate
         self._t0 = time.time()
         self._last_write = 0.0
+        self._lock = threading.Lock()
         self._done0: int | None = None
         self.data = {
             "kind": kind,
@@ -128,13 +130,35 @@ class Heartbeat:
             self.data["eta_seconds"] = 0
         self._write()
 
+    @contextmanager
+    def keepalive(self) -> Iterator[None]:
+        """ブロックのあいだ、間隔ごとに状態ファイルを書き直す。
+
+        進み具合を報告しない待ち（実験のステップの子プロセス）でも更新時刻を
+        動かし、読み手に「更新が途絶」と判定させない。
+        """
+        stop = threading.Event()
+
+        def beat() -> None:
+            while not stop.wait(self.interval):
+                self._write()
+
+        t = threading.Thread(target=beat, daemon=True)
+        t.start()
+        try:
+            yield
+        finally:
+            stop.set()
+            t.join()
+
     def _write(self) -> None:
-        self.data["updated"] = _now()
-        self.path.parent.mkdir(parents=True, exist_ok=True)
-        tmp = self.path.with_name(self.path.name + ".tmp")
-        tmp.write_text(json.dumps(self.data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-        tmp.replace(self.path)
-        self._last_write = time.time()
+        with self._lock:
+            self.data["updated"] = _now()
+            self.path.parent.mkdir(parents=True, exist_ok=True)
+            tmp = self.path.with_name(self.path.name + ".tmp")
+            tmp.write_text(json.dumps(self.data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+            tmp.replace(self.path)
+            self._last_write = time.time()
 
 
 class _Quiet:
@@ -150,6 +174,10 @@ class _Quiet:
 
     def finish(self, state: str = "done", **detail) -> None:
         self.finished = True
+
+    @contextmanager
+    def keepalive(self) -> Iterator[None]:
+        yield
 
 
 @contextmanager
