@@ -34,7 +34,8 @@ Routineのプロンプトは「このディレクトリの手順を実行する�
   中の `gh` の例は、何を取るかを示すもので、そのまま打つものではない
 - 同じ理由で `hmwr pr create` と `hmwr ci wait` は使えない（中で `gh` を呼ぶ）。
   PRの本文は `./bin/hmwr pr template chore` のひな形から作り、見出しを全部残す
-- pytestは入っていない。`pip install --quiet pytest` で入れる（CIと同じ）
+- pytestとnumpyは入っていない。`pip install --quiet pytest numpy` で入れる
+  （CIと同じ集合）。numpyを欠くと収集の時点で止まり、テストが1件も走らない
 - Rustのビルドは約40秒、`npm ci` と文書のlintは約45秒で通る
 
 Routineを作るときは、MCPのコネクタを付けない（作成の後に
@@ -50,7 +51,7 @@ push前に、CIと同じ検査をローカルで通す。
 ```
 cargo fmt --all --check && cargo clippy --all-targets -- -D warnings
 cargo test --release
-pip install --quiet pytest && python3 -m pytest tests -q
+pip install --quiet pytest numpy && python3 -m pytest tests -q
 npm ci && ./bin/hmwr doc lint && ./bin/hmwr doc check
 ```
 
