@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.50.25](https://github.com/kaz9120/himawari-rs/compare/v0.50.24...v0.50.25) (2026-10-03)
+
+
+### その他の変更
+
+* 実験の長いステップの途中も状態ファイルを書き直す ([#638](https://github.com/kaz9120/himawari-rs/issues/638)) ([c2968e9](https://github.com/kaz9120/himawari-rs/commit/c2968e9ba7c16525c11cb79225d6c5c99cf35753)), closes [#637](https://github.com/kaz9120/himawari-rs/issues/637)
+
 ## [0.50.24](https://github.com/kaz9120/himawari-rs/compare/v0.50.23...v0.50.24) (2026-10-02)
 
 
