@@ -47,5 +47,6 @@ jobs:
           if [ -n "$number" ]; then
             gh issue comment "$number" --body-file body.md
           else
-            gh issue create --title "$TITLE" --label micro --body-file body.md
+            # 滞留したADRを進めるには設計判断が要るので、対話セッション（local）へ渡す
+            gh issue create --title "$TITLE" --label micro --label local --body-file body.md
           fi
