@@ -6,6 +6,7 @@
 
 import json
 import os
+import threading
 import time
 
 import pytest
@@ -64,6 +65,22 @@ def test_read_all_marks_dead_and_stale_runs(home):
     assert beats["dead"]["alive"] is False and beats["dead"]["stale"] is True
     hb.finish("done")
     assert "alive" not in {b["name"]: b for b in heartbeat.read_all()}["alive"]
+
+
+def test_keepalive_rewrites_the_file_while_the_block_runs(home):
+    hb = heartbeat.Heartbeat("exp", "long", interval=0.01)
+    path = home / "status" / "exp-long.json"
+    past = time.time() - 3600
+    os.utime(path, (past, past))
+    threads = threading.active_count()
+    with hb.keepalive():
+        # 待ち時間は機械の速さに依存させず、書き直されるまでポーリングする
+        deadline = time.time() + 30
+        while path.stat().st_mtime == past and time.time() < deadline:
+            time.sleep(0.01)
+        assert {b["name"]: b for b in heartbeat.read_all(stale_after=600)}["long"]["stale"] is False
+    assert threading.active_count() == threads
+    hb.finish("done")
 
 
 def test_status_json_collects_everything_without_github(home, monkeypatch, capsys):

@@ -167,7 +167,9 @@ def _run_steps(args: argparse.Namespace, s: spec.Spec, log: Path, beat) -> int:
         started = time.time()
         argv = [sys.executable, str(paths.REPO / "bin" / "hmwr"), *step.argv]
         try:
-            code = proc.run(argv, log=log, allowed=_allowed_codes(step))
+            # ステップは数日かかることもある。途中も更新時刻を動かし、途絶と区別させる
+            with beat.keepalive():
+                code = proc.run(argv, log=log, allowed=_allowed_codes(step))
         except proc.Fail as e:
             raise proc.Fail(f"ステップが失敗した: {s.name}/{step.id}\n{e}", e.code) from e
         if code == 2 and not _has_result(step):
