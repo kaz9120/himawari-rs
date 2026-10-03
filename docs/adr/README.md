@@ -361,7 +361,7 @@
 | [0216](0216-defense-oversample.md) | 攻撃的な受けの局面を3倍に重くして学習し、盲点が埋まるかを測る | 2026-09-18 |  | rejected（3倍の複製は−23.8 Elo、順位の差も+1.90から+2.18へ広がった） |
 | [0217](0217-sprt-pass-cap.md) | SPRTの既定に10,000ペアの上限を置き、判定に至らない実行を見送りにする | 2026-09-20 |  | accepted |
 | [0218](0218-main-two-epochs.md) | 本学習の78.5億を2周し、1周のネットとSPRTで比べる | 2026-09-21 |  | proposed |
-| [0219](0219-relabel-2b-in-place.md) | 本学習の先頭20億をdlshogiの評価値へその場で付け直し、量に対する質を測る | 2026-09-22 |  | proposed |
+| [0219](0219-relabel-2b-in-place.md) | 本学習の先頭20億をdlshogiの評価値へその場で付け直し、量に対する質を測る | 2026-09-22 |  | accepted（20億のdlshogiラベルが78.5億のtanukiラベルに+67.9 Elo、同じ20億の統制に+113.0 Elo） |
 | [0220](0220-dev-environment-redesign.md) | 開発環境を再設計する。状態の出力仕様・ポータル・コマンドの棚卸し・遠隔制御 | 2026-09-22 |  | accepted |
 | [0221](0221-public-site.md) | 開発の記録と実戦のテレメトリを、himawari.y-kaz.com で公開する | 2026-09-24 |  | accepted |
 
