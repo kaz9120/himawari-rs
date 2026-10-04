@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.51.0](https://github.com/kaz9120/himawari-rs/compare/v0.50.25...v0.51.0) (2026-10-04)
+
+
+### 棋力向上
+
+* dlshogiラベルの20億で学習したネットへ切り替える（+74.8 Elo、ADR-0222） ([#646](https://github.com/kaz9120/himawari-rs/issues/646)) ([f0a27e0](https://github.com/kaz9120/himawari-rs/commit/f0a27e001af6c990d4236e6b96f539bcada9db7a))
+
 ## [0.50.25](https://github.com/kaz9120/himawari-rs/compare/v0.50.24...v0.50.25) (2026-10-03)
 
 
