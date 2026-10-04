@@ -1,0 +1,39 @@
+# ADR-0224: 付け直し済みの20億（train_7860M_q1の先頭）から1億を3通りに選び、
+# 統制（先頭1億）との対局で選び方の効きを測る。合計約6時間。1億のpsvは最後に消す。
+adr = "0224"
+
+[[step]]
+id = "select-ctrl"
+run = "hmwr data split sel_ctrl_100M --in train_7860M_q1 --count 100000000"
+
+[[step]]
+id = "select-dedup"
+run = "hmwr data dedup sel_dedup_100M --in train_7860M_q1 --count 100000000"
+
+[[step]]
+id = "select-thin"
+run = "hmwr data thin sel_thin_100M --in train_7860M_q1 --threshold 945 --keep 0.25 --seed 1 --count 100000000"
+
+[[step]]
+id = "train-ctrl"
+run = "hmwr net train sel_ctrl --data sel_ctrl_100M --valid valid_tanuki_dl430_q1 --rank rank_tanuki_210M --seed 0 --notes \"ADR-0224 統制、先頭1億\""
+
+[[step]]
+id = "train-dedup"
+run = "hmwr net train sel_dedup --data sel_dedup_100M --valid valid_tanuki_dl430_q1 --rank rank_tanuki_210M --seed 0 --notes \"ADR-0224 重複除去の1億\""
+
+[[step]]
+id = "train-thin"
+run = "hmwr net train sel_thin --data sel_thin_100M --valid valid_tanuki_dl430_q1 --rank rank_tanuki_210M --seed 0 --notes \"ADR-0224 決着圏を0.25で間引いた1億\""
+
+[[step]]
+id = "rm-data"
+run = "hmwr data rm sel_ctrl_100M sel_dedup_100M sel_thin_100M"
+
+[[step]]
+id = "match-dedup"
+run = "hmwr match run adr0224-dedup --build adr0200-himawari --base-net sel_ctrl --cand-net sel_dedup --stop pairs:1000 --max-moves 400 --foreground"
+
+[[step]]
+id = "match-thin"
+run = "hmwr match run adr0224-thin --build adr0200-himawari --base-net sel_ctrl --cand-net sel_thin --stop pairs:1000 --max-moves 400 --foreground"
