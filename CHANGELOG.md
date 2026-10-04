@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.51.2](https://github.com/kaz9120/himawari-rs/compare/v0.51.1...v0.51.2) (2026-10-04)
+
+
+### その他の変更
+
+* specを実験キューへ積むhmwr exp queueを足す ([#659](https://github.com/kaz9120/himawari-rs/issues/659)) ([81d14b6](https://github.com/kaz9120/himawari-rs/commit/81d14b6ce932480af685d5404b8968ce9433fdce)), closes [#652](https://github.com/kaz9120/himawari-rs/issues/652)
+
 ## [0.51.1](https://github.com/kaz9120/himawari-rs/compare/v0.51.0...v0.51.1) (2026-10-04)
 
 
