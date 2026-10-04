@@ -27,13 +27,24 @@ Routineのプロンプトは「このディレクトリの手順を実行する�
 
 ## クラウドの環境
 
-2026-09-18の試験実行で確かめた。
+2026-09-18の試験実行で確かめた。`gh` の節は2026-10-04に測り直した。
 
-- **`gh` は入っていない**。GitHubの操作（Issueの一覧・作成・コメント、PRの作成・
-  状態の確認・マージ）は、セッションに付いているGitHubのツールで行う。手順の
-  中の `gh` の例は、何を取るかを示すもので、そのまま打つものではない
-- 同じ理由で `hmwr pr create` と `hmwr ci wait` は使えない（中で `gh` を呼ぶ）。
-  PRの本文は `./bin/hmwr pr template chore` のひな形から作り、見出しを全部残す
+- **`gh` は入っているが、GraphQLは403で塞がれている**。`gh pr list`・`gh pr checks`・
+  `gh pr create` はこの経路を使うので通らない。`gh auth status` はトークンを無効と
+  報告するものの、認証は経路側が足すため `gh api` の読み取りは通る
+- 読み取りのRESTは `gh api` で通る。CIの確定待ちは
+  `gh api repos/{owner}/{repo}/commits/{sha}/check-runs` のポーリングで書ける。
+  通るのは `repos/{owner}/{repo}/...` のリポジトリ単位の経路だけで、`search/issues`
+  のような横断の経路は403になる。書き込みは経路で止まるものがあり、2026-10-03の
+  実行では `DELETE git/refs` が403を返した
+- Issueの一覧・作成・コメント、PRの作成・マージは、セッションに付いているGitHubの
+  ツールで行う。横断の検索と他のリポジトリを読むのもツール側になる。手順の中の
+  `gh issue list --json` や `gh pr ...` の例は、GraphQLを使うので
+  `gh api` かツールへ読み替える
+- `hmwr pr create` と `hmwr ci wait` は使えない。中で `gh pr create` と
+  `gh pr checks` を呼ぶためである。`ci wait` は403の出力を「まだ動いている」と読み、
+  1時間待ってから落ちる。PRの本文は `./bin/hmwr pr template chore` のひな形から作り、
+  見出しを全部残す
 - pytestとnumpyは入っていない。`pip install --quiet pytest numpy` で入れる
   （CIと同じ集合）。numpyを欠くと収集の時点で止まり、テストが1件も走らない
 - Rustのビルドは約40秒、`npm ci` と文書のlintは約45秒で通る
