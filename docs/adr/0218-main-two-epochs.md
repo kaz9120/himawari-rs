@@ -62,7 +62,7 @@
 ## 実行
 
 [ADR-0209](0209-workflow-layers.md)の実験キューで走らせる。specは
-`experiments/adr0218-main-two-epochs.toml` で、学習1本とSPRT1本である。
+`experiments/adr0218-main-two-epochs.toml` で、学習1本とSPRT1本である（棄却したので、誤って積まれないよう削除した。中身はgitの履歴にある）。
 
 学習は約101時間（1周の50.6時間の倍、48kサンプル/秒）。落ちたら同じ
 コマンドでエポック内の位置から続く（[ADR-0159](0159-ft-width-1024.md)）。
