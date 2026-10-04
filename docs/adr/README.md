@@ -116,6 +116,7 @@
 - [0217](0217-sprt-pass-cap.md) SPRTの既定に10,000ペアの上限を置き、判定に至らない実行を見送りにする
 - [0218](0218-main-two-epochs.md) 本学習の78.5億を2周し、1周のネットとSPRTで比べる
 - [0219](0219-relabel-2b-in-place.md) 本学習の先頭20億をdlshogiの評価値へその場で付け直し、量に対する質を測る
+- [0222](0222-promote-dl20.md) dlshogiラベルの20億で学習したネットを、手を加えずに現行と比べて昇格させる
 - [0220](0220-dev-environment-redesign.md) 開発環境を再設計する。状態の出力仕様・ポータル・コマンドの棚卸し・遠隔制御
 - [0144](0144-selfplay-teacher-loop.md) 自己生成による世代ループ
 - [0185](0185-sibling-ranking-loss.md) 兄弟局面のランキング損失を回帰へ足す
@@ -364,6 +365,7 @@
 | [0219](0219-relabel-2b-in-place.md) | 本学習の先頭20億をdlshogiの評価値へその場で付け直し、量に対する質を測る | 2026-09-22 |  | accepted（20億のdlshogiラベルが78.5億のtanukiラベルに+67.9 Elo、同じ20億の統制に+113.0 Elo） |
 | [0220](0220-dev-environment-redesign.md) | 開発環境を再設計する。状態の出力仕様・ポータル・コマンドの棚卸し・遠隔制御 | 2026-09-22 |  | accepted |
 | [0221](0221-public-site.md) | 開発の記録と実戦のテレメトリを、himawari.y-kaz.com で公開する | 2026-09-24 |  | accepted |
+| [0222](0222-promote-dl20.md) | dlshogiラベルの20億で学習したネットを、手を加えずに現行と比べて昇格させる | 2026-10-04 |  | accepted（手を加えない dl20_7860M が現行に+74.8 Elo。net-v12として配布） |
 
 ## バックログ
 

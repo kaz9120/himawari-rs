@@ -36,7 +36,7 @@ MATCH_MAX_MOVES = "320"
 
 # 現行の評価関数。**ここが一次情報の置き場である**（ROADMAPとREADMEはここを指す。
 # ADR-0182）。ネットの世代を替えるときはこの1行を更新する
-EVAL_FILE = "data/nets/rl_e1d8_reorder.hmwr"
+EVAL_FILE = "data/nets/dl20_7860M.hmwr"
 OPENINGS = "openings/start_sfens_ply24.txt"
 
 # 計測・対局のビルドフラグ（ADR-0003）
