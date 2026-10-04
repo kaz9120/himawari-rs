@@ -259,6 +259,8 @@ hmwr data mix <出力名> --in <入力名> --in <入力名>   複数の教師を
 hmwr data quiet <出力名> --in <入力名>               静止局面へ置き換える
 hmwr data rank <出力名> --in <入力名> --limit N --jobs 4   兄弟局面の群を作る
 hmwr data oversample <出力名> --in <入力名> --kind defense --times 3   該当する型の局面を複製する
+hmwr data thin <出力名> --in <入力名> --threshold 945 --keep 0.25 --count N   決着圏の局面を間引く
+hmwr data dedup <出力名> --in <入力名> --count N     同じ盤面の2回目以降を捨てる
 hmwr data openings <出力名> --in <入力名> --min-ply 40 --count 2000   開始局面集を作る
 hmwr data relabel <出力名> --in <入力名> --scale 600    DL系モデルの推論1回でscoreを付け直す
 hmwr data rescore <出力名> --in <入力名>             現行エンジンの探索でscoreと教師手を付け直す
@@ -296,6 +298,11 @@ onnxruntimeが要る。MacのCoreMLで約2,600局面/秒、1億局面に約11時
 `data oversample` は教師の最善手から型を判定し、該当する局面を末尾へ
 `--times` −1 回書き足す。判定に教師手が要るので、静止化の前に通す。出力は
 元の全件のあとに複製が続く並びなので、学習の前に `data shuffle` を掛ける。
+`data thin` と `data dedup` は、局面集合の選び方を比べるために使う（ADR-0224）。
+`--count` で書く件数を打ち切るので、20億の先頭から1億だけを選べる。`thin` の
+`--threshold` は教師の点数の尺度で決める。dlshogiのラベル（S=430）なら、勝率
+10%と90%の境は945である。`dedup` は盤面を64ビットのハッシュで比べ、出力1億件で
+約1.5GBのメモリを使う。
 `data shuffle` の `--limit` は入力の先頭だけを読む。生データの先頭から
 決まった件数を切り出すときに使う。
 

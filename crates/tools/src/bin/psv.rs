@@ -18,7 +18,11 @@
 //!   psv rank    --in file --out file [--limit N] [--skip N] [--hash MB]
 //!                                              兄弟局面の葉の群を作る（ADR-0185）
 //!   psv thin    --in file --out file [--threshold N] [--keep P] [--seed N] [--group B]
-//!                                              決着圏の局面を確率で間引く（ADR-0190）
+//!               [--count N]                    決着圏の局面を確率で間引く（ADR-0190）。
+//!                                              --count Nは書いた件数がNに達したら止める
+//!   psv dedup   --in file --out file [--count N]
+//!                                              同じ盤面の2回目以降を捨て、初出の順に残す
+//!                                              （ADR-0224）。--count Nで書く件数を打ち切る
 //!   psv phase   --in file --out file.tsv [--limit N] [--eval-file NET]
 //!                                              進行度の指標と静的評価をTSVへ書く（ADR-0198）
 //!   psv defend  --in file --out file.tsv [--limit N] [--skip N] [--hash MB] [--eval-file NET]
@@ -49,6 +53,13 @@ use himawari_engine::timeman::{Limits, TimeManager, TimeOptions};
 fn die(msg: &str) -> ! {
     eprintln!("{msg}");
     std::process::exit(1)
+}
+
+/// 件数の上限を読む。省くと上限なし（u64::MAX）になる
+fn limit_arg(args: &[String], key: &str) -> u64 {
+    arg_value(args, key)
+        .map(|s| s.parse().unwrap_or_else(|_| die(&format!("{key} は整数"))))
+        .unwrap_or(u64::MAX)
 }
 
 fn arg_value(args: &[String], key: &str) -> Option<String> {
@@ -280,7 +291,7 @@ const MATE_ABS: i32 = 29000;
 /// 非詰みかつ|score|がthreshold以上のものをkeepの確率で残す。
 /// それ以外（互角圏〜優勢圏と詰みスコア）は全件残す。複製はしないので、
 /// 分布の山を新たに作ることはない。
-fn thin(input: &str, output: &str, threshold: i32, keep: f64, seed: u64, group: usize) {
+fn thin(input: &str, output: &str, threshold: i32, keep: f64, seed: u64, group: usize, count: u64) {
     if !group.is_multiple_of(PSV_BYTES) {
         die(&format!("--group は{PSV_BYTES}の倍数にしてください"));
     }
@@ -291,7 +302,8 @@ fn thin(input: &str, output: &str, threshold: i32, keep: f64, seed: u64, group: 
     let mut rng = Rng(seed | 1);
     let mut buf = vec![0u8; group];
     let (mut total, mut decided, mut kept_decided) = (0u64, 0u64, 0u64);
-    while r.read_exact(&mut buf).is_ok() {
+    let mut written = 0u64;
+    while written < count && r.read_exact(&mut buf).is_ok() {
         total += 1;
         let score = i32::from(i16::from_le_bytes([buf[32], buf[33]]));
         let is_decided = score.abs() >= threshold && score.abs() < MATE_ABS;
@@ -305,13 +317,65 @@ fn thin(input: &str, output: &str, threshold: i32, keep: f64, seed: u64, group: 
         }
         w.write_all(&buf)
             .unwrap_or_else(|e| die(&format!("書き込み失敗: {e}")));
+        written += 1;
     }
     w.flush().unwrap();
-    let written = total - (decided - kept_decided);
     println!(
         "入力{total}件のうち決着圏（{threshold}<=|score|<{MATE_ABS}）{decided}件を\
          {kept_decided}件へ間引き、{written}件を書き出しました"
     );
+}
+
+/// 同じ盤面の2回目以降を捨て、初出の順に残す（ADR-0224）。
+///
+/// 盤面はpacked sfenの32バイト（盤・手番・持ち駒）で比べ、手数・教師信号は
+/// 見ない。比べるのは32バイトの64ビットハッシュで、1億件の出力で誤って
+/// 同一視する組の期待値は約3×10^-4である。集合はメモリに持つので、出力
+/// 1億件で約1.5GBを使う。
+fn dedup(input: &str, output: &str, count: u64) {
+    let mut r = open_reader(input);
+    let mut w = BufWriter::new(
+        std::fs::File::create(output).unwrap_or_else(|e| die(&format!("作成できません: {e}"))),
+    );
+    let mut seen: std::collections::HashSet<u64> = std::collections::HashSet::new();
+    let mut buf = [0u8; PSV_BYTES];
+    let (mut total, mut written) = (0u64, 0u64);
+    while written < count && r.read_exact(&mut buf).is_ok() {
+        total += 1;
+        if !seen.insert(board_hash(&buf[..32])) {
+            continue;
+        }
+        w.write_all(&buf)
+            .unwrap_or_else(|e| die(&format!("書き込み失敗: {e}")));
+        written += 1;
+    }
+    w.flush().unwrap();
+    println!(
+        "入力{total}件のうち重複{}件を捨て、{written}件を書き出しました",
+        total - written
+    );
+}
+
+/// packed sfenの32バイトを64ビットへ畳む。4語をそれぞれ別の奇数で掛けて
+/// 混ぜ、最後にsplitmix64の終段で拡散する
+fn board_hash(sfen: &[u8]) -> u64 {
+    const K: [u64; 4] = [
+        0x9E37_79B9_7F4A_7C15,
+        0xC2B2_AE3D_27D4_EB4F,
+        0x1656_67B1_9E37_79F9,
+        0x85EB_CA77_C2B2_AE63,
+    ];
+    let mut h = 0u64;
+    let (words, _) = sfen.as_chunks::<8>();
+    for (i, c) in words.iter().enumerate() {
+        let x = u64::from_le_bytes(*c);
+        h = (h ^ x.wrapping_mul(K[i])).rotate_left(27);
+    }
+    h ^= h >> 30;
+    h = h.wrapping_mul(0xBF58_476D_1CE4_E5B9);
+    h ^= h >> 27;
+    h = h.wrapping_mul(0x94D0_49BB_1331_11EB);
+    h ^ (h >> 31)
 }
 
 /// 1バケットの目標サイズ。パス2でバケット1個をメモリに載せる（ADR-0065）。
@@ -1518,7 +1582,7 @@ fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
     let Some(cmd) = args.first() else {
         die(
-            "サブコマンドが必要です: stats / dump / head / shuffle / quiet / rank / thin / phase / relabel / defend / oversample",
+            "サブコマンドが必要です: stats / dump / head / shuffle / quiet / rank / thin / dedup / phase / relabel / defend / oversample",
         );
     };
     let rest = &args[1..];
@@ -1659,6 +1723,14 @@ fn main() {
                 keep,
                 seed,
                 group,
+                limit_arg(rest, "--count"),
+            );
+        }
+        "dedup" => {
+            dedup(
+                &input.unwrap_or_else(|| die("--in が必要です")),
+                &output.unwrap_or_else(|| die("--out が必要です")),
+                limit_arg(rest, "--count"),
             );
         }
         "relabel" => {
