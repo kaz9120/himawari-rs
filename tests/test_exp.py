@@ -192,3 +192,45 @@ def test_dry_run_leaves_no_marks(runner):
 def test_every_spec_in_the_repository_passes_the_check():
     """リポジトリのspecは、全ステップがdry-runを通る。CIでの検査を兼ねる。"""
     assert exp.check(cli.build_parser().parse_args(["exp", "check"])) == proc.OK
+
+
+# --- キューへ積む ------------------------------------------------------
+
+
+@pytest.fixture
+def enqueue_env(monkeypatch, tmp_path):
+    from hmwr.commands import queue
+
+    adr = paths.REPO / "docs" / "adr" / "0209-workflow-layers.md"
+    monkeypatch.setattr(spec, "load", lambda name, ref="origin/main": spec.parse(GOOD, name))
+    monkeypatch.setattr(spec, "adr_file", lambda n: adr)
+    monkeypatch.setattr(proc, "succeeds", lambda argv, **_: True)
+    created = []
+    open_issues = {queue.QUEUED: [], queue.RUNNING: []}
+    monkeypatch.setattr(queue, "issues", lambda state: open_issues[state])
+    monkeypatch.setattr(queue, "gh", lambda *a: created.append(a) or "https://example/1")
+    return created, open_issues
+
+
+def test_enqueue_files_the_form_body_with_both_labels(enqueue_env):
+    from hmwr.commands import queue
+
+    created, _ = enqueue_env
+    assert cli.main(["exp", "queue", "x", "--title", "試す", "--note", "約1時間"]) == proc.OK
+    (argv,) = created
+    assert argv[argv.index("--title") + 1] == "実験: 試す（ADR-0209）"
+    labels = [argv[i + 1] for i, a in enumerate(argv) if a == "--label"]
+    assert labels == [queue.EXPERIMENT, queue.QUEUED]
+    body = argv[argv.index("--body") + 1]
+    # キューは本文からspecを読む。フォームと同じ形で読めること
+    assert queue.spec_name(body) == "x"
+    assert "docs/adr/0209-workflow-layers.md" in body and "約1時間" in body
+
+
+def test_enqueue_refuses_a_spec_already_waiting(enqueue_env):
+    from hmwr.commands import queue
+
+    created, open_issues = enqueue_env
+    open_issues[queue.QUEUED].append({"number": 7, "body": exp.queue_body(spec.parse(GOOD, "x"), "a.md", "")})
+    assert cli.main(["exp", "queue", "x", "--title", "試す"]) == proc.RUNTIME
+    assert created == []

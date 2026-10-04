@@ -224,10 +224,12 @@ hmwr queue pause       次のステップを始めさせない（開発機を空
 hmwr queue resume      一時停止を解く
 hmwr queue install     専用のworktreeとlaunchdの常駐を用意する
 hmwr exp reset <名前>  完了マーカーを消し、最初から走り直せるようにする
+hmwr exp queue <名前> --title <題>   specを実験キューへ積む
 ```
 
-実験を積むには、specとADRをmainへマージしてから、Issueフォーム「実験」で
-Issueを出す。launchdが5分おきにキューを見て、古い順に1件ずつ実行する。
+実験を積むには、specとADRをmainへマージしてから、`hmwr exp queue` か
+Issueフォーム「実験」でIssueを出す。`gh issue create` で手書きしない。
+`queued` ラベルが漏れると、キューは拾わずに黙って待ち続ける（issue #652）。launchdが5分おきにキューを見て、古い順に1件ずつ実行する。
 状態はラベルで読める（`queued`→`running`→`done` か `failed`）。失敗したら
 ログの末尾がIssueへコメントされる。原因を直してラベルを `queued` へ戻すと、
 続きから走る。
