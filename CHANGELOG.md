@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.51.1](https://github.com/kaz9120/himawari-rs/compare/v0.51.0...v0.51.1) (2026-10-04)
+
+
+### その他の変更
+
+* 局面集合を選ぶ道具として、重複除去と間引きをhmwr dataへ載せる ([#655](https://github.com/kaz9120/himawari-rs/issues/655)) ([3e35513](https://github.com/kaz9120/himawari-rs/commit/3e355136cc1336c2209eb31ee86068e0f2381ed1))
+
 ## [0.51.0](https://github.com/kaz9120/himawari-rs/compare/v0.50.25...v0.51.0) (2026-10-04)
 
 
