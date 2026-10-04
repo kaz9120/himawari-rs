@@ -1,6 +1,6 @@
 # 0218: 本学習の78.5億を2周し、1周のネットとSPRTで比べる
 
-- Status: proposed
+- Status: rejected（前提が崩れた。先頭20億がdlshogiのラベルへ書き換わり、78.5億を同じラベラーで2周できない。2周の問いはADR-0223が20億で測る）
 - Date: 2026-09-21
 - 関連ADR: [0159](0159-ft-width-1024.md), [0185](0185-sibling-ranking-loss.md), [0192](0192-tanuki2024-teacher.md), [0201](0201-loop-recipe.md), [0212](0212-tanuki-bench-mix.md), [0214](0214-epochs-bench.md), [0217](0217-sprt-pass-cap.md)
 
