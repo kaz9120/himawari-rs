@@ -5,8 +5,8 @@
 1. 対象を1件選ぶ。無ければ何もせず終わる
 
    ```
-   gh issue list --state open --label micro --label cloud --json number,title,createdAt \
-     -q 'sort_by(.createdAt) | .[0]'
+   gh api 'repos/{owner}/{repo}/issues?state=open&labels=micro,cloud' \
+     --jq 'sort_by(.created_at) | .[0] | "\(.number)\t\(.title)"'
    ```
 
 2. Issueを読み、CLAUDE.mdとmicro-improvementsスキルの「検証の型」に沿って
