@@ -66,6 +66,18 @@ def add_parser(sub: argparse._SubParsersAction) -> None:
     t.set_defaults(func=reset)
 
     t = ss.add_parser(
+        "queue",
+        help="specを実験キューへ積む",
+        description="Issueフォーム「実験」と同じ本文で起票し、experiment と queued の"
+        "ラベルを付ける。読むのはorigin/mainのspecで、事前登録のPRをマージする前は"
+        "積めない。同じspecが待ちか実行中なら積まない。",
+    )
+    t.add_argument("name", help="specの名前（拡張子なし）")
+    t.add_argument("--title", required=True, metavar="題", help="Issueの題。前の「実験: 」と末尾の番号は自動で付く")
+    t.add_argument("--note", default="", metavar="文", help="メモ欄。所要の見込みや資源の使い方を書く")
+    t.set_defaults(func=enqueue)
+
+    t = ss.add_parser(
         "check",
         help="作業ツリーのspecを検査する",
         description="書き方の規約と、全ステップがdry-runを通ることを確かめる。"
@@ -268,3 +280,41 @@ def check(args: argparse.Namespace) -> int:
             continue
         print(f"OK {name}（{len(s.steps)}ステップ）")
     return proc.OK if bad == 0 else proc.RUNTIME
+
+
+def queue_body(s: spec.Spec, adr_path: str, note: str) -> str:
+    """Issueフォーム「実験」と同じ見出しの本文。キューはspecのパスだけを読む。"""
+    return (
+        f"### spec\n\nexperiments/{s.name}.toml\n\n"
+        f"### ADR\n\n{adr_path}\n\n"
+        f"### メモ\n\n{note or '_No response_'}\n"
+    )
+
+
+def enqueue(args: argparse.Namespace) -> int:
+    """specを実験キューへ積む。CLIで起票すると queued が漏れた（issue #652）。"""
+    from . import queue
+
+    if not args.dry_run:
+        proc.succeeds(["git", "fetch", "--quiet", "origin", "main"])
+    s = spec.load(args.name)
+    adr = spec.adr_file(s.adr)
+    if adr is None:
+        raise proc.Fail(f"docs/adr/{s.adr}-*.md がない。事前登録のADRをmainへ入れてから積む")
+    adr_path = adr.relative_to(paths.REPO).as_posix()
+    title = f"実験: {args.title}（ADR-{s.adr}）"
+    body = queue_body(s, adr_path, args.note)
+    argv = [
+        "issue", "create", "--title", title, "--body", body,
+        "--label", queue.EXPERIMENT, "--label", queue.QUEUED,
+    ]  # fmt: skip
+    if args.dry_run:
+        print(f"[dry-run] gh issue create --title {title} --label {queue.EXPERIMENT} --label {queue.QUEUED}")
+        print(body)
+        return proc.OK
+    for state in (queue.QUEUED, queue.RUNNING):
+        for issue in queue.issues(state):
+            if queue.spec_name(issue["body"]) == s.name:
+                raise proc.Fail(f"{s.name} は #{issue['number']} で{state}になっている。二重には積まない")
+    print(queue.gh(*argv).strip())
+    return proc.OK

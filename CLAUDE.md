@@ -31,7 +31,7 @@ himawari-rsで作業するエージェントの規約。詳細は各文書へリ
 
 **実験はキューで無人実行する**（[ADR-0209](docs/adr/0209-workflow-layers.md)）。
 仮説と解釈をADRへ、手順を `experiments/<名前>.toml` へ書き、同じPRで
-mainへ入れる。Issueフォーム「実験」で積むと、開発機のlaunchdが古い順に
+mainへ入れる。`hmwr exp queue` かIssueフォーム「実験」で積むと、開発機のlaunchdが古い順に
 1件ずつ走らせる。対話セッションの仕事は設計と結果の読みで、実行の見張りでは
 ない。計測や手元のSPRTの前には `hmwr queue pause` を打つ。
 
