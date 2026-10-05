@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.52.0](https://github.com/kaz9120/himawari-rs/compare/v0.51.3...v0.52.0) (2026-10-05)
+
+
+### 棋力向上
+
+* dlshogiラベルの20億を2周したネットへ切り替える（+25.7 Elo、ADR-0223） ([#670](https://github.com/kaz9120/himawari-rs/issues/670)) ([d2a6ea5](https://github.com/kaz9120/himawari-rs/commit/d2a6ea5041776cd8e38bebca986b138d3b22acbb))
+
 ## [0.51.3](https://github.com/kaz9120/himawari-rs/compare/v0.51.2...v0.51.3) (2026-10-05)
 
 
