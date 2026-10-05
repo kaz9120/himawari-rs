@@ -1,6 +1,6 @@
 # 0072: history pruning（履歴が悪い静かな手の枝刈り）
 
-- Status: proposed（保留。前提となるhistoryスケールの再設計待ち）
+- Status: superseded（ADR-0109のG3が、continuation historyの枝刈りとして実装した）
 - Date: 2026-07-27
 - 関連ADR: [0028](0028-pruning-extensions.md), [0047](0047-continuation-history.md), [0025](0025-move-ordering.md), [0073](0073-history-bonus-scale.md)
 

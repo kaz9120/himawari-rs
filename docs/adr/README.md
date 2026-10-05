@@ -218,7 +218,7 @@
 | [0069](0069-release-notes-automation.md) | リリースノートをSPRT採択から自動生成する | 2026-07-27 |  | superseded（[0071](0071-release-please.md)） |
 | [0070](0070-pr-based-workflow.md) | 開発をPRベースにし、変更の種別でマージ条件を分ける | 2026-07-27 |  | accepted |
 | [0071](0071-release-please.md) | バージョン更新とリリースをrelease-pleaseで自動化する | 2026-07-27 |  | accepted |
-| [0072](0072-history-pruning.md) | history pruning（履歴が悪い静かな手の枝刈り） | 2026-07-27 |  | proposed（保留。前提となるhistoryスケールの再設計待ち） |
+| [0072](0072-history-pruning.md) | history pruning（履歴が悪い静かな手の枝刈り） | 2026-07-27 |  | superseded（ADR-0109のG3が、continuation historyの枝刈りとして実装した） |
 | [0073](0073-history-bonus-scale.md) | history bonus/malus式の再設計 | 2026-07-27 |  | accepted |
 | [0074](0074-feature-verification.md) | SPRTの前に機能検証を行う | 2026-07-27 |  | accepted |
 | [0075](0075-razoring-margin.md) | razoringのマージンを2次式にし深さ制限を外す | 2026-07-28 |  | rejected（前提の誤り。機能検証で棄却） |
@@ -277,22 +277,22 @@
 | [0129](0129-auxiliary-heads.md) | 学習時だけの補助ヘッドでFTの表現の情報量を増やす | 2026-08-02 |  | accepted |
 | [0130](0130-freeze-ft.md) | FTを固定して、後段の実験を一桁速くする | 2026-08-02 |  | accepted |
 | [0131](0131-frozen-ft-light-head.md) | 良いFTを凍結して軽量ヘッドを載せる作り方を、本番規模で確かめる | 2026-08-03 |  | accepted |
-| [0132](0132-ft-distillation.md) | 大きいFTの表現を、小さいFTへ蒸留する | 2026-08-03 |  | proposed |
+| [0132](0132-ft-distillation.md) | 大きいFTの表現を、小さいFTへ蒸留する | 2026-08-03 |  | rejected（未測定で取り下げ。構造はADR-0213で凍結した。大きいモデルの知識は、dlshogiの付け直しで移している） |
 | [0133](0133-effect-pretraining.md) | 利き予測でFTを自己教師あり事前学習する | 2026-08-03 |  | accepted |
-| [0134](0134-head-capacity.md) | 後段の容量が壁かを、上向きに振って確かめる | 2026-08-04 |  | proposed |
+| [0134](0134-head-capacity.md) | 後段の容量が壁かを、上向きに振って確かめる | 2026-08-04 |  | rejected（未測定で取り下げ。評価関数の構造はADR-0213で凍結し、学習側に集中している） |
 | [0135](0135-teacher-data-3b.md) | 教師データを29.9億局面へ広げる | 2026-08-04 |  | accepted |
 | [0136](0136-quiet-teacher-positions.md) | 教師局面をqsearchの静止局面へ置き換えて学習する | 2026-08-04 |  | accepted |
 | [0137](0137-output-buckets.md) | 出力層を盤上駒数バケットで分岐する（output bucket） | 2026-08-04 |  | rejected |
 | [0138](0138-ft-i8-quantization.md) | FT重みをi8へ量子化して更新帯域を半減する | 2026-08-04 |  | accepted |
 | [0139](0139-mate1ply-in-search-retry.md) | mate_1plyを通常探索へ入れ直す | 2026-08-04 |  | rejected |
-| [0140](0140-king-line-features.md) | 玉ライン特徴をHalfKPへ追加する | 2026-08-04 |  | proposed |
+| [0140](0140-king-line-features.md) | 玉ライン特徴をHalfKPへ追加する | 2026-08-04 |  | rejected（未測定で取り下げ。入力特徴の追加は構造の変更で、ADR-0213で凍結した） |
 | [0141](0141-singular-rate-calibration.md) | singular率を想定値へ較正し、多段延長を再訪する | 2026-08-04 |  | rejected |
 | [0142](0142-dfpn-mate-search.md) | df-pnの詰み探索をrootへ並走させる | 2026-08-04 |  | proposed（保留。注力の外、[0207](0207-roadmap-focus-eval.md)） |
 | [0143](0143-spsa-tuning.md) | 探索定数をSPSAで一括チューニングする | 2026-08-04 | +32.0、再走+21.2 | accepted |
 | [0144](0144-selfplay-teacher-loop.md) | 自前gensfenで教師データの世代ループを始める | 2026-08-04 |  | accepted |
 | [0145](0145-continual-learning.md) | 前世代のネットから継続学習で積む | 2026-08-08 |  | accepted |
 | [0146](0146-book-full-width-opening.md) | 定跡の浅い層を全合法手で埋める | 2026-08-08 |  | accepted |
-| [0147](0147-effect-bucket-features.md) | 特徴indexを被利き数でバケット化する（EffectBucket） | 2026-08-08 |  | proposed |
+| [0147](0147-effect-bucket-features.md) | 特徴indexを被利き数でバケット化する（EffectBucket） | 2026-08-08 |  | rejected（未測定で取り下げ。入力特徴の変更は構造の変更で、ADR-0213で凍結した） |
 | [0148](0148-effect-table.md) | 盤面の利きを差分で持つ | 2026-08-08 |  | proposed（保留。注力の外、[0207](0207-roadmap-focus-eval.md)） |
 | [0149](0149-experiment-runner.md) | 実験の実行とログを規約で固定する | 2026-08-08 |  | accepted |
 | [0150](0150-rootstrap-evaluation.md) | 世代ループでの検証損失の読み方 | 2026-08-08 |  | accepted |
