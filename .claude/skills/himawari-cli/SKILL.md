@@ -161,6 +161,8 @@ hmwr net shapes 256x16 512x16x32 --seed 1   構成ごとに小さく学習して
 hmwr net eval data/nets/*.hmwr.best
 hmwr net probe <名前> --focus focus_1M      FTを凍結して焦点のヒートマップを当てる
 hmwr net release data/nets/x.hmwr.best 5 --apply
+hmwr net actdump <名前> --eval-file data/nets/<ネット>.hmwr   並べ替えの材料を取る
+hmwr net reorder data/profile/act-<名前>.bin 512 --apply data/nets/<ネット>.hmwr
 ```
 
 同じ名前・同じ条件で学習済みなら、何もせず成功で終わる。途中で止まった学習は、
@@ -180,6 +182,12 @@ hmwr net release data/nets/x.hmwr.best 5 --apply
 probeの的中率は学習のステップ数で変わるので、条件を揃えて比べる（ADR-0213）。
 
 配布は既定でdry-runになる。`--apply` を付けたときだけ作る。
+
+並べ替え（ADR-0195）は、新しい候補のネットを作るたびに当てる。`actdump` と
+`reorder --apply` には、**ダンプを取ったのと同じ並べ替え前の書き出し**を渡す。
+`--apply` は `<ネット名>_reorder.hmwr` を書き、固定深さのノード数と評価値が
+並べ替えの前後で一致することを確かめてから終わる。一致しなければ、渡した
+書き出しを取り違えている。
 
 `--extra` にハイフンで始まる値を渡すときは `--extra=--mirror-factor` のように
 = でつなぐ。
