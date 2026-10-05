@@ -20,9 +20,10 @@
 //!   psv thin    --in file --out file [--threshold N] [--keep P] [--seed N] [--group B]
 //!               [--count N]                    決着圏の局面を確率で間引く（ADR-0190）。
 //!                                              --count Nは書いた件数がNに達したら止める
-//!   psv dedup   --in file --out file [--count N]
+//!   psv dedup   --in file --out file [--count N] [--limit N]
 //!                                              同じ盤面の2回目以降を捨て、初出の順に残す
-//!                                              （ADR-0224）。--count Nで書く件数を打ち切る
+//!                                              （ADR-0224）。--count Nで書く件数を、--limit Nで
+//!                                              読む件数を打ち切る
 //!   psv phase   --in file --out file.tsv [--limit N] [--eval-file NET]
 //!                                              進行度の指標と静的評価をTSVへ書く（ADR-0198）
 //!   psv defend  --in file --out file.tsv [--limit N] [--skip N] [--hash MB] [--eval-file NET]
@@ -332,7 +333,7 @@ fn thin(input: &str, output: &str, threshold: i32, keep: f64, seed: u64, group: 
 /// 見ない。比べるのは32バイトの64ビットハッシュで、1億件の出力で誤って
 /// 同一視する組の期待値は約3×10^-4である。集合はメモリに持つので、出力
 /// 1億件で約1.5GBを使う。
-fn dedup(input: &str, output: &str, count: u64) {
+fn dedup(input: &str, output: &str, count: u64, limit: u64) {
     let mut r = open_reader(input);
     let mut w = BufWriter::new(
         std::fs::File::create(output).unwrap_or_else(|e| die(&format!("作成できません: {e}"))),
@@ -340,7 +341,7 @@ fn dedup(input: &str, output: &str, count: u64) {
     let mut seen: std::collections::HashSet<u64> = std::collections::HashSet::new();
     let mut buf = [0u8; PSV_BYTES];
     let (mut total, mut written) = (0u64, 0u64);
-    while written < count && r.read_exact(&mut buf).is_ok() {
+    while written < count && total < limit && r.read_exact(&mut buf).is_ok() {
         total += 1;
         if !seen.insert(board_hash(&buf[..32])) {
             continue;
@@ -1731,6 +1732,7 @@ fn main() {
                 &input.unwrap_or_else(|| die("--in が必要です")),
                 &output.unwrap_or_else(|| die("--out が必要です")),
                 limit_arg(rest, "--count"),
+                limit_arg(rest, "--limit"),
             );
         }
         "relabel" => {
