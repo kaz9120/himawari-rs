@@ -1,6 +1,6 @@
 # 0140: 玉ライン特徴をHalfKPへ追加する
 
-- Status: proposed
+- Status: rejected（未測定で取り下げ。入力特徴の追加は構造の変更で、ADR-0213で凍結した）
 - Date: 2026-08-04
 - 関連ADR: [0034](0034-nnue-architecture.md), [0035](0035-nnue-accumulator.md), [0044](0044-p7-feature-experiments.md), [0045](0045-remove-effect-tower.md), [0066](0066-halfkp-factorizer.md), [0127](0127-net-shape-bench.md), [0133](0133-effect-pretraining.md)
 

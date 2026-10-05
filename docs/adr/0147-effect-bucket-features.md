@@ -1,6 +1,6 @@
 # 0147: 特徴indexを被利き数でバケット化する（EffectBucket）
 
-- Status: proposed
+- Status: rejected（未測定で取り下げ。入力特徴の変更は構造の変更で、ADR-0213で凍結した）
 - Date: 2026-08-08
 - 関連ADR: [0035](0035-nnue-accumulator.md), [0089](0089-improvement-criteria.md), [0127](0127-net-shape-bench.md), [0133](0133-effect-pretraining.md), [0134](0134-head-capacity.md), [0137](0137-output-buckets.md), [0140](0140-king-line-features.md)
 

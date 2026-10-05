@@ -1,6 +1,6 @@
 # 0132: 大きいFTの表現を、小さいFTへ蒸留する
 
-- Status: proposed
+- Status: rejected（未測定で取り下げ。構造はADR-0213で凍結した。大きいモデルの知識は、dlshogiの付け直しで移している）
 - Date: 2026-08-03
 - 関連ADR: [0034](0034-nnue-architecture.md), [0064](0064-dense-ft-gradient-mps.md), [0066](0066-halfkp-factorizer.md), [0067](0067-ft-dimension-512.md), [0127](0127-net-shape-bench.md), [0129](0129-auxiliary-heads.md), [0130](0130-freeze-ft.md), [0131](0131-frozen-ft-light-head.md)
 

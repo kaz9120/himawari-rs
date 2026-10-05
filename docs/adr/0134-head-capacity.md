@@ -1,6 +1,6 @@
 # 0134: 後段の容量が壁かを、上向きに振って確かめる
 
-- Status: proposed
+- Status: rejected（未測定で取り下げ。評価関数の構造はADR-0213で凍結し、学習側に集中している）
 - Date: 2026-08-04
 - 関連ADR: [0034](0034-nnue-architecture.md), [0127](0127-net-shape-bench.md), [0130](0130-freeze-ft.md), [0131](0131-frozen-ft-light-head.md), [0132](0132-ft-distillation.md), [0133](0133-effect-pretraining.md)
 
