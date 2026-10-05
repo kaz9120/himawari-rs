@@ -200,6 +200,13 @@ def add_parser(sub: argparse._SubParsersAction) -> None:
     t.add_argument("activations", type=int, metavar="次元", help="片視点の活性次元")
     t.add_argument("--out", metavar="ファイル", help="並べ替えの出力先")
     t.add_argument("--perm", metavar="ファイル", help="既存の並べ替えを当てて評価する")
+    t.add_argument(
+        "--apply",
+        metavar="ネット",
+        help="決めた並べ替えをこのネットへ当て、<名前>_reorder.hmwr を書く。"
+        "ダンプを取ったときと同じ、並べ替え前の書き出しを渡す。"
+        "当てたあと、固定深さのノード数と評価値が並べ替え前と一致することを確かめる",
+    )
     t.set_defaults(func=reorder)
 
     t = ss.add_parser(
@@ -690,18 +697,70 @@ def _last_loss(output: str) -> str | None:
 
 
 def reorder(args: argparse.Namespace) -> int:
-    """活性ダンプから並べ替えを決める。"""
+    """活性ダンプから並べ替えを決める。--apply ならネットへ当てて検証まで行う。"""
+    net = Path(args.apply) if args.apply else None
+    out = args.out
+    if net and not out:
+        out = str(paths.PROFILE / f"perm_{net.name.split('.')[0]}.txt")
     if args.dry_run:
-        print(f"[dry-run] 並べ替えを決める: {args.dump}（活性 {args.activations}）")
+        print(f"[dry-run] 並べ替えを決める: {args.dump}（活性 {args.activations}）→ {out}")
+        if net:
+            print(f"[dry-run] {paths.rel(net)} へ当てて {paths.rel(reordered_path(net))} を書き、評価値の一致を確かめる")
         return proc.OK
     if not Path(args.dump).is_file():
         raise proc.Fail(f"活性ダンプがない: {args.dump}")
+    if net and not net.is_file():
+        raise proc.Fail(f"ネットがない: {args.apply}")
     argv = [args.dump, str(args.activations)]
-    if args.out:
-        argv += ["--out", args.out]
+    if out:
+        argv += ["--out", out]
     if args.perm:
         argv += ["--perm", args.perm]
-    return ft_reorder.main(argv)
+    code = ft_reorder.main(argv)
+    if code != proc.OK or not net:
+        return code
+    return apply_reorder(net, Path(out))
+
+
+def reordered_path(net: Path) -> Path:
+    return paths.NETS / f"{net.name.split('.')[0]}_reorder.hmwr"
+
+
+def apply_reorder(net: Path, perm: Path) -> int:
+    """並べ替えをネットへ当て、評価値が変わっていないことを確かめる。
+
+    並べ替えは評価値を変えないので、変わったら渡した書き出しか置換を
+    取り違えている（ADR-0195で .hmwr と .hmwr.best を取り違えた）。
+    """
+    from .build import cargo_build
+
+    out = reordered_path(net)
+    proc.run(
+        # 来歴の文字列にパスが残るので、リポジトリからの相対で渡す
+        proc.cargo_tool(
+            "makenet",
+            ["--reorder", paths.rel(perm), "--from", paths.rel(net), "--out", paths.rel(out)],
+        ),
+        env={"RUSTFLAGS": config.rustflags()},
+    )
+    # actdumpは計測用のfeature付きでエンジンを作るので、通常のビルドへ戻してから測る
+    cargo_build(dry_run=False, args=["-p", "himawari-usi", "--bin", "himawari"])
+    engine = str(paths.release_bin("himawari"))
+    tables = []
+    for n in (net, out):
+        text = proc.capture(proc.cargo_tool("verify", [engine, "--eval-file", str(n)]))
+        tables.append([line for line in text.splitlines() if line.startswith("| ")])
+    if not tables[0] or tables[0] != tables[1]:
+        print("\n".join(tables[0]))
+        print("\n".join(tables[1]))
+        raise proc.Fail(
+            f"並べ替えの前後で探索が一致しない: {paths.rel(net)} と {paths.rel(out)}。"
+            "ダンプを取ったときの書き出しと、渡したネットが同じか確かめる"
+        )
+    print("\n".join(tables[0]))
+    print(f"一致: 固定深さのノード数・評価値・最善手が並べ替えの前後で同じ（{len(tables[0]) - 1}局面）")
+    print(f"書いた: {paths.rel(out)}")
+    return proc.OK
 
 
 # 活性ダンプの既定（ADR-0195）

@@ -79,3 +79,50 @@ def test_main_accepts_argv_list(tmp_path):
     from hmwr.tools import ft_reorder
     missing = str(tmp_path / "no_such_dump.bin")
     assert ft_reorder.main([missing, "512"]) == 3
+
+
+# --- ネットへ当てる（hmwr net reorder --apply） -------------------------
+
+
+def _fake_apply(monkeypatch, tables):
+    from hmwr import proc
+    from hmwr.commands import build, net
+
+    calls = []
+    monkeypatch.setattr(proc, "run", lambda argv, **kw: calls.append(argv) or proc.OK)
+    monkeypatch.setattr(build, "cargo_build", lambda **kw: None)
+    outputs = iter(tables)
+    monkeypatch.setattr(proc, "capture", lambda argv, **kw: next(outputs))
+    return net, calls
+
+
+TABLE = "| 局面 | ノード数 | 評価値 | 最善手 |\n|---|---|---|---|\n| 1 | 100 | cp 5 | 7g7f |\n"
+
+
+def test_apply_writes_a_reorder_net_and_checks_the_search_is_unchanged(monkeypatch, tmp_path):
+    from hmwr import paths, proc
+
+    net, calls = _fake_apply(monkeypatch, [TABLE, TABLE])
+    src = paths.NETS / "x.hmwr"
+    assert net.apply_reorder(src, paths.PROFILE / "perm_x.txt") == proc.OK
+    (makenet,) = calls
+    assert makenet[makenet.index("--out") + 1] == paths.rel(paths.NETS / "x_reorder.hmwr")
+    # 来歴に残るので、置換は相対パスで渡す
+    assert not makenet[makenet.index("--reorder") + 1].startswith("/")
+
+
+def test_apply_refuses_when_the_search_changes(monkeypatch, tmp_path):
+    import pytest
+
+    from hmwr import paths, proc
+
+    net, _ = _fake_apply(monkeypatch, [TABLE, TABLE.replace("100", "101")])
+    with pytest.raises(proc.Fail):
+        net.apply_reorder(paths.NETS / "x.hmwr", tmp_path / "perm.txt")
+
+
+def test_reordered_name_drops_every_suffix():
+    from hmwr import paths
+    from hmwr.commands import net
+
+    assert net.reordered_path(paths.NETS / "a_7860M.hmwr.best") == paths.NETS / "a_7860M_reorder.hmwr"
