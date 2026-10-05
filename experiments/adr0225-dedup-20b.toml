@@ -1,0 +1,15 @@
+# ADR-0225: 付け直し済みの20億（train_7860M_q1の先頭）から重複を除き、2周で学習して
+# 現行（dl20_2ep）とSPRTで比べる。学習は約22時間。重複を除いたpsvは土台として残す。
+adr = "0225"
+
+[[step]]
+id = "dedup"
+run = "hmwr data dedup dl20u --in train_7860M_q1 --limit 2000000000"
+
+[[step]]
+id = "train-2ep"
+run = "hmwr net train dl20u_2ep --data dl20u --valid valid_tanuki_dl430_q1 --rank rank_tanuki_210M --seed 0 --extra=\"--epochs 2\" --notes \"ADR-0225 重複を除いた20億を2周、ゼロから\""
+
+[[step]]
+id = "sprt"
+run = "hmwr sprt net data/nets/dl20_2ep.hmwr data/nets/dl20u_2ep.hmwr adr0225-dedup-20b --foreground"
