@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.51.3](https://github.com/kaz9120/himawari-rs/compare/v0.51.2...v0.51.3) (2026-10-05)
+
+
+### その他の変更
+
+* 並べ替えをネットへ当てる工程をhmwr net reorder --applyへ載せる ([#665](https://github.com/kaz9120/himawari-rs/issues/665)) ([c1e2288](https://github.com/kaz9120/himawari-rs/commit/c1e228889b8805337e7ccef6cd10ec7de643c7cf)), closes [#649](https://github.com/kaz9120/himawari-rs/issues/649)
+
 ## [0.51.2](https://github.com/kaz9120/himawari-rs/compare/v0.51.1...v0.51.2) (2026-10-04)
 
 
