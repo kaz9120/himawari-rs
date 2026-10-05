@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.52.1](https://github.com/kaz9120/himawari-rs/compare/v0.52.0...v0.52.1) (2026-10-05)
+
+
+### その他の変更
+
+* 重複除去に、読む件数の上限（--limit）を足す ([#674](https://github.com/kaz9120/himawari-rs/issues/674)) ([c406961](https://github.com/kaz9120/himawari-rs/commit/c40696146d337762279ed1f85030f7be802ab307))
+
 ## [0.52.0](https://github.com/kaz9120/himawari-rs/compare/v0.51.3...v0.52.0) (2026-10-05)
 
 
