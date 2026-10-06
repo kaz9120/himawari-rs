@@ -5,8 +5,13 @@
 ## 観点
 
 観点の正はmicro-improvementsスキルの「巡回の観点」にある。1回の巡回で
-全部を見なくてよい。前回の巡回のIssue（`gh issue list --label micro --search "巡回"`）を
-見て、しばらく見ていない観点から始める。
+全部を見なくてよい。直近の `micro` Issueの題を見て、しばらく見ていない観点から
+始める。
+
+```
+gh api 'repos/{owner}/{repo}/issues?state=all&labels=micro&sort=created&direction=desc&per_page=20' \
+  --jq '.[] | "\(.number)\t\(.created_at[0:10])\t\(.title)"'
+```
 
 ## 手順
 
@@ -23,7 +28,9 @@
    対話セッションにも拾われない
 
    ```
-   gh issue list --state open --label micro --search "-label:cloud -label:local"
+   gh api 'repos/{owner}/{repo}/issues?state=open&labels=micro&per_page=100' \
+     --jq '.[] | select([.labels[].name] | (index("cloud") or index("local")) | not)
+                 | "\(.number)\t\(.title)"'
    ```
 
 1回の巡回で切るのは5件までにする。多すぎると消化が追いつかず、読まれなくなる。

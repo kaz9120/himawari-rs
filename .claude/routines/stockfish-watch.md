@@ -8,12 +8,17 @@ Stockfishに追従しており、採用済みの変更はその追従で拾っ�
 
 ## 手順
 
-1. 直近1週間に動いたPRを読む
+1. 直近1週間に動いたPRを読む。GitHubのAPIは他のリポジトリへ届かないので、
+   公開されているHTMLをWebFetchで読む（[共通の約束](README.md)）
 
-   ```
-   gh pr list --repo official-stockfish/Stockfish --state open --limit 30 \
-     --json number,title,updatedAt,url
-   ```
+   | 見るもの | URL |
+   |---|---|
+   | 開いているPRの一覧（更新の新しい順） | `https://github.com/official-stockfish/Stockfish/pulls?q=is%3Apr+is%3Aopen+sort%3Aupdated-desc` |
+   | 本文とfishtestの結果 | `https://github.com/official-stockfish/Stockfish/pull/<番号>` |
+   | 差分 | `https://github.com/official-stockfish/Stockfish/pull/<番号>/files` |
+
+   `.diff` の末尾を付けたURLは使えない。`patch-diff.githubusercontent.com` へ
+   転送され、転送先が外向きの通信で塞がれている。
 
 2. 探索の挙動を変えるPRだけを見る。NNUEの構造、UCI、ビルド、チェス固有の
    規則（キャスリング、アンパッサン、終盤表）は飛ばす
