@@ -27,7 +27,8 @@ Routineのプロンプトは「このディレクトリの手順を実行する�
 
 ## クラウドの環境
 
-2026-09-18の試験実行で確かめた。`gh` の節は2026-10-04に測り直した。
+2026-09-18の試験実行で確かめた。`gh` の節は2026-10-04に測り直し、
+他のリポジトリを読む経路は2026-10-06に測った。
 
 - **`gh` は入っているが、GraphQLは403で塞がれている**。`gh pr list`・`gh pr checks`・
   `gh pr create` はこの経路を使うので通らない。`gh auth status` はトークンを無効と
@@ -38,9 +39,15 @@ Routineのプロンプトは「このディレクトリの手順を実行する�
   のような横断の経路は403になる。書き込みは経路で止まるものがあり、2026-10-03の
   実行では `DELETE git/refs` が403を返した
 - Issueの一覧・作成・コメント、PRの作成・マージは、セッションに付いているGitHubの
-  ツールで行う。横断の検索と他のリポジトリを読むのもツール側になる。手順の中の
-  `gh issue list --json` や `gh pr ...` の例は、GraphQLを使うので
-  `gh api` かツールへ読み替える
+  ツールで行う。手順の中の `gh issue list --json` や `gh pr ...` の例は、
+  GraphQLを使うので `gh api` かツールへ読み替える
+- **ツールもセッションの対象リポジトリに縛られる**。他のリポジトリは `gh api`・
+  `curl`・ツールのどれでも403になり、`add_repo` の `access:"push"` も拒否される。
+  公開されているリポジトリなら、WebFetchでHTMLを読むのが唯一の経路になる
+  （[stockfish-watch.md](stockfish-watch.md)の手順1が例）
+- `search_issues` のツールは自然言語の意味検索である。GitHubの検索の構文は解釈
+  されず、本文の語で引く用途には使えない。ラベルや状態で絞るなら、
+  `gh api 'repos/{owner}/{repo}/issues?...'` を `--jq` で加工する
 - `hmwr pr create` と `hmwr ci wait` は使えない。中で `gh pr create` と
   `gh pr checks` を呼ぶためである。`ci wait` は403の出力を「まだ動いている」と読み、
   1時間待ってから落ちる。PRの本文は `./bin/hmwr pr template chore` のひな形から作り、
