@@ -3,23 +3,27 @@
 学習に使う教師データの所在・形式・前処理手順を持つ。データ本体はリポジトリに
 含めない（`data/` はgitignore）。
 
-現行の教師はtanuki- 2024の78.6億局面である（[ADR-0192](adr/0192-tanuki2024-teacher.md)、
-+43.2）。前の教師hao_depth9の生データと加工済みpsvは2026-09-08に消した
-（容量の都合。再取得は `hmwr data fetch --dataset hao` で通る）。公開データの
-残り手は入玉5億の混合で、生データは取得済み。次の増量は自己生成の
-ループ（[ADR-0201](adr/0201-loop-recipe.md)）になる。
+教師の局面はtanuki- 2024の78.6億局面である（[ADR-0192](adr/0192-tanuki2024-teacher.md)）。
+評価値は先頭20億だけをdlshogi 2021版の推論1回で付け直した（[ADR-0219](adr/0219-relabel-2b-in-place.md)）。
+残り58.5億はtanukiの評価値のままで、AWSで付け直す方向である。前の教師
+hao_depth9の加工済みpsvは2026-09-08に消した（容量の都合。再取得は
+`hmwr data fetch --dataset hao` で通る）。
 
-## 手元にあるもの（2026-09-08）
+## 手元にあるもの（2026-10-06）
 
 | ファイル | 中身 | 容量 |
 |---|---|---|
-| `data/train/train_7860M_q1.psv` | tanuki 2024の学習データ、1手静止化済み | 314GB |
+| `data/train/train_7860M_q1.psv` | tanuki 2024の学習データ、1手静止化済み。先頭20億の評価値はdlshogiの付け直し（S=430） | 314GB |
+| `data/train/train_7860M_q1.psv.scores-before.i16` | 付け直す前のtanukiの評価値の控え（先頭20億、2バイト×局面数） | 4GB |
+| `data/train/dl20u.psv` | 付け直し済みの先頭20億から重複を除いた17.1億局面（[ADR-0225](adr/0225-dedup-20b.md)） | 68GB |
 | `data/train/rank_tanuki_210M.rankpsv` | 同じシャッフル出力の先頭から作った兄弟群（[ADR-0185](adr/0185-sibling-ranking-loss.md)） | 24GB |
+| `data/train/valid_tanuki_dl430_q1.psv` | tanukiの検証集合20万局面を、dlshogiで付け直したもの。dlshogiのラベルで学習するときに使う | 8MB |
 | `data/train/valid_tanuki.psv` / `_q1.psv` | tanukiの検証集合20万局面（非静止・静止化） | 8MB×2 |
-| `data/train/train_300M.psv` / `_q1.psv`、`rank_300M_100M.rankpsv` | hao由来の3億局面の小規模学習用（[ADR-0135](adr/0135-teacher-data-3b.md)）。静止化前は兄弟群の作り直しに要る | 36GB |
-| `data/train/valid_385M*.psv` | hao由来の検証集合。参考指標として残す（[ADR-0150](adr/0150-rootstrap-evaluation.md)） | 8MB×3 |
+| `data/train/e4_dl430_train_q1.psv` | E4の1億をdlshogiで付け直したもの（[ADR-0215](adr/0215-dl-relabel-pilot.md)） | 4GB |
 | `data/raw/entering_king/` | 入玉5億の生データ127ファイル（下の「入玉」） | 19GB |
-| `data/train/rl_*.psv` など | 自己生成の世代データと中間ファイル。実験ごとにADRが持つ | 実験による |
+
+過去の実験の中間ファイル（自己生成の `rl_*`、E4の統制、hao由来の3億、入玉の加工済み）は
+2026-10-06に消した。どれもADRに作り方が残っている。
 
 ## 利用中: nodchip/tanuki-.nnue-pytorch-2024-07-30.1
 
