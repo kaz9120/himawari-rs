@@ -154,8 +154,8 @@ run = "hmwr match run adr0211-x --foreground"
 ### 評価関数を扱う
 
 ```
-hmwr net train <名前> --data train_300M_q1 --valid valid_385M_q1 \
-                      --rank rank_300M_100M       3億局面の小規模学習のレシピ
+hmwr net train <名前> --data <名前> --valid valid_tanuki_dl430_q1 \
+                      --rank rank_tanuki_210M     dlshogiのラベルで学習するレシピ
 hmwr net train <名前> --data <名前> --init-ckpt <ckpt> --lr 1e-4
 hmwr net shapes 256x16 512x16x32 --seed 1   構成ごとに小さく学習して比べる
 hmwr net eval data/nets/*.hmwr.best
@@ -208,11 +208,11 @@ specは `experiments/<名前>.toml` に置き、ADRと同じPRで入れる。ス
 マージしてから走らせる。
 
 ```toml
-adr = "0210"
+adr = "0224"
 
 [[step]]
-id = "mix"
-run = "hmwr data mix mixhao20_300M --in train_300M_q1 --in hao_extra_60M_q1"
+id = "select-dedup"
+run = "hmwr data dedup sel_dedup_100M --in train_7860M_q1 --count 100000000"
 ```
 
 **結果をADRへ書くときは `exp report` の表を貼る**。ログを目で読んで数値を
