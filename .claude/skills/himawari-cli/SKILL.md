@@ -271,6 +271,8 @@ hmwr data rank <出力名> --in <入力名> --limit N --jobs 4   兄弟局面の
 hmwr data oversample <出力名> --in <入力名> --kind defense --times 3   該当する型の局面を複製する
 hmwr data thin <出力名> --in <入力名> --threshold 945 --keep 0.25 --count N   決着圏の局面を間引く
 hmwr data dedup <出力名> --in <入力名> --count N     同じ盤面の2回目以降を捨てる
+hmwr data pick <出力名> --in <入力名> --king-max 6 --p-min 0.1 --p-max 0.9   玉の段と勝率で絞り込む
+hmwr data select <出力名> --in <入力名> --in <入力名> --king 0.15,0.25,0.60 --eval 0.25,0.25,0.50 --count N --alpha 0.5   区画の配分とαで選ぶ
 hmwr data openings <出力名> --in <入力名> --min-ply 40 --count 2000   開始局面集を作る
 hmwr data relabel <出力名> --in <入力名> --scale 600    DL系モデルの推論1回でscoreを付け直す
 hmwr data rescore <出力名> --in <入力名>             現行エンジンの探索でscoreと教師手を付け直す
@@ -313,6 +315,12 @@ onnxruntimeが要る。MacのCoreMLで約2,600局面/秒、1億局面に約11時
 `--threshold` は教師の点数の尺度で決める。dlshogiのラベル（S=430）なら、勝率
 10%と90%の境は945である。`dedup` は盤面を64ビットのハッシュで比べ、出力1億件で
 約1.5GBのメモリを使う。
+
+`data select` は、局面を区画（手番側の玉の帯×形勢の帯）に分けて選ぶ（ADR-0227）。
+標本で特徴の頻度表と区画の在庫を見積もってから、全件を1回だけ読む。在庫の足りない
+区画は全部を取り、不足を同じ玉の帯の優勢へ回す。`--alpha` は区画の中の選び方で、
+0なら自然な分布のまま、上げるほどありふれ度の低い局面を連続的に厚くする。出力は
+入力の順に並ぶので、学習の前に `data shuffle` を掛ける。17.1億を読むのに約1.5時間かかる。
 `data shuffle` の `--limit` は入力の先頭だけを読む。生データの先頭から
 決まった件数を切り出すときに使う。
 
