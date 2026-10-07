@@ -1,7 +1,8 @@
 """たまった成果物の掃除（ADR-0189）。
 
-保持は日数で決める。例外は現行の評価関数の系列だけで、名前の一覧を
-持たない。何を残すかを列挙し始めると、一覧の手入れが新しいゴミになる。
+保持は日数で決める。例外は現行の評価関数の系列と、実験のspecが `--build` で
+名指しする比較用ビルドだけで、名前の一覧を手で持たない。何を残すかを列挙し始めると、
+一覧の手入れが新しいゴミになる。
 """
 
 from __future__ import annotations
@@ -11,7 +12,7 @@ import shutil
 import time
 from pathlib import Path
 
-from .. import config, paths, proc
+from .. import config, paths, proc, spec
 
 
 def add_parser(sub: argparse._SubParsersAction) -> None:
@@ -19,8 +20,8 @@ def add_parser(sub: argparse._SubParsersAction) -> None:
         "clean",
         help="古い成果物を保持方針で掃除する",
         description="SPRTの棋譜・比較用バイナリ・ネット・チェックポイント・"
-        "ログのうち、保持日数を過ぎたものを消す。現行の評価関数の系列と "
-        "*.result（結果の要約）は残す。教師データ（data/train）は消さない。"
+        "ログのうち、保持日数を過ぎたものを消す。現行の評価関数の系列、"
+        "実験のspecが --build で名指しするビルド、*.result（結果の要約）は残す。教師データ（data/train）は消さない。"
         "マージ済みブランチのworktreeも片付ける。"
         "既定は一覧を出すだけ（dry-run）で、--apply を付けたときだけ消す。",
     )
@@ -41,6 +42,25 @@ def _protected_stems() -> set[str]:
     return {stem, stem.removesuffix("_reorder")}
 
 
+def _spec_builds() -> set[str]:
+    """実験のspecが `--build` で名指しするビルド。測定台のビルドは実験をまたいで
+    使い回すので、日数で消すと後の実験の対局が止まる（2026-10-07、ADR-0226）。
+    ネットは名指しされても守らない。終わった実験のネットが残り続けるためである
+    """
+    found: set[str] = set()
+    for name in spec.names():
+        try:
+            s = spec.load(name, ref=None)
+        except spec.Invalid:
+            continue
+        for step in s.steps:
+            argv = step.argv
+            for i, a in enumerate(argv[:-1]):
+                if a == "--build":
+                    found.add(argv[i + 1])
+    return found
+
+
 def _candidates(days: int) -> list[tuple[str, Path]]:
     cutoff = time.time() - days * 86400
     stems = _protected_stems()
@@ -56,8 +76,9 @@ def _candidates(days: int) -> list[tuple[str, Path]]:
         # 対局条件の記録は棋譜と対で意味を持つ。棋譜と同じ基準で消す
         if old(p):
             found.append(("対局条件", p))
+    builds = _spec_builds()
     for p in sorted((paths.REPO / "data/bin").iterdir()):
-        if old(p):
+        if old(p) and p.name not in builds:
             found.append(("バイナリ", p))
     for p in sorted((paths.REPO / "data/nets").iterdir()):
         name = p.name.removesuffix(".best").removesuffix(".hmwr")
