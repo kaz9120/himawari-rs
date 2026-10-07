@@ -270,6 +270,45 @@ def add_parsers(ss: argparse._SubParsersAction) -> None:
     t.set_defaults(func=openings)
 
     t = ss.add_parser(
+        "pick",
+        help="玉の段と勝率で局面を絞り込む",
+        description="手番側の玉が --king-max 段目以内（1=敵陣の奥）で、教師の勝率 "
+        "σ(score / --scale) が [--p-min, --p-max] に入る局面だけを残す。区画で選ぶ前に、"
+        "足りない区画の候補を別のデータセットから取り出すときに使う。",
+    )
+    t.add_argument("name", metavar="出力名", help="data/train/<出力名>.psv へ書く")
+    t.add_argument("--in", dest="inputs", action="append", default=[], metavar="入力名")
+    t.add_argument("--king-max", type=int, default=9, metavar="N", help="手番側の玉の段の上限（既定 9）")
+    t.add_argument("--p-min", type=float, default=0.0, metavar="P", help="勝率の下限（既定 0）")
+    t.add_argument("--p-max", type=float, default=1.0, metavar="P", help="勝率の上限（既定 1）")
+    t.add_argument("--scale", type=float, default=600.0, metavar="S", help="評価値→勝率の尺度（既定 600）")
+    t.add_argument("--jobs", type=int, default=8, metavar="N", help="並列数。変えても出力は変わらない")
+    t.add_argument("--force", action="store_true", help="出力が既にあっても作り直す")
+    t.set_defaults(func=pick)
+
+    t = ss.add_parser(
+        "select",
+        help="区画の配分とαで局面を選ぶ",
+        description="局面を区画（手番側の玉の帯×形勢の帯）に分け、--king と --eval の配分で"
+        "目標の局面数を決める。在庫の足りない区画は全部を取り、不足を同じ玉の帯の優勢へ回す。"
+        "区画の中では、ありふれ度のα乗に反比例する確率で選ぶ。α=0 は自然な分布のまま。"
+        "出力は入力の順に並ぶので、学習の前に shuffle を掛ける。",
+    )
+    t.add_argument("name", metavar="出力名", help="data/train/<出力名>.psv へ書く")
+    t.add_argument("--in", dest="inputs", action="append", default=[], metavar="入力名",
+                   help="data/train/<入力名>.psv を読む。複数回渡せる")
+    t.add_argument("--king", required=True, metavar="A,B,C", help="玉の帯（敵陣,4〜6段,自陣）の配分")
+    t.add_argument("--eval", dest="evals", required=True, metavar="A,B,C", help="形勢の帯（互角,優勢,勝勢）の配分")
+    t.add_argument("--count", type=int, required=True, metavar="N", help="選ぶ局面数の目標")
+    t.add_argument("--alpha", type=float, default=0.0, metavar="X", help="区画の中の選び方（既定 0）")
+    t.add_argument("--scale", type=float, default=430.0, metavar="S", help="評価値→勝率の尺度（既定 430）")
+    t.add_argument("--sample", type=int, default=5_000_000, metavar="N", help="頻度表を見積もる標本の数")
+    t.add_argument("--seed", type=int, default=1, metavar="N", help="乱数種（既定 1）")
+    t.add_argument("--jobs", type=int, default=8, metavar="N", help="並列数。変えても出力は変わらない")
+    t.add_argument("--force", action="store_true", help="出力が既にあっても作り直す")
+    t.set_defaults(func=select)
+
+    t = ss.add_parser(
         "relabel",
         help="DL系モデルの推論1回の評価値でscoreを付け直す",
         description="局面・指し手・勝敗・手数は残し、scoreだけをモデルの勝率から"
@@ -832,3 +871,99 @@ def focus(args: argparse.Namespace) -> int:
     )
     print(f"完了: {paths.rel(out)}（{out.stat().st_size:,}バイト）")
     return proc.OK
+
+
+# --- 区画で選ぶ（ADR-0227） ---------------------------------------------
+
+
+def _ratios(text: str) -> list[float]:
+    try:
+        v = [float(x) for x in text.split(",")]
+    except ValueError:
+        raise proc.Fail(f"配分はコンマ区切りの3つの数で書く: {text}", proc.USAGE)
+    if len(v) != 3 or abs(sum(v) - 1) > 1e-6:
+        raise proc.Fail(f"配分は3つで、和を1にする: {text}", proc.USAGE)
+    return v
+
+
+def _run_cells(args, kind: str, record: list[str], sources: list[Path], body) -> int:
+    out = paths.TRAIN / f"{paths.check_name(args.name)}.psv"
+    part = out.with_name(out.name + ".part")
+    done = out.with_name(out.name + ".done")
+    log = paths.log(kind, args.name)
+    if args.dry_run:
+        print(f"[dry-run] {record[0]} → {paths.rel(part)}")
+        print(f"[dry-run] mv {paths.rel(part)} {paths.rel(out)}")
+        print(f"[dry-run] ログ: {paths.rel(log)}")
+        return proc.OK
+    for src in sources:
+        if not src.is_file():
+            raise proc.Fail(f"入力のpsvがない: {paths.rel(src)}")
+    if out.exists() and not args.force:
+        return _already(out, done, record)
+    done.unlink(missing_ok=True)
+    total = sum(src.stat().st_size for src in sources) // 40
+    started = time.time()
+    with open(log, "a", encoding="utf-8") as fh:
+
+        def report(line: str) -> None:
+            print(line, flush=True)
+            fh.write(f"{time.strftime('%Y-%m-%dT%H:%M:%S')} {line}\n")
+            fh.flush()
+
+        report(f"開始: {record[0]}")
+        with heartbeat.running(kind, args.name, total=total, unit="局面", log=log) as beat:
+            stats = body(part, beat.update, report)
+        report(f"終了: {stats['read']:,}局面を読み、{stats['kept']:,}局面を残した")
+    part.replace(out)
+    done.write_text(
+        json.dumps(
+            {"commands": record, "bytes": out.stat().st_size, "seconds": round(time.time() - started),
+             "stats": stats, "finished": time.strftime("%Y-%m-%dT%H:%M:%S%z")},
+            ensure_ascii=False, indent=2,
+        )
+        + "\n"
+    )
+    print(f"完了: {paths.rel(out)}（{out.stat().st_size:,}バイト）")
+    return proc.OK
+
+
+def pick(args: argparse.Namespace) -> int:
+    """玉の段と勝率で局面を絞り込む（ADR-0227）。"""
+    from .tools import cells_run
+
+    if len(args.inputs) != 1:
+        raise proc.Fail(f"--in は1個要る（{len(args.inputs)}個渡された）", proc.USAGE)
+    source = paths.TRAIN / f"{paths.check_name(args.inputs[0])}.psv"
+    record = [
+        f"pick --in {paths.rel(source)} --king-max {args.king_max} --p-min {args.p_min:g}"
+        f" --p-max {args.p_max:g} --scale {args.scale:g}"
+    ]
+
+    def body(part, progress, report):
+        return cells_run.pick(source, part, king_max=args.king_max, pmin=args.p_min, pmax=args.p_max,
+                              scale=args.scale, jobs=args.jobs, progress=progress)
+
+    return _run_cells(args, "pick", record, [source], body)
+
+
+def select(args: argparse.Namespace) -> int:
+    """区画の配分とαで局面を選ぶ（ADR-0227）。"""
+    from .tools import cells_run
+
+    if not args.inputs:
+        raise proc.Fail("--in が要る", proc.USAGE)
+    sources = [paths.TRAIN / f"{paths.check_name(n)}.psv" for n in args.inputs]
+    king, evals = _ratios(args.king), _ratios(args.evals)
+    record = [
+        "select " + " ".join(f"--in {paths.rel(s)}" for s in sources)
+        + f" --king {args.king} --eval {args.evals} --count {args.count} --alpha {args.alpha:g}"
+        f" --scale {args.scale:g} --sample {args.sample} --seed {args.seed}"
+    ]
+
+    def body(part, progress, report):
+        return cells_run.select(sources, part, king=king, evals=evals, count=args.count, alpha=args.alpha,
+                                eval_scale=args.scale, sample=args.sample, seed=args.seed, jobs=args.jobs,
+                                progress=progress, report=report)
+
+    return _run_cells(args, "select", record, sources, body)
