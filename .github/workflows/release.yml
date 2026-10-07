@@ -20,8 +20,8 @@ permissions:
 
 env:
   # 学習走行に使う評価関数。現行ネットを差し替えたら更新する
-  NET_TAG: net-v13
-  NET_ASSET: dl20_2ep_reorder.hmwr
+  NET_TAG: net-v14
+  NET_ASSET: dl20u_2ep_reorder.hmwr
 
 jobs:
   build:
