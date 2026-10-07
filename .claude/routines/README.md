@@ -28,7 +28,7 @@ Routineのプロンプトは「このディレクトリの手順を実行する�
 ## クラウドの環境
 
 2026-09-18の試験実行で確かめた。`gh` の節は2026-10-04に測り直し、
-他のリポジトリを読む経路は2026-10-06に測った。
+他のリポジトリを読む経路は2026-10-06、pytestの導入は2026-10-07に測った。
 
 - **`gh` は入っているが、GraphQLは403で塞がれている**。`gh pr list`・`gh pr checks`・
   `gh pr create` はこの経路を使うので通らない。`gh auth status` はトークンを無効と
@@ -52,8 +52,11 @@ Routineのプロンプトは「このディレクトリの手順を実行する�
   `gh pr checks` を呼ぶためである。`ci wait` は403の出力を「まだ動いている」と読み、
   1時間待ってから落ちる。PRの本文は `./bin/hmwr pr template chore` のひな形から作り、
   見出しを全部残す
-- pytestとnumpyは入っていない。`pip install --quiet pytest numpy` で入れる
-  （CIと同じ集合）。numpyを欠くと収集の時点で止まり、テストが1件も走らない
+- pytestとnumpyは入っていない。`python3 -m pip install --quiet pytest numpy` で
+  入れる（CIと同じ集合）。numpyを欠くと収集の時点で止まり、テストが1件も走らない。
+  **`pip` と打つと入る先が変わる**。`pip` は `/usr/bin/python3` の3.13へ入れるが、
+  PATHの先頭は `/usr/local/bin/python3` の3.11である。入れたあとで
+  「No module named pytest」になり、テストが1件も走らないまま通り過ぎる
 - Rustのビルドは約40秒、`npm ci` と文書のlintは約45秒で通る
 
 Routineを作るときは、MCPのコネクタを付けない（作成の後に
@@ -69,7 +72,7 @@ push前に、CIと同じ検査をローカルで通す。
 ```
 cargo fmt --all --check && cargo clippy --all-targets -- -D warnings
 cargo test --release
-pip install --quiet pytest numpy && python3 -m pytest tests -q
+python3 -m pip install --quiet pytest numpy && python3 -m pytest tests -q
 npm ci && ./bin/hmwr doc lint && ./bin/hmwr doc check
 ```
 
