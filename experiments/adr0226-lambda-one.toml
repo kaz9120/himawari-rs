@@ -1,0 +1,19 @@
+# ADR-0226: 重複除去の1億を、dlshogiの評価だけ（λ=1.0）で学習し、λ=0.7の sel_dedup と対局で比べる。
+# データはADR-0224と同じコマンドで作り直す（重複除去は決定的）。合計約3時間。
+adr = "0226"
+
+[[step]]
+id = "select-dedup"
+run = "hmwr data dedup sel_dedup_100M --in train_7860M_q1 --count 100000000"
+
+[[step]]
+id = "train-l10"
+run = "hmwr net train sel_dedup_l10 --data sel_dedup_100M --valid valid_tanuki_dl430_q1 --rank rank_tanuki_210M --seed 0 --extra=\"--lambda 1.0\" --notes \"ADR-0226 重複除去の1億をλ=1.0で\""
+
+[[step]]
+id = "rm-data"
+run = "hmwr data rm sel_dedup_100M"
+
+[[step]]
+id = "match-l10"
+run = "hmwr match run adr0226-lambda1 --build adr0200-himawari --base-net sel_dedup --cand-net sel_dedup_l10 --stop pairs:1000 --max-moves 400 --foreground"
