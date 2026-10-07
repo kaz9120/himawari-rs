@@ -1,0 +1,23 @@
+# ADR-0227 の後半: 前半（adr0227-cell-dataset）で作った1億を学習し、3本の対局で比べる。
+# 前半の後、学習の前に選ばれた1億の分布を分析し、オーナーと確かめてから積む。
+adr = "0227"
+
+[[step]]
+id = "train-a0"
+run = "hmwr net train cell_a0 --data cell_a0_100M --valid valid_tanuki_dl430_q1 --rank rank_tanuki_210M --seed 0 --notes \"ADR-0227 案Aの配分、α=0\""
+
+[[step]]
+id = "train-a05"
+run = "hmwr net train cell_a05 --data cell_a05_100M --valid valid_tanuki_dl430_q1 --rank rank_tanuki_210M --seed 0 --notes \"ADR-0227 案Aの配分、α=0.5\""
+
+[[step]]
+id = "match-q"
+run = "hmwr match run adr0227-q --build adr0226-himawari --base-net sel_dedup --cand-net cell_a0 --stop pairs:1000 --max-moves 400 --foreground"
+
+[[step]]
+id = "match-s"
+run = "hmwr match run adr0227-s --build adr0226-himawari --base-net cell_a0 --cand-net cell_a05 --stop pairs:1000 --max-moves 400 --foreground"
+
+[[step]]
+id = "match-t"
+run = "hmwr match run adr0227-t --build adr0226-himawari --base-net sel_dedup --cand-net cell_a05 --stop pairs:1000 --max-moves 400 --foreground"
