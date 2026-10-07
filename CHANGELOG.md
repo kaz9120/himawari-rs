@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.53.2](https://github.com/kaz9120/himawari-rs/compare/v0.53.1...v0.53.2) (2026-10-07)
+
+
+### その他の変更
+
+* 区画の配分とαで局面を選ぶ hmwr data pick と select を足す ([#691](https://github.com/kaz9120/himawari-rs/issues/691)) ([1c693f5](https://github.com/kaz9120/himawari-rs/commit/1c693f5b1dc6e02aa450eff515da3c10a5c34a2c))
+
 ## [0.53.1](https://github.com/kaz9120/himawari-rs/compare/v0.53.0...v0.53.1) (2026-10-07)
 
 
