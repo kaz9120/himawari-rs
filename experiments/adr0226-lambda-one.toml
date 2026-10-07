@@ -16,4 +16,4 @@ run = "hmwr data rm sel_dedup_100M"
 
 [[step]]
 id = "match-l10"
-run = "hmwr match run adr0226-lambda1 --build adr0200-himawari --base-net sel_dedup --cand-net sel_dedup_l10 --stop pairs:1000 --max-moves 400 --foreground"
+run = "hmwr match run adr0226-lambda1 --build adr0226-himawari --base-net sel_dedup --cand-net sel_dedup_l10 --stop pairs:1000 --max-moves 400 --foreground"
