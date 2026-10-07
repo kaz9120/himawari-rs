@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.53.1](https://github.com/kaz9120/himawari-rs/compare/v0.53.0...v0.53.1) (2026-10-07)
+
+
+### その他の変更
+
+* 掃除が、実験のspecの名指す比較用ビルドを消さないようにする ([#687](https://github.com/kaz9120/himawari-rs/issues/687)) ([5293968](https://github.com/kaz9120/himawari-rs/commit/529396801bd4ede8a68e3ef05aa2a5aacdf11b51))
+
 ## [0.53.0](https://github.com/kaz9120/himawari-rs/compare/v0.52.1...v0.53.0) (2026-10-07)
 
 
