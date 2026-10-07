@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.53.0](https://github.com/kaz9120/himawari-rs/compare/v0.52.1...v0.53.0) (2026-10-07)
+
+
+### 棋力向上
+
+* 重複を除いた20億を2周したネットへ切り替える（+22.8 Elo、ADR-0225） ([#682](https://github.com/kaz9120/himawari-rs/issues/682)) ([a1be718](https://github.com/kaz9120/himawari-rs/commit/a1be71848ecc6374d2e7834e0d201f89afd1af59))
+
 ## [0.52.1](https://github.com/kaz9120/himawari-rs/compare/v0.52.0...v0.52.1) (2026-10-05)
 
 
