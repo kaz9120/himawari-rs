@@ -1,0 +1,59 @@
+# ADR-0227 の前半: 1億局面を、玉の位置×形勢の区画の配分（案A）と区画の中のα（0と0.5）で組み立てる。
+# 入玉5億から足りない区画の候補を足す。約8時間。学習と対局は後半（adr0227-cell-train）。
+adr = "0227"
+
+[[step]]
+id = "ek-shuffle"
+run = "hmwr data shuffle ek_all --raw entering_king"
+
+[[step]]
+id = "ek-pick"
+run = "hmwr data pick ek_pick --in ek_all --king-max 6 --p-min 0.1 --p-max 0.9 --scale 600"
+
+[[step]]
+id = "ek-rm-all"
+run = "hmwr data rm ek_all"
+
+[[step]]
+id = "ek-dedup"
+run = "hmwr data dedup ek_pick_u --in ek_pick"
+
+[[step]]
+id = "ek-quiet"
+run = "hmwr data quiet ek_pick_q1 --in ek_pick_u"
+
+[[step]]
+id = "ek-relabel"
+run = "hmwr data relabel ek_dl430 --in ek_pick_q1 --scale 430"
+
+[[step]]
+id = "ek-rm-mid"
+run = "hmwr data rm ek_pick ek_pick_u ek_pick_q1"
+
+[[step]]
+id = "select-a0"
+run = "hmwr data select cell_a0_raw --in dl20u --in ek_dl430 --king 0.15,0.25,0.60 --eval 0.25,0.25,0.50 --count 100500000 --alpha 0 --scale 430 --seed 1"
+
+[[step]]
+id = "select-a05"
+run = "hmwr data select cell_a05_raw --in dl20u --in ek_dl430 --king 0.15,0.25,0.60 --eval 0.25,0.25,0.50 --count 100500000 --alpha 0.5 --scale 430 --seed 1"
+
+[[step]]
+id = "shuffle-a0"
+run = "hmwr data shuffle cell_a0_s --in cell_a0_raw"
+
+[[step]]
+id = "shuffle-a05"
+run = "hmwr data shuffle cell_a05_s --in cell_a05_raw"
+
+[[step]]
+id = "split-a0"
+run = "hmwr data split cell_a0_100M --in cell_a0_s --count 100000000"
+
+[[step]]
+id = "split-a05"
+run = "hmwr data split cell_a05_100M --in cell_a05_s --count 100000000"
+
+[[step]]
+id = "rm-mid"
+run = "hmwr data rm cell_a0_raw cell_a05_raw cell_a0_s cell_a05_s"
