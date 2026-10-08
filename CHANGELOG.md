@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.53.3](https://github.com/kaz9120/himawari-rs/compare/v0.53.2...v0.53.3) (2026-10-08)
+
+
+### その他の変更
+
+* 点数を付けた局面の台帳 hmwr data ledger と、mix の --consume を足す ([#700](https://github.com/kaz9120/himawari-rs/issues/700)) ([8d3c2c6](https://github.com/kaz9120/himawari-rs/commit/8d3c2c62432a8faeb7d643e52041451f5f9f2aae))
+
 ## [0.53.2](https://github.com/kaz9120/himawari-rs/compare/v0.53.1...v0.53.2) (2026-10-07)
 
 
