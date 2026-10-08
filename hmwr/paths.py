@@ -21,6 +21,7 @@ BOOK = REPO / "data" / "book"
 TRAIN = REPO / "data" / "train"
 STATUS = REPO / "data" / "status"  # 状態ファイル（ADR-0220）
 PROFILE = REPO / "data" / "profile"
+LEDGER = REPO / "data" / "ledger"  # 点数を付けた局面の台帳（ADR-0228）
 RAW = REPO / "data" / "raw"
 QUEUE = REPO / "data" / "queue"
 

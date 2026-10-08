@@ -101,7 +101,10 @@ OPS: tuple[Op, ...] = (
         "複数の教師を混ぜてシャッフルする",
         "混合の比率は入力の件数で決まる。比率を変えるなら、先に split で"
         "件数を揃える。",
-        opts=(Opt("--seed", "乱数種", default=SHUFFLE_SEED),),
+        opts=(
+            Opt("--seed", "乱数種", default=SHUFFLE_SEED),
+            Opt("--consume", "読み終えた入力を消し、空きのピークを出力1本ぶんに抑える。入力は戻せない", kind=bool),
+        ),
         min_inputs=2,
         max_inputs=None,
     ),
@@ -223,6 +226,9 @@ def add_parsers(ss: argparse._SubParsersAction) -> None:
             default_note = ""
             if o.default is not None and o.default is not EVAL:
                 default_note = f"（既定 {o.default}）"
+            if o.kind is bool:
+                t.add_argument(o.flag, action="store_true", help=o.help)
+                continue
             t.add_argument(
                 o.flag,
                 type=o.kind,
@@ -268,6 +274,26 @@ def add_parsers(ss: argparse._SubParsersAction) -> None:
     t.add_argument("--skip", type=int, default=0, metavar="N", help="先頭から飛ばす件数")
     t.add_argument("--force", action="store_true", help="出力が既にあっても作り直す")
     t.set_defaults(func=openings)
+
+    t = ss.add_parser(
+        "ledger",
+        help="点数を付けた局面の台帳を扱う",
+        description="dlshogiで点数を付けた局面の盤面ハッシュを data/ledger/ に持つ。"
+        "付ける前に filter で台帳と突き合わせ、初めて見る局面だけを残す。付けたら add で足す。"
+        "検証集合の局面も台帳に入れ、学習へ混ざらないようにする。",
+    )
+    lss = t.add_subparsers(dest="ledger_op", metavar="<操作>")
+    lt = lss.add_parser("add", help="局面のハッシュを台帳へ足す")
+    lt.add_argument("--in", dest="inputs", action="append", default=[], metavar="入力名",
+                    help="data/train/<入力名>.psv。複数回渡せる")
+    lt.set_defaults(func=ledger_add)
+    lt = lss.add_parser("filter", help="台帳に無く、入力の中でも初出の局面だけを残す")
+    lt.add_argument("name", metavar="出力名", help="data/train/<出力名>.psv へ書く")
+    lt.add_argument("--in", dest="inputs", action="append", default=[], metavar="入力名")
+    lt.add_argument("--force", action="store_true", help="出力が既にあっても作り直す")
+    lt.set_defaults(func=ledger_filter)
+    lt = lss.add_parser("show", help="台帳の局面数と、足した履歴を出す")
+    lt.set_defaults(func=ledger_show)
 
     t = ss.add_parser(
         "pick",
@@ -431,6 +457,10 @@ def _opt_args(op: Op, args: argparse.Namespace, *, skip: tuple[str, ...] = ()) -
                 if not args.dry_run:
                     raise proc.Fail("評価関数がない。--eval-file で渡す")
                 value = "（未設定）"
+        if o.kind is bool:
+            if value:
+                out.append(o.flag)
+            continue
         if value is not None:
             out += [o.flag, str(value)]
     return out
@@ -507,6 +537,10 @@ def run(op: Op, args: argparse.Namespace) -> int:
         _concat(pieces, part)
     else:
         proc.run(commands[0], log=log)
+    if getattr(args, "consume", False):
+        # 読み終えた入力は psv が消した。由来の記録だけが残らないよう、完了マーカーも消す
+        for src in _inputs(op, args):
+            src.with_name(src.name + ".done").unlink(missing_ok=True)
     part.replace(out)
     done.write_text(
         json.dumps(
@@ -967,3 +1001,56 @@ def select(args: argparse.Namespace) -> int:
                                 progress=progress, report=report)
 
     return _run_cells(args, "select", record, sources, body)
+
+
+# --- 点数を付けた局面の台帳（ADR-0228） ---------------------------------
+
+
+def ledger_add(args: argparse.Namespace) -> int:
+    """局面のハッシュを台帳へ足す。同じ入力を二度足しても台帳は変わらない。"""
+    from .tools import ledger
+
+    if not args.inputs:
+        raise proc.Fail("--in が要る", proc.USAGE)
+    sources = [paths.TRAIN / f"{paths.check_name(n)}.psv" for n in args.inputs]
+    if args.dry_run:
+        print(f"[dry-run] 台帳 {paths.rel(paths.LEDGER)} へ足す: " + ", ".join(paths.rel(s) for s in sources))
+        return proc.OK
+    for src in sources:
+        if not src.is_file():
+            raise proc.Fail(f"入力のpsvがない: {paths.rel(src)}")
+    total = sum(src.stat().st_size for src in sources) // 40
+    with heartbeat.running("ledger", "add", total=total, unit="局面") as beat:
+        stats = ledger.add(paths.LEDGER, sources, progress=beat.update)
+    print(f"台帳へ足した: {stats['read']:,}局面を読み、新しい局面 {stats['new']:,}。台帳は {stats['size']:,}局面")
+    return proc.OK
+
+
+def ledger_filter(args: argparse.Namespace) -> int:
+    """台帳に無く、入力の中でも初出の局面だけを残す。"""
+    from .tools import ledger
+
+    if len(args.inputs) != 1:
+        raise proc.Fail(f"--in は1個要る（{len(args.inputs)}個渡された）", proc.USAGE)
+    source = paths.TRAIN / f"{paths.check_name(args.inputs[0])}.psv"
+    record = [f"ledger filter --in {paths.rel(source)}"]
+
+    def body(part, progress, report):
+        report(f"台帳: {ledger.size(paths.LEDGER):,}局面")
+        stats = ledger.filter_new(paths.LEDGER, source, part, progress=progress)
+        report(f"入力の中の重複 {stats['dup_in_input']:,}、台帳にあった局面 {stats['known']:,}")
+        return stats
+
+    return _run_cells(args, "ledger", record, [source], body)
+
+
+def ledger_show(args: argparse.Namespace) -> int:
+    from .tools import ledger
+
+    print(f"台帳: {paths.rel(paths.LEDGER)}  {ledger.size(paths.LEDGER):,}局面")
+    log = paths.LEDGER / "added.jsonl"
+    if log.is_file():
+        for line in log.read_text(encoding="utf-8").splitlines():
+            d = json.loads(line)
+            print(f"  {d['at']}  +{d['new']:,}（{d['read']:,}局面を読んだ）  " + ", ".join(Path(s).name for s in d["sources"]))
+    return proc.OK
