@@ -41,3 +41,16 @@ def test_hash_depends_only_on_the_board_bytes():
     assert h[0] == h[1]
     r[1, 5] ^= 1
     assert ledger.board_hash(r)[0] != ledger.board_hash(r)[1]
+
+
+def test_add_works_under_a_low_open_file_limit(tmp_path):
+    import resource
+
+    soft, hard = resource.getrlimit(resource.RLIMIT_NOFILE)
+    resource.setrlimit(resource.RLIMIT_NOFILE, (64, hard))  # 区分の数（256）より少ない
+    try:
+        rng = np.random.default_rng(2)
+        src = _psv(tmp_path / "a.psv", rng.integers(0, 256, (3000, 40), dtype=np.uint8))
+        assert ledger.add(tmp_path / "ledger", [src])["new"] == 3000
+    finally:
+        resource.setrlimit(resource.RLIMIT_NOFILE, (soft, hard))
