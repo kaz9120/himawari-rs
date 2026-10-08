@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.53.5](https://github.com/kaz9120/himawari-rs/compare/v0.53.4...v0.53.5) (2026-10-08)
+
+
+### その他の変更
+
+* シャッフル済みの教師を織り交ぜる hmwr data merge を足し、ADR-0228の混合に使う ([#706](https://github.com/kaz9120/himawari-rs/issues/706)) ([d9c6e59](https://github.com/kaz9120/himawari-rs/commit/d9c6e599ec5499b63a8d5cefb622be8852125e89))
+
 ## [0.53.4](https://github.com/kaz9120/himawari-rs/compare/v0.53.3...v0.53.4) (2026-10-08)
 
 
