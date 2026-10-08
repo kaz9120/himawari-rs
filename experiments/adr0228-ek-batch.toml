@@ -1,0 +1,55 @@
+# ADR-0228 の最初の回: 台帳を作り、入玉5億を重複なく付け直して母集団へ足し、2周で学習して現行と比べる。
+# 付け直しが約57時間、学習が約28時間で、合計約4日。各段で前の出力を消してディスクの空きを保つ。
+adr = "0228"
+
+[[step]]
+id = "ledger-seed"
+run = "hmwr data ledger add --in dl20u --in ek_dl430 --in valid_tanuki_dl430_q1"
+
+[[step]]
+id = "rm-cells"
+run = "hmwr data rm cell_a0_100M cell_a05_100M"
+
+[[step]]
+id = "ek-shuffle"
+run = "hmwr data shuffle ek_all --raw entering_king"
+
+[[step]]
+id = "ek-quiet"
+run = "hmwr data quiet ek_all_q1 --in ek_all"
+
+[[step]]
+id = "rm-ek-all"
+run = "hmwr data rm ek_all"
+
+[[step]]
+id = "ek-filter"
+run = "hmwr data ledger filter ek_new --in ek_all_q1"
+
+[[step]]
+id = "rm-ek-q1"
+run = "hmwr data rm ek_all_q1"
+
+[[step]]
+id = "ek-relabel"
+run = "hmwr data relabel ek_new_dl430 --in ek_new --scale 430"
+
+[[step]]
+id = "rm-ek-new"
+run = "hmwr data rm ek_new"
+
+[[step]]
+id = "ledger-add"
+run = "hmwr data ledger add --in ek_new_dl430"
+
+[[step]]
+id = "mix"
+run = "hmwr data mix pool1 --in dl20u --in ek_dl430 --in ek_new_dl430 --consume"
+
+[[step]]
+id = "train-2ep"
+run = "hmwr net train pool1_2ep --data pool1 --valid valid_tanuki_dl430_q1 --rank rank_tanuki_210M --seed 0 --extra=\"--epochs 2\" --notes \"ADR-0228 dl20uに入玉5億を重複なく足した母集団を2周\""
+
+[[step]]
+id = "sprt"
+run = "hmwr sprt net data/nets/dl20u_2ep.hmwr data/nets/pool1_2ep.hmwr adr0228-pool1 --foreground"
