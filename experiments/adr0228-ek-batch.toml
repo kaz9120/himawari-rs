@@ -43,8 +43,8 @@ id = "ledger-add"
 run = "hmwr data ledger add --in ek_new_dl430"
 
 [[step]]
-id = "mix"
-run = "hmwr data mix pool1 --in dl20u --in ek_dl430 --in ek_new_dl430 --consume"
+id = "merge"
+run = "hmwr data merge pool1 --in dl20u --in ek_dl430 --in ek_new_dl430 --consume"
 
 [[step]]
 id = "train-2ep"

@@ -276,6 +276,21 @@ def add_parsers(ss: argparse._SubParsersAction) -> None:
     t.set_defaults(func=openings)
 
     t = ss.add_parser(
+        "merge",
+        help="シャッフル済みの教師を、ランダムに織り交ぜて1本にする",
+        description="入力はどれもシャッフル済みであること。残り件数に比例した確率で織り交ぜるので、"
+        "全体シャッフルをやり直さずに一様な並びになる。--consume を付けると、入力を末尾から"
+        "読みながら切り詰めるので、空きは出力1本ぶんで済む。大きな母集団へ新しい局面を足すときに使う。",
+    )
+    t.add_argument("name", metavar="出力名", help="data/train/<出力名>.psv へ書く")
+    t.add_argument("--in", dest="inputs", action="append", default=[], metavar="入力名",
+                   help="data/train/<入力名>.psv を読む。複数回渡せる")
+    t.add_argument("--seed", type=int, default=SHUFFLE_SEED, metavar="N", help=f"乱数種（既定 {SHUFFLE_SEED}）")
+    t.add_argument("--consume", action="store_true", help="読んだ分だけ入力を切り詰め、最後に消す。入力は戻せない")
+    t.add_argument("--force", action="store_true", help="出力が既にあっても作り直す")
+    t.set_defaults(func=merge_op)
+
+    t = ss.add_parser(
         "ledger",
         help="点数を付けた局面の台帳を扱う",
         description="dlshogiで点数を付けた局面の盤面ハッシュを data/ledger/ に持つ。"
@@ -1054,3 +1069,25 @@ def ledger_show(args: argparse.Namespace) -> int:
             d = json.loads(line)
             print(f"  {d['at']}  +{d['new']:,}（{d['read']:,}局面を読んだ）  " + ", ".join(Path(s).name for s in d["sources"]))
     return proc.OK
+
+
+def merge_op(args: argparse.Namespace) -> int:
+    """シャッフル済みの教師を織り交ぜて1本にする（ADR-0228）。"""
+    from .tools import merge
+
+    if len(args.inputs) < 2:
+        raise proc.Fail("--in は2個以上要る", proc.USAGE)
+    sources = [paths.TRAIN / f"{paths.check_name(n)}.psv" for n in args.inputs]
+    record = [
+        "merge " + " ".join(f"--in {paths.rel(s)}" for s in sources)
+        + f" --seed {args.seed}" + (" --consume" if args.consume else "")
+    ]
+
+    def body(part, progress, report):
+        stats = merge.merge(sources, part, seed=args.seed, consume=args.consume, progress=progress)
+        if args.consume:
+            for src in sources:
+                src.with_name(src.name + ".done").unlink(missing_ok=True)
+        return stats
+
+    return _run_cells(args, "merge", record, sources, body)

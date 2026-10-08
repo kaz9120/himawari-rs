@@ -275,6 +275,7 @@ hmwr data pick <出力名> --in <入力名> --king-max 6 --p-min 0.1 --p-max 0.9
 hmwr data ledger filter <出力名> --in <入力名>   点数を付けた局面の台帳に無い局面だけを残す
 hmwr data ledger add --in <入力名>              点数を付けた局面を台帳へ足す
 hmwr data mix <出力名> --in <入力名> --in <入力名> --consume   読み終えた入力を消しながら混ぜる
+hmwr data merge <出力名> --in <入力名> --in <入力名> --consume   シャッフル済みの入力を織り交ぜる。空きは出力1本ぶん
 hmwr data select <出力名> --in <入力名> --in <入力名> --king 0.15,0.25,0.60 --eval 0.25,0.25,0.50 --count N --alpha 0.5   区画の配分とαで選ぶ
 hmwr data openings <出力名> --in <入力名> --min-ply 40 --count 2000   開始局面集を作る
 hmwr data relabel <出力名> --in <入力名> --scale 600    DL系モデルの推論1回でscoreを付け直す
