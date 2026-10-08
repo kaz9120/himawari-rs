@@ -70,36 +70,39 @@ def add(root: Path, sources: list[Path], *, progress=None) -> dict:
     """局面のハッシュを台帳へ足す。何度足しても台帳は重複を持たない。"""
     root.mkdir(parents=True, exist_ok=True)
     tmp = root / "add.tmp"
+    if tmp.exists():
+        # 前回が途中で落ちた残り。足し終えていない一時ファイルは捨てて読み直す
+        for f in tmp.iterdir():
+            f.unlink()
     tmp.mkdir(exist_ok=True)
-    files = [open(tmp / f"{s:02x}", "wb") for s in range(SHARDS)]
     seen = 0
-    try:
-        for src in sources:
-            rec = _memmap(src)
-            for lo in range(0, len(rec), CHUNK):
-                h = board_hash(np.asarray(rec[lo:lo + CHUNK]))
-                sh = _shard(h)
-                order = np.argsort(sh, kind="stable")
-                h, sh = h[order], sh[order]
-                cuts = np.searchsorted(sh, np.arange(SHARDS + 1))
-                for s in range(SHARDS):
-                    if cuts[s] < cuts[s + 1]:
-                        files[s].write(h[cuts[s]:cuts[s + 1]].tobytes())
-                seen += len(h)
-                if progress:
-                    progress(seen)
-    finally:
-        for f in files:
-            f.close()
+    for src in sources:
+        rec = _memmap(src)
+        for lo in range(0, len(rec), CHUNK):
+            h = board_hash(np.asarray(rec[lo:lo + CHUNK]))
+            sh = _shard(h)
+            order = np.argsort(sh, kind="stable")
+            h, sh = h[order], sh[order]
+            cuts = np.searchsorted(sh, np.arange(SHARDS + 1))
+            # 256区分を同時に開くと、launchdの常駐ではファイル数の上限（256）を超える。
+            # 区分ごとに追記で開いて閉じる
+            for s in range(SHARDS):
+                if cuts[s] < cuts[s + 1]:
+                    with open(tmp / f"{s:02x}", "ab") as f:
+                        f.write(h[cuts[s]:cuts[s + 1]].tobytes())
+            seen += len(h)
+            if progress:
+                progress(seen)
     before = size(root)
     for s in range(SHARDS):
-        new = np.fromfile(tmp / f"{s:02x}", dtype=np.uint64)
+        piece = tmp / f"{s:02x}"
+        new = np.fromfile(piece, dtype=np.uint64) if piece.is_file() else np.zeros(0, np.uint64)
         merged = np.unique(np.concatenate([load_shard(root, s), new]))
         out = _shard_path(root, s)
         part = out.with_name(out.name + ".part")
         merged.tofile(part)
         part.replace(out)
-        (tmp / f"{s:02x}").unlink()
+        piece.unlink(missing_ok=True)
     tmp.rmdir()
     after = size(root)
     log = root / "added.jsonl"
