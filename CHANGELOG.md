@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.53.4](https://github.com/kaz9120/himawari-rs/compare/v0.53.3...v0.53.4) (2026-10-08)
+
+
+### その他の変更
+
+* 台帳へ足すとき、256区分の一時ファイルを同時に開かない ([#704](https://github.com/kaz9120/himawari-rs/issues/704)) ([f073d72](https://github.com/kaz9120/himawari-rs/commit/f073d7256e4f9883cc1dd8a67198e70245097f3e))
+
 ## [0.53.3](https://github.com/kaz9120/himawari-rs/compare/v0.53.2...v0.53.3) (2026-10-08)
 
 
