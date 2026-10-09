@@ -21,6 +21,7 @@ hao_depth9の加工済みpsvは2026-09-08に消した（容量の都合。再取
 | `data/train/valid_tanuki.psv` / `_q1.psv` | tanukiの検証集合20万局面（非静止・静止化） | 8MB×2 |
 | `data/train/e4_dl430_train_q1.psv` | E4の1億をdlshogiで付け直したもの（[ADR-0215](adr/0215-dl-relabel-pilot.md)） | 4GB |
 | `data/raw/entering_king/` | 入玉5億の生データ127ファイル（下の「入玉」） | 19GB |
+| `data/raw/floodgate_archive/` | floodgateの全対局の年別アーカイブ（wdoorの7z、GitHubのミラー）。`hmwr data floodgate` が取得する | 2011〜2026年で約3.8GB |
 
 過去の実験の中間ファイル（自己生成の `rl_*`、E4の統制、hao由来の3億、入玉の加工済み）は
 2026-10-06に消した。どれもADRに作り方が残っている。

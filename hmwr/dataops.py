@@ -276,6 +276,22 @@ def add_parsers(ss: argparse._SubParsersAction) -> None:
     t.set_defaults(func=openings)
 
     t = ss.add_parser(
+        "floodgate",
+        help="floodgateの全対局の棋譜から局面を取り出す",
+        description="wdoorの年別アーカイブ（GitHubのミラー）を data/raw/floodgate_archive/ へ取得し、"
+        "年ごとに展開して、各対局の指す前の局面を1手ずつ書く。評価値は0で、あとで付け直す。"
+        "勝敗は手番側から見た値。展開した棋譜は年ごとに消す。",
+    )
+    t.add_argument("name", metavar="出力名", help="data/train/<出力名>.psv へ書く")
+    t.add_argument("--years", required=True, metavar="A-B", help="対象の年。例 2011-2026 か 2026")
+    t.add_argument("--tag", default="2026-04-10", metavar="タグ", help="ミラーのリリースのタグ（既定 2026-04-10）")
+    t.add_argument("--min-plies", type=int, default=30, metavar="N", help="これより短い対局は飛ばす（既定 30）")
+    t.add_argument("--limit", type=int, metavar="N", help="年ごとに先頭N局だけ読む（試し用）")
+    t.add_argument("--jobs", type=int, default=8, metavar="N", help="並列数。変えても出力は変わらない")
+    t.add_argument("--force", action="store_true", help="出力が既にあっても作り直す")
+    t.set_defaults(func=floodgate_op)
+
+    t = ss.add_parser(
         "merge",
         help="シャッフル済みの教師を、ランダムに織り交ぜて1本にする",
         description="入力はどれもシャッフル済みであること。残り件数に比例した確率で織り交ぜるので、"
@@ -1091,3 +1107,25 @@ def merge_op(args: argparse.Namespace) -> int:
         return stats
 
     return _run_cells(args, "merge", record, sources, body)
+
+
+def floodgate_op(args: argparse.Namespace) -> int:
+    """floodgateの全対局から局面を取り出す（ADR-0228）。"""
+    from .tools import floodgate_psv
+
+    lo, _, hi = args.years.partition("-")
+    try:
+        years = list(range(int(lo), int(hi or lo) + 1))
+    except ValueError:
+        raise proc.Fail(f"--years は 2011-2026 か 2026 の形で書く: {args.years}", proc.USAGE)
+    archive = paths.REPO / "data" / "raw" / "floodgate_archive"
+    record = [
+        f"floodgate --years {args.years} --tag {args.tag} --min-plies {args.min_plies}"
+        + (f" --limit {args.limit}" if args.limit else "")
+    ]
+
+    def body(part, progress, report):
+        return floodgate_psv.convert(years, archive, part, tag=args.tag, min_plies=args.min_plies,
+                                     jobs=args.jobs, limit=args.limit, report=report, progress=progress)
+
+    return _run_cells(args, "floodgate", record, [], body)
