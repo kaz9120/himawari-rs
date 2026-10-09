@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.53.6](https://github.com/kaz9120/himawari-rs/compare/v0.53.5...v0.53.6) (2026-10-09)
+
+
+### その他の変更
+
+* floodgateの全対局の棋譜から局面を取り出す hmwr data floodgate を足す ([#708](https://github.com/kaz9120/himawari-rs/issues/708)) ([f69b2b8](https://github.com/kaz9120/himawari-rs/commit/f69b2b88855e7cba7eb3493bc3d4c00a045204d8))
+
 ## [0.53.5](https://github.com/kaz9120/himawari-rs/compare/v0.53.4...v0.53.5) (2026-10-08)
 
 
