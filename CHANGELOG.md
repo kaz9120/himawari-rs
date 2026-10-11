@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.53.7](https://github.com/kaz9120/himawari-rs/compare/v0.53.6...v0.53.7) (2026-10-11)
+
+
+### その他の変更
+
+* hmwr data merge が合計10億局面以上の入力で落ちるのを直す ([#710](https://github.com/kaz9120/himawari-rs/issues/710)) ([8a51f6a](https://github.com/kaz9120/himawari-rs/commit/8a51f6a8148d0cfec23199c55d2bcb4c82662b64))
+
 ## [0.53.6](https://github.com/kaz9120/himawari-rs/compare/v0.53.5...v0.53.6) (2026-10-09)
 
 
