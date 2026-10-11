@@ -17,6 +17,19 @@ import numpy as np
 
 PSV_BYTES = 40
 BLOCK = 4_000_000
+# numpyの多変量超幾何分布は、母数の合計がこの値以上だと例外を出す
+HYPERGEOMETRIC_LIMIT = 1_000_000_000
+
+
+def _draw(rng: np.random.Generator, left: np.ndarray, k: int) -> np.ndarray:
+    """残り件数 `left` の入力から、合わせてk件を非復元で取るときの入力ごとの件数を返す。"""
+    total = int(left.sum())
+    if total < HYPERGEOMETRIC_LIMIT:
+        return rng.multivariate_hypergeometric(left, k)
+    # 通し番号をk個重複なく引き、どの入力の区間へ落ちたかを数える。分布は同じになる
+    picks = rng.choice(total, size=k, replace=False, shuffle=False)
+    owner = np.searchsorted(np.cumsum(left), picks, side="right")
+    return np.bincount(owner, minlength=len(left))
 
 
 def merge(sources: list[Path], part: Path, *, seed: int, consume: bool, progress=None) -> dict:
@@ -35,7 +48,7 @@ def merge(sources: list[Path], part: Path, *, seed: int, consume: bool, progress
         with open(part, "wb") as out:
             while left.sum() > 0:
                 k = int(min(BLOCK, left.sum()))
-                take = rng.multivariate_hypergeometric(left, k)
+                take = _draw(rng, left, k)
                 rows = []
                 for i, t in enumerate(take):
                     if t == 0:
