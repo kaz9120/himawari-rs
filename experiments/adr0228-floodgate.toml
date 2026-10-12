@@ -1,0 +1,43 @@
+# ADR-0228 の2回目: floodgateの全対局（2011〜2026年）から局面を取り出し、重複なく付け直して台帳へ足す。
+# 取り出しが約1時間、付け直しが約13時間の見込み。母集団へは混ぜない（1回目の判定を見てから決める）。
+adr = "0228"
+
+[[step]]
+id = "fg-extract"
+run = "hmwr data floodgate fg_all --years 2011-2026"
+
+[[step]]
+id = "fg-shuffle"
+run = "hmwr data shuffle fg_shuf --in fg_all"
+
+[[step]]
+id = "rm-fg-all"
+run = "hmwr data rm fg_all"
+
+[[step]]
+id = "fg-quiet"
+run = "hmwr data quiet fg_q1 --in fg_shuf"
+
+[[step]]
+id = "rm-fg-shuf"
+run = "hmwr data rm fg_shuf"
+
+[[step]]
+id = "fg-filter"
+run = "hmwr data ledger filter fg_new --in fg_q1"
+
+[[step]]
+id = "rm-fg-q1"
+run = "hmwr data rm fg_q1"
+
+[[step]]
+id = "fg-relabel"
+run = "hmwr data relabel fg_new_dl430 --in fg_new --scale 430"
+
+[[step]]
+id = "rm-fg-new"
+run = "hmwr data rm fg_new"
+
+[[step]]
+id = "ledger-add"
+run = "hmwr data ledger add --in fg_new_dl430"
