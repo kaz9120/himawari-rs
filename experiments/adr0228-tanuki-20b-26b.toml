@@ -1,0 +1,51 @@
+# ADR-0228 の3回目: tanukiの20億〜26億局面を、重複なく付け直して台帳へ足す。
+# 空きを保つため3億ずつ2回に分ける。付け直しは合わせて約62時間の見込み。母集団へは混ぜない。
+adr = "0228"
+
+[[step]]
+id = "tk3a-split"
+run = "hmwr data split tk3a_raw --in train_7860M_q1 --skip 2000000000 --count 300000000"
+
+[[step]]
+id = "tk3a-filter"
+run = "hmwr data ledger filter tk3a_new --in tk3a_raw"
+
+[[step]]
+id = "rm-tk3a-raw"
+run = "hmwr data rm tk3a_raw"
+
+[[step]]
+id = "tk3a-relabel"
+run = "hmwr data relabel tk3a_dl430 --in tk3a_new --scale 430"
+
+[[step]]
+id = "rm-tk3a-new"
+run = "hmwr data rm tk3a_new"
+
+[[step]]
+id = "tk3a-ledger"
+run = "hmwr data ledger add --in tk3a_dl430"
+
+[[step]]
+id = "tk3b-split"
+run = "hmwr data split tk3b_raw --in train_7860M_q1 --skip 2300000000 --count 300000000"
+
+[[step]]
+id = "tk3b-filter"
+run = "hmwr data ledger filter tk3b_new --in tk3b_raw"
+
+[[step]]
+id = "rm-tk3b-raw"
+run = "hmwr data rm tk3b_raw"
+
+[[step]]
+id = "tk3b-relabel"
+run = "hmwr data relabel tk3b_dl430 --in tk3b_new --scale 430"
+
+[[step]]
+id = "rm-tk3b-new"
+run = "hmwr data rm tk3b_new"
+
+[[step]]
+id = "tk3b-ledger"
+run = "hmwr data ledger add --in tk3b_dl430"
