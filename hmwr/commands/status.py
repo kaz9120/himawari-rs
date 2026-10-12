@@ -13,7 +13,6 @@ import argparse
 import datetime
 import json
 import shutil
-import subprocess
 import time
 from pathlib import Path
 
@@ -103,16 +102,11 @@ def _results() -> dict:
 
 
 def _launchd() -> dict:
-    try:
-        out = subprocess.run(
-            ["launchctl", "list", queue.AGENT], capture_output=True, text=True, check=False
-        )
-    except OSError:
-        return {"loaded": False}
-    if out.returncode != 0:
+    code, out, _ = proc.capture_code(["launchctl", "list", queue.AGENT])
+    if code != proc.OK:
         return {"loaded": False}
     pid = None
-    for line in out.stdout.splitlines():
+    for line in out.splitlines():
         if '"PID"' in line:
             pid = int(line.split("=")[1].strip().rstrip(";"))
     return {"loaded": True, "pid": pid}

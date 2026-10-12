@@ -10,10 +10,9 @@ from __future__ import annotations
 
 import os
 import platform
-import subprocess
 from functools import lru_cache
 
-from . import paths
+from . import paths, proc
 
 # 対局ゲートの既定条件（ADR-0028）
 SPRT_TC = "10+0.1"
@@ -67,24 +66,15 @@ def physical_cores() -> int:
         # Apple Siliconは高性能コアだけを数える。効率コアは大きく遅く、
         # 混ぜると同じ持ち時間でも到達深さがばらつく
         for key in ("hw.perflevel0.physicalcpu", "hw.physicalcpu"):
-            out = _run(["sysctl", "-n", key])
+            out = proc.capture(["sysctl", "-n", key]).strip()
             if out.isdigit():
                 return int(out)
     elif system == "Linux":
-        out = _run(["lscpu", "-p=Core,Socket"])
+        out = proc.capture(["lscpu", "-p=Core,Socket"]).strip()
         rows = {line for line in out.splitlines() if line and not line.startswith("#")}
         if rows:
             return len(rows)
     return os.cpu_count() or 4
-
-
-def _run(argv: list[str]) -> str:
-    try:
-        return subprocess.run(
-            argv, capture_output=True, text=True, check=False
-        ).stdout.strip()
-    except OSError:
-        return ""
 
 
 def concurrency() -> int:

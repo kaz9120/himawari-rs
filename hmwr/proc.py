@@ -143,6 +143,30 @@ def run_all(argvs: list[list[str]], *, log: Path) -> None:
         raise Fail("失敗した: " + " / ".join(bad))
 
 
+def capture_code(argv: list[str], *, cwd: Path | None = None) -> tuple[int, str, str]:
+    """終了コードと標準出力と標準エラーを組で返す。失敗しても投げない。
+
+    取り込む系の唯一の実装である。終了コードまで見たい呼び出し元が
+    `subprocess.run` を書き直さずに済むことが目的で、`capture`・
+    `capture_both`・`succeeds` はこれを細めたものになる。
+    起動そのものに失敗したときはRUNTIMEと例外のメッセージを返し、
+    終了コードで失敗が分かる形へ寄せる。デコードは `replace` で行う。
+    出力の文字が壊れていても投げないことを、3つの呼び出し口で揃える。
+    """
+    try:
+        result = subprocess.run(
+            argv,
+            cwd=str(cwd or paths.REPO),
+            capture_output=True,
+            text=True,
+            errors="replace",
+            check=False,
+        )
+    except OSError as e:
+        return RUNTIME, "", str(e)
+    return result.returncode, result.stdout, result.stderr
+
+
 def capture(argv: list[str], *, cwd: Path | None = None) -> str:
     """出力を取り込む。失敗しても投げず、空文字を返す。"""
     return capture_both(argv, cwd=cwd)[0]
@@ -154,33 +178,13 @@ def capture_both(argv: list[str], *, cwd: Path | None = None) -> tuple[str, str]
     **失敗したときに原因を見せるために、標準エラーも取る。** 捨てると
     「測れない」だけが残り、何が起きたか分からなくなる。
     """
-    try:
-        result = subprocess.run(
-            argv,
-            cwd=str(cwd or paths.REPO),
-            capture_output=True,
-            text=True,
-            check=False,
-        )
-    except OSError as e:
-        return "", str(e)
-    return result.stdout, result.stderr
+    _, out, err = capture_code(argv, cwd=cwd)
+    return out, err
 
 
 def succeeds(argv: list[str], *, cwd: Path | None = None) -> bool:
     """終了コードだけを見る。出力は捨てる。"""
-    try:
-        return (
-            subprocess.run(
-                argv,
-                cwd=str(cwd or paths.REPO),
-                capture_output=True,
-                check=False,
-            ).returncode
-            == 0
-        )
-    except OSError:
-        return False
+    return capture_code(argv, cwd=cwd)[0] == OK
 
 
 def git(*args: str) -> str:
