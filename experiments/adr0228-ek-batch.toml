@@ -52,4 +52,5 @@ run = "hmwr net train pool1_2ep --data pool1 --valid valid_tanuki_dl430_q1 --ran
 
 [[step]]
 id = "sprt"
-run = "hmwr sprt net data/nets/dl20u_2ep.hmwr data/nets/pool1_2ep.hmwr adr0228-pool1 --foreground"
+# 上限は走行中に10,000から30,053ペアへ延ばした（2026-10-13、オーナー判断。ADR-0228の追記）
+run = "hmwr sprt net data/nets/dl20u_2ep.hmwr data/nets/pool1_2ep.hmwr adr0228-pool1 --max-pairs 30053 --foreground"

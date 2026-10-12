@@ -1,0 +1,7 @@
+# ADR-0228 の追加の測定: 入玉の開始局面2,000件を1回ずつ使い、dl20u_2ep と pool1_2ep を2,000ペア指し切る。
+# 約4時間。採否は変えない。通常の開始局面のSPRTが入玉の場面を見ていない、という説明を確かめる。
+adr = "0228"
+
+[[step]]
+id = "match-ek"
+run = "hmwr match run adr0228-pool1-ek --base-net dl20u_2ep --cand-net pool1_2ep --openings entering_king_ply40 --stop pairs:2000 --foreground"
