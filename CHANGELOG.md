@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.53.8](https://github.com/kaz9120/himawari-rs/compare/v0.53.7...v0.53.8) (2026-10-12)
+
+
+### その他の変更
+
+* 取り込む系のsubprocess呼び出しをproc.capture_codeへ寄せる ([#721](https://github.com/kaz9120/himawari-rs/issues/721)) ([30487ab](https://github.com/kaz9120/himawari-rs/commit/30487ab341646925013b322431c1714153572a99)), closes [#712](https://github.com/kaz9120/himawari-rs/issues/712)
+
 ## [0.53.7](https://github.com/kaz9120/himawari-rs/compare/v0.53.6...v0.53.7) (2026-10-11)
 
 
