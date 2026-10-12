@@ -95,12 +95,10 @@ def add_parser(sub: argparse._SubParsersAction) -> None:
 
 def gh(*args: str) -> str:
     """ghを呼ぶ。届かないときはFailを投げ、次の回でやり直す。"""
-    result = subprocess.run(
-        ["gh", *args], cwd=str(paths.REPO), capture_output=True, text=True, check=False
-    )
-    if result.returncode != 0:
-        raise proc.Fail(f"ghが失敗した: gh {' '.join(args)}\n{result.stderr.strip()}")
-    return result.stdout
+    code, out, err = proc.capture_code(["gh", *args])
+    if code != proc.OK:
+        raise proc.Fail(f"ghが失敗した: gh {' '.join(args)}\n{err.strip()}")
+    return out
 
 
 def issues(state: str) -> list[dict]:
