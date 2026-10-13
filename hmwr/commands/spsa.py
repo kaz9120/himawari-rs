@@ -156,6 +156,10 @@ def run(args: argparse.Namespace) -> int:
         print(f"完了済み: {paths.rel(f['result'])}")
         print(f["result"].read_text(encoding="utf-8"), end="")
         return proc.OK
+    if args.dry_run and not f["params"].is_file():
+        # 実験のspecは init と run を続けて書く。検査の時点では対象一覧がまだない
+        print(f"[dry-run] 対象一覧がまだない。hmwr spsa init {args.name} の後に走る")
+        return proc.OK
     if not f["params"].is_file() or (not f["bin"].is_file() and not args.dry_run):
         raise proc.Fail(f"先に hmwr spsa init {args.name} を実行する")
 

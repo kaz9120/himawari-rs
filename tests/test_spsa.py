@@ -80,3 +80,12 @@ def test_pair_score_counts_candidate_side():
     assert spsa_core.pair_score([rec("b", "b"), rec("w", "b")]) == 0.0
     assert spsa_core.pair_score([rec("b", "w"), rec("w", "b")]) == -2.0
     assert spsa_core.pair_score([rec("b", "draw"), rec("w", "w")]) == 1.0
+
+
+def test_dry_run_passes_before_init():
+    # 実験のspecは init と run を続けて書くので、検査の時点では対象一覧がない
+    from hmwr import cli, proc
+    from hmwr.commands import spsa
+
+    args = cli.build_parser().parse_args(["--dry-run", "spsa", "run", "no-such-experiment"])
+    assert spsa.run(args) == proc.OK
