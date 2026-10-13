@@ -247,3 +247,21 @@ def test_openings_picks_by_ply(tmp_path, monkeypatch):
     assert cli.main(argv) == proc.RUNTIME
     # 条件を満たす局面が足りなければ失敗する
     assert cli.main(["data", "openings", "o2", "--in", "s", "--min-ply", "40", "--count", "4"]) == proc.RUNTIME
+
+
+@pytest.mark.parametrize(
+    "argv",
+    [
+        ["data", "openings", "o", "--count", "1"],
+        ["data", "relabel", "r"],
+        ["data", "pick", "p"],
+        ["data", "ledger", "filter", "f"],
+    ],
+    ids=["openings", "relabel", "pick", "ledger-filter"],
+)
+@pytest.mark.parametrize("inputs", [[], ["a", "b"]], ids=["none", "two"])
+def test_single_input_commands_share_the_wording(capsys, argv, inputs):
+    """`Op` に乗らない4コマンドの `--in` の検査が、共通のヘルパーで同じ文言を出す。"""
+    extra = [x for name in inputs for x in ("--in", name)]
+    assert cli.main(["--dry-run", *argv, *extra]) == proc.USAGE
+    assert f"--in は1個要る（{len(inputs)}個渡された）" in capsys.readouterr().err

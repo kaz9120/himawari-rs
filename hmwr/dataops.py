@@ -474,6 +474,17 @@ def _inputs(op: Op, args: argparse.Namespace) -> list[Path]:
     return found
 
 
+def _single_input(args: argparse.Namespace) -> Path:
+    """`Op` に乗らないコマンドで、--in の1個指定をpsvのパスへ直す。
+
+    存在の検査は呼び出し側（`_run_cells` か各コマンド）が持つ。
+    """
+    n = len(args.inputs)
+    if n != 1:
+        raise proc.Fail(f"--in は1個要る（{n}個渡された）", proc.USAGE)
+    return paths.TRAIN / f"{paths.check_name(args.inputs[0])}.psv"
+
+
 def _opt_args(op: Op, args: argparse.Namespace, *, skip: tuple[str, ...] = ()) -> list[str]:
     out: list[str] = []
     for o in op.opts:
@@ -668,9 +679,7 @@ PLY_OFFSET = 36  # game_ply（u16、リトルエンディアン）
 
 def openings(args: argparse.Namespace) -> int:
     """手数の条件で局面を拾い、SFENの列挙へ書き出す。"""
-    if len(args.inputs) != 1:
-        raise proc.Fail(f"--in は1個要る（{len(args.inputs)}個渡された）", proc.USAGE)
-    source = paths.TRAIN / f"{paths.check_name(args.inputs[0])}.psv"
+    source = _single_input(args)
     out = paths.REPO / "openings" / f"{paths.check_name(args.name)}.txt"
 
     if args.dry_run:
@@ -798,9 +807,7 @@ def relabel(args: argparse.Namespace) -> int:
 
     if args.in_place:
         return relabel_in_place(args)
-    if len(args.inputs) != 1:
-        raise proc.Fail(f"--in は1個要る（{len(args.inputs)}個渡された）", proc.USAGE)
-    source = paths.TRAIN / f"{paths.check_name(args.inputs[0])}.psv"
+    source = _single_input(args)
     out = paths.TRAIN / f"{paths.check_name(args.name)}.psv"
     part = out.with_name(out.name + ".part")
     done = out.with_name(out.name + ".done")
@@ -997,9 +1004,7 @@ def pick(args: argparse.Namespace) -> int:
     """玉の段と勝率で局面を絞り込む（ADR-0227）。"""
     from .tools import cells_run
 
-    if len(args.inputs) != 1:
-        raise proc.Fail(f"--in は1個要る（{len(args.inputs)}個渡された）", proc.USAGE)
-    source = paths.TRAIN / f"{paths.check_name(args.inputs[0])}.psv"
+    source = _single_input(args)
     record = [
         f"pick --in {paths.rel(source)} --king-max {args.king_max} --p-min {args.p_min:g}"
         f" --p-max {args.p_max:g} --scale {args.scale:g}"
@@ -1061,9 +1066,7 @@ def ledger_filter(args: argparse.Namespace) -> int:
     """台帳に無く、入力の中でも初出の局面だけを残す。"""
     from .tools import ledger
 
-    if len(args.inputs) != 1:
-        raise proc.Fail(f"--in は1個要る（{len(args.inputs)}個渡された）", proc.USAGE)
-    source = paths.TRAIN / f"{paths.check_name(args.inputs[0])}.psv"
+    source = _single_input(args)
     record = [f"ledger filter --in {paths.rel(source)}"]
 
     def body(part, progress, report):
