@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.54.1](https://github.com/kaz9120/himawari-rs/compare/v0.54.0...v0.54.1) (2026-10-13)
+
+
+### その他の変更
+
+* hmwr data の単一入力の検査を_single_inputへ寄せる ([#730](https://github.com/kaz9120/himawari-rs/issues/730)) ([7ad5792](https://github.com/kaz9120/himawari-rs/commit/7ad57925e931caae3b775accd33f85fb2fd03c57)), closes [#713](https://github.com/kaz9120/himawari-rs/issues/713)
+
 ## [0.54.0](https://github.com/kaz9120/himawari-rs/compare/v0.53.9...v0.54.0) (2026-10-13)
 
 
