@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.53.9](https://github.com/kaz9120/himawari-rs/compare/v0.53.8...v0.53.9) (2026-10-13)
+
+
+### その他の変更
+
+* hmwr spsa run のdry-runを、initの前でも通す ([#723](https://github.com/kaz9120/himawari-rs/issues/723)) ([e6ceac2](https://github.com/kaz9120/himawari-rs/commit/e6ceac21e0183f7f2bb73f22777416cc9c459113))
+
 ## [0.53.8](https://github.com/kaz9120/himawari-rs/compare/v0.53.7...v0.53.8) (2026-10-12)
 
 
