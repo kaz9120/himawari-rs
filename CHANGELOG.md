@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.54.0](https://github.com/kaz9120/himawari-rs/compare/v0.53.9...v0.54.0) (2026-10-13)
+
+
+### 棋力向上
+
+* 入玉の局面を足した21.5億を2周したネットへ切り替える（+5.9 Elo、ADR-0228） ([#727](https://github.com/kaz9120/himawari-rs/issues/727)) ([cdd9fd3](https://github.com/kaz9120/himawari-rs/commit/cdd9fd33cc3a67e51b554bcbfd48e4dfa4d17836))
+
 ## [0.53.9](https://github.com/kaz9120/himawari-rs/compare/v0.53.8...v0.53.9) (2026-10-13)
 
 
