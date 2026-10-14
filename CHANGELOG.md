@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.54.2](https://github.com/kaz9120/himawari-rs/compare/v0.54.1...v0.54.2) (2026-10-14)
+
+
+### その他の変更
+
+* psvのEVAL_FILEのフォールバックを共有ヘルパーへ寄せる ([#734](https://github.com/kaz9120/himawari-rs/issues/734)) ([1281f4e](https://github.com/kaz9120/himawari-rs/commit/1281f4eff08a4f60c3a2ed824e41c80eae775744)), closes [#714](https://github.com/kaz9120/himawari-rs/issues/714)
+
 ## [0.54.1](https://github.com/kaz9120/himawari-rs/compare/v0.54.0...v0.54.1) (2026-10-13)
 
 
