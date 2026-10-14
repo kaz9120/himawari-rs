@@ -232,6 +232,59 @@ specは `experiments/adr0143-spsa-g3.toml` で、キューが走らせる。検�
 
 過去の2回は+32.0と+21.2だった。利得は回を追って小さくなると見込む。
 
+## 測定（2026-10-14、dlshogiのラベルの系列での再走）
+
+SPSAは予定どおり走った。15,000ペアを再開なしで回し、所要は113,075秒（約31時間）だった。
+評価関数はpool1_2ep_reorder（net-v15）である。
+
+`hmwr exp report` はSPSAの成果物を表にしない。表は `hmwr spsa show g3` の出力である。
+defaultは現行の値、tunedは最終のθを丸めた値になる。
+
+```
+name	default	tuned
+NMP_EVAL_IMPROVING	44	42
+NMP_EVAL_BASE	406	425
+NMP_BASE_REDUCTION	7	7
+NMP_DEPTH_DIVISOR	3	4
+RFP_MULT	99	100
+RFP_NO_TT_HIT	18	17
+RFP_IMPROVING	1093	1090
+RFP_OPP_WORSENING	211	180
+FUTILITY_BASE	39	45
+FUTILITY_NO_BEST	156	147
+FUTILITY_MARGIN	119	125
+FUTILITY_OVER_ALPHA	88	87
+RAZOR_BASE	436	434
+RAZOR_DEPTH_COEF	275	271
+SEE_QUIET_COEF	25	26
+SEE_CAPTURE_COEF	140	134
+SEE_CAPT_HIST	30	30
+CAPT_FUTILITY_BASE	206	230
+CAPT_FUTILITY_DEPTH	207	225
+QS_FUTILITY_MARGIN	249	221
+QS_SEE_MARGIN	-67	-53
+ASPIRATION_BASE	8	8
+ASPIRATION_MSS_DIV	8341	7859
+ASPIRATION_GROWTH_DIV	2	2
+LMR_COEF	3101	2818
+LMR_DEPTH_HIST_DIVISOR	3608	3788
+```
+
+26項目中22項目が動いた。
+
+θ+側の勝率は記録していない。`hmwr` に集計の操作がないためである。棋譜の
+`candidate` 列を数える方法では、第1群が50.4%になり、上の「測定」節の51.4%と
+合わなかった。列の意味を確かめずに数値は書かない。
+
+### 読み
+
+事前登録の表は検収のSPRTの判定で行を決める。検収はまだ走っていないので、
+どの行にも当たっていない。Statusは第1群の採択を表すacceptedのまま変えない。
+
+次の一手は事前登録のとおりである。対話セッションがtunedの値を `tune` featureなしの
+ビルドへ書き写し、既定のSPRT（elo0=0、elo1=5、上限10,000ペア）で検収する。
+判定が出たら、表の該当行に従って取り込むかを決め、この節へ追記する。
+
 ## Consequences
 
 - 対局リソースの使い方が変わる。SPSAは1サイクル数万局を消費するので、
