@@ -71,6 +71,20 @@ fn arg_value(args: &[String], key: &str) -> Option<String> {
     })
 }
 
+/// 評価関数のパスを引数か環境変数 `EVAL_FILE` から決める。フォールバックは
+/// クレート共通の `eval_file()` が持ち、存在確認までそこで行う。`psv` は
+/// 引数も評価関数も文字列で扱うため、受け渡しの変換だけをここに置く。
+/// フラグ名は `arg_value` と同じく呼び出し側が渡す。hmwrの表との食い違いを
+/// 見るテストが、サブコマンドの節に書かれたフラグ名を読むためである
+/// （tests/test_dataops.py の test_every_flag_exists_in_psv）。
+fn eval_arg(args: &[String], key: &str) -> String {
+    let explicit = arg_value(args, key).map(std::path::PathBuf::from);
+    let path = himawari_tools::eval_file(explicit).unwrap_or_else(|e| die(&e.to_string()));
+    himawari_tools::path_str(&path)
+        .unwrap_or_else(|e| die(&e.to_string()))
+        .to_string()
+}
+
 struct Rng(u64);
 impl Rng {
     fn next(&mut self) -> u64 {
@@ -1659,9 +1673,7 @@ fn main() {
             let hash_mb = arg_value(rest, "--hash")
                 .map(|s| s.parse().unwrap_or(64))
                 .unwrap_or(64);
-            let eval = arg_value(rest, "--eval-file")
-                .or_else(|| std::env::var("EVAL_FILE").ok())
-                .unwrap_or_else(|| die("--eval-file か EVAL_FILE が必要です"));
+            let eval = eval_arg(rest, "--eval-file");
             let mode = QuietMode {
                 append: rest.iter().any(|a| a == "--append"),
                 consume: rest.iter().any(|a| a == "--consume"),
@@ -1689,9 +1701,7 @@ fn main() {
             let hash_mb = arg_value(rest, "--hash")
                 .map(|s| s.parse().unwrap_or(64))
                 .unwrap_or(64);
-            let eval = arg_value(rest, "--eval-file")
-                .or_else(|| std::env::var("EVAL_FILE").ok())
-                .unwrap_or_else(|| die("--eval-file か EVAL_FILE が必要です"));
+            let eval = eval_arg(rest, "--eval-file");
             rank(
                 &input.unwrap_or_else(|| die("--in が必要です")),
                 &output.unwrap_or_else(|| die("--out が必要です")),
@@ -1751,9 +1761,7 @@ fn main() {
             let hash_mb: usize = arg_value(rest, "--hash")
                 .map(|s| s.parse().unwrap_or(256))
                 .unwrap_or(256);
-            let eval = arg_value(rest, "--eval-file")
-                .or_else(|| std::env::var("EVAL_FILE").ok())
-                .unwrap_or_else(|| die("--eval-file か EVAL_FILE が必要です"));
+            let eval = eval_arg(rest, "--eval-file");
             relabel(
                 &input.unwrap_or_else(|| die("--in が必要です")),
                 &output.unwrap_or_else(|| die("--out が必要です")),
@@ -1771,9 +1779,7 @@ fn main() {
             let limit = arg_value(rest, "--limit")
                 .map(|s| s.parse().unwrap_or(u64::MAX))
                 .unwrap_or(u64::MAX);
-            let eval = arg_value(rest, "--eval-file")
-                .or_else(|| std::env::var("EVAL_FILE").ok())
-                .unwrap_or_else(|| die("--eval-file か EVAL_FILE が必要です"));
+            let eval = eval_arg(rest, "--eval-file");
             phase(
                 &input.unwrap_or_else(|| die("--in が必要です")),
                 &output.unwrap_or_else(|| die("--out が必要です")),
@@ -1791,9 +1797,7 @@ fn main() {
             let hash_mb = arg_value(rest, "--hash")
                 .map(|s| s.parse().unwrap_or(64))
                 .unwrap_or(64);
-            let eval = arg_value(rest, "--eval-file")
-                .or_else(|| std::env::var("EVAL_FILE").ok())
-                .unwrap_or_else(|| die("--eval-file か EVAL_FILE が必要です"));
+            let eval = eval_arg(rest, "--eval-file");
             defend(
                 &input.unwrap_or_else(|| die("--in が必要です")),
                 &output.unwrap_or_else(|| die("--out が必要です")),
@@ -1832,7 +1836,7 @@ fn main() {
 
 #[cfg(test)]
 mod tests {
-    use super::{is_aggressive_defense, is_defense_record, oversample};
+    use super::{arg_value, eval_arg, is_aggressive_defense, is_defense_record, oversample};
     use himawari_core::packed_sfen::{PSV_BYTES, PackedSfenValue, pack};
     use himawari_core::{Move16, Position};
 
@@ -1906,6 +1910,23 @@ mod tests {
 
     fn tmp_file(tag: &str) -> std::path::PathBuf {
         std::env::temp_dir().join(format!("psv-oversample-{}-{tag}.psv", std::process::id()))
+    }
+
+    /// `--eval-file` の明示指定は、共有ヘルパーを通しても旧実装の
+    /// 2行フォールバックと同じ文字列になる（issue #714）。旧実装が
+    /// 先へ進めたのはファイルがある場合だけなので、その条件で比べる。
+    #[test]
+    fn an_explicit_eval_file_resolves_as_the_inlined_fallback_did() {
+        let path = tmp_file("eval");
+        std::fs::write(&path, b"dummy").expect("一時ファイルを作れない");
+        let given = path.to_str().expect("UTF-8のパス").to_string();
+        let args = vec!["--eval-file".to_string(), given.clone()];
+        let inlined = arg_value(&args, "--eval-file")
+            .or_else(|| std::env::var("EVAL_FILE").ok())
+            .expect("明示指定があるので値が取れる");
+        assert_eq!(eval_arg(&args, "--eval-file"), inlined);
+        assert_eq!(eval_arg(&args, "--eval-file"), given);
+        std::fs::remove_file(&path).ok();
     }
 
     #[test]
