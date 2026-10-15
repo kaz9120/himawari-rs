@@ -292,7 +292,7 @@
 | [0140](0140-king-line-features.md) | 玉ライン特徴をHalfKPへ追加する | 2026-08-04 |  | rejected（未測定で取り下げ。入力特徴の追加は構造の変更で、ADR-0213で凍結した） |
 | [0141](0141-singular-rate-calibration.md) | singular率を想定値へ較正し、多段延長を再訪する | 2026-08-04 |  | rejected |
 | [0142](0142-dfpn-mate-search.md) | df-pnの詰み探索をrootへ並走させる | 2026-08-04 |  | proposed（保留。注力の外、[0207](0207-roadmap-focus-eval.md)） |
-| [0143](0143-spsa-tuning.md) | 探索定数をSPSAで一括チューニングする | 2026-08-04 | +32.0、再走+21.2、3回目は検収中 | accepted |
+| [0143](0143-spsa-tuning.md) | 探索定数をSPSAで一括チューニングする | 2026-08-04 | +32.0、再走+21.2、3回目+5.8 | accepted |
 | [0144](0144-selfplay-teacher-loop.md) | 自前gensfenで教師データの世代ループを始める | 2026-08-04 |  | accepted |
 | [0145](0145-continual-learning.md) | 前世代のネットから継続学習で積む | 2026-08-08 |  | accepted |
 | [0146](0146-book-full-width-opening.md) | 定跡の浅い層を全合法手で埋める | 2026-08-08 |  | accepted |
