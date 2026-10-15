@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.55.0](https://github.com/kaz9120/himawari-rs/compare/v0.54.2...v0.55.0) (2026-10-15)
+
+
+### 棋力向上
+
+* SPSA第1群をdlshogiのラベルの系列で再走した探索定数22項目を焼き込む（+5.8 Elo、ADR-0143） ([#733](https://github.com/kaz9120/himawari-rs/issues/733)) ([b97d434](https://github.com/kaz9120/himawari-rs/commit/b97d434bb6670fedf4c96c5a0ef4fd33e696f26b))
+
 ## [0.54.2](https://github.com/kaz9120/himawari-rs/compare/v0.54.1...v0.54.2) (2026-10-14)
 
 
