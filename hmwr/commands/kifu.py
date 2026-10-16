@@ -36,6 +36,12 @@ def add_parser(sub: argparse._SubParsersAction) -> None:
     t.add_argument("--player-url", metavar="URL", help="対局者ページ")
     t.add_argument("--days", type=int, default=14, metavar="N", help="直近の何日を出すか（既定 14）")
     t.add_argument("--csv", action="store_true", help="全履歴をCSVで出す")
+    t.add_argument(
+        "--max-age",
+        type=int,
+        metavar="N",
+        help="最新の日付がN日以上古ければ終了コード1で止める（定期実行の見張り）",
+    )
     t.set_defaults(func=rate)
 
     t = ss.add_parser(
@@ -194,16 +200,21 @@ def blindspot(args: argparse.Namespace) -> int:
 
 def rate(args: argparse.Namespace) -> int:
     """レートの推移を出す。読むだけなので、dry-runでも取得する先だけを見せる。"""
-    url = args.player_url or floodgate.DEFAULT_PLAYER_URL
+    pages = [args.player_url] if args.player_url else floodgate.player_urls()
     if args.dry_run:
-        for target in rating.csv_urls(url).values():
-            print(f"[dry-run] GET {target}")
+        for page in pages:
+            for target in rating.csv_urls(page).values():
+                print(f"[dry-run] GET {target}")
         return proc.OK
-    days = rating.load(url)
+    # 既定の並びでは、今年のCSVだけがまだ無くてよい
+    days = rating.load(pages, missing_ok_last=not args.player_url)
     if args.csv:
         print("date,daily,two_weeks")
         for d in days:
             print(f"{d.date},{d.daily or ''},{d.two_weeks or ''}")
     else:
         print(rating.markdown(days, args.days))
+    # 表を出してから判定する。古くても中身は見られるようにしておく
+    if args.max_age is not None:
+        rating.check_fresh(days, floodgate.today(), args.max_age)
     return proc.OK
