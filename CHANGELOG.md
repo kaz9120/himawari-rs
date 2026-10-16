@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.55.3](https://github.com/kaz9120/himawari-rs/compare/v0.55.2...v0.55.3) (2026-10-16)
+
+
+### その他の変更
+
+* 棄却済みの蒸留とFTのi16経路を削除する（ADR-0132・ADR-0138の追記） ([#784](https://github.com/kaz9120/himawari-rs/issues/784)) ([84e9bfa](https://github.com/kaz9120/himawari-rs/commit/84e9bfa44da3fcbb2ca2f4c31e4ceeed73fe8d48))
+
 ## [0.55.2](https://github.com/kaz9120/himawari-rs/compare/v0.55.1...v0.55.2) (2026-10-16)
 
 
