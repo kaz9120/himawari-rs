@@ -7,6 +7,7 @@
 形式は1つで、領域ごとの追加情報は `detail` に入れる。
 
     {
+      "schema": 1,
       "kind": "relabel", "name": "train_7860M_q1", "state": "running",
       "progress": {"done": 62500864, "total": 2000000000, "unit": "局面"},
       "rate": 2397.0, "eta_seconds": 19800,
@@ -14,6 +15,9 @@
       "log": "data/logs/relabel-train_7860M_q1.log",
       "detail": {"scale": 430}
     }
+
+`schema` は形式の版で、読み手は知っている版だけを読む。`schema` の無いファイルは
+版を付ける前に書いたもので、版1として読む。形を壊す変更は版を上げて行う。
 
 `state` は running・done・failed・stopped の4つ。書き込みは一時ファイルへ
 書いてから改名するので、読み手が途中の内容を見ることはない。
@@ -28,6 +32,7 @@ from __future__ import annotations
 
 import json
 import os
+import sys
 import threading
 import time
 from collections.abc import Iterator
@@ -37,6 +42,8 @@ from pathlib import Path
 from . import paths, proc
 
 STATES = ("running", "done", "failed", "stopped")
+# 状態ファイルの形式の版。形を壊す変更（キーの改名・意味の変更）で上げる
+SCHEMA = 1
 INTERVAL = 60.0
 
 
@@ -77,6 +84,7 @@ class Heartbeat:
         self._lock = threading.Lock()
         self._done0: int | None = None
         self.data = {
+            "schema": SCHEMA,
             "kind": kind,
             "name": name,
             "state": "running",
@@ -226,12 +234,21 @@ def _alive(pid: int | None) -> bool:
 
 def read_all(stale_after: float = 600.0) -> list[dict]:
     """状態ファイルをすべて読み、実行中のものに `alive`（プロセスの生死）と
-    `stale`（更新が途絶えた）を付けて、更新の新しい順に返す。"""
+    `stale`（更新が途絶えた）を付けて、更新の新しい順に返す。
+
+    読めないファイルと知らない版のファイルは飛ばし、標準エラーへ1行ずつ書く。
+    `hmwr status --json` の標準出力は汚さない。
+    """
     out = []
     for p in status_dir().glob("*.json"):
         try:
             d = json.loads(p.read_text(encoding="utf-8"))
-        except (OSError, ValueError):
+        except (OSError, ValueError) as e:
+            print(f"状態ファイルを読めない: {paths.rel(p)}（{e}）", file=sys.stderr)
+            continue
+        version = d.get("schema", 1) if isinstance(d, dict) else None
+        if version != SCHEMA:
+            print(f"状態ファイルの版を知らない: {paths.rel(p)}（schema={version}）", file=sys.stderr)
             continue
         d["file"] = paths.rel(p)
         if d.get("state") == "running":

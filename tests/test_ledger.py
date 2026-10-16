@@ -1,8 +1,12 @@
 """点数を付けた局面の台帳（ADR-0228）を検証する。局面の中身は読まないので、
 乱数のバイト列を局面に見立てる。"""
 
-import numpy as np
+import json
 
+import numpy as np
+import pytest
+
+from hmwr import paths, proc
 from hmwr.tools import ledger
 
 
@@ -54,3 +58,48 @@ def test_add_works_under_a_low_open_file_limit(tmp_path):
         assert ledger.add(tmp_path / "ledger", [src])["new"] == 3000
     finally:
         resource.setrlimit(resource.RLIMIT_NOFILE, (soft, hard))
+
+
+def test_the_hash_is_pinned_to_its_scheme_name():
+    # board_hash を変えると既存の台帳の区分が黙って無効になる。値が変わったら
+    # ledger.HASH の名前も変え、台帳を作り直す
+    r = np.arange(80, dtype=np.uint8).reshape(2, 40)
+    assert [int(x) for x in ledger.board_hash(r)] == [0x5524C51FC9ED42C2, 0xB6EF7295EFF6ED87]
+    assert ledger.HASH == "splitmix64-packed32"
+
+
+def test_a_new_ledger_gets_its_mark(tmp_path):
+    root = tmp_path / "ledger"
+    ledger.add(root, [_psv(tmp_path / "a.psv", np.zeros((3, 40), np.uint8))])
+    meta = json.loads((root / ledger.META).read_text())
+    assert meta == {"schema": 1, "hash": ledger.HASH, "shards": ledger.SHARDS}
+
+
+def test_a_ledger_without_a_mark_is_read_as_version_1_and_left_alone(tmp_path):
+    root = tmp_path / "ledger"
+    rng = np.random.default_rng(3)
+    src = _psv(tmp_path / "a.psv", rng.integers(0, 256, (10, 40), dtype=np.uint8))
+    ledger.add(root, [src])
+    (root / ledger.META).unlink()  # 印を入れる前に作った台帳
+    assert ledger.add(root, [src])["new"] == 0
+    assert ledger.filter_new(root, src, tmp_path / "out.psv")["known"] == 10
+    assert not (root / ledger.META).exists()
+
+
+def test_a_ledger_with_another_hash_is_refused(tmp_path):
+    root = tmp_path / "ledger"
+    root.mkdir()
+    (root / ledger.META).write_text(json.dumps({"schema": 1, "hash": "other", "shards": 256}))
+    src = _psv(tmp_path / "a.psv", np.zeros((1, 40), np.uint8))
+    with pytest.raises(proc.Fail, match="台帳の印"):
+        ledger.filter_new(root, src, tmp_path / "out.psv")
+    with pytest.raises(proc.Fail, match="台帳の印"):
+        ledger.add(root, [src])
+
+
+def test_the_log_keeps_sources_relative_to_the_repository():
+    src = paths.TRAIN / "a.psv"
+    src.parent.mkdir(parents=True)
+    ledger.add(paths.LEDGER, [_psv(src, np.zeros((1, 40), np.uint8))])
+    line = json.loads((paths.LEDGER / "added.jsonl").read_text().splitlines()[-1])
+    assert line["sources"] == ["data/train/a.psv"]

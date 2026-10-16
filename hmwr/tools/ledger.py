@@ -8,6 +8,10 @@ dlshogiで点数を付ける局面を増やし続けるので、同じ局面に�
 200億局面で誤って同一視する組の期待値は約10組で、学習には影響しない。台帳は
 ハッシュの先頭8ビットで256個のファイルに分け、それぞれソートして重複なく持つ。
 1区分ずつ読めばよいので、台帳が大きくなってもメモリは1区分ぶんで済む。
+
+ハッシュの作り方を変えると、既存の区分は黙って役に立たなくなる。台帳の根に
+`ledger.json`（版・ハッシュ方式・区分の数）を置き、読み書きの前に突き合わせる。
+`ledger.json` を持たない台帳は、この印を入れる前に作ったもので、版1として読む。
 """
 
 from __future__ import annotations
@@ -18,11 +22,18 @@ from pathlib import Path
 
 import numpy as np
 
+from .. import paths, proc
+
 PSV_BYTES = 40
 SHARDS = 256
 CHUNK = 10_000_000
 _M1 = np.uint64(0xBF58476D1CE4E5B9)
 _M2 = np.uint64(0x94D049BB133111EB)
+
+# 台帳の印。board_hash の中身を変えたら HASH の名前を変え、台帳を作り直す
+SCHEMA = 1
+HASH = "splitmix64-packed32"
+META = "ledger.json"
 
 
 def _mix(x: np.ndarray) -> np.ndarray:
@@ -62,6 +73,34 @@ def load_shard(root: Path, s: int) -> np.ndarray:
     return np.fromfile(p, dtype=np.uint64) if p.is_file() else np.zeros(0, np.uint64)
 
 
+def _meta() -> dict:
+    return {"schema": SCHEMA, "hash": HASH, "shards": SHARDS}
+
+
+def check(root: Path, *, create: bool = False) -> dict:
+    """台帳の印を確かめる。合わなければ投げる。
+
+    印の無い台帳は版1として受け入れ、書き足さない（既存のファイルを変えない）。
+    区分がまだ1つも無い新しい台帳にだけ、createのとき印を書く。
+    """
+    meta = root / META
+    if meta.is_file():
+        got = json.loads(meta.read_text(encoding="utf-8"))
+    elif any(root.glob("h*.u64")):
+        got = {"schema": 1, "hash": HASH, "shards": SHARDS}
+    else:
+        if create:
+            root.mkdir(parents=True, exist_ok=True)
+            meta.write_text(json.dumps(_meta()) + "\n", encoding="utf-8")
+        return _meta()
+    if got != _meta():
+        raise proc.Fail(
+            f"台帳の印がこの版と合わない: {paths.rel(meta)} は {got}、この版は {_meta()}\n"
+            "ハッシュの方式が違う台帳とは突き合わせられない。台帳を作り直す"
+        )
+    return got
+
+
 def size(root: Path) -> int:
     return sum(p.stat().st_size for p in root.glob("h*.u64")) // 8
 
@@ -69,6 +108,7 @@ def size(root: Path) -> int:
 def add(root: Path, sources: list[Path], *, progress=None) -> dict:
     """局面のハッシュを台帳へ足す。何度足しても台帳は重複を持たない。"""
     root.mkdir(parents=True, exist_ok=True)
+    check(root, create=True)
     tmp = root / "add.tmp"
     if tmp.exists():
         # 前回が途中で落ちた残り。足し終えていない一時ファイルは捨てて読み直す
@@ -107,7 +147,8 @@ def add(root: Path, sources: list[Path], *, progress=None) -> dict:
     after = size(root)
     log = root / "added.jsonl"
     with open(log, "a", encoding="utf-8") as fh:
-        fh.write(json.dumps({"sources": [str(s) for s in sources], "read": seen, "new": after - before,
+        # 入力はリポジトリからの相対で残す。worktreeの絶対パスは後から辿れない
+        fh.write(json.dumps({"sources": [paths.rel(s) for s in sources], "read": seen, "new": after - before,
                              "size": after, "at": time.strftime("%Y-%m-%dT%H:%M:%S%z")},
                             ensure_ascii=False) + "\n")
     return {"read": seen, "new": after - before, "size": after}
@@ -115,6 +156,7 @@ def add(root: Path, sources: list[Path], *, progress=None) -> dict:
 
 def filter_new(root: Path, source: Path, part: Path, *, progress=None) -> dict:
     """台帳に無く、入力の中でも初出の局面だけを、入力の順に書き出す。"""
+    check(root)
     rec = _memmap(source)
     n = len(rec)
     h = np.empty(n, np.uint64)

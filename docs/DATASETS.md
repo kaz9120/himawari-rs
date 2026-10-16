@@ -104,3 +104,39 @@ RAM 48GBに対し78.6億のpsvは293GBあり、ページキャッシュに載ら
 （floodgateで8局、[ADR-0199](adr/0199-roadmap-inventory.md)）へ効かせる
 混合がROADMAPの候補にある。
 
+
+## 対局の棋譜: `data/sprt/<名前>.jsonl`
+
+`hmwr match run`・`hmwr sprt run` と SPSA（`data/spsa/`）の対局は、selfplayが
+1局1行のJSONで棋譜を追記する。`--resume`（[ADR-0087](adr/0087-sprt-resume.md)）と
+SPSAの集計がこの行を読み直す。行に版のフィールドは無く、いまの形を版1とする。
+キーを足すのは版1のままでよい。キーの改名や値の意味を変えるときは、版を表すキーを足してから変える。
+
+1ペア＝2局で、同じ開始局面を先後入れ替えて指す。行の順はペアの終わった順で、
+ペアの番号の順ではない。
+
+| キー | 型 | 中身 |
+|---|---|---|
+| `pair` | 整数 | ペアの番号（1から） |
+| `game` | 整数 | ペアの中の局。1は候補が先手、2は候補が後手 |
+| `opening` | 文字列 | 開始局面のSFEN（先頭の `sfen ` は付けない）。開始局面集を渡さなければ平手のSFEN |
+| `candidate` | 文字列 | 候補の手番。`b`（先手）か `w`（後手） |
+| `winner` | 文字列 | `b`・`w`・`draw` のどれか |
+| `reason` | 文字列 | 終局の理由（下の表） |
+| `plies` | 整数 | 開始局面から指した手数 |
+| `moves` | 文字列 | 開始局面からの指し手。USIの表記を空白で区切る |
+
+`reason` の値は `crates/usi/src/game.rs` が決める。
+
+| 値 | 勝敗 |
+|---|---|
+| `mate` | 手番側に合法手が無く、負け |
+| `resign` | 手番側の投了 |
+| `timeloss` | 手番側の時間切れ負け。selfplayは指し直すので、指し直しの上限に達した局だけが残る |
+| `declaration` | 手番側の入玉宣言勝ち |
+| `declaration_invalid` | 条件を満たさない宣言で、手番側の負け |
+| `illegal` | 手番側の非合法手で、負け |
+| `repetition` | 千日手の引き分け |
+| `repetition_foul` | 連続王手の千日手で、王手をかけ続けた側の負け |
+| `adjudication` | 評価値による打ち切り（`--adjudicate`） |
+| `maxmoves` | 手数の上限による引き分け |

@@ -31,6 +31,10 @@ except ModuleNotFoundError:  # 開発機のPythonは3.10で、hmwrは外部依�
 
 DIR = "experiments"
 ADR_RE = re.compile(r"^[0-9]{4}$")
+# specが持てるキー。知らないキーは綴りの誤りとみなして弾く。黙って無視すると、
+# 書いたつもりの設定が効かないまま実験が走る
+KEYS = ("adr", "step")
+STEP_KEYS = ("id", "run")
 
 # 終わるまで戻らない形でしか、次のステップと順番を保てない
 DETACHING = (("match", "run"), ("sprt", "run"), ("sprt", "net"))
@@ -89,6 +93,7 @@ def names() -> list[str]:
 
 def parse(text: str, name: str) -> Spec:
     data = tomllib.loads(text) if tomllib else parse_subset(text)
+    _known(data, KEYS, name)
     adr = data.get("adr")
     if not isinstance(adr, str) or not ADR_RE.match(adr):
         raise Invalid(f'{name}: adr は4桁の文字列で書く（例 adr = "0210"）')
@@ -98,6 +103,7 @@ def parse(text: str, name: str) -> Spec:
 
     steps: list[Step] = []
     for i, item in enumerate(raw, 1):
+        _known(item, STEP_KEYS, f"{name}: {i}番目のステップ")
         sid, run = item.get("id"), item.get("run")
         if not isinstance(sid, str) or not isinstance(run, str):
             raise Invalid(f"{name}: {i}番目のステップに id と run が要る")
@@ -109,6 +115,12 @@ def parse(text: str, name: str) -> Spec:
             raise Invalid(f"{name}: ステップのidが重複している: {sid}")
         steps.append(_checked(Step(sid, run), name))
     return Spec(name, adr, tuple(steps))
+
+
+def _known(table: dict, keys: tuple[str, ...], where: str) -> None:
+    unknown = sorted(set(table) - set(keys))
+    if unknown:
+        raise Invalid(f"{where}: 知らないキーがある: {', '.join(unknown)}（書けるのは {', '.join(keys)}）")
 
 
 def _checked(step: Step, name: str) -> Step:
