@@ -68,3 +68,51 @@ def test_resolve_lines_macos_with_atos_invokes_subprocess():
     assert lines[0x10] == "func_a (file.rs:10)"
     assert lines[0x20] == "func_b (file.rs:20)"
     run.assert_called_once()
+
+
+# --- classify: 呼び出し連鎖を処理の種類へ落とす（ADR-0230） ---
+
+
+def test_classify_attributes_attack_helper_to_its_caller():
+    # 利きを引く下請けは、呼び出し元の種類へ数える
+    chain = [
+        "himawari_core::attacks::attacks",
+        "himawari_core::movegen::generate_board_moves",
+        "<himawari_engine::movepick::MovePicker>::init_captures",
+        "<himawari_engine::search::Worker>::search::<false>",
+    ]
+    assert profile_report.classify(chain) == "指し手生成"
+
+
+def test_classify_outer_category_wins_over_inner():
+    # 1手詰めの中のis_legalは1手詰めとして数える
+    chain = [
+        "<himawari_core::position::Position>::is_legal",
+        "himawari_engine::mate::is_mate_move",
+        "himawari_engine::mate::mate_1ply",
+        "<himawari_engine::search::Worker>::search::<false>",
+    ]
+    assert profile_report.classify(chain) == "1手詰め"
+
+
+def test_classify_inner_first_for_see_in_move_ordering():
+    chain = [
+        "<himawari_core::position::Position>::attackers_to",
+        "<himawari_core::position::Position>::see_ge",
+        "<himawari_engine::movepick::MovePicker>::score_quiets",
+        "<himawari_engine::search::Worker>::search::<false>",
+    ]
+    assert profile_report.classify(chain) == "SEE"
+
+
+def test_classify_helper_alone_falls_back():
+    chain = [
+        "<himawari_core::position::Position>::attackers_to",
+        "<himawari_engine::search::Worker>::search::<false>",
+    ]
+    assert profile_report.classify(chain) == "利きの計算（上記の外から）"
+
+
+def test_classify_unknown_goes_to_other():
+    chain = ["<himawari_engine::search::Worker>::search::<false>"]
+    assert profile_report.classify(chain) == profile_report.OTHER
