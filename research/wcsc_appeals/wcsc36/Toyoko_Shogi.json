@@ -10,7 +10,7 @@
   "source_urls": [
     "https://www.apply.computer-shogi.org/wcsc36/appeal/Toyoko_Shogi/appeal20260426.txt"
   ],
-  "summary": "定跡とNNUE評価関数の極北を目指す。手作業による相掛かりと角換わりの定跡と、nnue-pytorch等に加えた独自のNNUE評価関数の強化が柱。探索部は最新のやねうら王。アピール文書の大半は、奨励会三段との対局で定跡を掘り尽くす短編小説である。",
+  "summary": "定跡とNNUE評価関数の極北を目指す。手作業による相掛かりと角換わりの定跡と、nnue-pytorch等に加えた独自のNNUE評価関数の強化が中心。探索部は最新のやねうら王。アピール文書の大半は、奨励会三段との対局で定跡を掘り尽くす短編小説である。",
   "base": {
     "engine": "やねうら王",
     "eval_source": null,

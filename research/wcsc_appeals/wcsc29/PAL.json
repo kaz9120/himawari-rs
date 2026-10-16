@@ -12,7 +12,7 @@
     "https://www.apply.computer-shogi.org/wcsc29/appeal/PAL/wcsc29_PAL.pdf",
     "https://www.apply.computer-shogi.org/wcsc29/appeal/PAL/wcsc29.pdf"
   ],
-  "summary": "探索・評価関数・定跡を同時に学習する「Trinity Learning」が柱。探索木を初期局面から保持して末端を学習開始局面にし、探索パラメータはPopulation Based Trainingで調整する。MCTS導入は線形評価関数では弱くなり不採用だった。",
+  "summary": "探索・評価関数・定跡を同時に学習する「Trinity Learning」が中心。探索木を初期局面から保持して末端を学習開始局面にし、探索パラメータはPopulation Based Trainingで調整する。MCTS導入は線形評価関数では弱くなり不採用だった。",
   "base": {
     "engine": "やねうら王",
     "eval_source": "tanuki-(WCSC28)のNNUEを初期値",
