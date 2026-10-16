@@ -367,6 +367,10 @@ fn spawn_worker(
                         shared.hists.clear();
                     }
                     memory = MainMemory::default();
+                    // 消し終えたことをnew_gameへ知らせる
+                    let mut idle = ctl2.idle.lock().expect("idle lock");
+                    *idle = true;
+                    ctl2.idle_cv.notify_all();
                 }
                 Job::Search(j) => {
                     // ヘルパーは時間制限を持たずstopフラグで止まる。
@@ -674,7 +678,7 @@ impl ThreadPool {
                 )
             })
             .collect();
-        ThreadPool {
+        let pool = ThreadPool {
             workers,
             shared,
             ponder,
@@ -684,7 +688,12 @@ impl ThreadPool {
             threads: n,
             eval_file,
             on_line,
-        }
+        };
+        // 表を一度消して、ページの確保をisreadyのうちに済ませる。
+        // ワーカーのhistoryの確保もここで待つ。しないと最初の対局の
+        // usinewgameやgoがその分を払い、持ち時間を使う（issue #746）
+        pool.new_game();
+        pool
     }
 
     pub fn go(&self, pos: Position, limits: Limits, opts: EngineOptions) {
@@ -771,19 +780,21 @@ impl ThreadPool {
     }
 
     /// 対局間のリセット。TTは1回だけ消し、各ワーカーのhistoryを消す。
-    /// ジョブが取り出されるまで待つので、直後のgoに上書きされない。
+    /// 全ワーカーが消し終えるまで待つ。消去がgoの後ろへずれ込むと、
+    /// その分だけ最初の手の持ち時間を使うためである（issue #746）。
     pub fn new_game(&self) {
         self.wait_idle();
-        self.shared.tt.clear();
+        // TTはワーカーと同じ本数で分担して消す。初回はページの確保も兼ねる
+        self.shared.tt.clear(self.threads);
         self.shared.eval_hash.clear();
         for w in &self.workers {
+            // idleを下ろしてから渡し、ワーカーが消し終えたら立て直す
+            *w.ctl.idle.lock().expect("idle lock") = false;
             let mut guard = w.ctl.job.lock().expect("job lock");
             *guard = Some(Job::NewGame);
             w.ctl.cv.notify_all();
-            while guard.is_some() {
-                guard = w.ctl.cv.wait(guard).expect("job wait");
-            }
         }
+        self.wait_idle();
     }
 
     /// 探索が終わる（bestmoveを出す）まで待つ。
