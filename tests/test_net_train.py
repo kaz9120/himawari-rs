@@ -20,7 +20,7 @@ def trainer(tmp_path, monkeypatch):
     monkeypatch.setattr(paths, "NETS", tmp_path / "nets")
     monkeypatch.setattr(paths, "CHECKPOINTS", tmp_path / "checkpoints")
     monkeypatch.setattr(paths, "LOGS", tmp_path / "logs")
-    monkeypatch.setattr(net, "_ensure_extension", lambda **_: None)
+    monkeypatch.setattr(net, "_ensure_extension", lambda *_, **__: None)
 
     def fake_run(argv, **_):
         calls.append(argv)
@@ -95,3 +95,108 @@ def test_a_checkpoint_without_a_record_needs_adopt(trainer):
     assert cli.main(argv_for(train_dir)) == proc.RUNTIME
     assert cli.main(argv_for(train_dir, "d.psv", "--adopt")) == proc.OK
     assert "--resume" in calls[0]
+
+
+# --- py拡張の構成（#804） ----------------------------------------------
+
+
+def test_default_arch_is_read_from_build_rs():
+    """既定の構成はbuild.rsが持つ。Python側に数を写さない。"""
+    text = net.BUILD_RS.read_text(encoding="utf-8")
+    assert f'const DEFAULT_ARCH: &str = "{net.default_arch()}";' in text
+
+
+def test_default_arch_fails_when_build_rs_changes_shape(tmp_path, monkeypatch):
+    rs = tmp_path / "build.rs"
+    rs.write_text('const OTHER: &str = "1x1";\n', encoding="utf-8")
+    monkeypatch.setattr(net, "BUILD_RS", rs)
+    with pytest.raises(proc.Fail, match="DEFAULT_ARCH"):
+        net.default_arch()
+
+
+@pytest.fixture
+def extension(monkeypatch):
+    """入っている拡張の構成を差し替え、ビルドと入れ直しの呼び出しを控える。"""
+    state = {"installed": "", "builds": [], "installs": []}
+    monkeypatch.setattr(net, "default_arch", lambda: "1024x16x32")
+    monkeypatch.setattr(proc, "capture", lambda argv, **_: state["installed"] + "\n")
+
+    def fake_run(argv, **kw):
+        state["builds"].append(kw.get("env", {}))
+        return proc.OK
+
+    def fake_install(wheels, spec, *, dry_run):
+        state["installs"].append(spec)
+
+    monkeypatch.setattr(proc, "run", fake_run)
+    monkeypatch.setattr(net, "_install_wheel", fake_install)
+    return state
+
+
+def test_extension_of_the_default_arch_is_kept(extension):
+    extension["installed"] = "1024x16x32"
+    net._ensure_extension(dry_run=False)
+    assert extension["builds"] == [] and extension["installs"] == []
+
+
+def test_extension_left_by_net_shapes_is_rebuilt_with_the_default(extension, capsys):
+    """net shapesが残した別構成の拡張のまま学習しない（#804）。"""
+    extension["installed"] = "512x16x64"
+    net._ensure_extension(dry_run=False)
+    assert [b["HIMAWARI_ARCH"] for b in extension["builds"]] == ["1024x16x32"]
+    assert extension["installs"] == ["1024x16x32"]
+    assert "512x16x64" in capsys.readouterr().out
+
+
+def test_missing_extension_is_built_with_the_default(extension):
+    net._ensure_extension(dry_run=False)
+    assert [b["HIMAWARI_ARCH"] for b in extension["builds"]] == ["1024x16x32"]
+
+
+def test_dry_run_neither_builds_nor_installs(extension):
+    extension["installed"] = "512x16x64"
+    net._ensure_extension(dry_run=True)
+    assert extension["builds"] == [] and extension["installs"] == []
+
+
+def test_arch_rebuilds_the_extension_with_that_arch(extension):
+    """--archで別構成を指定したら、その構成で作り直す（ADR-0229の段階2の道）。"""
+    extension["installed"] = "1024x16x32"
+    net._ensure_extension("512x16x64", dry_run=False)
+    assert [b["HIMAWARI_ARCH"] for b in extension["builds"]] == ["512x16x64"]
+    assert extension["installs"] == ["512x16x64"]
+
+
+def test_extension_of_the_asked_arch_is_kept(extension):
+    extension["installed"] = "512x16x64"
+    net._ensure_extension("512x16x64", dry_run=False)
+    assert extension["builds"] == [] and extension["installs"] == []
+
+
+def test_train_passes_the_arch_and_records_it_as_a_condition(trainer, monkeypatch):
+    """net train --arch は拡張をその構成にし、構成を学習の条件に数える。"""
+    calls, train_dir = trainer
+    asked = []
+    monkeypatch.setattr(net, "_ensure_extension", lambda arch=None, **_: asked.append(arch))
+    assert cli.main(argv_for(train_dir, "d.psv", "--arch", "512x16x64")) == proc.OK
+    assert asked == ["512x16x64"]
+    record = (paths.CHECKPOINTS / "x" / "train.cond").read_text(encoding="utf-8")
+    assert "HIMAWARI_ARCH=512x16x64" in record
+    # 同じ名前で既定の構成を頼むと、条件が違うので上書きしない
+    assert cli.main(argv_for(train_dir)) == proc.RUNTIME
+
+
+def test_train_defaults_to_the_build_rs_arch_without_changing_the_record(trainer, monkeypatch):
+    """既定の構成では、--archを入れる前と同じ条件の行を控える。"""
+    calls, train_dir = trainer
+    asked = []
+    monkeypatch.setattr(net, "_ensure_extension", lambda arch=None, **_: asked.append(arch))
+    assert cli.main(argv_for(train_dir)) == proc.OK
+    assert asked == [net.default_arch()]
+    record = (paths.CHECKPOINTS / "x" / "train.cond").read_text(encoding="utf-8")
+    assert "HIMAWARI_ARCH" not in record
+
+
+def test_a_malformed_arch_is_a_usage_error(trainer):
+    _, train_dir = trainer
+    assert cli.main(argv_for(train_dir, "d.psv", "--arch", "big")) == proc.USAGE
