@@ -138,6 +138,9 @@ enum PonderState {
     Hit,
     /// stopされた（bestmoveを出してよい）。
     Stopped,
+    /// ponderhitの局面が定跡にあった（ADR-0231）。探索を止め、bestmoveを
+    /// 出さずに終える。指し手はUSI層が定跡から出す
+    Abandoned,
 }
 
 struct PonderCtl {
@@ -423,6 +426,9 @@ fn spawn_worker(
                     );
                     worker.set_thread(thread_idx, thread_count);
                     worker.set_draw_value(j.opts.draw_value_black, j.opts.draw_value_white);
+                    // 結論を出さずに捨てる探索では、goをまたぐ記憶を探索前へ戻す
+                    // （ADR-0231）。定跡の手を指したので、この探索は前回のgoに当たらない
+                    let memory_before = memory;
                     worker.memory = memory;
                     let result = worker.iterate(&mut |info| {
                         if let Some(out) = &on_line {
@@ -444,6 +450,7 @@ fn spawn_worker(
                         // go ponder中に探索が自然終了したら、ponderhit/stopが
                         // 来るまでbestmoveを保留する（2手指し防御。S:1162-1187の
                         // `while (!threads.stop && (ponder || limits.infinite))`）
+                        let mut abandoned = false;
                         if was_ponder {
                             let mut st = ponder.state.lock().expect("ponder lock");
                             if *st == PonderState::Searching {
@@ -453,6 +460,7 @@ fn spawn_worker(
                                     st = ponder.cv.wait(st).expect("ponder wait");
                                 }
                             }
+                            abandoned = *st == PonderState::Abandoned;
                         }
                         // 全スレッドの結論が揃うのを待つ（S:1195-1197の
                         // `wait_for_search_finished`）。stopは既に立てたので
@@ -492,16 +500,21 @@ fn spawn_worker(
                             }
                             g.iter_mut().filter_map(|r| r.take()).collect()
                         };
-                        ThreadPool::conclude(
-                            on_line.as_ref(),
-                            &shared,
-                            &root,
-                            &all,
-                            &j.opts,
-                            &j.limits,
-                            thread_count,
-                            &mut memory,
-                        );
+                        if abandoned {
+                            // bestmoveは出さない。USI層が定跡の手を1本だけ出す
+                            memory = memory_before;
+                        } else {
+                            ThreadPool::conclude(
+                                on_line.as_ref(),
+                                &shared,
+                                &root,
+                                &all,
+                                &j.opts,
+                                &j.limits,
+                                thread_count,
+                                &mut memory,
+                            );
+                        }
                     }
                     let mut idle = ctl2.idle.lock().expect("idle lock");
                     *idle = true;
@@ -777,6 +790,23 @@ impl ThreadPool {
             }
         }
         self.shared.stop.store(true, Ordering::Relaxed);
+    }
+
+    /// go ponderの探索を、bestmoveを出さずに止める（ADR-0231）。
+    ///
+    /// ponderhitの局面が定跡にあったときに使う。探索が終わるまで待って
+    /// から返るので、呼び出し側が次に出すbestmoveが今回のgoの唯一の1本になる。
+    /// go ponder中でなければ `stop` と同じに振る舞い、探索の結論を出す。
+    pub fn abandon_ponder(&self) {
+        {
+            let mut st = self.ponder.state.lock().expect("ponder lock");
+            if matches!(*st, PonderState::Searching | PonderState::FinishedHolding) {
+                *st = PonderState::Abandoned;
+                self.ponder.cv.notify_all();
+            }
+        }
+        self.shared.stop.store(true, Ordering::Relaxed);
+        self.wait_idle();
     }
 
     /// 対局間のリセット。TTは1回だけ消し、各ワーカーのhistoryを消す。
