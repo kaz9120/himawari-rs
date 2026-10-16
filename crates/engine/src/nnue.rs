@@ -49,7 +49,7 @@ pub fn ft_w_from_i16(v: Vec<i16>) -> Result<Vec<FtWeight>, String> {
     {
         if let Some(&bad) = v.iter().find(|&&x| !(-128..=127).contains(&i32::from(x))) {
             return Err(format!(
-                "FT重み{bad}がi8に収まらない。--ft-clipを付けて学習したネットが要る（ADR-0138）"
+                "FT weight {bad} does not fit in i8; train the net with --ft-clip (ADR-0138)"
             ));
         }
         Ok(v.into_iter().map(|x| x as i8).collect())

@@ -84,8 +84,8 @@ fn require_pair(version: u32) -> Result<(), String> {
         return Ok(());
     }
     Err(format!(
-        "積なしのネット（版{version}）はこのビルドで読めない。\
-         FT出力の対を掛ける構成に学習し直したネットが要る（ADR-0171）"
+        "net without the FT pair product (format {version}) is not supported by this build; \
+         retrain with the paired FT output (ADR-0171)"
     ))
 }
 
@@ -172,7 +172,7 @@ pub fn save(net: &NnueNetwork, lineage: &str, w: &mut impl Write) -> std::io::Re
 fn read_u32(r: &mut impl Read) -> Result<u32, String> {
     let mut b = [0u8; 4];
     r.read_exact(&mut b)
-        .map_err(|e| format!("読み込み失敗: {e}"))?;
+        .map_err(|e| format!("read failed: {e}"))?;
     Ok(u32::from_le_bytes(b))
 }
 
@@ -192,7 +192,7 @@ impl<'a> Cursor<'a> {
             .off
             .checked_add(n)
             .filter(|&e| e <= self.body.len())
-            .ok_or_else(|| "重み列が短い".to_string())?;
+            .ok_or_else(|| "weights are truncated".to_string())?;
         let s = &self.body[self.off..end];
         self.off = end;
         Ok(s)
@@ -226,7 +226,7 @@ impl<'a> Cursor<'a> {
     pub(crate) fn expect_end(&self) -> Result<(), String> {
         let rest = self.body.len() - self.off;
         if rest != 0 {
-            return Err(format!("末尾に余分な{rest}バイトがある"));
+            return Err(format!("{rest} extra bytes at the end"));
         }
         Ok(())
     }
@@ -268,7 +268,7 @@ impl<'r, R: Read> HashingReader<'r, R> {
             let buf = &mut self.buf[..k];
             self.inner
                 .read_exact(buf)
-                .map_err(|_| "重み列が短い".to_string())?;
+                .map_err(|_| "weights are truncated".to_string())?;
             self.hash = fnv1a_update(self.hash, buf);
             f(buf);
             rest -= k;
@@ -315,14 +315,14 @@ impl<'r, R: Read> HashingReader<'r, R> {
                 Ok(0) => break,
                 Ok(k) => rest += k,
                 Err(e) if e.kind() == std::io::ErrorKind::Interrupted => continue,
-                Err(e) => return Err(format!("読み込み失敗: {e}")),
+                Err(e) => return Err(format!("read failed: {e}")),
             }
         }
         if rest != 0 {
-            return Err(format!("末尾に余分な{rest}バイトがある"));
+            return Err(format!("{rest} extra bytes at the end"));
         }
         if self.hash != expect {
-            return Err("重みハッシュが不一致（ファイル破損）".to_string());
+            return Err("weight hash mismatch (corrupted file)".to_string());
         }
         Ok(())
     }
@@ -333,9 +333,9 @@ impl<'r, R: Read> HashingReader<'r, R> {
 fn read_meta(r: &mut impl Read) -> Result<(u32, Dims, String, u64), String> {
     let mut magic = [0u8; 8];
     r.read_exact(&mut magic)
-        .map_err(|e| format!("読み込み失敗: {e}"))?;
+        .map_err(|e| format!("read failed: {e}"))?;
     if &magic != MAGIC {
-        return Err("マジックが不一致（Himawari NNUE形式ではない）".to_string());
+        return Err("magic mismatch (not a Himawari NNUE file)".to_string());
     }
     let version = read_u32(r)?;
     let mut u = || read_u32(r).map(|v| v as usize);
@@ -353,19 +353,19 @@ fn read_meta(r: &mut impl Read) -> Result<(u32, Dims, String, u64), String> {
             let d = [u()?, u()?, u()?];
             [d[0], d[1], d[2], d[2], 0]
         }
-        other => return Err(format!("未対応のフォーマット版: {other}")),
+        other => return Err(format!("unsupported format version: {other}")),
     };
     let llen = read_u32(r)? as usize;
     if llen > 4096 {
-        return Err("学習来歴が長すぎる".to_string());
+        return Err("lineage is too long".to_string());
     }
     let mut lb = vec![0u8; llen];
     r.read_exact(&mut lb)
-        .map_err(|e| format!("読み込み失敗: {e}"))?;
-    let lineage = String::from_utf8(lb).map_err(|_| "学習来歴がUTF-8でない".to_string())?;
+        .map_err(|e| format!("read failed: {e}"))?;
+    let lineage = String::from_utf8(lb).map_err(|_| "lineage is not UTF-8".to_string())?;
     let mut hash_b = [0u8; 8];
     r.read_exact(&mut hash_b)
-        .map_err(|e| format!("読み込み失敗: {e}"))?;
+        .map_err(|e| format!("read failed: {e}"))?;
     let expect_hash = u64::from_le_bytes(hash_b);
     Ok((version, dims, lineage, expect_hash))
 }
@@ -375,9 +375,9 @@ fn read_header(r: &mut impl Read) -> Result<(u32, Dims, String, Vec<u8>), String
     let (version, dims, lineage, expect_hash) = read_meta(r)?;
     let mut body = Vec::new();
     r.read_to_end(&mut body)
-        .map_err(|e| format!("読み込み失敗: {e}"))?;
+        .map_err(|e| format!("read failed: {e}"))?;
     if fnv1a(&body) != expect_hash {
-        return Err("重みハッシュが不一致（ファイル破損）".to_string());
+        return Err("weight hash mismatch (corrupted file)".to_string());
     }
     Ok((version, dims, lineage, body))
 }
@@ -393,7 +393,7 @@ pub fn load(r: &mut impl Read) -> Result<(NnueNetwork, String), String> {
     let expect = [FT_IN, FT_OUT, L1_OUT, L2_OUT, L3_OUT];
     if dims != expect {
         return Err(format!(
-            "アーキテクチャ不一致: ファイル{dims:?} 実装{expect:?}"
+            "architecture mismatch: file {dims:?} build {expect:?}"
         ));
     }
 
@@ -481,7 +481,7 @@ pub fn load_resized_with_dims(
     require_pair(version)?;
     let [ft_in, src_ft, src_l1, src_l2, src_l3] = dims;
     if ft_in != FT_IN {
-        return Err(format!("FT入力が違う: ファイル{ft_in} 実装{FT_IN}"));
+        return Err(format!("FT input mismatch: file {ft_in} build {FT_IN}"));
     }
 
     /// 行優先の行列を、行数と列幅を合わせて写す。余りはゼロのまま。
@@ -569,7 +569,7 @@ pub fn load_resized_with_dims(
         (0, _) => {
             if L2_OUT < src_l1 {
                 return Err(format!(
-                    "L2({L2_OUT})が元のL1({src_l1})より狭いと、足す層を恒等写像にできない"
+                    "cannot add an identity layer: L2 ({L2_OUT}) is narrower than the source L1 ({src_l1})"
                 ));
             }
             (vec![0i32; L2_OUT], identity(L2_OUT, L1_PAD, src_l1))
@@ -584,7 +584,7 @@ pub fn load_resized_with_dims(
         (0, _) => {
             if L3_OUT < src_l2 {
                 return Err(format!(
-                    "L3({L3_OUT})が元のL2({src_l2})より狭いと、足す層を恒等写像にできない"
+                    "cannot add an identity layer: L3 ({L3_OUT}) is narrower than the source L2 ({src_l2})"
                 ));
             }
             (vec![0i32; L3_OUT], identity(L3_OUT, L2_PAD, src_l2))
@@ -629,7 +629,7 @@ pub fn load_ft(r: &mut impl Read) -> Result<(Vec<i16>, Vec<i16>, Dims), String> 
     let [ft_in, src_ft, ..] = dims;
     // FT入力は特徴の定義そのもので、次元を合わせて済む話ではない
     if ft_in != FT_IN {
-        return Err(format!("FT入力が違う: ファイル{ft_in} 実装{FT_IN}"));
+        return Err(format!("FT input mismatch: file {ft_in} build {FT_IN}"));
     }
     let mut cur = Cursor::new(&body);
     let ft_b = cur.i16v(src_ft)?;
@@ -810,7 +810,7 @@ mod tests {
             .err()
             .expect("余分なバイトを受け入れてはいけない");
         assert!(
-            err.contains("余分な1バイト"),
+            err.contains("1 extra bytes"),
             "件数の読める文言にする: {err}"
         );
     }
