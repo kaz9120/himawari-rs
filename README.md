@@ -15,6 +15,8 @@ Rustで書くコンピュータ将棋エンジン。USIプロトコルに対応�
 継続して対局しており、現在の棋力と開発の現在地は
 [docs/ROADMAP.md](docs/ROADMAP.md)の「現在地」から辿れる。
 
+![floodgateのレートの推移](https://raw.githubusercontent.com/kaz9120/himawari-rs/rate-graph/rate.svg)
+
 - 対局に使う人は「[使う](#使う)」を読む。ビルドは要らない
 - コードを触る人は「[開発する](#開発する)」を読む
 

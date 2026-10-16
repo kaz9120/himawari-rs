@@ -1,6 +1,8 @@
 """floodgateのレートの読み取りを検証する（ADR-0209）。通信はしない。"""
 
 import datetime
+import os
+from pathlib import Path
 
 import pytest
 
@@ -104,3 +106,65 @@ def test_the_command_prints_then_fails_on_stale_data(monkeypatch, capsys):
     argv = ["kifu", "rate", "--player-url", PLAYER, "--csv", "--max-age", "2"]
     assert cli.main(argv) == proc.JUDGE
     assert "2026-09-18,3611,3866" in capsys.readouterr().out
+
+
+# グラフの見本。月をまたぎ、2週間のレートに欠けた日を1日含める
+GOLDEN = Path(__file__).parent / "golden" / "rate.svg"
+SAMPLE = [
+    rating.Day("2026-07-29", 3178, 3161),
+    rating.Day("2026-07-30", 3190, None),
+    rating.Day("2026-07-31", 3215, 3230),
+    rating.Day("2026-08-15", 3480, 3560),
+    rating.Day("2026-09-01", 3550, 3710),
+    rating.Day("2026-10-16", 3671, 3970),
+]
+
+
+def test_svg_matches_the_golden_file():
+    """同じ入力から同じバイト列が出ることを、見本のファイルで固定する。
+
+    見た目を変えたら UPDATE_GOLDEN=1 で書き直し、差分を目で確かめてから入れる。
+    """
+    got = rating.svg(SAMPLE, datetime.date(2026, 10, 16), PLAYER)
+    if os.environ.get("UPDATE_GOLDEN"):
+        GOLDEN.write_text(got, encoding="utf-8")
+    assert got == GOLDEN.read_text(encoding="utf-8")
+    assert rating.svg(SAMPLE, datetime.date(2026, 10, 16), PLAYER) == got
+
+
+def test_svg_carries_the_date_the_source_and_both_series():
+    got = rating.svg(SAMPLE, datetime.date(2026, 10, 16), PLAYER)
+    assert "2026-10-16 取得" in got
+    assert f"出典: {PLAYER}" in got
+    assert "prefers-color-scheme: dark" in got
+    # 欠けた日で2週間の線が切れ、孤立した最初の1日は点になる。数は線と凡例の和
+    assert got.count('class="line daily"') == 2
+    assert got.count('class="line two_weeks"') == 2
+    assert '<circle class="dot-two_weeks" cx="56" cy="263.3" r="2"/>' in got
+    assert "3671" in got and "3970" in got
+
+
+def test_svg_without_records_still_renders():
+    got = rating.svg([], datetime.date(2027, 1, 1), PLAYER)
+    assert "レートの記録がまだない" in got and got.endswith("</svg>\n")
+
+
+def test_y_ticks_stay_within_six_lines():
+    assert rating._y_ticks(3161, 3974) == (200, 3000, 4000)
+    assert rating._y_ticks(3600, 3600) == (10, 3600, 3610)
+
+
+def test_month_labels_span_years():
+    starts = rating._month_starts(datetime.date(2026, 11, 20), datetime.date(2027, 2, 3))
+    assert starts == [datetime.date(2026, 12, 1), datetime.date(2027, 1, 1), datetime.date(2027, 2, 1)]
+
+
+def test_the_command_writes_the_svg(monkeypatch, tmp_path, capsys):
+    served = dict(zip(rating.csv_urls(PLAYER).values(), (DAILY, TWO_WEEKS)))
+    monkeypatch.setattr(rating, "fetch", lambda url: served.get(url))
+    monkeypatch.setattr(floodgate, "today", lambda: datetime.date(2026, 9, 18))
+    out = tmp_path / "rate.svg"
+    argv = ["kifu", "rate", "--player-url", PLAYER, "--csv", "--svg", str(out), "--max-age", "2"]
+    assert cli.main(argv) == proc.OK
+    assert capsys.readouterr().out.startswith("date,daily,two_weeks\n")
+    assert "2026-09-18 取得" in out.read_text(encoding="utf-8")
