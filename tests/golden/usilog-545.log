@@ -1,0 +1,48 @@
+# issue #545 のコメントの抜粋から組み直した2局。1局目の最後の手は、go からの相対時刻と値が抜粋どおり
+# （time plan の minimum と optimum は抜粋で省かれていたので補った）。2局目は、応答しない go を写した
+1790247597000 < usi
+1790247597001 > id name Himawari 0.40.0
+1790247597001 > id author Kazumasa Yamamoto
+1790247597002 > usiok
+1790247597010 < setoption name Threads value 6
+1790247597010 < setoption name USI_Ponder value true
+1790247597010 < setoption name EvalFile value C:\shogi\himawari\nn.hmwr
+1790247598000 < isready
+1790247598500 > info string EvalFile loaded: C:\\u{5c06}\u{68cb}\nn.hmwr (halfkp)
+1790247599000 > readyok
+1790247600000 < usinewgame
+1790247600010 < position startpos
+1790247600012 < go btime 300000 wtime 300000 binc 10000 winc 10000
+1790247600400 > info depth 10 seldepth 14 score cp 40 nodes 400000 nps 1000000 time 400 hashfull 3 pv 2g2f 8c8d
+1790247602412 > info depth 14 seldepth 20 score cp 35 nodes 2000000 nps 833333 time 2400 hashfull 20 pv 7g7f 3c3d 2g2f
+1790247605000 > info string time plan: minimum 1880 optimum 4880 maximum 10880 end 4990 elapsed 4988 ponderhit 0 stop true
+1790247605000 > bestmove 7g7f ponder 3c3d
+1790247605001 < position startpos moves 7g7f 3c3d
+1790247605002 < go ponder btime 305000 wtime 300000 binc 10000 winc 10000
+1790247608002 < ponderhit
+1790247609002 > info depth 15 seldepth 22 score mate 9 nodes 4000000 nps 1000000 time 4000 hashfull 30 pv 2g2f 8c8d
+1790247609010 > info string time plan: minimum 1880 optimum 4880 maximum 10880 end 4008 elapsed 4008 ponderhit 3000 stop true
+1790247609010 > bestmove 2g2f ponder 4a3b
+1790247609011 < position startpos moves 7g7f 3c3d 2g2f 4a3b
+1790247609012 < go ponder btime 306000 wtime 290000 binc 10000 winc 10000
+1790247611000 < stop
+1790247611001 > bestmove 2f2e
+1790247611002 < position startpos moves 7g7f 3c3d 2g2f 8c8d
+1790247611003 < go btime 306000 wtime 290000 binc 10000 winc 10000
+1790247612003 > info depth 12 seldepth 16 score cp 30 lowerbound nodes 800000 nps 800000 time 1000 hashfull 10 pv 2f2e
+1790247614003 > info depth 13 seldepth 18 score cp 28 nodes 1600000 nps 800000 time 3000 hashfull 15 pv 2f2e 8d8e
+1790247616003 > info depth 14 seldepth 19 score cp 25 nodes 3000000 nps 600000 time 5000 hashfull 18 pv 6i7h 8d8e
+1790247616010 > bestmove 6i7h ponder 8d8e
+1790249599999 < position startpos moves 7g7f 3c3d 2g2f 8c8d 6i7h 8d8e
+1790249600000 < go ponder btime 29000 wtime 59000 binc 10000 winc 10000
+1790249606663 < ponderhit
+1790249608000 > info depth 10 seldepth 18 score cp 4822 nodes 9000000 nps 1125000 time 8000 hashfull 400 pv 2d1d 1c1d
+1790249610273 > info depth 11 currmove 2d1d
+1790249628546 > info string time plan: minimum 1880 optimum 8880 maximum 27870 end 28543 elapsed 28546 ponderhit 6663 stop true
+1790249660081 < gameover lose
+1790249664081 < isready
+1790249664082 > readyok
+1790249664181 < usinewgame
+1790249664281 < position startpos moves 7g7f
+1790249664381 < go btime 300000 wtime 300000 binc 10000 winc 10000
+1790249974381 < gameover lose

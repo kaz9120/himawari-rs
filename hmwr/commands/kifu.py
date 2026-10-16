@@ -9,10 +9,11 @@ from __future__ import annotations
 
 import argparse
 import datetime
+import json
 from pathlib import Path
 
 from .. import config, paths, proc, rating
-from ..tools import floodgate
+from ..tools import floodgate, usilog
 from . import book as book_cmd
 
 
@@ -91,6 +92,17 @@ def add_parser(sub: argparse._SubParsersAction) -> None:
     t.add_argument("--limit", type=int, metavar="N", help="先頭のこの件数だけ（label）")
     t.add_argument("--gap-floor", type=float, metavar="X", help="ベンチに入れる下限（measure）")
     t.set_defaults(func=blindspot)
+
+    t = ss.add_parser(
+        "usilog",
+        help="USIログを1局ごとに区切り、手ごとの時間と読みをJSONにする",
+        description="DebugLogFileのログを1局ごとに区切る。手ごとの思考時間・"
+        "時間の計画・反復の深さと評価値・待ちの行を拾い、1局1行の表を出す。"
+        "日毎に分けたファイルは複数渡せば時刻でつなぐ（issue #748）。",
+    )
+    t.add_argument("logs", nargs="+", metavar="ログ", help="DebugLogFileのファイル")
+    t.add_argument("--out", metavar="ディレクトリ", help="1局1ファイルのJSONを書く置き場")
+    t.set_defaults(func=usilog_split)
 
 
 def _games_dir(year: int) -> Path:
@@ -226,4 +238,26 @@ def rate(args: argparse.Namespace) -> int:
     # 表を出してから判定する。古くても中身は見られるようにしておく
     if args.max_age is not None:
         rating.check_fresh(days, floodgate.today(), args.max_age)
+    return proc.OK
+
+
+def usilog_split(args: argparse.Namespace) -> int:
+    """USIログを局に分け、表を出す。--outがあれば1局1ファイルのJSONも書く。"""
+    logs = [Path(p) for p in args.logs]
+    missing = [paths.rel(p) for p in logs if not p.is_file()]
+    if missing:
+        raise proc.Fail(f"ログがない: {', '.join(missing)}")
+    games = usilog.split_games(usilog.read_lines(logs))
+    print(usilog.table(games))
+    if args.out:
+        out = Path(args.out)
+        for game in games:
+            target = out / f"{usilog.game_name(game)}.json"
+            if args.dry_run:
+                print(f"[dry-run] write {paths.rel(target)}")
+                continue
+            out.mkdir(parents=True, exist_ok=True)
+            target.write_text(json.dumps(game, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
+        if not args.dry_run:
+            print(f"{len(games)}局を {paths.rel(out)} へ書いた")
     return proc.OK
