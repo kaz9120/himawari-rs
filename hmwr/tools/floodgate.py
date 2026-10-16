@@ -14,7 +14,8 @@ wdoor側が保証する（2026-08-09オーナー指示）。
 分析と定跡追加を後から再現できる（ADR-0152の決定論）。
 
 アカウント名（``Himawari+6fd5a66``）は変わらない。年はURLに含まれるので、
-年をまたぐときは ``--player-url`` を年ごとに渡す。
+既定では2026年から今年（日本時間）までの対局者ページを順に読む。年が
+明けた直後は今年のページがまだないので、今年の分の404だけは空として扱う。
 
 終了コード: 0=成功、2=引数エラー、3=実行時エラー（ADR-0122）。
 """
@@ -32,15 +33,29 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
-DEFAULT_PLAYER_URL = (
-    "https://wdoor.c.u-tokyo.ac.jp/shogi/x/2026/player/Himawari+6fd5a66.html"
-)
+PLAYER = "Himawari+6fd5a66"
+PLAYER_URL_TEMPLATE = "https://wdoor.c.u-tokyo.ac.jp/shogi/x/{year}/player/" + PLAYER + ".html"
+# 対局者ページが最初にできた年。ここから今年までを読む
+FIRST_YEAR = 2026
+# floodgateの日付は日本時間で切り替わる
+JST = datetime.timezone(datetime.timedelta(hours=9))
 USER_AGENT = "himawari-rs floodgate-fetch (+https://github.com/kaz9120/himawari-rs)"
 
 HREF_RE = re.compile(r'href="([^"]+)"')
 # 対局のリンクは日付のディレクトリを通る（/shogi/x/<年>/<月>/<日>/<名前>.html）。
 # 同じページにある対局者ページや対戦成績ページは日付を通らないので外れる
 GAME_PATH_RE = re.compile(r"/x/(\d{4})/\d{2}/\d{2}/([^/]+)\.html$")
+
+
+def today():
+    """日本時間の今日。年とレートの日付はこの暦で決まる。"""
+    return datetime.datetime.now(JST).date()
+
+
+def player_urls(year=None):
+    """FIRST_YEARからyear（既定は今年）までの対局者ページを、古い順に返す。"""
+    last = year if year is not None else today().year
+    return [PLAYER_URL_TEMPLATE.format(year=y) for y in range(FIRST_YEAR, max(last, FIRST_YEAR) + 1)]
 
 
 def error(message):
@@ -67,7 +82,8 @@ def build_parser(repo_root):
         "--player-url",
         action="append",
         metavar="URL",
-        help=f"対局者ページ。複数指定できる（既定 {DEFAULT_PLAYER_URL}）",
+        help="対局者ページ。複数指定できる"
+        f"（既定 {FIRST_YEAR}年から今年まで: {PLAYER_URL_TEMPLATE}）",
     )
     parser.add_argument(
         "--out",
@@ -165,12 +181,16 @@ class Log:
         self.file.close()
 
 
-def fetch_player(page_url, args, fetcher, log, counts):
+def fetch_player(page_url, args, fetcher, log, counts, missing_ok=False):
     """対局者ページ1枚を読み、未取得のCSAを落とす。
 
-    countsを更新する。上限に達したらFalseを返す。
+    countsを更新する。上限に達したらFalseを返す。missing_okなら、ページが
+    ないこと（404）を対局0局として扱う。
     """
     body = fetcher.get(page_url)
+    if body is None and missing_ok:
+        log.write(f"対局者ページがまだない（対局0局として扱う）: {page_url}")
+        return True
     if body is None:
         log.write(f"対局者ページがない: {page_url}")
         error(f"対局者ページがない: {page_url}")
@@ -221,7 +241,9 @@ def main(argv=None):
     if args.max_files < 0:
         error(f"--max-files が負: {args.max_files}")
         return 2
-    player_urls = args.player_url or [DEFAULT_PLAYER_URL]
+    # 既定の並びでは、最後（今年）のページだけがまだ無くてよい
+    pages = args.player_url or player_urls()
+    missing_ok_page = None if args.player_url else pages[-1]
 
     counts = {
         "pages": 0,
@@ -239,10 +261,11 @@ def main(argv=None):
         error(f"ログを開けない: {args.log}（{e}）")
         return 3
 
-    log.write(f"開始 pages={len(player_urls)} out={args.out}")
+    log.write(f"開始 pages={len(pages)} out={args.out}")
     try:
-        for page_url in player_urls:
-            if not fetch_player(page_url, args, fetcher, log, counts):
+        for page_url in pages:
+            missing_ok = page_url == missing_ok_page
+            if not fetch_player(page_url, args, fetcher, log, counts, missing_ok):
                 break
     except (urllib.error.URLError, OSError, TimeoutError) as e:
         error(f"取得に失敗した（{e}）")
@@ -257,7 +280,7 @@ def main(argv=None):
     log.close()
 
     print("=== floodgate回収（ADR-0152）===")
-    for url in player_urls:
+    for url in pages:
         print(f"対局者ページ : {url}")
     print(f"保存先       : {args.out}")
     print(f"該当棋譜     : {counts['found']}")
