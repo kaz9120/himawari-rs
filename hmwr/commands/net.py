@@ -25,8 +25,6 @@ BYTES_PER_POSITION = 40
 BATCH = 16384
 
 # 既定の学習条件。数値の根拠はADR-0135にある
-DEFAULT_VALID = "data/train/valid_385M.psv"
-DEFAULT_EVAL_VALID = "data/train/valid_385M_q1.psv"
 FT_CLIP = "1.0"
 BASE_FLAGS = ["--batch-loader", "--dense-ft", "--factorized"]
 
@@ -59,7 +57,7 @@ def add_parser(sub: argparse._SubParsersAction) -> None:
     t.add_argument(
         "--data", required=True, metavar="名前", help="学習データ。data/train/<名前>.psv"
     )
-    t.add_argument("--valid", metavar="名前", help=f"検証データ（既定 {DEFAULT_VALID}）")
+    t.add_argument("--valid", metavar="名前", help=f"検証データ（既定 {config.TRAIN_VALID}）")
     t.add_argument(
         "--rank", metavar="名前", help="ランキング損失の兄弟群。data/train/<名前>.rankpsv"
     )
@@ -155,8 +153,8 @@ def add_parser(sub: argparse._SubParsersAction) -> None:
         "次元の違う構成で学習してしまう。",
     )
     t.add_argument("specs", nargs="+", metavar="構成", help="例 256x16 512x16x32")
-    t.add_argument("--data", metavar="PSV", help="学習データ（既定 train_300M.psv）")
-    t.add_argument("--valid", metavar="PSV", help="検証データ")
+    t.add_argument("--data", metavar="PSV", help=f"学習データ（既定 {config.TRAIN_DATA}）")
+    t.add_argument("--valid", metavar="PSV", help=f"検証データ（既定 {config.TRAIN_VALID}）")
     t.add_argument("--tag", default="train", metavar="名前", help="出力名の頭")
     t.add_argument("--seed", type=int, default=0, metavar="N", help="乱数種")
     t.add_argument("--device", default="cpu", metavar="名前", help="cpu か mps")
@@ -185,7 +183,7 @@ def add_parser(sub: argparse._SubParsersAction) -> None:
         "**採否は対局で決める。** 検証損失は初期値の系列が違うだけで動く。",
     )
     t.add_argument("nets", nargs="+", metavar="ネット")
-    t.add_argument("--valid", metavar="PSV", help="検証集合。複数はコンマ区切り")
+    t.add_argument("--valid", metavar="PSV", help=f"検証集合。複数はコンマ区切り（既定 {config.TRAIN_VALID}）")
     t.add_argument("--device", default="cpu", metavar="名前", help="cpu か mps")
     t.set_defaults(func=evaluate)
 
@@ -290,7 +288,7 @@ def train(args: argparse.Namespace) -> int:
     """本番規模の学習。既定はADRの結論に揃えてある。"""
     name = paths.check_name(args.name)
     data = _train_file(args.data, ".psv")
-    valid = _train_file(args.valid or DEFAULT_VALID, ".psv")
+    valid = _train_file(args.valid or config.TRAIN_VALID, ".psv")
     rank = _train_file(args.rank, ".rankpsv") if args.rank else None
 
     if not args.dry_run:
@@ -542,7 +540,7 @@ def shapes(args: argparse.Namespace) -> int:
         raise proc.Fail("--effect-head には --lambda-effect が要る", proc.USAGE)
 
     common = _shape_common_args(args)
-    source = f"生成{args.generate}局面" if args.generate else (args.data or "data/train/train_300M.psv")
+    source = f"生成{args.generate}局面" if args.generate else (args.data or config.TRAIN_DATA)
 
     print(f"=== 構成ごとの学習（{len(args.specs)}件） ===")
     print(f"学習データ: {source}")
@@ -594,8 +592,8 @@ def _shape_common_args(args: argparse.Namespace) -> list[str]:
         out += ["--generate", str(args.generate)]
     else:
         out += [
-            "--data", args.data or "data/train/train_300M.psv",
-            "--valid", args.valid or DEFAULT_VALID,
+            "--data", args.data or config.TRAIN_DATA,
+            "--valid", args.valid or config.TRAIN_VALID,
         ]
     if args.mmap:
         out.append("--mmap")
@@ -645,7 +643,7 @@ def evaluate(args: argparse.Namespace) -> int:
     条件をまたいで比べたいときだけ検証集合を複数渡す。教師データの分布を
     変える実験では評価基準も一緒に動く（ADR-0136）。
     """
-    valids = [v for v in (args.valid or DEFAULT_EVAL_VALID).split(",") if v]
+    valids = [v for v in (args.valid or config.TRAIN_VALID).split(",") if v]
     if not args.dry_run:
         for path in valids:
             if not Path(path).is_file():
@@ -886,7 +884,10 @@ def release(args: argparse.Namespace) -> int:
     release_mod.check_prereqs(tag, dry_run=args.dry_run)
 
     lineage = read_lineage(path)
-    asset_name = path.name.removesuffix(".best")
+    # アセットは固定名で配る（ADR-0080の追記）。版はタグと学習来歴が持つ。
+    # 学習時の名前はノートと題に残し、どの実験のネットかを辿れるようにする
+    asset_name = config.NET_ASSET
+    train_name = path.name.removesuffix(".best")
     size = release_mod.file_size(path)
 
     notes = [
@@ -894,30 +895,31 @@ def release(args: argparse.Namespace) -> int:
         "## ファイル", "",
         "| 項目 | 値 |", "|---|---|",
         f"| アセット | `{asset_name}` |",
+        f"| 学習時の名前 | `{train_name}` |",
         f"| サイズ | {size} |",
         "| 形式 | Himawari NNUE |",
     ]
     if args.notes:
         notes += ["", "## 補足", "", args.notes]
     notes += [
-        "", "## 使い方", "", "```",
-        f"gh release download {tag} -p '{asset_name}' -D data/nets/",
-        "```", "",
-        "USIオプション `EvalFile` にパスを指定する。",
+        "", "## 使い方", "",
+        f"`{asset_name}` を実行ファイルと同じフォルダに置く。USIオプション `EvalFile` が空なら、"
+        "エンジンはそこを読む。更新は上書きコピーで済む。",
+        "", "開発機へ学習時の名前で取るときは、次のようにする。", "", "```",
+        f"gh release download {tag} -p '{asset_name}' -O data/nets/{train_name}",
+        "```",
     ]
 
     print(f"タグ    : {tag}")
-    print(f"アセット: {asset_name}（{size}）")
+    print(f"アセット: {asset_name}（{size}、学習時の名前 {train_name}）")
     print(f"学習来歴: {lineage}")
 
     with tempfile.TemporaryDirectory() as tmp:
-        # 配布名は .best を外したものにする。元のファイル名のままだと
-        # 利用者が「途中経過」と誤読する
         asset = Path(tmp) / asset_name
         shutil.copy2(path, asset)
         return release_mod.create(
             tag,
-            f"{tag}: {asset_name}",
+            f"{tag}: {train_name}",
             "\n".join(notes) + "\n",
             [asset],
             apply=args.apply,

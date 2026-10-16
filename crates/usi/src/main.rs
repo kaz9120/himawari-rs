@@ -469,7 +469,25 @@ fn load_book(path: &str) -> Option<Book> {
     }
 }
 
-/// EvalFileを読み込む。失敗も未設定も起動エラー（ADR-0037: 駒割への
+/// 配布する評価関数の固定名（ADR-0080の追記）。
+const DEFAULT_EVAL_NAME: &str = "himawari.hmwr";
+
+/// 読み込む評価関数のパスを決める。EvalFileが空なら、実行ファイルと
+/// 同じフォルダの固定名にする（issue #744）。放流機の更新が上書きコピー
+/// だけで済む。カレントディレクトリはGUIの都合で変わるので基準にしない。
+/// 実行ファイルの場所が分からなければ空のまま返し、load_evalが止める。
+fn eval_path(eval_file: &str) -> String {
+    if !eval_file.is_empty() {
+        return eval_file.to_string();
+    }
+    std::env::current_exe()
+        .ok()
+        .and_then(|exe| exe.parent().map(|dir| dir.join(DEFAULT_EVAL_NAME)))
+        .map(|p| p.to_string_lossy().into_owned())
+        .unwrap_or_default()
+}
+
+/// EvalFileを読み込む。読めなければ起動エラー（ADR-0037: 駒割への
 /// フォールバックはしない。気づかず弱いまま対局する事故を防ぐ）。
 fn load_eval(path: &str) -> Option<(String, std::sync::Arc<NnueNetwork>)> {
     if path.is_empty() {
@@ -586,7 +604,10 @@ fn main() {
             "isready" => {
                 // 重い初期化（置換表確保・スレッド起動・評価関数読み込み）は
                 // ここで行う。Hash/Threads/EvalFileが変わったら作り直す
-                let params = Some((opts.hash_mb, opts.threads.max(1), opts.eval_file.clone()));
+                // 比べるのは解決後のパス。プールは読んだパスを持つので、
+                // 空のまま比べると毎回作り直しになる
+                let eval_file = eval_path(&opts.eval_file);
+                let params = Some((opts.hash_mb, opts.threads.max(1), eval_file.clone()));
                 if pool
                     .as_ref()
                     .map(|p| (p.hash_mb, p.threads, p.eval_file.clone()))
@@ -598,7 +619,7 @@ fn main() {
                     pool = Some(ThreadPool::new(
                         opts.hash_mb,
                         opts.threads,
-                        load_eval(&opts.eval_file),
+                        load_eval(&eval_file),
                         Arc::new(print_line),
                     ));
                 }
@@ -651,7 +672,7 @@ fn main() {
                     pool = Some(ThreadPool::new(
                         opts.hash_mb,
                         opts.threads,
-                        load_eval(&opts.eval_file),
+                        load_eval(&eval_path(&opts.eval_file)),
                         Arc::new(print_line),
                     ));
                 }
