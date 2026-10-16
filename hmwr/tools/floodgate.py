@@ -84,7 +84,8 @@ class ArgParser(argparse.ArgumentParser):
         sys.exit(2)
 
 
-def build_parser(repo_root):
+def build_parser():
+    """既定の置き場は呼ぶたびに paths から引く。テストが置き場を差し替えられる（#802）。"""
     parser = ArgParser(
         prog="floodgate-fetch.py",
         description="floodgateの棋譜をwdoorから回収する（ADR-0152）。",
@@ -100,12 +101,12 @@ def build_parser(repo_root):
     )
     parser.add_argument(
         "--out",
-        default=str(repo_root / "data" / "raw" / "floodgate"),
+        default=str(paths.RAW / "floodgate"),
         help="保存先ディレクトリ（既定 data/raw/floodgate）",
     )
     parser.add_argument(
         "--log",
-        default=str(repo_root / "data" / "logs" / "floodgate-fetch.log"),
+        default=str(paths.LOGS / "floodgate-fetch.log"),
         help="詳細ログの追記先（既定 data/logs/floodgate-fetch.log）",
     )
     parser.add_argument(
@@ -126,7 +127,7 @@ def build_parser(repo_root):
     parser.add_argument(
         "--dry-run",
         action="store_true",
-        help="取得せず、落とす対象の一覧だけを出す",
+        help="問い合わせも書き込みもせず、読みに行く対局者ページだけを出す",
     )
     return parser
 
@@ -224,10 +225,6 @@ def fetch_player(page_url, args, fetcher, log, counts, missing_ok=False):
             log.write(f"上限{args.max_files}枚に達したので打ち切る")
             counts["truncated"] = True
             return False
-        if args.dry_run:
-            counts["would_fetch"] += 1
-            print(f"取得予定: {dest}")
-            continue
         data = fetcher.get(url)
         if data is None:
             log.write(f"取得できない（404）: {url}")
@@ -244,8 +241,7 @@ def fetch_player(page_url, args, fetcher, log, counts, missing_ok=False):
 
 
 def main(argv=None):
-    repo_root = paths.REPO
-    parser = build_parser(repo_root)
+    parser = build_parser()
     args = parser.parse_args(argv)
 
     if args.sleep < 0:
@@ -258,12 +254,20 @@ def main(argv=None):
     pages = args.player_url or player_urls()
     missing_ok_page = None if args.player_url else pages[-1]
 
+    # dry-runは副作用を持たない（#774）。kifu rateと同じく、問い合わせ先だけを見せる。
+    # 対局者ページを読まないと取得予定の棋譜は数えられないが、その一覧は諦める（#802）
+    if args.dry_run:
+        for url in pages:
+            print(f"[dry-run] GET {url}")
+        print(f"[dry-run] 保存先: {paths.rel(args.out)}")
+        print(f"[dry-run] ログ: {paths.rel(args.log)}")
+        return 0
+
     counts = {
         "pages": 0,
         "found": 0,
         "fetched": 0,
         "skipped": 0,
-        "would_fetch": 0,
         "errors": 0,
         "truncated": False,
     }
@@ -297,10 +301,7 @@ def main(argv=None):
         print(f"対局者ページ : {url}")
     print(f"保存先       : {args.out}")
     print(f"該当棋譜     : {counts['found']}")
-    if args.dry_run:
-        print(f"取得予定     : {counts['would_fetch']}（--dry-run のため取得しない）")
-    else:
-        print(f"新規取得     : {counts['fetched']}")
+    print(f"新規取得     : {counts['fetched']}")
     print(f"既取得       : {counts['skipped']}")
     print(f"リクエスト   : {fetcher.requests}")
     print(f"ログ         : {args.log}")
