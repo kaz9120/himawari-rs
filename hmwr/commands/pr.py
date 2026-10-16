@@ -9,7 +9,9 @@
 from __future__ import annotations
 
 import argparse
+import json
 import re
+import tempfile
 from pathlib import Path
 
 from .. import paths, proc
@@ -44,6 +46,23 @@ def add_parser(sub: argparse._SubParsersAction) -> None:
     t.add_argument("--body-file", required=True, metavar="ファイル", help="本文")
     t.add_argument("--draft", action="store_true", help="ドラフトで作る")
     t.set_defaults(func=create)
+
+    t = ss.add_parser(
+        "merge",
+        help="squashの本文とSPRTの結果を検査してからマージする",
+        description="squashで入るコミットの件名と本文を組み立て、入れ子の半角括弧を検査する。"
+        "strengthなら data/sprt/<名前>.result がH1で、本文の SPRT: トレーラが結果と"
+        "一致することも確かめる。CIが緑で、全部通ったら gh pr merge --squash "
+        "--delete-branch を呼ぶ。--dry-run では検査だけ行い、マージしない。",
+    )
+    t.add_argument("number", type=int, metavar="PR番号")
+    t.add_argument("--kind", required=True, choices=sorted(KINDS), help="chore / strength")
+    t.add_argument(
+        "--sprt",
+        metavar="名前",
+        help="strengthのとき必須。data/sprt/<名前>.result の判定を見る",
+    )
+    t.set_defaults(func=merge)
 
 
 def template_text(kind: str) -> str:
@@ -85,3 +104,132 @@ def create(args: argparse.Namespace) -> int:
     if args.draft:
         argv.append("--draft")
     return proc.run(argv, dry_run=args.dry_run)
+
+
+# --- マージ ------------------------------------------------------------
+
+# release-please のパーサは入れ子の半角括弧で失敗し、その回のリリースが黙って止まる
+NESTED_PARENS_RE = re.compile(r"\([^()]*\(")
+CI_PASS = {"SUCCESS", "SKIPPED", "NEUTRAL"}
+NON_INFERIORITY_NOTE = "（非劣性 elo0=-5 elo1=0）"
+
+
+def squash_message(pr: dict) -> tuple[str, str]:
+    """squashで入るコミットの (件名, 本文) を組み立てる。
+
+    リポジトリの設定（件名は COMMIT_OR_PR_TITLE、本文は COMMIT_MESSAGES）に
+    倣う。GitHubに任せず自前で組み、同じものを gh へ渡す。検査した文面と
+    mainへ入る文面を一致させるためである。
+    """
+    commits = pr["commits"]
+    number = pr["number"]
+    if len(commits) == 1:
+        c = commits[0]
+        return f"{c['messageHeadline']} (#{number})", c["messageBody"].strip()
+    body = "\n\n".join(
+        f"* {c['messageHeadline']}\n\n{c['messageBody'].strip()}".rstrip() for c in commits
+    )
+    return f"{pr['title']} (#{number})", body
+
+
+def read_result(path: Path) -> dict[str, str]:
+    """結果ファイル（key=value）を読む（ADR-0175）。"""
+    fields = {}
+    for line in path.read_text(encoding="utf-8").splitlines():
+        key, sep, value = line.partition("=")
+        if sep:
+            fields[key] = value
+    return fields
+
+
+def expected_trailer(result: dict[str, str]) -> str:
+    """結果ファイルから、本文に載るべき SPRT: トレーラを作る（ADR-0071）。"""
+    line = (
+        f"SPRT: {result['elo']} [{result['ci_low']},{result['ci_high']}] "
+        f"{result['games']}games {result['decision']}"
+    )
+    if (result.get("elo0"), result.get("elo1")) == ("-5", "0"):
+        line += NON_INFERIORITY_NOTE
+    return line
+
+
+def problems(kind: str, subject: str, body: str, result: dict[str, str] | None) -> list[str]:
+    """マージを止める理由を並べる。空ならマージしてよい。"""
+    found = []
+    for label, text in (("件名", subject), ("本文", body)):
+        for line in text.splitlines():
+            if NESTED_PARENS_RE.search(line):
+                found.append(f"{label}に入れ子の半角括弧がある: {line.strip()}")
+    is_feat = re.match(r"^feat(\(.+\))?!?: ", subject) is not None
+    if kind == "chore" and is_feat:
+        found.append("件名が feat: で始まる。棋力の変わる変更は --kind strength で検査する")
+    if kind == "strength":
+        if not is_feat:
+            found.append("棋力向上のPRの件名は feat: で始める（ADR-0071）")
+        if result is None:
+            found.append("SPRTの結果ファイルがない（--sprt <名前> で data/sprt/<名前>.result を指す）")
+        else:
+            if result.get("decision") != "H1":
+                found.append(f"SPRTの判定が H1 ではない: {result.get('decision')}")
+            want = expected_trailer(result)
+            # トレーラはrelease-pleaseが最後の段落から読む。途中の段落にあると載らない
+            last = body.strip().split("\n\n")[-1].splitlines()
+            if not any(line.strip() == want for line in last):
+                found.append(f"本文の最後の段落に、結果と一致するトレーラがない: {want}")
+    return found
+
+
+def ci_green(pr: dict) -> bool:
+    """全チェックが成功か省略で終わっていればTrue。1件も無いならFalse。"""
+    checks = pr.get("statusCheckRollup") or []
+    if not checks:
+        return False
+    for c in checks:
+        state = c.get("conclusion") or c.get("state") or ""
+        if state.upper() not in CI_PASS:
+            return False
+    return True
+
+
+def merge(args: argparse.Namespace) -> int:
+    if args.kind == "strength" and not args.sprt:
+        raise proc.Fail("--kind strength には --sprt <名前> が要る", proc.USAGE)
+    fields = "number,title,state,isDraft,headRefOid,commits,statusCheckRollup"
+    code, out, err = proc.capture_code(
+        ["gh", "pr", "view", str(args.number), "--json", fields]
+    )
+    if code != proc.OK:
+        raise proc.Fail(f"PR#{args.number} を読めない: {err.strip()}")
+    pr = json.loads(out)
+
+    if pr["state"] != "OPEN":
+        raise proc.Fail(f"PR#{args.number} は {pr['state']} で、マージできない", proc.JUDGE)
+    if pr["isDraft"]:
+        raise proc.Fail(f"PR#{args.number} はドラフトである", proc.JUDGE)
+
+    result = None
+    if args.sprt:
+        path = paths.SPRT / f"{args.sprt}.result"
+        if path.is_file():
+            result = read_result(path)
+    subject, body = squash_message(pr)
+    found = problems(args.kind, subject, body, result)
+    if not ci_green(pr):
+        found.append("CIが緑ではない（hmwr ci wait で確定を待つ）")
+    if found:
+        raise proc.Fail(
+            f"PR#{args.number} をマージしない:\n" + "\n".join(f"  - {p}" for p in found),
+            proc.JUDGE,
+        )
+
+    print(f"検査は通った。件名: {subject}\n--- 本文 ---\n{body}\n------------", flush=True)
+    with tempfile.NamedTemporaryFile("w", encoding="utf-8", suffix=".md") as fh:
+        fh.write(body + "\n")
+        fh.flush()
+        # 検査した先端と違うものが入らないよう、先端のコミットを固定して渡す
+        argv = [
+            "gh", "pr", "merge", str(args.number), "--squash", "--delete-branch",
+            "--match-head-commit", pr["headRefOid"],
+            "--subject", subject, "--body-file", fh.name,
+        ]  # fmt: skip
+        return proc.run(argv, dry_run=args.dry_run)

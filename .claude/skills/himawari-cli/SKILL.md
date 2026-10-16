@@ -369,7 +369,14 @@ hmwr clean --apply    30日を過ぎた成果物を消す（ADR-0189）
 hmwr pr template chore > <スクラッチ>/body.md     本文のひな形（chore か strength）
 hmwr pr create --kind chore --title "chore: …" --body-file <スクラッチ>/body.md
 hmwr ci wait <PR番号>                CIが確定するまで待つ
+hmwr pr merge <PR番号> --kind chore  検査してからsquashでマージする
+hmwr pr merge <PR番号> --kind strength --sprt <名前>
 ```
+
+`pr merge` はsquashで入る件名と本文を組み立て、入れ子の半角括弧を検査する。
+strengthでは `data/sprt/<名前>.result` がH1であることと、本文の最後の段落に
+結果と一致する `SPRT:` トレーラがあることも確かめる。CIが緑でなければ止める。
+通ったら `gh pr merge --squash --delete-branch` を呼ぶ。`--dry-run` は検査だけ行う。
 
 本文にテンプレートの見出しが揃っていなければ、PRは作られない。本文のファイルは
 スクラッチパッドに置く。リポジトリの中に置くとコミットへ紛れる。
