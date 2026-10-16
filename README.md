@@ -35,7 +35,8 @@ Rustで書くコンピュータ将棋エンジン。USIプロトコルに対応�
 | `himawari-<版>-macos-arm64.zip` | macOS（Apple Silicon） |
 
 評価関数は `net-v*` タグのうち、番号のいちばん大きいものから `.hmwr` を取る。
-古い番号のネットはそのぶん弱い。
+古い番号のネットはそのぶん弱い。net-v16以降のファイル名は `himawari.hmwr` に
+固定してある。
 
 コマンドで取るなら次のようにする。
 
@@ -52,17 +53,19 @@ gh release download <最新のnet-v*> -p '*.hmwr'
 
 ### GUIへ登録する
 
-解凍した `himawari`（Windowsは `himawari.exe`）をGUIへエンジンとして登録し、
-USIオプション `EvalFile` に評価関数のパスを設定する。
+解凍した `himawari`（Windowsは `himawari.exe`）をGUIへエンジンとして登録する。
+評価関数は、実行ファイルと同じフォルダに `himawari.hmwr` の名前で置く。
+USIオプション `EvalFile` が空なら、エンジンはそこを読む。評価関数の更新は
+上書きコピーで済む。
 
-**`EvalFile` の設定を忘れない**。未設定でも起動するが、駒割だけで指すため
-極端に弱くなる。
+別の場所や名前で置くなら、`EvalFile` にパスを設定する。評価関数を読めないと、
+エンジンは `isready` で終了する。駒割だけで指し続けることはしない。
 
 ### 主なUSIオプション
 
 | オプション | 既定 | 説明 |
 |---|---|---|
-| `EvalFile` | （空） | 評価関数のパス。必須 |
+| `EvalFile` | （空） | 評価関数のパス。空なら実行ファイルと同じフォルダの `himawari.hmwr` を読む |
 | `BookFile` | （空） | 定跡ファイルのパス |
 | `USI_Hash` | 256 | 置換表[MB] |
 | `Threads` | 1 | 探索スレッド数 |
@@ -118,8 +121,9 @@ hmwr threadtune --eval <評価関数> --current 6 --hours 8
 
 エンジンの異常はGUIのログへ `info string error:` の行で出る。まずそこを読む。
 
-起動直後に終了するときは、`EvalFile` のパスが違う。エンジンはパスと現在位置を
-併記して終了するので、手元のファイルと突き合わせる。
+起動直後に終了するときは、評価関数を読めていない。エンジンは読もうとした
+パスと現在位置を併記して終了するので、手元のファイルと突き合わせる。`EvalFile` が
+空なら、実行ファイルの隣の `himawari.hmwr` を探している。
 
 ```
 info string error: cannot open EvalFile: No such file or directory (os error 2)
