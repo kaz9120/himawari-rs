@@ -12,10 +12,14 @@ from hmwr import paths  # noqa: E402
 
 
 @pytest.fixture(autouse=True)
-def _status_in_tmp(tmp_path_factory, monkeypatch):
-    """状態ファイル（ADR-0220）を本物の data/status/ へ書かせない。
+def _places_in_tmp(tmp_path_factory, monkeypatch):
+    """data/ と training/checkpoints/ の置き場を、本物のリポジトリへ書かせない。
 
-    長く走るコマンドは状態ファイルを書くので、コマンドを通すテストはどれも書く。
-    個々のテストに任せると、書き忘れが本物の状態を汚す。
+    dry-runでもログの置き場や状態ファイル（ADR-0220）の親を作るので、コマンドを
+    通すテストはどれも書く。個々のテストに任せると、書き忘れが本物を汚す。
+    置き場はリポジトリと同じ形で一時ディレクトリへ移すので、表示は変わらない。
     """
-    monkeypatch.setattr(paths, "STATUS", tmp_path_factory.mktemp("status"))
+    work = tmp_path_factory.mktemp("work")
+    monkeypatch.setattr(paths, "WORK", work)
+    for name in paths.PLACES:
+        monkeypatch.setattr(paths, name, work / getattr(paths, name).relative_to(paths.REPO))

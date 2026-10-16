@@ -113,7 +113,9 @@ def _launchd() -> dict:
 
 
 def _resources(use_github: bool) -> dict:
-    usage = shutil.disk_usage(paths.REPO / "data")
+    # data/ が別のボリュームにあってもそちらを測る。無い作業ツリーでは根で測る
+    data = paths.WORK / "data"
+    usage = shutil.disk_usage(data if data.is_dir() else paths.WORK)
     out: dict = {
         "disk_free_gb": round(usage.free / 1e9, 1),
         "disk_total_gb": round(usage.total / 1e9, 1),

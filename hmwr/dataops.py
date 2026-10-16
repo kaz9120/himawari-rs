@@ -1121,7 +1121,7 @@ def floodgate_op(args: argparse.Namespace) -> int:
         years = list(range(int(lo), int(hi or lo) + 1))
     except ValueError:
         raise proc.Fail(f"--years は 2011-2026 か 2026 の形で書く: {args.years}", proc.USAGE)
-    archive = paths.REPO / "data" / "raw" / "floodgate_archive"
+    archive = paths.RAW / "floodgate_archive"
     record = [
         f"floodgate --years {args.years} --tag {args.tag} --min-plies {args.min_plies}"
         + (f" --limit {args.limit}" if args.limit else "")
