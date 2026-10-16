@@ -26,8 +26,11 @@ description: 実験キューで走り終えた実験の結果を、ADRへ記録�
    事前登録」の節を読む。対局の数値は `data/sprt/<対局名>.result` が正で、
    表はそこから作られている
 
-2. ブランチを切る。名前は `docs-adrNNNN-result` にする。専用のworktreeで
-   走っているときは、いまのHEAD（origin/main）から切る
+2. ブランチを切る。名前は `docs-<specの名前>-result` にする（例:
+   `docs-adr0228-ek-batch-result`）。specの名前は `adrNNNN-` で始まるので、
+   ADRの番号も入る。番号だけにしないのは、1つのADRにspecが複数あると
+   衝突するためである（ADR-0228は4本）。専用のworktreeで走っているときは、
+   いまのHEAD（origin/main）から切る
 
 3. ADRへ「## 測定（日付）」の節を足す。置き場は「解釈の事前登録」の
    直後、「Consequences」の前にする。中身は次の順で書く
@@ -57,10 +60,13 @@ description: 実験キューで走り終えた実験の結果を、ADRへ記録�
    ```
    hmwr doc lint && hmwr doc check
    git add docs && git commit   # 型は docs、件名に実験名と結論を入れる
-   git push -u origin docs-adrNNNN-result
-   hmwr pr template chore > body.md   # 節を埋める
-   hmwr pr create --kind chore --title "docs: …" --body-file body.md
+   git push -u origin docs-<specの名前>-result
+   hmwr pr template chore > <スクラッチ>/body.md   # 節を埋める
+   hmwr pr create --kind chore --title "docs: …" --body-file <スクラッチ>/body.md
    ```
+
+   `<スクラッチ>` はセッションのスクラッチパッドである。無ければ `/tmp` の下など、
+   リポジトリの外に置く。リポジトリの中に置くとコミットへ紛れる。
 
    PRの本文には、表とどの行に当たったかを書き、Issue番号を `Refs #<番号>` で
    結ぶ。Issueは閉じない（マージした人が閉じる）

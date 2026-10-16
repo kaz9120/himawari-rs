@@ -1,6 +1,6 @@
 ---
 name: himawari-cli
-description: himawari-rsの開発コマンドhmwrを使う。ビルド・機能検証・NPS計測・学習・教師データの前処理・文書のlintを実行するとき必ず使う。SPRTの運用手順はrunning-sprtスキルが持つ。
+description: himawari-rsの開発コマンドhmwrを使う。ビルド・機能検証・NPS計測・学習・教師データの前処理・実験のspecとキュー（exp・queue）・実戦の棋譜の回収と分析（kifu）・単発の診断（diag）・成果物の掃除（clean）・PRの作成・文書のlintを実行するとき必ず使う。SPRTの運用手順はrunning-sprtスキルが持つ。
 ---
 
 # hmwr: 開発コマンド
@@ -231,6 +231,9 @@ hmwr status            キューに加え、実行中のステップ・状態フ
 hmwr queue pause       次のステップを始めさせない（開発機を空けたいとき）
 hmwr queue resume      一時停止を解く
 hmwr queue install     専用のworktreeとlaunchdの常駐を用意する
+hmwr queue uninstall   launchdの常駐を外す（worktreeは残す）
+hmwr queue run         launchdが呼ぶ入口。専用のworktreeをorigin/mainへ揃えてからtickを呼ぶ
+hmwr queue tick        キューを1回見て、実験を1件走らせる。終わるまで戻らない
 hmwr exp reset <名前>  完了マーカーを消し、最初から走り直せるようにする
 hmwr exp queue <名前> --title <題>   specを実験キューへ積む
 ```
@@ -242,6 +245,10 @@ Issueフォーム「実験」でIssueを出す。`gh issue create` で手書き�
 ログの末尾がIssueへコメントされる。原因を直してラベルを `queued` へ戻すと、
 続きから走る。
 
+`queue run` と `queue tick` はlaunchdのための入口で、手で叩くことはまれである。
+`queue run` は開発中の作業ツリーでは走らない。実験が走り終えると、キューは
+`claude -p` でrecording-experimentスキルを起動し、結果の記録のPRを出させる。
+
 **計測や対話セッションのSPRTの前に `hmwr queue pause` を打つ**。キューの実験と
 同時に走ると、どちらの対局も持ち時間の消化が乱れる。走っているステップは
 止まらないので、`hmwr queue status` で実行中の実験が無いことを確かめてから測る。
@@ -252,7 +259,14 @@ Issueフォーム「実験」でIssueを出す。`gh issue create` で手書き�
 hmwr diag rank <重み> <群>      ランキング損失のヒンジ発火を分ける
 hmwr diag dead <重み> <局面>    FT出力の対が死ぬ原因を分ける
 hmwr diag phase <局面>          進行度の指標の候補を比べる
+hmwr diag replay <CSA> --initial 300 --inc 10   棋譜を実戦の持ち時間のまま指し直す
+hmwr diag shadow data/raw/<名前>/*.bin --limit N   影の利き属性の1手あたりの反転数を測る
+hmwr diag defend <名前> --in <入力名>   攻撃的な受けの局面で、教師手の順位を測る
 ```
+
+`diag replay` は、置換表・時間管理・ponderの状態を前の手から持ち越して指し直す。
+局面だけを渡す検討では出ない、対局の流れの中の問題を再現する。時間制の対局と
+重ねて走らせない。`diag defend` の入力は静止化前のpsvに限る。
 
 `diag` は1本のADRのために作った測定の置き場で、互換を保証するインターフェースではない。
 引数の互換は保たず、使ったADRが閉じて90日たったら消してよい。
@@ -352,8 +366,8 @@ hmwr clean --apply    30日を過ぎた成果物を消す（ADR-0189）
 ### PRを出す
 
 ```
-hmwr pr template chore > body.md     本文のひな形（chore か strength）
-hmwr pr create --kind chore --title "chore: …" --body-file body.md
+hmwr pr template chore > <スクラッチ>/body.md     本文のひな形（chore か strength）
+hmwr pr create --kind chore --title "chore: …" --body-file <スクラッチ>/body.md
 hmwr ci wait <PR番号>                CIが確定するまで待つ
 ```
 
@@ -378,6 +392,10 @@ PRを出す前に通す。CIが落ちてから直すより速い（ADR-0178）�
 ```
 hmwr kifu cycle                回収→分析→定跡追加→網羅率
 hmwr kifu fetch                棋譜だけ回収する
+hmwr kifu report               評価値の系列から、崩壊のきっかけの局面を拾う
+hmwr kifu blindspot extract    実戦で評価が崩れた局面を候補として集める
+hmwr kifu blindspot label --nodes N   深い探索の値を正解として付ける
+hmwr kifu blindspot measure --eval-file <ネット>   浅い評価との乖離を測る
 hmwr kifu rate                 レートの推移（日毎と2週間）を出す
 hmwr kifu usilog <ログ>...     放流機のUSIログを1局ごとに区切る
 hmwr book seed --max-positions 100
@@ -387,7 +405,7 @@ hmwr book release <DB> <番号> --apply
 
 `kifu rate` は対局者ページのグラフの元データを読む。初日からの全履歴が入って
 いるので、いつ取っても同じ系列になる。`--csv` で全履歴、`--days N` で直近の
-日数を変えられる。棋力の日々の指標はこの値である。CSVは年ごとに分かれており、
+日数を変えられる。強さの指標はこの値である（ADR-0207・ADR-0229）。CSVは年ごとに分かれており、
 2026年から今年までを読んで連結する。`--max-age N` を付けると、最新の日付が
 N日以上古いときに終了コード1で止まる。`--svg <ファイル>` で推移のグラフを書く。
 READMEの画像はこれで、ワークフロー `rate-graph.yml` が毎日作り直す。
@@ -395,6 +413,10 @@ READMEの画像はこれで、ワークフロー `rate-graph.yml` が毎日作�
 `kifu usilog` は `DebugLogFile` のログを読み、1局1行の表を出す。`--out <置き場>` で
 1局1ファイルのJSONも書く。形は `himawari-usilog-game/1` で、ADR-0221の追記が
 持つ。bestmoveの出なかった手（固まり）と待ちの行の数が表に並ぶ。
+
+`kifu blindspot` は盲点ベンチマークである（ADR-0191）。自己対局の外にある分布へ
+触れる指標で、マージのゲートではなく、ネットの世代ごとの定点観測に使う。
+`kifu report` は再解析より安い診断材料で、`kifu cycle` の分析の段もこれを使う。
 
 定跡追加は1局面あたり深さ28で約34秒かかる。1回の追加数を絞り、残りは次回が
 続きから足す（冪等なので何度回しても増えない）。
