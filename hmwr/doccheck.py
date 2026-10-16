@@ -6,7 +6,7 @@ textlintは1文ずつの書き方を見る。ここが見るのは文書の間�
 - ADR本文のStatusと、索引（docs/adr/README.md）の表の一致
 - ADRのファイルと索引の行の過不足
 - 文書の相対リンクの行き先
-- proposedのまま動いていないADR（期限つきの警告）
+- proposedのまま動いていないADR（期限つきの警告。Statusの行を書き換えた日で測る）
 """
 
 from __future__ import annotations
@@ -102,8 +102,22 @@ def check_links(root: Path) -> list[Finding]:
     return found
 
 
+def status_changed_at(root: Path, rel: str) -> int | None:
+    """Statusの行を最後に書き換えたコミットの時刻（UNIX秒）。
+
+    ファイルの最終コミットでは測らない。文言の一括修正（#608）のような
+    本文だけのコミットで日付が動き、proposedのまま止まったADRが漏れたためである。
+    `-G` は追加・削除された行に正規表現が当たるコミットだけを拾うので、
+    Statusを書いたコミット（作成を含む）の日付になる。
+    """
+    stamp = proc.capture(
+        ["git", "log", "-1", "--format=%ct", "-G", r"^- Status:", "--", rel], cwd=root
+    ).strip()
+    return int(stamp) if stamp.isdigit() else None
+
+
 def check_stale(root: Path, days: int) -> list[Finding]:
-    """proposedのまま、最後のコミットから日数が過ぎたADR。"""
+    """proposedのまま、Statusを最後に書き換えてから日数が過ぎたADR。"""
     found: list[Finding] = []
     now = time.time()
     for file in adr_files(root):
@@ -111,10 +125,10 @@ def check_stale(root: Path, days: int) -> list[Finding]:
         if m is None or status_head(m.group(1)) != "proposed":
             continue
         rel = f"{ADR_DIR}/{file.name}"
-        stamp = proc.capture(["git", "log", "-1", "--format=%ct", "--", rel], cwd=root).strip()
-        if not stamp.isdigit():
+        stamp = status_changed_at(root, rel)
+        if stamp is None:
             continue
-        age = int((now - int(stamp)) // 86400)
+        age = int((now - stamp) // 86400)
         if age >= days:
             found.append(
                 Finding(rel, f"proposedのまま{age}日動いていない。acceptedかrejectedへ進める")

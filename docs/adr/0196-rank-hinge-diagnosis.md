@@ -1,6 +1,6 @@
 # 0196: ランキング損失のヒンジ発火を分け、後続の方向を決める
 
-- Status: proposed
+- Status: accepted（発火の3分の2はマージン不足。後続の負例の選び方は[0197](0197-hard-negatives.md)で測った）
 - Date: 2026-09-02
 - 関連ADR: [0158](0158-mirror-factorizer.md), [0185](0185-sibling-ranking-loss.md), [0192](0192-tanuki2024-teacher.md), [0194](0194-dead-dim-measurement.md)
 
@@ -33,6 +33,8 @@
 ```
 hmwr net rank training/checkpoints/<名前>/best.ckpt data/train/rank_tanuki_210M.rankpsv
 ```
+
+いまは `hmwr diag rank` である（[ADR-0208](0208-hmwr-resource-verbs.md)で移した。引数は同じ）。
 
 分けられるのは1と2で、3は分けられない（正解を知らないため）。それでも
 「順序が逆の比較がどれだけ残っているか」が分かれば、αを上げる案とδを

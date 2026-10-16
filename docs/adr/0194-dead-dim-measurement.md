@@ -1,6 +1,6 @@
 # 0194: 死んだ活性の次元を、測定用の局面集合を揃えてから数える
 
-- Status: proposed
+- Status: accepted（積の死は片側の死が3分の2。数字は局面集合で2.4倍動く。局面集合の固定は[0195](0195-reorder-on-late-positions.md)が行った）
 - Date: 2026-09-02
 - 関連ADR: [0136](0136-quiet-teacher-positions.md), [0168](0168-ft-dim-reorder.md), [0171](0171-ft-pairwise-product.md), [0185](0185-sibling-ranking-loss.md), [0192](0192-tanuki2024-teacher.md)
 
@@ -34,6 +34,8 @@ ROADMAPの注力2に「学習側は幅の3割が死んでいる問題の回収�
 ```
 hmwr net dead training/checkpoints/<名前>/best.ckpt data/train/valid_tanuki_q1.psv
 ```
+
+いまは `hmwr diag dead` である（[ADR-0208](0208-hmwr-resource-verbs.md)で移した。引数は同じ）。
 
 ## 測定（2026-09-02、`pairrank_7860M_q1`）
 

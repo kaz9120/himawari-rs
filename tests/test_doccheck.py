@@ -1,5 +1,9 @@
 """文書の整合の検査を検証する（ADR-0209）。"""
 
+import os
+import subprocess
+import time
+
 import pytest
 
 from hmwr import cli, doccheck, proc
@@ -71,6 +75,51 @@ def test_the_command_reports_findings_with_the_judge_code(repo, monkeypatch, cap
     (repo / "docs/adr/0002-b.md").write_text("- Status: accepted\n", encoding="utf-8")
     assert cli.main(["doc", "check"]) == proc.JUDGE
     assert "1件の食い違い" in capsys.readouterr().out
+
+
+def commit(repo, message, days_ago):
+    """日付を過去へずらしてコミットする。"""
+    stamp = f"{int(time.time()) - days_ago * 86400} +0900"
+    env = {**os.environ, "GIT_AUTHOR_DATE": stamp, "GIT_COMMITTER_DATE": stamp}
+    for argv in (["add", "-A"], ["commit", "-q", "-m", message]):
+        subprocess.run(
+            ["git", "-c", "user.name=t", "-c", "user.email=t@example.com", *argv],
+            cwd=repo, env=env, check=True,
+        )  # fmt: skip
+
+
+@pytest.fixture
+def history(repo):
+    """0002（proposed）を60日前に書いたリポジトリ。"""
+    subprocess.run(["git", "init", "-q"], cwd=repo, check=True)
+    commit(repo, "ADRを起こす", days_ago=60)
+    return repo
+
+
+def stale(repo):
+    return messages(doccheck.check_stale(repo, 30))
+
+
+def test_a_proposed_adr_untouched_for_long_is_stale(history):
+    found = stale(history)
+    assert len(found) == 1 and found[0].startswith("docs/adr/0002-b.md: proposedのまま60日")
+
+
+def test_an_edit_outside_the_status_does_not_reset_the_age(history):
+    """本文だけの一括修正（#608）で、停滞が見えなくならない。"""
+    adr = history / "docs/adr/0002-b.md"
+    adr.write_text(adr.read_text(encoding="utf-8") + "\n本文の言い回しを直す。\n", encoding="utf-8")
+    commit(history, "文言を直す", days_ago=1)
+    assert len(stale(history)) == 1
+
+
+def test_rewriting_the_status_line_resets_the_age(history):
+    """保留の理由を書き直すのは、判断を見直したことになる。"""
+    (history / "docs/adr/0002-b.md").write_text(
+        "# 0002: B\n\n- Status: proposed（保留。注力の外）\n", encoding="utf-8"
+    )
+    commit(history, "保留の理由を書く", days_ago=1)
+    assert stale(history) == []
 
 
 def test_this_repository_is_consistent():
