@@ -1,6 +1,6 @@
 # 0230: 探索時間に占める盤面操作の割合を測り、盤面の持ち方を決める材料にする
 
-- Status: proposed
+- Status: accepted
 - Date: 2026-10-16
 - 関連ADR: [0229](0229-roadmap-visible-focus.md), [0148](0148-effect-table.md), [0099](0099-nnue-dot-sdot.md), [0139](0139-mate1ply-in-search-retry.md)
 
@@ -142,12 +142,16 @@ hmwr profile report data/profile/adr0230-late-t1.json.gz <バイナリ> --catego
 
 ## Decision
 
-**未決とする。盤面の持ち方は、本ADRの測定をもとにオーナーと議論して決める**。
+**Bitboardを残し、利きを差分で併せ持つ**（2026-10-17オーナー判断）。
+配列へ全面的に寄せる案は採らない。
 
-測定からの提案は、Bitboardを残して利きを併せ持つ試作に進むことである。
-部品は[ADR-0148](0148-effect-table.md)の `EffectTable` にある。試作では
-ADR-0148の撤退時と違い、使う側（1手詰めとSEEの表引き）まで作ってから
-NPSを測る。
+根拠は上の測定である。盤面操作は探索時間の32〜43%で、最大は指し手生成だった。
+ここはBitboardが得意な処理である。利きを引く時間（14〜23%）と、利きの維持費
+（ADR-0148の−7.19%）は同じ桁にあり、使う側まで作れば元を取れる見込みがある。
+
+次の一手は試作である。[ADR-0148](0148-effect-table.md)の `EffectTable` を
+`do_move`・`undo_move` へ接続し、1手詰めとSEEを表引きへ書き換える。設計は
+Issue #743（技巧と山田将棋の読解）をふまえ、試作の別ADRで決める。
 
 ### 合格の条件
 
