@@ -65,8 +65,16 @@ jobs:
       - run: cargo test --workspace
 
   # perft既知値の照合（debugではignoreされる。ADR-0006/0018）
+  # LTOを外し、codegen-unitsを16にする（#806）。時間の大半はテストの実行
+  # ではなく、テストのバイナリごとにかかるLTOのリンクだった。守るものは
+  # releaseの意味論で、opt-level=3・debug_assertionsなし・overflowの
+  # 折り返しは変わらない。LTOでのビルドは下のavx2ジョブがengineで続ける。
+  # 配布物はPGOも掛かるので、どちらのジョブとも元から同一ではない
   test-release:
     runs-on: ubuntu-latest
+    env:
+      CARGO_PROFILE_RELEASE_LTO: false
+      CARGO_PROFILE_RELEASE_CODEGEN_UNITS: 16
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
@@ -137,7 +145,8 @@ jobs:
 
 
   # NNUE推論のAVX2経路を検証する（ADR-0099）。既定のx86-64ターゲットは
-  # SSE2までで、上のジョブではAVX2経路がコンパイルされない
+  # SSE2までで、上のジョブではAVX2経路がコンパイルされない。
+  # Cargo.tomlのLTOのままで回す。LTOでビルドしたengineのテストはここで残る
   avx2:
     runs-on: ubuntu-latest
     env:
