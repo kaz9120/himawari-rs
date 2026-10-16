@@ -1,0 +1,54 @@
+{
+  "wcsc": 31,
+  "year": 2021,
+  "dir": "Ayame",
+  "team": "渡辺 敬介",
+  "software": "あやめ",
+  "sources": [
+    "wcsc31/appeal/Ayame/ayame_wcsc31.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc31/appeal/Ayame/ayame_wcsc31.pdf"
+  ],
+  "summary": "昨年から大きな変更はなく、2020年7月にGitHubでソースを公開した。今年の変更は、2020年のfloodgate棋譜を加えた学習のやり直しと、入玉の強化の2点。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "不明",
+    "detail": "詳細の記述なし"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "futility pruningを使用"
+  },
+  "learning": "既存棋譜からの教師あり学習と強化学習を併用。2020年のfloodgate棋譜をfg2dbで抽出して追加",
+  "hardware": null,
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "入玉",
+      "title": "入玉宣言局面でfutility pruningを抑制",
+      "description": "宣言まであと1枚の局面で、敵陣へ駒を動かす手をfutility pruningの対象から外す。評価値が悪いと駒打ちが全て枝刈りされ、宣言が読めなかった問題の改善。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "入玉宣言できそうな局面では「敵陣に駒を移 動させる手」の枝刈りを抑制し"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "2020年のfloodgate棋譜で再学習",
+      "description": "2020年のfloodgate棋譜を追加して学習し直した。AobaZeroの自己対戦棋譜の追加も検討。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "2020 年の floodgate の棋譜を追加し、学習をやりなおしました。"
+    }
+  ],
+  "character": null,
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc31/team.html"
+}

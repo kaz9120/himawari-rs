@@ -1,0 +1,54 @@
+{
+  "wcsc": 29,
+  "year": 2019,
+  "dir": "Wizard_of_Odds",
+  "team": "David Wada",
+  "software": "オッズの魔法使い Season 2",
+  "sources": [
+    "wcsc29/appeal/Wizard_of_Odds/2019_appeal.txt"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc29/appeal/Wizard_of_Odds/2019_appeal.txt"
+  ],
+  "summary": "Randomized Parallel Best First Minimax Searchを採用し、枝刈りなしの最良優先探索をクラウドの分散で回すJava製ソフト。千日手ループを避けるためランダムを入れる。",
+  "base": {
+    "engine": "独自",
+    "eval_source": "Apery（手番加算を省略、パラメータのみ使用）",
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "Aperyの評価関数パラメータ（前はBonanza）"
+  },
+  "search": {
+    "family": "その他",
+    "detail": "Randomized Parallel Best First Minimax Search。JPPFで並列化"
+  },
+  "learning": null,
+  "hardware": "Amazon EC2 x5.9xlarge x4",
+  "language": [
+    "Java"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "探索",
+      "title": "ランダム化並列最良優先ミニマックス探索",
+      "description": "評価関数の精度が上がったため枝刈りなしの最良優先探索で十分と考え、人間の思考に近い「良さそうな手を進めて読む」探索を採用。最良優先だけでは千日手ループに陥るためランダムを仕込み、CPUを投入するほど効率が上がる並列向き。並列にはJPPFを使う。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "評価関数の精度がここまで上がれば枝刈りをせず、単純に 最良優先探索 で十分なのでは？…と思う次第です。"
+    },
+    {
+      "category": "並列・分散",
+      "title": "JPPFによる分散並列探索",
+      "description": "探索を並列化してクラウドの複数マシンで回す。「制限は予算のみ」。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "並列探索にはJPPFを使用しています。"
+    }
+  ],
+  "character": "他の人がやらない探索に重点を置き、評価関数は「外注」と割り切る。名前は「オッズの魔法使い」。",
+  "notes": "一覧のチーム名はDavid Wada（アメリカ）",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc29/team.html"
+}

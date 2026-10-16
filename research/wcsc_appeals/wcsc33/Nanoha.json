@@ -1,0 +1,54 @@
+{
+  "wcsc": 33,
+  "year": 2023,
+  "dir": "Nanoha",
+  "team": "川端 一之",
+  "software": "なのは",
+  "sources": [
+    "wcsc33/appeal/Nanoha/Nanoha_appeal2023.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc33/appeal/Nanoha/Nanoha_appeal2023.pdf"
+  ],
+  "summary": "Stockfishを将棋化した探索と、評価ベクトルを直前に学習する3駒関係の平凡な構成。やねうら王の110億教師データを使う予定で、間に合えばNNUE型。詰めルーチンは未搭載。",
+  "base": {
+    "engine": "独自",
+    "eval_source": "やねうら王の110億教師データを学習に使う予定",
+    "note": "なのはmini（Stockfishをベースに独自に将棋化）"
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "3駒関係。間に合えばNNUE型"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "Stockfishベースの探索。Bitboard未使用（盤面は配列）。歩・角・飛の不成も生成"
+  },
+  "learning": "やねうらお氏が流布した110億教師データを使う予定。評価ベクトルは直前に学習",
+  "hardware": "Ryzen 7 PRO 4750U（Lenovo Thinkpad T14）",
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "探索",
+      "title": "Stockfishベースの探索の将棋化",
+      "description": "Stockfishの探索を独自に将棋化した「なのはmini」を使う。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "なのはmini   Stockfishをベースに独自に将棋化しました。"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "出現数と勝率を考慮する定跡",
+      "description": "定跡部は実戦での出現数と勝率を考慮して手を選ぶ。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "定跡部は実戦での出現数および勝率を考慮して手を選択"
+    }
+  ],
+  "character": "魔法少女リリカルなのはの高町なのはが由来で、称号を冠する強さを願うが、「名前負け」と自認。開発者のプロフィール（好きなアニメ、将棋ウォーズ1級、囲碁初段）を紹介し、イラストはCOCOさん提供。目標は0次予選突破。Wi-Fiなので回線切れが心配。",
+  "notes": "「特に主張するような特徴はありません」と自ら記述。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc33/team.html"
+}

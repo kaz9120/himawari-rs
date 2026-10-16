@@ -1,0 +1,62 @@
+{
+  "wcsc": 29,
+  "year": 2019,
+  "dir": "Apery",
+  "team": "平岡 拓也",
+  "software": "Apery",
+  "sources": [
+    "wcsc29/appeal/Apery/apery_appeal_wcsc29.html"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc29/appeal/Apery/apery_appeal_wcsc29.html"
+  ],
+  "summary": "AperyをRustで作り直した版。KKPP評価関数を試して断念し、1000億局面超の教師で大バッチ学習した3駒関係の改良でWCSC28のAperyを上回った。「Rustが楽しいから」という動機が前面に出る。",
+  "base": {
+    "engine": "Apery",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "3駒関係（KPP/KKP）。KKPPは実験で断念"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": null
+  },
+  "learning": "C++版Aperyで学習。depth8で数千億局面を生成し、1バッチ3000万局面で学習",
+  "hardware": null,
+  "language": [
+    "Rust"
+  ],
+  "claimed_strength": "3駒関係の改良でWCSC28のAperyより強くなった。1回の学習でR50程度向上",
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "KKPPの試行と断念",
+      "description": "玉2つと玉以外の駒2つの関係を線形和にするKKPPを試した。64GB（3駒の81倍）となりキャッシュミスで速度は変わらず、数千億局面でもR20程度しか伸びず断念。",
+      "originality": "独自",
+      "evidence": "学習してもR20程度の伸び",
+      "quote": "KKPPは、速度をそれほど落とさずに、表現力を高める手法！"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "超大バッチでの3駒学習",
+      "description": "KKPP用に作った1000億局面以上を3駒関係の学習にすべて使い、バッチを約3000万局面に増やす。勝敗が正確になり誤った方向への学習が減ったと推測。",
+      "originality": "独自",
+      "evidence": "1回でR50程度伸びた",
+      "quote": "1バッチの局面数を3000万局面くらいに増やします"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "Rustでの作り直し",
+      "description": "C++実装をRustで書き直す。速度は変わらないが、安全性と開発の楽しさを動機とする。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "Rustで作らなければやる気が出ない！"
+    }
+  ],
+  "character": "開発動機は「Rust楽しい」。「みんな、選手権を楽しもうね！」と締める趣味人の姿勢。",
+  "notes": "NNUEに現実的に勝つのは難しいという所感も記載",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc29/team.html"
+}

@@ -1,0 +1,52 @@
+{
+  "wcsc": 24,
+  "year": 2014,
+  "dir": "elmo",
+  "team": "瀧澤 誠",
+  "software": "elmo",
+  "sources": [
+    "wcsc24/appeal/elmo/elmo_wcsc24_appeal.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc24/appeal/elmo/elmo_wcsc24_appeal.txt"
+  ],
+  "summary": "Bonanza 6.0の学習結果（param.h・fv.bin）だけを改良するソフト。学習の目的関数に、似た特徴の評価値を滑らかにするTotal Variation風の正則化項を足し、重要度の低いKPP成分の評価値を学習途中で下げるフィルタを適用する。",
+  "base": {
+    "engine": "Bonanza",
+    "eval_source": "fv.binを自前学習",
+    "note": "Bonanza v6.0のプログラムをほぼそのまま利用"
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "KKP、KPPに制約を加える"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "Bonanza 6.0"
+  },
+  "learning": "Bonanzaの目的関数に正則化項を追加。学習棋譜3.5万、探索深さ2",
+  "hardware": null,
+  "language": null,
+  "claimed_strength": "対オリジナル勝率4〜5割",
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "特徴の類似性に着目した正則化項",
+      "description": "相対位置関係が同一で近傍にある特徴の評価値が滑らかに変化するよう、Bonanzaの目的関数に正則化項（画像処理のTotal Variation）を足す。急峻な変化は許容し、不規則な変化にペナルティを課す。",
+      "originality": "独自",
+      "evidence": "対オリジナル勝率4〜5割",
+      "quote": "「相対的な位置関係が同一」かつ「近傍に存在する」特徴の評価値が"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "重要度の低いKPP成分の低減",
+      "description": "KPやKKPで十分評価できるKPPの値を学習途中で検出して低減するフィルタをかけ、重要度の高い特徴に値がつくよう誘導する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "重要度の低いと思われる特徴(※)を検出し、"
+    }
+  ],
+  "character": "学習部を中心に、人間的な事前知識を正則化で埋め込むという研究色の強い方針。",
+  "notes": null,
+  "team_list_url": "http://www2.computer-shogi.org/wcsc24/team.html"
+}

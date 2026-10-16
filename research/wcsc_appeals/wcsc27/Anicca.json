@@ -1,0 +1,46 @@
+{
+  "wcsc": 27,
+  "year": 2017,
+  "dir": "Anicca",
+  "team": "魚木 賢輔",
+  "software": "Anicca",
+  "sources": [
+    "wcsc27/appeal/Anicca/appeal.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc27/appeal/Anicca/appeal.txt"
+  ],
+  "summary": "ライブラリ不使用・非Bitboardの独自実装。KKP/KPPの評価関数をプロ棋士の棋譜約6万局でボナンザメソッド学習する予定だったが、学習が間に合わず本番は最後に生成された手を指すだけだった。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "駒割と3駒関係（KKP、KPP）を予定"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "αβ法と枝刈り（Futility、Null move等を理解できれば実装予定）"
+  },
+  "learning": "プロ棋士の棋譜約6万局をボナンザメソッドで学習（予定）",
+  "hardware": "Atom x5-Z8500 1.44GHz 4コア 2GB",
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "実装・高速化",
+      "title": "非Bitboard型の盤面構造",
+      "description": "Bitboardを使わない盤面構造を採る。Bitboardを理解していないためと自己申告している。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "時代の潮流に逆らう非Bitboard型の盤面構造（Bitboardを理解していないだけ）"
+    }
+  ],
+  "character": "「Bitboardを理解していないだけ」「手抜き」と自虐を交えつつ、お気に入りのアルバム曲名からソフト名を付けた。",
+  "notes": "5/7追記で、学習がうまくいかず本番は最後に生成された手しか指さなかったと報告。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc27/team.html"
+}

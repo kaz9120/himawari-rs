@@ -1,0 +1,87 @@
+{
+  "wcsc": 34,
+  "year": 2024,
+  "dir": "nshogi",
+  "team": "中屋敷 太一",
+  "software": "nshogi",
+  "sources": [
+    "wcsc34/appeal/nshogi/nshogi_appeal.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc34/appeal/nshogi/nshogi_appeal.pdf"
+  ],
+  "summary": "AlphaZero方式をベースに、指し手生成・探索・学習をフルスクラッチで実装する。MCTSの葉で別スレッドの5手詰み探索を併用し、各ノードに引き分け確率を持たせる。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "30ブロック256フィルタのResNet。勝率・指し手確率・引き分け確率・利きの4出力（利きは学習の補助タスク）"
+  },
+  "search": {
+    "family": "MCTS",
+    "detail": "pUCT。葉でDFSの5手詰み探索（別CPUスレッド）"
+  },
+  "learning": "542,709,386局面（重複あり）で学習。WCSC33までのNoviceのデータを含むためフルスクラッチ申請なし",
+  "hardware": "Xeon Platinum 8470 + H100×4",
+  "language": [
+    "C++",
+    "Python"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "探索",
+      "title": "各ノードに引き分け確率を保持",
+      "description": "AlphaZeroが勝率を持つのに加え、nshogiは各ノードの引き分け確率も保持する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "nshogiは各ノードの引き分け確率を保持しています"
+    },
+    {
+      "category": "詰み・終盤",
+      "title": "葉で別スレッドの5手詰み",
+      "description": "MCTSの葉の評価に、NNに加えてDFSの5手詰み探索を、探索スレッドと別のCPUスレッドで行う。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "Depth First Searchによる5⼿詰みの探索を⾏っています"
+    },
+    {
+      "category": "評価関数",
+      "title": "利きの補助タスク出力",
+      "description": "ネットの出力に現局面の利きを加え、学習時の補助タスクとしてのみ使う。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "現局⾯の利きは学習時の補助タスクとしてのみ⽤い"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "segregated free listのメモリ管理",
+      "description": "探索中のメモリ確保・解放の頻発に対し、segregated free listで管理してオーバーヘッドを減らす。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "segregated free listを⽤いたメモリ管理"
+    },
+    {
+      "category": "並列・分散",
+      "title": "NN評価中に別スレッドでメモリ確保",
+      "description": "リーフ展開時のメモリ確保を、NN評価中に別スレッドで行う。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "ニューラルネットワークによる局⾯の評価中に，別スレッドにより⾏います"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "勝率指標でfloodgate棋譜から定跡生成",
+      "description": "floodgate棋譜から、勝率などの指標をもとに定跡に登録する手を選ぶ。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "勝率などの指標をもとに、定跡として登録する⼿を選んでいます"
+    }
+  ],
+  "character": null,
+  "notes": "Novice（旧所属チーム）とソースコードを共有しない別実装として別エントリー。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc34/team.html"
+}

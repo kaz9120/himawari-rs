@@ -1,0 +1,86 @@
+{
+  "wcsc": 27,
+  "year": 2017,
+  "dir": "Nanoha",
+  "team": "川端 一之",
+  "software": "なのは",
+  "sources": [
+    "wcsc27/appeal/Nanoha/Nanoha_appeal2017.pdf"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc27/appeal/Nanoha/Nanoha_appeal2017.pdf"
+  ],
+  "summary": "アニメ「魔法少女リリカルなのは」由来の名前を持ち、強力な詰めルーチン「なのは詰め」を売りにするソフト。Stockfish系の探索、Aperyの評価ベクトルに、江戸時代の611手詰め「寿」を解く詰探索を搭載し、コアが増えたので詰め探索専用スレッドを設けた。",
+  "base": {
+    "engine": "独自",
+    "eval_source": "Apery（評価ベクトルを流用予定）",
+    "note": "探索はStockfishベース。詰め探索はなのは詰めとして公開"
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "Aperyの評価ベクトル（流用予定）"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "Stockfishベースに、df-pn詰めルーチンを搭載。AMD Ryzenに適した配列盤面"
+  },
+  "learning": null,
+  "hardware": "AMD Ryzen 7 1800X 32GB Windows10",
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": "floodgateレート3000程度（2017年3月見込み）。AMD CPUのシステムの中で第24・25回1位、第26回2位",
+  "ideas": [
+    {
+      "category": "詰み・終盤",
+      "title": "強力な詰めルーチン「なのは詰め」",
+      "description": "df-pnの強力な詰めルーチンを搭載し、江戸時代の名作611手詰め「寿」を解く。常に詰みを狙い、一発逆転する潜在力を持つ。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "なのは詰めは江戸時代の名作 611手詰めの「寿」を解く"
+    },
+    {
+      "category": "並列・分散",
+      "title": "詰め探索専用スレッドと最大詰み手数優先",
+      "description": "コア数の増加に合わせ、詰め探索用のスレッドを設定する。高速化ではなく詰め探索の最大手数の強化を最優先する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "コア数が増加したため、詰め探索用のスレッドを設定"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "Bitboard不使用でRyzenに適した配列",
+      "description": "盤情報は配列で持ち、Bitboardを使わない。AMD Ryzenに適したデータ構造という位置づけ。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "Bitboard未使用(盤情報は配列) AMD RYZENに適したデータ構造"
+    },
+    {
+      "category": "探索",
+      "title": "歩・角・飛の不成も生成",
+      "description": "指し手生成で歩、角、飛の不成も生成する。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "手生成では歩、角、飛の不成も生成"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "実戦の出現数と勝率による定跡選択",
+      "description": "定跡部は、実戦での出現数と勝率を考慮して手を選ぶ。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "定跡部は実戦での出現数および勝率を考慮して手を選択"
+    },
+    {
+      "category": "エンタメ・演出",
+      "title": "カットインやエフェクトなど派手な演出（構想）",
+      "description": "今後の課題として、終盤力や最長手数詰将棋「ミクロコスモス」1525手詰めを解くことに並べて、カットインやエフェクトなどの派手な演出を挙げている。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "カットインやエフェクトなど派手な演出！！"
+    }
+  ],
+  "character": "アニメ「魔法少女リリカルなのは」の高町なのはの強さを盤上で実現したいという名前の由来。「名前負けしている」と自嘲しつつ、詰め探索の強化を『なのはA's』のチャージタイムの掛け合い漫画風に説明するなど、作品ネタが全面にあるコンセプト型のアピール。",
+  "notes": "AMD CPU中心構成の参加ソフトの中での順位を主張している（トータルでは第24回17位、第25回11位、第26回12位）。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc27/team.html"
+}

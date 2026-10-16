@@ -1,0 +1,79 @@
+{
+  "wcsc": 36,
+  "year": 2026,
+  "dir": "Bakuretsu_Komahiroi_Taro",
+  "team": "Yoltsプロジェクト",
+  "software": "爆裂駒拾太郎",
+  "sources": [
+    "wcsc36/appeal/Bakuretsu_Komahiroi_Taro/20260331_appeal.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc36/appeal/Bakuretsu_Komahiroi_Taro/20260331_appeal.pdf"
+  ],
+  "summary": "Rust製のフロムスクラッチ将棋ソフト。詰将棋が意味ないことを証明するという開発方針で、詰みではなく入玉宣言による勝ちを目指す評価関数を自己対局で育てる。評価関数は2駒関係の4次元埋め込みを持つ独自の小型ネット。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": "指し手生成はyasaiライブラリ（一部改変）。思考に大きく影響する他者の創作物は使わないフロムスクラッチ方針"
+  },
+  "eval": {
+    "family": "その他",
+    "detail": "rPPe4-4型（第0世代）。2駒関係特徴3335次元から埋め込み4次元、畳み込み、Hardswish、全結合、Tanhの小型NN"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "反復深化、静止探索、Hash Move・Killer・MVV-LVA・History・Counter Move、Mate Distance・Null Move・LMR・Razoring・Futility"
+  },
+  "learning": "入玉でなければ勝てない版と通常版を対局させて棋譜を作り、入玉版側の局面と評価値だけで学習。過去世代の評価関数との対局も混ぜる自己対局ループ。初期値は小駒100点、大駒500点、敵陣に近いほど加点",
+  "hardware": "Core i9-13900K（一覧ページより）",
+  "language": [
+    "Rust",
+    "Python"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "入玉",
+      "title": "詰みより入玉宣言勝ちを狙う",
+      "description": "詰将棋が意味ないことを証明する、を開発方針に置き、詰みではなく基本的に入玉宣言による勝ちを目指す評価関数を作る。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "詰将棋が意味ないことを証明する"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "入玉でしか勝てない相手との自己対局",
+      "description": "探索部が相手を強制的に詰ますと負けになる版を作り、通常版と対局させる。入玉版側の局面と評価値のみで学習し、新しい評価関数にして繰り返す。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "入玉でなければ勝てないようにした爆裂駒拾太郎を作成する"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "弱い世代ほど対戦させる世代間対局",
+      "description": "過去の評価関数との対局も行い、対局割合は勝率の高い評価関数を小さく、低い評価関数を大きくする。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "対局割合は勝率の高い評価関数を小さく、勝率の低い評価関数を大きくする"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "Thompson Samplingの定跡",
+      "description": "学習データ生成の副産物として定跡を作る。各局面の勝ち・負け・引き分け数からThompson Samplingで指し手を選ぶが、訪問数10未満になる手は選ばない。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "Thompson Samplingアルゴリズムに基づいて指し手を選択する"
+    },
+    {
+      "category": "評価関数",
+      "title": "絶対・相対2駒関係の合成",
+      "description": "学習時は絶対2駒関係と相対2駒関係の入力特徴で学習し、完了後に相対PP特徴を絶対PP特徴に合成して推論時は差分計算のみにする。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "学習完了後に相対PP特徴を絶対PP特徴に合成するように変更"
+    }
+  ],
+  "character": "詰将棋の否定という挑発的な開発方針と、入玉狙いの棋風。",
+  "notes": "WCSC35からの変更点は、Counter Move、Razoring、Futility Pruning、評価関数のrPPe4-4化など。スライド中に「WCSC34」「WCSC35」の表記ゆれあり。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc36/team.html"
+}

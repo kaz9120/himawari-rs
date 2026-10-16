@@ -1,0 +1,54 @@
+{
+  "wcsc": 24,
+  "year": 2014,
+  "dir": "YSS",
+  "team": "山下 宏",
+  "software": "YSS",
+  "sources": [
+    "wcsc24/appeal/YSS/2014yss_appeal2.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc24/appeal/YSS/2014yss_appeal2.txt"
+  ],
+  "summary": "Amazon EC2の16台（256コア）でGPS風のMinMax木再構成クラスタ探索を行い、16台で約3.2倍の高速化。単体では電王戦版より約+40Elo強く、駒の価値を香車以上で約100点下げBonanza寄りにし、Stockfish流の探索で駒を捨てる手や無駄合いをあまり読まない。0.5手延長は長い持ち時間で効果が薄く外した。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": "Stockfishの探索を参考"
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "駒の価値を香車以上で約100点下げBonanza寄りに"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "Stockfish流。駒を捨てる手・無駄合いをあまり読まない。0.5手延長は不採用"
+  },
+  "learning": null,
+  "hardware": "Amazon EC2 16台、計256コア",
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": "電王戦版より約+40Elo。クラスタで16台3.2倍の高速化",
+  "ideas": [
+    {
+      "category": "並列・分散",
+      "title": "EC2クラスタでのMinMax木再構成",
+      "description": "Amazon EC2の16台（256コア）を借り、GPS風のMinMax木を再構成するクラスタ探索を行う。16台で約3.2倍の高速化。",
+      "originality": "再現・追従",
+      "evidence": "16台で3.2倍の高速化",
+      "quote": "GPS風のMinMax木を再構成するクラスタ探索"
+    },
+    {
+      "category": "探索",
+      "title": "0.5手延長を長時間では外す",
+      "description": "0.5手延長は1手1秒では効いたが、持ち時間が長いと効果が薄いので採用しなかった。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "0.5手延長は1手1秒では効果的だったのですが時間が長いといまいちだったので"
+    }
+  ],
+  "character": null,
+  "notes": null,
+  "team_list_url": "http://www2.computer-shogi.org/wcsc24/team.html"
+}

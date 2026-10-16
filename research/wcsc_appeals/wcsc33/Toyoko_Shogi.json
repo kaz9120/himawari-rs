@@ -1,0 +1,78 @@
+{
+  "wcsc": 33,
+  "year": 2023,
+  "dir": "Toyoko_Shogi",
+  "team": "東横コンピュータ将棋部",
+  "software": "東横将棋",
+  "sources": [
+    "wcsc33/appeal/Toyoko_Shogi/appeal0501.txt",
+    "wcsc33/appeal/Toyoko_Shogi/Toyoko_Shogi_appeal_detail.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc33/appeal/Toyoko_Shogi/appeal0501.txt",
+    "https://www.apply.computer-shogi.org/wcsc33/appeal/Toyoko_Shogi/Toyoko_Shogi_appeal_detail.pdf"
+  ],
+  "summary": "やねうら王の探索部と標準NNUE型評価関数、手作業の定跡で戦う構成。電竜戦さくらパイルール2023で優勝した評価関数を使い、相掛かり・角換わり定跡を新規に作った。大会は6位入賞と新人賞を受けた。",
+  "base": {
+    "engine": "やねうら王",
+    "eval_source": "電竜戦さくらパイルール2023優勝の標準NNUE評価関数（SQMZ_tempest_20230403ほか）",
+    "note": "探索部は従来のやねうら王をそのまま使用"
+  },
+  "eval": {
+    "family": "NNUE",
+    "detail": "標準NNUE（halfkp_256x2-32-32）。マメット・ブンブク形式（halfkp_1024x2-8-32）は使わない"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "やねうら王（最新Stockfishの追随を予定）"
+  },
+  "learning": "従来の強化学習手法に加え、標準NNUE評価関数の強化",
+  "hardware": "AMD Ryzen Threadripper 3990X（二次予選・決勝とも）",
+  "language": null,
+  "claimed_strength": "WCSC33で6位入賞・新人賞",
+  "ideas": [
+    {
+      "category": "定跡・序盤",
+      "title": "手作業の居飛車定跡（火葬砲定跡）",
+      "description": "floodgateなどの棋譜を元に手作業で居飛車定跡「火葬砲定跡」を作り、電竜戦さくらパイルール2023の棋譜も利用する。角換わりに主眼。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "floodgateその他で収集した棋譜を元に手作業で作成した居飛車定跡「火葬砲定跡」を使用しますぞ"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "ライセンスフリーの相掛かり・角換わり定跡",
+      "description": "s-book_blackがライセンスの関係でどこも使えなくなったため、相掛かり定跡をほぼゼロから作成。ライセンスが厳しいDL系ソフトの使用を避け、ライセンスフリーを原則とした。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "s-book_black フリーおよびライセンスフリーの原則を遵守しました。"
+    },
+    {
+      "category": "評価関数",
+      "title": "標準NNUE評価関数を限界まで強化",
+      "description": "標準NNUE型は限界とされるが、あえて標準NNUEを強化学習でしばき倒して強化する。大会後に強力な評価関数が公開され伸びしろを再認識した。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "独自の標準NNUE評価関数の強化"
+    },
+    {
+      "category": "開発手法・運用",
+      "title": "「役割論理」と「必然力」",
+      "description": "定跡と標準NNUEと高級スリッパ（Threadripper）＆クラウド重課金の火力で評価値ダメージレースを制する戦術を「役割論理」と名付け、強豪に先手を引くなどの運を「必然力」と呼んで冗談交じりに論じる。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "定跡と標準NNUE型評価関数と高級スリッパ＆クラウド重課金(笑)の圧倒的火力によって評価値ダメージレースを制する必勝の戦術"
+    },
+    {
+      "category": "棋風・人間らしさ",
+      "title": "戦型別の先手必勝・後手対策の見立て",
+      "description": "相掛かり・角換わり・横歩取り・一手損角換わりは先手必勝、振り飛車は先後とも必敗などと断じ、後手番でダメージを最小限にするのが重要としている。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "相掛かり、角換わり共に先手必勝が確定しましたなｗｗｗ後手番は対策が急務となっておりますぞｗｗｗ"
+    }
+  ],
+  "character": "2チャンネル風の「ｗｗｗ」「ですなｗｗｗ」「ですぞｗｗｗ」の口調で書かれた、ネタ全開のアピール文書。「必然力」「ヤーティ神への信仰」「高級スリッパ」などの造語や、開発者同士のやりとり（相入玉の宣言勝ち）まで書く。詳細版は一転して真面目な文体で、大会後の謝辞を載せる。",
+  "notes": "事前のネタ版（appeal0501）と、真面目な詳細版（大会後）の2本。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc33/team.html"
+}

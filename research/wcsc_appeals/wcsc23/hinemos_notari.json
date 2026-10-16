@@ -1,0 +1,37 @@
+{
+  "wcsc": 23,
+  "year": 2013,
+  "dir": "hinemos_notari",
+  "team": "福田 太志",
+  "software": "ひねもすのたり",
+  "sources": [
+    "wcsc23/appeal/hinemos_notari/appeal.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc23/appeal/hinemos_notari/appeal.txt"
+  ],
+  "summary": "配列の駒データと利きテーブルを持つ、PVS全幅探索のソフト。枝刈りはBonanzaとStockfishを参考にし、評価関数はBonanza 6.0のfv.binを使う。独自の評価関数の作成は断念した。",
+  "base": {
+    "engine": "Bonanza",
+    "eval_source": "Bonanza 6.0のfv.bin",
+    "note": "Bonanzaを少し改造"
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "Bonanza 6.0のfv.bin"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "PVS全幅探索、Bonanza・Stockfish流の枝刈り"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": [
+    "C/C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [],
+  "character": null,
+  "notes": "詰将棋機能なし。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc23/team.html"
+}

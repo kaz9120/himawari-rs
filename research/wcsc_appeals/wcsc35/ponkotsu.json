@@ -1,0 +1,71 @@
+{
+  "wcsc": 35,
+  "year": 2025,
+  "dir": "ponkotsu",
+  "team": "ponkotsu",
+  "software": "ponkotsu",
+  "sources": [
+    "wcsc35/appeal/ponkotsu/WCSC35appeal.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc35/appeal/ponkotsu/WCSC35appeal.pdf"
+  ],
+  "summary": "深層学習系の将棋AI。2024年版でDenseNetのスキップ接続を要素和にして改良し、学習率スケジューラをReduceLROnPlateauにした。2025年はResNet+事前層正規化(LayerNorm)へ変更し、事前学習データにHao・水匠の入玉棋譜・AobaZeroなどを加える。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "2025年はResNet+事前層正規化。2024年は15ブロックの改良DenseNet"
+  },
+  "search": {
+    "family": "MCTS",
+    "detail": "詳細の記載なし"
+  },
+  "learning": "事前学習: shogi_hao_depth9、水匠5の入玉棋譜、AobaZero棋譜、tanuki-自己対局。学習: floodgate 2019〜2025年3月のレート3800以上、水匠の1手1000万ノード棋譜、GCT棋譜",
+  "hardware": "EPYC (Runpod/EPYC7543) + RTX4090 ×8",
+  "language": [
+    "C++",
+    "Python"
+  ],
+  "claimed_strength": "テストデータ（floodgate 2017〜2018年）でPolicy 51.2%、Value 77.0%（2024年版）",
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "DenseNetの要素和化",
+      "description": "層が深くなるとチャンネル数が増えるDenseNetの課題に対し、スキップ接続をチャンネル結合でなく要素和にして、オーバーフロー対策に平均を取った。",
+      "originality": "独自",
+      "evidence": "Policy精度45.5→51.2%、Value精度74.2→77.0%（2023年版比、15ブロックと10ブロックの差を含む）",
+      "quote": "スキップ接続をチャンネル方向に結合するのではなく要素和を取るようにした"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "ReduceLROnPlateauによる学習率の自動調整",
+      "description": "手動でスケジューラを設定する手間をやめ、lossがpatience epoch改善しなければ学習率を下げるReduceLROnPlateauに変更した。",
+      "originality": "既存手法の応用",
+      "evidence": "epoch数365→270",
+      "quote": "学習率スケジューラをReduceLROnPlateauに変更"
+    },
+    {
+      "category": "評価関数",
+      "title": "事前層正規化つきResNet",
+      "description": "2025年版はDenseNetをResNetに戻し、各ブロックの前にLayer Normalizationを入れた事前層正規化を行う。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "ResNetにLayer Normalizationを追加"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "入玉棋譜を事前学習に混ぜる",
+      "description": "水匠5の探索深さ9の自己対局のうち、入玉将棋になった対局だけを集めたデータを事前学習に加える。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "入玉将棋になった対局の棋譜を集めたデータ"
+    }
+  ],
+  "character": null,
+  "notes": "第34回(2024年)の手法の説明が前半、2025年の改良が後半。AobaZeroの感想では「後手番は全勝、先手番は全敗」という変わった結果だった。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc35/team.html"
+}

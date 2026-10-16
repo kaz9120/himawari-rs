@@ -1,0 +1,68 @@
+{
+  "wcsc": 36,
+  "year": 2026,
+  "dir": "Gravitational_field_Calculation_method",
+  "team": "北川博隆、黒木光寿（重力団）",
+  "software": "重力場計算法",
+  "sources": [
+    "wcsc36/appeal/Gravitational_field_Calculation_method/gravity.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc36/appeal/Gravitational_field_Calculation_method/gravity.pdf"
+  ],
+  "summary": "盤面評価を重力場理論（簡易版）で計算する、棋譜・定跡・深い読みを一切使わない思想的なプログラム。主要メンバーの時間が取れず、今年はAIにコードを書かせた新バージョンに移行している。2021年から毎年同じ方針を書いており、過去回の文書も1枚に合本されている。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": "AIにコードを書かせて新バージョンへ移行。アルゴリズムは人間の独自のもの"
+  },
+  "eval": {
+    "family": "その他",
+    "detail": "重力場理論（簡易版）による盤面評価。異なる単位の設定も重力場計測で比較し、上昇値の合計で評価する"
+  },
+  "search": {
+    "family": "その他",
+    "detail": "通常の深い読みを行わない（2021年文書の記載）"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": [],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "重力場理論による盤面評価",
+      "description": "将棋のルールと評価設定だけを入力し、重力場理論（簡易版）で盤面を計算する。個々の設定の解析と、異なる単位の比較という従来の難所を重力場で克服するという主張。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "盤面判断は重力場理論（簡易版）を使用して計算を行う。"
+    },
+    {
+      "category": "探索",
+      "title": "深い読みをしない設計",
+      "description": "将棋の本質は与えられた盤面に対する最小手数範囲を計算できれば足り、根拠のない深い読みは重複作業だとして、意識的に深く読まない。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "通常の「深い読み」を行わない。"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "棋譜・定跡・解析データを使わない",
+      "description": "ルールに棋譜や定跡の使用を義務付ける項目はなく、入力は無駄だとして一切使わない。人間の知恵・歴史を皆無にすることが独自性だとしている。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "「定跡・棋譜」を一切利用しない。解析データも利用しない。"
+    },
+    {
+      "category": "開発手法・運用",
+      "title": "AIをコード記述担当にする開発",
+      "description": "人手が足りず、コードを書けない者が独自アルゴリズムを考えてAIに実装させる。AIは巷のアルゴリズムは出せても独自アルゴリズムの更新・追加はできないという役割分担。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "ただ、コードを書くだけの担当となります。"
+    }
+  ],
+  "character": "神の一手を特定できる究極のアルゴリズム、将棋を鏡に映しただけでも世界初ならイノベーション、といった壮大な主張が個性的。プロモーション動画（ニコニコ動画・YouTube）で哲学と理論物理学を語る。毎年「間に合いそうにない」と書く。",
+  "notes": "文書はWCSC31〜36の過去提出分を1つにまとめたもの。具体的な実装の記述はなく、思想・方針が中心。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc36/team.html"
+}

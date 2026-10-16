@@ -1,0 +1,62 @@
+{
+  "wcsc": 36,
+  "year": 2026,
+  "dir": "The・GreatUshizima",
+  "team": "有賀宏樹、緑川亘、若井博紀",
+  "software": "ザ・グレートウシジマ",
+  "sources": [
+    "wcsc36/appeal/The・GreatUshizima/appeal.txt"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc36/appeal/The%E3%83%BBGreatUshizima/appeal.txt"
+  ],
+  "summary": "python-dlshogi2をベースに、探索を『ゲームで学ぶ探索アルゴリズム実践入門』のThunder探索の考え方で改良したMCTS系のAI。序盤は評価値に依存せず、自分の意図した局面に誘導するために手動で定跡を追加する、「人間的な発想」とAIの合理性の組み合わせが売り。",
+  "base": {
+    "engine": "dlshogi",
+    "eval_source": null,
+    "note": "『強い将棋ソフトの創り方』のpython-dlshogi2がベース"
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "ニューラルネットワークのvalue出力で局面を評価（ランダムプレイアウトは使わない）"
+  },
+  "search": {
+    "family": "MCTS",
+    "detail": "Thunder探索の考え方を参考に、一部の探索処理を改良"
+  },
+  "learning": null,
+  "hardware": "Ryzen 9 7945HX + RTX4060（一覧ページ）",
+  "language": [
+    "Python"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "定跡・序盤",
+      "title": "意図した構想を優先する手動定跡",
+      "description": "序盤は評価値に依存せず、自分の意図した局面に誘導するために手動で定跡を追加する。棋理的な最善手でなくても、自分が意図した構想を優先して指す。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "棋理的な最善手ではなくとも、自分が意図した構想を優先して指すよう設計しています。"
+    },
+    {
+      "category": "棋風・人間らしさ",
+      "title": "人間的な発想とAIの合理性の組み合わせ",
+      "description": "序盤は独自の定跡で構想を主導し、中盤以降はNNとMCTSで評価する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "「人間的な発想」と「AIの合理性」を組み合わせた将棋を実現しています。"
+    },
+    {
+      "category": "探索",
+      "title": "Thunder探索の考え方を取り入れたMCTS",
+      "description": "『ゲームで学ぶ探索アルゴリズム実践入門』のThunder探索を参考に探索処理を改良し、NNのvalue出力を使う評価をMCTSに組み込んで有望な手に探索を集中させる。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "有望な手に探索を集中させることが可能になっています。"
+    }
+  ],
+  "character": "チーム名・ソフト名は「ザ・グレートウシジマ」。序盤は自分の構想を貫く人間らしさが特徴。",
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc36/team.html"
+}

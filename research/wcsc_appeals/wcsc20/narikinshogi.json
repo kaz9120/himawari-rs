@@ -1,0 +1,35 @@
+{
+  "wcsc": 20,
+  "year": 2010,
+  "dir": "narikinshogi",
+  "team": "村山正樹",
+  "software": "なり金将棋",
+  "sources": [
+    "wcsc20/appeal/narikinshogi/narikinshogi.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc20/appeal/narikinshogi/narikinshogi.txt"
+  ],
+  "summary": "αβ・null move・futilityのみの標準的な構成。評価関数が弱く強くならないのが良いところと自称し、PCが用意できればαβを使わない方式で参加したいと書く。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "手作り",
+    "detail": null
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "αβ法、null move、futility"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [],
+  "character": "「評価関数がボケなので一向に強くならないところが良いところです」と自虐ネタで書く。",
+  "notes": "αβを使わない方式への挑戦に言及するが具体策はなし。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc20/team.html"
+}

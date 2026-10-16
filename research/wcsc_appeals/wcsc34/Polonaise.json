@@ -1,0 +1,81 @@
+{
+  "wcsc": 34,
+  "year": 2024,
+  "dir": "Polonaise",
+  "team": "谷合 廣紀",
+  "software": "Polonaise",
+  "sources": [
+    "wcsc34/appeal/Polonaise/WCSC34_taniai0505.pdf",
+    "wcsc34/appeal/Polonaise/WCSC34-Polonaise_detail.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc34/appeal/Polonaise/WCSC34_taniai0505.pdf",
+    "https://www.apply.computer-shogi.org/wcsc34/appeal/Polonaise/WCSC34-Polonaise_detail.pdf"
+  ],
+  "summary": "盤面を画像でなく95字の文字列に変換し、BERT-large級のTransformerで評価する自然言語処理型の将棋AI。CNNは将棋の駒配置の意味を捉えにくいという問題意識から始まった。ふかうら王のアルゴリズムをベースにした探索と、局面が詰みかを出力して詰み探索に回すPVMネットワークを組む。",
+  "base": {
+    "engine": "やねうら王（ふかうら王のアルゴリズムをベースに実装）",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "BERT-large級のTransformer。95文字の文字列を95x256の埋め込みに変換。policy・value・mate_probの3出力"
+  },
+  "search": {
+    "family": "MCTS",
+    "detail": "ふかうら王のアルゴリズム＋df-pn詰み探索キュー"
+  },
+  "learning": "AobaZero公開データとSuisho-10Mn公開データによる教師あり学習のみ。Google TPU v3-8で学習",
+  "hardware": "CPU AMD EPYC 7642×4 + RTX4090×14（vast.ai）",
+  "language": [
+    "C++",
+    "Python"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "盤面を文字列にして自然言語処理モデルで評価",
+      "description": "盤面を1一から順に、81マスの駒と先後の持ち駒（7種x2）の95文字に並べ、各文字を数値IDにして埋め込み層でベクトル化する。画像的エンコードのdlshogiとの違い。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "盤面を１一から順に見ていき、１一、１二・・・９九の駒と先後の持ち駒（7 種 x2）を並べた 95 字の文字列にエンコード"
+    },
+    {
+      "category": "評価関数",
+      "title": "BERT-largeによる評価関数",
+      "description": "CNNの位置不変性は囲碁では有効だが、囲いが特定配置でのみ意味を持つ将棋では必ずしも有効でないとして、Transformer（BERT-large程度）を使う。飛び駒の利きは3x3畳み込みでは3層必要という点も根拠。第32回のgMLPから大型化した。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "将棋において CNN は必ずしも最適なモデルとは言えません"
+    },
+    {
+      "category": "評価関数",
+      "title": "policy出力から非合法手を除く",
+      "description": "dlshogiのpolicy表現2187クラスのうち、決して現れない非合法の組合せ691通り（約32%）を除いた1496クラスの分類にすると学習がうまくいく。",
+      "originality": "独自",
+      "evidence": "実験で2187クラスより学習がうまくいったと報告",
+      "quote": "非合法手 691 通りを除いた 1496 のクラス分類問題として解いた方が、policy の学習がうまくいく"
+    },
+    {
+      "category": "詰み・終盤",
+      "title": "PVMネットワークによる詰み探索の起動",
+      "description": "モデルがpolicy・valueに加え、局面が詰むかを示すmate_probを出力する。閾値（大会では0.5）を超えたら詰み探索キューに入れ、待機中の複数のdf-pnソルバーが探索して詰みなら勝ちに更新する。",
+      "originality": "独自",
+      "evidence": "計測データはなし（実装直後）",
+      "quote": "モデルの出力として policy, value に加えて mate_prob すなわち入力局面が詰むかどうかを出力しています"
+    },
+    {
+      "category": "開発手法・運用",
+      "title": "TPUでの学習とYouTube企画から生まれたBERT-MCTS",
+      "description": "最初の実装は、YouTubeチャンネル『予備校のノリで学ぶ「大学の数学・物理」』出演時に作ったBERT-MCTS。誤りと学習不足で強くなかったが可能性を感じて継続した。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "動画に出演した際に作成した BERT-MCTS"
+    }
+  ],
+  "character": "プロ棋士自作の将棋AIと戦う動画企画への出演を機に作ったBERT-MCTSが原点。「CNNは将棋に最適ではない」という批判的な着眼から、自然言語処理的なアプローチで挑む。",
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc34/team.html"
+}

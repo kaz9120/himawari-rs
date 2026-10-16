@@ -1,0 +1,70 @@
+{
+  "wcsc": 27,
+  "year": 2017,
+  "dir": "Shibaura_Shougi_Softmax",
+  "team": "芝浦工業大学II（五十嵐治一、原悠一）",
+  "software": "芝浦将棋Softmax",
+  "sources": [
+    "wcsc27/appeal/Shibaura_Shougi_Softmax/appeal.pdf"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc27/appeal/Shibaura_Shougi_Softmax/appeal.pdf"
+  ],
+  "summary": "芝浦将棋Jr.から分離した初参加チーム。αβ（min-max）探索をやめ、ボルツマン分布で子ノードを確率的に選ぶSoftmax探索（Monte Carlo Softmax Search）を使う。プレイアウトを行わないモンテカルロ木探索の一種で、実装が単純で並列化の効果も高い。",
+  "base": {
+    "engine": "独自",
+    "eval_source": "Bonanza Ver.6.0.0（特徴量をそのまま使用）",
+    "note": "合法手生成は選手権公式ライブラリの芝浦将棋Jr.合法手生成プログラム"
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "Bonanza 6.0の特徴量。末端で静止探索（αβ）を行う"
+  },
+  "search": {
+    "family": "MCTS",
+    "detail": "Randomized/Monte Carlo Softmax Search。ボルツマン分布で子ノードを確率的に選び、1段展開して評価値を期待値でバックアップ。最後はgreedy選択"
+  },
+  "learning": null,
+  "hardware": "Xeon E5-2609 v3 2基 12コア 128GB Windows7",
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": "芝浦将棋Jr.（2015年11月版、電王トーナメント16位）に対し、1手10秒・300局で、1スレッド32.8%、6スレッド63.3%（188勝109敗3分）。6スレッドで平均最大探索深さ15.5手",
+  "ideas": [
+    {
+      "category": "探索",
+      "title": "ボルツマン分布のSoftmax探索",
+      "description": "指し手の選択確率を、子ノード評価値のボルツマン分布（温度T）で決め、確率に従ってルートから末端まで確率的にたどる。末端で1段展開し、評価値を子の選択確率で重み付けした期待値としてルートへバックアップする。Min-max探索をほぼ100%採用する将棋界では珍しい方式。",
+      "originality": "独自",
+      "evidence": "6スレッドで旧芝浦将棋Jr.に63.3%",
+      "quote": "ノードの選択方式としてノード評価値の min-max 演算ではなく，確率分布に基づく選択（Softmax 探索）を使用しています。"
+    },
+    {
+      "category": "並列・分散",
+      "title": "サンプリング型探索の高い並列化効果",
+      "description": "選択確率に基づく確率的サンプリングは、決定論的な最良優先探索（選択確率の積を実現確率とする方式）より棋力が高く、並列処理の効果も高かった。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "選択確率に基づく確率的なサンプリング方式の方が棋力が上で，並列処理の効果も高かった"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "探索木の全leafの特徴量を更新する学習（構想）",
+      "description": "Softmax探索で生成した探索木のすべてのleafに出現する特徴量の重みを、モンテカルロ・サンプリングとバックアップ操作だけで学習できる（未発表）。Bonanzaメソッドでは各合法手の最善応手手順の末端局面の特徴だけが更新されるため、より少ない対局数で学習できると期待する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "探索木の全 leaf に出現する特徴量の重みを同様なモンテカルロ・サンプリングとバックアップ操作だけで学習することが可能です"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "温度の適応制御など深さ制御（課題）",
+      "description": "12スレッドでは棋力が大きく変わらず、簡単な詰みを逃す、駒のやり取りを伴わないときに罠にはまる欠点がある。最適な温度パラメータの探索や、探索中の適応的な温度調整が必要と考える。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "探索中に適応的に温度パラメータを調整するなどの何らかの深さ制御が必要と考えています。"
+    }
+  ],
+  "character": "「新しい探索方式と学習方式を研究する上では面白さが多く、開発者自身、今後の展開を楽しみにしている」と書く研究志向のチーム。最終的にはプロ棋譜なしの自己対局で新しい定跡や戦法を創出し、棋士や将棋ファンを楽しませることを目標とする。",
+  "notes": "棋力の表1は画像だが原本PDFを読んで数値を確認した。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc27/team.html"
+}

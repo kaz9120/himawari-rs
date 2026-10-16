@@ -1,0 +1,54 @@
+{
+  "wcsc": 36,
+  "year": 2026,
+  "dir": "GABEL",
+  "team": "成岡 健一",
+  "software": "GABEL",
+  "sources": [
+    "wcsc36/appeal/GABEL/WCSC36_appeal_GABEL_r2.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc36/appeal/GABEL/WCSC36_appeal_GABEL_r2.pdf"
+  ],
+  "summary": "既存のNNUE系エンジンとDL系エンジンを合議させる初出場のプログラム。NNUEの最善手Aの末端局面をDLで再評価し、DL側の最善手と比べて高評価側を採る、独自の両取り（フォーク）合議が売り。2025年末に『強い将棋ソフトの創りかた』を読んで始めた週末中心の超短期開発。",
+  "base": {
+    "engine": "やねうら王+dlshogi",
+    "eval_source": null,
+    "note": "やねうら王・ふかうら王・dlshogiを利用した合議モジュールが開発対象"
+  },
+  "eval": {
+    "family": "DL+NNUE",
+    "detail": "NNUE系は速くて不正確、DL系は遅くて正確として使い分ける"
+  },
+  "search": {
+    "family": "その他",
+    "detail": "NNUE系とDL系の合議。NNUEの深い探索の末端局面をDLで再評価"
+  },
+  "learning": null,
+  "hardware": "リモートのEC2 c7a.16xlarge + g6.8xlarge（予定）。会場にはMacBook Airを置いてSSHで接続",
+  "language": [
+    "Python"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "探索",
+      "title": "NNUE最善手の末端局面をDLで再評価する合議",
+      "description": "NNUE最善手AとDL最善手Bが一致すればその手を採る。異なれば、Aの探索末端局面をDLで再評価し、DLでは届かない深い局面を正確に評価して高評価側を採用する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "Aのleaf局面をDLエンジンで再評価し、高評価側を採用"
+    },
+    {
+      "category": "ハードウェア",
+      "title": "会場PCからクラウドへSSH接続",
+      "description": "会場にはMacBook Airのみ持ち込み、EC2の2台をSSHで操作して対局サーバとつなぐ構成。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "EC2 ×2 ← (SSH) → Mac ←→ 対局サーバ"
+    }
+  ],
+  "character": "名前はドイツ語でフォーク。将棋・チェスの両取りの意味で、NNUEとDLの両取り、将棋とAIの両取りも目指す。将棋ウォーズ三段、社団戦参加の将棋好きが見切り発車でWCSC初出場を決意した。",
+  "notes": "テキスト化が図中心でやや断片的。上記は図とスライドの内容から読み取った。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc36/team.html"
+}

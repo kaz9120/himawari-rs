@@ -1,0 +1,44 @@
+{
+  "wcsc": 22,
+  "year": 2012,
+  "dir": "Kiri",
+  "team": "佐藤佳州",
+  "software": "棋理",
+  "sources": [
+    "wcsc22/appeal/Kiri/memo2012.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc22/appeal/Kiri/memo2012.txt"
+  ],
+  "summary": "評価関数は3駒の位置関係＋利きが関連する駒の位置関係、探索は実現確率探索、学習はBonanzaの方法に対局結果に基づく学習を加える。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "3駒の位置関係＋利きが関連する駒の位置関係"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "実現確率探索"
+  },
+  "learning": "Bonanzaの方法＋対局結果に基づく学習",
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "Bonanzaの方法に対局結果に基づく学習を追加",
+      "description": "棋譜によるBonanzaの方法に加え、対局結果に基づく学習を行う。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "Bonanzaの方法＋対局結果に基づく学習を行なっています"
+    }
+  ],
+  "character": null,
+  "notes": null,
+  "team_list_url": "http://www2.computer-shogi.org/wcsc22/team.html"
+}

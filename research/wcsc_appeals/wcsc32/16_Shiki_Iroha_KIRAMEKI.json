@@ -1,0 +1,71 @@
+{
+  "wcsc": 32,
+  "year": 2022,
+  "dir": "16_Shiki_Iroha_KIRAMEKI",
+  "team": "日本工学院専門学校AIシステム科（末吉 竜介ほか）",
+  "software": "十六式いろは煌（きらめき）",
+  "sources": [
+    "wcsc32/appeal/16_Shiki_Iroha_KIRAMEKI/16-168-kirameki_wcsc32_20220506.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc32/appeal/16_Shiki_Iroha_KIRAMEKI/16-168-kirameki_wcsc32_20220506.pdf"
+  ],
+  "summary": "dlshogi（自前Wide ResNet）と水匠5（やねうら王v7.00）をAyaneで呼び出し、手数に応じてエンジンを切り替える楽観合議ソフト。序盤10〜20手は水匠5で定跡、80〜100手までは両者の楽観合議、以降は水匠5の寄せと詰み能力に任せる。専門学校の学生14人と講師のチームの初参加。",
+  "base": {
+    "engine": "やねうら王+dlshogi",
+    "eval_source": "水匠5",
+    "note": null
+  },
+  "eval": {
+    "family": "DL+NNUE",
+    "detail": "dlshogiは自前学習のWide ResNet（5ブロック、Swish、RAdam）。水匠5はそのまま使用"
+  },
+  "search": {
+    "family": "αβ+MCTS",
+    "detail": "dlshogiと水匠5の楽観合議。Ayaneで両エンジンを制御"
+  },
+  "learning": "dlshogiは書籍『強い将棋ソフトの創りかた』の教師データで144エポック（2周）、学習率0.004から102エポック目で0.0004固定",
+  "hardware": "Core i7-10750H + GTX 1660 Ti（クラスタ化予定）",
+  "language": [
+    "Python",
+    "C++"
+  ],
+  "claimed_strength": "dlshogiモデルは書籍モデルに対し勝率30〜40%",
+  "ideas": [
+    {
+      "category": "探索",
+      "title": "手数でエンジンを切り替える楽観合議",
+      "description": "初手から10手（または20手）は水匠5（定跡目的）、80手（または100手）まではdlshogiと水匠5の楽観合議、以降は水匠5。合議では評価値の高い読みを選び、詰みを読んだ側を優先し、両方詰みなら短手数を選ぶ。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "dlshogiと水匠5の両エンジンによる楽観合議がこのソフトの最大の特徴。"
+    },
+    {
+      "category": "時間管理",
+      "title": "手数別の思考時間と先読み時の固定時間",
+      "description": "初手から10手は2秒、60手（または40手）まで5〜8秒、以降は両エンジンの返答が遅れた分だけ使う。先読みが当たった場合は序盤1秒、以降5秒とし、5秒以上で時間切れ負けにならないようにする。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "序盤や深読み無しで指せる手はすぐに指して、熟慮が必要な場面に時間を多く割けるようにする。"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "相手に応じた定跡の切り替え",
+      "description": "1次予選は振り飛車で戦いたい相手にはハニワ定跡、それ以外は100テラショック定跡を使う。2次予選は先手番でRy-bookも使う。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "振り飛車で戦いたい対戦相手の場合はハニワ定跡"
+    },
+    {
+      "category": "探索",
+      "title": "評価値スケール合わせ（Eval_Coef 285）",
+      "description": "dlshogiの評価値を水匠5に合わせるためEval_Coefを285とし、DNN_Batch_Sizeは最もnpsが出る32にした。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "Eval_Coef： 285 →水匠5と評価値を合わせるため。"
+    }
+  ],
+  "character": "ソフト名は、講師の「十六式いろは」と学生が考えた「煌（きらめき）」を組み合わせて、考え始めてから1か月かけて決めた。14人の学生が一人ずつ意気込みをコメントしている。",
+  "notes": "4/7版の予定に5/6に実装内容を追記した版。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc32/team.html"
+}

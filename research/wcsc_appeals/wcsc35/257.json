@@ -1,0 +1,62 @@
+{
+  "wcsc": 35,
+  "year": 2025,
+  "dir": "257",
+  "team": "名前はまだ無い",
+  "software": "257",
+  "sources": [
+    "wcsc35/appeal/257/257appeal.docx"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc35/appeal/257/257appeal.docx"
+  ],
+  "summary": "学生中心のチームがdlshogiを改造した初出場のDL系ソフト。入力特徴量に利き・ヒモ・囲いの状態を加える点と、活性化関数・誤差関数の比較実験が主な取り組み。内部定跡を持たず、力戦調の将棋を指す。",
+  "base": {
+    "engine": "dlshogi",
+    "eval_source": null,
+    "note": "参考文献は『強い将棋ソフトの作り方』"
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "dlshogiのネットを改造。入力特徴量を拡張"
+  },
+  "search": {
+    "family": "MCTS",
+    "detail": "dlshogiのまま（明記なし）"
+  },
+  "learning": "棋譜を用いた教師あり学習と自己対局学習を繰り返す方針",
+  "hardware": "Intel Iris Xe Graphics併用予定",
+  "language": [
+    "Python"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "利き・ヒモ・囲いの入力特徴量",
+      "description": "dlshogiの入力（駒の種類・配置・手駒）に加えて、駒の利き、ヒモ（駒の紐付き）、囲いの状態を特徴量として与えて実験した。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "駒の利きやヒモ、囲いの状態などの特徴量を与えて実験を行いました"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "活性化関数・誤差関数の比較",
+      "description": "シグモイド、Tanh、ReLU、ELUなどの活性化関数と、交差エントロピー・平均二乗誤差などの誤差関数を比較し、将棋AIに適した組み合わせを探る。来年度に向けたデータ収集の位置づけ。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "将棋AIに適した活性化関数、誤差関数を検討します"
+    },
+    {
+      "category": "棋風・人間らしさ",
+      "title": "内部定跡なしの力戦調",
+      "description": "内部定跡を一切開発せず、初手から定跡にとらわれない力戦を指す。角換わり・相掛かりの定跡化が進んだ大会で、力戦の棋譜を楽しんでもらう狙い。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "定跡にとらわれない力戦的な将棋を指します"
+    }
+  ],
+  "character": "「WCSC35で初出場する強豪（になる予定）」と名乗る学生チーム。名前の由来は2^8+1で、256bitを超える数字を目指すという命名。",
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc35/team.html"
+}

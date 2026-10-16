@@ -1,0 +1,56 @@
+{
+  "wcsc": 27,
+  "year": 2017,
+  "dir": "Novice",
+  "team": "熊谷 啓孝",
+  "software": "Novice",
+  "sources": [
+    "wcsc27/appeal/Novice/PR_doc.pdf"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc27/appeal/Novice/PR_doc.pdf"
+  ],
+  "summary": "大学の研究テーマにする予定の開発者の作り直し3回のソフト。Ponanza Quartetteやチェスソフト（Fruit、toga、senpai）を参考にし、あえてStockfishを参考にしない探索部を持つ。Xeon Phi（61コア/244スレッド）での探索が展望。",
+  "base": {
+    "engine": "独自",
+    "eval_source": "Apery（評価関数のみ）",
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "Aperyの評価関数を使用"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "Lazy SMP。Ponanza Quartette・Fruit・toga・senpaiを参考。Stockfishは参考にしない"
+  },
+  "learning": null,
+  "hardware": "Xeon E5-2660 v2 4基 40コア 32GB（展望として大学のXeon Phi 61コア/244スレッド）",
+  "language": [
+    "C",
+    "C++",
+    "C#"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "探索",
+      "title": "Stockfishを参考にしない探索部",
+      "description": "探索部では主流のStockfishを参考にせず、Ponanza Quartetteのソースとチェスソフトのfruit、toga、senpaiを参考にしている。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "探索部において主流のstockﬁshを参考にしない"
+    },
+    {
+      "category": "並列・分散",
+      "title": "Xeon Phiによる探索（展望）",
+      "description": "大学のXeon Phi（61コア/244スレッド）を使う探索を予定し、将来は計算サーバーの活用を研究テーマにする。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "大学のXeon Phi ( 61 core/ 244threads )を使用した探索（予定）"
+    }
+  ],
+  "character": null,
+  "notes": null,
+  "team_list_url": "http://www2.computer-shogi.org/wcsc27/team.html"
+}

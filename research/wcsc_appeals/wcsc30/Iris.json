@@ -1,0 +1,63 @@
+{
+  "wcsc": 30,
+  "year": 2020,
+  "dir": "Iris",
+  "team": "渡辺 敬介",
+  "software": "あやめ",
+  "sources": [
+    "wcsc30/appeal/Iris/iris_wcsc30.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc30/appeal/Iris/iris_wcsc30.pdf"
+  ],
+  "summary": "前年からの変更は3点だけで、実現確率探索の着手予測部の特徴量、局面評価関数の特徴量、並列探索の着手予測部の特徴量を変えた。詳細は強くなってから書くとする。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "不明",
+    "detail": null
+  },
+  "search": {
+    "family": "その他",
+    "detail": "実現確率探索。並列探索にも着手予測部がある"
+  },
+  "learning": null,
+  "hardware": "Core i5-8250U 4コア",
+  "language": [
+    "C++",
+    "Java"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "探索",
+      "title": "実現確率探索の着手予測の特徴量変更",
+      "description": "実現確率探索の着手予測部で使う特徴量を変更した。",
+      "originality": "不明",
+      "evidence": null,
+      "quote": "(1)実現確率探索における着手予測部の特徴量の変更"
+    },
+    {
+      "category": "評価関数",
+      "title": "局面評価関数の特徴量変更",
+      "description": "局面評価関数の特徴量を変更した。",
+      "originality": "不明",
+      "evidence": null,
+      "quote": "(2)局面評価関数の特徴量の変更"
+    },
+    {
+      "category": "並列・分散",
+      "title": "並列探索の着手予測部の特徴量変更",
+      "description": "並列探索における着手予測部の特徴量を変更した。",
+      "originality": "不明",
+      "evidence": null,
+      "quote": "(3)並列探索における着手予測部の特徴量の変更"
+    }
+  ],
+  "character": null,
+  "notes": "PDFのテキスト層が崩れていたが、変更点と「詳細は強くなってから書く」は読み取れた。手法の詳細は書かれていない",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc30/team.html"
+}

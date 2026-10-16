@@ -1,0 +1,52 @@
+{
+  "wcsc": 20,
+  "year": 2010,
+  "dir": "Usapyon",
+  "team": "池泰弘",
+  "software": "うさぴょん",
+  "sources": [
+    "wcsc20/appeal/Usapyon/Usapyon.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc20/appeal/Usapyon/Usapyon.txt"
+  ],
+  "summary": "鈴木将棋を土台に1999年から開発。駒の交換値を手ごとに更新して前向き枝刈りの精度を上げ、局面をスタックにコピーして指し手を戻さない構造が特徴。",
+  "base": {
+    "engine": "鈴木将棋",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "不明",
+    "detail": null
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "交換値＋評価値の変化で手を評価、深い所では上位16手程度を候補。futility pruning、LMRを今回追加予定"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "探索",
+      "title": "駒の交換値による前向き枝刈り",
+      "description": "手を進めるたびに駒の交換値と最大交換値・位置を局面に保持し、その変化を指し手の基本評価値にして、深い所では評価の高い16手程度だけ読む。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "指し手の前向き枝刈りのために、駒の交換値を手を進める度に求めている"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "指し手を戻さない局面コピー構造",
+      "description": "指し手を戻す処理が複雑なため実装せず、局面のコピーをスタックに積む構造にする。スタックサイズの指定が必要。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "うさぴょんは局面のコピーをスタック上に貯めていく構造となっている"
+    }
+  ],
+  "character": null,
+  "notes": "2007年版の安定版ソースを土台にfutilityとLMRを追加予定。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc20/team.html"
+}

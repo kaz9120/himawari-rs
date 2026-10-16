@@ -1,0 +1,44 @@
+{
+  "wcsc": 26,
+  "year": 2016,
+  "dir": "scherzo",
+  "team": "氏家 一朗",
+  "software": "scherzo",
+  "sources": [
+    "wcsc26/appeal/scherzo/appeal.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc26/appeal/scherzo/appeal.txt"
+  ],
+  "summary": "評価関数にニューラルネットを用いるソフト。処理時間が重いため昨年はルート局面だけで使っていたが、今年は浅い局面でも使いたいとする。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "その他",
+    "detail": "ニューラルネットを評価関数に使用"
+  },
+  "search": {
+    "family": "不明",
+    "detail": null
+  },
+  "learning": null,
+  "hardware": null,
+  "language": "C++",
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "評価関数にニューラルネットを使用",
+      "description": "評価関数にニューラルネットを使う。重いので昨年はルート局面のみで使い、今年は浅い局面にも使いたい。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "評価関数にニューラルネットを用いています。"
+    }
+  ],
+  "character": null,
+  "notes": "3行の短文",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc26/team.html"
+}

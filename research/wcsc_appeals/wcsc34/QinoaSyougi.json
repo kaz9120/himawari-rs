@@ -1,0 +1,82 @@
+{
+  "wcsc": 34,
+  "year": 2024,
+  "dir": "QinoaSyougi",
+  "team": "きのあ（山田 元気）",
+  "software": "きのあ将棋",
+  "sources": [
+    "wcsc34/appeal/QinoaSyougi/20240331_wcsc34_PR.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc34/appeal/QinoaSyougi/20240331_wcsc34_PR.pdf"
+  ],
+  "summary": "他の将棋ライブラリや学習データを使わないフルスクラッチで、棋譜のみ外部を使う。PVSの探索、深層学習に影響を受けた独自の多段階評価、そしてキレーティング（QR）による候補手のパターン評価に今回から力を入れる。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "その他",
+    "detail": "深層学習に影響を受けた独自の多段階評価。候補手はキレーティングによるパターン評価"
+  },
+  "search": {
+    "family": "その他",
+    "detail": "PVSと反復深化をカスタマイズしたシステム"
+  },
+  "learning": "棋譜のみ外部のものを利用。評価値や読み筋は使わない",
+  "hardware": "Core i9-13900KF（終盤3試合は3900X）、WSL2",
+  "language": [
+    "C",
+    "C++",
+    "javascript",
+    "php",
+    "bash"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "キレーティングによる候補手のパターン評価",
+      "description": "候補手を各種パターンに分類し、パターンごとにキレーティング（QR）で候補手の評価値を出す。前年の囲碁AIでの簡易実験で、単純な確率より強くなる可能性が出た。",
+      "originality": "独自",
+      "evidence": "囲碁AIの簡易実験で、12近傍パターンの着手確率よりレーティング評価のほうが勝率が高い可能性",
+      "quote": "候補手を各種パターンに分類"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "新レーティング「キレーティング」",
+      "description": "各参加者が持ち点のx%を場に出し、勝者が総取りする。レート差による不公平と、そこから生じる対局内容のゆがみをなくす。第51回ゲーム情報学研究会で発表した。",
+      "originality": "独自",
+      "evidence": "簡易ゲームでイロレーティングと比べ各プレイヤーの分離が若干明確",
+      "quote": "ゲームの参加者は、それぞれの持ち点のx%を場台に出す"
+    },
+    {
+      "category": "評価関数",
+      "title": "深層学習に影響を受けた独自の多段階評価",
+      "description": "局面評価に、DLに影響を受けた独自の多段階評価を使う。詳細は書かれていない。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "深層学習に影響を受けた独自多段階評価"
+    },
+    {
+      "category": "探索",
+      "title": "局面単位のスポット思考と設定ファイルの多態性",
+      "description": "実行を低コストにし、局面単位のスポット思考ができるようにして、設定ファイルで多態性を確保する方針。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "局面単位のスポット思考ができるように"
+    },
+    {
+      "category": "開発手法・運用",
+      "title": "棋譜のみ外部利用のフルスクラッチ",
+      "description": "他の将棋ライブラリや学習データは使わず、棋譜のみ他のものを使い、評価値や読み筋は使わない。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "他将棋ライブラリ、学習データなど未使用"
+    }
+  ],
+  "character": "レーティングの不公平さを論じ、対局の内容まで変えるという着眼を語る研究色の強い文書。レーティングの手法をゲームAIへ転用する研究的な売り。",
+  "notes": "GI-51発表資料のスライドを掲載。詳細はGIまたはGPWで発表予定。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc34/team.html"
+}

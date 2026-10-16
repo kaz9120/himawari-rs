@@ -1,0 +1,46 @@
+{
+  "wcsc": 20,
+  "year": 2010,
+  "dir": "Garyu",
+  "team": "高田淳一",
+  "software": "臥龍",
+  "sources": [
+    "wcsc20/appeal/Garyu/garyu.html"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc20/appeal/Garyu/garyu.html"
+  ],
+  "summary": "Java実装、約10万nodes/sの標準的なαβ探索。Google App Engineでのクラスタ構想は無料枠を使い切り断念し、前回からほぼ変更なし。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "手作り",
+    "detail": "パラメータ約750。評価関数の学習・進行度は不採用"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "反復深化、置換表、null move pruning、王手延長。並列・df-pnは不採用"
+  },
+  "learning": null,
+  "hardware": "Core 2 Duo T7700 シングルスレッド",
+  "language": [
+    "Java"
+  ],
+  "claimed_strength": "約10万nodes/s",
+  "ideas": [
+    {
+      "category": "並列・分散",
+      "title": "Google App Engineのクラスタ構想",
+      "description": "Google App Engineを使ったクラスタシステムを構想したが、無料のCPU Timeをすぐ使い切ると分かり断念した。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "無料のCPU Timeをあっというまに消費してしまうことが判明して断念"
+    }
+  ],
+  "character": null,
+  "notes": "前回からほとんど変更なし。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc20/team.html"
+}

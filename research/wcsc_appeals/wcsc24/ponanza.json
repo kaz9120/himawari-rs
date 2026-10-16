@@ -1,0 +1,52 @@
+{
+  "wcsc": 24,
+  "year": 2014,
+  "dir": "ponanza",
+  "team": "山本 一成、下山 晃",
+  "software": "Ponanza",
+  "sources": [
+    "wcsc24/appeal/ponanza/appeal.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc24/appeal/ponanza/appeal.txt"
+  ],
+  "summary": "乗算を使うMagic Bitboardなど高速化の仕組みが多数入る。一方、探索パラメータは時代に逆行して「根性の手調整」で作る。暫定版の短い文書。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "ボナメソ（前回文書より）"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "探索パラメータを手調整"
+  },
+  "learning": null,
+  "hardware": "ガレリア・電王戦モデル×5台",
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "実装・高速化",
+      "title": "Magic Bitboardを始めとする高速化",
+      "description": "乗算を利用したMagic Bitboardをはじめ、高速に動作する仕組みが多数入っている。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "乗算を利用したMagic Bitboardを始めとする、高速で動作する仕組みが多数組み込まれている。"
+    },
+    {
+      "category": "探索",
+      "title": "探索パラメータの根性の手調整",
+      "description": "時代に逆行するように、探索パラメータを手調整で決める。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "探索パラメタを根性の手調整で実現している。"
+    }
+  ],
+  "character": null,
+  "notes": "暫定版。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc24/team.html"
+}

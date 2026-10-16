@@ -1,0 +1,55 @@
+{
+  "wcsc": 35,
+  "year": 2025,
+  "dir": "Nonbiri_Nakabishia",
+  "team": "Ryoto Sawada, Yuki Ito, Toshihiro Shirakawa, Keigo Nitadori",
+  "software": "（仮）のんびり中飛車",
+  "sources": [
+    "wcsc35/appeal/Nonbiri_Nakabishia/wcsc35.txt"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc35/appeal/Nonbiri_Nakabishia/wcsc35.txt"
+  ],
+  "summary": "深層学習モデルの効率的なアンサンブルと棋風調整の研究。2024年の電竜戦では、メモリ6GBのゲームノートPCで振り飛車縛りという条件でもA級リーグ入りした。今回は単一GPUで動くアンサンブル手法に加え、特定の棋譜への類似度を評価値のボーナスにして棋風を出す方法に挑戦する。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": "ベースは不明（深層学習モデルのアンサンブル）"
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "複数の深層学習モデルをアンサンブル"
+  },
+  "search": {
+    "family": "MCTS",
+    "detail": "単一GPUで動く合議（アンサンブル）手法"
+  },
+  "learning": null,
+  "hardware": "Ryzen 9 5900HS + RTX 3060 Mobile（ノートPC）",
+  "language": [
+    "C++",
+    "Python"
+  ],
+  "claimed_strength": "2024年電竜戦でA級リーグ入り（メモリ6GBのノートPC、振り飛車縛り）",
+  "ideas": [
+    {
+      "category": "探索",
+      "title": "単一GPUで動くDLモデルのアンサンブル",
+      "description": "複数のDLモデルの合議方法を見直し、単一GPUで動くアンサンブルを開発した（論文執筆中）。時間制御、ponder、MultiPV、重み比率を1:1に限らない扱いなどの課題を解く。",
+      "originality": "独自",
+      "evidence": "電竜戦2024でA級リーグ入り",
+      "quote": "複数の深層学習モデルの合議方法を見直すことで単一のGPUで動くアンサンブル手法を開発しました"
+    },
+    {
+      "category": "棋風・人間らしさ",
+      "title": "棋譜への類似度を評価値ボーナスにする棋風調整",
+      "description": "特定の棋譜を起点に、その棋風への類似度を評価値へのボーナスにする。探索部に埋め込むと探索速度が落ち、採択時の補正にはMultiPV対応が必要になるため、両者を両立するルーチンを目指す。定跡による振り飛車の強制や、探索のルールベースによる無理やりの棋風づけとは別の方式。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "特定の棋譜を起点にして、その棋風への類似度を評価値へのボーナスとするようなアプローチが有効であると考えられます"
+    }
+  ],
+  "character": "「今年はノートPC参加に賞金があると聞いたので全力でノートPC最強の座を取りに行きます！」と宣言。失敗したら「ゴメンナサイ」と書く軽さ。",
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc35/team.html"
+}

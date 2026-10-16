@@ -1,0 +1,71 @@
+{
+  "wcsc": 33,
+  "year": 2023,
+  "dir": "ponkotsu",
+  "team": "竹内 元気・掛谷 英紀・儀同 政伸",
+  "software": "ponkotsu",
+  "sources": [
+    "wcsc33/appeal/ponkotsu/ponkotsu_appeal.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc33/appeal/ponkotsu/ponkotsu_appeal.pdf"
+  ],
+  "summary": "dlshogiのネットワークをResNetからDenseNetに置き換えたDL将棋AI。DenseNet、学習テクニック、事前学習で精度を上げ、floodgateでR3973を達成した。",
+  "base": {
+    "engine": "dlshogi",
+    "eval_source": null,
+    "note": "『強い将棋ソフトの創り方』付属データとGCT学習データを使用"
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "DenseNet（Dense Block 10層、全部の畳み込みを3x3に変更）。Policy/Value"
+  },
+  "search": {
+    "family": "MCTS",
+    "detail": "dlshogi"
+  },
+  "learning": "本学習はfloodgate 2019〜2021/5、水匠3改、GCT、水匠の相入玉局面。ブートストラップ+学習率スケジューラ+SWA+AMP。事前学習はAobaZero、elmo、GCT、水匠相入玉局面（106エポック）",
+  "hardware": "Core i7-8700 + RTX3090",
+  "language": [
+    "Python",
+    "C++"
+  ],
+  "claimed_strength": "floodgateで54勝9敗、R3973（改良・事前学習で+170）。参考: 昨年の1次予選突破ラインは約3100",
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "ResNetをDenseNetに置換",
+      "description": "ResNetではなくDenseNetを採用し、全層とのスキップ接続でチャンネル方向に結合する。ResNet10（32ch）に対しPolicy精度39.5→43.8%、Value精度70.7→72.8%。",
+      "originality": "独自",
+      "evidence": "Policy 39.5→43.8%、Value 70.7→72.8%",
+      "quote": "ネットワーク構造にDenseNetを採用"
+    },
+    {
+      "category": "評価関数",
+      "title": "Dense Blockの1x1畳み込みを3x3に変更",
+      "description": "DenseNetの1×1畳み込みをすべて3×3に変えて、精度をさらに上げた。",
+      "originality": "独自",
+      "evidence": "Policy 44.5→46.9%、Value 73.7→74.7%",
+      "quote": "1×1の畳み込みをすべて3×3に変更"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "多様な序盤の事前学習",
+      "description": "居飛車に偏った学習データでは、相手が飛車を振ると400点近い評価を出す課題があった。AobaZero、elmo、GCT、水匠相入玉局面で事前学習して補った。",
+      "originality": "既存手法の応用",
+      "evidence": "Policy 46.9→47.3%、Value 74.7→74.9%。ネット改良と合わせてレーティング+170",
+      "quote": "多様な序盤を指すAIのデータで事前に学習を行う"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "ブートストラップ・SWA・学習率スケジューラの併用",
+      "description": "ブートストラップ、学習率スケジューラ、SWA、AMPを併用して識別精度を上げた。",
+      "originality": "既存手法の応用",
+      "evidence": "Policy 43.8→44.5%、Value 72.8→73.7%",
+      "quote": "ブートストラップ+ 学習率スケジューラ+ SWA+AMP"
+    }
+  ],
+  "character": null,
+  "notes": "文書名に「(仮)」とあり、スライド形式。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc33/team.html"
+}

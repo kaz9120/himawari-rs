@@ -1,0 +1,70 @@
+{
+  "wcsc": 23,
+  "year": 2013,
+  "dir": "TSUBAKIHARA_SHOUGI",
+  "team": "椿原 治",
+  "software": "椿原将棋",
+  "sources": [
+    "wcsc23/appeal/TSUBAKIHARA_SHOUGI/appeal.docx"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc23/appeal/TSUBAKIHARA_SHOUGI/appeal.docx"
+  ],
+  "summary": "長手順詰将棋システムを前提にした人機協調システムを目指し、先手必勝法の創出を夢見る。開発者が考えた新戦法を「局面誘導方式」で絶対服従手として組み込め、全手の静的・動的評価点で並べ替える。Visual Basic製で、誰でも指したい手の流れを入力できる。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "手作り",
+    "detail": "全指し手の静動総合評価点で並べ替え、第1位手の評価点・ランクを参照"
+  },
+  "search": {
+    "family": "その他",
+    "detail": "局面誘導手を優先、次にA/B/C方式のサブルーチン提案手を静動詳細評価"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": [
+    "Visual Basic"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "定跡・序盤",
+      "title": "局面誘導方式",
+      "description": "直近10手程度の指し手流れと周辺の駒配置から決まる次の一手を絶対服従手として指し、突撃A戦法・B戦法のような新戦法を開発者の思い通りに誘導する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "局面誘導方式を採用しており，新手，新戦法の開発を容易にしている．"
+    },
+    {
+      "category": "探索",
+      "title": "静動総合評価点による全手の並べ替え",
+      "description": "手番ごとに全手を生成して静的・動的評価をし、静動総合評価点で並べ替えたリストを持つ。第1位手の評価点とランキングを後続で参照する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "全ての手の静動総合評価点を計算し，並び替える．"
+    },
+    {
+      "category": "探索",
+      "title": "3方式の次の一手の決め方",
+      "description": "サブルーチン提案手の採否判定（A）、提案手全てを静動詳細評価（B）、多段抽出で絞った手を詳細評価（C）を試し、現状Bが最も安定して勝率が高い。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "現在のところ，B方式が一番安定した手を指しており"
+    },
+    {
+      "category": "開発手法・運用",
+      "title": "Basicで誰でも戦法を組み込める",
+      "description": "Visual Basicを採用し、簡単な指し手の流れを入力するだけで誰でも自分の新戦法をソフト上で実現できる。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "簡単な指し手の流れを入力するだけで，誰でも自らが指したい手"
+    }
+  ],
+  "character": "長手順詰将棋システムを前提にした人機システムで先手必勝法を目指すという大きなコンセプトを掲げる。開発者の研究した戦法をソフトに指させる点を売りにする。",
+  "notes": null,
+  "team_list_url": "http://www2.computer-shogi.org/wcsc23/team.html"
+}

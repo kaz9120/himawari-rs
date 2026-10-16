@@ -1,0 +1,48 @@
+{
+  "wcsc": 32,
+  "year": 2022,
+  "dir": "Apery",
+  "team": "平岡 拓也",
+  "software": "Apery",
+  "sources": [
+    "wcsc32/appeal/Apery/apery_appeal_wcsc32.html",
+    "wcsc32/appeal/Apery/apery_appeal_wcsc32_v2.html"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc32/appeal/Apery/apery_appeal_wcsc32.html",
+    "https://www.apply.computer-shogi.org/wcsc32/appeal/Apery/apery_appeal_wcsc32_v2.html"
+  ],
+  "summary": "2019年にC++からRustへ移行し、OSSとして公開しているStockfishベースのαβ探索ソフト。Rustで高速なソフトを簡単・安全に開発できることを示すのが動機で、NNUE実装は間に合わなかった。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "不明",
+    "detail": "NNUE評価関数の実装は選手権に間に合わなかった（5/9追記）"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "Stockfishベースのαβ探索"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": [
+    "Rust"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "開発手法・運用",
+      "title": "Rustで高速・安全なソフトを示す",
+      "description": "終わりのない題材である将棋ソフトで、Rustを使えば高速なソフトを簡単・安全に開発できることを実証する。OSSとして公開している。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "Rustを用いる事で、高速なソフトウェアを簡単に、安全に開発出来る事を、永遠に開発が終わる事がない将棋ソフトを題材にして、実際に示していきたい"
+    }
+  ],
+  "character": null,
+  "notes": "3/31版と5/9版を統合。5/9版はNNUEが間に合わなかったと追記。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc32/team.html"
+}

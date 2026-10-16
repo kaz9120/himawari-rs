@@ -1,0 +1,38 @@
+{
+  "wcsc": 28,
+  "year": 2018,
+  "dir": "Girigiri",
+  "team": "阿部健信、徐子健",
+  "software": "Girigiri",
+  "sources": [
+    "wcsc28/appeal/Girigiri/appeal.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc28/appeal/Girigiri/appeal.pdf"
+  ],
+  "summary": "第5回電王トーナメントに続く参加のソフト。探索部をC++からRustに移し、評価関数を駒の損得のみから機械学習による三駒関係に変えた。目標は反則をしないことと1勝。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "機械学習による三駒関係（前回は駒の損得のみ）"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "静止探索を追加"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": [
+    "Rust",
+    "Python"
+  ],
+  "claimed_strength": null,
+  "ideas": [],
+  "character": "ソフト名は「ぎりぎりの斬り合いを制す」「完成がぎりぎりにならないように」から。",
+  "notes": "工夫の主張は変更点の列挙のみで、独自アイデアの記述はない。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc28/team.html"
+}

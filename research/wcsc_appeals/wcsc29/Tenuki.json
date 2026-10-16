@@ -1,0 +1,70 @@
+{
+  "wcsc": 29,
+  "year": 2019,
+  "dir": "Tenuki",
+  "team": "手抜きチーム（鈴木太朗、玉川直樹）",
+  "software": "手抜き",
+  "sources": [
+    "wcsc29/appeal/Tenuki/tenuki29.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc29/appeal/Tenuki/tenuki29.pdf"
+  ],
+  "summary": "プログラムの仕組みを理解することを目的にD言語で開発し、CSAプロトコルで対局するエンジン。今年はAperyの評価バイナリでKPPTを使い、Lazy SMPを実装する予定。盤の壁をなくした1次元配列、指し手だけの置換表などの実装メモを詳細に残す。",
+  "base": {
+    "engine": "独自",
+    "eval_source": "Aperyの評価バイナリ（大樹の枝形式、2016年11月commit）",
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "KPPT。Aperyの評価バイナリ（KK・KKP・KPP）。前年はなのはの評価バイナリでKP+PP"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "mini-max、αβ、null move、静止探索、指し手だけの置換表。Lazy SMPを実装予定"
+  },
+  "learning": null,
+  "hardware": "Ryzen 7 2700",
+  "language": [
+    "D"
+  ],
+  "claimed_strength": "第28回一次予選4勝4敗",
+  "ideas": [
+    {
+      "category": "実装・高速化",
+      "title": "壁なし81要素1次元配列と駒テーブル",
+      "description": "盤面を壁なしの81要素1次元配列で持ち、駒の手番・成り・反転をビット演算ではなく表（type/base/color/promotable/promote/inv）で管理する。評価バイナリのアドレスと一致させ静的評価が簡単になるが、合法手生成は駒のワープに注意が必要。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "壁がないと，壁のレイアウトを考えなくて済む，盤面がコンパクトになる"
+    },
+    {
+      "category": "探索",
+      "title": "指し手だけの置換表",
+      "description": "置換表のエントリを指し手のみにし、局面ハッシュを持たない。ミスヒットしても害がないとの判断（Lazy SMPでは問題があるかもしれない）。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "指し手だけの表なのでミスヒットしても害がないと考えているためです。"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "Aperyの評価バイナリ形式の解析メモ",
+      "description": "Aperyの評価バイナリ（KK・KKP・KPP）の構造と1548要素の内訳、手番加算の2つ組を、独自調査として詳細な覚書にしている。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "Apery の評価バイナリについての覚書です（独自調査；間違ってたらすみません）。"
+    },
+    {
+      "category": "探索",
+      "title": "手番入り評価で静止探索を軽くする予想",
+      "description": "静的評価に手番が含まれれば静止探索がいらないか軽くて済むのでは、という予想を立てている。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "静的評価に手番が含まれると静止探索がいらないか，もしくは軽くていいのではないかと思っています。"
+    }
+  ],
+  "character": "「手抜き」の名の通り、「夏休みの宿題を9月1日にやるタイプ」「棋力は30級」「スレッドがよくわかりません」と自虐的。「KPPとレーティングシステムを疑っています」とも。毎年の目標と結果を並べて書く。",
+  "notes": "自分たちの目的は将棋プログラムの仕組みを理解すること",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc29/team.html"
+}

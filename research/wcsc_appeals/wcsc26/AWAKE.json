@@ -1,0 +1,68 @@
+{
+  "wcsc": 26,
+  "year": 2016,
+  "dir": "AWAKE",
+  "team": "巨瀬 亮一",
+  "software": "AWAKE",
+  "sources": [
+    "wcsc26/appeal/AWAKE/appeal.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc26/appeal/AWAKE/appeal.txt"
+  ],
+  "summary": "前回からの変更点のみを列挙した短い文書。評価関数に手番評価を加え、KKPを廃止し、SSEによる高速化を行った。探索は微調整のみ。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "KPP中心。38要素化し、先手玉と後手玉のindex_listを一本化。KKPを廃止、手番評価を追加"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "探索パラメータの微調整のみ"
+  },
+  "learning": "学習時の次元下げパラメータを増やした",
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "手番の評価の追加",
+      "description": "評価関数に手番の評価を加えた。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "手番の評価を追加しました。"
+    },
+    {
+      "category": "評価関数",
+      "title": "KKP廃止と38要素化",
+      "description": "KKPを廃止し、評価関数を38要素にして先手玉と後手玉のindex_listを一本化した。",
+      "originality": "不明",
+      "evidence": null,
+      "quote": "評価関数の38要素化し、また先手玉と後手玉のindex_listを一本化しました。"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "玉移動時の差分計算",
+      "description": "玉の移動時、移動した玉の側だけ再計算する。",
+      "originality": "不明",
+      "evidence": null,
+      "quote": "玉の移動時の差分計算を移動した玉のほうだけ再計算するようにしました。"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "SSEとループ展開",
+      "description": "評価関数の計算にSSEを使い、ループをインライン展開して高速化した。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "評価関数の計算にSSEを使用し、ループをインライン展開して高速化しました。"
+    }
+  ],
+  "character": null,
+  "notes": "前回との差分のみの文書",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc26/team.html"
+}

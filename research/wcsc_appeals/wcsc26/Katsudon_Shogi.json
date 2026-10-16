@@ -1,0 +1,52 @@
+{
+  "wcsc": 26,
+  "year": 2016,
+  "dir": "Katsudon_Shogi",
+  "team": "松本浩志、池田拓郎、服部孝洋",
+  "software": "カツ丼将棋",
+  "sources": [
+    "wcsc26/appeal/Katsudon_Shogi/appeal.docx"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc26/appeal/Katsudon_Shogi/appeal.docx"
+  ],
+  "summary": "既存のライブラリも成功した手法も使わず、思いつきを適当に実装する「エンジョイ・ネタ・我流勢」。強くはないと自認し、将棋演歌「千駄ヶ谷エレジー」を作曲して宣伝している。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "不明",
+    "detail": null
+  },
+  "search": {
+    "family": "不明",
+    "detail": null
+  },
+  "learning": null,
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "エンタメ・演出",
+      "title": "将棋の演歌「千駄ヶ谷エレジー」の作曲",
+      "description": "将棋の歌が少ないと考え、将棋の演歌を作曲した。歌手は長沢千和子女流四段、作詞は袋小路宇治夫、作曲はカツ丼将棋で、各配信サイトで購入できると宣伝する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "将棋の演歌を作曲しました。 曲名　千駄ヶ谷エレジー"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "既存手法に頼らない我流実装",
+      "description": "既存ライブラリも成功した手法も使わず、思いついたことを適当に実装する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "既存のライブラリを活用せず、すべて手作りです。"
+    }
+  ],
+  "character": "「エンジョイ・ネタ・我流勢」。「闘志はいささかも衰えておりません」「まだなんもしてないですが、急ピッチでなんか開発します」と笑いを誘う。日本将棋連盟推奨・桜井昇八段推薦などの架空の宣伝文句を付けた将棋演歌が売り。",
+  "notes": "docxのため文字のみ。チームの正式名は一覧ページに従った",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc26/team.html"
+}

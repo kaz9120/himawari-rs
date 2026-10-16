@@ -1,0 +1,62 @@
+{
+  "wcsc": 29,
+  "year": 2019,
+  "dir": "NicoreShogi",
+  "team": "村田 敦",
+  "software": "にこあ将棋",
+  "sources": [
+    "wcsc29/appeal/NicoreShogi/appeal2019.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc29/appeal/NicoreShogi/appeal2019.pdf"
+  ],
+  "summary": "探索・評価をすべて自前で実装し、パラメータ調整GUIで自動学習と手動調整の独自思考エンジンを作れる構想を持つ。ユーザーが調整したAIで対戦し、ランキング1位のAIで参戦する構想も語る。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "その他",
+    "detail": "複数の評価関数をミックスし、状況に応じて重みを変える構想"
+  },
+  "search": {
+    "family": "αβ+MCTS",
+    "detail": "αβ探索とモンテカルロ探索の併用（たぶんうまくいっていない）"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "エンタメ・演出",
+      "title": "パラメータ調整GUIとユーザーAI育成",
+      "description": "パラメータ調整GUIを実装し、自動学習と手動調整でユーザー独自の思考エンジンを作れる。将来は調整したAI同士で対戦し、ランキング1位のAIで大会に参戦する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "ユーザーの調整した AI で対戦できるようにし、ランキング１位の AI で参戦。"
+    },
+    {
+      "category": "並列・分散",
+      "title": "ユーザーのマシンのグリッド化（構想）",
+      "description": "にこあ将棋ユーザーのマシン全体でグリッドを組む構想。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "にこあ将棋ユーザーのマシン全体でグリッド化。"
+    },
+    {
+      "category": "評価関数",
+      "title": "複数評価関数のミックスと状況別重み",
+      "description": "複数の評価関数を混ぜ、状況に応じて重みを変える（できたらいいなという段階）。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "複数の評価関数をミックス、状況に応じて重みを変化でき…たらいいなぁ。"
+    }
+  ],
+  "character": "名前は開発のきっかけを与えたニコニコ動画へのリスペクト。「たぶんうまくいっていない」と正直に書く。",
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc29/team.html"
+}

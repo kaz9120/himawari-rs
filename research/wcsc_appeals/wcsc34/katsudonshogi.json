@@ -1,0 +1,37 @@
+{
+  "wcsc": 34,
+  "year": 2024,
+  "dir": "katsudonshogi",
+  "team": "カツ丼将棋",
+  "software": "カツ丼将棋",
+  "sources": [
+    "wcsc34/appeal/katsudonshogi/wcsc32.txt"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc34/appeal/katsudonshogi/wcsc32.txt"
+  ],
+  "summary": "文書は「去年と全く同じ」とだけ書き、第33回の文書URLを示している。内容は読み取れない。",
+  "base": {
+    "engine": "不明",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "不明",
+    "detail": null
+  },
+  "search": {
+    "family": "不明",
+    "detail": null
+  },
+  "learning": null,
+  "hardware": "Ryzen 9",
+  "language": [
+    "c++"
+  ],
+  "claimed_strength": null,
+  "ideas": [],
+  "character": null,
+  "notes": "本文が1行のみ。第33回のアピール文書を参照するよう書かれている。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc34/team.html"
+}

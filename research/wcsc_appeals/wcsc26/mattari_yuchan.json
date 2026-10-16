@@ -1,0 +1,52 @@
+{
+  "wcsc": 26,
+  "year": 2016,
+  "dir": "mattari_yuchan",
+  "team": "東京農工大学旧小谷研究室",
+  "software": "まったりゆうちゃん",
+  "sources": [
+    "wcsc26/appeal/mattari_yuchan/appeal.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc26/appeal/mattari_yuchan/appeal.txt"
+  ],
+  "summary": "4半世紀にわたり開発を続ける完全独自のシステム。今年はマイナーチューニングのみ。開発者の高齢化を述べ、シニアコンピュータ将棋選手権の開催を提案する。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "不明",
+    "detail": null
+  },
+  "search": {
+    "family": "不明",
+    "detail": null
+  },
+  "learning": null,
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "開発手法・運用",
+      "title": "25年にわたる完全独自開発",
+      "description": "4半世紀の開発で、完全に独自に作り、アイデアにも独自の工夫があると主張する。具体は書かれていない。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "4半世紀にわたって開発しているシステムである。"
+    },
+    {
+      "category": "エンタメ・演出",
+      "title": "シニアコンピュータ将棋選手権の提案",
+      "description": "開発者の年齢が高いことを挙げ、シニア向けのコンピュータ将棋選手権の開催を提案する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "シニアコンピュータ将棋選手権をやりましょう"
+    }
+  ],
+  "character": "25年の歴史と開発者の高齢化をネタにし、シニア選手権を提案する短い文書。",
+  "notes": null,
+  "team_list_url": "http://www2.computer-shogi.org/wcsc26/team.html"
+}

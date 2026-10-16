@@ -1,0 +1,62 @@
+{
+  "wcsc": 27,
+  "year": 2017,
+  "dir": "libshogi",
+  "team": "藤井宏行、高田浩生（香川高専詫間キャンパス）",
+  "software": "libshogi",
+  "sources": [
+    "wcsc27/appeal/libshogi/libshogi170318.pdf"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc27/appeal/libshogi/libshogi170318.pdf"
+  ],
+  "summary": "将棋プログラムを学習する学生向けの教材用ライブラリ。C++の基本文法を知る学生が短期間で戦略層（探索・定跡・学習）の開発を始められることを目標に、BoostやSTLに依存せず一つのライブラリで完結させている。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "不明",
+    "detail": null
+  },
+  "search": {
+    "family": "不明",
+    "detail": null
+  },
+  "learning": null,
+  "hardware": null,
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "開発手法・運用",
+      "title": "学習用に完結した将棋ライブラリ",
+      "description": "Boost・STLを使わず、アトミック操作・ロック・スレッド・リストなどの基本データ構造まで含めて自前で持つ。一つのライブラリで完結するのでデバッグしやすく、土台をコンピュータ将棋向けに最適化する余地もある。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "libshogi だけで将棋プログラムを作成できます。"
+    },
+    {
+      "category": "開発手法・運用",
+      "title": "階層モデルで戦略層だけを書かせる",
+      "description": "foundation層、game層（ルール・通信）を提供し、利用者は戦略層（探索・定跡・学習）だけを書く階層モデル。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "図-1 に libshogi の階層モデルを示します。"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "縦型ビットボードとPEXT",
+      "description": "内部は縦型ビットボードで、利きテーブルのインデックス計算にPEXT命令を使う。BMI2非対応のCPUでも遅くなるが動く。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "利きテーブルのインデックス計算には PEXT 命令を使用しています。"
+    }
+  ],
+  "character": "強さを競うよりも「分かりやすさ」を第一目標にした教育用ライブラリのアピール。",
+  "notes": null,
+  "team_list_url": "http://www2.computer-shogi.org/wcsc27/team.html"
+}

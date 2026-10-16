@@ -1,0 +1,46 @@
+{
+  "wcsc": 35,
+  "year": 2025,
+  "dir": "Tenuki",
+  "team": "手抜きチーム",
+  "software": "手抜き",
+  "sources": [
+    "wcsc35/appeal/Tenuki/tenuki35.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc35/appeal/Tenuki/tenuki35.pdf"
+  ],
+  "summary": "開発者らが将棋プログラムの仕組みを理解するために、D言語で書いたCSAプロトコル対応のエンジン。どうたぬき（tanuki-電竜戦第1回版）の評価関数ファイルを使うNNUE+αβ探索。今年の目標は置換表の強化。",
+  "base": {
+    "engine": "独自",
+    "eval_source": "どうたぬき（tanuki- 第1回電竜戦版）のnn.bin",
+    "note": "D言語で実装。リポジトリはtenuki-d"
+  },
+  "eval": {
+    "family": "NNUE",
+    "detail": "どうたぬきの評価関数を使用"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "置換表には現状は指し手のみ保存"
+  },
+  "learning": null,
+  "hardware": "Amazon EC2 c7a.metal-48xl",
+  "language": [
+    "D"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "開発手法・運用",
+      "title": "将棋プログラムの仕組みを理解するためのD言語実装",
+      "description": "仕組みの理解を目的にD言語でCSAプロトコル対応のエンジンを書く。置換表に評価値と探索深さも保存して強化する予定。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "開発者らが将棋のプログラムの仕組みを理解するために開発しています"
+    }
+  ],
+  "character": null,
+  "notes": "チーム名どおり「手抜き」と自称するが、文書は簡潔。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc35/team.html"
+}

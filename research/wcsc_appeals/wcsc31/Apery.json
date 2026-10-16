@@ -1,0 +1,46 @@
+{
+  "wcsc": 31,
+  "year": 2021,
+  "dir": "Apery",
+  "team": "平岡 拓也",
+  "software": "Apery",
+  "sources": [
+    "wcsc31/appeal/Apery/apery_appeal_wcsc31.html"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc31/appeal/Apery/apery_appeal_wcsc31.html"
+  ],
+  "summary": "Stockfishベースのαβ探索と3駒関係の線形評価という、3年ほど前の典型的な構成のまま。2019年にC++からRustへ移行し、2020年から何も変えていない。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "3駒関係の線形和"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "Stockfishベースのαβ探索"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": [
+    "Rust"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "開発手法・運用",
+      "title": "Rustへの言語移行",
+      "description": "2019年に開発言語をC++からRustへ変更し、GitHubで公開している。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "2019年から開発言語をC++からRustに変更"
+    }
+  ],
+  "character": "「強くなっていないソフトがあるからこそ、他のソフトが強くなった事が分かる」と、変えないことを自虐的に主張。",
+  "notes": "2020年から変更なし。WCSC30のアピール文書を参照。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc31/team.html"
+}

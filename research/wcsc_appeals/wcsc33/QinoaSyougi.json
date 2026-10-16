@@ -1,0 +1,66 @@
+{
+  "wcsc": 33,
+  "year": 2023,
+  "dir": "QinoaSyougi",
+  "team": "山田 元気（きのあ）",
+  "software": "きのあ将棋",
+  "sources": [
+    "wcsc33/appeal/QinoaSyougi/wcsc-33.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc33/appeal/QinoaSyougi/wcsc-33.pdf"
+  ],
+  "summary": "棋力向上より、「人の役に立つ将棋AI」の研究に注力。将棋サイトのユーザーのgood/bad評価で、ユーザー満足度の高い局面を機械生成する研究（GI-49発表）を紹介する。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "不明",
+    "detail": null
+  },
+  "search": {
+    "family": "不明",
+    "detail": null
+  },
+  "learning": "自己対局で終局からy手戻した勝てる局面を生成。パラメータを最適化し、ユーザーのgood/bad投稿から学習した評価関数も使う",
+  "hardware": "Core i9-13900KF（WSL2）",
+  "language": [
+    "C",
+    "C++",
+    "PHP",
+    "JavaScript",
+    "shell"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "解説・人間支援",
+      "title": "ユーザーに好まれる局面の機械生成",
+      "description": "自己対局で終局からy手戻した局面を作り、勝った側から指させる。勝つ局面はgood率が高い（勝ち84%、負け69%）ので、勝てる局面を生成する方針。パラメータは実験で最適化。",
+      "originality": "独自",
+      "evidence": "good率は平手74.3%、指定局面全体76.0%、詰将棋86.0%",
+      "quote": "勝てる局面を機械生成する方針に"
+    },
+    {
+      "category": "解説・人間支援",
+      "title": "good/bad評価関数の局面生成への活用",
+      "description": "将棋サイトのユーザーがgood/badを押すとそこまでの局面が記録される。この局面とgood/bad種別を学習した評価関数を局面生成に使うと、より好まれる局面が作れる。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "good,bad評価関数を局面生成に活用！"
+    },
+    {
+      "category": "エンタメ・演出",
+      "title": "対局アンケートによる満足度計測",
+      "description": "将棋サイトに常時アンケート（good/badボタン）を置き、good率を満足度として局面生成の最適化に使う。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "満足度は下記のようにgood率とする。"
+    }
+  ],
+  "character": "AIの強さより「人の役に立つ将棋AI」を目指す。強さの記述はほぼなく、GI-49（ゲーム情報学研究会）発表スライドの転用。ユーザーのアンケートに支えられた研究と謝辞で結ぶ。",
+  "notes": "エンジンの構成（評価関数・探索）の記載はない。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc33/team.html"
+}

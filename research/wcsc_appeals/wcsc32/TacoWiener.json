@@ -1,0 +1,79 @@
+{
+  "wcsc": 32,
+  "year": 2022,
+  "dir": "TacoWiener",
+  "team": "やきたこ（Yu ki Tanaka）",
+  "software": "たこウインナー",
+  "sources": [
+    "wcsc32/appeal/TacoWiener/tw_appeal_2022.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc32/appeal/TacoWiener/tw_appeal_2022.pdf"
+  ],
+  "summary": "人間が指しそうな手を3〜5手の候補に絞る選定部と、dlshogiで最善手を決める決定部の2段構成で、「人間っぽいけど強い」ソフトを目指す。選定部・定跡・詰将棋部は独自実装で、王手候補手を王中心のマップで生成する。",
+  "base": {
+    "engine": "独自（決定部のみdlshogi）",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "手作り",
+    "detail": "選定部は人間らしさを手作業でスコア化した手作り評価関数。決定部はdlshogi"
+  },
+  "search": {
+    "family": "αβ+MCTS",
+    "detail": "選定部は可変αβ（深さ4〜8、2段階IDDFS）、決定部はdlshogi"
+  },
+  "learning": "決定部の評価関数はfloodgate 2018〜2021年のデータをDL後、強化学習予定。定跡はプロ棋譜約1.2万の50手までをハッシュ化",
+  "hardware": "Ryzen 7 3700X + GeForce RTX 2070 Super",
+  "language": [
+    "C#",
+    "Python"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "棋風・人間らしさ",
+      "title": "人間らしい候補手を選んでから最善手を決める2段構成",
+      "description": "選定部が80〜150手の局面から人間のアマチュアが指しそうな手を3〜5手に絞り、決定部のdlshogiが最善手を決める。選定部と決定部はUSIで接続し、決定部は交換可能。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "人間が指しそうな手を複数候補に挙げ、その中から DL 評価関数を元に最有力な手を選ぶことにより、『人間っぽいけど強い』ソフトが出来るかを検証します。"
+    },
+    {
+      "category": "評価関数",
+      "title": "人間の指しやすさを手作業でスコア化",
+      "description": "飛車や角道を開ける、垂れ歩を作る、両取りを仕掛ける、歩を突き捨てるなど、人間がよく考える手を独断と偏見でスコア化する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "人間の感覚で指しやすい手をスコア化(※)し、手作業で作成しました。"
+    },
+    {
+      "category": "詰み・終盤",
+      "title": "王中心のマップによる王手候補手生成",
+      "description": "相手王を中心にした座標マップ（①〜㉛）を用意し、マップ上の位置に味方駒があれば決まった王手を候補にする。飛車・角・香・駒打ちにも固有テーブルを持ち、全手から王手を洗い出す方式より約20%高速と見込む。",
+      "originality": "独自",
+      "evidence": "独自計測で従来比約20%速度向上",
+      "quote": "相手王を中心に下図のようなマップ情報を用意し、マップに合致する座標に味方の駒がある場合、あらかじめ決まった手を選定する形式"
+    },
+    {
+      "category": "詰み・終盤",
+      "title": "読み抜けを再現する王手の優先度付け",
+      "description": "頭金を打つ、王手の駒を取るなど人間が指しやすい手を優先し、制限時間を設けて優先度の低い王手をスキップし、人間の「読み抜け」を再現する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "優先度の低い王手をスキップする、いわゆる“読み抜け”を再現します。"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "得意戦法が出やすい定跡",
+      "description": "プロ棋譜約1.2万局の50手目までをハッシュ化し、本ソフトが得意な戦法が候補に挙がりやすいようにチューニングしている。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "本将棋 AI が得意な戦法が候補として挙がりやすくなるようチューニング済みです。"
+    }
+  ],
+  "character": "対人間向け練習ソフトとしての地位確立を将来目標にし、「人間っぽいけど強い」を売りにする。",
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc32/team.html"
+}

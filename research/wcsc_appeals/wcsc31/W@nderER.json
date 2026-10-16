@@ -1,0 +1,80 @@
+{
+  "wcsc": 31,
+  "year": 2021,
+  "dir": "W@nderER",
+  "team": "櫻井 博光",
+  "software": "W@nderER",
+  "sources": [
+    "wcsc31/appeal/W@nderER/WanderER_appeal_2.pdf",
+    "wcsc31/appeal/W@nderER/WanderER_appeal_2_ref.docx",
+    "wcsc31/appeal/W@nderER/wanderER_appeal_0.html"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc31/appeal/W%40nderER/WanderER_appeal_2.pdf",
+    "https://www.apply.computer-shogi.org/wcsc31/appeal/W%40nderER/WanderER_appeal_2_ref.docx",
+    "https://www.apply.computer-shogi.org/wcsc31/appeal/W%40nderER/wanderER_appeal_0.html"
+  ],
+  "summary": "詰みよりも入玉宣言勝ちを一目散に目指す、入玉志向のソフト。複数のNNUE評価関数の重み行列を混ぜた「鵺」（キメラ合成）で、中段玉志向の棋風と強さを両立した。入玉前後の局面を開始局面にして教師を作り、宣言まわりを学習しやすくした。選手権では決勝に進出。",
+  "base": {
+    "engine": "やねうら王",
+    "eval_source": "NNUEkaiU、orqha1018、Kristallweizen_kaiV0.4、elmo2019、水匠3改、水匠U、Wandre20201222など",
+    "note": null
+  },
+  "eval": {
+    "family": "NNUE",
+    "detail": "HalfKP＋玉の段位置（HalfKPKrank）。特徴量変換の重み行列を9倍に拡張"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "やねうら王。入玉宣言を積極的に目指す"
+  },
+  "learning": "floodgateの宣言勝ち・入玉後勝利棋譜から、入玉前後の局面を開始局面にして、AperyのKPPTと探索部を改造した複数のやねうら王でdepth8・約1000万局面を生成して追加学習",
+  "hardware": "Amazon EC2 C5.metal 96vCPU",
+  "language": "C++, Python",
+  "claimed_strength": "対技巧2：NNUEkaiU 67勝33敗、_0322spv2NkU 77勝23敗、水匠U 78勝22敗（やねうら王v4.89、6スレッド1手5秒）",
+  "ideas": [
+    {
+      "category": "入玉",
+      "title": "詰みより入玉宣言勝ちを目指す設計",
+      "description": "入玉して宣言勝ちが容易そうな展開から、相手を寄せに行くエンジンが多い。一目散に宣言を目指すエンジンがあれば面白いと考えて開発している。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "詰みよりも宣言勝ちを目指すエンジンがあれば面白いのではないかという考えに至り W@nderER の開発を行うようになった。"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "入玉前後の局面を開始局面にした教師生成",
+      "description": "floodgateの宣言勝ちや入玉後勝利の棋譜から入玉前後の局面を取り、その局面を開始局面に教師データを生成して追加学習し、宣言まわりを学習しやすくする。",
+      "originality": "独自",
+      "evidence": "入玉志向の評価関数で対技巧2に77勝23敗",
+      "quote": "教師データ生成時の開始局面を入玉前後にすることで宣言回りを学習しやすくした。"
+    },
+    {
+      "category": "評価関数",
+      "title": "重み行列のキメラ合成（鵺）",
+      "description": "HalfKPと玉の段位置を特徴量にしたHalfKPKrankで、9倍になった特徴量変換の重み行列に、複数の標準NNUEの重みを並べて流用し配合した。中段玉志向を保ったまま強くできた。",
+      "originality": "独自",
+      "evidence": "評価関数2021-4はwcsoc1版・水匠3改より強い（62-10-28など）",
+      "quote": "重み行列をキメラ的に混ぜることで、いわゆる棋風的なものと強さの両立を行った。"
+    },
+    {
+      "category": "評価関数",
+      "title": "HalfKP+玉の段位置の拡張特徴",
+      "description": "tttak氏公開のNNUE特徴量の種類を参考に、玉の段位置を入力に加えたネットワークを作る。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "HalfKP と玉の段位置を入力特徴量としたネットワークの HalfKPKrank を作成した。"
+    },
+    {
+      "category": "評価関数",
+      "title": "評価関数A・Bの配合とパラメータ平均化",
+      "description": "配合スクリプトをHalfKPKrank対応にして重みを配合・平均化し、AとBを1:1で混ぜた2021-4と3:1の2021-7を作った。本番は2021-7の中段玉志向の強さが決勝進出につながった。",
+      "originality": "独自",
+      "evidence": "高ノード条件で2021-7が水匠3改に5-1-4、5-0-5",
+      "quote": "評価関数 A と評価関数 B を 1:1 で配合した 2021-4 と3:1 で配合した 2021-7 の 2 種類を使用した。"
+    }
+  ],
+  "character": "「昨年に引き続き、入玉宣言による勝利を積極的に目指します」という棋風のコンセプト。名前は鵺（キメラ）合成に通じる。",
+  "notes": "文書は3種類（1月の短い版、5月15日の詳細版のdocxとPDF）。詳細版は選手権後の分析を含み、追試可能性にも言及。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc31/team.html"
+}

@@ -1,0 +1,62 @@
+{
+  "wcsc": 32,
+  "year": 2022,
+  "dir": "Shueso",
+  "team": "竹内 章",
+  "software": "習甦",
+  "sources": [
+    "wcsc32/appeal/Shueso/Shueso_wcsc32.txt"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc32/appeal/Shueso/Shueso_wcsc32.txt"
+  ],
+  "summary": "1スレッドがdf-pnで詰みを確認し、他のスレッドがStockfishから取捨選択したαβ探索を行う。評価関数は玉位置に対する各駒位置と全升目の利き数を特徴量とするニューラルネット。入玉時に宣言法を意識した報酬を加える学習が特徴。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "その他",
+    "detail": "玉の位置に対する各駒の位置と全升目の利き数（先後別に3まで）を特徴量とするニューラルネット"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "1スレッドがdf-pnで詰み確認、他スレッドはStockfishから取捨選択したシンプルなαβ"
+  },
+  "learning": "入玉した場合、宣言法に従い自駒の守備力が上がり敵駒の攻撃力が下がるよう設計した関数値を報酬に加算",
+  "hardware": null,
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "並列・分散",
+      "title": "1スレッドを詰み専用にするスレッド分担",
+      "description": "複数スレッドのうち1スレッドはdf-pnで詰みを確認し続け、残りはαβ探索を行う。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "1スレッドはdf-pnにより詰みを確認，他のスレッドはStockfishから取捨選択したシンプルなα-β探索"
+    },
+    {
+      "category": "入玉",
+      "title": "宣言法を踏まえた入玉報酬",
+      "description": "入玉した場合、宣言法に従って自駒の守備力が上がり敵駒の攻撃力が下がる関数の値を学習の報酬に加算する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "入玉した場合，宣言法に従い自駒の守備力が上がり敵駒の攻撃力が下がるよう設計した関数の値を報酬に加算"
+    },
+    {
+      "category": "評価関数",
+      "title": "全升目の利き数を特徴量にしたNN",
+      "description": "玉位置に対する各駒の位置と、全升目の利き数（先後別に3まで）を入力とするニューラルネットで評価する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "玉の位置に対する各駒の位置と全升目の利き数（先後別3まで）を特徴量とするニューラルネットワーク"
+    }
+  ],
+  "character": null,
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc32/team.html"
+}

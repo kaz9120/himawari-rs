@@ -1,0 +1,46 @@
+{
+  "wcsc": 21,
+  "year": 2011,
+  "dir": "sawanyanRL",
+  "team": "宇賀神拓也",
+  "software": "さわにゃんRL",
+  "sources": [
+    "wcsc21/appeal/sawanyanRL/sawanyan.pdf"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc21/appeal/sawanyanRL/sawanyan.pdf"
+  ],
+  "summary": "卒論後の開放感で作ったプログラムで、Bonanza・まったりゆうちゃん・Crafty・Fruitを参考にした。教師なし学習（Bootstrapping from Game Tree Search）を試したが、あまりうまくいかなかった。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "駒価値、持ち駒の価値、駒の関係"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "PVS＋反復深化、置換表、null move、簡易futility、killer、history"
+  },
+  "learning": "教師なし学習（Veness et al. Bootstrapping from Game Tree Search）を試行したが不調",
+  "hardware": null,
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "研究・実験的",
+      "title": "教師なし学習（ブートストラップ）の試行",
+      "description": "Bootstrapping from Game Tree Searchによる教師なし学習で評価関数を学習してみたが、実験はあまりうまくいかなかった。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "調子にのって教師なし学習をやってみたみましたが"
+    }
+  ],
+  "character": "卒論の開放感で作ったと明かし、「Bitboard(笑)」「ぐぬぬ…」「非常に弱いですがよろしくお願い致します」と砕けた調子。",
+  "notes": null,
+  "team_list_url": "http://www2.computer-shogi.org/wcsc21/team.html"
+}

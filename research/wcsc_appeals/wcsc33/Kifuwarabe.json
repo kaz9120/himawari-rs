@@ -1,0 +1,79 @@
+{
+  "wcsc": 33,
+  "year": 2023,
+  "dir": "Kifuwarabe",
+  "team": "高橋 智史",
+  "software": "きふわらべ",
+  "sources": [
+    "wcsc33/appeal/Kifuwarabe/WCSC33_appeal_AfterGame.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc33/appeal/Kifuwarabe/WCSC33_appeal_AfterGame.pdf"
+  ],
+  "summary": "フロム・スクラッチ宣言の下、関数型のElixirで書いた将棋エンジン。強さの主張はなく、並列処理・GPGPU（PyCUDA経由）・関数型言語を初めて使って「ヒャッホー」することが目的。解説は漫画的な掛け合い形式で、大会後に差し替えた文書。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": "Elixirで自作。思考部に影響する他者のプログラム・データを利用しない（フロム・スクラッチ宣言）"
+  },
+  "eval": {
+    "family": "不明",
+    "detail": "詳細の記載なし"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "Elixirで再帰関数として実装した探索部。2手読みが並列処理で遅くなった"
+  },
+  "learning": null,
+  "hardware": "Ryzen Threadripper 12コア + GeForce RTX 4090（RTX 3080 Tiも所有）",
+  "language": [
+    "Elixir",
+    "Python"
+  ],
+  "claimed_strength": "3勝5敗。自己ハイの3勝（過去の2回を除く）",
+  "ideas": [
+    {
+      "category": "開発手法・運用",
+      "title": "フロム・スクラッチ宣言",
+      "description": "思考部に大きな影響を与える、他者のプログラムやデータを利用しない。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "思考部に大きな影響を与える、他者の作成したプログラム・ データ等を利用していません。"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "Elixirによる並列処理",
+      "description": "Elixirの強みであるFlowライブラリで指し手生成を並列化した。全面的に使うと2手読み0秒が1分以上に遅くなったため、手数を10で割った余りが1・2のとき盤上の駒の手、3・4のとき持ち駒を打つ手の生成だけを並列にした。",
+      "originality": "独自",
+      "evidence": "低速化（2手読み0秒→1分以上）の報告",
+      "quote": "盤上の駒を動かす指し手を並列処理で生成する"
+    },
+    {
+      "category": "ハードウェア",
+      "title": "PyCUDA経由のGPGPU呼び出し",
+      "description": "ElixirからPythonのPyCUDAを呼び、PyCUDAのhello_gpuスクリプトを手数を10で割った余りが5・6のときに実行して、GPUを使った気分を味わう。実質的な計算には効いていない。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "何手目かの数を１０で割った余りが ５か ６のときに サーチ部に入る前に １回 実行してるぜ"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "関数型言語Elixirで将棋エンジン",
+      "description": "ループは再帰関数、水平方向も再帰で書く関数型の探索部。Elixirで実装した将棋エンジンの参加は初ではないかとしている。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "関数型言語を使ったから 満足だぜ"
+    },
+    {
+      "category": "エンタメ・演出",
+      "title": "読み筋欄を使ったコメント",
+      "description": "読み筋の欄に、並列処理したことなどを喋らせた。大会サーバーが読み筋以外のコメントを受け付けないため、公式棋譜には残らない。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "盤上の駒を動かす指し手を パラレル・プロセッシングして生成したと 言ってるぜ。"
+    }
+  ],
+  "character": "文書全体がキャラクター同士の掛け合い（きふわらべ、ひよ子）の漫画調で、「ヒャッホー」「満足だぜ」を合言葉に、強さより新技術を使う楽しさを前面に出す。対戦相手の1手詰め見逃しや投了を実況し、過去参加（きふわるべ、9体のきふわらべーず）も紹介。GitHubにMITライセンスで公開。",
+  "notes": "GitHubの266コミット目が大会版。チームのキャラクターは自作AI（Dad = 開発者の子）という設定。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc33/team.html"
+}

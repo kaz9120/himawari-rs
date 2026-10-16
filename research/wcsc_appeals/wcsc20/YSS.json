@@ -1,0 +1,52 @@
+{
+  "wcsc": 20,
+  "year": 2010,
+  "dir": "YSS",
+  "team": "山下宏",
+  "software": "YSS",
+  "sources": [
+    "wcsc20/appeal/YSS/YSS.html"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc20/appeal/YSS/YSS.html"
+  ],
+  "summary": "選択的探索で、残り深さと局面に応じて生成する手の種類・数を絞り、終盤でも20手程度の最善応手手順を出す。今年から評価関数をBonanza Methodでゼロから作り直す。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "Bonanza Methodで1から作り直した評価関数"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "選択的探索。手の生成の種類と数を残り深さで変更。終盤はより少数。前回最善手を0.5手延長"
+  },
+  "learning": "Bonanza Method",
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "探索",
+      "title": "残り深さで指し手生成を絞る選択探索",
+      "description": "手の生成の種類と数を残りの探索深さで変え、終盤はより少数の手しか生成しない。これにより終盤でも20手程度の深さの最善応手手順が出る。",
+      "originality": "独自",
+      "evidence": "終盤で20手程度の深さ",
+      "quote": "手の生成の種類、数を残りの探索深さによって変えています"
+    },
+    {
+      "category": "探索",
+      "title": "反復深化で前回最善手を0.5手延長",
+      "description": "探索の延長は、反復深化で前回の最善手を0.5手延長する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "前回の最善手を0.5手延長する"
+    }
+  ],
+  "character": null,
+  "notes": null,
+  "team_list_url": "http://www2.computer-shogi.org/wcsc20/team.html"
+}

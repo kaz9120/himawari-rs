@@ -1,0 +1,95 @@
+{
+  "wcsc": 34,
+  "year": 2024,
+  "dir": "Bakuretsu_Komahiroi_Taro",
+  "team": "森田 翔治（Yoltsプロジェクト）",
+  "software": "爆裂駒拾太郎",
+  "sources": [
+    "wcsc34/appeal/Bakuretsu_Komahiroi_Taro/20240331_appeal.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc34/appeal/Bakuretsu_Komahiroi_Taro/20240331_appeal.pdf"
+  ],
+  "summary": "「詰将棋が意味ないことを証明する」を掲げ、詰みでなく入玉宣言勝ちを目指すフロムスクラッチ将棋。入玉が苦手な最近のAIを逆手にとる。2駒関係の評価関数を、詰ませると負ける特殊版との自己対局で繰り返し学習する。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "PP型（2駒関係、第2世代）。入力3335次元、埋め込み17,346,050次元から1次元"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "反復深化、静止探索（駒取り・王手回避のみ最大3手延長）、MDP、NMP、LMR"
+  },
+  "learning": "入玉でなければ勝てない版の自己対局を繰り返し、その手番局面と評価値で学習。過去世代との対局割合は低勝率の世代を大きくする",
+  "hardware": "Core i9-13900K 24コア",
+  "language": [
+    "Rust",
+    "Python"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "入玉",
+      "title": "詰みではなく入玉宣言勝ちを目指す",
+      "description": "詰将棋が意味ないことを証明するという方針で、詰みではなく基本的に入玉宣言による勝ちを狙う評価関数を作る。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "詰将棋が意味ないことを証明する"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "詰ませると負ける版との自己対局",
+      "description": "探索で強制的に詰ますと負けにして入玉でしか勝てなくした版を作り、通常版と対局して棋譜を作り、その手番局面と評価値で評価関数を学習する。これを繰り返す。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "入玉でなければ勝てないようにした爆裂駒拾太郎を作成する"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "Thompson Samplingで指し手を選ぶ",
+      "description": "出現済み局面の勝敗引き分け数から、Thompson Samplingで指し手を選んで棋譜をばらけさせる。引き分けが半分以上なら選択率を下げ、千日手手順も選びにくくする。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "Thompson Samplingアルゴリズムに基づいて指し手を選択する"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "過去世代との対局割合の調整",
+      "description": "過去の評価関数との対局も行い、勝率の高い世代との対局は少なく、低い世代とは多くする。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "勝率の高い評価関数を小さく、勝率の低い評価関数を大きくする"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "学習棋譜の副産物の定跡",
+      "description": "学習データの棋譜から各局面の勝敗数を求め、Thompson Samplingで手を選ぶ。訪問数10未満になる手は選ばない。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "学習データの生成時の副産物として作成"
+    },
+    {
+      "category": "評価関数",
+      "title": "初期値は駒価値と敵陣への近さ",
+      "description": "初期値を小駒100点・大駒500点とし、敵陣に近いほど1点加点（最大9点）する評価関数から始める。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "初期値は小駒100点、大駒500点とし、敵陣に近いほど1点加点"
+    },
+    {
+      "category": "開発手法・運用",
+      "title": "他者の創作物に頼らないフロムスクラッチ",
+      "description": "思考に大きな影響を与える他者の創作物を使わない。指し手生成のみyasaiを使う。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "思考に大きな影響を与える他者の創作物は使用しないフロムスクラッチ将棋ソフトとして開発する"
+    }
+  ],
+  "character": "「入玉が苦手なAIが多いなら、爆裂駒拾太郎が最強ってコト！？」という挑発的なコンセプト。詰将棋不要論を掲げる。",
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc34/team.html"
+}

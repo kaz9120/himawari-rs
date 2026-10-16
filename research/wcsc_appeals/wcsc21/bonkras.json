@@ -1,0 +1,60 @@
+{
+  "wcsc": 21,
+  "year": 2011,
+  "dir": "bonkras",
+  "team": "伊藤英紀",
+  "software": "ボンクラーズ",
+  "sources": [
+    "wcsc21/appeal/bonkras/WCSC2011appeal_bonkras.pdf"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc21/appeal/bonkras/WCSC2011appeal_bonkras.pdf"
+  ],
+  "summary": "アピール文書が、女子高生2人のやり取りで描いた4コマ漫画（2ページ）。クラスタ並列・SSE Bitboard・差分評価計算・MPI通信を挙げ、YBWCを使わない点を特徴に挙げる。",
+  "base": {
+    "engine": "Bonanza",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": null
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "マスター・スレーブ型のクラスタ並列（YBWC不使用）"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "並列・分散",
+      "title": "YBWCを使わないクラスタ並列",
+      "description": "多くのソフトがYBWCを使うが、ボンクラーズはYBWCを使わず、MPI通信のマスター・スレーブ型クラスタ並列を採る。スレーブは「ボナチル」（Bonanza由来）。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "YBWC使ってません、大抵のソフトは並列化はYBWCなんだよ"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "SSE Bitboardと差分評価計算",
+      "description": "SSEを使ったBitboardと差分評価計算で高速化する。漫画中のキーワード。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "SSE Bitboard 差分評価計算"
+    },
+    {
+      "category": "エンタメ・演出",
+      "title": "アピール文書を4コマ漫画にする",
+      "description": "文書の形式自体を漫画にし、「最優秀アピール文書賞を目指す」と作中で宣言する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "WCSC2011 ボンクラーズアピールマンガ"
+    }
+  ],
+  "character": "セーラー服の2人が掛け合いで「並列って何」を解説するコミカルな漫画。「ところでアピール文書ってマンガでもいいの？」「まぁ別にいんじゃね？」とネタにする。作者は「実在の作者とは一切関係ありません」と注記する。",
+  "notes": "テキスト化が空だったため原本PDF（漫画）を読んだ。画像のため技術詳細は書かれていない。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc21/team.html"
+}

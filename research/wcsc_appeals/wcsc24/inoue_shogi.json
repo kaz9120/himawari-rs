@@ -1,0 +1,47 @@
+{
+  "wcsc": 24,
+  "year": 2014,
+  "dir": "inoue_shogi",
+  "team": "井上",
+  "software": "井上将棋",
+  "sources": [
+    "wcsc24/appeal/inoue_shogi/ap.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc24/appeal/inoue_shogi/ap.txt"
+  ],
+  "summary": "引き分けが面白くないとして「全歩留め戦法」を今回は取りやめ、Javaを覚えるためれさぴょん for Javaを導入した。激しい戦いを好む将棋に回帰する。目標は出場、関東見学、最下位にならないこと。",
+  "base": {
+    "engine": "れさぴょん",
+    "eval_source": null,
+    "note": "れさぴょん for Java (v1)"
+  },
+  "eval": {
+    "family": "手作り",
+    "detail": "評価関数によるαβ反復深化"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "反復深化"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": [
+    "Java",
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "棋風・人間らしさ",
+      "title": "激しい戦いを好む将棋への回帰",
+      "description": "第19回のように激しい戦いを好む指し方に戻す。引き分けが面白くないので「全歩留め戦法」は行わない。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "第19回のように、激しい戦いを好む将棋に回帰"
+    }
+  ],
+  "character": "「第二目的は関東地方見学」「毎回低い目標で申し訳ございません。楽しめればＯＫ（意味深）です」と脱力したユーモア。",
+  "notes": null,
+  "team_list_url": "http://www2.computer-shogi.org/wcsc24/team.html"
+}

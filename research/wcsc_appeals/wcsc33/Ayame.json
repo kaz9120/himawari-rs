@@ -1,0 +1,79 @@
+{
+  "wcsc": 33,
+  "year": 2023,
+  "dir": "Ayame",
+  "team": "渡辺 敬介",
+  "software": "あやめ",
+  "sources": [
+    "wcsc33/appeal/Ayame/wcsc33_ayame.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc33/appeal/Ayame/wcsc33_ayame.pdf"
+  ],
+  "summary": "実現確率探索と、Factorization Machinesによる評価関数・着手確率の組み合わせが特徴。FM系の手法をこの選手権で使うのは自分だけと主張している。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "駒の損得+Factorization Machines（KP+PP+KK、玉周辺25マスの効き、手番）。先後それぞれのスコアの差を使う"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "実現確率探索（Factorization Bradley-Terryの着手確率）"
+  },
+  "learning": "強化学習時の自己対戦の対局数を前回より増やした",
+  "hardware": "GCP n2-highcpu-32",
+  "language": [
+    "C++",
+    "Java"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "Factorization Machinesの評価関数",
+      "description": "2駒関係・玉周辺25マスの効き・手番の特徴をFMに入れ、特徴の組み合わせを取り込む。2駒関係同士の組み合わせが4駒関係（KKPP+KPPP+PPPP）に相当する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "局面評価関数および実現確率用の着手確率に Factorization Machinesを使用している点です。"
+    },
+    {
+      "category": "探索",
+      "title": "Factorization Bradley-Terryによる実現確率探索",
+      "description": "着手確率にFactorization Bradley-Terryモデルを使う。通常モデルと小型の簡易モデルを用意し、末端付近は簡易モデルで高速化する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "通常のモデルと小規模で高速な簡易計算用モデルの2種類を用意し"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "盤面共通特徴の再利用と差分計算",
+      "description": "駒の位置や王手などの盤面共通特徴を最初に計算して各着手のスコアで再利用し、簡易モデルの駒位置は差分計算する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "盤面共通の特徴量を最初に計算し、各着手のスコア計算で再利用できるようにしています。"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "着手確率用の専用置換表",
+      "description": "着手確率の計算結果を専用の置換表に保存し、同一局面で再計算しない。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "着手確率用の置換表作成"
+    },
+    {
+      "category": "開発手法・運用",
+      "title": "学習データセットを1年保管",
+      "description": "再現実験のため、プログラムに加え学習に使ったデータセットも大会後1年間保管する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "学習に使用したデータセットも大会後1年間保管する予定です。"
+    }
+  ],
+  "character": null,
+  "notes": "並列化改善は効果不明と記載。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc33/team.html"
+}

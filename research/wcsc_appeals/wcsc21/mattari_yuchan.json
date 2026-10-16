@@ -1,0 +1,37 @@
+{
+  "wcsc": 21,
+  "year": 2011,
+  "dir": "mattari_yuchan",
+  "team": "東京農工大学 小谷研究室",
+  "software": "まったりゆうちゃん",
+  "sources": [
+    "wcsc21/appeal/mattari_yuchan/yuchan.doc"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc21/appeal/mattari_yuchan/yuchan.doc"
+  ],
+  "summary": "小谷研で2004年度から参加する手作り評価関数の将棋プログラム。実現確率探索やNegaScoutを使う、標準的な構成。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "手作り",
+    "detail": "駒価値、玉に対する駒価値、進行度を考慮した手調整"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "NegaScout、反復深化、実現確率探索、futility pruning。詰みはPDS"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": [
+    "C"
+  ],
+  "claimed_strength": null,
+  "ideas": [],
+  "character": null,
+  "notes": "工夫の記述は概要のみ。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc21/team.html"
+}

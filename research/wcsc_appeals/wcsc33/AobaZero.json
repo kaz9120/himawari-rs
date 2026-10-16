@@ -1,0 +1,86 @@
+{
+  "wcsc": 33,
+  "year": 2023,
+  "dir": "AobaZero",
+  "team": "Team AobaZero",
+  "software": "AobaZero",
+  "sources": [
+    "wcsc33/appeal/AobaZero/2023csa_appeal.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc33/appeal/AobaZero/2023csa_appeal.pdf"
+  ],
+  "summary": "BonanzaとLeelaZeroのコードを土台にしたAlphaZeroの追試で、ユーザー協力の分散強化学習によるオープンソース。人間の知識を使わない方針を保ちつつ、今年は互角局面の学習確率を下げる新手法などで去年から+100 Elo。",
+  "base": {
+    "engine": "Bonanza+LeelaZero",
+    "eval_source": "なし（独自のResNet）",
+    "note": "AlphaZero追試。OSS"
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "20ブロック256フィルタのResNet、パラメータ2340万個"
+  },
+  "search": {
+    "family": "MCTS",
+    "detail": "AlphaZero式MCTS、3手詰・dfpn詰を全ノードで併用"
+  },
+  "learning": "分散強化学習で6363万棋譜を生成。再学習はReplay Buffer 300〜400万棋譜、cos annealing",
+  "hardware": "EPYC 7282 + RTX 4090 x4 + RunPod",
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": "追試終了時から+230 Elo、去年の選手権から+100 Elo。AlphaZeroを+80 Elo程度超えた可能性",
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "互角局面の学習確率を下げる",
+      "description": "勝率0.5近辺の局面の選択確率を下げ、勝率0.7〜0.8の局面を13倍など優遇して学習する。Sum-Treeで重み付きランダム選択を実装した。",
+      "originality": "独自",
+      "evidence": "自己対戦で+100 Elo、対水匠5で+28 Elo（800playout）",
+      "quote": "おそらくこれは 新規の手法だと思います。"
+    },
+    {
+      "category": "探索",
+      "title": "詰探索を全ノードで併用",
+      "description": "3手詰とdfpn詰を全ノードで行う。10visitで1万ノード、100visitで10万ノードと1000倍のノード数で探索する。",
+      "originality": "既存手法の応用",
+      "evidence": "+40 Elo",
+      "quote": "3 手詰を全ノードで、dfpn の詰を全ノードで。+40 ELO"
+    },
+    {
+      "category": "探索",
+      "title": "ルートPolicyの温度を上げる",
+      "description": "ルートのPolicyのSoftmax温度を1.0から1.8に変更した。",
+      "originality": "既存手法の応用",
+      "evidence": "+50 Elo",
+      "quote": "Root の Policy の Softmax 温度を 1.0 から 1.8 に。+50 ELO"
+    },
+    {
+      "category": "探索",
+      "title": "分散に応じた動的cPUCT",
+      "description": "playoutごとの評価値の分散が大きいときcPUCTも大きくする。KataGoのDynamic Variance-Scaled cPUCTに倣う。",
+      "originality": "再現・追従",
+      "evidence": "+25 Elo",
+      "quote": "KataGo で使われている Dynamic Variance-Scaled cPUCT"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "序盤・早期投了棋譜の学習割合を下げる",
+      "description": "序盤や早い投了の棋譜の学習割合を減らし、自己対戦を1手平均800から1600 playoutに増やした。",
+      "originality": "既存手法の応用",
+      "evidence": "+60 Elo",
+      "quote": "序盤や早い投了棋譜の学習割合を減らす。自己対戦を 1 手平均 800 から 1600 playout に。"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "人間の知識を使わない方針の継続",
+      "description": "利き情報の追加や詰探索でAlphaZeroからは離れたが、全体として人間の知識を使わない方針を保つ。棋譜の10％は投了禁止で最後まで指す。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "人間の知識は使っていない、をおそらく継続"
+    }
+  ],
+  "character": "4年間で6300万棋譜を、ユーザー協力の分散学習で生成してきたプロジェクト。",
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc33/team.html"
+}

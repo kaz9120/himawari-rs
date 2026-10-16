@@ -1,0 +1,54 @@
+{
+  "wcsc": 25,
+  "year": 2015,
+  "dir": "nozomi",
+  "team": "大森 悠平",
+  "software": "nozomi",
+  "sources": [
+    "wcsc25/appeal/nozomi/nozomi_appeal.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc25/appeal/nozomi/nozomi_appeal.txt"
+  ],
+  "summary": "新規参加。Stockfishを多く流用した探索（スレッド・置換表・USI部）に、BMI2のpext bitboardを採用。目標は脱fv.binで、Bonanzaを改造して玉からの相対2駒の位置評価を追加して学習する。名前は新幹線にちなむ。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": "Stockfishから多くを流用。Bonanzaは学習用に改造のみ"
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "Bonanza式を改造し玉からの相対2駒位置を追加。脱fv.bin"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "PVS＋並列探索。枝刈り・1手/3手詰めは未搭載"
+  },
+  "learning": "Bonanzaを改造して棋譜から学習",
+  "hardware": null,
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "実装・高速化",
+      "title": "pext bitboard",
+      "description": "流行に乗りBMI2命令のpextを使うbitboardに置き換えた。rotated bitboardと比べて大きな高速化はなかったようだとする。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "BMI2命令セットを使用したpext bitboardに置き換えました。"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "脱fv.binを目標にした学習",
+      "description": "Bonanza 6.0より強いパラメータを作ることを目標に、Bonanzaを改造した学習を行う。玉からの相対2駒の位置評価を追加。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "今回の一番の目標は、脱fv.binです。"
+    }
+  ],
+  "character": "名前は「あっという間にそれなりに強くなった」ことに由来する新幹線。「ラブライブ由来にしてネタ勢に参戦しようかとも思った」と書く。floodgateのnozomi_for_wcsc25が大会版の強さと明示。",
+  "notes": null,
+  "team_list_url": "http://www2.computer-shogi.org/wcsc25/team.html"
+}

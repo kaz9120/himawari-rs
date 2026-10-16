@@ -1,0 +1,54 @@
+{
+  "wcsc": 29,
+  "year": 2019,
+  "dir": "Scherzo",
+  "team": "氏家 一朗",
+  "software": "Scherzo",
+  "sources": [
+    "wcsc29/appeal/Scherzo/appeal-scherzo-2019.txt"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc29/appeal/Scherzo/appeal-scherzo-2019.txt"
+  ],
+  "summary": "全幅探索のルート近くの評価にニューラルネットワークを用いるソフト。NN使用はAlphaZero以降ごく普通になったため、チェスのretrogradeの将棋への適用を検討中とする。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "ルート近くの評価にニューラルネットワークを使用"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "通常の全幅探索"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "ルート近傍だけNNで評価",
+      "description": "全幅探索で、ルート近くの局面の評価にだけニューラルネットワークを使う。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "ルート近くの評価には neural network を用いています。"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "チェスのretrogradeの将棋への適用（検討中）",
+      "description": "新機軸として、チェスの終盤で使われるretrograde解析が将棋でもできないか検討中。大会に間に合うかは不明。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "チェスでいうところの retrograde が将棋でもできないか検討しておりますが"
+    }
+  ],
+  "character": "「NNを使っているのが売りだったが、AlphaZero以降ごく普通の技術となってしまったのが寂しい」と書く。",
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc29/team.html"
+}

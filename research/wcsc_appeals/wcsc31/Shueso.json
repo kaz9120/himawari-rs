@@ -1,0 +1,60 @@
+{
+  "wcsc": 31,
+  "year": 2021,
+  "dir": "Shueso",
+  "team": "竹内 章",
+  "software": "習甦",
+  "sources": [
+    "wcsc31/appeal/Shueso/Shueso_wcsc31.txt"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc31/appeal/Shueso/Shueso_wcsc31.txt"
+  ],
+  "summary": "1スレッドがdf-pnで詰みを確認し、他のスレッドはStockfishから取捨選択した単純なαβ探索を行う。評価関数は玉位置に対する各駒の位置と利き数を特徴とするニューラルネットで、自己対戦の評価値（勝率）を割引累積報酬とする強化学習で学ぶ。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "玉の位置に対する各駒の位置と全升目の利き数（先後別3まで）を特徴量とするニューラルネットワーク"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "1スレッドがdf-pnで詰み確認、他スレッドはStockfishから取捨選択したシンプルなαβ"
+  },
+  "learning": "自己対戦棋譜からサンプリングした局面から終局までの評価値（勝率）を割引累積報酬として強化学習",
+  "hardware": null,
+  "language": "C++",
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "詰み・終盤",
+      "title": "詰み専用スレッド",
+      "description": "並列探索で1スレッドを使い、df-pnで詰みを確認する。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "1スレッドはdf-pnにより詰みを確認"
+    },
+    {
+      "category": "評価関数",
+      "title": "玉基準の駒位置と利き数を特徴量にしたNN",
+      "description": "玉の位置に対する各駒の位置と、全升目の利き数（先後別に3まで）を特徴量とするニューラルネットワーク。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "玉の位置に対する各駒の位置と全升目の利き数（先後別3まで）を特徴量とするニューラルネットワーク"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "割引累積報酬による強化学習",
+      "description": "自己対戦棋譜からサンプリングした局面から終局までの評価値（勝率）を、割引累積報酬として強化学習する。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "割引累積報酬として強化学習"
+    }
+  ],
+  "character": null,
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc31/team.html"
+}

@@ -1,0 +1,97 @@
+{
+  "wcsc": 34,
+  "year": 2024,
+  "dir": "YaneuraOu_featuring_Ryfamate",
+  "team": "やねこま王（やねうらお・駒の書体・よみぃ）",
+  "software": "やねうら王 featuring Ryfamate",
+  "sources": [
+    "wcsc34/appeal/YaneuraOu_featuring_Ryfamate/PR_20240326.pdf",
+    "wcsc34/appeal/YaneuraOu_featuring_Ryfamate/YanekomaOu_review_wcsc34.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc34/appeal/YaneuraOu_featuring_Ryfamate/PR_20240326.pdf",
+    "https://www.apply.computer-shogi.org/wcsc34/appeal/YaneuraOu_featuring_Ryfamate/YanekomaOu_review_wcsc34.pdf"
+  ],
+  "summary": "ふかうら王に、Komafont氏のAttention付き30ブロックモデル（RyfcNet）とやねうらお氏のペタショック定跡を組み合わせたチーム。DL系の読み抜けを、極小確率の手を条件付きで読む案で改善することも提示した。",
+  "base": {
+    "engine": "やねうら王（ふかうら王）",
+    "eval_source": "Ryfamate Cross Network（RyfcNet、Ryfc30 WCSC34）",
+    "note": null
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "ResNetの一部ブロックをAttentionブロック（A-Block）に置き換えた30ブロックのRyfcNet"
+  },
+  "search": {
+    "family": "MCTS",
+    "detail": "ふかうら王（dlshogi互換）"
+  },
+  "learning": "序中盤向けに大型モデルを学習。たややん氏公開のNNUE1000万ノード教師が終盤のValue精度に貢献",
+  "hardware": "RTX 4090×14（二次予選）、×18（決勝）",
+  "language": [
+    "C++",
+    "Python"
+  ],
+  "claimed_strength": "Ryfc30 WCSC34は、Ryfc20 WCSC33に対してR+28.4（±33.9、n=792）、1手4秒",
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "ResNetの一部ブロックをAttention化",
+      "description": "ResNetの一部ブロックをMulti-Head Self-AttentionのA-Blockに置き換え、従来と同程度の推論速度に調整した。大型モデルほど精度向上が大きい。",
+      "originality": "独自",
+      "evidence": "12ブロックでAttentionなしよりわずかに精度向上。R+28.4（±33.9）",
+      "quote": "ResNet *6 の一部ブロックを、Transfomer の中核的要素である Attention を用いたブロック (A-Block) に置き換え"
+    },
+    {
+      "category": "評価関数",
+      "title": "Softmax入力に学習可能な位置パラメータを加算",
+      "description": "Relative Position Representationsを参考に、Attention内の各Softmaxの入力へ学習可能パラメータを足した。角の進む方向に離れたマスの認識を、従来は複数ブロックだったが1ブロックで行うheadが学習で得られた。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "Attention 中の各 Softmax 関数への入力値に対して学習可能パラメータを加算した"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "ペタショック定跡",
+      "description": "約3000万局面の大規模定跡を生成した。2024年は大規模定跡の時代と位置づけている。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "以下のブログ記事に書いたように 3000 万局面程度生成した"
+    },
+    {
+      "category": "探索",
+      "title": "DL系の読み抜け対策案",
+      "description": "Policy Networkが好手に極めて0に近い確率を出すと先を読まず読み抜けする。特定の条件のときだけ、0に近い確率の手でも先を読む案。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "特定の条件に合致した場合のみ、0 に近い確率が出力された場合であってもその先の変化を読むようにしようかと思っている"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "Attention導入の過学習と対策",
+      "description": "Attentionは帰納バイアスが弱く、早い段階で過学習の兆候が出た。チームメイトの計算資源とたややん氏のNNUE教師で補った。期待したほどの差ではなく、さらなる改良が必要と書く。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "Attention が Convolution に比べて帰納バイアスが弱く、同程度のモデルサイズでもより多くの教師が必要となるためと思われる"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "Attention部をBF16・FP32で演算",
+      "description": "A-BlockはFP16の学習・推論でオーバーフローして失敗することがあるため、原因の演算箇所だけBF16かFP32で行った。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "オーバーフローの原因となる演算箇所を BF16 または FP32 で演算させることで対応した"
+    },
+    {
+      "category": "開発手法・運用",
+      "title": "手法の公開と追試の手引き",
+      "description": "RyfcNetのC-Layer（形状(C,H,W)入力から(C,H,1)、(C,1,W)、(1,H,W)の出力）の複数出力を足すと有効、などを公開し追試を支援する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "RyfcNet の基礎技術は再現可能な内容を公開しており"
+    }
+  ],
+  "character": "独自の評価関数Ryfamateで単独出場していたKomafont氏が、大規模な計算資源の必要性と現地参加の新ルールへの対応の難しさから、やねうらお氏・よみぃ氏とチームを組んだ経緯が書かれている。",
+  "notes": "大会後アピール文（5/5以降）と大会前PR文（3/26）の2本を統合した。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc34/team.html"
+}

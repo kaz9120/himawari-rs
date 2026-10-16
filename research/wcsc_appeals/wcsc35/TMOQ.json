@@ -1,0 +1,63 @@
+{
+  "wcsc": 35,
+  "year": 2025,
+  "dir": "TMOQ",
+  "team": "山下 隆久",
+  "software": "TMOQ（特大もっきゅ）",
+  "sources": [
+    "wcsc35/appeal/TMOQ/appeal_20250507.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc35/appeal/TMOQ/appeal_20250507.pdf"
+  ],
+  "summary": "ChatGPT（gpt-4o-mini）をファインチューニングして指し手を出させる、異色のエンジン。SFENと合法手リストをAPIに渡し、返答が合法手と一致すればその手を指し、一致しなければ投了する。定跡と詰み探索で補い、悪手は評価エンジンが検知して再考を促す。目標は1勝。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": "ChatGPT APIが指し手を生成。補助にtanuki-wcsc34（お前、CSA会員にならねーか？）とDeepLearningShogi"
+  },
+  "eval": {
+    "family": "その他",
+    "detail": "ChatGPT（gpt-4o-mini-2024-07-18）をWCSC決勝棋譜でファインチューニング。補助評価はtanuki-wcsc34"
+  },
+  "search": {
+    "family": "その他",
+    "detail": "定跡→ChatGPT→詰みがあれば即詰ませる。探索はほぼ行わない"
+  },
+  "learning": "WCSC34・33・32・31・29の決勝棋譜（延べ約3万局面）でファインチューニング。ただし旧版より弱くなったため、本番はWCSC34〜32の約2万局面の版",
+  "hardware": "Ryzen 5 7640HS + ChatGPT 4o + ミニPC",
+  "language": [
+    "C++",
+    "Python"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "研究・実験的",
+      "title": "ChatGPTに将棋の指し手を直接出させる",
+      "description": "現局面のSFENと合法手リストをChatGPT APIに渡し、レスポンスと合法手リストを突き合わせて、一致すればUSIエンジンへ渡す。一致しなければ投了。決勝棋譜でファインチューニングして、敵陣に大駒をねじ込む奔放な将棋を指す。",
+      "originality": "独自",
+      "evidence": "第5回電竜戦本戦で独創賞",
+      "quote": "ChatGPT の力を借りて、1 勝を目指します!"
+    },
+    {
+      "category": "探索",
+      "title": "評価エンジンによる悪手の除外と再考要求",
+      "description": "指すと評価値が1000点以上悪化するとtanuki-が判断した手を合法手リストから外し、ChatGPTに再考を促す。それでも同じ手に固執したらその意思を尊重して採用する。再考は最大50回。",
+      "originality": "独自",
+      "evidence": "「再考を重ねても劇的に強くなるわけではない」",
+      "quote": "それでもなお ChatGPT が除外された A に固執した場合は、その意思を尊重して A を採用します。"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "ファインチューニングの負の結果の記録",
+      "description": "約3万局面でファインチューニングしたら旧版よりむしろ弱くなったため、約2万局面の版で本番に臨む。",
+      "originality": "独自",
+      "evidence": "3万局面版は旧版より弱くなった",
+      "quote": "旧バージョンよりむしろ弱くなってしまいました"
+    }
+  ],
+  "character": "ソフト名と画像は愛娘がデザイン・命名し、Soraで生成した画像を使う。WCSC26以降ほぼ全大会に出場している。ChatGPTの特技を「敵陣に大駒をねじ込むこと」「駒の利きを気にせず自由奔放に指すこと」と紹介する。",
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc35/team.html"
+}

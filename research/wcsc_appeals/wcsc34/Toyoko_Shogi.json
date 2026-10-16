@@ -1,0 +1,80 @@
+{
+  "wcsc": 34,
+  "year": 2024,
+  "dir": "Toyoko_Shogi",
+  "team": "東横コンピュータ将棋部",
+  "software": "東横将棋",
+  "sources": [
+    "wcsc34/appeal/Toyoko_Shogi/appeal20240521.txt",
+    "wcsc34/appeal/Toyoko_Shogi/Toyoko_Shogi_appeal_detail_20240525.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc34/appeal/Toyoko_Shogi/appeal20240521.txt",
+    "https://www.apply.computer-shogi.org/wcsc34/appeal/Toyoko_Shogi/Toyoko_Shogi_appeal_detail_20240525.pdf"
+  ],
+  "summary": "最新のやねうら王の探索部に、マメットブンブク型評価関数（halfkp_1024x2-8-32）と手作業の定跡を組む。クラウドを使わず旧型のRyzen Threadripper 3990Xで出て3位に入った。文書は「ｗｗｗ」混じりの語りで、定跡の重要性と、入玉が弱い評価関数を標準NNUEへ渡す継投を論じる。",
+  "base": {
+    "engine": "やねうら王",
+    "eval_source": "マメットブンブク（Grampus_HD2_20231107、halfkp_1024x2-8-32）",
+    "note": null
+  },
+  "eval": {
+    "family": "NNUE",
+    "detail": "マメットブンブク型。第4回電竜戦本戦の評価関数をそのまま使用"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "最新の開発版やねうら王"
+  },
+  "learning": "学習は追加せず、大量の自己対戦でも電竜戦版からの大きな強化は望めないと判断",
+  "hardware": "Ryzen Threadripper 3990X（全対局）",
+  "language": [
+    "Python"
+  ],
+  "claimed_strength": "WCSC34で3位入賞。大会後の計測ではtanuki-wcsc34（halfkp_1024x2-8-64）よりはるかに弱い",
+  "ideas": [
+    {
+      "category": "定跡・序盤",
+      "title": "角換わり・相掛かりを重視した手作業定跡",
+      "description": "前年の定跡をもとに、tanuki-wcsc33定跡とfloodgateの強い人の棋譜を参考に手作業で調整した。角換わりと後手番相掛かりに力を入れ、「1.21ジゴワット火葬砲定跡」と名付けた。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "手作業による定跡の生成。角換わり定跡と相掛かり定跡に主眼を置いています。"
+    },
+    {
+      "category": "入玉",
+      "title": "評価値で標準NNUEへリレー",
+      "description": "マメットブンブク型は入玉が弱いので、一定の評価値を超えたら標準NNUE型にリレーするのが最善と考える。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "一定の評価値で標準 NNUE 型にリレーするのが最善かと思われます"
+    },
+    {
+      "category": "ハードウェア",
+      "title": "クラウドを使わず旧型CPU",
+      "description": "クラウドを使わず、4年前のRyzen Threadripper 3990Xを全対局で使い、上位チームのモンスターマシンにどこまで対抗できるかを試した。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "全対局において Ryzen Threadripper 3990X を使用することに決めておりました"
+    },
+    {
+      "category": "開発手法・運用",
+      "title": "ライセンスフリーの原則を守った定跡作成",
+      "description": "定跡作成でDL系のライセンスに抵触するソフトの使用を避け、s-book_blackフリーとライセンスフリーの原則を守った。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "ライセンスフリーの原則を遵守しました"
+    },
+    {
+      "category": "評価関数",
+      "title": "マメットブンブク型評価関数の使用",
+      "description": "マメットブンブク型（halfkp_1024x2-8-32）は、DL系以外のNNUE系としては主流の構成。この構成と定跡の強化で、主流ソフトにどこまで対抗できるかが動機。",
+      "originality": "再現・追従",
+      "evidence": null,
+      "quote": "この構成と定跡の強化で現在の主流ソフトにどこまで対抗できるかというのが主な開発動機です"
+    }
+  ],
+  "character": "「役割論理」「必然力」など独自の用語と「ｗｗｗ」混じりの口調で、先手必勝論や振り飛車必敗論を語る。会場でのやりとりや怪しい恰好、レトロなキーボードの余談など、ネタを多く盛り込んだ文書。",
+  "notes": "直前に大量の空行がある。詳細版は大会後（5/25）に追加された。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc34/team.html"
+}

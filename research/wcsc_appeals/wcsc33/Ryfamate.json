@@ -1,0 +1,90 @@
+{
+  "wcsc": 33,
+  "year": 2023,
+  "dir": "Ryfamate",
+  "team": "Komafont（駒の書体）",
+  "software": "Ryfamate",
+  "sources": [
+    "wcsc33/appeal/Ryfamate/appeal_ryfamate_20230421.pdf",
+    "wcsc33/appeal/Ryfamate/review_ryfamate_20230519.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc33/appeal/Ryfamate/appeal_ryfamate_20230421.pdf",
+    "https://www.apply.computer-shogi.org/wcsc33/appeal/Ryfamate/review_ryfamate_20230519.pdf"
+  ],
+  "summary": "NNUEとDLの変則合議を、1台のPCで実現するコンセプトのソフト。今年は、ResNetの畳み込みを1x9や9x1の方向に変えた新アーキテクチャRyfcNetを開発し、20ブロック256チャンネルで使った。ResNetに対し+48.1レーティングを示した。",
+  "base": {
+    "engine": "dlshogi+やねうら王",
+    "eval_source": null,
+    "note": "探索部はdlshogiとやねうら王を一部改良。dr2-exhiや水匠などで教師局面を作成"
+  },
+  "eval": {
+    "family": "DL+NNUE",
+    "detail": "DLはRyfcNet（S-Layer、F-Layer、C-Layer）。NNUE型との変則合議"
+  },
+  "search": {
+    "family": "αβ+MCTS",
+    "detail": "DLとNNUEの変則合議"
+  },
+  "learning": "自作教師に加え、加納氏・山岡氏公開データ約6億局面、たややん氏公開データ約1.2億局面。実験用の小モデルはAdam/LAMB+Warmup+CosineAnnealingで早く収束させる",
+  "hardware": "Ryzen Threadripper 2950X + RTX3090（決勝の一部のみm6a.16xlarge）",
+  "language": [
+    "C++",
+    "C#",
+    "Python"
+  ],
+  "claimed_strength": "Ryfc12bはRes12bに対し+48.1（±19.8）。本番のRyfc20bは学習途中でdr2-exhi（3.0s）に対し2.0sで勝率64.75%（158勝86敗26分）",
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "RyfcNet: 任意次元に全長カーネルを走らせる畳み込み",
+      "description": "畳み込みを、任意の次元について入力空間と同じ長さのカーネルを他の次元へ移動させて適用する変換と捉える。9x1や1x9の部分空間を扱うC-Layerで、離れた駒（飛車・香の効き）の関係を少ない演算で認識し、駒の絶対座標（段・筋）にも反応できる。",
+      "originality": "独自",
+      "evidence": "ResNet12b（192ch）に対しレーティング+48.1（±19.8）、精度・推論速度ともに上回る",
+      "quote": "畳み込みを、任意の次元について入力空間と同じ長さを持つカーネルを、それ以外の次元の方向に移動させながら適用する変換と捉え"
+    },
+    {
+      "category": "評価関数",
+      "title": "F-Layerによる空間方向のself-attention",
+      "description": "チャンネルごとの全結合または縦横方向のself-attentionで盤面全体の情報を少ない変換回数で扱う。推論が遅くなるため、S-Layerでチャンネル数を調整する。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "チャンネルごとの全結合または空間方向 (縦横方向) の self-attention を行う。"
+    },
+    {
+      "category": "評価関数",
+      "title": "位置埋め込みの付与",
+      "description": "畳み込み層への入力に、絶対座標に依存する学習可能パラメータ（position embedding）を付け、自陣・敵陣や角・桂の初期位置など、位置限定で反応する畳み込みを可能にする。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "絶対座標に依存する学習可能パラメータを付与する possition embedding を行う。"
+    },
+    {
+      "category": "探索",
+      "title": "NNUEとDLの変則合議",
+      "description": "2021年からNNUE型とDL系の変則合議を採用し、2022年にDL側へTransformer型を導入。今年はResNetの代わりにRyfcNetを使う。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "2021 年には NNUE 型評価関数と DL 系評価関数の変則合議を採用し"
+    },
+    {
+      "category": "開発手法・運用",
+      "title": "小モデル・Adam系での素早いアーキテクチャ比較",
+      "description": "本番モデルの学習が1GPUで数か月かかるため、実験は小さいモデルでAdamやLAMBとWarmup+CosineAnnealingを使い、ハイパーパラメータ感応度を抑えて素早く構造を比較した。epsilonを高めてSGDより低い汎化を緩和。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "ハイパーパラメータの学習結果に対する感応度を抑えつつ、早く誤差を収束させている。"
+    },
+    {
+      "category": "開発手法・運用",
+      "title": "新モデルの公開意向",
+      "description": "協力者がいれば学習を進めたうえで、新しいモデルを公開したいとする。サンプルコードも要望があれば公開。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "要望が多ければサンプルコードを公開したいと考えている。"
+    }
+  ],
+  "character": "「おうちパソコンのパワーを最大限活用する」をコンセプトに、計算資源の多寡でなくネットワークアーキテクチャの工夫で優位性を示す。数年の入退院を経て、機械学習の最新動向を研究するために参加した経緯を語る。",
+  "notes": "4月21日付の事前アピールと5月19日付の大会後アピールの2本。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc33/team.html"
+}

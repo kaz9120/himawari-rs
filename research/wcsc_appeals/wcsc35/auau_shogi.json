@@ -1,0 +1,44 @@
+{
+  "wcsc": 35,
+  "year": 2025,
+  "dir": "auau_shogi",
+  "team": "氏家 一朗",
+  "software": "あうあう将棋",
+  "sources": [
+    "wcsc35/appeal/auau_shogi/appeal_2025.txt"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc35/appeal/auau_shogi/appeal_2025.txt"
+  ],
+  "summary": "αβ法で7〜9手先を読み、末端は1〜2手読みに相当する静的評価関数を使うクラシックな構成。GUIで盤面を斜め上から見た3D表示にしているが、受信漏れが怖いので当日は動かさない予定。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "手作り",
+    "detail": "末端で1〜2手読みに相当する静的評価関数"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "7〜9手先を読む"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": [],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "エンタメ・演出",
+      "title": "盤面の3D斜め上表示GUI",
+      "description": "盤面を斜め上から見た3D画像で表示し、リアルタイムに動かせる。ただし相手の手の受信漏れが怖いので、当日は動かさない。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "盤面を3Dで斜め上から見た絵にしています"
+    }
+  ],
+  "character": "強さに関係ないGUIに力を入れたが、受信し損ねる不安で本番は封印するという自虐的な正直さ。",
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc35/team.html"
+}

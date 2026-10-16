@@ -1,0 +1,47 @@
+{
+  "wcsc": 29,
+  "year": 2019,
+  "dir": "FTS3",
+  "team": "後藤裕樹、小野一美（FTS3）",
+  "software": "FTS3",
+  "sources": [
+    "wcsc29/appeal/FTS3/PR_FTS3.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc29/appeal/FTS3/PR_FTS3.pdf"
+  ],
+  "summary": "AlphaGo Zeroを参考に、TensorFlowでプロ棋士の棋譜から教師あり学習したディープラーニング評価関数のソフト。初参加で、高スペックでなくても動くことを前提とする。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "AlphaGo Zero参考のDNN"
+  },
+  "search": {
+    "family": "不明",
+    "detail": null
+  },
+  "learning": "プロ棋士の棋譜による教師あり学習（TensorFlow）",
+  "hardware": null,
+  "language": [
+    "C#",
+    "python"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "ハードウェア",
+      "title": "低スペックPCでも動く構成",
+      "description": "高PCスペックでなくても動作することを前提に構成する。",
+      "originality": "不明",
+      "evidence": null,
+      "quote": "高 PC スペックでなくても動作することを前提とした構成になっています。"
+    }
+  ],
+  "character": "動機は、人間が勝てなくなった過程を見て、プロを超え強いソフトと渡り合うものを一から作りたかったこと。目標は反則・バグ負けをしないこと。",
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc29/team.html"
+}

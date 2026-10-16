@@ -1,0 +1,68 @@
+{
+  "wcsc": 26,
+  "year": 2016,
+  "dir": "GPS_Shogi",
+  "team": "Team GPS",
+  "software": "GPS将棋",
+  "sources": [
+    "wcsc26/appeal/GPS_Shogi/wcsc-appeal.pdf"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc26/appeal/GPS_Shogi/wcsc-appeal.pdf"
+  ],
+  "summary": "東京大学のゲームプログラミングセミナーが開発するフリーソフト。第14回の参加で、利きを管理する高速な盤、実現確率を使う探索、評価関数の自動学習、4種類の評価関数、疎結合並列探索、df-pnによる並列協調の詰探索を挙げる。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "序盤・中盤1・中盤2・終盤の4種類の評価関数を使い分ける"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "実現確率を用いた探索、疎結合並列探索、df-pn（並列協調）による詰探索"
+  },
+  "learning": "評価関数の自動学習",
+  "hardware": null,
+  "language": "C++, Go",
+  "claimed_strength": "第19回・第22回優勝",
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "局面の段階で4種類の評価関数",
+      "description": "序盤・中盤1・中盤2・終盤の4種類の評価関数を使い分ける。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "評価関数は現在、序盤、中盤 1、中盤 2、終盤の 4 種類を用いています"
+    },
+    {
+      "category": "並列・分散",
+      "title": "疎結合並列探索",
+      "description": "多数の計算機に探索を疎結合で分散する。木のパイプライン方式のパラメータフリーな非同期並列探索（ACG2015）にも取り組む。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "疎結合並列探索や df-pn（並列協調）を用いた詰探索にも対応しています"
+    },
+    {
+      "category": "詰み・終盤",
+      "title": "並列協調のdf-pn詰探索",
+      "description": "詰探索に専用マシン群を使い、df-pnを並列協調で動かす。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "df-pn（並列協調）を用いた詰探索"
+    },
+    {
+      "category": "探索",
+      "title": "実現確率による探索",
+      "description": "実現確率を使う探索を取り入れている。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "実現確率を用いた探索"
+    }
+  ],
+  "character": null,
+  "notes": "技術の詳細は参考文献を参照とのみ記載。詰探索専用機4台（計36コア）は一覧ページ記載",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc26/team.html"
+}

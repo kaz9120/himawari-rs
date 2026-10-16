@@ -1,0 +1,102 @@
+{
+  "wcsc": 34,
+  "year": 2024,
+  "dir": "Ari_Shogi_and_Friends",
+  "team": "兵頭 優空",
+  "software": "Ari Shogi and フレンズ",
+  "sources": [
+    "wcsc34/appeal/Ari_Shogi_and_Friends/Ari_Shogi_and_Friends_WCSC34_appeal_02.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc34/appeal/Ari_Shogi_and_Friends/Ari_Shogi_and_Friends_WCSC34_appeal_02.pdf"
+  ],
+  "summary": "DL系のAri Shogiと標準型NNUE系のAIを組み合わせるハイブリッド型。DLの弱点の終盤はNNUEに任せ、DL側は複数モデルの出力平均（アンサンブル）で精度を上げる。NNUEは自作の学習部で学習する。",
+  "base": {
+    "engine": "独自（Ari Shogiはpython-dlshogi2ベース、NNUE側はやねうら王）",
+    "eval_source": "Háo、BLOSSOM、水匠5、Líなどをキメラ化",
+    "note": null
+  },
+  "eval": {
+    "family": "DL+NNUE",
+    "detail": "DL（ResNet系、ViTも試作）の出力平均 + 標準型NNUE（Haojian）"
+  },
+  "search": {
+    "family": "αβ+MCTS",
+    "detail": "DL側はPython実装、NNUE側はやねうら王。詰みはKomoringHeights"
+  },
+  "learning": "NNUEは自作学習部でHáoを水匠1000万ノードデータで1epoch追加学習したHaojian_240317など。DLはGCT・AobaZero・floodgate・水匠データ",
+  "hardware": "Core i5-13400F + RTX 4060Ti 16GB",
+  "language": [
+    "Python"
+  ],
+  "claimed_strength": "Haojian_240317は、Háoに対し1手5000msでR21.4（±9.7、5000局）、水匠5に対しR19.1、BLOSSOMに対しR56.7",
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "DL評価関数の出力平均アンサンブル",
+      "description": "複数のDL評価関数の出力平均を1つの評価関数として使う。第4回電竜戦で直前に実装して精度が少し上がった。速度低下は、探索がPythonで元々遅く、中終盤はNNUEに任せるため許容した。",
+      "originality": "独自",
+      "evidence": "正解率が方策・価値とも上昇",
+      "quote": "複数の評価関数の出力の平均を1つの評価関数の出力として扱う"
+    },
+    {
+      "category": "評価関数",
+      "title": "DLの弱点をNNUE系に任せる合議",
+      "description": "DL系の終盤の弱さを単体で克服せず、NNUE系に任せる。DLの最善手をNNUE系でチェックし、評価値が大きく悪化するならNNUEの最善手を指す。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "DL系のAIの「終盤が弱い」など弱点を単体で克服するのを放棄し、苦手な部分はNNUE系AIに任せます"
+    },
+    {
+      "category": "評価関数",
+      "title": "多様な系統のモデルでアンサンブル",
+      "description": "ResNet以外にVision Transformerも実装し、多様なモデルでアンサンブルする計画。計算資源不足で学習は未実施。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "今使っているResNet系以外の系統のモデルも学習させてアンサンブルに使う予定です"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "python-dlshogi2ベースの自作NNUE学習部",
+      "description": "使い慣れたpython-dlshogi2の学習部をベースにNNUE学習部を作り、Háoを水匠1000万ノードで追加学習したHaojianを作った。学習部とログは公開済み。",
+      "originality": "独自",
+      "evidence": "Háoに対しR21.4（1手5000ms）",
+      "quote": "python-dlshogi2の学習部をベースにしたNNUE学習部を製作しました"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "方策のみのDL自己対局を使う定跡生成",
+      "description": "自動定跡生成の局面評価に、方策出力のみで指すDL系の連続対局（GPUで同時に数千局）、浅い探索のNNUE、長時間探索の3種の結果を組み合わせる。DLとNNUEの勝率が大きく食い違う局面は難しいと見なし、長時間探索を厚くする。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "方策出力のみで指すDL系AIによる連続対局の結果"
+    },
+    {
+      "category": "時間管理",
+      "title": "終盤の差を見込んだ時間配分",
+      "description": "形勢に大きな差がついたら持ち時間で逆転できない前提で、序盤モードでは中終盤用の時間を先に差し引いて「中盤までの推定手数」で割る。DR4では終局までの推定手数の精度が低く思うように行かなかった。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "事前に決めておいた「中終盤のために残しておく時間」を現在の残り時間から引く"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "局面生成AI",
+      "description": "簡単な局面を生成できるところまで作ったが、GPU資源不足で応用できなかった。いつかリベンジする予定。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "局面生成AIにゼロからの強化学習くらいロマンを感じる"
+    },
+    {
+      "category": "棋風・人間らしさ",
+      "title": "振り飛車評価関数の一部採用",
+      "description": "Qhapaq Pretty Derbyのデータで簡単に作れる振り飛車評価関数を一部で採用する予定。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "振り飛車評価関数を一部で採用する予定です"
+    }
+  ],
+  "character": "名前は牡羊座と、複数AIの協力（フレンズ）に由来し、「電気羊が電竜になってほしい」という願いも込める。ノートPCが壊れて学習できなかった経緯や、浮かんだ愛傘「SplatBrella」などの余談を率直に書く。",
+  "notes": "文書は長く、おまけとして精度比較表と電竜戦の感想が付く（後半は流し読み）。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc34/team.html"
+}

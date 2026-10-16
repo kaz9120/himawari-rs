@@ -1,0 +1,35 @@
+{
+  "wcsc": 21,
+  "year": 2011,
+  "dir": "oki",
+  "team": "tomonobu masumoto",
+  "software": "隠岐",
+  "sources": [
+    "wcsc21/appeal/oki/bunshou.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc21/appeal/oki/bunshou.txt"
+  ],
+  "summary": "去年までのロジックを多少変更して流用しているだけで、去年の文章をそのまま使ってほしい、という短文。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "不明",
+    "detail": null
+  },
+  "search": {
+    "family": "不明",
+    "detail": null
+  },
+  "learning": null,
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [],
+  "character": null,
+  "notes": "内容はwcsc20のokiを参照。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc21/team.html"
+}

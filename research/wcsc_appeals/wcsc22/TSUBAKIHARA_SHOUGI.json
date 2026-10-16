@@ -1,0 +1,62 @@
+{
+  "wcsc": 22,
+  "year": 2012,
+  "dir": "TSUBAKIHARA_SHOUGI",
+  "team": "椿原治",
+  "software": "椿原将棋",
+  "sources": [
+    "wcsc22/appeal/TSUBAKIHARA_SHOUGI/appeal.docx"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc22/appeal/TSUBAKIHARA_SHOUGI/appeal.docx"
+  ],
+  "summary": "長手順詰将棋システムを前提とした人とマシンの協業という方針は同じ。今年は、全手の静動総合評価点で並べ替えるリスト管理と、局面誘導方式（新戦法を容易に組み込む）を特徴として整理した。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "手作り",
+    "detail": "全手の静的・動的評価の総合点で並べ替え"
+  },
+  "search": {
+    "family": "その他",
+    "detail": "サブルーチンからの提案手を、評価点差・ランキング・詳細評価差で採否判定"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": [
+    "Visual Basic"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "棋風・人間らしさ",
+      "title": "局面誘導方式で新戦法を組み込む",
+      "description": "先後の過去10手程度の流れと最小限の周辺の駒配置から決まる次の一手を、開発者の指定する手として絶対服従で指す。突撃A戦法（26歩・84歩・25歩・85歩の後に24歩）や突撃B戦法のように展開が複雑な戦法を、思い通りに組み込める。点数やランキングが低いという思考部の不満メッセージも画面に出る。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "局面誘導方式を採用しており、新手、新戦法の開発を容易にしている"
+    },
+    {
+      "category": "棋風・人間らしさ",
+      "title": "サブルーチンの提案手を許容範囲で採否判定",
+      "description": "数多くのサブルーチンが決められた順に次の一手を提案し、静動総合評価点の差、評価ランキング、詳細に深く読んだ評価差が各サブの許容範囲なら指す。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "各部門（サブルーチン）からの提案される次の一手を採否判定している"
+    },
+    {
+      "category": "開発手法・運用",
+      "title": "誰でも新戦法を入力できるVisual Basic",
+      "description": "多くの人が学ぶBasicを使い、指し手の流れを入力するだけで、誰でも自分が指したい手や新戦法をソフトで実現できるようにする。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "簡単な指し手の流れを入力するだけで，誰でも自らが指したい手，さらには日ごろから考えている新戦法をパソコンソフト上で実現できる"
+    }
+  ],
+  "character": "長手順詰将棋の前提で、人とマシンの協業、先手必勝法を産み出す夢。「点数が低い」と思考部が不満を表示するなど、人間の指示に絶対服従する設計が個性。",
+  "notes": "3/27提出、5/6改訂。前年までの長い詳細な説明は省かれ、特徴の整理が中心。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc22/team.html"
+}

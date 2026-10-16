@@ -1,0 +1,121 @@
+{
+  "wcsc": 33,
+  "year": 2023,
+  "dir": "Astra_Shogi",
+  "team": "恒岡 正年",
+  "software": "アストラ将棋",
+  "sources": [
+    "wcsc33/appeal/Astra_Shogi/appeal_fin.pdf",
+    "wcsc33/appeal/Astra_Shogi/appeal_rev6.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc33/appeal/Astra_Shogi/appeal_fin.pdf",
+    "https://www.apply.computer-shogi.org/wcsc33/appeal/Astra_Shogi/appeal_rev6.pdf"
+  ],
+  "summary": "dlshogiをベースに、自前のネットワーク構造と学習手法でモデルを作った。学習部（マクロバッチ、段階的な学習率、モデル選別）と探索パラメータの3段階調整に注力している。",
+  "base": {
+    "engine": "dlshogi",
+    "eval_source": null,
+    "note": "UctSearch.cppとusi.cppを改造、data_loader.pyとtrain.pyは大きく改造"
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "ResNet 25層（Conv2d 2層）、入力部と出力部にConv2dを追加してResNet27層相当。入出力でカーネル数が異なる。活性化はReLUで、出力に近いConv2dのみSiLU"
+  },
+  "search": {
+    "family": "MCTS",
+    "detail": "dlshogiのUCT探索。UCB式を独自式に置換"
+  },
+  "learning": "自己生成棋譜（約30万局）と書籍付録データで学習。学習率0.2→0.000000012を等比で減らし、100エポック（RTX3090で約3週間）",
+  "hardware": "RTX4090（本番）、RTX3090（学習・ベンチ）",
+  "language": [
+    "Python",
+    "C++"
+  ],
+  "claimed_strength": "floodgateで13056playoutがR3800程度。本番条件で探索量32倍と推定し、R4200〜4300と予想",
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "マクロバッチによる擬似的な大バッチ",
+      "description": "マクロバッチを実装し、学習単位を最大12倍にした。GPUメモリが増えたのと同様の結果を狙う。BNの挙動が異なるため完全には同じにならない。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "マクロバッチを実装し、疑似的に GPU のメモリ量が多くなったのと同じような結果が得られる様にした。"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "D値で初期値選別と終了判定",
+      "description": "小さな学習セットで1エポックを数回走らせ、D値（Loss-(PolicyAcc+ValueAcc)*0.5）が最小の初期値を選ぶ。D値の推移で終了エポックも決める。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "初期値の分布の素性の良さそうな物を選ぶ。"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "学習中のResNet部入れ替えと不規則データ投入",
+      "description": "25エポックまでに3回、入力側のResNetを入れ替えて収束を早める。D値の減りが期待以下なら、局所解からの脱出を狙って意図的にイレギュラーなデータを与える。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "意図的にイレギュラーなデータを与える。"
+    },
+    {
+      "category": "評価関数",
+      "title": "学習モデルの選別でLossに頼らない",
+      "description": "LossやAccuracyが最良のモデルが最強とは限らないと考え、頻度の低い特徴の局面での正解率を考慮する選別の工夫をした。全モデルのベンチを避けつつ影響を減らす。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "Loss 値が低い、または最も Accuracy が高い物が勝率が高いモデルとは限らない。"
+    },
+    {
+      "category": "探索",
+      "title": "UCB計算式の置換",
+      "description": "標準のUCB式はnが大きい時の最適式で、試行が限られる場合は最適でないと考え、独自式に置換した。再調整後に確認。",
+      "originality": "独自",
+      "evidence": "R+36程度",
+      "quote": "オリジナルの計算式を独自の式と置き換える。"
+    },
+    {
+      "category": "開発手法・運用",
+      "title": "3段階の探索パラメータ絞り込み",
+      "description": "6656playout（Optuna、3〜4個ずつ）→15s+F1.2s→20s+F5.0sと探索量を増やしながら評価し、2位以下の候補も残して絞る。探索量が増えると伸びしろの差が出るため。",
+      "originality": "独自",
+      "evidence": "約2か月の調整でR100程度向上",
+      "quote": "パラメータセットによって探索時間を大きくした時の伸びしろが異なるという結果でした。"
+    },
+    {
+      "category": "評価関数",
+      "title": "入力データサイズの検討",
+      "description": "入力を9x9のほかに11x11、11x9で試した。playout固定では強いが速度低下で時間一定では弱く、層やカーネルを増やすほうが良かった。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "ネットワーク層数またはカーネル数を増やす方が良い。"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "ベストライン深め・枝浅めの手入力定跡",
+      "description": "時間節約と後手番の特定局面を避けるため、手作業で定跡を作った。ベストラインは深く、外れた枝は評価値が振れたら打ち切る。最長約30手。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "ベストラインでは深く、それを外れた場合は(有利になっているはずなので)浅い。"
+    },
+    {
+      "category": "時間管理",
+      "title": "手数・評価値に応じた思考時間（大会後の予定）",
+      "description": "手数と評価値から一手の思考時間を決め、中盤の重要局面で長く使う。python-dlshogi2版で実装済み。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "中盤の重要な局面で思考時間を長くする様にしたい。"
+    },
+    {
+      "category": "探索",
+      "title": "候補2手に絞り勝率も勘案（大会後の予定）",
+      "description": "手を決める前に候補を2つに絞り、訪問数最大でなく勝率も加味して選ぶ。時間切れ間際の本線の問題発見に、時間を増やさず対応する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "訪問数が最大の物を選ぶのではなく、勝率も勘案する様にする。"
+    }
+  ],
+  "character": "囲碁AI開発から物量競争を避けて将棋へ移った経緯を語る。最終版で、90手目以降の読みの精度が低い反省を記載。",
+  "notes": "ネットワーク構造は4月29日版の文書にも詳述（今回のテキストに4月版も含まれる）。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc33/team.html"
+}

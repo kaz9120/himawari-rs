@@ -1,0 +1,55 @@
+{
+  "wcsc": 30,
+  "year": 2020,
+  "dir": "Deep_Sawanyan",
+  "team": "宇賀神拓也ほか（Barrel houseとは別。第25回参加チーム）",
+  "software": "Deepさわにゃん",
+  "sources": [
+    "wcsc30/appeal/Deep_Sawanyan/Deep_Sawanyan_appeal_v1.txt"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc30/appeal/Deep_Sawanyan/Deep_Sawanyan_appeal_v1.txt"
+  ],
+  "summary": "参加を休んでいたが復帰し、第25回のプログラムは使わず1月から作り直した。オープンソース、ほぼフルスクラッチ、Bitboard、libtorchの深層学習、MCTS。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "libtorch（PyTorchのC++版）"
+  },
+  "search": {
+    "family": "MCTS",
+    "detail": null
+  },
+  "learning": null,
+  "hardware": "Xeon ES-2698v4 2基（総コア40）、メモリ128GB",
+  "language": [
+    "C++",
+    "Python"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "開発手法・運用",
+      "title": "オープンソース開発",
+      "description": "ソースを公開して開発している。",
+      "originality": "不明",
+      "evidence": null,
+      "quote": "・オープンソースで開発"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "Bitboardとlibtorch",
+      "description": "Bitboardで盤面を持ち、libtorchでC++から深層学習を使う。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "・Bitboardを使用 ・深層学習を使用（Pytorchのc++版のlibtorchを使用しています。）"
+    }
+  ],
+  "character": "冒頭の一覧では「マシンスペックが無駄に豪華」とアピールし、ほぼフルスクラッチを掲げる。",
+  "notes": "一覧ページのチーム名は「増田さん、藤野さん結婚おめでとう！」。開発者は宇賀神拓也ほか",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc30/team.html"
+}

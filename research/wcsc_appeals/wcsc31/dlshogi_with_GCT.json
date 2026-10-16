@@ -1,0 +1,148 @@
+{
+  "wcsc": 31,
+  "year": 2021,
+  "dir": "dlshogi_with_GCT",
+  "team": "山岡 忠夫、加納 邦彦（チームdlshogi）",
+  "software": "dlshogi with GCT",
+  "sources": [
+    "wcsc31/appeal/dlshogi_with_GCT/dlshogi_with_GCT_appeal_wcsc31.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc31/appeal/dlshogi_with_GCT/dlshogi_with_GCT_appeal_wcsc31.pdf"
+  ],
+  "summary": "dlshogiとGCTを組み合わせたチーム参加で、第1回電竜戦優勝のGCTと合流した。AlphaZero型のMCTSに、将棋のドメイン知識（利き数・王手の入力特徴、df-pn詰み探索、定跡化、FPU reductionなど）を取り込み、自己対局の強化学習に25項目以上の工夫を積む。NVIDIA A100 x8を使用予定。",
+  "base": {
+    "engine": "独自",
+    "eval_source": "事前学習にelmo(WCSC27)の自己対局データ",
+    "note": null
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "Wide ResNet。22畳み込み層（入力1層+10ブロック+出力）、フィルター192、Policy/Value共通化のマルチタスク"
+  },
+  "search": {
+    "family": "MCTS",
+    "detail": "PUCT、Policyの確率をボーナス項に、プレイアウトなし、FPU reduction、末端5手詰み・ルートでdf-pn"
+  },
+  "learning": "elmo(wcsc27)の深さ8・4.9億局面で事前学習し、AlphaZero流の自己対局強化学習（428サイクル、直近10サイクル分を学習）",
+  "hardware": "NVIDIA A100 x8",
+  "language": "C++, Python",
+  "claimed_strength": "事前学習モデルに対し、強化学習で Policy一致率40.9→46.9%、Value一致率68.8→72.4%（floodgate R3500以上の棋譜）",
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "入力特徴にドメイン知識を活用",
+      "description": "AlphaZeroのような盤面の配置のみでなく、利き数と王手がかかっているかを入力特徴に加える。学習時間が短くなることを実験で確認。",
+      "originality": "独自",
+      "evidence": "学習時間を短縮",
+      "quote": "入力特徴に盤面の駒の配置の他に、利き数と王手がかかっているかという情報を加えている。"
+    },
+    {
+      "category": "探索",
+      "title": "未探索ノードの価値に親ノードの価値を使用（FPU reduction）",
+      "description": "UCBで未探索の子の初期値に、探索中の親の価値を動的に使い、訪問回数が増えるにつれ減衰させて深さ優先の探索にする。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "子ノードの価値は親ノードの価値に近いだろうという将棋のドメイン知識を利用し"
+    },
+    {
+      "category": "並列・分散",
+      "title": "GPUバッチ処理に適した1スレッド並列化",
+      "description": "1スレッドで複数シミュレーションの末端ノードをまとめてGPUへ送り、GPU計算中に別スレッドがCPUを使う。大群の問題を避けて利用効率を上げ、4GPUまでほぼ線形にスケール。",
+      "originality": "独自",
+      "evidence": "4GPUまでほぼ線形",
+      "quote": "マルチスレッドによる実装で課題となる GPU の計算後にスレッドが再開する際にリソース競合が起きる問題（大群の問題）を回避する"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "詰み探索結果を報酬にした強化学習",
+      "description": "自己対局中、エージェントの詰み探索リクエストをキューに溜めて専用スレッドがdf-pnで処理する。GPU計算待ちの間に完了し、自己対局を遅くせず長手数の詰みを報酬にする。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "df-pn による高速な長手数の詰み探索の結果を報酬とした。"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "既存プログラムを1/8の割合でリーグに加えた強化学習",
+      "description": "自分だけの自己対局による戦略の弱点を避けるため、既存の公開将棋プログラムを1/8の割合で対局相手に加える。計算資源を増やさずにリーグ戦の効果を得る。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "既存の将棋プログラムを 1/8 の割合でリーグに加えて強化学習を行うようにした。"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "Actor-CriticでPolicyを学習",
+      "description": "自己対局の指し手をそのまま学習せず、局面の価値と勝敗を関連付け、良い局面から負けた手は負の報酬、悪い局面から勝った手は正の報酬を与える。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "良い局面から負けになった手は、悪手として負の報酬を与え"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "ブートストラップ・SWA・マルチタスクなどの学習手法",
+      "description": "Valueの損失に勝敗と探索評価値の交差エントロピーの和、引き分けの学習、エントロピー正則化、SWA（学習中の重み平均）、Policy/Valueのマルチタスク学習を組み合わせる。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "本来の報酬（勝敗）とは別の推定量（探索結果の評価値）を用いてパラメータを更新する手法をブートストラップという。"
+    },
+    {
+      "category": "詰み・終盤",
+      "title": "末端5手詰めとルートのdf-pn専用スレッド",
+      "description": "MCTSの末端で5手詰めを調べ、ルートでは専用スレッドでdf-pn（優越関係・証明駒・反証駒・先端3手詰）を回す。詰みがあれば即指す。AND/OR木の結果をゲーム木に確実に伝播する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "モンテカルロ木探索に、AND/OR 木の探索を組み合わせて、詰みの結果を確実にゲーム木に伝播するようにする。"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "有望手順だけを深く掘る確率的な定跡化",
+      "description": "固定手数でなく、自分の手は最善手1手（または数手）を登録し、相手の応手は公開定跡やfloodgateの統計で確率的に選んで木を伸ばす。頻度の高い局面は深く、低い局面は短くなる。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "頻度の高い局面については深い手順まで、頻度の低い局面については短い手順の定跡を作成することができる。"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "floodgate統計をPolicyに混ぜた定跡作成",
+      "description": "定跡作成時のPUCTで、方策ネットワークの確率分布とfloodgate棋譜の統計の分布を平均して使い、致命的な読み抜けを防ぐ。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "方策ネットワークの確率分布と floodgate の棋譜の統計を利用した確率分布を平均化した確率分布を利用し"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "Optunaで探索パラメータを最適化",
+      "description": "Optunaで、連続対局の勝率を目的関数にしてPUCT定数・方策温度などの探索パラメータを最適化するスクリプトを開発。枝刈り機能で少ない対局数で収束。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "将棋エンジン同士の連続対局の勝率を目的関数として、探索パラメータの最適化に使えるようにするスクリプトを開発した。"
+    },
+    {
+      "category": "探索",
+      "title": "確率的なPonder",
+      "description": "MCTSの確率的な木の成長を使い、相手の思考中に相手局面からMCTSを行って確率的に相手の手を予測する。1手だけ予測するPonderより効率が良い。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "予測手 1 手のみを Ponder の対象とするよりも、効率のよい Ponder が実現できる。"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "TensorRTで推論高速化",
+      "description": "対局プログラムにTensorRTを使い、レイヤー融合などで、Tensor Core搭載GPUでCUDA+cuDNN比で約1.33倍。環境構築も不要になる。",
+      "originality": "既存手法の応用",
+      "evidence": "約1.33倍",
+      "quote": "TensorCore を搭載した GPU では CUDA+cuDNN で推論を行う場合より、約 1.33 倍の高速化が可能"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "ノード再利用のGC方式をツリー管理へ",
+      "description": "ハッシュ線形探索によるノード削除で再利用に10秒以上かかっていた問題を、Leela Chess Zero流のツリー管理とルート兄弟ノードのガベージコレクションに変更。ノード合流は不可になるが短時間で再利用できる。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "ゲーム木をツリーで管理を行うようにし、ルートの兄弟ノードをガベージコレクションする方式に変更した。"
+    }
+  ],
+  "character": "2つのソフト（dlshogiとGCT）が、チームとして合流して参加するという点が見どころ。将棋でのディープラーニング適用の検証を目的とする。",
+  "notes": "下線の差分表示（オンライン大会からの変更箇所）はテキスト化で失われている。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc31/team.html"
+}

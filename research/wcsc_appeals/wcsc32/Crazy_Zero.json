@@ -1,0 +1,46 @@
+{
+  "wcsc": 32,
+  "year": 2022,
+  "dir": "Crazy_Zero",
+  "team": "Rémi Coulom, Vincent Kubicki",
+  "software": "Crazy Zero",
+  "sources": [
+    "wcsc32/appeal/Crazy_Zero/WCSC_Crazy_Shogi_Characterization.txt"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc32/appeal/Crazy_Zero/WCSC_Crazy_Shogi_Characterization.txt"
+  ],
+  "summary": "AlphaZeroアルゴリズムをC++でゼロから実装した汎用システムCrazy Zeroの将棋版。cuDNNでNvidia GPU上のニューラルネットを動かす。キャンセルチーム。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "AlphaZero型のニューラルネット（cuDNN使用）"
+  },
+  "search": {
+    "family": "MCTS",
+    "detail": "AlphaZeroアルゴリズム"
+  },
+  "learning": "NVIDIA Inception Programの計算資源でニューラルネットを学習（文書中は2020年の記述）",
+  "hardware": null,
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "研究・実験的",
+      "title": "多ゲーム対応の汎用AlphaZero基盤",
+      "description": "将棋はCrazy Zero汎用システムの一部で、チェス・囲碁・五目並べ・連珠・オセロ・アタックス・ブレイクスルー・カラハ・Twixt・ウルティメット三目並べにも対応する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "Crazy Zero can also play chess, go, gomoku, renju, Othello, ataxx, breakthrough, kalah, twixt, and"
+    }
+  ],
+  "character": null,
+  "notes": "第32回はキャンセルチーム。文書は英語で、2020年の記述を含む。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc32/team.html"
+}

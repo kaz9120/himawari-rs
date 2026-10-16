@@ -1,0 +1,103 @@
+{
+  "wcsc": 28,
+  "year": 2018,
+  "dir": "dlshogi",
+  "team": "山岡 忠夫",
+  "software": "dlshogi",
+  "sources": [
+    "wcsc28/appeal/dlshogi/appeal.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc28/appeal/dlshogi/appeal.pdf"
+  ],
+  "summary": "AlphaGo/AlphaZero型のPolicy+Value Networkとモンテカルロ木探索で指す、ディープラーニング将棋。αβ探索と三駒関係の評価関数を使わない。入力特徴への利き数の追加、詰み探索の併用、GPUごとに別モデルを読み込む独自の工夫を持つ。",
+  "base": {
+    "engine": "独自（elmo/Aperyの一部を局面管理に利用）",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "Wide ResNet（畳み込み22層、192フィルタ）。Policy・Valueでtrunk共有、出力層のみ分離"
+  },
+  "search": {
+    "family": "MCTS",
+    "detail": "PUCT。末端はValueの勝率を使い、プレイアウトなし。詰み探索を併用。ツリー並列+GPUバッチ処理"
+  },
+  "learning": "elmoで深さ8生成した11億局面で教師あり（最終使用）。事前学習した4.9億局面から自己対局強化学習18サイクルで勝率81%だが、教師ありに及ばず大会では不使用。REINFORCEとブートストラップを使用",
+  "hardware": "Amazon EC2 p3.8xlarge",
+  "language": [
+    "C++",
+    "Python"
+  ],
+  "claimed_strength": "Policy一致率46.1%、Value一致率78.1%",
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "入力特徴に利き数と王手を追加",
+      "description": "盤面の駒配置に加え、利き数と王手の有無を入力特徴にする。ドメイン知識の活用で学習時間を短縮できることを実験で確認した。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "入力特徴に盤面の駒の配置の他に、利き数と王手がかかっているかという情報を加えている。"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "REINFORCEで勝敗に結びつけたPolicy学習",
+      "description": "良い局面から負けた手には負の報酬、悪い局面から勝った手には正の報酬を与え、REINFORCEでPolicy Networkを学習する。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "良い局面から負けになった手は、悪手として負の報酬を与え"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "勝敗と探索評価値の併用（ブートストラップ）",
+      "description": "Value Networkの損失を、勝敗の交差エントロピーと探索結果の評価値の交差エントロピーの和にする。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "勝敗を教師データとした交差エントロピーと、探索結果の評価値を教師データとした交差エントロピーの和"
+    },
+    {
+      "category": "詰み・終盤",
+      "title": "MCTSに詰み探索を併用",
+      "description": "MCTSが詰みで手を抜く問題の対策として、詰み専用探索を併用し、末端ノードでも数手の詰み探索を行う。GPU待ち中のCPU時間で行うため速度は落ちない。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "Policy Network と Value Network の計算中に、CPU が待ち状態の間に詰み探索を行うため、探索速度が落ちることはない。"
+    },
+    {
+      "category": "探索",
+      "title": "GPUごとに別モデルを読み込む",
+      "description": "モデルごとに誤りが独立なら、複数モデルが同時に誤る確率は下がるとの考えで、GPUごとに異なるモデルを読み込み、探索精度の向上を狙う。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "GPU ごとに異なるモデルを読み込むことで、探索の精度を向上が期待できる。"
+    },
+    {
+      "category": "並列・分散",
+      "title": "GPUバッチキューとマルチGPU",
+      "description": "各スレッドの推論要求をキューに積み、専用スレッドでバッチ処理してGPU競合を避ける。GPUごとに専用スレッドを割り当て、ノード情報はGPU間で共有する。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "各スレッドからの要求をキューイングして、専用スレッドでバッチ処理することで競合を回避する。"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "訪問回数に比例して選ぶ事前探索定跡",
+      "description": "出現頻度の高い序盤局面を事前に探索して定跡化し、各手の訪問回数を記録する。対局時は訪問回数に応じた確率で手を選び、進行が固定されないようにする。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "訪問回数に応じた確率で手を選択することで、ゲームの進行が固定されないようにする。"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "フレームワークなしのcuDNN直接推論",
+      "description": "学習はChainerだが、対局プログラムはCUDA・cuDNNを直接使い、Chainerのモデルを読み込む推論をスクラッチで書く。高速化と対局環境の構築の省略が狙い。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "対局プログラムには、ディープラーニングフレームワークを用いず CUDA、cuDNN を直接使用する。"
+    }
+  ],
+  "character": null,
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc28/team.html"
+}

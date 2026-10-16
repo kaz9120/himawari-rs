@@ -1,0 +1,98 @@
+{
+  "wcsc": 34,
+  "year": 2024,
+  "dir": "Hey,_you_wanna_be_a_CSA_member",
+  "team": "ザイオソフト コンピュータ将棋サークル（野田久順ほか）",
+  "software": "お前、CSA会員にならねーか？",
+  "sources": [
+    "wcsc34/appeal/Hey,_you_wanna_be_a_CSA_member/appeal.pdf",
+    "wcsc34/appeal/Hey,_you_wanna_be_a_CSA_member/appeal_detail.docx"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc34/appeal/Hey%2C_you_wanna_be_a_CSA_member/appeal.pdf",
+    "https://www.apply.computer-shogi.org/wcsc34/appeal/Hey%2C_you_wanna_be_a_CSA_member/appeal_detail.docx"
+  ],
+  "summary": "tanuki-の開発者らのチーム。Stockfish由来のnnue-pytorchを将棋用に改造してNNUEを学習し、Momentum SGD、入玉ボーナス、水匠・Haoデータの混合などを加えた。評価関数のみでR45.6、探索込みでR122.0向上と報告する。",
+  "base": {
+    "engine": "やねうら王",
+    "eval_source": "水匠（Suisho10Mn_psvで微調整）",
+    "note": null
+  },
+  "eval": {
+    "family": "NNUE",
+    "detail": "halfkp_1024x2-8-64"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "やねうら王を改造した思考部"
+  },
+  "learning": "nnue-pytorchで学習。Haoの教師データと、水匠5で入玉将棋の局面から対局させた教師データを混合。水匠のSuisho10Mn_psvで学習率1e-7、λ=0.0で微調整",
+  "hardware": "Amazon EC2 m7a.metal EPYC 192コア",
+  "language": [
+    "C++",
+    "C#",
+    "Python"
+  ],
+  "claimed_strength": "Lí-VENGEとの5000局自己対局で評価関数のみR45.6、評価関数と探索でR122.0向上（持ち時間5分+2秒、1スレッド）",
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "nnue-pytorchの将棋化と改造",
+      "description": "Stockfishチームのnnue-pytorchのチェス部分をやねうら王に差し替え、Newbob風の学習率スケジューラ移植、Ponanza定数の指定、独自のWarmup、エポックごとのクリッピングなどを加えた。",
+      "originality": "独自",
+      "evidence": "評価関数のみR45.6、探索込みR122.0",
+      "quote": "チェスに関する部分をやねうら王に差し替えた。"
+    },
+    {
+      "category": "入玉",
+      "title": "入玉時のボーナス点",
+      "description": "学習時に入玉したときにボーナス点を加える。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "入玉時にボーナス点を加えるようにした。"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "入玉将棋局面から作る教師データ",
+      "description": "Haoで作った教師データに、水匠5で入玉将棋の局面から対局させて作った教師データを混ぜて学習した。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "水匠5で入玉将棋の局面から対局させて生成した教師データを混ぜて学習した"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "Momentum SGDで学習",
+      "description": "最適化手法にMomentum SGDを使い、Momentumなしの評価関数よりR30.2程度高いことを確認した。",
+      "originality": "既存手法の応用",
+      "evidence": "約R30.2向上",
+      "quote": "Momentum なしで学習させた評価関数と比べ、R30.2 程度レーティングが高くなる"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "収束時に学習率やλを切り替えて再学習",
+      "description": "収束したら学習率とλを切り替えて再び学習を始められるようにした。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "学習率やlambdaの値を、収束時に切り替えて再度学習を始められるようにした"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "水匠データで微調整",
+      "description": "水匠開発者公開のSuisho10Mn_psvで、学習率1e-7、λ=0.0（勝敗項のみ）で微調整した。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "学習率を 1e-7 、λ=0.0 で学習しています"
+    },
+    {
+      "category": "開発手法・運用",
+      "title": "全手順をブログで公開し追試可能",
+      "description": "開発内容と実験結果をブログに公開し、追試で再現できるとする。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "ブログの内容に従って追試を行うことで、結果の再現が可能だと考える"
+    }
+  ],
+  "character": "チーム名は奈川トモ氏の漫画『お前、タヌキにならねーか？』が元ネタで、AI生成の画像も載せる。「大事なことは、CSA会員になったら見つかるかも」と締める遊び心がある。開発の歴史では、2018年に世界で初めてNNUE評価関数の将棋ソフトを公開し、2021年にStockfishへ移植したと自己紹介する。文書の校正にChatGPTを使ったと謝辞に書く。",
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc34/team.html"
+}

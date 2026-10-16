@@ -1,0 +1,68 @@
+{
+  "wcsc": 31,
+  "year": 2021,
+  "dir": "Fluke",
+  "team": "井本 康宏",
+  "software": "Fluke",
+  "sources": [
+    "wcsc31/appeal/Fluke/appeal_Fluke.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc31/appeal/Fluke/appeal_Fluke.pdf"
+  ],
+  "summary": "ふかうら王（やねうら王のDNN版）で参加し、DNNの評価関数を育てる気楽な参加。NNUEの学習は黒魔術的で疲れたとしてDNNへ移行する。構造はResNet22程度・192チャネルの予定で、水匠などの強いソフトの棋譜とAobaZeroの棋譜で学習する。",
+  "base": {
+    "engine": "やねうら王",
+    "eval_source": "なし（これから育てる）",
+    "note": null
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "ResNet 22ブロック程度、192チャネル。Squeeze & Excitationは効果が見えず不採用、普通のResidual Block"
+  },
+  "search": {
+    "family": "MCTS",
+    "detail": "ふかうら王（やねうら王純正）"
+  },
+  "learning": "水匠など強いソフトの棋譜でゆっくり学習。AobaZeroの棋譜はpolicy学習に有用と見る",
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "ネットワーク構造の比較検討",
+      "description": "Squeeze&Excitation・Bottleneck・Xception・group convolutionを試し、効果が出ない、向かない、全然ダメ、遅くなる、として普通のResidual Blockを採用。チャネル数は層数との兼ね合いで192にする。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "普通のResidual Blockを使う"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "AobaZeroの棋譜をpolicy学習に使う",
+      "description": "AobaZeroは他ソフトと系統が違うのでpolicyの学習に有用と考える。ソフトごとに点数の付け方が違うため、valueの利用は難しい。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "他のソフトと系統が違うので、policyの学習に有用と思う"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "質の高い棋譜で序盤にゆっくり学習",
+      "description": "水匠など強いソフトの棋譜で学習し、学習序盤は質の高い棋譜でゆっくり学ぶ方針。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "学習の序盤は質の高い棋譜でゆっくり学習するのが良いと信じる"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "NNUEからDNNへの移行の動機整理",
+      "description": "NNUEは小さい評価関数・限定された活性化関数・量子化誤差など難点が多いとし、DNNは全局面を学習でき構造設計が自由で誤差を考えなくてよい点を利点に挙げる。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "NNUEの学習は難しすぎる"
+    }
+  ],
+  "character": "「Good Bye Black Magic」「人類の救世主」とNNUEからの卒業を軽いノリで語るスライド。棋力は「すごく弱い」と自称し、気楽な参加。",
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc31/team.html"
+}

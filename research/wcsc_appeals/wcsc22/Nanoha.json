@@ -1,0 +1,54 @@
+{
+  "wcsc": 22,
+  "year": 2012,
+  "dir": "Nanoha",
+  "team": "川端一之",
+  "software": "なのは",
+  "sources": [
+    "wcsc22/appeal/Nanoha/NanohaWCSC22.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc22/appeal/Nanoha/NanohaWCSC22.txt"
+  ],
+  "summary": "「魔法少女リリカルなのは」由来の名前、萌えの導入やAMD応援などの野望を掲げ、各項目の成果を末尾に追記する。第21回に独創賞を受賞し、詰ルーチンをWPNSからdf-pnに変更、Bonanza 6.0.0のfv.binを使う。",
+  "base": {
+    "engine": "独自",
+    "eval_source": "Bonanza 6.0.0のfv.bin",
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "駒割＋KKP＋KP＋KPP（Bonanza 6.0.0のfv.bin）"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "全幅探索＋静止探索、Null Move、LMR、Futility。単スレッド。詰はdf-pn"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": "将棋図巧100番「寿」を1分31秒（PhenomII X4 940定格、TACOSは8秒）。実戦詰将棋問題の95%を解けた",
+  "ideas": [
+    {
+      "category": "詰み・終盤",
+      "title": "df-pnベースの詰ルーチンと高速1手詰",
+      "description": "WCSC21まで使ったWPNSからdf-pnに切り替え、優越関係・最小距離法・証明駒／反証駒・新規節点の固定深さ探索・局面を更新しない高速1手詰を実装する。打ち歩詰めが絡むときだけ歩角飛の不成を読む。「なのは詰」として公開し一部で使われている。",
+      "originality": "独自",
+      "evidence": "寿を1分31秒で解く。実戦詰将棋問題の95%を解く",
+      "quote": "なのはの詰ルーチンはWCSC21まではWPNSを使用していたが、本選手権ではdf-pnを基本にし"
+    },
+    {
+      "category": "エンタメ・演出",
+      "title": "萌えの導入と詰将棋ソフトの公開",
+      "description": "キャラクター由来の名前でコンピュータ将棋に萌えを導入し、詰将棋特化ソフトを公開して標準を目指す。第21回に独創賞を受賞した。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "第21回世界コンピュータ将棋選手権で独創将を受賞した"
+    }
+  ],
+  "character": "アニメ「魔法少女リリカルなのは」の高町なのはに因んだ名前。野望に「竜王と対局して掲示板で大盛り上がり」「AMD CPUで市場を活性化（FX-8150ではIvy Bridgeに太刀打ちできず残念）」「萌えを導入」を並べ、成果欄で一つずつ答え合わせする。",
+  "notes": null,
+  "team_list_url": "http://www2.computer-shogi.org/wcsc22/team.html"
+}

@@ -1,0 +1,87 @@
+{
+  "wcsc": 32,
+  "year": 2022,
+  "dir": "TMOQ",
+  "team": "山下 隆久（山下 隆久）",
+  "software": "TMOQ（特大もっきゅ）",
+  "sources": [
+    "wcsc32/appeal/TMOQ/TMOQ_appeal_20220508.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc32/appeal/TMOQ/TMOQ_appeal_20220508.pdf"
+  ],
+  "summary": "dlshogi（WCSC29から継続）を、ネタの実現に必要な部分だけ改造して使うノートPC勢。2000万手超の寄せ集め定跡を別USIエンジンで検査する「定跡チェッカー」、MCTSの報酬に玉の段・駒数を入れる「入玉および駒得モード」、入玉後にやねうら王系へ任せる「入玉後バトンタッチ」が特徴。大会後に結果を踏まえた振り返りも追記した。",
+  "base": {
+    "engine": "dlshogi",
+    "eval_source": "GCTの学習に使用したデータセットで学習",
+    "note": null
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "ResNet 9ブロック（GhostNet 15bは精度が頭打ちで取り下げ）"
+  },
+  "search": {
+    "family": "MCTS",
+    "detail": "dlshogi。入玉時は別のUSIエンジン（やねうら王V7.00を改造）に交代"
+  },
+  "learning": "GCTの学習に使われた公開データセット全部＋過去のTMOQ棋譜を混ぜ、1epoch。Google Proで約2か月",
+  "hardware": "ノートPC（Core i7-11700K + GeForce RTX 3080 16GB と記載）",
+  "language": [
+    "C++",
+    "Python"
+  ],
+  "claimed_strength": "一次予選5勝2敗1分で34チーム中6位、二次予選4勝5敗で28チーム中19位",
+  "ideas": [
+    {
+      "category": "定跡・序盤",
+      "title": "別USIエンジンによる定跡チェッカー",
+      "description": "定跡ファイルに手があっても直ちには指さず、別のUSIエンジンが定跡の次の手を考え、エンジンが自分を有利と判断したら定跡を使わず自分で指す。単純な寄せ集め定跡に混ざる悪手への対策。一部でバグがあり、数万手読むべきところを数百手で指してしまうことがあった。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "定跡ファイルに指し手を見つけても、直ぐには指さず別の USI エンジンが定跡の次の手を考えます。"
+    },
+    {
+      "category": "入玉",
+      "title": "MCTS報酬に玉の段と駒数を反映する入玉・駒得モード",
+      "description": "勝ちの報酬を「1−(玉の段数−1)×α−(39−自分の駒数)×β」とし、玉が1段目で駒が39枚のときを1とする。玉が自陣に近い、駒が少ないと報酬が下がる。調整すると必ず弱くなるが、入玉や駒得を狙わせる。",
+      "originality": "独自",
+      "evidence": "報酬の下限値と勝率の回帰は y=0.2218x+0.6937（R2=0.4805）。下限を下げると勝率も下がる",
+      "quote": "勝った場合の報酬 ＝ 1 － （玉の段数 － １）× α － （39 － 自分の駒数）× β"
+    },
+    {
+      "category": "入玉",
+      "title": "入玉後バトンタッチ",
+      "description": "玉が1〜3段目に入ったら、やねうら王系のUSIエンジンに指し手を譲り宣言勝ちを目指す。ただしそのエンジンは王手をしないよう改造してあり、本番では寄せを目指して320手に達し引き分けた。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "玉が１～３段目にいるときは、やねうら王系の USI エンジンに指してもらうことにしました。"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "2000万手超の寄せ集め定跡",
+      "description": "floodgateや電竜戦などの強いソフトの棋譜を寄せ集めた2000万手超の定跡で、序盤の悪手による負けを防ぐ。強いソフトの指し手の丸暗記で格上に勝つこともあった。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "2000 万手を超える定跡（Floodgate、電竜戦等の棋譜を寄せ集めたもの）"
+    },
+    {
+      "category": "ハードウェア",
+      "title": "ノートPCで決勝を目指す普及の取り組み",
+      "description": "コンピュータ将棋の高リソース化・高年齢化に対し、ノートPCでも工夫次第で決勝に残れることを示す。来年はタブレット・ノートPC賞の創設と賞金を提案している。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "来年こそは、タブレット・Note PC 賞を設けて賞金を出したい"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "ネットワーク構造の探索（ResNet/GhostNet/EfficientNet/MobileNet）",
+      "description": "ResNet・GhostNet・EfficientNet・MobileNetを様々なブロック数で試し、GhostNet 15bは1か月半で頭打ちになったため、公開モデルの誘惑に負けないようあえてResNet 9bにした。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "誘惑に負けて山岡さんのモデルファイルを使ってしまわないよう、敢えて ResNet 9b にしました"
+    }
+  ],
+  "character": "ソフト名は愛娘が命名・デザインした「特大もっきゅ」。ライブラリ＆ネタ勢を自認し、普及のために低リソースで勝つことを狙う。バグで負けた相手への謝罪や、「子供の活躍を見るようで嬉しゅうございました」など温かい口調で振り返る。",
+  "notes": "3/13作成、5/8改訂。大会結果と各機能の実戦での結果を追記。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc32/team.html"
+}

@@ -1,0 +1,54 @@
+{
+  "wcsc": 28,
+  "year": 2018,
+  "dir": "mattari_yuchan",
+  "team": "小谷 善行、柴原 一友（東京農工大学旧小谷研究室）",
+  "software": "まったりゆうちゃん",
+  "sources": [
+    "wcsc28/appeal/mattari_yuchan/appeal.docx"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc28/appeal/mattari_yuchan/appeal.docx"
+  ],
+  "summary": "1990年ごろから25年以上開発を続ける完全独自のソフト。パラメータ学習が主流の今、進化論的計算など別の方式や、ディープラーニングと多量パラメータ学習の中間のメカニズムを試そうとする。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "その他",
+    "detail": "進化論的計算などパラメータ学習以外の方式を試す（詳細なし）"
+  },
+  "search": {
+    "family": "不明",
+    "detail": "不明"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "研究・実験的",
+      "title": "進化論的計算など、パラメータ学習でない方式",
+      "description": "ディープラーニングなど学習ベースが主流の中で、進化論的計算などの別方式を試す。DLと多量パラメータ学習の中間的なメカニズムも構想する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "そうでない進化論的計算などの方式を試そうとしている。またディープラーニングと多量パラメータ学習の中間的なメカニズムを考えたい"
+    },
+    {
+      "category": "開発手法・運用",
+      "title": "開発者の高齢を希少価値とし長く続ける",
+      "description": "開発者の年齢が高いことに希少価値があるとして、コーディング能力がいつまで続くか試しつつ開発を続ける。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "コーディング能力がいつまで続くか試したい。"
+    }
+  ],
+  "character": "25年以上の歴史を持つ老舗で、「開発者の年齢が高いので希少価値がある」とアピールする。",
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc28/team.html"
+}

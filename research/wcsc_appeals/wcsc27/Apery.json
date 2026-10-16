@@ -1,0 +1,70 @@
+{
+  "wcsc": 27,
+  "year": 2017,
+  "dir": "Apery",
+  "team": "平岡 拓也、杉田 歩",
+  "software": "Apery",
+  "sources": [
+    "wcsc27/appeal/Apery/appeal_wcsc27.html"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc27/appeal/Apery/appeal_wcsc27.html"
+  ],
+  "summary": "Stockfishの設計を取り入れた3駒関係のオープンソース将棋ソフト。教師データ生成を誰でもできるWindowsソフトで配り、ボランティアの計算力で強化学習した評価関数が売り。半年前から改善はほぼなく、成果はライブラリとして公開済み。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "3駒関係。手番も評価。利きデータは持たないシンプルな構成"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "Stockfishの改良を取り込み、さらに改良"
+  },
+  "learning": "6手読みで数十億局面に点数を付け、0〜1手読み（静止探索は完全）で点数を近付けるオンライン学習（強化学習）",
+  "hardware": "Xeon E5-2686 v4 2基 32コア 256GB",
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": "昨年から評価関数だけでレーティング200〜250向上、探索で200程度向上",
+  "ideas": [
+    {
+      "category": "開発手法・運用",
+      "title": "教師データ生成をボランティアに分散",
+      "description": "誰でも簡単に教師データを生成できるWindows用ソフトを開発・公開し、多くのボランティアに生成を手伝ってもらった。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "誰でも簡単に行えるようにしたWindows用のソフトを開発しました。"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "6手読みの評価値へ近づける強化学習",
+      "description": "6手読みで数十億局面に点数を付け、0〜1手読みの評価値をそれに近づけるオンライン学習を行う。評価関数だけで昨年からレーティング200〜250向上した。",
+      "originality": "既存手法の応用",
+      "evidence": "評価関数だけでレーティング200〜250向上",
+      "quote": "基本的には6手読みで数十億局面に点数を付け"
+    },
+    {
+      "category": "探索",
+      "title": "Stockfishの探索改良の取り込み",
+      "description": "Stockfishの改良を取り込み、将棋向けにさらに改良した。昨年からレーティング200程度向上。",
+      "originality": "既存手法の応用",
+      "evidence": "レーティング200程度向上",
+      "quote": "探索面はStockfishの改良を取り込み、そこからある程度改良したもので"
+    },
+    {
+      "category": "開発手法・運用",
+      "title": "CSAライブラリとして公開し改造を促す",
+      "description": "GPL v3のOSSで、CSAライブラリに登録して誰でも改造して大会に出られるようにしている。命名権のチャリティーオークションで電王トーナメント用の名前を付けている。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "CSAライブラリとして登録しているので、誰でもAperyを改造してご自身のソフトとして出場出来ます。"
+    }
+  ],
+  "character": "電王トーナメントでは命名権をヤフオク!のチャリティーで販売し、落札者が名前（大樹の枝・浮かむ瀬）を決めた。",
+  "notes": "5/11追記で、本番までに改良できなかったと報告。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc27/team.html"
+}

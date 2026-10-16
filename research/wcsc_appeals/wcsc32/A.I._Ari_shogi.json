@@ -1,0 +1,78 @@
+{
+  "wcsc": 32,
+  "year": 2022,
+  "dir": "A.I._Ari_shogi",
+  "team": "兵頭 優空",
+  "software": "A.I. Ari shogi",
+  "sources": [
+    "wcsc32/appeal/A.I._Ari_shogi/AI_Ari_Shogi_WCSC32_ver3.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc32/appeal/A.I._Ari_shogi/AI_Ari_Shogi_WCSC32_ver3.pdf"
+  ],
+  "summary": "ネタAI「単細胞くん」の探索部を流用・改造した、DL評価のMinMax系ソフト。局面を1手深く調べてまとめて評価することでバッチ処理に合わせ、ponderは評価済み局面の記憶を使う簡易版。定跡は自動生成、詰みサーチも自作。「とても弱い」と自称する。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "ResNet 256ch 3ブロック（スモール版）+256ユニット全結合2層+tanhのvalue出力。13ブロック版もあるが学習は未完"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "MinMax系（αβカット・move ordering・静止探索）。評価関数呼び出し時に1手深く調べてまとめて評価"
+  },
+  "learning": "自己対局の棋譜、floodgate 2020・2021年棋譜、AobaZero棋譜の一部。投了または詰みで終局した棋譜のみ採用、EarlyStopping",
+  "hardware": "Core i7-10750H + GTX 1650 Ti",
+  "language": [
+    "Python"
+  ],
+  "claimed_strength": "とても弱い（自己評価）",
+  "ideas": [
+    {
+      "category": "探索",
+      "title": "評価関数呼び出し時に1手深く調べてバッチ評価",
+      "description": "従来は局面を1個ずつ評価していたため、まとめて処理するほど速いDLと相性が悪かった。評価関数を呼ぶ際にさらに1手深く調べ、その局面群をまとめて評価する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "評価関数呼び出し時に、さらに1手深く調べ、その局面をまとめて評価することで、(比較的)効率的に処理できるようにしました。"
+    },
+    {
+      "category": "時間管理",
+      "title": "評価済み局面の記憶を使う簡易ponder",
+      "description": "候補手（王手、または駒台が変化する打ち以外の手）を順に打ち、深さDまで探索して調べた局面を登録し、全候補が終わればDを増やして繰り返す。一般的なponderとは別物。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "Ariのponderは、一般的なそれとは全然違う"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "USIエンジンに思考させる自動定跡生成",
+      "description": "局面を巡り、未登録局面に着いたられさ改など外部USIエンジンの最善手をsfenをキーにdictへ登録する処理を繰り返して定跡を作る。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "自動で定跡を作るプログラムを書きました。"
+    },
+    {
+      "category": "詰み・終盤",
+      "title": "条件Eによる延長つき詰みサーチ",
+      "description": "1手詰めチェック後、王手または駒台が変化する打ち以外の手（条件E）を候補にし、相手番と条件Eを満たす自分番を延長する詰みサーチ。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "条件E = (王手 or (駒台に変化がある and 持ち駒を打つ手ではない))"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "投了・詰みで終局した棋譜のみ採用",
+      "description": "学習データを投了または詰みで終局した棋譜に限り、EarlyStoppingも採用した。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "投了 or 詰みで終局した棋譜だけを採用している点"
+    }
+  ],
+  "character": "「手抜き」を戦略として前面に出し、「最下位にならないように頑張りたい」と語る。「現在の私の最高傑作」や、れさ改に勝てない様子など軽妙な語り口。ネタAI「単細胞くん」の探索部を流用している。",
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc32/team.html"
+}

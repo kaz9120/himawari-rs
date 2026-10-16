@@ -1,0 +1,63 @@
+{
+  "wcsc": 30,
+  "year": 2020,
+  "dir": "Super_Usapyon_2_X",
+  "team": "うさぴょんの育ての親",
+  "software": "スーパーうさぴょん２Ｘ",
+  "sources": [
+    "wcsc30/appeal/Super_Usapyon_2_X/wcsc30-usapyon.txt"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc30/appeal/Super_Usapyon_2_X/wcsc30-usapyon.txt"
+  ],
+  "summary": "なのはminiを対局用のベースに、Apery(WCSC28版)を少し改造したものでKPPT型評価関数を追加学習したソフト。AMD製CPUで1位を取り戻すのが目標。",
+  "base": {
+    "engine": "なのはmini",
+    "eval_source": "Apery",
+    "note": "学習にApery（WCSC28版）の改造版、評価関数データもApery由来。StockFishも参考"
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "KPPT型（Apery由来のデータに追加学習）"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": null
+  },
+  "learning": "Aperyからの追加学習で約10億局面。どんな局面かは非公開。元のAperyからR+20程度になったと推測",
+  "hardware": "Ryzen 7 2700X",
+  "language": [
+    "C++",
+    "C#"
+  ],
+  "claimed_strength": "元のAperyからR+20位（確証なしと自己申告）",
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "非公開の局面での追加学習",
+      "description": "Apery由来の評価関数に約10億局面を追加学習した。どんな局面かは非公開。",
+      "originality": "不明",
+      "evidence": "R+20程度（推測）",
+      "quote": "追加学習分は局面数で１０億程度（どんな局面を追加したのかは内緒）"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "勝率を考慮した定跡",
+      "description": "勝率を考慮した定跡を作成中。うまくいくかは不明と書く。",
+      "originality": "不明",
+      "evidence": null,
+      "quote": "定跡は、勝率を考慮したものを作成中ですが、うまく行くかどうか…。"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "振り飛車の撤回の記録",
+      "description": "第28回で、定跡とApery評価関数への追加学習で振り飛車を指させたが、今時の評価関数では序中終盤とも悪い評価で負けたため、今回は居飛車党にする。",
+      "originality": "不明",
+      "evidence": null,
+      "quote": "今時の評価関数で評価させてみると、序盤中盤終盤全部ダメだったとの評価がｗ"
+    }
+  ],
+  "character": "「AMD製CPU1位の座を取り戻す！（何度目だろう）」「元にしたAperyのバージョンを失念…」など、自虐を交えた軽い口調で書く。",
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc30/team.html"
+}

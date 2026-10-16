@@ -1,0 +1,46 @@
+{
+  "wcsc": 31,
+  "year": 2021,
+  "dir": "Crazy_Shogi",
+  "team": "Crazy Shogi",
+  "software": "Crazy Shogi",
+  "sources": [
+    "wcsc31/appeal/Crazy_Shogi/WCSC_Crazy_Shogi_Characterization.txt"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc31/appeal/Crazy_Shogi/WCSC_Crazy_Shogi_Characterization.txt"
+  ],
+  "summary": "AlphaZeroアルゴリズムの実装。C++でフルスクラッチ、ニューラルネットはcuDNNでNVIDIA GPUで動かす。汎用のCrazy Zeroシステムの一部で、チェスや囲碁など多数のゲームに対応する。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "AlphaZero型のニューラルネット（詳細なし）"
+  },
+  "search": {
+    "family": "MCTS",
+    "detail": "AlphaZeroアルゴリズム"
+  },
+  "learning": "NVIDIA Inception Programの計算資源でニューラルネットを学習",
+  "hardware": null,
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "研究・実験的",
+      "title": "汎用ゲームAIの一部として将棋に対応",
+      "description": "将棋用のコードは汎用Crazy Zeroの一部で、チェス・囲碁・五目並べ・オセロ・ataxx・breakthrough・kalah・twixt・ultimate tic-tac-toeにも対応。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "Crazy Zero can also play chess, go, gomoku, renju, Othello, ataxx, breakthrough, kalah, twixt, and"
+    }
+  ],
+  "character": null,
+  "notes": "作者名は文書にない。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc31/team.html"
+}

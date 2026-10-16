@@ -1,0 +1,55 @@
+{
+  "wcsc": 35,
+  "year": 2025,
+  "dir": "komaasobi",
+  "team": "永吉 宏之",
+  "software": "こまあそび",
+  "sources": [
+    "wcsc35/appeal/komaasobi/appeal20250331.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc35/appeal/komaasobi/appeal20250331.pdf"
+  ],
+  "summary": "手でチューニングした評価関数と、先後別に延長深さの上限を持つαβ探索の組み合わせ。評価部には「駒組みは落とし穴方式」「金は角と筋違いの位置の点数を高くする」など将棋の感覚を直接コード化した調整がある。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "手作り",
+    "detail": "学習を使わず手調整。駒の位置別点数を細かく設定"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "王手・王手回避・駒取りを延長。探索深さに応じて読む手の広さを変える"
+  },
+  "learning": null,
+  "hardware": "Ryzen 7 6800H",
+  "language": [
+    "C",
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "探索",
+      "title": "先手番・後手番別の延長深さ上限",
+      "description": "延長深さの制限を先手番・後手番で別々に持つ。先手4手+後手4手の計8手延長は許すが、先手5手+後手3手は許さない。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "延長深さの制限を先手番、後手番別々に持っている。"
+    },
+    {
+      "category": "評価関数",
+      "title": "将棋の駒の働きを手で調整した評価",
+      "description": "銀桂は敵陣に近いほど高く、金は上部へ出る点を低くして角と筋違いの位置を高くし、中終盤は角と金の価値をほぼ同じにして竜・飛車を高めにする。駒組みは「落とし穴方式」で行う。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "駒組みは落とし穴方式で行っている。"
+    }
+  ],
+  "character": null,
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc35/team.html"
+}

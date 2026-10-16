@@ -1,0 +1,60 @@
+{
+  "wcsc": 31,
+  "year": 2021,
+  "dir": "QinoaSyougi",
+  "team": "山田 元気（きのあ）",
+  "software": "きのあ将棋",
+  "sources": [
+    "wcsc31/appeal/QinoaSyougi/appeal.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc31/appeal/QinoaSyougi/appeal.pdf"
+  ],
+  "summary": "集団交配による進化モデルの実験と、満足度の高い対局の研究を報告。自己対局で作った多数の子パラメータを交配（集計）して次世代を作る進化モデルで、パラメータ256個の小規模実験では5世代で0世代に対し勝率95%まで上がった。成果はきのあ将棋・囲碁サイトの運営に使う。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "その他",
+    "detail": "パラメータ256個の小規模実験で進化モデルを検証"
+  },
+  "search": {
+    "family": "不明",
+    "detail": "候補手評価"
+  },
+  "learning": "集団交配による進化モデル。自己対局で勝ったパラメータを優秀とみなし、多数の子世代パラメータを交配（集計）して次世代を算出する",
+  "hardware": null,
+  "language": "C, C++, php, javascript",
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "集団交配による進化モデル",
+      "description": "自己対局で勝ったパラメータを残し、多数の子世代パラメータを交配（集計）して単一の次世代パラメータを作る。教師データ群を使う通常の学習モデルとの比較で検討。",
+      "originality": "独自",
+      "evidence": "進化0世代に対し、1世代86.4%、2世代90.8%、3世代94.9%、4世代95.4%（各1000局）",
+      "quote": "生き残った(勝った)パラメータを優秀とみなし次世代を残す仕組みであり、集団交配は多数の子世代パラメータを、交配(集計)して次世代を算出する仕組みである。"
+    },
+    {
+      "category": "解説・人間支援",
+      "title": "満足度の高い対局の研究",
+      "description": "サイト利用者の評価（good率）を集計し、指定局面のほうが通常対局より満足度が高く（将棋82%対77%）、待ったの利用がないほうが満足度が高い傾向と報告。",
+      "originality": "独自",
+      "evidence": "囲碁の指定局面87%、通常69%",
+      "quote": "将棋囲碁ともに、通常対局より指定局面の満足度のほうが高った。"
+    },
+    {
+      "category": "エンタメ・演出",
+      "title": "一般向けの将棋・囲碁サイトでの運用",
+      "description": "研究成果を、きのあ将棋サイトときのあ囲碁サイトの運営に活用する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "これらの研究成果は、下記サービス運営に活用している"
+    }
+  ],
+  "character": "人間向けのサービス運営を見据えた「満足度」の観点を持つ。",
+  "notes": "進化モデルは今のところ以前の学習モデル版のきのあ将棋に及ばない、と正直に書く。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc31/team.html"
+}

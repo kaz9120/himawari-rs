@@ -1,0 +1,44 @@
+{
+  "wcsc": 20,
+  "year": 2010,
+  "dir": "Shibaura_Shogi",
+  "team": "芝浦工業大学（五十嵐治一、黛恵輔）",
+  "software": "芝浦将棋",
+  "sources": [
+    "wcsc20/appeal/Shibaura_Shogi/Shibaura_Shogi.pdf"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc20/appeal/Shibaura_Shogi/Shibaura_Shogi.pdf"
+  ],
+  "summary": "Bonanzaの学習済み評価関数に、TD(λ)法の強化学習を追加した。Bonanza同士の自己対戦で学習し、未学習版に対し50局で勝率約6割。",
+  "base": {
+    "engine": "Bonanza",
+    "eval_source": "Bonanza",
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "Bonanzaの評価関数の形式をそのまま使用"
+  },
+  "search": {
+    "family": "不明",
+    "detail": null
+  },
+  "learning": "Bonanzaの教師付き学習に、TD(λ)強化学習による追加学習。学習側Bonanzaと初期値固定のBonanzaを50局、3秒で対局",
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "BonanzaへのTD(λ)追加学習",
+      "description": "教師付き学習は棋譜に強さが縛られるため、Bonanza同士の自己対戦で一方をTD(λ)法で追加学習する。報酬は終局時のみ勝ちr=1、負けr=-1の遅延報酬で、正解手を与える必要がない。",
+      "originality": "既存手法の応用",
+      "evidence": "50局で勝率約6割（3秒対局、学習係数を調整した場合）",
+      "quote": "学習係数αを適切に調整すると、勝率を約6割にまでアップできる"
+    }
+  ],
+  "character": null,
+  "notes": "卒業研究[1]の成果。大会条件での学習は今後の課題と記載。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc20/team.html"
+}

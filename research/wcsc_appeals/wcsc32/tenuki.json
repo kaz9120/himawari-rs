@@ -1,0 +1,46 @@
+{
+  "wcsc": 32,
+  "year": 2022,
+  "dir": "tenuki",
+  "team": "手抜きチーム（鈴木 太朗、玉川 直樹）",
+  "software": "手抜き",
+  "sources": [
+    "wcsc32/appeal/tenuki/tenuki32.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc32/appeal/tenuki/tenuki32.pdf"
+  ],
+  "summary": "開発者が将棋プログラムの仕組みを理解するために作る、D言語製のCSAプロトコル対応ソフト。棋力は初段〜二段程度。どうたぬき（tanuki-電竜戦版）のNNUE評価関数をそのまま使う。",
+  "base": {
+    "engine": "独自",
+    "eval_source": "tanuki- 第1回電竜戦版 nn.bin",
+    "note": null
+  },
+  "eval": {
+    "family": "NNUE",
+    "detail": "どうたぬきの評価関数ファイルを使用"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "αβ探索（差分評価・千日手チェック・詰将棋・ponderはTODO）"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": [
+    "D"
+  ],
+  "claimed_strength": "初段から二段くらい",
+  "ideas": [
+    {
+      "category": "開発手法・運用",
+      "title": "仕組みの理解を目的に作るD言語実装",
+      "description": "将棋プログラムの仕組みを理解するための学習用実装として、D言語でCSAプロトコル対応エンジンを書いている。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "開発者らが将棋プログラムの仕組みを理解するために作っています。"
+    }
+  ],
+  "character": "手抜きという名前どおり、自分たちの棋力を初段〜二段と正直に申告し、TODOも列挙する肩の力が抜けた文書。",
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc32/team.html"
+}

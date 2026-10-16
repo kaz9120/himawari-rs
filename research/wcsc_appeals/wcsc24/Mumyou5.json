@@ -1,0 +1,46 @@
+{
+  "wcsc": 24,
+  "year": 2014,
+  "dir": "Mumyou5",
+  "team": "David Wada",
+  "software": "無明5",
+  "sources": [
+    "wcsc24/appeal/Mumyou5/2014_mumyou5.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc24/appeal/Mumyou5/2014_mumyou5.txt"
+  ],
+  "summary": "αβを使わない並列乱数使用最良優先ミニマックス、Bonanza 6評価関数の移植、df-pn詰めという前年の構成を継続。今年は最善手・ノード選択ルールの偏りを強め、並列探索を再々構築し、合法手生成を書き換えた。",
+  "base": {
+    "engine": "Bonanza",
+    "eval_source": "Bonanza 6のfv.bin",
+    "note": "評価関数部分のみ移植"
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "Bonanza 6の評価関数"
+  },
+  "search": {
+    "family": "その他",
+    "detail": "並列乱数使用最良優先ミニマックス＋df-pn"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": [
+    "Java"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "探索",
+      "title": "並列乱数使用最良優先ミニマックス",
+      "description": "αベータを使わず、並列乱数使用最良優先ミニマックス探索を使う。今年は最良優先部分のバイアスを前年より強めた。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "「最良優先」部分に以前より強めのバイアスを掛けてあります。"
+    }
+  ],
+  "character": null,
+  "notes": "前年版（無明4）の継続。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc24/team.html"
+}

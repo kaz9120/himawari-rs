@@ -1,0 +1,47 @@
+{
+  "wcsc": 24,
+  "year": 2014,
+  "dir": "aimax",
+  "team": "チーム大橋",
+  "software": "aimax",
+  "sources": [
+    "wcsc24/appeal/aimax/aimax.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc24/appeal/aimax/aimax.txt"
+  ],
+  "summary": "新規参加。思考ルーチンはC、GUIはJavaで、4月下旬に思考・GUI・通信をそれぞれ約1日で作ったぶっつけ本番のソフト。目標は参加して対局できること。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "手作り",
+    "detail": "駒得、駒の絶対位置、王との相対位置"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "反復深化、置換表、null move、深さ優先の詰め探索、指し手の種類による延長"
+  },
+  "learning": null,
+  "hardware": "Core i7 3770S",
+  "language": [
+    "C",
+    "Java"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "開発手法・運用",
+      "title": "1日ずつで作った突貫開発",
+      "description": "思考ルーチン・GUI・通信機能を各1日程度で作り、テストもほぼせず本番に臨む。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "思考ルーチン・GUI・通信機能をそれぞれ１日程度で作りました。"
+    }
+  ],
+  "character": "「参加できて、対局できることが目標」と割り切ったぶっつけ本番の文書。",
+  "notes": null,
+  "team_list_url": "http://www2.computer-shogi.org/wcsc24/team.html"
+}

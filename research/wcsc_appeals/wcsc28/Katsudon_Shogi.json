@@ -1,0 +1,70 @@
+{
+  "wcsc": 28,
+  "year": 2018,
+  "dir": "Katsudon_Shogi",
+  "team": "カツ丼将棋（松本浩志、池田拓郎、服部孝洋）",
+  "software": "カツ丼将棋",
+  "sources": [
+    "wcsc28/appeal/Katsudon_Shogi/appeal.docx"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc28/appeal/Katsudon_Shogi/appeal.docx"
+  ],
+  "summary": "玉玉の位置を3×3ブロック81通りに丸めて2駒を選ぶ「簡易4コマ」の評価関数と、手調整の加点が特徴。将棋倶楽部24を24時間自動対局する「カツ丼坊」でソフトと人間のレートを直接比較した。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "簡易4コマ（ルートの玉玉位置を3×3ブロックで81通りにまとめ、その位置で呼び出す2駒テーブル）+手調整の加点。間に合わなければ2駒"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "StockFish風に実現確率を取り入れようとしたが成功せず"
+  },
+  "learning": "教師局面が少ないため、敵玉に迫る手を手調整で加点",
+  "hardware": null,
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": "将棋倶楽部24で2850勝478敗（2018年の自由対局）",
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "簡易4コマ（玉玉位置の粗い区分）",
+      "description": "玉玉の位置関係81×81≒1600通りを、盤を3×3で1ブロックにして81通りにまとめ、その位置で呼び出す2駒を決める。容量を現実的にしたKKPP風の評価関数。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "将棋盤を3x3で1ブロックにしてやることで81通り。"
+    },
+    {
+      "category": "評価関数",
+      "title": "敵玉に迫る手への手調整加点",
+      "description": "教師局面が少ないと敵玉に迫る要素が学習されないため、手調整で強制的に加点する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "手調整で強制的に加点してやります。"
+    },
+    {
+      "category": "解説・人間支援",
+      "title": "将棋倶楽部24の自動対局システム「カツ丼坊」",
+      "description": "画像認識とマウス操縦でUSIソフトを将棋倶楽部24で24時間自動対局させ、ソフトレートと人間のレートを直接比較した。結果はCSA会誌（2018年3月）に掲載。",
+      "originality": "独自",
+      "evidence": "将棋倶楽部24で2850勝478敗",
+      "quote": "画像認識・マウス操縦を駆使して汎用将棋USIを将棋倶楽部24に24時間延々と自動対局ができるようにするシステム"
+    },
+    {
+      "category": "エンタメ・演出",
+      "title": "将棋の演歌「千駄ヶ谷エレジー」の作曲",
+      "description": "将棋の歌が少ないと考え、長沢千和子女流四段を歌手に演歌を作曲し、iTunes Storeなどで配信。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "将棋の演歌を作曲しました。曲名　千駄ヶ谷エレジー"
+    }
+  ],
+  "character": "永遠のネタ勢を自称。桜井昇八段門下（自称）、年表の失敗談（竜の価値を0点にするうっかり、全駒ステイルメイトなど）をユーモアを交えて語り、将棋の演歌まで作曲する。",
+  "notes": "docxはテキスト化済みのものを読んだ。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc28/team.html"
+}

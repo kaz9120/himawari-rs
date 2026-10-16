@@ -1,0 +1,48 @@
+{
+  "wcsc": 30,
+  "year": 2020,
+  "dir": "W@nderER",
+  "team": "櫻井 博光",
+  "software": "W@nderER",
+  "sources": [
+    "wcsc30/appeal/W@nderER/wanderer_appeal-v1.html"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc30/appeal/W%40nderER/wanderer_appeal-v1.html"
+  ],
+  "summary": "W@ndreとは別コンセプトの外伝ソフト。入玉宣言による勝利を積極的に狙う方針だが、開発はあまり進まず、入玉ステップ数などの実装は未完で、やねうら王をベースにする。",
+  "base": {
+    "engine": "やねうら王",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "不明",
+    "detail": null
+  },
+  "search": {
+    "family": "αβ",
+    "detail": null
+  },
+  "learning": null,
+  "hardware": "AWSかGCP",
+  "language": [
+    "C++",
+    "Python",
+    "Java"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "入玉",
+      "title": "入玉宣言による勝利の追求",
+      "description": "入玉宣言での勝利を積極的に目指すことを特徴に掲げる。入玉ステップ数などの実装も検討したが、現段階では未実装。",
+      "originality": "不明",
+      "evidence": null,
+      "quote": "入玉宣言による勝利を積極的に目指します。"
+    }
+  ],
+  "character": null,
+  "notes": "入玉関連で滝瀬・田中の2文献（GPW2011・2012）を参考文献に挙げる。W@ndreのアピール文書への参照リンクあり",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc30/team.html"
+}

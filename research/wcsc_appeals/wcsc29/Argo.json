@@ -1,0 +1,54 @@
+{
+  "wcsc": 29,
+  "year": 2019,
+  "dir": "Argo",
+  "team": "市村 豊（Yes！魔法少女いちむら・ユタカ）",
+  "software": "Argo",
+  "sources": [
+    "wcsc29/appeal/Argo/190327WCSC29appealv1.txt"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc29/appeal/Argo/190327WCSC29appealv1.txt"
+  ],
+  "summary": "やねうら王ベースで、Apery・elmo・Qhapaq・tanuki-の評価関数を割合を変えて混ぜる「キメラ化」を試すチーム。技術的な追加は少なく、アピール文の大半は将棋と経済学・アニメ感想などの随想である。",
+  "base": {
+    "engine": "やねうら王",
+    "eval_source": "Apery・Qhapaq・elmo・tanuki-のキメラ",
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "3駒関係評価関数同士をキメラ化（割合指定）"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": null
+  },
+  "learning": null,
+  "hardware": "Amazon EC2 m5.24xlarge（AWS初挑戦予定）",
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "評価関数のキメラ化",
+      "description": "Apery・elmo・Qhapaq・tanuki-のWCSC28版評価関数を、50%ずつや70:30などの比率で混ぜた評価関数を作り、50局ずつ自己対戦（256手引き分け、yaneuraBOOK3で確率採択）で強さを比較した。",
+      "originality": "既存手法の応用",
+      "evidence": "例: AP-QH 4.1 20-3-27（対QHAPAQ4.2）など22通りの勝敗表",
+      "quote": "時代はどう考えてもNNUEですが、当方はいまさら三駒のキメラ化を試していました。"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "将棋の勝利条件を再定義する随想",
+      "description": "「将棋に関わる全員が幸福になること」を勝利条件と捉える経済学的考察や、アニメ感想を長文で書く。技術以外の内容が文書の大半を占める。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "「将棋に関わるすべての人を幸福にする」ということがそもそも将棋というゲームの目的"
+    }
+  ],
+  "character": "アピール文は夏目漱石『こころ』の引用から始まり、経済学・アニメの感想・コンピュータ囲碁大会の宣伝まで、読み物としての個性が強い。",
+  "notes": "技術的独自性は前年の文を参照とされている。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc29/team.html"
+}

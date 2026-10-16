@@ -1,0 +1,76 @@
+{
+  "wcsc": 26,
+  "year": 2016,
+  "dir": "takotto",
+  "team": "杓子将棋（瀧川正史、内宮大志、大場寿仁）",
+  "software": "たこっと",
+  "sources": [
+    "wcsc26/appeal/takotto/appeal.html"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc26/appeal/takotto/appeal.html"
+  ],
+  "summary": "電王戦を見て始めた、フルスクラッチのソフト。非ビットボードの「バイトボード」を作り、AVX2命令で指し手生成・王手判定・利き計算・オーダリングを高速化する。指し手生成はBonanza 6.0の3〜5倍、Aperyの2〜4倍と比較し、AVX-512や将来のGPUも視野に入れる開発プラットフォームを目指す。評価関数はAperyのパラメータを変換して使う。",
+  "base": {
+    "engine": "独自",
+    "eval_source": "Apery（評価パラメータを内部形式に変換）",
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "Aperyの評価パラメータをたこっとの内部形式に変換して使用。評価値を毎回計算しても1Mnps超"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "Stockfish風の探索。PVS、置換表、反復深化"
+  },
+  "learning": null,
+  "hardware": "Core i7-6700K 4.0GHz、メモリ32GB",
+  "language": "C++",
+  "claimed_strength": "指し手生成は平手初期局面で約2141万回/秒（i7-6700K）。floodgateでR2320程度（マルチスレッド時）",
+  "ideas": [
+    {
+      "category": "実装・高速化",
+      "title": "非ビットボードの「バイトボード」",
+      "description": "盤面を1マス1バイトの配列（256bit×3）で持ち、駒種ごとのビット表記にしたデータ構造。シャッフル命令で玉の周囲8近傍や縦横斜めの32マスの駒を一度に取り出し、王手判定を数命令で済ませる。",
+      "originality": "独自",
+      "evidence": "指し手生成はBonanza 6.0の3〜5倍",
+      "quote": "ビッドボードとはさよならです"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "AVX2命令による命令レベルの並列化",
+      "description": "ビットボードは81bitを扱うだけでAVX2の256bitを活かせないとして、AVX2命令で指し手生成・オーダリング・評価値計算などを実装。AVX-512にも対応できる設計。",
+      "originality": "独自",
+      "evidence": "評価値を毎回計算しても1.0Mnpsを超える",
+      "quote": "命令レベルの並列化は遅れているように感じます。"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "for文で回すだけの指し手生成",
+      "description": "Bonanza 6.0のベンチマークが遅いことに気づき、単純なfor文のループの指し手生成を作ると2〜3倍速くなった。ビットボードをやめる転機。",
+      "originality": "独自",
+      "evidence": "当初2〜3倍、現在は3〜5倍",
+      "quote": "for 文をグルグル回すだけの単純な指し手生成ルーチンを実装してみました。"
+    },
+    {
+      "category": "並列・分散",
+      "title": "GPUの活用の検討",
+      "description": "今後の並列化のため、GPUで何かできないかを検討する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "GPU で何かできないかというのも検討していきたいです"
+    },
+    {
+      "category": "開発手法・運用",
+      "title": "将来性のある開発プラットフォーム",
+      "description": "当面は、高速でAVX-512に対応できる将棋プログラム開発プラットフォームにすることを目標とし、落ち着いたら独自の評価関数を作る。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "将来性のある将棋プログラム開発プラットフォーム (高速かつ AVX-512 に対応できる)"
+    }
+  ],
+  "character": "「序章 さよならビットボード」と題し、「なんか遅いな～」「何ということでしょう」と劇的ビフォーアフターふうに書く。疑似コードとベンチマークの詳細を公開しつつ、「でも内緒です」と一部の秘術は伏せる。",
+  "notes": "ベンチマーク表と局面情報（SFEN）が長く載るが、要約では主要な数値のみ採った",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc26/team.html"
+}

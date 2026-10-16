@@ -1,0 +1,62 @@
+{
+  "wcsc": 32,
+  "year": 2022,
+  "dir": "Kifuwarabe",
+  "team": "高橋 智史",
+  "software": "きふわらべ",
+  "sources": [
+    "wcsc32/appeal/Kifuwarabe/WCSC32_Kifuwarabe_PR_20220403.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc32/appeal/Kifuwarabe/WCSC32_Kifuwarabe_PR_20220403.pdf"
+  ],
+  "summary": "過去に出たフロム・スクラッチ版のきふわらべから適当に選んで出る、という前提のまま、文書の大半を会員制サーバーの権限設計やグループ（べき集合）構造とツリー構造の違い、思考フレームワークなどの雑談漫画に充てた異色の文書。エンジン自体の技術的な新規性の記述はほぼない。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "手作り",
+    "detail": null
+  },
+  "search": {
+    "family": "不明",
+    "detail": null
+  },
+  "learning": null,
+  "hardware": "Ryzen Threadripper 2920X（自宅設置。会場のノートPCから遠隔操作）",
+  "language": [
+    "Go"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "開発手法・運用",
+      "title": "会場からのリモート接続で自宅PCを操作",
+      "description": "川崎の会場からノートPC越しに新座の自宅のThreadripperを遠隔操作し、オンライン参加と同じ形で対局する。自宅の電源が落ちたら会場の天井を眺めるしかないと自虐する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "お父んが 川崎の会場から ノートPC越しに 新座の自宅のＰＣを触って インターネット接続させれば オンライン参加してるのと同じ"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "グループ（べき集合）構造で将棋エンジンを作る構想",
+      "description": "フォルダーのツリー構造と、べき集合としてのグループ構造の違いを考察し、グループだけで論理回路（AND）を作り、人間の思考フレームワークを獲得できないかを検討する。実装には至っていない。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "グループで将棋エンジンを作れないのかだぜ？"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "人間の思考フレームワークをニューラルネットの代わりに",
+      "description": "ニューラルネットはブラックボックスなので、人間と同じ思考フレームワークを獲得させたい。欲望をグループで記述し、それを後ろから制御する言語を決める案を議論している。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "できれば ニンゲン と同じ 思考フレームワーク を獲得してほしいぜ。 ニューラルネットは ブラックボックス だからな"
+    }
+  ],
+  "character": "キャラクター（きふわらべ、ひよ子、お父ん）の掛け合い漫画形式で、将棋サーバーの会員権限設計やセミラティス構造（アレグザンダー）まで脱線する。「どれを選んでも非合法手を指す」「間に合わね」と自虐し、残りのページはらくがきページにする。フロム・スクラッチ宣言あり。",
+  "notes": "技術的な実装内容の記述がほとんどなく、評価関数・探索の種別は文書から判断できない。第31回までのきふわらべは駒得のみの評価関数（他チーム文書による）。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc32/team.html"
+}

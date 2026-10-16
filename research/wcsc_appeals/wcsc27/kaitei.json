@@ -1,0 +1,46 @@
+{
+  "wcsc": 27,
+  "year": 2017,
+  "dir": "kaitei",
+  "team": "迫田 真太郎",
+  "software": "海底",
+  "sources": [
+    "wcsc27/appeal/kaitei/appeal.pdf"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc27/appeal/kaitei/appeal.pdf"
+  ],
+  "summary": "2017年1月に開発を始めた、ライブラリ不使用で基礎から学びながら作る将棋ソフト。全幅探索＋静止探索、NegaScout、絶対PPの評価関数をオンライン学習中。新規性はないと自己評価している。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "絶対PP。強いソフトの指し手をもとにオンライン学習（3/21時点でうまくいっていない）"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "全幅探索＋静止探索、反復深化、NegaScout、置換表"
+  },
+  "learning": "強いソフトの指し手をもとにしたオンライン学習",
+  "hardware": "Core i7 T7700 4コア 32GB",
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "実装・高速化",
+      "title": "利きの数と方向を各マスで保持",
+      "description": "盤面は81マスの配列で持ち、各マスについて利きの数と方向（飛・角・香の一枚駒を超えた利きを含む）を保持する。持ち駒や指し手は32bit整数にパックする。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "利きは各マスについて数と方向 (飛車角香の一枚駒を超えた利きを含む) の両方を持っています。"
+    }
+  ],
+  "character": "名前に「一番奥底から出発して基礎から丁寧に積み上げる」という意味を込め、新しさがないと素直に書く学習者目線の文書。",
+  "notes": null,
+  "team_list_url": "http://www2.computer-shogi.org/wcsc27/team.html"
+}

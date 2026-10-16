@@ -1,0 +1,60 @@
+{
+  "wcsc": 20,
+  "year": 2010,
+  "dir": "Shueso",
+  "team": "竹内章",
+  "software": "習甦",
+  "sources": [
+    "wcsc20/appeal/Shueso/Shueso.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc20/appeal/Shueso/Shueso.txt"
+  ],
+  "summary": "局面評価をニューラルネットで構成し、目的関数を多目的最適化として定式化する。αβ探索の勝率予測を事前分布とし、棋譜DBがある局面までは対局シミュレーションの観測データを加えてベイズ推定し、勝率期待値が最高の手を選ぶ。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "その他",
+    "detail": "入力層に各升の利き数、中間層に各駒の位置評価と利きの有無、出力層に勝率予測を置くニューラルネットワーク（結合荷重を共通化し一般的な3層パーセプトロンとは異なる）"
+  },
+  "search": {
+    "family": "その他",
+    "detail": "αβ探索の勝率予測を事前分布に、対局シミュレーションでベイズ推定"
+  },
+  "learning": "目的関数は、棋譜との不一致度、勝率予測と勝敗の負の対数尤度、深さの違う探索結果の分散の3つを最小化する多目的最適化。重みは学習中に自動調整",
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "利き数を入力とするニューラルネット評価関数",
+      "description": "各升目の利き数を入力、各駒の位置評価と利きの有無を中間層、勝率予測を出力とするNNで評価関数を構成する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "各升目における利き数を入力層，各駒の位置評価および利きの有無を中間層，勝率予測を出力層とするニューラルネットワーク"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "3項の多目的最適化で評価関数を学習",
+      "description": "棋譜との不一致、勝率予測と勝敗の負の対数尤度、深さの違う探索結果への分散を、重み付き線形和で最小化する。重みは学習中の情報で自動調整する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "重みは学習中に得られる情報を用いて自動調整している"
+    },
+    {
+      "category": "探索",
+      "title": "ベイズ推定による指し手選択",
+      "description": "αβ探索の勝率予測を事前分布にし、棋譜データベースがある局面までは対局シミュレーションの観測データを加えて勝率の事後分布をベイズ推定し、期待値が最も高い手を選ぶ。単純な実装による試行段階。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "勝率予測の事後分布をベイズ推定"
+    }
+  ],
+  "character": null,
+  "notes": "元ファイルはISO-2022-JP。原本を復号して読んだ。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc20/team.html"
+}

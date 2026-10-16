@@ -1,0 +1,54 @@
+{
+  "wcsc": 20,
+  "year": 2010,
+  "dir": "Shotest",
+  "team": "Jeff Rollason",
+  "software": "Shotest",
+  "sources": [
+    "wcsc20/appeal/Shotest/Shotest.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc20/appeal/Shotest/Shotest.txt"
+  ],
+  "summary": "1996年から続く確率ベースの木探索エンジン。各ノードで多くの解析を行うため、20,000nodes/s程度と低い。コード断片の借用なし。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "不明",
+    "detail": null
+  },
+  "search": {
+    "family": "その他",
+    "detail": "確率ベースの木探索（激指と共通する発想だが、より古い）"
+  },
+  "learning": null,
+  "hardware": "Celeron 2.16GHz",
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": "約20,000 nodes/s",
+  "ideas": [
+    {
+      "category": "探索",
+      "title": "確率ベースの木探索と各ノード深解析",
+      "description": "1996年から確率ベースの木探索を使い、各ノードで多くの解析を行う。これによりノード速度は20,000/s程度と低い。",
+      "originality": "独自",
+      "evidence": "ノード速度20,000/s",
+      "quote": "dependence on substantial analysis at each node"
+    },
+    {
+      "category": "開発手法・運用",
+      "title": "チェスMerlinからの発想",
+      "description": "自作のチェスプログラムMerlin（特にSUPER SOMA）の発想を元にし、一般的な手法以外の全てのアイデアは自前で、他プログラムのコード断片も使っていないと主張する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "The original engine derived ideas taken from my much older Merlin Chess program"
+    }
+  ],
+  "character": null,
+  "notes": "英語の文書。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc20/team.html"
+}

@@ -1,0 +1,127 @@
+{
+  "wcsc": 29,
+  "year": 2019,
+  "dir": "dlshogi",
+  "team": "山岡 忠夫",
+  "software": "dlshogi",
+  "sources": [
+    "wcsc29/appeal/dlshogi/dlshogi_appeal_wcsc29.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc29/appeal/dlshogi/dlshogi_appeal_wcsc29.pdf"
+  ],
+  "summary": "policy/valueのDNNとMCTSを核に、詰み探索を強化学習の報酬やルートでの探索に組み込み、GPU並列・Optuna最適化など実装面も作り込んだ深層学習型エンジン。elmo教師で事前学習してから自己対局の強化学習に入る。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": "局面管理・合法手生成にApery(WCSC28)、事前学習の教師生成にelmoを使用"
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "Wide ResNet。22畳み込み層、10ブロック、192フィルタ。policy/valueのマルチタスク。入力に利き数・王手情報を追加"
+  },
+  "search": {
+    "family": "MCTS",
+    "detail": "PUCT。プレイアウトなしでvalueを使用。末端で7手詰、ルートで専用スレッドのdf-pn"
+  },
+  "learning": "事前学習はelmo(wcsc27)深さ8の4.9億局面。その後179サイクルの自己対局強化学習",
+  "hardware": "Amazon EC2 p3.8xlarge（4GPU）",
+  "language": [
+    "C++",
+    "Python"
+  ],
+  "claimed_strength": "floodgate棋譜（R3500以上）に対しpolicy一致率44.0%、value一致率71.7%",
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "入力特徴にドメイン知識を活用",
+      "description": "盤面の駒配置に加え、利き数と王手の有無を入力特徴にする。学習時間の短縮に有効なことを実験で確認した。",
+      "originality": "独自",
+      "evidence": "学習時間を短縮（実験で確認）",
+      "quote": "入力特徴に盤面の駒の配置の他に、利き数と王手がかかっているかという情報を加えている。"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "詰み探索結果を報酬にした強化学習",
+      "description": "自己対局の終局までの手順が長くなる問題に、df-pnの長手数詰み探索結果を報酬とする。要求をキューに溜めて専用スレッドで処理し、GPU待ちの間に詰み探索を完了させて速度低下を避ける。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "df-pn による高速な長手数の詰み探索の結果を報酬とした。"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "REINFORCEによるpolicy学習",
+      "description": "良い局面から負けた手には負の報酬、悪い局面から勝った手には正の報酬を与えて、局面の価値と勝敗を関連付けて学習する。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "良い局面から負けになった手は、悪手として負の報酬を与え"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "ブートストラップとマルチタスク学習",
+      "description": "valueの損失を勝敗の交差エントロピーと探索評価値の交差エントロピーの和にし、policyとvalueで共通層を持たせて同時に学習する。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "勝敗を教師データとした交差エントロピーと、探索結果の評価値を教師データとした交差エントロピーの和"
+    },
+    {
+      "category": "並列・分散",
+      "title": "GPUバッチ処理向け並列化",
+      "description": "1スレッドで複数シミュレーションを回して末端ノードをまとめてGPUへ送り、GPU計算中に別スレッドがCPUを使うよう2スレッドで相互に利用。リソース競合の問題を避ける。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "GPU の計算後にスレッドが再開する際にリソース競合が起きる問題（大群の問題）を回避する。"
+    },
+    {
+      "category": "ハードウェア",
+      "title": "GPUごとに異なるモデル",
+      "description": "複数GPUで別々のモデルを読み込み、モデルの誤りが独立ならば同時に誤る確率が下がるという発想で精度向上を狙う。4GPUまで線形に探索速度が伸びる。",
+      "originality": "独自",
+      "evidence": "4GPUまで探索速度が線形",
+      "quote": "GPU ごとに異なるモデルを読み込むことで、探索の精度の向上が期待できる。"
+    },
+    {
+      "category": "探索",
+      "title": "ルートでの長手数詰み探索",
+      "description": "MCTSは安全な手を選び詰みを逃して駒得を選ぶことがあるため、専用スレッドでdf-pn詰み探索を回し、詰みが見つかればその手を指す。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "詰み探索を専用スレッドで行い、詰みが見つかった場合はその手を指すようにする。"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "選択的な事前探索による定跡化",
+      "description": "自分の手は最善手を1手登録し、応手は公開定跡や棋譜の統計で確率的に選ぶ。頻度の高い局面は深く、低い局面は浅い定跡になる。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "頻度の高い局面については深い手順まで、頻度の低い局面については短い手順の定跡を作成することができる。"
+    },
+    {
+      "category": "探索",
+      "title": "確率的なPonder",
+      "description": "MCTSの確率的な木の成長を利用し、相手局面からも探索して相手の手を確率的に予測する。予測手1手のみのPonderより効率がよい。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "相手が思考中に、相手局面からモンテカルロ木探索を行うことで、確率的に相手の手を予測して探索を行う"
+    },
+    {
+      "category": "開発手法・運用",
+      "title": "Optunaによる探索パラメータ最適化",
+      "description": "連続対局の勝率を目的関数にしてPUCT定数や温度をOptunaで最適化するスクリプトを開発。枝刈りで少ない対局数で収束する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "将棋エンジン同士の連続対局の勝率を目的関数として、探索パラメータの最適化に使えるようにするスクリプトを開発した"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "CUDA/cuDNN直接使用とレイヤー融合",
+      "description": "推論をフレームワークなしでCUDA/cuDNNから直接実装し、BatchNormalizationを畳み込みフィルターに事前融合して推論量を減らす。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "BatchNormalization と畳み込み層のフィルターの行列を事前に計算して"
+    }
+  ],
+  "character": null,
+  "notes": "下線部が第28回からの差分とされるが、テキスト化で下線は判別できない",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc29/team.html"
+}

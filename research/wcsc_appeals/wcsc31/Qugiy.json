@@ -1,0 +1,70 @@
+{
+  "wcsc": 31,
+  "year": 2021,
+  "dir": "Qugiy",
+  "team": "森 大慶",
+  "software": "Qugiy",
+  "sources": [
+    "wcsc31/appeal/Qugiy/appeal.pdf",
+    "wcsc31/appeal/Qugiy/appeal_210518.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc31/appeal/Qugiy/appeal.pdf",
+    "https://www.apply.computer-shogi.org/wcsc31/appeal/Qugiy/appeal_210518.pdf"
+  ],
+  "summary": "今年1月からフルスクラッチで開発した初出場のソフトで、決勝進出と独創賞を獲得。飛車・角・香車の利きをMagic Bitboardを使わずビット演算（SIMD）で求める独自手法が受賞理由で、やねうら王に実装すると3〜4%速くなる。評価関数は水匠3改のNNUEを利用。",
+  "base": {
+    "engine": "独自",
+    "eval_source": "水匠3改",
+    "note": null
+  },
+  "eval": {
+    "family": "NNUE",
+    "detail": "水匠3改のNNUE評価関数を利用"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "PVS、置換表枝刈り、Futility・NullMove・ProbCut・LMR。マルチスレッド・延長系は未実装（3月時点）"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": "C++",
+  "claimed_strength": "floodgate（AisakaTaiga名）で3000程度（3月時点）",
+  "ideas": [
+    {
+      "category": "実装・高速化",
+      "title": "飛び駒の利きをビット演算で計算",
+      "description": "飛車・角・香車の利きをMagic Bitboardなどの表引きでなく、SIMDのビット演算（加算・XORによる桁上がり利用）で求める。巨大テーブルと面倒な初期化が不要。",
+      "originality": "独自",
+      "evidence": "やねうら王に実装すると約3%の高速化（1スレッドNPS 1,256,271→1,293,853、12スレッドで約3%）",
+      "quote": "飛び駒の利きをビット演算で計算"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "二歩判定のビット演算",
+      "description": "香車の利き計算のビット演算を応用し、歩のいない筋を一度に求める。複数筋を同時に計算する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "複数の筋について同時に計算しています。"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "SIMDによる駒打ち生成",
+      "description": "AVX2命令で複数種類の駒を同時に処理して駒打ちの指し手を生成し、指し手生成祭りの局面で生成速度が約2倍。",
+      "originality": "独自",
+      "evidence": "指し手生成祭りの局面で約2倍",
+      "quote": "AVX2 命令で複数種類の駒を同時に処理すると、指し手生成祭りの局面での生成速度が 2 倍くらいになりました。"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "縦型ビットボードの独自レイアウト",
+      "description": "やねうら王とは異なる縦型ビットボードのレイアウトを持つ。同一直線上のビット判定に欠陥があるが直すのが面倒でそのまま。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "Qugiy のビットボードのレイアウトがやねうら王と異なっている"
+    }
+  ],
+  "character": "独創賞を「運が良い」と受け止め、AWAKE（コンピュータ将棋の映画）の記事をきっかけに、正月に暇だから開発を始めたという来歴を語る。選手権後の文書では、ビット演算で利きを求める実装コードを公開して解説。",
+  "notes": "3月提出の文書と、5月18日提出の追加文書（飛車・角の利きのコードとMagic Bitboardとのやねうら王上の速度比較）の2本。Zen2はPEXTが遅いためPEXT実装との比較は行っていない。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc31/team.html"
+}

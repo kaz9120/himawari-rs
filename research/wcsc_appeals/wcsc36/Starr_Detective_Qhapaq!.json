@@ -1,0 +1,63 @@
+{
+  "wcsc": 36,
+  "year": 2026,
+  "dir": "Starr_Detective_Qhapaq!",
+  "team": "迷宮入りした将棋部（Ryoto Sawada, Yuki Ito, Toshihiro Shirakawa, Keigo Nitadori）",
+  "software": "名探偵 Qhapaq！",
+  "sources": [
+    "wcsc36/appeal/Starr_Detective_Qhapaq!/pr_technical.md"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc36/appeal/Starr_Detective_Qhapaq%21/pr_technical.md"
+  ],
+  "summary": "中心テーマは「棋風の調整」。勝率を保ちつつ、特定の戦型を好んで指す個性を持たせる。探索速度に影響しない小さな補正用の評価関数で評価値を補正し、その学習に化学計算のメタダイナミクスを応用した「死に覚え」学習を使う。開発はコードを書かない縛りの、LLM完全委託によるバイブコーディング。",
+  "base": {
+    "engine": "不明",
+    "eval_source": null,
+    "note": "メインの評価関数に、軽量な棋風補正関数を付ける構成。土台のエンジンは書かれていない"
+  },
+  "eval": {
+    "family": "その他",
+    "detail": "メイン評価関数の出力を、探索速度に影響しない小さな評価関数で補正して棋風バイアスをかける"
+  },
+  "search": {
+    "family": "不明",
+    "detail": "記載なし（MCTSまたはαβを前提とした一般論のみ）"
+  },
+  "learning": "メタダイナミクスを応用した「死に覚え」学習。すでに多く経験した戦型への評価値ボーナスを徐々に減衰させる",
+  "hardware": "EPYC 7452（一覧ページ）",
+  "language": [
+    "C++",
+    "Python"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "棋風・人間らしさ",
+      "title": "軽量補正関数による棋風調整",
+      "description": "巨大なNNを棋風調整に追加すると評価速度が落ちて勝率が下がるので、探索速度に影響しない規模の小さい評価関数でメインの評価値を補正する。勝率への影響を抑えつつ、狙った戦型への誘導効果が出る範囲に補正量を収める。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "探索速度に影響しない規模の小さい評価関数を別途用意し、メインの評価関数の出力を補正する形で棋風バイアスを加える。"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "メタダイナミクスによる「死に覚え」学習",
+      "description": "分子動力学のメタダイナミクス（訪れた状態にガウス型のペナルティを積む）を将棋に当てはめ、すでに多く経験した戦型への評価値ボーナスを減衰させる。エンジンが未経験・経験の浅い戦型の対局を増やすよう誘導され、幅広い戦型の棋力を獲得する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "「すでに多く経験した戦型への評価値ボーナス」を徐々に減衰させていく。"
+    },
+    {
+      "category": "開発手法・運用",
+      "title": "コーディングしない縛りのバイブコーディング",
+      "description": "システムの概要と仕様を自然言語で指示し、コードはLLMが生成する。実装は速いが、意図せぬ挙動や最適化の欠如が起きやすく、締め切りまでの完成が課題。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "今回の開発は「コーディングしない縛り」、すなわちLLMへの完全委託で行われた。"
+    }
+  ],
+  "character": "「勝つこと」と「誰かの心に残る棋譜を残すこと」のバランスを取る、が設計思想。観る人間が楽しめる棋譜の生成と競技性能の両立を目標にする。ノベルゲームのメタファーの「死に覚え」という呼び名や、「細かい実装はChatGPT等に問い合わせてほしい（開発者談）」という遊び心がある。",
+  "notes": "ディレクトリ名は Starr_Detective_Qhapaq!（末尾に感嘆符）。一覧ページには4/5更新とある。実装の詳細（探索方式・土台のエンジン）は不明。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc36/team.html"
+}

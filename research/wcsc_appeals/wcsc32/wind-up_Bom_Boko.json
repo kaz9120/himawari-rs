@@ -1,0 +1,74 @@
+{
+  "wcsc": 32,
+  "year": 2022,
+  "dir": "wind-up_Bom_Boko",
+  "team": "ザイオソフト コンピュータ将棋サークル（野田 久順、岡部 淳、鈴木 崇啓、河野 明男、伊苅 久裕）",
+  "software": "マメット・ブンブク（tanuki-wcsc32）",
+  "sources": [
+    "wcsc32/appeal/wind-up_Bom_Boko/appeal_0506.pdf",
+    "wcsc32/appeal/wind-up_Bom_Boko/appeal_detail.docx"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc32/appeal/wind-up_Bom_Boko/appeal_0506.pdf",
+    "https://www.apply.computer-shogi.org/wcsc32/appeal/wind-up_Bom_Boko/appeal_detail.docx"
+  ],
+  "summary": "やねうら王を改造した思考部とtanuki-系NNUEのチームで、「ミニオンのようにいつも一緒にいてもらえる将棋ソフト」を目指す。今年はたややん2020手法を改良した定跡、探索深さ9・水匠5で生成した80億局面の教師データ、halfkp_1024x2-8-32、elmo式学習の勝敗項t=0.80が改良点。",
+  "base": {
+    "engine": "やねうら王",
+    "eval_source": "tanuki-",
+    "note": null
+  },
+  "eval": {
+    "family": "NNUE",
+    "detail": "halfkp_1024x2-8-32（Stockfish過去版と類似）。elmo式学習の勝敗項教師信号t=0.80"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "やねうら王を元に改造した思考部"
+  },
+  "learning": "水匠5で自己対局し80億局面を生成。開始局面はfloodgateのレーティング3900以上の棋譜の32手目までからランダム選択、ランダムムーブなし、探索深さ9",
+  "hardware": "Amazon EC2 c6a.metal（EPYC 96コア）",
+  "language": [
+    "C++",
+    "C#",
+    "Python"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "定跡・序盤",
+      "title": "たややん2020手法に出現回数条件を加えた定跡",
+      "description": "floodgateのレーティング3900以上のソフト同士の棋譜から、勝率33%以上かつ出現回数2回以上の指し手だけを定跡に登録する。疑問手はアマチュア高段者のメンバーがレビューした。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "出現回数が 2 回以上の指し手のみ使用しました。"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "高レート棋譜から開始する自己対局で教師生成",
+      "description": "自己対局の開始局面を、floodgateのレーティング3900以上の棋譜の32手目までからランダムに選び、ランダムムーブを入れず、探索深さ9で水匠5を使って80億局面を生成する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "32 手目までからランダムに局面を選択しました。ランダムムーブを入れないようにしました。"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "勝敗項t=0.8でレーティングを落とさず評価値スケールを下げる",
+      "description": "elmo式学習法の勝敗項の教師信号tを0.80にすると、レーティングを落とさずに評価値のスケールを小さくできた。",
+      "originality": "独自",
+      "evidence": "レーティングを落とさず評価値スケールを低下",
+      "quote": "勝敗項の教師信号 (t) を t=0.80 としました。"
+    },
+    {
+      "category": "評価関数",
+      "title": "halfkp_1024x2-8-32の採用",
+      "description": "Stockfishの過去のバージョンで、探索速度が落ちてもレーティングが向上したと報告されたアーキテクチャに類似したhalfkp_1024x2-8-32を採用する。",
+      "originality": "再現・追従",
+      "evidence": null,
+      "quote": "ネットワークアーキテクチャに halfkp_1024x2-8-32 を採用しました。"
+    }
+  ],
+  "character": "ソフト名はFFXIVのミニオン（ペット）に由来し、「いつも一緒にいてもらえる将棋ソフト」を目指す。tanuki-シリーズは技術習得が主な目的で、実験結果は野田氏のブログで公開し追試可能としている。",
+  "notes": "概要版（スライド）と詳細版の2文書。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc32/team.html"
+}

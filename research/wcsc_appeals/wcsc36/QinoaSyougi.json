@@ -1,0 +1,57 @@
+{
+  "wcsc": 36,
+  "year": 2026,
+  "dir": "QinoaSyougi",
+  "team": "きのあ（山田 元気）",
+  "software": "きのあ将棋",
+  "sources": [
+    "wcsc36/appeal/QinoaSyougi/wcsc-36-qinoa.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc36/appeal/QinoaSyougi/wcsc-36-qinoa.pdf"
+  ],
+  "summary": "評価関数と候補手評価の両方に、キレーティング（QiRating）という独自の仕組みによる機械学習を使う。今年は研究が止まりがちで、きのあ将棋の仕組みを応用した独自のシューティング風戦略ゲームの機械学習に着手し、その知見を逆輸入したいと書いている。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": "独自のキレーティング（QiRating）を使用"
+  },
+  "eval": {
+    "family": "その他",
+    "detail": "キレーティング（QiRating）による機械学習。評価関数と候補手評価の両方に使用"
+  },
+  "search": {
+    "family": "不明",
+    "detail": "記載なし"
+  },
+  "learning": "QiRatingによる機械学習。今年はグローバルな様々なパラメータもQiRatingで最適化できればと考えている",
+  "hardware": "Ryzen Threadripper 5995WX（利用16〜32コア）（一覧ページ）",
+  "language": [
+    "C",
+    "C++",
+    "PHP",
+    "JavaScript"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "キレーティング（QiRating）による学習",
+      "description": "評価関数と候補手評価の両方を、キレーティング（QiRating）を使って機械学習・評価する仕組み。仕組みの詳細は文書に書かれていない。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "評価関数、候補手評価、ともにキレーティング（QiRating）を使って機械学習/評価する仕組みを採用しています。"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "別ゲームで得た知見の逆輸入",
+      "description": "きのあ将棋の仕組みを独自のシューティング風戦略ゲームの機械学習に応用し、大会の2週間前に将棋へ戻って得た知見を逆輸入する。グローバルなパラメータの最適化にも使いたい。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "手を戻して独自のシューティング風の戦略ゲームの機械学習で得た知見を逆輸入したいです。"
+    }
+  ],
+  "character": "別件で忙しくて研究がストップ気味、雑文でごめんなさい、と率直で、WCSC36を大変楽しみにしているという気持ちが前面に出た文書。",
+  "notes": "技術内容の記述は短く、QiRatingの具体的な仕組みは不明。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc36/team.html"
+}

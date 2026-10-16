@@ -1,0 +1,76 @@
+{
+  "wcsc": 23,
+  "year": 2013,
+  "dir": "R7.7",
+  "team": "不明（R7.7）",
+  "software": "R7.7",
+  "sources": [
+    "wcsc23/appeal/R7.7/appeal.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc23/appeal/R7.7/appeal.txt"
+  ],
+  "summary": "自力で作った独自の工夫を4点アピールする。CPUを遊ばせない並列探索、定理に基づく合法手の4分類、連続攻撃優先評価、打たれ強い駒組みの自動生成。いずれも標準的な手法とは違う発想の独自路線。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": "自力で施した工夫"
+  },
+  "eval": {
+    "family": "手作り",
+    "detail": "連続攻撃優先評価、打たれ強い駒組み生成"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "任意ノード以下の部分木を別CPUへ動的に割り当てる並列探索、手の4分類によるオーダリング"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "並列・分散",
+      "title": "極力CPUを遊ばせない並列探索",
+      "description": "αβ探索中に出会う任意個のノードの部分木を別CPUに割り当てて並列探索し、後でできる限りやり直さずに結果をまとめ直す。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "極力CPUを遊ばせない並列探索"
+    },
+    {
+      "category": "探索",
+      "title": "定理ベースの合法手の4分類",
+      "description": "合法手を相手の動向を制約する度合いで4種類に分け、大きい順に生成する。ヒューリスティクスでなく定理ベースで行い、調整パラメータがない。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "ヒューリスティックに頼らず定理ベースで行っている点です。"
+    },
+    {
+      "category": "評価関数",
+      "title": "連続攻撃優先評価",
+      "description": "中盤で、相手より先に攻撃が尽きる手の分岐を早く刈る。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "中盤においては相手より先に攻撃が尽きる手の分岐をさっさと刈ります。"
+    },
+    {
+      "category": "棋風・人間らしさ",
+      "title": "打たれ強い駒組みの自動生成",
+      "description": "序盤は仕掛けず、相手の連続攻撃成立を遅らせながら自陣を強化する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "相手の連続攻撃成立を極力遅延させつつ自陣を強化します。"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "Killer moveの二軍落とし",
+      "description": "反則手になったKiller moveをすぐ消さず二軍に落として点数を減らす。分割した指し手生成をコルーチン的に行う。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "Killer moveが反則手になってもただちに消さず、2軍に落とし点数を減ずる"
+    }
+  ],
+  "character": null,
+  "notes": "開発者名は文書・一覧ページから特定できなかった。点2の処理が重く効果が相殺された感があると自己評価。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc23/team.html"
+}

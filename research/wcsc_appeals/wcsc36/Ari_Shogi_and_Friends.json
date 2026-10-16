@@ -1,0 +1,102 @@
+{
+  "wcsc": 36,
+  "year": 2026,
+  "dir": "Ari_Shogi_and_Friends",
+  "team": "兵頭 優空",
+  "software": "Ari Shogi and フレンズ",
+  "sources": [
+    "wcsc36/appeal/Ari_Shogi_and_Friends/Ari_Shogi_and_Friends_WCSC36_Appeal_2.txt"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc36/appeal/Ari_Shogi_and_Friends/Ari_Shogi_and_Friends_WCSC36_Appeal_2.txt"
+  ],
+  "summary": "DL系（Transformer等）とNNUE系の2種類のAIを合議させ、低コストで強い将棋AIを目指す。合議はWCSC31のTMOQの仕組みがベースで、評価値の偶奇で合議の状態を観戦者に伝える遊び心がある。今年は開発環境の改善に注力し、ローカルLLMによる開発エージェントを作っている。",
+  "base": {
+    "engine": "やねうら王+dlshogi",
+    "eval_source": "水匠5・tanuki-・振電3・AobaNNUEなどの公開モデルから追加学習",
+    "note": "探索部はやねうら王・ふかうら王GitHub版をそのまま使用。学習部はpython-dlshogi2を改造"
+  },
+  "eval": {
+    "family": "DL+NNUE",
+    "detail": "DL系はTransformer・ラージカーネル・蒸留などを取り入れた自作モデル。NNUE系は標準NNUEとボトルネック構造のものの2種類"
+  },
+  "search": {
+    "family": "その他",
+    "detail": "DL系とNNUE系の2エンジンを合議。ponderは確率的Ponder"
+  },
+  "learning": "DL系はアップ/ダウンサンプリング、Gated Attention、温度つきPolicy蒸留、アンサンブル蒸留、warmup、label smoothing。NNUE系は公開モデルへの追加学習。後退解析で集めた悪手局面集を教師生成に利用",
+  "hardware": "Core Ultra7 265F + RTX5080 と Core i5-13400F + RTX4060Ti の2台を連携",
+  "language": [
+    "Python"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "探索",
+      "title": "DL系とNNUE系の2段階合議",
+      "description": "DL系だけに持ち時間を渡して思考させ、指し手が不一致ならNNUE系に「DLの手を指した局面」を短時間探索させ、評価値の差が閾値を超えたときだけNNUE系の手を採る。パラメータ調整が軽く、本番でハードウェアが変わっても崩れにくい。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "WCSC31のTMOQチームの仕組みをベースにするパターンが、合議に参加するAIや合議用パラメータに関わらず安定して強い"
+    },
+    {
+      "category": "エンタメ・演出",
+      "title": "評価値の偶奇で合議状態を伝える",
+      "description": "DL系の評価値を出すときは必ず偶数、NNUE系なら必ず奇数になるよう細工する。観戦者が評価値から合議の状態を推察できる。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "DL系の評価値が出力されている場合、評価値は必ず偶数に"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "後退解析による悪手局面集",
+      "description": "強いAI同士の棋譜を1手1億ノード以上で後退解析し、負けた側が最後に評価値を割った局面と、そこでの他の有力手の局面を大量に集めて教師データ生成に使う。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "負けた側が最後にある評価値を割った局面と、その局面でほかの有力な手を指した局面を大量に集めて局面集を作成"
+    },
+    {
+      "category": "時間管理",
+      "title": "形勢が傾く前に持ち時間を使い切る",
+      "description": "AI同士の対局では一度形勢が傾くと逆転しにくく、フィッシャールールで終盤も思考時間が確保できる。そのため形勢が大きく傾く前に持ち時間の大半を使うよう消費を調整する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "形成が大きく傾くより前に持ち時間の大半を使い切れるように持ち時間の消費を調整している"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "DL系の蒸留・学習の工夫群",
+      "description": "Policy蒸留の温度を1.0より高くする、アンサンブルモデルからの蒸留、Gated Attention、label smoothingなどを導入し、NNUE系の学習部にも同じ改造を流用する。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "Policyの蒸留で教師モデルの出力に適用するsoftmaxの温度を1.0より高くする"
+    },
+    {
+      "category": "評価関数",
+      "title": "モデルのパラメータ直接操作とマージ",
+      "description": "NNUEのパラメータを直接いじってモデルが好む戦型を変えたり、複数モデルをマージしてより強いモデルを作る実験を行っている。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "モデルパラメータを直接弄ってモデルが好む戦型を変えたり、複数のモデルをマージしてより強いモデルを作成"
+    },
+    {
+      "category": "開発手法・運用",
+      "title": "ローカルLLMの開発エージェント",
+      "description": "ゲームのマッチング中にちょっと会話するだけで開発が進むシステムを目標に、ローカルLLMを使ったAIエージェントを制作している。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "「ゲームのマッチング中にちょっと会話するだけでどんどん開発が進んでいく」というシステム"
+    },
+    {
+      "category": "ハードウェア",
+      "title": "2台のPCを連携",
+      "description": "電竜戦の賞金と貯金で買ったPCと従来のPCの2台を連携させ、上位勢とのマシンパワー差を埋める。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "2つのPCを連携させて少しでも上位勢とのマシンパワー差を埋める"
+    }
+  ],
+  "character": "初出場は中学生で、もうすぐ20歳。ゲームが忙しくて開発が進まないと正直に書く。観戦を楽しむ偶奇の細工、例年の突飛な実験（画像生成AIで局面生成、optimizerを遺伝的アルゴリズムで進化など）への言及が個性的。",
+  "notes": "定跡は搭載しない予定と明記。今年は画像生成AI等の突飛な実験は行っていない。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc36/team.html"
+}

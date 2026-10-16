@@ -1,0 +1,62 @@
+{
+  "wcsc": 23,
+  "year": 2013,
+  "dir": "QinoaSyougi",
+  "team": "山田 元気",
+  "software": "きのあ将棋",
+  "sources": [
+    "wcsc23/appeal/QinoaSyougi/appeal.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc23/appeal/QinoaSyougi/appeal.txt"
+  ],
+  "summary": "人間とのWeb対局を重視したソフト。枝刈りで重要な手を落としてしまう問題に対し、通常の評価値と「希望的評価値」の2つを返して枝刈りに後者を使う案を試す予定。Web版の対局データから、人間は負けた後に再対局しやすく勝率40%前後が楽しいと分析する。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "不明",
+    "detail": "通常評価値と希望的評価値の2種を返す案"
+  },
+  "search": {
+    "family": "不明",
+    "detail": null
+  },
+  "learning": null,
+  "hardware": null,
+  "language": [
+    "C"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "探索",
+      "title": "希望的評価値による枝刈り",
+      "description": "評価関数が通常の評価値と「希望的評価値」を返し、評価値による枝刈りは後者に基づいて行うことで、重要な手を刈らずに済ませる案を試す。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "評価関数にて通常の評価値と希望的評価値を返すようにし"
+    },
+    {
+      "category": "棋風・人間らしさ",
+      "title": "対局数と勝率の分析",
+      "description": "Web版の約1年分の対局を集計し、2回目以降の対局者の勝率は40%前後で、少し手ごわい強さがちょうど良く楽しく感じられるのではないかと分析する。",
+      "originality": "独自",
+      "evidence": "2回目以降の対局者の勝率は41〜44%、20回目で37%",
+      "quote": "負けた後のほうが再対局してくれる可能性があります。"
+    },
+    {
+      "category": "エンタメ・演出",
+      "title": "人間向けWeb対局の運用",
+      "description": "ソフトのWeb版を公開し、人間との対局データを集計して強さの設計に活かす。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "きのあ将棋のweb版で集計した下記のデータを見る限り"
+    }
+  ],
+  "character": "人間と遊ぶことに重点を置き、Web版で集めた対局統計から「ちょうどいい強さ」を考察する。体調不良で改良が進んでいない旨も率直に書く。",
+  "notes": null,
+  "team_list_url": "http://www2.computer-shogi.org/wcsc23/team.html"
+}

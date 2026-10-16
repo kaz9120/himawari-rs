@@ -1,0 +1,62 @@
+{
+  "wcsc": 25,
+  "year": 2015,
+  "dir": "Gasyou!!!!!!!!",
+  "team": "森岡 祐一",
+  "software": "GA将!!!!!!!!!",
+  "sources": [
+    "wcsc25/appeal/Gasyou!!!!!!!!/Gasyou8_Appeal.pdf"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc25/appeal/Gasyou%21%21%21%21%21%21%21%21/Gasyou8_Appeal.pdf"
+  ],
+  "summary": "前年に続き自己対局の強化学習SR-PGLeafで棋譜・定跡なしに学習。評価関数はFactorization Machineで実装した3・4駒関係を含む約5000万パラメータに拡大し、探索はマルチスレッドとPonder対応、3Mnps。強化学習の解説（教師あり学習との違い）を詳しく書く。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": "フルスクラッチ"
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "駒割、絶対位置、2駒の相対/絶対位置、3・4駒の絶対位置（Factorization Machine）、王の移動範囲、駒の自由度。約5000万個"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "全幅ベース＋KFEnd流2段階静止探索、LMR、Null-Move、Extended Futility、Move Count、王手0.5手延長、マルチスレッド、Ponder"
+  },
+  "learning": "SR-PGLeaf。自己対局50万〜100万局、全幅3手＋静止探索6手で24時間約5万局、2〜4週間",
+  "hardware": "Core i7 5960X（3Mnps前後）",
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": "floodgate 2週間レート2219（Athlon 5350）。対sspで勝率約92%、対Bonanza 6.0（5手読みに制限）で約59%",
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "SR-PGLeaf（分割報酬の方策勾配）",
+      "description": "自己対局の評価値の上下を予測報酬（2×sigmoid(評価値)−1）で近似し、手前後の差を分割報酬として1手ごとに与える。逆転負けの対局でも評価値が上がった手を良い手と学習できる。",
+      "originality": "独自",
+      "evidence": "対sspの勝率約92%、対Bonanza 6.0（5手読み）約59%",
+      "quote": "分割報酬：ある局面 P より先の局面の予測報酬と、局面 P での予測報酬の差。"
+    },
+    {
+      "category": "評価関数",
+      "title": "Factorization Machineによる3・4駒関係",
+      "description": "3つ・4つの駒の絶対位置関係の評価をFactorization Machineで実装し、約5000万パラメータにした。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "Factorization Machine を使用して実装しています。"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "棋譜・定跡なしでの棋風探索",
+      "description": "エキスパートの知識データを使わず学習した場合に、新戦法が生まれるのか、矢倉や穴熊に囲う人間の経験に追従するのかを知りたい。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "棋譜や定跡といったエキスパート（≒プロ棋士）の知識データを用いずに"
+    }
+  ],
+  "character": "「５八玉戦法」で2次予選に進んだ過去があり、観戦者に楽しんでもらえる将棋を目指す。ブログ・Twitterも運営。名前の「!」はバージョン番号。",
+  "notes": null,
+  "team_list_url": "http://www2.computer-shogi.org/wcsc25/team.html"
+}

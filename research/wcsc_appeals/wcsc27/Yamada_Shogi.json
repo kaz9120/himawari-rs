@@ -1,0 +1,70 @@
+{
+  "wcsc": 27,
+  "year": 2017,
+  "dir": "Yamada_Shogi",
+  "team": "山田 泰広",
+  "software": "山田将棋",
+  "sources": [
+    "wcsc27/appeal/Yamada_Shogi/yamadashogi_appeal_2017.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc27/appeal/Yamada_Shogi/yamadashogi_appeal_2017.txt"
+  ],
+  "summary": "「クラシカルな構造・アルゴリズム」を自称する、手調整の評価関数ソフト。配列盤面、駒背番号制、利き数、囲いへ誘導する落とし穴表、pinned・coverの概念など独自のデータ構造と、YSS式指し手の反復生成、Crafty方式並列探索、反復深化の詰め将棋ルーチンなどを組み合わせる。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "手作り",
+    "detail": "駒割、玉の安全度、囲い、盤上の利き、駒への当たり、大駒の働き、そっぽ、金駒へのひもなどの手調整した線形和"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "反復深化、静かでない場合の探索延長、null move、LMR、killer move、pass move、YSS式指し手の反復生成、Crafty方式並列、予測読み"
+  },
+  "learning": null,
+  "hardware": "Xeon E5-2687W v4 2基 24コア 64GB FreeBSD",
+  "language": [
+    "C"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "実装・高速化",
+      "title": "駒背番号制と利き関連の豊富なデータ構造",
+      "description": "配列盤面に、駒背番号制、利き数、飛び利き方向ビットのOR値、利いている駒背番号ビットのOR値、8近傍利き位置・合法移動先の表などを持つ。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "駒背番号制、利き数、飛び利き方向ビットの OR 値、利いている駒背番号ビットの OR 値"
+    },
+    {
+      "category": "棋風・人間らしさ",
+      "title": "囲いへ誘導する落とし穴表",
+      "description": "囲いへ誘導するための落とし穴表を持ち、玉位置からの距離に応じた評価値の表も使う。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "囲いへ誘導するための落とし穴表"
+    },
+    {
+      "category": "詰み・終盤",
+      "title": "rootの簡易必死検出とleaf付近の簡易一手詰み",
+      "description": "反復深化による詰め将棋ルーチン、rootノードでの簡易必死検出、leaf付近での簡易一手詰み検出を持つ。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "root ノードでの簡易必死検出、leaf ノード付近での簡易一手詰み検出"
+    },
+    {
+      "category": "探索",
+      "title": "YSS式指し手の反復生成とCrafty方式並列",
+      "description": "指し手をYSS式に反復生成し、並列探索はCrafty方式とする。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "YSS 式指し手の反復生成、Crafty 方式の並列探索"
+    }
+  ],
+  "character": null,
+  "notes": "「未採用」の列挙（多重反復深化、影の利き、SEE、bitboard、実現確率探索、評価関数の学習など）あり。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc27/team.html"
+}

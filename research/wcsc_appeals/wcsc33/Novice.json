@@ -1,0 +1,73 @@
+{
+  "wcsc": 33,
+  "year": 2023,
+  "dir": "Novice",
+  "team": "Team Novice",
+  "software": "Novice",
+  "sources": [
+    "wcsc33/appeal/Novice/Team_Novice.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc33/appeal/Novice/Team_Novice.pdf"
+  ],
+  "summary": "DLとNNUE型（差分計算なし）の両方を実装・学習し、対局時はクラスターを組んで探索木の末端で両者の結果を使う予定。DLモデルはVision Transformerを採用予定。有段者の手作り定跡は使い捨て。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "DL+NNUE",
+    "detail": "DLに加え、差分計算なしのNNUE型。DLは入力から駒種を削除し移動方向ごとにチャネルを作り、Vision Transformerを採用（予定）"
+  },
+  "search": {
+    "family": "αβ+MCTS",
+    "detail": "探索木の末端で両者の結果を用いて指し手を決める（予定）"
+  },
+  "learning": "DLのパラメータの自動調整を導入",
+  "hardware": "Core i9-13900K、Xeon Platinum 8480+ x2、RTX3090/3080Ti/3080",
+  "language": [
+    "C++",
+    "C#",
+    "Python",
+    "Java"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "探索",
+      "title": "クラスターでDLとNNUE型を併用する探索",
+      "description": "DLとNNUE型の両方を学習し、対局時はクラスターを組んで、探索木の末端で両者の結果を使って指し手を決める（予定）。差分計算を行わないためNNUEでなく「NNUE」風の表記にしている。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "探索木の末端で両者の探索結果を用い指し手の決定を行う（予定）"
+    },
+    {
+      "category": "評価関数",
+      "title": "Vision Transformerと移動方向チャネル",
+      "description": "DLモデルで、特徴量から駒の種類を削除して移動方向ごとにチャネルを作り、Vision Transformerを採用する（予定）。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "特徴量として駒の種類を削除し移動方向毎にチャネルを作成"
+    },
+    {
+      "category": "開発手法・運用",
+      "title": "DLパラメータの自動調整",
+      "description": "昨年のDLモデルからハイパーパラメータや入力レイヤーを更新し、パラメータの自動調整を導入する。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "パラメーターの自動調整を導入"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "有段者による使い捨て手作り定跡",
+      "description": "有段者のチームメンバーが手作りした定跡を今年のみ使う（使い捨て）。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "今年のみの使用で使い捨てです"
+    }
+  ],
+  "character": null,
+  "notes": "画像のみのPDF（4枚）で、原本を読んだ。各項目に（予定）が付く。チームにはNshogi開発者の中屋敷氏を含む。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc33/team.html"
+}

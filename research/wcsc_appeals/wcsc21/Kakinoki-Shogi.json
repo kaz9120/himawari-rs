@@ -1,0 +1,44 @@
+{
+  "wcsc": 21,
+  "year": 2011,
+  "dir": "Kakinoki-Shogi",
+  "team": "柿木義一",
+  "software": "柿木将棋",
+  "sources": [
+    "wcsc21/appeal/Kakinoki-Shogi/Kakinoki-Shogi.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc21/appeal/Kakinoki-Shogi/Kakinoki-Shogi.txt"
+  ],
+  "summary": "2010年からほぼ改良がなく、前年と同文。全幅探索と選択探索の2プログラムを、序中盤と終盤で切り替える。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "手作り",
+    "detail": null
+  },
+  "search": {
+    "family": "その他",
+    "detail": "全幅探索プログラムと選択探索プログラムの併用"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "探索",
+      "title": "全幅探索と選択探索の切り替え",
+      "description": "序中盤は選択探索のプログラム（20年以上の開発歴）、終盤は全幅探索のプログラム（学習で評価関数を作成）に切り替える。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "序中盤は選択探索のプログラムを使い、終盤になると、全幅探索のプログラムに切り替えています"
+    }
+  ],
+  "character": null,
+  "notes": "第20回と同じ文面。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc21/team.html"
+}

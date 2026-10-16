@@ -1,0 +1,60 @@
+{
+  "wcsc": 30,
+  "year": 2020,
+  "dir": "TAKUMI",
+  "team": "馬場匠ほか6名",
+  "software": "匠",
+  "sources": [
+    "wcsc30/appeal/TAKUMI/takumi_appeal.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc30/appeal/TAKUMI/takumi_appeal.pdf"
+  ],
+  "summary": "2019年入社の同期でチームを組んだ初参加。ゲームAIの知識がないメンバーが勉強会をしながら進める。木探索の並列化と玉の硬さの学習を予定。",
+  "base": {
+    "engine": "不明",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "不明",
+    "detail": null
+  },
+  "search": {
+    "family": "不明",
+    "detail": null
+  },
+  "learning": null,
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "並列・分散",
+      "title": "木探索の並列化の効率化",
+      "description": "木探索の並列化を効率よくできるよう工夫する計画。",
+      "originality": "不明",
+      "evidence": null,
+      "quote": "⽊探索の並列化を効率よくできるように⼯夫します"
+    },
+    {
+      "category": "評価関数",
+      "title": "玉の硬さの学習",
+      "description": "玉の硬さについて学習させる計画。",
+      "originality": "不明",
+      "evidence": null,
+      "quote": "⽟の硬さについて学習させます"
+    },
+    {
+      "category": "開発手法・運用",
+      "title": "同期入社での勉強会開発",
+      "description": "ゲームAIの知識がない同期入社の5名が、勉強会をしながら開発する。",
+      "originality": "不明",
+      "evidence": null,
+      "quote": "みんなで勉強会をやりながら頑張ります"
+    }
+  ],
+  "character": "2019年入社の会社の同期でチームを組み、ゲームAI初心者が勉強会から始める。",
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc30/team.html"
+}

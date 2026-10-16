@@ -1,0 +1,52 @@
+{
+  "wcsc": 25,
+  "year": 2015,
+  "dir": "Komaasobi",
+  "team": "永吉 宏之",
+  "software": "こまあそび",
+  "sources": [
+    "wcsc25/appeal/Komaasobi/appeal.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc25/appeal/Komaasobi/appeal.txt"
+  ],
+  "summary": "前年と同内容。手番別の延長上限、最善でない手の数で読む幅を決める探索、手作りの評価の個性が特徴。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "手作り",
+    "detail": "銀桂は敵陣寄り高評価、金は上部低評価、竜・飛を高評価"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "手番別延長上限、最善でない手の数で読む幅を決める"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "探索",
+      "title": "手番別の延長上限",
+      "description": "延長の上限を先手番・後手番で別々に持つ。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "延長深さの制限を先手番、後手番別々に持っている"
+    },
+    {
+      "category": "探索",
+      "title": "最善でない手の数で読む幅を決める",
+      "description": "手順に含まれる最善でない手の数で読む広さを決める。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "手を読む広さはそこまでの手順に最善でない手が何手含まれ"
+    }
+  ],
+  "character": null,
+  "notes": "前年と同一。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc25/team.html"
+}

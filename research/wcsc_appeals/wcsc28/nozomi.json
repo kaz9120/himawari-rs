@@ -1,0 +1,55 @@
+{
+  "wcsc": 28,
+  "year": 2018,
+  "dir": "nozomi",
+  "team": "大森 悠平",
+  "software": "nozomi",
+  "sources": [
+    "wcsc28/appeal/nozomi/appeal.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc28/appeal/nozomi/appeal.pdf"
+  ],
+  "summary": "Stockfishベースの探索と、KPP+KKPTの三駒関係評価を自己対局の勝敗と評価値で学習するソフト。指し手選択確率をロジスティック回帰で作ってオーダリング・LMRに使う。DL+MCTSの波に乗れなかったと自己申告。",
+  "base": {
+    "engine": "Stockfish（一部Apery参考）",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "KPP+KKPTの三駒関係"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "Stockfishベース。指し手の選択確率でオーダリング（LMRにも使用予定）"
+  },
+  "learning": "自己対局の勝敗と評価値を教師に学習。なるべく深いdepthで自己対局し、少ない棋譜から学習できるようにした（1回の更新に2000万局面）。損失関数はelmo形式でなく一部変更",
+  "hardware": "Amazon EC2 m5.24xlarge",
+  "language": [
+    "C++",
+    "C#"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "探索",
+      "title": "指し手の選択確率でオーダリングとLMR",
+      "description": "指し手と駒の位置関係で、指し手の選択確率をロジスティック回帰で求めてオーダリングに使い、LMRにも使う予定。評価関数の学習とほぼ同じ手法でお手軽。1手も読まずに35%の確率で指し手を予言できる。",
+      "originality": "独自",
+      "evidence": "指し手を35%の確率で予言",
+      "quote": "nozomiの指し手を一手も読まずに35%の確率で予言可能"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "少ない棋譜から学習できる損失関数",
+      "description": "時間と金の節約のため、1回の更新に2000万局面を使い、elmo形式でない損失関数で少ない棋譜から学習できるようにした。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "少ない棋譜からでも学習できるようにしました"
+    }
+  ],
+  "character": "「乗るしかないこのビッグウェーブに！」と始めつつ、最後は「誠に遺憾ではありますが、ビッグウェーブに乗れなかったもの」と締める。",
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc28/team.html"
+}

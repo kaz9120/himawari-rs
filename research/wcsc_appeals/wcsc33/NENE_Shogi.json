@@ -1,0 +1,80 @@
+{
+  "wcsc": 33,
+  "year": 2023,
+  "dir": "NENE_Shogi",
+  "team": "日高 雅俊",
+  "software": "ねね将棋",
+  "sources": [
+    "wcsc33/appeal/NENE_Shogi/wcsc33_appeal_neneshogi_20230416.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc33/appeal/NENE_Shogi/wcsc33_appeal_neneshogi_20230416.pdf"
+  ],
+  "summary": "iPad（第9世代）上でNNUE（やねうら王）とDL（ふかうら王、Neural Engine使用）を合議する。2エンジンを1つのiPadアプリ内で動かすための特殊ビルドが独自。",
+  "base": {
+    "engine": "やねうら王+ふかうら王",
+    "eval_source": "水匠5（NNUE）、『強い将棋ソフトの創りかた』サンプルで学習した20層192チャンネルCNN（DL）",
+    "note": "合議とCSA通信はMac上で実装（iPadでも理論上可能）"
+  },
+  "eval": {
+    "family": "DL+NNUE",
+    "detail": "やねうら王のNNUE（主にCPU）とふかうら王のDL（主にNeural Engine）"
+  },
+  "search": {
+    "family": "αβ+MCTS",
+    "detail": "NNUEの2候補とDLの5候補を勝率に換算して合議"
+  },
+  "learning": "評価値と勝敗のペアを自己対戦で集めてシグモイドでフィッティングし、評価値を勝率に変換",
+  "hardware": "Apple A13 Bionic（iPad第9世代）、Mac",
+  "language": [
+    "C++",
+    "Swift",
+    "Python"
+  ],
+  "claimed_strength": "iPad上ではNNUEがDLより強い（勝率80%程度）",
+  "ideas": [
+    {
+      "category": "探索",
+      "title": "NNUE主体・DL補助の合議",
+      "description": "iPadではNNUEのほうが強いので、NNUEのMultiPV 2候補を主体にし、DL5候補の勝率を0.75:0.25で重み付き平均してNNUE候補から最高勝率の手を選ぶ。DLが順序を逆転させる場合がある。64手目以降はNNUEのみで詰み付近に対処。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "NNUE の指し手を主体として、DL は補助として使用することとした。"
+    },
+    {
+      "category": "探索",
+      "title": "評価値を勝率に換算して合議",
+      "description": "エンジンごとに評価値のスケールが違うため、自己対戦で集めた評価値と勝敗のペアにシグモイドをフィッティングして勝率に変換してから比べる。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "自己対戦により評価値と勝敗のペアを収集し、シグモイド関数のフィッティングにより求めた。"
+    },
+    {
+      "category": "ハードウェア",
+      "title": "iPadのNeural Engineを使うDL",
+      "description": "iPadで、DLは機械学習専用チップNeural Engine、NNUEは主にCPUで思考させ、iPadの能力を引き出す。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "iPad の能力をできるだけ引き出して高い棋力を目指す。"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "1アプリ内で2エンジンを動かす特殊ビルド",
+      "description": "複数プロセスを立てられないiPadで、同名関数を別コンパイルオプションでビルドして同居させるため、全関数を名前空間に入れ、名前空間名をマクロで置換した。標準入出力は呼び出しスレッドの属するエンジンを判別し別ソケットに分離した。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "すべての関数を名前空間内に格納し、名前空間の名前自体をプリプロセッサマクロで置換した。"
+    },
+    {
+      "category": "解説・人間支援",
+      "title": "合議の内容をMac上で可視化",
+      "description": "局面と合議の内容をMacの画面に表示する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "合議の内容は Mac 上で可視化する。"
+    }
+  ],
+  "character": "iPadで動く将棋AIという異色の構成。",
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc33/team.html"
+}

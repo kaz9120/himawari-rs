@@ -1,0 +1,86 @@
+{
+  "wcsc": 30,
+  "year": 2020,
+  "dir": "Shibaura_Shogi_Softmax",
+  "team": "芝浦工業大学Ⅰ（岩本裕大、粂川叶、五十嵐治一）",
+  "software": "芝浦将棋Softmax",
+  "sources": [
+    "wcsc30/appeal/Shibaura_Shogi_Softmax/2020appeal-2.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc30/appeal/Shibaura_Shogi_Softmax/2020appeal-2.pdf"
+  ],
+  "summary": "αβ探索に代わる、確率的なノード選択のモンテカルロ・ソフトマックス探索を使うチーム。今年は探索深さ指標を導入し（予備実験でレート約300向上）、探索部をゼロから書き直し、評価関数をBonanzaのKPPからAperyのKPPTに変更した。",
+  "base": {
+    "engine": "独自",
+    "eval_source": "Apery（KPPT）。昨年までBonanza 6.0.0の評価関数",
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "Aperyの公開KPPT評価関数をそのまま使用。末端ノードでは静止探索（αβ）の結果を返す"
+  },
+  "search": {
+    "family": "その他",
+    "detail": "MC Softmax探索。ボルツマン分布で確率的にノードを選び、末端を1段階展開して期待値でバックアップ"
+  },
+  "learning": "評価関数は公開のものをそのまま使用。独自の学習法（方策勾配を用いた教師付学習、モンテカルロ・サンプリングによる学習）は今後実装予定",
+  "hardware": "Xeon E5-2695v4 2基、36コア72スレッド",
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": "探索深さ指標で、静止探索を行わない場合など精度が低い評価関数では、レート約300向上（予備実験）",
+  "ideas": [
+    {
+      "category": "探索",
+      "title": "モンテカルロ・ソフトマックス探索",
+      "description": "ノード評価値のmin-maxの代わりに、ボルツマン分布 π(a|s)=exp(E/T)/Σexp(E/T) に従ってサイコロを振るように確率的にノードを選ぶ。内部ノードの評価値は、子ノードの評価値の選択確率による期待値で定義する。温度Tを下げるとmin-maxに近づく。プレイアウトを行わず、確率的選択を行う点がMCTSと違う。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "ノード評価値の min-max 演算ではなく，確率分布に基づく選択（Softmax 探索）を使用しています。"
+    },
+    {
+      "category": "探索",
+      "title": "探索深さ指標",
+      "description": "ソフトマックス探索のために、選択確率で重み付けした平均の探索深さ d(s)=Σ{P(s'|s)d(s')+1}（末端は0）を定義する。ノード評価値を E_s(s)=E(s)(1-1/2^d)+E0(s)/2^d と補正して、深さを考慮した探索にする。",
+      "originality": "独自",
+      "evidence": "精度の低い評価関数では、予備実験でレート約300向上",
+      "quote": "探索深さ指標を Softmax 探索のための深さの指標として新たに定義し"
+    },
+    {
+      "category": "探索",
+      "title": "探索木の根の付け替えと並列時の排他最適化",
+      "description": "対局で手が進んだら根ノードを変更して、過去の探索を再利用する。並列の排他処理は、末端ノードのみmutex、内部ノードはatomic変数とし、ノードのメモリを約4分の1にして探索速度も上げる。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "内部ノードは atomic 変数を用いる方法に変更しました。これによりノードのメモリサイズを四分の一程度に抑え"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "Magic bitboardからpextへ、捕獲手生成時の駒損枝刈り",
+      "description": "合法手生成を書き直し、Magic bitboardのビット処理をpext演算に変える。捕獲手の生成時に駒損による枝刈りを行う。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "Magic bitboard によるビット処理を pext 演算に変更しています。"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "方策勾配を用いた教師付学習（計画）",
+      "description": "Bonanzaメソッドを一般化し、正解手だけでなく次善手の評価値も学習データに使える方策勾配の教師付学習を提案している（文献）。探索木の全leafの特徴量の重みを、探索時と同じサンプリングとバックアップで学習する案もある。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "本学習法では，正解手以外の手（例えば有力な次善手）の評価値も学習データとして利用することが可能です．"
+    },
+    {
+      "category": "並列・分散",
+      "title": "探索木の分割とスレッド割当て（計画）",
+      "description": "親ノードと以下の探索木をスレッドに分散して割り当て、最善応手手順や有力手順の近傍にスレッドを動的に割り当てる構想。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "最善応手手順や有力手順の近傍を中心に，スレッドと探索木を探索途中で動的に割り当てることを考えています。"
+    }
+  ],
+  "character": "Stockfishなどチェスプログラムの影響が強い現状に対して、「Softmax探索とモンテカルロ・サンプリング」という別路線を取る。最終目標は、プロ棋士の棋譜を使わず、自己対局や他流試合から人類を超え、新しい定跡や戦法を創出して棋士やファンを楽しませること。",
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc30/team.html"
+}

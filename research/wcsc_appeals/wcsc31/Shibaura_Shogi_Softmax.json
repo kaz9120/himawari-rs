@@ -1,0 +1,84 @@
+{
+  "wcsc": 31,
+  "year": 2021,
+  "dir": "Shibaura_Shogi_Softmax",
+  "team": "岩本 裕大、粂川 叶、村上 陽大、五十嵐 治一（芝浦工業大学）",
+  "software": "芝浦将棋Softmax",
+  "sources": [
+    "wcsc31/appeal/Shibaura_Shogi_Softmax/2021appeal.docx"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc31/appeal/Shibaura_Shogi_Softmax/2021appeal.docx"
+  ],
+  "summary": "αβでもMCTSでもない独自の「MC Softmax探索」を使う、芝浦工業大学のチーム（5回目の出場）。ボルツマン分布で確率的に末端まで降り、期待値でバックアップする。今年は探索深さ指標の導入で、評価関数が弱いとき約300レート向上した。",
+  "base": {
+    "engine": "独自",
+    "eval_source": "Apery KPPT型評価関数（tanuki-のNNUEより勝率が良かった）",
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "Aperyの公開KPPT評価関数をそのまま使用。末端で静止探索"
+  },
+  "search": {
+    "family": "その他",
+    "detail": "MC Softmax探索。ボルツマン分布で確率的にノードを選び、期待値でバックアップ。64コア128スレッドで木を共有"
+  },
+  "learning": null,
+  "hardware": "64コア(128スレッド)のワークステーション（Ryzen Threadripper 3990X）",
+  "language": "C++",
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "探索",
+      "title": "MC Softmax探索",
+      "description": "min-max演算でなくボルツマン分布に基づく確率的なノード選択（Softmax）でルートから末端まで降り、末端の子を展開して評価値を期待値でバックアップする。プレイアウトを使わず、UCTのような決定論的選択とは異なる。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "モンテカルロ・ソフトマックス探索方式"
+    },
+    {
+      "category": "探索",
+      "title": "探索深さ指標による評価値補正",
+      "description": "新たに定義した探索深さ指標を使って、ノード選択時の評価値に深さを考慮した補正を掛ける。静止探索を行わない低精度の評価関数で特に効果が大きい。",
+      "originality": "独自",
+      "evidence": "静止探索を使わないとき、レートにして約300向上",
+      "quote": "探索深さ指標」をSoftmax探索のための深さの指標として新たに定義し"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "対局を通して成長する序盤木",
+      "description": "序盤探索木を開始時に読み込み、対局中に成長させ、終了時に元の木へ格納する。反復で対局を通して定跡が成長する（実験中）。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "対局を通して序盤定跡を成長させることができます。"
+    },
+    {
+      "category": "探索",
+      "title": "スレッド・ノードごとの温度調整",
+      "description": "ノード選択方策の温度パラメータを、スレッドごとあるいはノードごとに調整する方式を検討している。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "温度パラメータをスレッドごと、あるいはノードごとに調整する方式を検討中です。"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "方策勾配を用いた教師付き学習法の構想",
+      "description": "棋譜の正解手だけでなく、次善手の評価値も学習に使う方策勾配法を一般化した学習法と、探索木のleaf特徴量の重みをMCサンプリングとバックアップだけで学習する方法を計画している。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "「方策勾配を用いた教師付学習法」"
+    },
+    {
+      "category": "並列・分散",
+      "title": "GPUでの局面並列評価",
+      "description": "MC Softmax探索はニューラルネット評価と相性がよく、子ノードの一斉展開と評価をGPUでまとめて並列化できることを実験で確認している。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "MC Softmax探索における局面の並列評価： GPU とニューラルネットワークモデルの利用"
+    }
+  ],
+  "character": "「人類の棋力を超えて、新しい定跡や戦法を創出し、棋士や将棋ファンを大いに楽しませてくれること」を目標とする研究室らしい理念。第5回電王トーナメントではmEssiahチームも同様の探索を採用した。",
+  "notes": "芝浦将棋Jr.（2016年まで）が原型。Aperyの評価関数・tanuki-のNNUEも実装済みでKPPTを選択。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc31/team.html"
+}

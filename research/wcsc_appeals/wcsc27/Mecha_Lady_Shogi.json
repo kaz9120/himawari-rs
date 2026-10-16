@@ -1,0 +1,71 @@
+{
+  "wcsc": 27,
+  "year": 2017,
+  "dir": "Mecha_Lady_Shogi",
+  "team": "メカ女子将棋部（竹部さゆり、渡辺弥生、酒井美由紀、辻理絵子、木村健）",
+  "software": "メカ女子将棋",
+  "sources": [
+    "wcsc27/appeal/Mecha_Lady_Shogi/WCSC27AppealMechajyo.pdf"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc27/appeal/Mecha_Lady_Shogi/WCSC27AppealMechajyo.pdf"
+  ],
+  "summary": "Julia言語で書かれた、女性チーム（一部自称）によるエンジョイ志向のソフト。評価関数にBonanzaのfv.binをJuliaへ移植して使い、思考プログラムをUSのRackspaceベアメタルサーバーで動かすリモート参加をする。文書の大半は、将棋ソフトの基本技術を平易に解説する内容。",
+  "base": {
+    "engine": "Bonanza",
+    "eval_source": "Bonanza Ver.6（fv.binのみ）",
+    "note": "Aperyもライブラリとして申請"
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "Bonanzaの評価関数をJuliaへ移植し、データfv.binだけを使用"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "反復深化、Alpha-Beta、Aspiration Search、ヒストリー・ヒューリスティクス。枝刈りはほとんど未実装、SEEも未導入"
+  },
+  "learning": null,
+  "hardware": "RackspaceのUSリージョンのベアメタルサーバー（Ubuntu）。将棋所はMacのParallels上のWindows10",
+  "language": [
+    "Julia",
+    "C/C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "実装・高速化",
+      "title": "Julia言語で実装",
+      "description": "科学技術計算向けのJulia言語で将棋ソフトを実装した。Rubyに近い構文でC++に匹敵する速さが得られるという。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "プログラミング言語としてJulia言語を採用します。"
+    },
+    {
+      "category": "ハードウェア",
+      "title": "USベアメタルサーバーを使ったリモート参加",
+      "description": "将棋所はMacのParallels上のWindows10で動かし、思考プログラムはRackspaceのUSリージョンのベアメタルサーバー（VPSではない速いマシン）のUbuntuで動かす。このために必要な工夫もプログラムの一部。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "リモートでの参加（将棋所はMacのParallels上で動くWindows10で、思考プログラムはアメリカのメタルサーバーで動くUbuntu上で）をします。"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "128bit整数のBitBoard",
+      "description": "飛・角・香以外の指し手生成にBitBoardを使い、128bit整数で表現する。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "メカ女子将棋では128bit整数を使っています。"
+    },
+    {
+      "category": "評価関数",
+      "title": "Bonanza評価関数のJulia移植",
+      "description": "Bonanzaの評価関数をJulia言語に移植し、データ（fv.bin）だけを使って評価値を求められるようにした。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "Bonanzaさんの評価関数をJulia言語に移植していて、データ（fv.bin）だけ使用"
+    }
+  ],
+  "character": "「全力で甘える主義♡」をモットーにメカきむりんに甘えるという女性チームのコンセプト。ビジネス提案書風のフォーマット（Prepared for: CSA、EXECUTIVE SUMMARY）や、「順位はあまり重要じゃなくて（ぉぃ）、みんなで楽しめることを第一に」という軽いノリで書かれる。将棋とコンピュータと女子の可愛さの答えを探すと自称。",
+  "notes": "文書の大半は、反復深化・ゲーム木探索・合法手生成・Alpha-Beta・枝刈り・BitBoard・Aspiration・ヒストリー・ヒューリスティクスなどの解説で、独自工夫の記述は少ない。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc27/team.html"
+}

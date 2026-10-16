@@ -1,0 +1,62 @@
+{
+  "wcsc": 29,
+  "year": 2019,
+  "dir": "Claire",
+  "team": "上原 大輔（Shogi Engine Factory）",
+  "software": "Claire",
+  "sources": [
+    "wcsc29/appeal/Claire/Claire_after.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc29/appeal/Claire/Claire_after.pdf"
+  ],
+  "summary": "Rustで書き直したが間に合わず、WCSC27版で出場する個人開発者のスライド。評価関数は駒の利きのみ、定跡はfloodgateの棋譜約8万局から抽出と述べたWCSC27版の特徴が取り消し線付きで残る。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "手作り",
+    "detail": "駒の利きのみを使用（WCSC27版）"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "飛・角・歩の不成も探索"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": [
+    "Rust"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "駒の利きのみの評価関数",
+      "description": "駒割・3駒関係・ディープラーニングを使わず、駒の利きだけで評価する（WCSC27版）。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "評価関数は駒の利きのみを使用。"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "floodgate棋譜からの定跡抽出",
+      "description": "floodgateの棋譜約8万局から定跡を抽出し、出現数と勝率を考慮して指し手を選ぶ（WCSC27版）。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "定跡は floodgateの棋譜約8万局より抽出。"
+    },
+    {
+      "category": "探索",
+      "title": "飛・角・歩の不成も探索",
+      "description": "通常は省く飛・角・歩の不成も探索する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "飛・角・歩の不成も探索します。"
+    }
+  ],
+  "character": "職業は「プロデューサー（アイドルマスター）」。「百合子と灯織のプロデュースが忙しい」「Rust完全に理解した（してない）」とネタを交える。目標は「完成させる」。",
+  "notes": "テキストの数字が欠落していたため原本PDFを読んで補った。今回の新規開発分は動かず、WCSC27バージョンで対局",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc29/team.html"
+}

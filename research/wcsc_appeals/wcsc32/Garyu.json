@@ -1,0 +1,63 @@
+{
+  "wcsc": 32,
+  "year": 2022,
+  "dir": "Garyu",
+  "team": "高田 淳一",
+  "software": "臥龍",
+  "sources": [
+    "wcsc32/appeal/Garyu/garyu_wcsc32.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc32/appeal/Garyu/garyu_wcsc32.pdf"
+  ],
+  "summary": "従来の思考部を捨て、ドメイン知識を入力層に加えた浅いValue Networkによる1手読みだけで指すソフト。約15,000円のJetson Nanoで参加する。入力チャンネルを増やせず今回も非常に弱いと自己評価。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "Value Network。入力38チャンネル、CNN7層+全結合2層、約260万パラメータ"
+  },
+  "search": {
+    "family": "その他",
+    "detail": "Value Networkによる1手読み。Javaで詰み探索"
+  },
+  "learning": "floodgate 2021年棋譜のうち、レーティング3500以上のプレイヤーの評価値付き局面。AWS Sagemakerで学習",
+  "hardware": "Jetson Nano（Arm Cortex-A57 4コア、Maxwell 128CUDAコア、メモリ4GB）約15,000円",
+  "language": [
+    "Java",
+    "Python"
+  ],
+  "claimed_strength": "非常に弱い（自己評価）",
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "評価関数のみ・1手読みで勝負",
+      "description": "従来の思考部を捨て、Value Networkの1手読みだけで指す。評価関数のみでどこまで行けるかを追求する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "評価関数のみでどこまで行けるかを追求する"
+    },
+    {
+      "category": "評価関数",
+      "title": "ドメイン知識を入力層に入れた浅いネット",
+      "description": "盤面情報だけでなくドメイン知識を38チャンネルの入力層に入れ、7層CNNの浅いネットワークで性能を出す。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "盤面情報だけではなく、ドメイン知識を入力層に入れ、浅いネットワークで性能を出す"
+    },
+    {
+      "category": "ハードウェア",
+      "title": "約15,000円のJetson Nanoで参加",
+      "description": "エッジデバイスのJetson Nanoで参加。参加マシンの中で最安値ではないかとしている。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "参加マシンの中で最安値?(最近は入手難らしい) 約15,000円!!!"
+    }
+  ],
+  "character": "通算82勝127敗4分、名前は摩訶大大将棋の駒に由来する。「今回も非常に弱い!（泣）」と明るく語る。",
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc32/team.html"
+}

@@ -1,0 +1,78 @@
+{
+  "wcsc": 21,
+  "year": 2011,
+  "dir": "ponanza",
+  "team": "山本一成",
+  "software": "Ponanza",
+  "sources": [
+    "wcsc21/appeal/ponanza/appeal.pdf"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc21/appeal/ponanza/appeal.pdf"
+  ],
+  "summary": "Magic Bitboardを将棋で初めて実現し、評価関数の変化量の統計サンプリングによるオーダリングと、Singular Extensionを備える。評価はBonanzaのfv.binに人手調整を加えた「ドーピング」。前年のBonanzaに82勝18敗でレート263点相当の上昇。",
+  "base": {
+    "engine": "独自",
+    "eval_source": "Bonanza fv.bin（改変）＋人手調整",
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "Bonanzaのfv.binに人手調整パラメータ（ドーピング）を加えたもの"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "PVS、YBWC、LMR、Futility Pruning、3手詰め関数、Singular Extension。初期局面で深さ30程度"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": "25分切れ負けで前年のBonanzaに82勝18敗（勝率82%、レート約263点）。floodgateで2011年4月25日時点でレーティングとも1位",
+  "ideas": [
+    {
+      "category": "実装・高速化",
+      "title": "将棋で初のMagic Bitboard",
+      "description": "掛け算で飛角の利きを算出するMagic Bitboardを将棋で初めて実現し、高速かつシンプルな実装にした。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "将棋で初めてMagic Bitboardを実現しました"
+    },
+    {
+      "category": "探索",
+      "title": "評価関数の変化量の統計サンプリングによるオーダリング",
+      "description": "評価関数の変化量を統計的にサンプリングして指し手を順序付けする。実装が容易で精度が良い。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "評価関数の変化量を統計的にサンプリングして指し手のオーダリングをしてます"
+    },
+    {
+      "category": "探索",
+      "title": "Singular Extension",
+      "description": "強い将棋プログラムの中でおそらく唯一、他の手より評価値が突出した手を深く読むSingular Extensionを実装。問題集の正答率が向上した。",
+      "originality": "独自",
+      "evidence": "問題集の正答率向上",
+      "quote": "最近の強い将棋プログラムのなかで（おそらく）唯一Singular Extensionを実装"
+    },
+    {
+      "category": "評価関数",
+      "title": "fv.binへの「ドーピング」",
+      "description": "Bonanzaのバイナリfv.binを改変して使い、人手調整のパラメータで補強する。Bonanzaのソースコードは使っていない。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "Ponanzaの評価関数はfv.bin＋ドーピングです"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "C#からC++への全面書き直し",
+      "description": "今年はC#をやめてC++で書き直し、テンプレート・inline・SIMDを活用して高速化した。NPSはBonanzaの1〜4倍。",
+      "originality": "既存手法の応用",
+      "evidence": "NPSはBonanzaの1〜4倍程度",
+      "quote": "今年はC#をやめてC++で書き直しました"
+    }
+  ],
+  "character": "名前を「POnanza is Not bonANZA」と説明し、「どうみてもBonanzaをもじっただけ、本当にありがとうございました」と書く。作者は「24でR2400くらい」の将棋の腕前だと自己紹介する。",
+  "notes": null,
+  "team_list_url": "http://www2.computer-shogi.org/wcsc21/team.html"
+}

@@ -1,0 +1,46 @@
+{
+  "wcsc": 33,
+  "year": 2023,
+  "dir": "Auau_Shogi",
+  "team": "氏家 一朗",
+  "software": "あうあう将棋",
+  "sources": [
+    "wcsc33/appeal/Auau_Shogi/appeal_2023.txt"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc33/appeal/Auau_Shogi/appeal_2023.txt"
+  ],
+  "summary": "駒の損得だけの評価で7〜10手を全幅探索するシンプルな手作り将棋。強さと無関係にOpenGLの3D盤面を実装していることが特色。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "手作り",
+    "detail": "駒の損得のみ"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "7〜10手の全幅探索、反復深化、末端で王が取れるか1手延長"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "エンタメ・演出",
+      "title": "OpenGLの3D盤面",
+      "description": "OpenGLで3Dの盤面を作り、くるくる回せる。古いPCで指し手の受信を取りこぼすのが怖く、当日は回さない予定。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "強さとは関係ありませんが、OpenGL で 3D の盤面を作っています。"
+    }
+  ],
+  "character": "強さより遊び心の3D盤面。ただし本番は回さない見込み。",
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc33/team.html"
+}

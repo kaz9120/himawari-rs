@@ -1,0 +1,58 @@
+{
+  "wcsc": 35,
+  "year": 2025,
+  "dir": "QinoaSyougi",
+  "team": "きのあ",
+  "software": "きのあ将棋",
+  "sources": [
+    "wcsc35/appeal/QinoaSyougi/20250331_wcsc35_PR.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc35/appeal/QinoaSyougi/20250331_wcsc35_PR.pdf"
+  ],
+  "summary": "候補手評価に、独自のレーティング方式「キレーティング(QR)」を使ったパターン評価を取り入れ、パターンをさらにパターンに分けて評価する仕組みで、深層学習のような高次元空間の評価を目指す。キレーティング自体はGI-51で発表した資料を再掲している。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": "フルスクラッチ（C/C++、PHP、bash、javascript）"
+  },
+  "eval": {
+    "family": "その他",
+    "detail": "キレーティングによるパターン評価（候補手評価）"
+  },
+  "search": {
+    "family": "不明",
+    "detail": null
+  },
+  "learning": null,
+  "hardware": "Ryzen Threadripper 5995WX（利用16コア）",
+  "language": [
+    "C",
+    "C++",
+    "PHP",
+    "bash",
+    "JavaScript"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "キレーティング(QR)による候補手のパターン評価",
+      "description": "参加者が持ち点のx%を場に出し、勝者が総取りするレーティング方式。これを候補手評価のパターン評価に使い、パターンをさらにパターンに分けて評価する。高次元空間の評価を深層学習なしで実現できないか模索している。",
+      "originality": "独自",
+      "evidence": "きのあ囲碁で、12近傍パターンの着手確率よりレーティング評価のほうが勝率が高い可能性を簡易検証",
+      "quote": "パターン評価を、さらにパターンに分けて評価するような仕組みを取り入れる"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "キレーティング: イロレーティングの代替",
+      "description": "イロレーティングは実力差が大きい対局で、高レート側がハイリスク・ローリターンで、対局内容も慎重で守りの将棋になるという課題がある。持ち点の一定割合を出して総取りにするキレーティングは、多人数戦にも拡張でき、精度も改善できる。仮想5人のゲームでイロレーティングと比較した。",
+      "originality": "独自",
+      "evidence": "キレーティングのほうが各プレイヤの分離が若干明確、収束は遅い印象",
+      "quote": "ゲームの参加者は、それぞれの持ち点の x%を場台に出す。"
+    }
+  ],
+  "character": "将棋ソフトの強さそのものではなく、レーティング理論の研究を前面に出したアピール。",
+  "notes": "資料の大半はGI-51（2024/03/09）の再掲。評価への応用の詳細はGIかGPWで発表予定とある。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc35/team.html"
+}

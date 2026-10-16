@@ -1,0 +1,62 @@
+{
+  "wcsc": 28,
+  "year": 2018,
+  "dir": "Claire",
+  "team": "上原 大輔",
+  "software": "Claire",
+  "sources": [
+    "wcsc28/appeal/Claire/appeal.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc28/appeal/Claire/appeal.pdf"
+  ],
+  "summary": "駒の利きだけで評価する独自評価関数のソフト。Rustで作り直し中で、探索はStockfish9をベースにする。時間切れ・反則負けをしないことと1勝が目標。",
+  "base": {
+    "engine": "独自（探索はStockfish9ベース）",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "手作り",
+    "detail": "駒の利きのみを使用。駒割・3駒関係・DL評価は使わない"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "Stockfish9をベース。飛・角・歩の不成も探索"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": [
+    "Rust"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "駒の利きのみの評価関数",
+      "description": "駒割・三駒関係・深層学習の評価を使わず、駒の利きだけで局面を評価する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "評価関数は駒の利きのみを使用。"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "floodgate約8万局からの勝率考慮の定跡",
+      "description": "floodgateの約8万局から定跡を抽出し、局面の出現数と勝率を考慮して指し手を選ぶ。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "局面の出現数・勝率を考慮し指し手を選択します。"
+    },
+    {
+      "category": "探索",
+      "title": "飛・角・歩の不成も探索",
+      "description": "探索で飛・角・歩の不成の手も生成して探索する。",
+      "originality": "不明",
+      "evidence": null,
+      "quote": "飛・角・歩の不成も探索します。"
+    }
+  ],
+  "character": "目標は時間切れ・反則負けをしないこと、1勝、できれば前回順位超え。「去年よりも弱いかもしれませんが、お手柔らかに」と書く。",
+  "notes": "開発は間に合っていないと自己申告している。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc28/team.html"
+}

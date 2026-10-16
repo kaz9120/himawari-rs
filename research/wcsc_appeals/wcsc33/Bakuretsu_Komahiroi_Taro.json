@@ -1,0 +1,79 @@
+{
+  "wcsc": 33,
+  "year": 2023,
+  "dir": "Bakuretsu_Komahiroi_Taro",
+  "team": "Yoltsプロジェクト",
+  "software": "爆裂駒拾太郎",
+  "sources": [
+    "wcsc33/appeal/Bakuretsu_Komahiroi_Taro/20230331_appeal.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc33/appeal/Bakuretsu_Komahiroi_Taro/20230331_appeal.pdf"
+  ],
+  "summary": "「詰将棋は意味がないことを証明する」を開発方針に、詰みでなく入玉宣言勝ちを目指す将棋AI。Rust製のαβ探索で、入玉を目指す評価関数を、入玉でしか勝てない自分自身との対局で育てる。",
+  "base": {
+    "engine": "独自",
+    "eval_source": "なし（自作）",
+    "note": "Rustでエンジンを作成。yasaiライブラリを改変して指し手生成・局面管理に使用"
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "3駒関係（KKP）。詰みでなく入玉を目指す評価関数"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "αβ+反復深化+静止探索（駒取り・王手回避のみ最大3手延長）、Mate Distance Pruning、Hash/Killer/MVV-LVA/History(piece-to)のオーダリング"
+  },
+  "learning": "入玉でしか勝てないようにした自分自身を含む自己対局の棋譜で、手番側局面と評価値のみから評価関数を学習し、これを繰り返す",
+  "hardware": "Core i9-13900K",
+  "language": [
+    "Rust",
+    "Python"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "研究・実験的",
+      "title": "詰将棋が無意味なことの証明",
+      "description": "開発方針として「詰将棋が意味ないことを証明する」を掲げ、詰みでなく基本的に入玉宣言による勝ちを目指す。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "詰将棋が意味ないことを証明する"
+    },
+    {
+      "category": "入玉",
+      "title": "入玉を目指す評価関数",
+      "description": "詰みではなく入玉を目指すような評価関数を作る。3駒関係（KKP）を特徴量とする。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "詰みではなく入玉を目指すような評価関数を作成する"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "入玉でしか勝てない自分との対局による学習",
+      "description": "探索で相手を詰ますと負けにして入玉でしか勝てなくした自分自身を作り、通常版と対局して棋譜を作る。手番側の局面と評価値だけで評価関数を学習し、新版として繰り返す。過去の評価関数との対局も勝率が低い相手を多めにする。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "探索部により強制的に相手を詰ますと負けになるようにし、入玉でなければ勝てないようにした爆裂駒拾太郎を作成する"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "Thompson Samplingで選ぶ定跡",
+      "description": "学習データ生成の副産物として定跡を作る。棋譜から各局面の勝ち・負け・引き分け数を出し、Thompson Samplingで指し手を選ぶ。訪問数10未満の局面になる手は選ばない。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "Thompson Samplingアルゴリズムに基づいて指し手を選択する"
+    },
+    {
+      "category": "開発手法・運用",
+      "title": "対局の多様化にThompson Sampling",
+      "description": "自己対局で棋譜をばらけさせるため、1度以上出現した局面は勝ち・負け・引き分け数からThompson Samplingで指し手を選ぶ。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "棋譜をばらけさせるために1度以上出現した局面については、勝ち数、負け数、引き分け数を算出しておき"
+    }
+  ],
+  "character": "「詰将棋やってないですよね？」「詰将棋はすべてを破壊します」とスライドで煽る、入玉宣言勝ち志向の挑発的なコンセプト。",
+  "notes": "画像のみのPDFのため原本のスライドを読んだ。チーム名は一覧ページではYoltsプロジェクト。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc33/team.html"
+}

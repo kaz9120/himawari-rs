@@ -1,0 +1,44 @@
+{
+  "wcsc": 20,
+  "year": 2010,
+  "dir": "Dragons_Egg",
+  "team": "中谷裕一",
+  "software": "竜の卵",
+  "sources": [
+    "wcsc20/appeal/Dragons_Egg/Dragons_Egg.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc20/appeal/Dragons_Egg/Dragons_Egg.txt"
+  ],
+  "summary": "数年前のソースを部分改変して使い続けている。開発時間が取れないため、自己対戦や棋譜から情報を取り出して評価関数や指し手選択に使う。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "不明",
+    "detail": null
+  },
+  "search": {
+    "family": "不明",
+    "detail": null
+  },
+  "learning": null,
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "自己対戦・棋譜からの情報抽出",
+      "description": "自己対戦や棋譜から情報を取り出し、評価関数と手の選択に使う。本人は強さへの貢献は今ひとつと述べる。",
+      "originality": "不明",
+      "evidence": null,
+      "quote": "自己対戦や棋譜から情報を取り出して評価関数や手の選択に使用しております"
+    }
+  ],
+  "character": null,
+  "notes": "元ファイルはISO-2022-JPで、テキスト化済みファイルが文字化けしていたため原本を復号して読んだ。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc20/team.html"
+}

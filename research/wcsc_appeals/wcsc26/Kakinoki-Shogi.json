@@ -1,0 +1,68 @@
+{
+  "wcsc": 26,
+  "year": 2016,
+  "dir": "Kakinoki-Shogi",
+  "team": "柿木 義一",
+  "software": "柿木将棋",
+  "sources": [
+    "wcsc26/appeal/Kakinoki-Shogi/appeal.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc26/appeal/Kakinoki-Shogi/appeal.txt"
+  ],
+  "summary": "過去4年分のアピール文を合わせた文書。2016年は昨年とほぼ変わらず、フィッシャールールへの対応予定のみ。全幅探索のボナンザ法学習型で、bitboardを使わず利きデータを持つ。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "ボナンザ法で学習。評価項目は独自"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "全幅探索。山下氏の0.5手延長を採用し並列化"
+  },
+  "learning": "ボナンザ法の学習",
+  "hardware": null,
+  "language": "C++",
+  "claimed_strength": "floodgateレート2234（2014/8/30）、2013年は2184",
+  "ideas": [
+    {
+      "category": "実装・高速化",
+      "title": "bitboardを使わず利きデータを保持",
+      "description": "ボナンザの影響で全幅探索にしたが、bitboardを使わず利きデータを使う。評価項目も独自。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "bit-boardは使わず、利きデータを使っています。"
+    },
+    {
+      "category": "探索",
+      "title": "0.5手延長方式の採用",
+      "description": "YSSの山下氏の0.5手延長方式を採用した。",
+      "originality": "再現・追従",
+      "evidence": null,
+      "quote": "山下さんの 0.5手延長方式を採用"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "全幅と選択探索の2種から全幅のみへ",
+      "description": "2012年まで全幅探索のプログラムと選択探索のプログラムの2種を組み合わせていたが、2013年に全幅探索だけの方が強くなったため一本化した。",
+      "originality": "独自",
+      "evidence": "2013年の全幅探索版は旧版に対し7割程度の勝率",
+      "quote": null
+    },
+    {
+      "category": "時間管理",
+      "title": "フィッシャールール対応（予定）",
+      "description": "2016年に変わる予定の点。2015年は秒読みルールに対応した。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "フィッシャールールに対応（予定）"
+    }
+  ],
+  "character": null,
+  "notes": "2013〜2016年の4年分の文書が1つに入っている。2016年分は短い",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc26/team.html"
+}

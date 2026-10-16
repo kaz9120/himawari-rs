@@ -1,0 +1,44 @@
+{
+  "wcsc": 20,
+  "year": 2010,
+  "dir": "auau_shogi",
+  "team": "氏家一朗",
+  "software": "あうあう将棋",
+  "sources": [
+    "wcsc20/appeal/auau_shogi/auau_shogi.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc20/appeal/auau_shogi/auau_shogi.txt"
+  ],
+  "summary": "全幅探索で序盤9手・中盤以降7手程度を読む素朴な構成。評価は駒の価値・指せる手の数・玉との位置の3要素。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "手作り",
+    "detail": "駒の価値、指せる手の数、王との位置による加点"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "全幅探索 序盤9手、中盤以降7手程度"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "定跡・序盤",
+      "title": "自己深読みによる定跡登録",
+      "description": "自プログラムであらかじめ深く読ませた手600手程度を定跡として登録する。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "自分のプログラムであらかじめ深く読ませた手600手程度を「定跡」として登録しています"
+    }
+  ],
+  "character": null,
+  "notes": null,
+  "team_list_url": "http://www2.computer-shogi.org/wcsc20/team.html"
+}

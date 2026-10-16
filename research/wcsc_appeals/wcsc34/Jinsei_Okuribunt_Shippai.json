@@ -1,0 +1,54 @@
+{
+  "wcsc": 34,
+  "year": 2024,
+  "dir": "Jinsei_Okuribunt_Shippai",
+  "team": "築地 毅",
+  "software": "人生送りバント失敗",
+  "sources": [
+    "wcsc34/appeal/Jinsei_Okuribunt_Shippai/appeal2024.txt"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc34/appeal/Jinsei_Okuribunt_Shippai/appeal2024.txt"
+  ],
+  "summary": "技術面は「今回は何もできていない」とし、前回までの技術メモをコピペする。内容はαβ中心（LMR・Futility）、ボナンザメソッドの評価関数学習。大半は大会の思い出話で、会場近くで遊ぶ、マクド定跡、うまるちゃんの罰ゲームコスプレなどの人柄で読ませる文書。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "ボナンザメソッド（評価関数を学習）"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "LMR、Futility、静止探索"
+  },
+  "learning": null,
+  "hardware": "Core i7-8700",
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "開発手法・運用",
+      "title": "フロムスクラッチ開発",
+      "description": "探索を2020年版から作り直し、評価関数も学習し直した。WCSC33でフロムスクラッチ部門5位、10回出場（34勝35敗）で表彰された。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "フロムスクラッチで作るのもかなり面白いし、プログラムがかわいく思えるのでとってもおすすめです"
+    },
+    {
+      "category": "エンタメ・演出",
+      "title": "大会期間中の遊びと罰ゲームコスプレ",
+      "description": "会場近くで遊ぶ（二日目はラーメンの川崎家など）、毎年試すマクド定跡、2016年の罰ゲームでうまるちゃんのコスプレをした話などを書く。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "2016年には罰ゲームでうまるちゃんやりました"
+    }
+  ],
+  "character": "「動いていることが奇跡」と書き、アピール文書リジェクトの回避のため前回の技術メモをコピペしたと明かす。プログラム名の由来は野球の送りバントで、初出場時は「(´・ω・`)」というプログラム名が読めないとリジェクトされた逸話もある。師匠格のまったりゆうちゃんを倒したいという目標を語る。2012年に解説記事生成で独創賞を受賞した。",
+  "notes": "今年は技術的な更新なし。技術的な工夫は過去の記述の転載。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc34/team.html"
+}

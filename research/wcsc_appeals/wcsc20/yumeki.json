@@ -1,0 +1,52 @@
+{
+  "wcsc": 20,
+  "year": 2010,
+  "dir": "yumeki",
+  "team": "三谷浩司",
+  "software": "ゆめき",
+  "sources": [
+    "wcsc20/appeal/yumeki/yumeki.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc20/appeal/yumeki/yumeki.txt"
+  ],
+  "summary": "粒子群最適化（PSO）でパラメータを最適化する。評価関数の重みの式の係数と、指し手の順序付けの評価点が対象。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "手作り",
+    "detail": null
+  },
+  "search": {
+    "family": "不明",
+    "detail": null
+  },
+  "learning": "粒子群最適化で、評価関数は棋譜一致率、順序付けは探索時間を適応度に最適化",
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "粒子群最適化による評価関数の係数調整",
+      "description": "評価項目の重みを求める式の係数を粒子群最適化で最適化する。適応度関数は教示棋譜との一致率。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "適応度関数は教示棋譜との一致率"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "探索時間を適応度にする順序付けの最適化",
+      "description": "指し手の特徴ごとの評価点を、探索時間を適応度として粒子群最適化する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "適応度関数は探索時間"
+    }
+  ],
+  "character": null,
+  "notes": "一覧ではキャンセル欄。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc20/team.html"
+}

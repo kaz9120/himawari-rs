@@ -1,0 +1,62 @@
+{
+  "wcsc": 30,
+  "year": 2020,
+  "dir": "Miacis",
+  "team": "迫田 真太郎",
+  "software": "Miacis",
+  "sources": [
+    "wcsc30/appeal/Miacis/Miacis_appeal.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc30/appeal/Miacis/Miacis_appeal.pdf"
+  ],
+  "summary": "AlphaZero型モデルのvalue出力を、期待値ではなく51分割のカテゴリカル分布にした分布型強化学習のソフト。分布を使ったMCTSの選択を行い、AlphaZeroより高い性能を報告する。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "AlphaZeroのvalue部を複数ユニットに拡張。報酬[-1,1]を51分割したカテゴリカル分布を出力"
+  },
+  "search": {
+    "family": "MCTS",
+    "detail": "MCTSの選択ステップで、良い価値になる確率を計算して使う"
+  },
+  "learning": "Categorical DQN流の分布型強化学習",
+  "hardware": "Core i9-9900K 8コア",
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": "AlphaZeroよりも高い性能（実験結果の節）",
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "評価値を確率分布で出力",
+      "description": "value部を複数ユニットに拡張し、報酬[-1,1]を51区間に分けて、状態価値が各区間に入る確率を出力する。Categorical DQNを参考にした分布型強化学習である。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "評価値を確率分布として出力"
+    },
+    {
+      "category": "探索",
+      "title": "分布を使ったMCTS選択",
+      "description": "MCTSの選択ステップで、良い価値になる確率を価値分布から計算して使う。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "MCTSの選択ステップで良い価値となる確率を計算"
+    },
+    {
+      "category": "解説・人間支援",
+      "title": "分布から読む難解局面",
+      "description": "中盤の難所では期待値が互角でも幅広い値に確率が散る。これを「難解」「形勢不明」の判断として読める可能性を示す。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "期待値はほぼ 0(互角) だが幅広い値に確率を示す"
+    }
+  ],
+  "character": null,
+  "notes": "先行研究として森村らの研究、Categorical DQN、井本康宏のWindfallを引用",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc30/team.html"
+}

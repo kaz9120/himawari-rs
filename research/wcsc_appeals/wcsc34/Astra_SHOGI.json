@@ -1,0 +1,128 @@
+{
+  "wcsc": 34,
+  "year": 2024,
+  "dir": "Astra_SHOGI",
+  "team": "恒岡 正年",
+  "software": "あすとら将棋",
+  "sources": [
+    "wcsc34/appeal/Astra_SHOGI/appeal-Rev7b.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc34/appeal/Astra_SHOGI/appeal-Rev7b.pdf"
+  ],
+  "summary": "dlshogiの探索部・学習部を改造し、独自構造のモデル（AstraNET）を使う。異なる2つのモデルを交互に使うHybrid探索、棋譜から作る「2段仕込み定跡」、学習後の重みブレンド（追加工）が独自の工夫。WCSC33から約R+250の向上を見込む。",
+  "base": {
+    "engine": "dlshogi",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "独自構造のAstraNET。k=256,36bとk=384,24bの寸胴型。活性化はReLU、全結合層はELU"
+  },
+  "search": {
+    "family": "MCTS",
+    "detail": "dlshogiの探索部を改造。2モデルを交互に使うHybrid探索"
+  },
+  "learning": "自己対局で5kpo〜20kpo程度の棋譜約60万個（千日手・持将棋を除外）とGCTの学習用データを使用。lrは0.2から0.000003まで等比数列的に減少",
+  "hardware": "Core i7-13700KF + RTX 4090（RTX 3090最適化も）",
+  "language": [
+    "Python",
+    "PyTorch",
+    "C++"
+  ],
+  "claimed_strength": "WCSC33でR4200〜4300程度から、同じハードで約R+250向上と推定。二次予選で約44000nps",
+  "ideas": [
+    {
+      "category": "探索",
+      "title": "2モデルのHybrid探索",
+      "description": "異なる極小値に収束した2つのモデルA、Bを、A→B→A→Bと交互に使って探索する。単独で使うより読み抜けが減ることを確認した。V235（k=256,36b）とV252（k=384,24b）を使う。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "A=>B=>A=>B の様に交互に探索する方が読み抜けが減る事を確認した"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "2段仕込み定跡とブレンド定跡",
+      "description": "条件を満たす棋譜から定跡を作り、さらに計算量と引き換えに悪手の可能性を排除する「2段仕込み定跡」を作った。副作用で対振り飛車定跡が消えるため、両者を混ぜた「ブレンド定跡」も用意した。",
+      "originality": "独自",
+      "evidence": "定跡の有無でレートが約R100変わる",
+      "quote": "「2 段仕込み定跡」を作成した"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "Draw_Value調整で千日手棋譜を除外",
+      "description": "千日手の棋譜を含めるかを検討し、Draw_Value_Black/Whiteを調整すれば含めなくてよいと結論した。手軽な割に効果が大きい。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "Draw_Value_Black/White を調整すれば千日手の棋譜を含めなくても良い"
+    },
+    {
+      "category": "時間管理",
+      "title": "手数と推定勝率による最大5倍の時間配分",
+      "description": "手数と推定勝率に応じて思考時間を最大5倍まで変える。70〜95手の思考時間を延ばし、延長も従来の最大2倍から条件により最大5倍（元の時間と合わせ）にした。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "手数と推定勝率に応じて思考時間を最大 5 倍まで変化させる様にした"
+    },
+    {
+      "category": "評価関数",
+      "title": "AstraNET（独自ResNet構造）",
+      "description": "標準と異なるResNet部を採用し、20b〜36bの各種サイズを比較した。k=256の20b・24bはR4400〜4500のソフトに読み負けるため、より重いk=256 36bとk=384 24bの寸胴型にした。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "標準の ResNET とは異なる構造を採用。（ 以下 AstraNET と称する。）"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "学習後の重みブレンドで追加工",
+      "description": "ベンチの良いモデルを3:2:1、100:1、100:-1などの比で混ぜたり、乱数の揺らぎを与えて派生モデルを作り、最良を採用する。最大でR+60程度向上した。",
+      "originality": "独自",
+      "evidence": "約R+60",
+      "quote": "必ずしも Loss 値や d 値の最も小さい物、PolicyAcc,ValueAcc,Entropy の最も大きい物がベストな model とは限らない"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "学習の途中でブロック順を入れ替え",
+      "description": "学習中にAstraNETのブロックの順序を適宜入れ替える。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "学習の途中で AstraNET のブロックの順序の入れ替えを適宜行っている"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "中終盤の読み負け対策",
+      "description": "80〜100手付近の読み負けに対し、自己生成棋譜を30〜150手の重複なし範囲にし、学習終盤で重複局面を削除し、12時間を超えたら学習条件を切り替える。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "WCSC33 では、80~100 手付近で読み負けるケースが多かった"
+    },
+    {
+      "category": "探索",
+      "title": "Optunaによる段階的パラメータ調整",
+      "description": "7つの探索パラメータをグループA〜Dに分けて順に調整し、全体で100 Trialを超えない。相手はHaoとtanuki-dr4で、評価側の勝率が50〜65%になるようplayout数を調整した。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "A=>B=>C=>A(不十分な場合 B=>C=>A を追加)=>D=>E の様に調整した"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "RTX 4090・3090向け探索最適化",
+      "description": "network構造と、RTX 4090・3090に最適化した探索部により、同じパラメータ数のResNetとdlshogi標準探索の組合せに対し約2倍の速度を得た。",
+      "originality": "独自",
+      "evidence": "約2倍の高速化",
+      "quote": "約２倍の高速化を達成した"
+    },
+    {
+      "category": "探索",
+      "title": "次の一手問題でバッチサイズを調整",
+      "description": "バッチサイズとスレッド数を、複数の次の一手問題を複数回解かせ、20秒の正答率が最も高くなるよう調整した。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "20sec の正答率が最も高くなる様に調整した"
+    }
+  ],
+  "character": null,
+  "notes": "WCSC33は決勝全敗だったため、上位ソフトと良い勝負をすることが目標。5/5更新版。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc34/team.html"
+}

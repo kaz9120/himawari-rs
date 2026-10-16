@@ -1,0 +1,54 @@
+{
+  "wcsc": 27,
+  "year": 2017,
+  "dir": "mattari_yuchan",
+  "team": "東京農工大学旧小谷研究室",
+  "software": "まったりゆうちゃん",
+  "sources": [
+    "wcsc27/appeal/mattari_yuchan/appeal.docx"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc27/appeal/mattari_yuchan/appeal.docx"
+  ],
+  "summary": "1990年過ぎから25年以上開発を続ける完全独自のソフト。当初のコードも多く残る。パラメータ学習ではなく進化論的計算の導入を試みている（今回は間に合わない見込み）。今年はLazy SMPに取り組む。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "不明",
+    "detail": null
+  },
+  "search": {
+    "family": "不明",
+    "detail": "Lazy SMPに取り組み中"
+  },
+  "learning": null,
+  "hardware": "Core i7 2.93GHz 2基 4GB",
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "研究・実験的",
+      "title": "進化論的計算による学習の試み",
+      "description": "ディープラーニングなどパラメータ学習が主流の中で、進化論的計算など別の方式を試そうとしている。今回は間に合わない見込み。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "しかしそうでない進化論的計算などの方式を試そうとしている"
+    },
+    {
+      "category": "並列・分散",
+      "title": "Lazy SMPへの取り組み",
+      "description": "今年度はLazy SMPに取り組んでいる。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "今年度はLazy SMPに取り組んでいる。"
+    }
+  ],
+  "character": "開発者の年齢が高いことを希少価値として挙げ、「コーディング能力がいつまで続くか試したい」と続ける意気込みを語る。1990年ごろからの25年超の開発史。",
+  "notes": null,
+  "team_list_url": "http://www2.computer-shogi.org/wcsc27/team.html"
+}

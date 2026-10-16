@@ -1,0 +1,70 @@
+{
+  "wcsc": 25,
+  "year": 2015,
+  "dir": "KifuWarabe",
+  "team": "高橋 智史",
+  "software": "きふわらべ",
+  "sources": [
+    "wcsc25/appeal/KifuWarabe/appeal.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc25/appeal/KifuWarabe/appeal.txt"
+  ],
+  "summary": "棋譜並べプログラムとして始まったC#製の新規ソフト。駒の動きを「升の集合の足し算・引き算」で表現する独自のデータ構造（升・集合・星・空・棋譜の木・観覧車の比喩）を作っている。思考・評価値・学習は未実装で、3手全幅探索と相手の王に向かって駒を動かす程度の思考を目標にする。全体が顔文字とAA装飾で書かれた、極めてユーモラスな文書。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": "棋譜並べプログラムの延長"
+  },
+  "eval": {
+    "family": "手作り",
+    "detail": "評価関数なし"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "現時点では3手の全幅探索のみ（約900手読む）"
+  },
+  "learning": null,
+  "hardware": "Celeron N2830 2.16GHz、2GBのノートPC（Lenovo）",
+  "language": [
+    "C#"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "実装・高速化",
+      "title": "駒の動きを升の集合の加減算で表現",
+      "description": "すべての駒の動きを「升＋升−升」「集合＋集合−集合」のパターンで表現する。飛車の動きを香車の逐一表現でなく有向な升の集合として、味方の駒でカット、敵の駒を含めてカットする。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "すべての駒の動きが  基本的に"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "観覧車の比喩による局面データ構造",
+      "description": "棋譜の木（鉄柱）、棋譜のノード（カゴを吊る部分）、空（局面）、星の光（現在と1手前の2状態）、星（駒・矢印・色付き枠）、フィンガー（部品番号0〜39）と、観覧車に例えたデータ構造を設計する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "遊園地の観覧車に例えると、"
+    },
+    {
+      "category": "解説・人間支援",
+      "title": "大盤解説用の矢印・色つき枠・升",
+      "description": "局面の星に、駒だけでなく矢印、色つき枠、色つき升（大盤解説・ログ用）を置ける設計にしている。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "矢印    （大盤解説※ログ  用）"
+    },
+    {
+      "category": "エンタメ・演出",
+      "title": "棋譜並べとして使えるエンジン",
+      "description": "書籍の「▲７六歩△８四歩…」を入力欄に入れてコマ送りでき、駒を動かすと符号が表示される棋譜並べプログラムを出発点にする。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "きふわらべは、棋譜並べプログラムなんだぜ☆"
+    }
+  ],
+  "character": "「（＾▽＾）」「だぜ☆」で全編が書かれた顔文字・AAの装飾文書。「犬が小屋を欲しがっている」の比喩で、小屋（土台）作りに6か月かけて犬（勝利）を外に放置していると自虐的に説明し、「時間があれば、やる☆」と開き直る。開発状況を○△×で自己申告する。",
+  "notes": "今大会の目標は土台となるルール通りに指せるエンジンと、相手の王に向かう程度の思考エンジン。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc25/team.html"
+}

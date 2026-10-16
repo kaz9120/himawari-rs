@@ -1,0 +1,44 @@
+{
+  "wcsc": 22,
+  "year": 2012,
+  "dir": "Hikaku",
+  "team": "甲村実",
+  "software": "飛角",
+  "sources": [
+    "wcsc22/appeal/Hikaku/appeal.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc22/appeal/Hikaku/appeal.txt"
+  ],
+  "summary": "大量の棋譜から選んだ手筋（のような）データで読みの検索を深くする方式。強豪ソフトのPC速度との差をデータ活用で縮められると期待する。ボンクラーズの活躍への感想も添える。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "不明",
+    "detail": null
+  },
+  "search": {
+    "family": "不明",
+    "detail": null
+  },
+  "learning": null,
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "定跡・序盤",
+      "title": "手筋データで読みを深くする",
+      "description": "大量の棋譜から選び出した手筋風のデータを活用して、読みの検索の深さを深くする。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "大量の棋譜から選び出した手筋（のような）データを活用して、読みの検索の深さを深くする方式にしました"
+    }
+  ],
+  "character": "「2011年11月から2012年1月のボンクラーズの活躍は素晴らしかった、羨ましかった」「勝つことは偉いことだ！」と、電王戦での勝利を称える余談で締める。",
+  "notes": "ライブラリ不使用。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc22/team.html"
+}

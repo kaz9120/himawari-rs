@@ -1,0 +1,60 @@
+{
+  "wcsc": 32,
+  "year": 2022,
+  "dir": "Toyoko_Shogi",
+  "team": "東横コンピュータ将棋部（Kimihiro Goto、Masaki Yamagami）",
+  "software": "東横将棋",
+  "sources": [
+    "wcsc32/appeal/Toyoko_Shogi/appeal0411.txt"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc32/appeal/Toyoko_Shogi/appeal0411.txt"
+  ],
+  "summary": "NNUE評価関数と定跡の「極北」を目指す。昨年優勝のelmoとほぼ同じ手作業による定跡生成で後手番の強化に主眼を置き、探索部はやねうら王+最新Stockfishへの追従を予定。文書の大半はネットミーム調の「役割論理」「必然力」の冗談で埋まる。",
+  "base": {
+    "engine": "やねうら王",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "NNUE",
+    "detail": "独自のNNUE評価関数の強化"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "やねうら王＋最新Stockfishキャッチアップ予定"
+  },
+  "learning": null,
+  "hardware": "Ryzen Threadripper（黄金戦士）",
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "定跡・序盤",
+      "title": "後手番強化に主眼を置く手作業定跡",
+      "description": "elmoとほぼ同じ手作業による定跡生成を行い、特に後手番の定跡を強化する。千日手専用定跡にも触れる。",
+      "originality": "再現・追従",
+      "evidence": null,
+      "quote": "昨年優勝のelmoとほぼ同じ手作業による定跡の生成。特に後手番の定跡の強化に主眼を置いています"
+    },
+    {
+      "category": "評価関数",
+      "title": "従来手法に加えた独自のNNUE強化",
+      "description": "従来の強化学習手法に加えて、独自のNNUE評価関数の強化を行う。",
+      "originality": "不明",
+      "evidence": null,
+      "quote": "従来の強化学習手法に加え独自のNNUE評価関数の強化"
+    },
+    {
+      "category": "エンタメ・演出",
+      "title": "ネットミーム調の「役割論理」文書",
+      "description": "文書の後半を「役割論理（定跡+NNUE+高級スリッパの火力で評価値ダメージレースを制する戦術）」「必然力」「ムック」などの造語と「ｗｗｗ」調で埋め、強者ぶりを皮肉る。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "定跡とNNUE型評価関数と高級スリッパの圧倒的火力によって評価値ダメージレースを制する必勝の戦術ですぞｗｗｗ"
+    }
+  ],
+  "character": "2ちゃんねる・ニコニコ風の「ですなｗｗｗ」口調で、強豪チームを意識した定跡論を冗談交じりに語る。「ヤーティ神への信仰」「ムック」などの造語が並ぶ。",
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc32/team.html"
+}

@@ -1,0 +1,63 @@
+{
+  "wcsc": 33,
+  "year": 2023,
+  "dir": "Meijin_Cobra",
+  "team": "松山 洋章",
+  "software": "名人コブラ",
+  "sources": [
+    "wcsc33/appeal/Meijin_Cobra/appeal_WCSC33.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc33/appeal/Meijin_Cobra/appeal_WCSC33.pdf"
+  ],
+  "summary": "オープンソースのやねうら王の定跡と評価関数に改良を加えたソフト。floodgateの実践例を元にした定跡、評価関数のキメラ化（重み平均）、NNUE下位レイヤー固定のファインチューニングが特徴。",
+  "base": {
+    "engine": "やねうら王",
+    "eval_source": "水匠、Kristallweizen、elmoの評価関数パラメータをベースに使用",
+    "note": "探索部はそのまま、定跡と評価関数の学習部を改造"
+  },
+  "eval": {
+    "family": "NNUE",
+    "detail": "水匠・Kristallweizen・elmoの評価関数をキメラ化"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "やねうら王の探索部"
+  },
+  "learning": "NNUE下位レイヤーを固定し、少量の良質データで追加学習",
+  "hardware": "Amazon EC2 c6a.metal",
+  "language": [
+    "Python",
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "定跡・序盤",
+      "title": "勝率ベースで実践例の少ない手を避ける定跡",
+      "description": "floodgateの実践例から勝率をベースに指し手を選ぶ。実践例が少ない手は勝率の信頼性が低いので選ばれにくくする。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "実践例が少ない指し手は勝率の信頼性にかけるため、選択されにくいように工夫してあります。"
+    },
+    {
+      "category": "評価関数",
+      "title": "評価関数のキメラ化",
+      "description": "評価関数パラメータのweight averagingで「キメラ化」し、汎化性能の高い評価関数を目指す。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "評価関数パラメータの「キメラ化」（weight averaging）を行って、汎化性能の高い評価関数を目指します"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "NNUE下位レイヤー固定のファインチューニング",
+      "description": "NNUEの下位レイヤーを固定して学習し、少量でも良質なデータで追加学習できるようにする。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "NNUE下位レイヤーのパラメータを固定し学習を行うことで"
+    }
+  ],
+  "character": null,
+  "notes": "基本的な改良部分は2020年のオンライン世界選手権や昨年の出場ソフトと同じと記載（原文は「昨年のWCSC33」と誤記）。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc33/team.html"
+}

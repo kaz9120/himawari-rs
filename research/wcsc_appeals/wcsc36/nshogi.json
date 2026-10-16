@@ -1,0 +1,71 @@
+{
+  "wcsc": 36,
+  "year": 2026,
+  "dir": "nshogi",
+  "team": "中屋敷 太一",
+  "software": "nshogi",
+  "sources": [
+    "wcsc36/appeal/nshogi/nshogi_20260519.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc36/appeal/nshogi/nshogi_20260519.pdf"
+  ],
+  "summary": "AlphaZeroのアプローチをベースに、入出力層以外をTransformerだけで組んだモデルとMCTSを使うエンジン。今年はモデルと定跡の改良に取り組んだ。Gumbel AlphaZeroの自己対戦で約20億局面を生成し、最大手数を動的に変える工夫を入れている。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": "WCSC35のものがベース。nshogiライブラリとして公開"
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "入力層・出力層を除きTransformerのみ。8ブロック×512次元（16ヘッド）。SwiGLU、QKNorm、bias無効化を採用。policy accuracy約50.7%、value accuracy約75.1%（山岡氏公開データセット）"
+  },
+  "search": {
+    "family": "MCTS",
+    "detail": "AlphaZero系のMCTS"
+  },
+  "learning": "Gumbel AlphaZeroの手法で自己対戦棋譜を生成し約20億局面。floodgate棋譜から抽出した1,541,368局面を初期局面に使用",
+  "hardware": "RunPod Xeon 112 vCPU + RTX 5090 x7（一覧ページ）",
+  "language": [
+    "C++",
+    "Python"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "動的な最大手数での自己対局",
+      "description": "対局ごとに最大手数を動的に変える。勝勢では引き分けを避けてできるだけ早く勝ち切る手順を、劣勢では最大手数に届きやすくなるので粘り強い延命手順を学ばせる狙い。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "対局ごとに最大手数を動的に変化させています。"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "floodgate棋譜の初期局面",
+      "description": "学習データの多様性を増やすため、floodgateの棋譜から1,541,368局面を抽出して自己対戦の初期局面にする。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "floodgate の棋譜から 1, 541, 368 局面を抽出し、初期局面として使用しています。"
+    },
+    {
+      "category": "評価関数",
+      "title": "Transformerのみのモデルと採否検討",
+      "description": "SwiGLU、QKNorm、bias無効化は採用。相対位置エンコーディング、Attention sink、Gated attentionは性能が向上せず不採用とした。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "以下の検討を行い，性能が向上したものを採用しています。"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "大きなMCTS木による定跡生成の不採用",
+      "description": "大きなモンテカルロ探索木で定跡生成を試みたが、強くならなかったため、floodgate棋譜から作る定跡に切り替えた。",
+      "originality": "独自",
+      "evidence": "生成された定跡があまり強くなかった（数値なし）",
+      "quote": "生成された定跡があまり強くなかったため，floodgate の棋譜から生成した定跡を使用します。"
+    }
+  ],
+  "character": null,
+  "notes": "2段組のためテキストの順序が一部混ざっているが、内容は読み取れた。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc36/team.html"
+}

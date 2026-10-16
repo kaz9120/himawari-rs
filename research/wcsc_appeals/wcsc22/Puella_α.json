@@ -1,0 +1,47 @@
+{
+  "wcsc": 22,
+  "year": 2012,
+  "dir": "Puella_α",
+  "team": "伊藤英紀",
+  "software": "Puella α",
+  "sources": [
+    "wcsc22/appeal/Puella_α/ap.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc22/appeal/Puella_%CE%B1/ap.txt"
+  ],
+  "summary": "ボンクラーズの後継。MPIを用いたクラスタ並列処理を行う、との一行のみ。",
+  "base": {
+    "engine": "Bonanza",
+    "eval_source": "Bonanza 6.0.0",
+    "note": null
+  },
+  "eval": {
+    "family": "不明",
+    "detail": null
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "MPIクラスタ並列"
+  },
+  "learning": null,
+  "hardware": "Core i7 3960X・3930K・2600K・980X、4台22コア",
+  "language": [
+    "C",
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "並列・分散",
+      "title": "MPIを用いたクラスタ並列",
+      "description": "MPIを使ってクラスタ並列処理を行う。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "MPIを用いてクラスタ並列処理を行う"
+    }
+  ],
+  "character": null,
+  "notes": "一行のみ。使用ライブラリはBonanza Version 6.0.0（一覧より）。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc22/team.html"
+}

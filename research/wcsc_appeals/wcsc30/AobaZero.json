@@ -1,0 +1,62 @@
+{
+  "wcsc": 30,
+  "year": 2020,
+  "dir": "AobaZero",
+  "team": "Team AobaZero（山下宏、保木邦仁、小林祐樹）",
+  "software": "AobaZero",
+  "sources": [
+    "wcsc30/appeal/AobaZero/aoba_appeal2020.txt"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc30/appeal/AobaZero/aoba_appeal2020.txt"
+  ],
+  "summary": "AlphaZeroの将棋の追試を目標とするプロジェクト。世界中のユーザーが計算資源を提供して棋譜を生成する点が特徴で、約600万棋譜を学習し、floodgateでR3000に達した。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": "LeelaZeroのソースを含み、OpenCLでNNを計算。ソースは公開"
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "AlphaZero型のNN。ニューラルネットの計算をさらに高速化予定"
+  },
+  "search": {
+    "family": "MCTS",
+    "detail": "AlphaZero型"
+  },
+  "learning": "世界中のユーザー提供の計算資源による自己対局の棋譜生成。約600万棋譜（昨年126万）。毎日約24マシンが約1万棋譜を生成",
+  "hardware": "Xeon Gold 6154 2基、RTX 2080 Ti 6枚",
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": "floodgateレーティング3000（昨年2500）",
+  "ideas": [
+    {
+      "category": "並列・分散",
+      "title": "ユーザー提供の計算資源による棋譜生成",
+      "description": "AlphaZeroの追試の棋譜を、世界中のユーザーに計算資源を提供してもらって生成する。LeelaZero（囲碁）やLCZero（チェス）のようにソースを公開している。",
+      "originality": "既存手法の応用",
+      "evidence": "棋譜約600万（昨年126万）、毎日約24マシンが約1万棋譜",
+      "quote": "計算資源の提供を世界中のユーザにお願いして棋譜を生成している点が特徴です。"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "ゼロからの学習で戦型・囲いを獲得する過程の観察",
+      "description": "ゼロから学習した将棋AIが、雁木・矢倉・美濃・高美濃・銀冠・左美濃・中住まい・右玉などの囲いと、相掛かり・横歩取り・角換わり各型などをほぼ発見したと報告する。穴熊と金無双は未確認。先手では振り飛車を指さず、後手では四間飛車を好む。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "一般的に指されている戦型や囲いをほぼ発見してしまったかのように見えます。"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "NN計算の高速化",
+      "description": "ニューラルネットの計算をさらに高速化して臨み、成果は近日公開予定。",
+      "originality": "不明",
+      "evidence": null,
+      "quote": "ニューラルネットワークの計算をさらに高速化して臨む予定です。"
+    }
+  ],
+  "character": "先駆プロジェクトのLeelaZero・LCZeroに並ぶ、参加者の協力で育つオープンなAlphaZero追試。ゼロから学習したAIが人間の戦型を再発見する様子を見せる。",
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc30/team.html"
+}

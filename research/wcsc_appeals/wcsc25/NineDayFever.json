@@ -1,0 +1,78 @@
+{
+  "wcsc": 25,
+  "year": 2015,
+  "dir": "NineDayFever",
+  "team": "金澤 裕治",
+  "software": "NineDayFever",
+  "sources": [
+    "wcsc25/appeal/NineDayFever/NDF-2015.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc25/appeal/NineDayFever/NDF-2015.txt"
+  ],
+  "summary": "前年のkpp分解学習と手番考慮評価に加え、飛角香の働きを表す新パラメータ、自己対戦勝率に基づくbook.binの手の確率調整（自己対戦で勝率.550、約+40レーティング）、探索ツリーのスケジューリングによる並列効率化を導入。AWAKEのKPA（利きの当たり）も取り入れた。",
+  "base": {
+    "engine": "Bonanza",
+    "eval_source": "Bonanza 6.0を改造",
+    "note": "Stockfish参考の探索更新"
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "kppを絶対/相対・pp絶対/相対に分割。手番考慮、飛角香の働きパラメータ、KPA"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "Stockfish参考の更新、探索ツリーのスケジューリング付き並列化"
+  },
+  "learning": "評価値の矛盾の修正。60万局程度の自己対戦をbook.binの調整に利用",
+  "hardware": null,
+  "language": [
+    "C"
+  ],
+  "claimed_strength": "book.bin調整版は既存book.binに対し自己対戦勝率.550（約+40レーティング）",
+  "ideas": [
+    {
+      "category": "定跡・序盤",
+      "title": "自己対戦勝率で定跡の選択確率を調整",
+      "description": "60万局程度の自己対戦から、book.binの最終局面ごとの勝率を求め、正規分布の仮定で各手が最善である確率を計算し、それに比例して選択確率を決め、初手に向かって遡る。実戦頻度の少ない手は現在の確率の2倍を超えないようにして誤差に備える。",
+      "originality": "独自",
+      "evidence": "既存book.binに対し自己対戦勝率.550、レーティング約+40",
+      "quote": "ある局面からの局数が n、勝率が p だった場合"
+    },
+    {
+      "category": "評価関数",
+      "title": "飛角香の働きを考えるパラメータ",
+      "description": "従来の3駒関係では表現できなかった飛角香の利きがどこまで届くかをKPP型のボーナスとして導入する。玉や盤端まで空白な場合のボーナスもある。学習の不具合で未収束。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "従来の3駒関係では、飛角香がどこまで利いているかが表現されていませんでした。"
+    },
+    {
+      "category": "並列・分散",
+      "title": "探索木の優先度つき分割で並列効率化",
+      "description": "探索に優先度（1CPUで先に探索される木ほど高い）を付け、高優先度の木に分割点があればそちらを探索し、PVnodeから戻ったときに根に向かって辿ってα・βを更新する。遊んでいるコアを後で必要になる処理に割り付けつつ、1スレッド時と同じ順序・α・βに近づける。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "探索に優先度をつける。1CPUの場合に先に探索される木のほうが優先順位が高いと考える。"
+    },
+    {
+      "category": "評価関数",
+      "title": "kpp持ち駒の分解とKPA",
+      "description": "持ち駒n枚のパラメータを「n−1枚以下のパラメータ＋n枚のパラメータ」に分解し、AWAKEで効果のあったKPA（アタックされているマス）を導入する。",
+      "originality": "再現・追従",
+      "evidence": null,
+      "quote": "AWAKE が KPP を構成する要素として KPA(A:アタックされているマス) を使うことで効果を上げているということなので入れてみました。"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "kppの持ち駒0を持たない高速化",
+      "description": "kppの持ち駒0に対応するエントリを持たず、リスト最大長を52から40に減らして高速化する。",
+      "originality": "再現・追従",
+      "evidence": null,
+      "quote": "リストの最大長さを52から40に減らして高速化できると聞いたので入れてみました。"
+    }
+  ],
+  "character": "冒頭は「あいかわらず局面評価の極北を目指しています」。book改善の失敗談（4月にfloodgateで古い横歩取りを試した理由）も率直に書く。",
+  "notes": null,
+  "team_list_url": "http://www2.computer-shogi.org/wcsc25/team.html"
+}

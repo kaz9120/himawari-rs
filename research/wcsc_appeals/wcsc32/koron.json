@@ -1,0 +1,54 @@
+{
+  "wcsc": 32,
+  "year": 2022,
+  "dir": "koron",
+  "team": "野田 煌介",
+  "software": "koron",
+  "sources": [
+    "wcsc32/appeal/koron/koron_appeal2.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc32/appeal/koron/koron_appeal2.pdf"
+  ],
+  "summary": "手数で評価関数を切り替える試み。64手までと65手以降で別のNNUE評価関数を使い、NNUEの表現力を増やせるかを検証する。受験生のため会場参加からRyzen 9 3950Xのオンライン参加に変更した。",
+  "base": {
+    "engine": "不明",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "NNUE",
+    "detail": "64手までの評価関数と65手以降の評価関数を別に持ち、64手で入れ替える"
+  },
+  "search": {
+    "family": "不明",
+    "detail": null
+  },
+  "learning": null,
+  "hardware": "Ryzen 9 3950X（オンライン参加）",
+  "language": [
+    "Python"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "手数で評価関数を入れ替える",
+      "description": "64手までと65手以降で別々のNNUE評価関数を用意し、64手で切り替えることでNNUEの表現力を増やせないかを検証する。定跡も併用する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "64手で評価関数を入れ替えてNNUEの表現力を増やせないかの検証"
+    },
+    {
+      "category": "開発手法・運用",
+      "title": "受験生の事情でオンライン参加に変更",
+      "description": "GCPを借りて会場参加する予定を、受験生で多忙なため手元のRyzen 9 3950Xでのオンライン参加に変更した。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "受験生で多忙なのでRyzen 9 3950x使用のオンライン参加に変更しました"
+    }
+  ],
+  "character": "いらすとや素材を多用した絵スライドで、受験生の中でのオンライン参加という事情を軽く語る。",
+  "notes": "テキスト化が空だったため原本PDF（画像3枚）を直接読んだ。詳細な手法の記載はない。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc32/team.html"
+}

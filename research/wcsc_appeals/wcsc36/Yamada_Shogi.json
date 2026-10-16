@@ -1,0 +1,70 @@
+{
+  "wcsc": 36,
+  "year": 2026,
+  "dir": "Yamada_Shogi",
+  "team": "山田 泰広",
+  "software": "山田将棋",
+  "sources": [
+    "wcsc36/appeal/Yamada_Shogi/yamadashogi_appeal_2026.txt"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc36/appeal/Yamada_Shogi/yamadashogi_appeal_2026.txt"
+  ],
+  "summary": "クラシカルな構造・アルゴリズムの、手調整評価関数のC言語エンジン。配列による盤駒表現、駒背番号制、利き数、囲いへ誘導する落とし穴表など、昔ながらのデータ構造の工夫が並ぶ。評価関数の学習、bitboard、SEE、実現確率探索などは未採用と明記している。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": "YSS式の指し手反復生成、Crafty方式の並列探索を取り込んだ独自実装"
+  },
+  "eval": {
+    "family": "手作り",
+    "detail": "駒割、玉の安全度、囲い、駒への当たり、大駒の働き、盤上の利き（SIMDで合算）、そっぽ、金駒へのひもなどの、手調整した線形和"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "反復深化、静かでない局面の延長、null move、LMR、killer、pass move、YSS式指し手反復生成、Crafty方式の並列探索、詰将棋ルーチン、予測読み、フィッシャークロック対応"
+  },
+  "learning": null,
+  "hardware": "Amazon EC2 c7a.48xlarge（192コア、FreeBSD）（一覧ページ）",
+  "language": [
+    "C"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "落とし穴表による囲いへの誘導",
+      "description": "囲いへ誘導するための落とし穴表と、玉位置からの距離に応じた評価値の表を持ち、手調整した線形和で評価する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "囲いへ誘導するための落とし穴表、玉位置からの距離に応じた評価値を納めた表"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "駒背番号制と飛び利きのビット表現",
+      "description": "配列による盤駒表現に、駒背番号制、利き数、飛び利き方向ビットのOR値、利いている駒背番号ビットのOR値、8近傍の利き位置・合法移動先の表を組み合わせる。bitboardは使わない。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "駒背番号制、利き数、飛び利き方向ビットの OR 値、利いている駒背番号ビットの OR 値"
+    },
+    {
+      "category": "詰み・終盤",
+      "title": "簡易必死・一手詰めの検出",
+      "description": "rootノードでの簡易必死検出、leaf付近での簡易一手詰み検出、反復深化による詰将棋ルーチンを持つ。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "root ノードでの簡易必死検出、leaf ノード付近での簡易一手詰み検出"
+    },
+    {
+      "category": "探索",
+      "title": "YSS式指し手反復生成とCrafty方式並列探索",
+      "description": "指し手を反復的に生成するYSS式と、Craftyの並列探索方式を取り入れている。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "YSS 式指し手の反復生成、Crafty 方式の並列探索"
+    }
+  ],
+  "character": "「クラシカルな構造・アルゴリズム」と自称し、未採用の項目（多重反復深化、影の利き、SEE、bitboard、実現確率探索、評価関数の学習）まで潔く列挙している。",
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc36/team.html"
+}

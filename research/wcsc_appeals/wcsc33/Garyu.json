@@ -1,0 +1,47 @@
+{
+  "wcsc": 33,
+  "year": 2023,
+  "dir": "Garyu",
+  "team": "高田 淳一",
+  "software": "臥龍",
+  "sources": [
+    "wcsc33/appeal/Garyu/garyu33.html"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc33/appeal/Garyu/garyu33.html"
+  ],
+  "summary": "第3回から参加を続ける長寿ソフト。評価関数にValue Network型のNNを使い、詰み探索のみ深さ優先探索で行う。前回から変更なし。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "Value Network型のNN。入力38チャンネル、約200万パラメータ"
+  },
+  "search": {
+    "family": "その他",
+    "detail": "詰み探索は深さ優先探索。並列探索・進行度・df-pnは不採用"
+  },
+  "learning": "floodgate 2021年の棋譜",
+  "hardware": "Arm Cortex-A57 1.43GHz",
+  "language": [
+    "Java",
+    "Python"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "Value Network型の評価関数",
+      "description": "評価関数としてValue Network型のニューラルネットを使う。入力は38チャンネル、約200万パラメータ。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "評価関数 : Neural Networkモデル(いわゆるValue Network)"
+    }
+  ],
+  "character": null,
+  "notes": "通算成績84勝133敗4分。思考部Java、学習部Python。原本はShift_JIS。前回からの変更点は「なし」。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc33/team.html"
+}

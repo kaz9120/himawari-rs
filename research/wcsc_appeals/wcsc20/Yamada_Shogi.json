@@ -1,0 +1,70 @@
+{
+  "wcsc": 20,
+  "year": 2010,
+  "dir": "Yamada_Shogi",
+  "team": "山田泰広",
+  "software": "山田将棋",
+  "sources": [
+    "wcsc20/appeal/Yamada_Shogi/Yamada_Shogi.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc20/appeal/Yamada_Shogi/Yamada_Shogi.txt"
+  ],
+  "summary": "極めてクラシカルな構造で、64bit変数による駒背番号の利きビットなど独自のデータ構造を持つ。特に「8近傍合法移動先の表」を、他で聞かない工夫として紹介する。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "手作り",
+    "detail": "駒割、玉の安全度、囲い、利き、当たり、大駒の働き、そっぽ、金駒の紐などの手調整の線形和"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "反復深化、静かでない局面の延長、null move、LMR、killer、pass move、YSS式指し手反復生成、Craftyの並列探索、反復深化詰将棋ルーチン、予測読み"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": [
+    "C"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "実装・高速化",
+      "title": "8近傍合法移動先の表",
+      "description": "駒種ごとの8近傍移動について、移動先の絶対位置、盤内か、成れるか成らなければならないか、「飛角歩は成れるときは成りのみ」の割り切りまで、事前に表にしておき、手生成の判定を不要にする。現在は疎で大きく、キャッシュ局所性が課題。",
+      "originality": "独自",
+      "evidence": "合法手生成速度で効果を確認",
+      "quote": "「8 近傍合法移動先を納めた表」について説明します"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "利き方向ビットと駒背番号ビットのOR値",
+      "description": "飛び利き方向ビットのOR値と、利いている駒の背番号ビットのOR値を64bit変数で持つ。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "利いている駒背番号ビットの OR 値 (64bit 変数の活用)"
+    },
+    {
+      "category": "評価関数",
+      "title": "囲いへの落とし穴表",
+      "description": "囲いへ誘導するための落とし穴表と、玉位置からの距離に応じた評価値の表を使う。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "囲いへ誘導するための落とし穴表"
+    },
+    {
+      "category": "詰み・終盤",
+      "title": "簡易一手詰み検出の新規導入",
+      "description": "leafノード付近で簡易一手詰みを検出する（今回新規）。rootでは簡易必至検出。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "leaf ノード付近での簡易一手詰み検出(今回新規導入)"
+    }
+  ],
+  "character": null,
+  "notes": null,
+  "team_list_url": "http://www2.computer-shogi.org/wcsc20/team.html"
+}

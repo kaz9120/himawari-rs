@@ -1,0 +1,70 @@
+{
+  "wcsc": 32,
+  "year": 2022,
+  "dir": "CGP",
+  "team": "大熊 三晴",
+  "software": "CGP",
+  "sources": [
+    "wcsc32/appeal/CGP/CGP2022_2.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc32/appeal/CGP/CGP2022_2.pdf"
+  ],
+  "summary": "非ビットボードで局面構造体に利きと評価関数の途中計算結果を保持し、AVX-512などSIMDで高NPSを狙う完全自作ソフト。評価関数も自力で学習する手番付きKPPで、定跡データや流通している教師データ・読み筋は使わない。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "手番付きKPP。持ち駒周りの評価を一般的な3駒関係より拡張"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "並列化はLazySMPの微修正版"
+  },
+  "learning": "評価関数も自力で学習。流布している定跡・「局面と評価値のセット」・読み筋は使用しない",
+  "hardware": "Core i9 7940X（AVX-512対応）",
+  "language": [
+    "C"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "実装・高速化",
+      "title": "非ビットボードで利きと途中結果を保持",
+      "description": "局面構造体に各マスへの利きと、評価関数の演算途中結果のうち変化の少ないものを保持する。メモリアクセス待ちの間に演算を回して高速化を狙う。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "局面構造体に評価関数の演算途中結果のうち変化の頻度が少ないものを中心に保持"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "AVX-512 SIMDの活用",
+      "description": "評価値の算出、指し手生成、オーダリング、構造体コピーにSIMDを使う。1スレッド当たりではAVX-512有効のCore i9 7940XがRyzen 9 3950Xを上回る。",
+      "originality": "既存手法の応用",
+      "evidence": "1スレッド当たりではAVX-512有効のi9 7940Xのほうが上",
+      "quote": "AVX-512 命令をはじめとした拡張命令を活用"
+    },
+    {
+      "category": "評価関数",
+      "title": "持ち駒周りを拡張したKPP",
+      "description": "手番付きKPPで、持ち駒の評価を一般的な3駒関係より拡張している。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "持ち駒周りの評価を一般的な 3 駒関係より拡張"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "流布データを使わない縛り",
+      "description": "一般に流布している定跡データ、局面と評価値のセット、読み筋を使わない。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "一般に流布している定跡データ、一般に流布している「局面と評価値のセット」、読み筋等は使用しておりません。"
+    }
+  ],
+  "character": "「無駄に一から作成」「無駄に高NPSを目指している」と、こだわりを自虐気味に語る完全自作路線。",
+  "notes": "2022/5/3修正。当初AVX-512非対応CPUだったがAVX-512対応CPUを使うことにして有効化した。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc32/team.html"
+}

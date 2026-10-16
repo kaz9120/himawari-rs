@@ -1,0 +1,44 @@
+{
+  "wcsc": 27,
+  "year": 2017,
+  "dir": "shogi686",
+  "team": "merom686の日記（開発者）",
+  "software": "shogi686",
+  "sources": [
+    "wcsc27/appeal/shogi686/appeal686.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc27/appeal/shogi686/appeal686.txt"
+  ],
+  "summary": "Stockfishの探索を真似し、2駒関係の評価関数を人間や他のコンピュータの棋譜を使わず自己対戦でゼロから学習するソフト。「指すコンピュータ将棋ファン」であることを呼びかける。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "2駒関係（余裕があれば手番も）"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "Stockfishの真似"
+  },
+  "learning": "自己対戦でゼロから学習。人間や他のコンピュータの棋譜は使わない",
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "2駒関係を自己対戦でゼロから学習",
+      "description": "2駒関係は学習が短時間で済むので、人間や他のコンピュータの棋譜を使わず、自己対戦のみでゼロから評価バイナリを作る。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "今回は、人間や他のコンピュータの棋譜を使わず、自己対戦でゼロから学習させようと思っています。"
+    }
+  ],
+  "character": "「僕は指すコンピュータ将棋ファンです。みなさんも色々なソフトと指してみましょう」と呼びかける、ですます調の親しみやすい文書。",
+  "notes": "参加者一覧ではキャンセル欄。開発者名は一覧の表記から。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc27/team.html"
+}

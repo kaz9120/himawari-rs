@@ -1,0 +1,52 @@
+{
+  "wcsc": 20,
+  "year": 2010,
+  "dir": "Gasyou",
+  "team": "森岡祐一",
+  "software": "GA将!!!!",
+  "sources": [
+    "wcsc20/appeal/Gasyou/gasyou4.pdf"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc20/appeal/Gasyou/gasyou4.pdf"
+  ],
+  "summary": "自己対戦のTDLeaf(λ)＋ソフトマックス方策で評価関数パラメータを強化学習する。名前の!の数がバージョン。floodgateでレート1300台前半。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "駒割、筋・段別の絶対位置、駒の絶対位置、二駒の相対位置、駒の自由度、王の移動範囲。約13万パラメータ（実使用は4分の1弱）"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "全幅αβ＋KFEnd流の2段階静止探索（1段目4手、2段目無制限）。ルートのみ簡易詰将棋（ABC探索）"
+  },
+  "learning": "自己対戦で強化学習。TDLeaf(λ)＋ソフトマックス方策、一日10万〜20万局、50万局前後で収束",
+  "hardware": null,
+  "language": null,
+  "claimed_strength": "floodgateレート1300前半（2010-03-27）",
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "自己対戦のTDLeaf(λ)強化学習",
+      "description": "全幅1手＋静止探索4手の軽い探索とソフトマックス方策で自己対戦し、TDLeaf(λ)で評価関数を調整する。1日10万〜20万局を回す。",
+      "originality": "既存手法の応用",
+      "evidence": "50万局前後で収束",
+      "quote": "TDLeaf(λ)＋ソフトマックス方策"
+    },
+    {
+      "category": "エンタメ・演出",
+      "title": "バージョンを!の数で示す名前",
+      "description": "GA（遺伝的アルゴリズム）で学習していた初期版の名残で「がしょう」と読み、!の数がバージョンを表す。現在はGAは使っていない。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "‘!’の数はバージョンを表します"
+    }
+  ],
+  "character": "名前の「!」の数でバージョンを示す遊びがある。GAは今は使っていないと自虐的に注記する。",
+  "notes": null,
+  "team_list_url": "http://www2.computer-shogi.org/wcsc20/team.html"
+}

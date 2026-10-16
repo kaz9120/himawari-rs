@@ -1,0 +1,52 @@
+{
+  "wcsc": 31,
+  "year": 2021,
+  "dir": "tenuki",
+  "team": "鈴木 太朗、玉川 直樹（手抜きチーム）",
+  "software": "手抜き",
+  "sources": [
+    "wcsc31/appeal/tenuki/tenuki31.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc31/appeal/tenuki/tenuki31.pdf"
+  ],
+  "summary": "将棋プログラムの仕組みを理解するためにD言語で作るαβ探索のソフト。棋力は初段〜二段くらい。今年の目標は「NNUEを理解する」ことで、どうたぬき（tanuki-電竜戦版）の評価関数ファイルnn.binの構造を解析して文書化している。",
+  "base": {
+    "engine": "独自",
+    "eval_source": "どうたぬき（tanuki- 第1回電竜戦版）のnn.bin",
+    "note": null
+  },
+  "eval": {
+    "family": "NNUE",
+    "detail": "どうたぬきのHalfKP 256x2-32-32のNNUE評価関数を読み込んで使う"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "αβ探索（D言語実装）"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": "D",
+  "claimed_strength": "初段〜二段くらい",
+  "ideas": [
+    {
+      "category": "研究・実験的",
+      "title": "NNUE評価関数ファイルnn.binの構造解析",
+      "description": "どうたぬきのnn.bin（約64MB）の内訳（header、FeatureTransformer、隠れ層、出力層）と特徴ベクトルの作り方（125388=81×1548）を、具体例つきで解説しD言語のサンプルコードも公開。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "今年の目標 NNUE を理解する。"
+    },
+    {
+      "category": "開発手法・運用",
+      "title": "学習用の理解メモと私のためのQ&A",
+      "description": "KPPと比べてなぜ強いのか、線形和・ベクトル・バイアスとは何かを、プログラマ視点で素朴に問答形式でまとめる。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "私のための Q&A"
+    }
+  ],
+  "character": "かっこいい名前が思いつかず『手抜き』と命名。「誰か df-pn 教えてください」など素朴な語り口。名前の由来、開発者の趣味紹介（自転車・合唱・Emacs）。",
+  "notes": "リポジトリはhikaen2/tenuki-d。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc31/team.html"
+}

@@ -1,0 +1,44 @@
+{
+  "wcsc": 34,
+  "year": 2024,
+  "dir": "Novice",
+  "team": "Team Novice",
+  "software": "Novice",
+  "sources": [
+    "wcsc34/appeal/Novice/Team_Novice_34.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc34/appeal/Novice/Team_Novice_34.pdf"
+  ],
+  "summary": "昨年までDL部を担当した中屋敷氏がnshogiとして別出場したため、DL部を切り離してNNUEのみで出場する。NNUE部は昨年から開発が止まっており、目安ソフト的な立ち位置とする。",
+  "base": {
+    "engine": "不明",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "NNUE",
+    "detail": "NNUEのみ（DL部は切り離し）"
+  },
+  "search": {
+    "family": "不明",
+    "detail": null
+  },
+  "learning": null,
+  "hardware": "Core i9-12900K 16コア",
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "定跡・序盤",
+      "title": "定跡を毎年新規作成",
+      "description": "定跡は例年どおり新たに作成する予定。",
+      "originality": "不明",
+      "evidence": null,
+      "quote": "定跡は例年通り新たに作成する予定です"
+    }
+  ],
+  "character": null,
+  "notes": "テキストは空で、原本PDF（2枚）を直接読んだ。フルスクラッチ部門は申請していない。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc34/team.html"
+}

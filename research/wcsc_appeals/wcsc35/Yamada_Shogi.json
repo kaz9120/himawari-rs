@@ -1,0 +1,62 @@
+{
+  "wcsc": 35,
+  "year": 2025,
+  "dir": "Yamada_Shogi",
+  "team": "山田 泰広",
+  "software": "山田将棋",
+  "sources": [
+    "wcsc35/appeal/Yamada_Shogi/yamadashogi_appeal_2025.txt"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc35/appeal/Yamada_Shogi/yamadashogi_appeal_2025.txt"
+  ],
+  "summary": "配列の盤表現や駒背番号制、落とし穴表など昔ながらのデータ構造に、手調整の線形和評価関数と豊富なαβ関連技法を組み合わせた、機械学習を使わないクラシックな構成。bitboard、SEE、評価関数の学習などは採用していない。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "手作り",
+    "detail": "駒割、玉の安全度、囲い、駒への当たり、大駒の働き、盤上の利き（SIMD合算）、そっぽ、金駒へのひもなどを手調整した線形和"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "反復深化、静止探索延長、null move、LMR、killer、pass move、YSS式指し手の反復生成、Crafty方式の並列探索、反復深化の詰将棋ルーチン、予測読み"
+  },
+  "learning": null,
+  "hardware": "Amazon EC2 c7a.48xlarge（192 vCPU）、FreeBSD",
+  "language": [
+    "C"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "囲いへ誘導する落とし穴表",
+      "description": "囲いへ誘導するための落とし穴表と、玉位置からの距離に応じた評価値の表を持つ。pinnedとcoverの概念も評価に使う。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "囲いへ誘導するための落とし穴表"
+    },
+    {
+      "category": "探索",
+      "title": "手調整の仮評価によるオーダリングと前向き枝刈り",
+      "description": "手調整した仮評価で手を並べ、前向き枝刈りに使う。root付近の簡易必死検出と、leaf付近の簡易一手詰み検出も行う。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "手調整した仮評価による手のオーダリングと前向き枝狩り"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "駒背番号制と利きのOR値ビット",
+      "description": "配列の盤表現に駒背番号制、利き数、飛び利き方向ビットのOR値、利いている駒背番号ビットのOR値を持たせ、8近傍の利き位置と合法移動先の表も使う。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "飛び利き方向ビットの OR 値、利いている駒背番号ビットの OR 値"
+    }
+  ],
+  "character": "実装済みと未採用を並べて書く。未採用は多重反復深化、影の利き、SEE、bitboard、実現確率探索、評価関数の学習など。",
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc35/team.html"
+}

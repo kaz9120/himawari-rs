@@ -1,0 +1,52 @@
+{
+  "wcsc": 35,
+  "year": 2025,
+  "dir": "ichibin",
+  "team": "花井 祐",
+  "software": "いちびん",
+  "sources": [
+    "wcsc35/appeal/ichibin/2025_appeal.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc35/appeal/ichibin/2025_appeal.pdf"
+  ],
+  "summary": "手書きのアピール文。2023・2024年版とほぼ同じ構成で、NNUEを自作教師データで学習し、探索はやねうら王のルーチンをそのまま使う。教師は1手あたり最大100万局面の探索で生成し、評価関数は数十の試作から選んだ。",
+  "base": {
+    "engine": "やねうら王",
+    "eval_source": null,
+    "note": "三駒関係のDolphinを元にした教師生成。評価関数は初期状態から自作"
+  },
+  "eval": {
+    "family": "NNUE",
+    "detail": "約15億局面で学習した評価関数を、思考錯誤で作った数十の試作から選択"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "やねうら王の探索ルーチン"
+  },
+  "learning": "2023年当時のやねうら王にソースを改造して教師を生成。1手あたり最大100万局面探索し、探索の枝刈りをゆるくした。約15億局面",
+  "hardware": "Core i7-9900",
+  "language": [],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "枝刈りをゆるめた深い教師生成",
+      "description": "やねうら王のソースに手を加え、1手あたり最大100万局面を探索し、探索の枝刈りをゆるくして教師データを生成した。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "探索の枝刈りをゆるくしています"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "約2年かけた定跡の手作り",
+      "description": "2023年の参加バージョンを大本にして、約2年間ひたすら定跡を創作し続けた。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "約二年間、ひたすら続けて創作しました"
+    }
+  ],
+  "character": null,
+  "notes": "原本は手書きPDFでテキストは空だったため、画像を直接読んだ。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc35/team.html"
+}

@@ -1,0 +1,54 @@
+{
+  "wcsc": 28,
+  "year": 2018,
+  "dir": "broaden",
+  "team": "中屋敷 太一",
+  "software": "broaden",
+  "sources": [
+    "wcsc28/appeal/broaden/broaden.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc28/appeal/broaden/broaden.pdf"
+  ],
+  "summary": "AlphaZero風のPolicy/Value Network+MCTSの小型ネットのソフト。floodgate5年分の指し手と勝敗のみで学習する。「なるべく小さいネットワークで強くし、評価項目を人間が読み取れるようにしたい」ことが動機。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "畳み込み3層+残差ブロック5個+全結合3層の小型ネット。Policy+Value"
+  },
+  "search": {
+    "family": "MCTS",
+    "detail": "AlphaZero風のMCTS"
+  },
+  "learning": "floodgate2013〜2017の棋譜の指し手と勝敗のみを使用（評価値・読み筋は不使用）。Caffeで学習",
+  "hardware": "Ryzen 1700 + GTX 1060",
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": "floodgateレーティング1936（5/2）",
+  "ideas": [
+    {
+      "category": "研究・実験的",
+      "title": "小さいネットで強くして評価項目を解読する",
+      "description": "ネットワークを小型にとどめ、強くなれば何を見て評価しているかを人間が読み取れるのではと期待する。人間が将棋で注目すべき点の発見につなげる狙い。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "人間が将棋を指す際にも、何に注目すれば良いかわかる"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "指し手と勝敗のみで学習",
+      "description": "floodgateの棋譜から評価値や読み筋を使わず、指し手と勝ち負けだけで学習する。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "指し手と勝ち負けの結果のみ使用"
+    }
+  ],
+  "character": null,
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc28/team.html"
+}

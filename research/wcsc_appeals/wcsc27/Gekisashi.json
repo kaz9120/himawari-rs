@@ -1,0 +1,52 @@
+{
+  "wcsc": 27,
+  "year": 2017,
+  "dir": "Gekisashi",
+  "team": "鶴岡慶雅、横山大作、丸山孝志、高瀬亮、大内拓実",
+  "software": "激指",
+  "sources": [
+    "wcsc27/appeal/Gekisashi/appeal.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc27/appeal/Gekisashi/appeal.txt"
+  ],
+  "summary": "実現確率打ち切りの狭く深い探索が特徴の老舗。評価関数は、Logistello/AlphaGo風に浅い探索の自己対戦棋譜からロジスティック回帰で勝敗を予測する方式を導入した。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "ロジスティック回帰による勝敗予測"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "局面の実現確率による打ち切り。ロジスティック回帰で遷移確率を推定し、有効分岐数は約2〜2.5"
+  },
+  "learning": "一局数秒〜数十秒の浅い探索で自己対戦棋譜を多数作り、各棋譜から10局面程度サンプリングし、特徴ベクトルから勝敗を予測するロジスティック回帰をSGD(batch 1000)で学習。平均化パーセプトロン系の手法で深さ8の探索を伴う学習も可能",
+  "hardware": null,
+  "language": null,
+  "claimed_strength": "自己対戦棋譜100万局ほどでプロ棋譜のボナンザメソッドとほぼ互角",
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "自己対戦棋譜からのロジスティック回帰学習",
+      "description": "浅い探索の自己対戦棋譜から各10局面程度を抽出し、勝敗予測のロジスティック回帰で評価関数を学習する。棋譜100万局程度でボナンザメソッドとほぼ互角になり、学習時の探索の効果は大きくなかった。",
+      "originality": "既存手法の応用",
+      "evidence": "自己対戦棋譜100万局程度でボナンザメソッドとほぼ互角",
+      "quote": "Logistello や AlphaGo 風に、自己対戦によって評価関数の学習を行ってみました。"
+    },
+    {
+      "category": "探索",
+      "title": "局面の実現確率による打ち切り",
+      "description": "局面の実現確率を打ち切り条件に使い、人間のエキスパートのように狭くて深い探索を実現する。有効分岐数は約2〜2.5で、短時間でも20手以上先を読める。",
+      "originality": "独自",
+      "evidence": "有効分岐数約2〜2.5、20手以上先を読む",
+      "quote": "探索の有効分岐数は、約2～2.5程度におさまっており、比較的短時間でも20手以上先の局面を読むことができます。"
+    }
+  ],
+  "character": null,
+  "notes": "追記日付は2016.5.12で、前回（第26回）の文書の可能性がある（elmoが第26回の激指文書を参照している）。参加者一覧ではキャンセル。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc27/team.html"
+}

@@ -1,0 +1,63 @@
+{
+  "wcsc": 28,
+  "year": 2018,
+  "dir": "kaitei",
+  "team": "迫田 真太郎",
+  "software": "海底",
+  "sources": [
+    "wcsc28/appeal/kaitei/appeal.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc28/appeal/kaitei/appeal.pdf"
+  ],
+  "summary": "線形評価関数+αβ探索のソフトと、DeepLearning+MCTSのソフトを、楽観合議させて指す構成。合議にはSimpleGougiShogiを利用。αβ側はelmo式RootStrapで棋力が向上した。",
+  "base": {
+    "engine": "独自（合議はSimpleGougiShogi、学習はdlshogi/python-shogi参考）",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "DL+NNUE",
+    "detail": "αβ側は2駒関係（KP,PP）の線形評価、DL側は残差ブロック6個のネットワーク。DLの勝率予測は線形評価関数の静止探索出力との平均"
+  },
+  "search": {
+    "family": "αβ+MCTS",
+    "detail": "αβ側はStockfish風の枝刈り（Razoring、Futility、Null Move、多重反復深化、PVS、LMR）。MCTS側はプレイアウトなしの勝率近似。両者を楽観合議"
+  },
+  "learning": "線形側はfloodgate棋譜でBonanzaメソッド後にelmo式RootStrap。DL側はfloodgate2016年の棋譜で学習（指し手一致率40.1%、勝率予測68.8%）",
+  "hardware": "リモート2台+ノートPCからsshで接続",
+  "language": [
+    "C++",
+    "Python"
+  ],
+  "claimed_strength": "WCSC27版R:707、SDT5版R:970、最新はSDT5版に9割勝つ。DL単体は線形側に35%",
+  "ideas": [
+    {
+      "category": "探索",
+      "title": "αβとMCTSの楽観合議",
+      "description": "線形評価+αβのソフトと、DL+MCTSのソフトを楽観合議で組み合わせ、ノートPCで合議する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "線形評価関数・αβ 探索のものと,DeepLearning・モンテカルロ木探索のものを楽観合議させるプログラムで参加します."
+    },
+    {
+      "category": "評価関数",
+      "title": "DLの勝率を線形評価の静止探索値と平均",
+      "description": "MCTSの葉で、ニューラルネットの勝率出力と、王手回避・Recaptureだけの静止探索をする線形評価関数の出力を平均する。GPUと CPUを並行して使うので効率は落ちにくい。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "線形評価関数の出力との平均値を用いて行います."
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "自己対局を学習と棋力検証に同時に使う",
+      "description": "数百局の自己対局で棋力変化の検証と学習データ生成をまとめて行い、その場で学習することを繰り返す（早く頭打ちになったと報告）。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "数百局の自己対局を行い, 棋力変化の検証と学習用データ生成をまとめて行ったのちその場で学習することを繰り返している"
+    }
+  ],
+  "character": null,
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc28/team.html"
+}

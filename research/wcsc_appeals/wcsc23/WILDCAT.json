@@ -1,0 +1,44 @@
+{
+  "wcsc": 23,
+  "year": 2013,
+  "dir": "WILDCAT",
+  "team": "不明（WILDCAT）",
+  "software": "WILDCAT",
+  "sources": [
+    "wcsc23/appeal/WILDCAT/appeal.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc23/appeal/WILDCAT/appeal.txt"
+  ],
+  "summary": "基本は全幅探索で残り深さが少ないときだけ選択的探索。評価関数はボナンザ法で作ったオリジナルで、クラフティ流の並列探索、df-pnの詰将棋、多重反復深化、LMR、null moveを使う。ビットボードは使わない。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "ボナンザ法で作ったオリジナル"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "全幅探索、残り深さ少で選択的探索、LMR、null move、多重反復深化、df-pn"
+  },
+  "learning": "ボナンザ法",
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "並列・分散",
+      "title": "Crafty流の並列探索",
+      "description": "Craftyの並列探索方式を採用する。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "クラフティ流の並列探索を行います。"
+    }
+  ],
+  "character": null,
+  "notes": "開発者名は文書・一覧から特定できなかった。短い文書。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc23/team.html"
+}

@@ -1,0 +1,87 @@
+{
+  "wcsc": 33,
+  "year": 2023,
+  "dir": "Lightweight",
+  "team": "神田 剛志",
+  "software": "Lightweight",
+  "sources": [
+    "wcsc33/appeal/Lightweight/Lightweight_appeal.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc33/appeal/Lightweight/Lightweight_appeal.pdf"
+  ],
+  "summary": "「軽く速く」をコンセプトに、家庭用PCで上位ソフトに迫る棋力を目指すDL系。ResNetをEfficientNetで再構築し、知識蒸留やKL情報量の時間制御、確率による枝刈りでNPSを上げている。",
+  "base": {
+    "engine": "dlshogi",
+    "eval_source": "なし（EfficientNetで1から学習）",
+    "note": "自己対局・探索部・学習・定跡作成にdlshogiを利用"
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "入力部に7層のResidual block、続いてEfficientNet。第3回電竜戦のモデルから層・チャネルを追加"
+  },
+  "search": {
+    "family": "MCTS",
+    "detail": "PUCT+着手確率による簡易枝刈り、MultiStream対応"
+  },
+  "learning": "GCT学習データ（floodgate抽出、GCT電竜自己対局、水匠入玉局面）、『強い将棋ソフトの創りかた』付属データ、Lightweight自己対局の強化学習、知識蒸留",
+  "hardware": "Ryzen 7 + RTX3070、RTX3080",
+  "language": [
+    "C++",
+    "Python"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "EfficientNetによる軽量モデル",
+      "description": "本家のResNetをEfficientNetで再構築して1から学習。入力部に7層のResidual blockを置いてEfficientNetへつなぐ。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "本家のResNetをEfficientNetで再構築し、１から学習しなおしました。"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "知識蒸留で精度向上",
+      "description": "第3回電竜戦のDNNモデルを教師として、Lightweightのモデルを知識蒸留で学習させる。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "第3回世界将棋AI電竜戦に使用したDNNモデルを教師として Lightweightのモデルを学習させています。"
+    },
+    {
+      "category": "探索",
+      "title": "着手確率による簡易枝刈り",
+      "description": "PUCTで木を降りる際、各子ノードの着手確率で簡易的に枝刈りして、最大UCBの子ノード選択時間を短縮する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "各子ノードの着手確率を 利用した簡易的な枝刈りを実施することで"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "バッチサイズ1024とMultiStream対応",
+      "description": "GPUへ渡すバッチを1024に上げ、軽量モデルとの組み合わせで平均NPSを上げる。MultiStreamや入力特徴量作成の改善もdlshogiに倣う。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "GPUに局面を渡す際のバッチサイズを1024に上げています。"
+    },
+    {
+      "category": "時間管理",
+      "title": "KL情報量による時間制御",
+      "description": "Policyの確率分布と探索後の確率分布のKL情報量で時間制御する。dlshogi本家に倣う。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "Policyの確率分布と探索後の確率分布のKL情報量を用いた時間制御を導入しています。"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "連続対局ベースの自動定跡",
+      "description": "第3回電竜戦で水匠が採用した定跡作成手法をもとに、連続対局結果から定跡を自動生成。自己対局データやfloodgate棋譜も使い、平手からの幅広い定跡にした。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "特定の戦型のみではなく、平手開始局面からの幅広い定跡を作成しました。"
+    }
+  ],
+  "character": "開発動機は、DL系の強さは高スペックなハードが前提に見えるため、家庭用PCの範囲で上位に並ぶことを示したいこと。追試は可能と明記。",
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc33/team.html"
+}

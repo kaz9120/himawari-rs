@@ -1,0 +1,68 @@
+{
+  "wcsc": 31,
+  "year": 2021,
+  "dir": "TMOQ",
+  "team": "山下 隆久",
+  "software": "TMOQ",
+  "sources": [
+    "wcsc31/appeal/TMOQ/TMOQ_appeal_20210417.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc31/appeal/TMOQ/TMOQ_appeal_20210417.pdf"
+  ],
+  "summary": "dlshogiをベースにしたソフトで、「相対的浅層学習」としてResNetブロックの70%を削ってネットワークを浅く軽量化し、従来型のUSIエンジンに候補手を監査させる「監査機能」を導入。名前は愛娘が命名・デザインした「特大もっきゅ」。",
+  "base": {
+    "engine": "dlshogi",
+    "eval_source": "GCTの学習データセットで学習",
+    "note": null
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "dlshogiのResNetブロックの70%を削減した浅いネットワーク"
+  },
+  "search": {
+    "family": "MCTS",
+    "detail": "dlshogi。候補手を従来型USIエンジンが監査"
+  },
+  "learning": "公開されたGCTの学習データセットを1回転学習し、AobaZeroの棋譜で追加学習",
+  "hardware": "古いノートPC",
+  "language": "C++, Python",
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "相対的浅層学習（ResNetブロックを70%削減）",
+      "description": "dlshogiの進化についていけない古いノートPCのため、ResNetブロックの70%を切り捨てて浅く軽量にする。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "今回のテーマの１つ目は『相対的浅層学習（Relative Shallow Learning）』です。"
+    },
+    {
+      "category": "探索",
+      "title": "従来型USIエンジンによる監査機能",
+      "description": "DL系の読み抜けによる「一手ばったり」を防ぐため、従来型のUSIエンジンが候補手を監査する。候補手の次の相手手の評価値が大きく悪化する場合に監査エンジンの指し手を採用する。",
+      "originality": "独自",
+      "evidence": "自己対局100局13,105手中、監査指し手の採用は426手（3.3%）。監査USIの思考時間が長いほど勝率が上がる（1秒増で約+2.8%）",
+      "quote": "候補手に致命的な読み抜けがあった場合、監査エンジンの指導が入ります。"
+    },
+    {
+      "category": "探索",
+      "title": "勝敗が明らかなら監査を打ち切る",
+      "description": "勝敗判定基準CP（3500）を超えた局面では監査を省略する。判定CPを大きくして終盤まで監査するほうが勝率が上がる。",
+      "originality": "独自",
+      "evidence": "勝利判定CPを大きくすると勝率が上がる傾向",
+      "quote": "勝利判定 CP を大きくした方（終盤まで監査を継続した方）が勝率は上がる"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "floodgate高レート棋譜と電竜戦棋譜の定跡",
+      "description": "序盤の悪手を避けるため、floodgateのRating 3500以上と電竜戦の棋譜で定跡を作る。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "Floodgate（Rating 3500 以上）および電竜戦（リハおよび本番）の棋譜を使って定跡ファイルを作成しました。"
+    }
+  ],
+  "character": "名前は愛娘が命名・キャラクターデザインした「特大もっきゅ」。好きなコンピュータ将棋を題材にプログラミングを学び、理想の対局相手として育てるという趣味の方針。",
+  "notes": "第26回〜電竜戦TSECまでの大会実績の一覧を掲載。パラメータ感度の追補あり。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc31/team.html"
+}

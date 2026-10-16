@@ -1,0 +1,76 @@
+{
+  "wcsc": 26,
+  "year": 2016,
+  "dir": "HoneyWaffle",
+  "team": "渡辺 光彦",
+  "software": "HoneyWaffle",
+  "sources": [
+    "wcsc26/appeal/HoneyWaffle/HoneyWaffle_appeal_0507.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc26/appeal/HoneyWaffle/HoneyWaffle_appeal_0507.txt"
+  ],
+  "summary": "最高棋力ではなくワットあたりの最高棋力を目指し、Atom 1.33GHz・メモリ1GBのタブレットで動かすGo製ソフト。駒の位置を複素数で管理し、評価は手動係数の線形結合で、毎秒約1万ノード。強豪クラスタを「マザーコンピュータ」、小さなロボットの側の進歩も大事という見立てで参戦した。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "手作り",
+    "detail": "駒の価値の合計や利きの数などに手動の係数を掛けて合計"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "3手先まで。GoのGoroutineによる並列の局面評価"
+  },
+  "learning": null,
+  "hardware": "Atom Z3735G 1.33GHz 4コアのタブレット、メモリ1GB。無線LANと電池で全対局",
+  "language": "Go",
+  "claimed_strength": "タブレットで毎秒約1万ノード程度",
+  "ideas": [
+    {
+      "category": "ハードウェア",
+      "title": "ワットあたり最高棋力を目指す低電力デバイス",
+      "description": "貧弱なHWで、最善手を目指さない割り切りで十分強くする。低コスト・低消費電力のデバイスで、AIに満たない思考ルーチンを動かす。充電も有線もなしの無線LANで全対局を戦った。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "目指すは純粋な最高棋力ではなく、ワットあたりの最高棋力"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "駒の位置を複素数で管理",
+      "description": "将棋盤を複素数平面に置き、駒の移動や位置関係を複素数の足し算で表す。角と玉の間の駒探索などを簡潔に書ける。性能は他の方式と比較していない。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "駒の位置（７六等）を、複素数型変数で管理しており"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "Goと非依存アーキテクチャの実装",
+      "description": "主流のC++でなくGoで新規開発。CPUアーキテクチャに依存した実装を持たず、Goがビルドできる環境ならどこでも動かせる。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "主流のC++ではなくGoで新規に開発したオリジナル"
+    },
+    {
+      "category": "並列・分散",
+      "title": "Goroutineによる並列局面評価",
+      "description": "Goのgoroutineで局面評価を並列にする。評価1回が遅く効果は見えにくい。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "GoのGoRoutineと呼ばれる仕組みにより、並列での局面評価も導入しています。"
+    },
+    {
+      "category": "詰み・終盤",
+      "title": "手を指して合法手がなければ詰みの1手詰め判定",
+      "description": "1手進めて相手玉の手が生成されなければ詰みとする。重いが1手詰めは確実にできる。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "1手進めてみて、相手玉の手が生成されない=詰み"
+    }
+  ],
+  "character": "ゆるふわスイーツ的な軽さを出す名前（ワッフルが将棋盤に似ている）。「命名してから選手権後まで、ワッフル食べてません」と書く。強豪クラスタを近未来SFのマザーコンピュータに見立て、タブレットで参戦した。",
+  "notes": "5/7追記あり（☆部分）",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc26/team.html"
+}

@@ -1,0 +1,65 @@
+{
+  "wcsc": 28,
+  "year": 2018,
+  "dir": "QinoaSyougi",
+  "team": "山田 元気",
+  "software": "きのあ将棋",
+  "sources": [
+    "wcsc28/appeal/QinoaSyougi/appeal.txt"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc28/appeal/QinoaSyougi/appeal.txt"
+  ],
+  "summary": "将棋ライブラリも他プログラムの評価値・定跡も使わない自作派のソフト。1手ごとに思考エンジンを起動する方式（2011年から）と、評価パラメータに2の倍数の固定値ノイズを加える「2の倍数固定値方式」の機械学習が特徴。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "加算連結の評価関数（乗算連結は学習時にパラメータが発散して断念）。評価関数の機械的構築を目指す"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "不明"
+  },
+  "learning": "プロ棋士の棋譜データのみを使用（椿原チームから提供）。評価パラメータにノイズを加えて調整する際、2の倍数の固定値でノイズを加える",
+  "hardware": null,
+  "language": [
+    "C",
+    "C++",
+    "PHP",
+    "JavaScript"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "2の倍数固定値ノイズによる学習",
+      "description": "評価パラメータに加えるノイズを、2重の乱数方式から2の倍数の固定値（±16など）に変えた。粗い精度で取り得ない値を細かい精度が取れることを保証でき、収束までが極めて速い。",
+      "originality": "独自",
+      "evidence": "収束までの計算量が少なく、計算資源を増やすほど精度が上がる性質（本人談）",
+      "quote": "パラメータに加えるノイズを2の倍数の固定とし分解能を表すことが特徴。"
+    },
+    {
+      "category": "評価関数",
+      "title": "加算連結・乗算連結の抽象評価関数と機械的構築",
+      "description": "加算連結または乗算連結の評価処理を抽象化し、繰り返し処理で評価関数を作って機械学習する。乗算連結は表現力が高いと期待したが、パラメータが発散して断念した。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "乗算連結は断念する方向"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "1手ごとに思考エンジンを起動する方式",
+      "description": "1手ごとに思考エンジンを実行して次の着手を決める（2011年から）。1台で多数の相手と対局するときの資源節約と管理のしやすさが利点。一方で前回のハッシュ利用や相手の思考時間の活用ができない。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "1手ごと思考エンジンを実行し、次の着手を思考する方法を採用しています。"
+    }
+  ],
+  "character": null,
+  "notes": "2018年の研究はまだ進んでおらず、現状の特徴と過去の模索を記した文書。将棋と囲碁で共通化するライブラリ化も進める。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc28/team.html"
+}

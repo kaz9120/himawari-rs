@@ -1,0 +1,79 @@
+{
+  "wcsc": 28,
+  "year": 2018,
+  "dir": "762alpha",
+  "team": "天野 史斎",
+  "software": "762alpha",
+  "sources": [
+    "wcsc28/appeal/762alpha/762alpha_20180211.txt"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc28/appeal/762alpha/762alpha_20180211.txt"
+  ],
+  "summary": "旧President_Xの後継。全力で戦って負けた対局だけを教師にし、終盤局面を「必要な駒」の集合で場合分けして、場合ごとに軽量な評価関数を調整する構想。学習を完全自動化し、開発への人間の介在を不要にするのが目的。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "その他",
+    "detail": "局面を場合分けし、場合ごとに軽量な評価関数（玉への利き・退路・守り・突破口など）を使う"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "枝刈り（futility・null move）の閾値を自動調整"
+  },
+  "learning": "負けた対局のみを学習サンプルにし、KPPのbag（普通のKPP）にベイジアンフィルタを適用して必要な駒を抽出。固定長ベクトル化した局面を線形分離×決定木で分類し、場合ごとに評価関数を調整",
+  "hardware": null,
+  "language": [
+    "C++",
+    "Perl"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "負けた対局だけを教師にする",
+      "description": "全力で戦って負けた棋譜だけを学習サンプルにする。優れた棋譜を人間が集める必要がなくなり、サンプル収集が全自動になる。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "全力で戦って負けたケースの棋譜を学習サンプルとする。"
+    },
+    {
+      "category": "評価関数",
+      "title": "終盤局面の「必要な駒」による場合分け",
+      "description": "終盤局面を、玉に睨みを利かせている駒（必要な駒）の集合をキーに分類する。必要な駒は高く、不要な駒は低く評価し、勝利という目的に評価を整合させる。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "必要な駒の集合をキーにして分類すればまず間違い無い分類になる"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "KPPのbagにベイジアンフィルタ",
+      "description": "局面をbag of KPPsとみなし、勝敗ラベルでベイジアンフィルタを適用する。勝敗の両方に現れるKPPは打ち消され、勝利に必要なn駒関係だけが残る。ボナンザメソッドより実質的な自由度が高いと主張する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "局面をbag of KPPsとみなしてベイジアンフィルタを適用する。"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "投了付近の評価値推移から勝敗ラベルを推定",
+      "description": "投了前の評価値が連続して負になる区間の局面を、当方手番は敗北・相手手番は勝利とラベルする。正の区間は形勢判断を誤った局面として評価値を下げる調整に使う。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "2に属する局面の当方手番を「敗北」、相手手番を「勝利」とラベル付けして学習サンプルとする。"
+    },
+    {
+      "category": "探索",
+      "title": "枝刈り閾値の自動調整",
+      "description": "一定回数ごとに枝刈りせずに探索して結果を蓄積し、ヒストグラムの上側x%点をfutility・null moveの閾値にする。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "ヒストグラムの上側x %点をしきい値にする。"
+    }
+  ],
+  "character": "文書はQ&A形式で、「ひた隠しにしてきたキーワード：局面の場合分け」「お薬を増しておきますね」などユーモアがある。過去の文書は方針をわざとぼかして書いたと明かす。",
+  "notes": "President_Xから実現方針は変わらないと書く。実際の強さや実装の達成度は文書から読み取れない。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc28/team.html"
+}

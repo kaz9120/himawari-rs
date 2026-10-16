@@ -1,0 +1,78 @@
+{
+  "wcsc": 29,
+  "year": 2019,
+  "dir": "Nanoha",
+  "team": "川端 一之",
+  "software": "なのは",
+  "sources": [
+    "wcsc29/appeal/Nanoha/Nanoha_appeal2019.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc29/appeal/Nanoha/Nanoha_appeal2019.pdf"
+  ],
+  "summary": "「魔法少女リリカルなのは」を由来とするキャラクター性の強いソフトで、df-pnの強力な詰めルーチン（なのは詰め）が売り。江戸時代の611手詰め「寿」を解き、詰め用スレッドの増設とチャージタイム拡大で最大詰め手数を伸ばす。アピール文書はアニメ風の掛け合いで、「カットインやエフェクトなど派手な演出」を課題に挙げる。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": "Stockfishの探索を使用。評価ベクトル縮小版となのは詰め抜きのなのはminiを公開"
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "評価ベクトルは自前学習（やねうら王配布の教師データを使用）"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "Stockfish流の探索、df-pn詰めルーチン、詰め専用スレッド"
+  },
+  "learning": "やねうら王公式サイトで配布された教師データで自前学習",
+  "hardware": "AMD Ryzen 7 1700（AMD CPU勢での上位を狙う）",
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": "第24〜28回でAMD CPU勢の1位または2位（総合では11〜20位）",
+  "ideas": [
+    {
+      "category": "詰み・終盤",
+      "title": "強力な詰めルーチン「なのは詰め」",
+      "description": "df-pn搭載の詰めルーチンを公開し、江戸時代の611手詰めの名作「寿」を解く。常に詰みを狙い、一発逆転のポテンシャルを持つ。",
+      "originality": "独自",
+      "evidence": "611手詰め「寿」を解く",
+      "quote": "なのは詰めは江戸時代の名作 611手詰めの「寿」を解く"
+    },
+    {
+      "category": "詰み・終盤",
+      "title": "詰め専用スレッドとチャージタイムの拡大",
+      "description": "コア数の増加を受けて詰め探索用のスレッドを設定し、高速化ではなく逆にチャージタイムを増やして、最大詰め手数の強化を最優先にする。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "チャージタイムを増やして威力を大幅アップ！"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "ビットボード不使用でRyzen向けデータ構造",
+      "description": "盤情報を配列で持ち、AMD RYZENに適したデータ構造にする。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "Bitboard未使用(盤情報は配列) AMD RYZENに適したデータ構造"
+    },
+    {
+      "category": "探索",
+      "title": "歩・角・飛の不成も生成",
+      "description": "手生成で歩・角・飛の不成も生成する。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "手生成では歩、角、飛の不成も生成"
+    },
+    {
+      "category": "エンタメ・演出",
+      "title": "カットインやエフェクトなどの派手な演出（今後の課題）",
+      "description": "最長手数の詰将棋「ミクロコスモス」（1525手詰め）を解くことや、カットインとエフェクトによる派手な演出を今後の課題に挙げる。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "カットインやエフェクトなど派手な演出！！"
+    }
+  ],
+  "character": "魔法少女リリカルなのはの高町なのはを由来に、アニメの掛け合いのパロディや「全力全開、手加減なしで！！」の意気込み、イラスト（COCOさん）などキャラクター性が強い。「名前負けしている」と謙遜。",
+  "notes": "手生成・探索・評価の構成は「どこにでもある平凡な構成」と自称",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc29/team.html"
+}

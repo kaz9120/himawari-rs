@@ -1,0 +1,52 @@
+{
+  "wcsc": 30,
+  "year": 2020,
+  "dir": "KatsudonShogi",
+  "team": "カツ丼将棋（松本浩志、羽生大輝、池田拓郎）",
+  "software": "カツ丼将棋",
+  "sources": [
+    "wcsc30/appeal/KatsudonShogi/wcsc30.docx"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc30/appeal/KatsudonShogi/wcsc30.docx"
+  ],
+  "summary": "前年からほぼ変わらず、開発の進捗はなし。見どころは、Sugarさんとのyoutube配信と、将棋の演歌『千駄ヶ谷エレジー』の作曲。",
+  "base": {
+    "engine": "不明",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "不明",
+    "detail": null
+  },
+  "search": {
+    "family": "不明",
+    "detail": null
+  },
+  "learning": null,
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "エンタメ・演出",
+      "title": "YouTube配信",
+      "description": "昨年同様にSugarさんとYouTube配信する。コロナで各チーム1人の参加となったため、スポンサー枠で会場に行き、初日は配信する。敗退後もTwitterで熱戦を伝える。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "昨年同様SugarさんとYoutubeで配信します。"
+    },
+    {
+      "category": "エンタメ・演出",
+      "title": "将棋の演歌『千駄ヶ谷エレジー』",
+      "description": "将棋の歌が少ないと考えて、将棋の演歌を作曲した。歌手は長沢千和子女流四段、作詞は袋小路宇治夫、作曲はカツ丼将棋で、iTunes StoreやレコチョクでDLできる。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "将棋の演歌を作曲しました。曲名　千駄ヶ谷エレジー"
+    }
+  ],
+  "character": "毎年「いつものおまけ」として将棋の歌を作る。架空の「日本将棋連盟推奨、桜井昇八段推薦」で笑いを取り、仕事と育児で開発時間がないという近況まで、あけすけなネタとして書く。",
+  "notes": "ソフトの技術的な内容は書かれていない。「前回から進化した点はほぼなし」と明記",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc30/team.html"
+}

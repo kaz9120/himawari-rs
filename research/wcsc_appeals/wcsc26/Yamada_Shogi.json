@@ -1,0 +1,92 @@
+{
+  "wcsc": 26,
+  "year": 2016,
+  "dir": "Yamada_Shogi",
+  "team": "山田 泰広",
+  "software": "山田将棋",
+  "sources": [
+    "wcsc26/appeal/Yamada_Shogi/yamadashogi_appeal_2016.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc26/appeal/Yamada_Shogi/yamadashogi_appeal_2016.txt"
+  ],
+  "summary": "クラシカルな構造とアルゴリズムの、手調整評価のソフト。囲いへ誘導する落とし穴表、pinnedとcoverの概念、YSS式指し手の反復生成、Crafty方式の並列探索、予測読みなど、古典的な技術を並べる。多重反復深化・SEE・bitboard・実現確率探索・学習は不採用と明記する。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "手作り",
+    "detail": "駒割、玉の安全度、囲い、盤上の利き、駒への当たり、大駒の働き、そっぽ、金駒へのひもなどを手調整した線形和"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "αβ、反復深化、静かでない局面の延長、null move、LMR、killer、pass move、YSS式の指し手の反復生成、Crafty方式の並列探索、反復深化による詰将棋ルーチン、予測読み"
+  },
+  "learning": null,
+  "hardware": "Core i7 980X 3.33GHz",
+  "language": "C",
+  "claimed_strength": "FreeBSDで開発",
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "囲いへ誘導する落とし穴表",
+      "description": "囲いへ誘導するための落とし穴表と、玉位置からの距離に応じた評価値の表を持つ。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "囲いへ誘導するための落とし穴表、玉位置からの距離に応じた評価値を納めた表"
+    },
+    {
+      "category": "探索",
+      "title": "手調整の仮評価での手順序と前向き枝刈り",
+      "description": "手調整した仮評価で手のオーダリングと前向き枝刈りを行う。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "手調整した仮評価による手のオーダリングと前向き枝狩り"
+    },
+    {
+      "category": "探索",
+      "title": "YSS式の指し手の反復生成",
+      "description": "指し手を一度に全部作らず、反復的に生成するYSS式を採用している。",
+      "originality": "再現・追従",
+      "evidence": null,
+      "quote": "YSS 式指し手の反復生成"
+    },
+    {
+      "category": "並列・分散",
+      "title": "Crafty方式の並列探索",
+      "description": "並列探索にCrafty方式を採用している。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "Crafty 方式の並列探索"
+    },
+    {
+      "category": "詰み・終盤",
+      "title": "簡易必死検出と簡易一手詰め検出",
+      "description": "rootで簡易必死検出、leaf付近で簡易一手詰み検出を行い、詰め将棋ルーチンは反復深化で動かす。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "root ノードでの簡易必死検出、leaf ノード付近での簡易一手詰み検出"
+    },
+    {
+      "category": "探索",
+      "title": "予測読み",
+      "description": "相手の応手を予測して先読みする予測読みに対応している。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "予測読み"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "駒背番号制と利き数のビットOR値",
+      "description": "配列盤に、駒背番号制、利き数、飛び利き方向ビットのOR値、利いている駒背番号ビットのOR値などを持たせる。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "配列による盤駒表現、駒背番号制、利き数"
+    }
+  ],
+  "character": "「クラシカルな構造・アルゴリズム」と自認し、未採用の手法も正直に列挙する。",
+  "notes": null,
+  "team_list_url": "http://www2.computer-shogi.org/wcsc26/team.html"
+}

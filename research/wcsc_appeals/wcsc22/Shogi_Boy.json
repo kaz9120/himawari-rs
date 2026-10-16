@@ -1,0 +1,44 @@
+{
+  "wcsc": 22,
+  "year": 2012,
+  "dir": "Shogi_Boy",
+  "team": "長谷川雅也",
+  "software": "Shogi Boy",
+  "sources": [
+    "wcsc22/appeal/Shogi_Boy/CS22-apeal-sboy.rtf"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc22/appeal/Shogi_Boy/CS22-apeal-sboy.rtf"
+  ],
+  "summary": "前年と同じ構想。1人の達人の棋譜だけで評価関数を作り、達人の棋風を再現することを目標にする。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "不明",
+    "detail": null
+  },
+  "search": {
+    "family": "不明",
+    "detail": null
+  },
+  "learning": "1人の達人の棋譜のみから、達人が指した手だけを学習",
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "棋風・人間らしさ",
+      "title": "達人ごとの棋風を評価関数にする",
+      "description": "1人の達人の棋譜だけで学習して、達人の棋風に近い評価関数を作る。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "達人が何に重点をおいて指し手を決定しているか、すなわち棋風を達人の棋譜から学習し"
+    }
+  ],
+  "character": null,
+  "notes": "第20・21回と同趣旨。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc22/team.html"
+}

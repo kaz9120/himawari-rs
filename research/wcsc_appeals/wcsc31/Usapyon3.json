@@ -1,0 +1,60 @@
+{
+  "wcsc": 31,
+  "year": 2021,
+  "dir": "Usapyon3",
+  "team": "うさぴょん3",
+  "software": "うさぴょん3",
+  "sources": [
+    "wcsc31/appeal/Usapyon3/Usapyon3-2021.txt"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc31/appeal/Usapyon3/Usapyon3-2021.txt"
+  ],
+  "summary": "うさぴょん2系列は「なのはmini」ベースだったが、今回はStockfishを独自に将棋化し、評価関数も独自に作る。4駒関係は遅すぎて使えず、2駒関係+αや高速差分の非線形評価関数（NNUE類似）を模索する。仕事が多忙で突然のキャンセルもありうるという近況報告型の文書。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "その他",
+    "detail": "独自の評価関数を作成中。4駒関係は遅くて実用に至らず、2駒関係+αや非線形の差分計算を検討"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "Stockfishの将棋化（「れさぴょん」のコードを使う）"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "探索",
+      "title": "Stockfishを独自に将棋化",
+      "description": "なのはminiベースをやめ、「れさぴょん」のコードを使ってStockfishを独自に将棋化する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "StockFishを独自に将棋化しようとしています。"
+    },
+    {
+      "category": "評価関数",
+      "title": "4駒関係の追試",
+      "description": "Aperyの平岡さんが速度で断念した4駒関係を追試したが、やはり遅すぎて使えないと確認。速度の工夫を探す。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "やはり、遅すぎてそのままでは使い物にならないようです"
+    },
+    {
+      "category": "評価関数",
+      "title": "高速差分計算できる非線形評価関数",
+      "description": "非線形の評価関数に以前から興味があり、高速に差分計算できる形を考える（NNUEに似た実装になりそう）。2駒関係+αのαに何を入れるかが課題。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "非線形の評価関数には以前から興味はあり、高速に差分計算出来るようなものを考えようとしています。"
+    }
+  ],
+  "character": "「アピール文書ではなくて、近況報告のようになってしまいましたｗ」と書くフランクな文体。",
+  "notes": "開発者名は文書に記載なし。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc31/team.html"
+}

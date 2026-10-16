@@ -1,0 +1,54 @@
+{
+  "wcsc": 21,
+  "year": 2011,
+  "dir": "ym-shogi",
+  "team": "山田雅之",
+  "software": "ym将棋",
+  "sources": [
+    "wcsc21/appeal/ym-shogi/ymshogi.pdf"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc21/appeal/ym-shogi/ymshogi.pdf"
+  ],
+  "summary": "前年（第20回）と実質同一の文書で、通常探索とモンテカルロ木探索を併用する構成。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "不明",
+    "detail": null
+  },
+  "search": {
+    "family": "αβ+MCTS",
+    "detail": "αβ探索とUCT（UCB1-TUNED修正版）の2スレッド併用"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": [
+    "Java"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "探索",
+      "title": "αβとモンテカルロ木探索の併用",
+      "description": "別スレッドでαβとUCTを走らせ、詰み情報を共有し、条件でどちらの手を指すか決める。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "通常探索の短所をモンテカルロ木探索で補うことを目指したのがym将棋である"
+    },
+    {
+      "category": "探索",
+      "title": "子ノードの最善勝率を親の勝率にするUCT",
+      "description": "ノード勝率を、子ノードのうち最善の勝率で置き換え、後手の間違いを前提にした過大評価を避ける。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "子ノードの中で最善の勝率を、そのノードの勝率とする"
+    }
+  ],
+  "character": null,
+  "notes": "日付「2010.3.26」と回の表記以外は第20回と同一。詳細はwcsc20のym-shogiを参照。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc21/team.html"
+}

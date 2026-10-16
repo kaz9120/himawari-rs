@@ -1,0 +1,46 @@
+{
+  "wcsc": 24,
+  "year": 2014,
+  "dir": "Katsudon_Shogi",
+  "team": "不明（カツ丼将棋）",
+  "software": "カツ丼将棋",
+  "sources": [
+    "wcsc24/appeal/Katsudon_Shogi/appeal.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc24/appeal/Katsudon_Shogi/appeal.txt"
+  ],
+  "summary": "新規参加。「ルール通り指せるのが最大の自慢」と謙遜する。αβベースで、BitBoardと利きテーブルによる高速指し手生成、勝った手を採用し複数該当ならランダム選択する定跡DB、遅いが逃しのない自作詰みルーチンを持つ。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "基本は駒得にKKP・KPP・指し手候補数など"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "自作の詰みルーチン"
+  },
+  "learning": "激指方式の機械学習を努力中",
+  "hardware": "シングルコアで秒間50万手程度",
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "定跡・序盤",
+      "title": "勝った手を採用するランダム選択の定跡",
+      "description": "定跡DBで勝った手を採用し、複数該当すればランダムに選ぶ。",
+      "originality": "不明",
+      "evidence": null,
+      "quote": "定石DB。勝った手を採用する。複数該当すればランダムに選択"
+    }
+  ],
+  "character": "「ルール通り指せるのが最大の自慢」とする謙遜。",
+  "notes": null,
+  "team_list_url": "http://www2.computer-shogi.org/wcsc24/team.html"
+}

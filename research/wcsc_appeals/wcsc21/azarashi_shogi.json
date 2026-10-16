@@ -1,0 +1,52 @@
+{
+  "wcsc": 21,
+  "year": 2011,
+  "dir": "azarashi_shogi",
+  "team": "（あざらし将棋）",
+  "software": "あざらし将棋",
+  "sources": [
+    "wcsc21/appeal/azarashi_shogi/appeal_110131.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc21/appeal/azarashi_shogi/appeal_110131.txt"
+  ],
+  "summary": "ミニマックス法の全幅探索とモンテカルロ木探索の合議で指し手を決め、SSEのベクトル演算で指し手生成と盤面更新を高速化する。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "不明",
+    "detail": null
+  },
+  "search": {
+    "family": "αβ+MCTS",
+    "detail": "全幅探索とモンテカルロ木探索の合議"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "探索",
+      "title": "全幅探索とMCTSの合議",
+      "description": "ミニマックスの全幅探索とモンテカルロ木探索の結果で指し手を合議して決める。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "ミニマックス法による全幅探索と、モンテカルロ木探索との合議で指し手を決定します"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "SSEベクトル演算による高速化",
+      "description": "指し手生成と盤面更新にSSEのベクトル演算を使って高速化を試みた。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "SSEのベクトル演算を使うことで高速化を試みました"
+    }
+  ],
+  "character": null,
+  "notes": "開発者名は文書になく、一覧ページ未確認。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc21/team.html"
+}

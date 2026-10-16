@@ -1,0 +1,86 @@
+{
+  "wcsc": 34,
+  "year": 2024,
+  "dir": "CGP",
+  "team": "大熊 三晴",
+  "software": "CGP",
+  "sources": [
+    "wcsc34/appeal/CGP/CGP2024.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc34/appeal/CGP/CGP2024.pdf"
+  ],
+  "summary": "高NPSを目指して一から自作した非ビットボード型エンジン。利きや評価の途中結果を局面構造体に保持し、AVX-512も使う。手番付きKPPを自力で学習し、流布している定跡・教師データ・読み筋は使わない。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "手番付きKPP。持ち駒周りの評価を一般的な三駒関係より拡張"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "LazySMPを微修正した並列化。反復深化の深さ決定手法を今年変更"
+  },
+  "learning": "評価関数を自力で学習。流布している局面と評価値のセットは不使用",
+  "hardware": "Ryzen 9 7950X 16コア",
+  "language": [
+    "C"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "実装・高速化",
+      "title": "非ビットボードで利きを保持",
+      "description": "ビットボードを使わず、局面構造体が各マスの利きを持つ。遅くなる処理を避けるため、構造体の配置をビット位置まで工夫している。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "非ビットボードだとビットボードに比べ遅くなる処理もありますが"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "評価の途中結果を保持",
+      "description": "評価関数の演算途中結果のうち変化の少ないものを局面構造体に持ち、メモリアクセス待ちの間に演算を回して高速化する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "演算途中のデータを保持することによりメモリアクセス待ち時に演算を回す"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "AVX-512によるSIMD",
+      "description": "評価値算出、指し手生成、オーダリング、構造体コピーにSIMDを使う。AVX-512F、CDまで対応し、VBMIは未対応。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "AVX-512 命令をはじめとした拡張命令を活用"
+    },
+    {
+      "category": "評価関数",
+      "title": "持ち駒を拡張した手番付きKPP",
+      "description": "手番付きKPPで、持ち駒周りを一般的な3駒関係より拡張している。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "持ち駒周りの評価を一般的な 3 駒関係より拡張しております"
+    },
+    {
+      "category": "開発手法・運用",
+      "title": "外部データ不使用の縛り",
+      "description": "流布している定跡、局面と評価値のセット、読み筋を一切使わない。無駄なこだわりと自認している。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "一般に流布している定跡データや、一般に流布している「局面と評価値のセット」、読み筋等は使用しておりません"
+    },
+    {
+      "category": "並列・分散",
+      "title": "LazySMPの微修正",
+      "description": "並列化はLazySMPを微修正した手法。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "並列化手法は現在は LazySMP を微修正したものです"
+    }
+  ],
+  "character": "「無駄に一から作成」「無駄に高NPS」と自嘲しつつ、強さより高速化と自作へのこだわりを前面に出す。",
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc34/team.html"
+}

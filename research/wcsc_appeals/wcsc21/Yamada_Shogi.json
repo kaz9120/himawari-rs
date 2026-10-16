@@ -1,0 +1,62 @@
+{
+  "wcsc": 21,
+  "year": 2011,
+  "dir": "Yamada_Shogi",
+  "team": "山田泰広",
+  "software": "山田将棋",
+  "sources": [
+    "wcsc21/appeal/Yamada_Shogi/yamadashogi_appeal_2011.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc21/appeal/Yamada_Shogi/yamadashogi_appeal_2011.txt"
+  ],
+  "summary": "前年同様のクラシカルな構造。前年からの変更は、棋譜集から抽出した定跡、延長処理の軽量化、居飛車用落とし穴表の拡充など。駒背番号ビットのOR値の使い方を説明する。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "手作り",
+    "detail": null
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "クラシカルな構造（前年と同様）"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": [
+    "C"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "定跡・序盤",
+      "title": "棋譜集から抽出した定跡",
+      "description": "棋譜集から抽出して生成した定跡を利用する。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "棋譜集から抽出して生成した定跡の利用"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "駒背番号ビットによる利き管理",
+      "description": "駒に1〜40の背番号を持たせ、盤上の位置ごとに、どの駒の利きがあるかを64bit変数のビットで持ち、局面を進める・戻すたびに差分更新する。2006年頃導入し、手生成とオーダリングに活用する。飛び利き方向ビットも空き領域に統合した。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "盤上の位置毎に、どの駒の利きがあるかを格納しています"
+    },
+    {
+      "category": "評価関数",
+      "title": "居飛車用落とし穴表の拡充",
+      "description": "囲いへ誘導する落とし穴表のうち居飛車用を拡充した。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "居飛車用落とし穴表の拡充"
+    }
+  ],
+  "character": null,
+  "notes": "「8近傍合法移動先の表」の説明は今年は省略。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc21/team.html"
+}

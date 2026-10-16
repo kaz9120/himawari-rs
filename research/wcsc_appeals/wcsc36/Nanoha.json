@@ -1,0 +1,54 @@
+{
+  "wcsc": 36,
+  "year": 2026,
+  "dir": "Nanoha",
+  "team": "川端 一之",
+  "software": "なのは",
+  "sources": [
+    "wcsc36/appeal/Nanoha/Nanoha_appeal2026.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc36/appeal/Nanoha/Nanoha_appeal2026.pdf"
+  ],
+  "summary": "3駒関係（KPPT）の評価ベクトルを持つ、Bitboardなしの配列ベース将棋ソフト。今年はStockfishを将棋化した「なのはmini」の探索部を取り込み、配布教師データで評価関数を学習し直す予定。アニメ「魔法少女リリカルなのは」由来の名前と、作者紹介・意気込みが前面に出た文書。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": "なのはminiはStockfishをベースに独自に将棋化したもの。評価関数の学習にやねうらお氏・nodchip氏の配布教師データ（110億局面など）を使う予定"
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "3駒関係（KPPT）。将来はNNUE化を目指す"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "Stockfish系の探索を取り込む予定。手生成は歩・角・飛の不成も生成。Bitboard未使用（盤情報は配列）"
+  },
+  "learning": "配布教師データ（やねうらお氏の110億教師、nodchip氏の教師）で評価ベクトルを学習する予定",
+  "hardware": "Minisforum UM790Pro（Ryzen 9 7940HS、RAM 64GB）",
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "定跡・序盤",
+      "title": "出現数と勝率で選ぶ定跡",
+      "description": "定跡部は、実戦での出現数および勝率を考慮して指し手を選択する。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "定跡部は実戦での出現数および勝率を考慮して手を選択"
+    },
+    {
+      "category": "探索",
+      "title": "Stockfish探索の将棋化",
+      "description": "Stockfishをベースに独自に将棋化した「なのはmini」を作り、その探索部を取り込む予定。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "なのはmini   Stockfishをベースに独自に将棋化しました。"
+    }
+  ],
+  "character": "魔法少女リリカルなのはの主人公・高町なのはのような強さを盤上で実現したいという願いが名前の由来。「名前の割に強い」ではなく「名前負けしている」と自虐し、作者の好きなアニメ・食べ物・棋力（将棋ウォーズ1級、囲碁初段）まで紹介する。今年は現地会場から参加し、0次予選突破と、詰めルーチンを間に合わせることが意気込み。野望はNNUE化、ミクロコスモスを解くこと、非コピーレフト系ライセンスでの開発。",
+  "notes": "変更点はいずれも予定として書かれている。参考文献は小谷『コンピュータ将棋』や松原仁編『コンピュータ将棋の進歩』シリーズなど古典文献が中心。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc36/team.html"
+}

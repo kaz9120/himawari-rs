@@ -1,0 +1,46 @@
+{
+  "wcsc": 30,
+  "year": 2020,
+  "dir": "Crazy_Shogi",
+  "team": "Kayufu（フランス）",
+  "software": "Crazy Shogi",
+  "sources": [
+    "wcsc30/appeal/Crazy_Shogi/WCSC_Crazy_Shogi_Characterization.txt"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc30/appeal/Crazy_Shogi/WCSC_Crazy_Shogi_Characterization.txt"
+  ],
+  "summary": "AlphaZeroアルゴリズムをC++でフルスクラッチ実装したソフト。cuDNNでGPUを使い、2020年はNVIDIA Inception Programの計算資源でネットを学習する。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "AlphaZero型のニューラルネット"
+  },
+  "search": {
+    "family": "MCTS",
+    "detail": "AlphaZero"
+  },
+  "learning": "AlphaZeroの強化学習。NVIDIA Inception Programの計算力で学習",
+  "hardware": null,
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "研究・実験的",
+      "title": "AlphaZeroのフルスクラッチ実装",
+      "description": "DeepMindのAlphaZeroを元コードなしでC++実装し、ニューラルネットはcuDNNでNvidia GPU上で動かす。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "It is entirely original code developed from scratch, in C++."
+    }
+  ],
+  "character": null,
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc30/team.html"
+}

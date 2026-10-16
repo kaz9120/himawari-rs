@@ -1,0 +1,84 @@
+{
+  "wcsc": 26,
+  "year": 2016,
+  "dir": "Usapyon2",
+  "team": "池 泰弘",
+  "software": "うさぴょん2",
+  "sources": [
+    "wcsc26/appeal/Usapyon2/usapyon2-PR-0421.pdf"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc26/appeal/Usapyon2/usapyon2-PR-0421.pdf"
+  ],
+  "summary": "鈴木将棋ベースで始まった老舗の「うさぴょん」の後継。なのはminiをStockfish7ベースに書き換えたスレーブ（Lazy SMP）と、自前実装のマスターによるクラスタ構成で、評価バイナリはAperyの電王トーナメント版。単純なαβで、前向き枝刈りと位置ボーナス付き定跡など独特の設計を語る。",
+  "base": {
+    "engine": "なのはmini",
+    "eval_source": "Apery（電王トーナメント版の評価バイナリ）",
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "手でチューニング（旧うさぴょん）。2では、Aperyの評価バイナリ"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "ほぼ単純なαβ。LateMoveReduction、Null Move（5/1に実装、数%高速化）。スレーブはなのはminiをStockfish7ベースに書き換えLazy SMP"
+  },
+  "learning": null,
+  "hardware": "クラスタ（3台予定）。AMD FX 9590 4.7GHz×3",
+  "language": "C++/C#",
+  "claimed_strength": "将棋倶楽部24でR1600〜1800位と推測。旧版は一次予選落ち",
+  "ideas": [
+    {
+      "category": "並列・分散",
+      "title": "マスター部を自力ゼロから実装",
+      "description": "クラスタのマスター部を、なのはminiの一部改造から、Puellaαと大合神クジラちゃんを参考に、自力でゼロから実装し直した。台数を2台で確認ののち最大4台程度まで増やす構想。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "自力で０から実装することにしました。"
+    },
+    {
+      "category": "探索",
+      "title": "局面の自陣部分一致で定跡ボーナス",
+      "description": "盤面全体が定跡から外れても、自陣のみ9×5マスや自陣のみ5×5マスが一致していれば、記憶した定跡手にボーナスを与えて選びやすくする。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "「自陣のみ９×５枡」「自陣のみ５×５枡」一致していれば定跡として記憶された手順にボーナスを与えて"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "局面を戻す関数を持たずスタックに積む",
+      "description": "局面を進める関数は異常に複雑（盤面全体で交換値を再計算）なので、戻す関数を持たず局面をスタックに積む。指し手は一手進めて求めた仮評価の順に探索する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "局面を「進める」関数は持っているが、局面を「戻す」関数は持っていない"
+    },
+    {
+      "category": "並列・分散",
+      "title": "Stockfish7ベースの書き換えとLazy SMP",
+      "description": "4コアと8コアのfloodgateレート差が70程度でスケールしないとの情報を得て、スレーブをStockfish7ベースに書き換えLazy SMPにした。",
+      "originality": "再現・追従",
+      "evidence": "4コアと8コアのレート差は約70（なのはmini）",
+      "quote": "8コアだとスケールしない（らしい）という情報を得て、StockFish7ベースへ書き換えを行っています。"
+    },
+    {
+      "category": "開発手法・運用",
+      "title": "自前実装を減らした開発の振り返り",
+      "description": "評価関数の自前学習をAperyに勝てないと諦め、他人の長いソースを読む方針に変えた。実装は減ったはずなのに「むしろ難しい」と書く。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "実装する部分は減っているはずなのに、「むしろ難しいなー」とか思っております。"
+    },
+    {
+      "category": "エンタメ・演出",
+      "title": "うさぴょんマスコット表示のGUI構想",
+      "description": "将棋所に変わるGUIを自前で実装し、マスコットの「うさぴょん」も表示したいと書く。時間がなく、やっぱり無理と追記する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "「うさぴょん（マスコット）」も表示したいし。"
+    }
+  ],
+  "character": "「実力はどうなの？ 一次予選は突破できるくらい → 突破できなかった（爆）」と自虐を入れ、「今年は全力全開で（AMD製CPU使用の中での）1位を取りに行きます！」と宣言する。うさぴょんとしての開発・参加は昨年が最後で、今年は「うさぴょん2」。",
+  "notes": "PR文書。4/21付。5/1の追記あり",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc26/team.html"
+}

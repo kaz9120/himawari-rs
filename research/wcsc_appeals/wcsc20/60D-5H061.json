@@ -1,0 +1,44 @@
+{
+  "wcsc": 20,
+  "year": 2010,
+  "dir": "60D-5H061",
+  "team": "杜貴崇",
+  "software": "神乎棋技（神の一手）",
+  "sources": [
+    "wcsc20/appeal/60D-5H061/60D-5H061.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc20/appeal/60D-5H061/60D-5H061.txt"
+  ],
+  "summary": "「コンピュータ将棋の進歩」シリーズを参考に作った将棋プログラム。2007年から参加している。基本構造・指し手生成・探索・詰め探索の概要を短く列挙した文書。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "任意の2駒の関係を学習"
+  },
+  "search": {
+    "family": "その他",
+    "detail": "選択的探索＋静止探索＋延長探索"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "詰み・終盤",
+      "title": "玉近傍の差分計算による詰み・必至探索",
+      "description": "玉の近傍の利きや退路を差分計算で扱い、詰め探索と必至探索を行う。",
+      "originality": "不明",
+      "evidence": null,
+      "quote": "詰め探索：玉の近傍の利き、退路などを差分計算"
+    }
+  ],
+  "character": null,
+  "notes": "文書が短く、工夫の詳細は不明。一覧ではキャンセル欄に記載。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc20/team.html"
+}

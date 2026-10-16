@@ -1,0 +1,76 @@
+{
+  "wcsc": 26,
+  "year": 2016,
+  "dir": "CGP",
+  "team": "大熊 三晴",
+  "software": "CGP",
+  "sources": [
+    "wcsc26/appeal/CGP/CGP.pdf"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc26/appeal/CGP/CGP.pdf"
+  ],
+  "summary": "強さより高NPSを目指して1から自作した、非ビットボード型のBonafish系ソフト。局面構造体に利きや評価関数の途中結果を持たせ、SIMDやラージページで高速化している。1スレッド1.5〜2Mnps。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "Bonanzaベースのオリジナルの形。様々な設定で学習を試行中"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "StockfishベースのPVS・枝刈りに将棋向けの独自手法を追加。並列化はYBWC"
+  },
+  "learning": "評価関数は様々な設定で学習を試行中",
+  "hardware": null,
+  "language": "C",
+  "claimed_strength": "1スレッド1.5〜2Mnps、4スレッド4〜5Mnps（Core i7 6700K）",
+  "ideas": [
+    {
+      "category": "実装・高速化",
+      "title": "非ビットボード型で利きを保持",
+      "description": "非ビットボードで、局面構造体に各マスへの利きを持たせる。ビットボードより遅い処理を避けつつ複雑な情報を持てる。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "局面構造体に各マスへの利きの状態を保持"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "評価途中結果のキャッシュと演算の重ね合わせ",
+      "description": "評価関数の途中結果のうち変化の少ないものを局面構造体に保持し、メモリアクセス待ちの間に演算を回す。ビット位置まで含めて構造体の配置を工夫する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "局面構造体に評価関数の演算途中結果のうち変化の頻度が少ないものを中心に保持"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "SIMDで手の抜き出し",
+      "description": "オーダリングの一部でVPMAX命令により次に試す手を抜き出す。条件分岐なしで複数の手を比較でき、通常の挿入ソートより速い。評価値算出と構造体コピーにもSIMDを使う。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "オーダリングの一部は VPMAX 命令で次に試す手を抜き出す方式"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "ラージページの利用",
+      "description": "置換表と評価値テーブルのページテーブルにラージページ（Huge Page）を使う。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "置換表や評価値テーブルのページテーブルにラージページ"
+    },
+    {
+      "category": "探索",
+      "title": "Stockfish系枝刈りに将棋向け独自手法",
+      "description": "探索と枝刈りはStockfishベースで、将棋向けの独自手法を足している。具体策は書かれていない。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "探索（枝刈り）は Stockfish をベースに将棋向けの独自手法を追加したもの"
+    }
+  ],
+  "character": null,
+  "notes": "独自手法の中身と「一般的にはあまり使われていない機能」の中身は文書にない",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc26/team.html"
+}

@@ -1,0 +1,37 @@
+{
+  "wcsc": 36,
+  "year": 2026,
+  "dir": "narikinshogi",
+  "team": "村山 正樹",
+  "software": "なり金将棋",
+  "sources": [
+    "wcsc36/appeal/narikinshogi/appeal.txt"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc36/appeal/narikinshogi/appeal.txt"
+  ],
+  "summary": "初回参加時から使い回している基本構成で、αβ法・ハッシュテーブル・null moveなど一般的な手法と3駒関係の評価を使う。独自の工夫の記載はない。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": "初回参加時からのプログラムを使い回し"
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "3駒間評価"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "αβ法、ハッシュテーブル、null move等の一般的な手法"
+  },
+  "learning": null,
+  "hardware": "Ryzen 7 2700X（一覧ページ）",
+  "language": [
+    "VC++"
+  ],
+  "claimed_strength": null,
+  "ideas": [],
+  "character": null,
+  "notes": "「2025年アピール文書」の見出しで書かれた3行の文書。前年と同じ内容を提出した可能性がある。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc36/team.html"
+}

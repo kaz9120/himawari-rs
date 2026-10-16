@@ -1,0 +1,35 @@
+{
+  "wcsc": 25,
+  "year": 2015,
+  "dir": "inoue_shogi",
+  "team": "井上",
+  "software": "井上将棋",
+  "sources": [
+    "wcsc25/appeal/inoue_shogi/appeal.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc25/appeal/inoue_shogi/appeal.txt"
+  ],
+  "summary": "第19回出場プログラムとれさぴょんV3を使ってプログラムを書き直し、αβ反復深化＋並列探索を行う。今回はプロの定跡を使う。",
+  "base": {
+    "engine": "れさぴょん",
+    "eval_source": null,
+    "note": "れさぴょんV3を使用"
+  },
+  "eval": {
+    "family": "手作り",
+    "detail": "単純な評価関数"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "反復深化＋並列探索"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [],
+  "character": null,
+  "notes": "短い文書。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc25/team.html"
+}

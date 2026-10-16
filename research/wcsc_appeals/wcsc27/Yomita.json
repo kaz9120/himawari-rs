@@ -1,0 +1,78 @@
+{
+  "wcsc": 27,
+  "year": 2017,
+  "dir": "Yomita",
+  "team": "塚本 隆三",
+  "software": "読み太",
+  "sources": [
+    "wcsc27/appeal/Yomita/appeal.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc27/appeal/Yomita/appeal.txt"
+  ],
+  "summary": "GitHubで開発するオープンソースのソフト。Stockfishの探索部をベースに進行度で枝刈りを調整し、KPPT評価関数を雑巾絞り（強化学習）で一度に約40億局面を生成して学習する。電王トーナメントから、雑巾絞り1回でR80、進行度でR20強くなった。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "KPPT（3駒関係＋手番）。雑巾絞りで強化学習"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "Stockfishの探索部ベースで最新へ追従。進行度により終盤ほど枝刈りを減らす"
+  },
+  "learning": "やねうら王プロジェクトの教師局面で学習後、自己対戦で一度に約40億局面を生成し雑巾絞り。教師局面は平手初期局面から20手ランダム、その後は深さ7の探索の手で進行。学習部はやねうら王V3.57のものを利用",
+  "hardware": "Core i7 6700HQ 4コア 16GB",
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": "電王トーナメントから雑巾絞り1回でR80向上、進行度の導入でR20程度向上",
+  "ideas": [
+    {
+      "category": "実装・高速化",
+      "title": "Redundant Bitboard",
+      "description": "指し手生成にRedundant Bitboardという少し変わったBitboardを採用している。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "Redundant Bitboardという少し変わったBitboardを採用しています。"
+    },
+    {
+      "category": "探索",
+      "title": "進行度による枝刈りの調整",
+      "description": "KP値を特徴にfloodgateの棋譜から進行度を学習し、終盤ほど枝刈りが減るようfutilityマージンを調整する。調整前よりR20程度強くなった。進行度を使った評価関数も学習したが効果が出ずボツにした。",
+      "originality": "独自",
+      "evidence": "R20程度向上",
+      "quote": "進行度という概念を取り入れており、局面が終盤になるほど枝刈が減るように工夫しています。"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "雑巾絞りで教師局面40億局面を一度に生成",
+      "description": "自己対戦で約40億局面の教師局面を一度に生成して学習する。教師局面は平手から20手ランダムの後、深さ7で進める。futilityマージンを大きくしたことが効いたかもしれない。",
+      "originality": "既存手法の応用",
+      "evidence": "雑巾絞り1回でR80向上",
+      "quote": "その後は自己対戦により一度に教師用局面を約40億局面生成し、学習を行っています。"
+    },
+    {
+      "category": "開発手法・運用",
+      "title": "Stockfishの変更を鵜呑みにせず調整",
+      "description": "Stockfishに入った変更をそのまま取り入れても強くならないことが多く、枝刈りしすぎないようパラメータを調整して勝率を確かめる作業が開発時間の大半を占める。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "stockfishに取り入れられた変更をそのまま取り入れても強くならないことも多く"
+    },
+    {
+      "category": "開発手法・運用",
+      "title": "3週間連続稼働の安定性確認",
+      "description": "途中で止まってしまうバグの原因を突き止めて直し、3週間連続稼働することを確認した。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "３週間連続稼働することを確認しました。"
+    }
+  ],
+  "character": null,
+  "notes": null,
+  "team_list_url": "http://www2.computer-shogi.org/wcsc27/team.html"
+}

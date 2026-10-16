@@ -1,0 +1,54 @@
+{
+  "wcsc": 24,
+  "year": 2014,
+  "dir": "Warsenal_Zero",
+  "team": "岩崎 高宗",
+  "software": "Warsenal Zero",
+  "sources": [
+    "wcsc24/appeal/Warsenal_Zero/appeal.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc24/appeal/Warsenal_Zero/appeal.txt"
+  ],
+  "summary": "新規参加。自作エンジンに致命的バグが見つかり、急遽Bonanzaライブラリを土台に再開発。評価関数はBonanza 6のfv.binのまま（銀以上の駒割を少し上げる）で、評価・手生成のマクロ化による高速化と、将棋年鑑の棋譜から作り直した定跡を使う。学習は失敗。文書は作者紹介・名前の由来・反省会を率直に書く。",
+  "base": {
+    "engine": "Bonanza",
+    "eval_source": "Bonanza v6のfv.bin",
+    "note": "Bonanzaライブラリを使用"
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "Bonanza v6（KKP・KPP・駒割）。銀以上の駒割を少し高く"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "Bonanza v6から変更なし。8コア16スレッドで平均260万手/秒"
+  },
+  "learning": "追加学習を試みるも失敗、fv.bin同梱版を使用",
+  "hardware": "8コア16スレッド",
+  "language": [
+    "C/C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "定跡・序盤",
+      "title": "将棋年鑑の棋譜から作り直した定跡",
+      "description": "Bonanza v6の定跡が古いとして、将棋年鑑3年分の棋譜から序盤で失敗した例や激しく変化した例を除いてbook.binを作り直す。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "新しい棋譜から再構成を試みているところです。"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "評価・手生成のマクロ化",
+      "description": "速度に関わる評価関数や手の生成部分をマクロ化し、平均240万から260万手/秒に上げた。",
+      "originality": "既存手法の応用",
+      "evidence": "平均240万→260万手/秒",
+      "quote": "速度に関わる部分をマクロ化している状況です。"
+    }
+  ],
+  "character": "名前は出身の早稲田とアーセナルFCから作った造語で、ゼロはウイングガンダムゼロのゼロシステムに由来する。サッカーに例えて棋風を語り、作者の人柄や「反省会」まで率直に書く文書。",
+  "notes": "選手権後に追記あり（学習失敗、2次予選敗退、アンケートの所感）。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc24/team.html"
+}

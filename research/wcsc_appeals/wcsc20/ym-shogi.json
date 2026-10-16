@@ -1,0 +1,78 @@
+{
+  "wcsc": 20,
+  "year": 2010,
+  "dir": "ym-shogi",
+  "team": "山田雅之",
+  "software": "ym将棋",
+  "sources": [
+    "wcsc20/appeal/ym-shogi/ymshogi.pdf"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc20/appeal/ym-shogi/ymshogi.pdf"
+  ],
+  "summary": "通常のαβ探索とモンテカルロ木探索（UCT）を別スレッドで並走させ、詰み情報を共有し、結果を条件で選ぶ。ノード勝率は子の最善値を採るなど、将棋向けのUCT修正が詳しい。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "不明",
+    "detail": null
+  },
+  "search": {
+    "family": "αβ+MCTS",
+    "detail": "αβ探索スレッドとUCT（UCB1-TUNED修正版）スレッドの併用、USIエンジン"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": [
+    "Java"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "探索",
+      "title": "αβとモンテカルロ木探索の併用",
+      "description": "αβ探索とモンテカルロ木探索を別スレッドで並走し、通常探索の短所（駒得しているが有効な攻めがない局面の評価）をMCTSで補う。通常探索が詰みを見つければ通常を採用、通常探索の評価が低いか、その手のMCTS勝率が低ければMCTSの手を採る。playout数が少なければ無条件に通常探索を採る。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "通常探索の短所をモンテカルロ木探索で補うことを目指したのがym将棋である"
+    },
+    {
+      "category": "探索",
+      "title": "子ノードの最善勝率を親の勝率にするUCT",
+      "description": "将棋は最善手とそれ以外の差が大きく、後手が間違えることを前提に勝率が高く出る。そこでノード勝率を、全playoutの勝敗でなく、子ノードのうち最善の勝率とする。playout数が少ないうちはノード全体の勝率も加味する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "あるノードでの勝率を計算する際、子ノードの中で最善の勝率を、そのノードの勝率とする"
+    },
+    {
+      "category": "探索",
+      "title": "深さ5までUCB・以下はランダム",
+      "description": "ルートから深さ5までだけUCBで選び、以下はルーレット方式（静的条件・SEE・history評価値を重みとする）でランダムに選ぶ。playoutが終局しなければ引き分け、大きな駒得・駒損なら勝ち負けとみなす。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "UCBにより指し手選択を行うのは、ルートから一定の深さ（現在のym将棋では深さ5）に制限している"
+    },
+    {
+      "category": "探索",
+      "title": "progressive wideningによる前向き枝刈り",
+      "description": "未選択の指し手に評価値から仮の勝率とUCBを与えて枝を徐々に広げる。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "枝刈りのアルゴリズムはprogressive wideningを基本としている"
+    },
+    {
+      "category": "探索",
+      "title": "探索間の情報共有と確定勝利優先",
+      "description": "通常探索の詰み情報をMCTSの局面表に渡し、MCTSの勝率を通常探索の並べ替えに使う（予定）。MCTSで詰みを見つけたら負けとマークして次の選択から外す確定勝利優先を使う。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "通常探索で発見した情報を、モンテカルロ木探索に提供する"
+    }
+  ],
+  "character": null,
+  "notes": null,
+  "team_list_url": "http://www2.computer-shogi.org/wcsc20/team.html"
+}

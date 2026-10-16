@@ -1,0 +1,44 @@
+{
+  "wcsc": 27,
+  "year": 2017,
+  "dir": "TMOQ",
+  "team": "山下 隆久",
+  "software": "TMOQ",
+  "sources": [
+    "wcsc27/appeal/TMOQ/Appeal_v3.pdf"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc27/appeal/TMOQ/Appeal_v3.pdf"
+  ],
+  "summary": "Aperyの評価関数を使い、floodgate上位の勝者手番の棋譜で学習し、探索を最新Stockfishに準拠させている。娘が名付けた「特大もっきゅ」というイメージキャラクターを持つ。",
+  "base": {
+    "engine": "Apery",
+    "eval_source": "Apery（tanuki-も勉強）",
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "Aperyの評価関数を活用"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "最新Stockfishに準拠するよう取り組み中"
+  },
+  "learning": "floodgateのRating上位かつ勝者手番の棋譜で学習",
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "floodgate上位の勝者手番の棋譜で学習",
+      "description": "floodgateのRating上位で、かつ勝者の手番の棋譜だけで学習する。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "floodgate の Rating 上位かつ勝者手番の棋譜で学習"
+    }
+  ],
+  "character": "名前は「特大もっきゅ」。娘が考えたイメージキャラクターは興奮するとショッキングピンクになるという設定。作者は海外出張が多く「腹黒いノートPC」から「光り輝くノートPC」への更新も書く。目標は平岡氏との直接対決と恩返し。",
+  "notes": "参加者一覧ではキャンセル欄。3/31作成、4/12改訂。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc27/team.html"
+}

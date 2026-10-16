@@ -1,0 +1,97 @@
+{
+  "wcsc": 34,
+  "year": 2024,
+  "dir": "16_Shiki_Iroha_KIRAMEKI",
+  "team": "日本工学院専門学校AIシステム科（末吉 竜介）",
+  "software": "十六式いろは煌（きらめき）",
+  "sources": [
+    "wcsc34/appeal/16_Shiki_Iroha_KIRAMEKI/16-168krmk_wcsc34-pr-20240519.pdf",
+    "wcsc34/appeal/16_Shiki_Iroha_KIRAMEKI/16-168krmk_wcsc34-pr-detail-20240519.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc34/appeal/16_Shiki_Iroha_KIRAMEKI/16-168krmk_wcsc34-pr-20240519.pdf",
+    "https://www.apply.computer-shogi.org/wcsc34/appeal/16_Shiki_Iroha_KIRAMEKI/16-168krmk_wcsc34-pr-detail-20240519.pdf"
+  ],
+  "summary": "専門学校の将棋AIプロジェクトで、やねうら王の標準NNUE評価関数を、ランダム初期化から人の棋譜を使わず自己対局だけで育てた「いろは幻」で出場する。計算はAWSのc6a.metal（192vCPU）に替えて探索速度が約23倍に。教育プロジェクトとして学習データと成果を公開する。",
+  "base": {
+    "engine": "やねうら王",
+    "eval_source": "いろは幻（自作）。学習できていないパラメータは水匠5・Hao・BLOSSOMで補完",
+    "note": null
+  },
+  "eval": {
+    "family": "NNUE",
+    "detail": "やねうら王の標準NNUE（halfKP型）を一から学習。軽量化なし"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "やねうら王。合議制なし"
+  },
+  "learning": "ランダム初期化から自己対戦と学習を繰り返し、累計88億局面。今回は自己対戦の教師局面18億局面（深さ12、評価値上限32000）で追加学習",
+  "hardware": "AWS EC2 c6a.metal（192vCPU）。学校のHPCで教師局面を生成",
+  "language": [
+    "Python",
+    "C++"
+  ],
+  "claimed_strength": "いろは幻は2次予選時の版に対しR+13.0、水匠5-wcsc32に対しR-28.9（電竜戦時から+84）。探索速度は520万から1億2千万nps（約23倍）",
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "人の棋譜を使わず自己対局だけで評価関数を育てる",
+      "description": "ランダム初期化から、人の棋譜なしで自己対戦と学習を繰り返してNNUEを育てる。電竜戦用に作った教師局面で学習し、累計88億局面。",
+      "originality": "独自",
+      "evidence": "電竜戦から+84 Elo",
+      "quote": "人による棋譜を用いずに AI が生成した棋譜のみで将棋 AI を開発しようと思い"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "学習率・λの育て方の実験知見の公開",
+      "description": "学習局面が増えるほどeta（学習率）を下げると効果がある、2周は効くが3周目はほぼ効果なし、lambdaは0.1〜0.5、mirror_percentageを50→10、newbob_decayを0.2→0.1、評価値上限は30億局面以降32000が良い、などの知見を公開した。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "1 周目 eta0.1、2 周目 eta0.01 など、重ねて学習するときは学習率を下げると効果的"
+    },
+    {
+      "category": "ハードウェア",
+      "title": "クラウドで探索速度を約23倍に",
+      "description": "ゲーミングPC（Core i7-9700K）からAWSのc6a.metal（192vCPU）に替え、探索速度を520万から1億2千万npsに上げた。",
+      "originality": "既存手法の応用",
+      "evidence": "約23倍",
+      "quote": "探索速度 nps が 520 万から、 1 億 2 千万にアップ！！（約 23 倍）"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "電竜戦の棋譜から3候補ずつ評価する定跡",
+      "description": "電竜戦の2日目A級と統一ハードウェア戦（振り飛車党のHoneyWaffleとの対局を含む）の棋譜に、makebook thinkで3〜100手を各3候補、200億ノード・深さ32で評価を付けた。決勝のみ使用。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "makebook think 」コマンドで3 ～ 100 手目までを各手 3 候補ずつ評価値を付けた"
+    },
+    {
+      "category": "開発手法・運用",
+      "title": "学生プロジェクトと教材の公開",
+      "description": "日本工学院の学生と共同で将棋AIを開発し、学習データと成果を公開する。2022年にディープラーニング将棋AI制作ソフト「将スタ -将棋ソフトスタジオ-」を公開した。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "これから機械学習を学ぶ人の為になるように、学習データやその成果を公開していくことも行っています"
+    },
+    {
+      "category": "評価関数",
+      "title": "dlshogiネットワークの軽量化の変遷",
+      "description": "WCSC32でブロック数を減らし、WCSC33でSENetとWideResNet式のチャネル増・ブロック減、GhostNetへ変更した。今回の出場は、トラブルによりDLを使わずNNUEのみ。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "精度を維持したままパラメータ数を大幅に削減し軽量化した GhostNet"
+    },
+    {
+      "category": "棋風・人間らしさ",
+      "title": "攻めっ気の強い棋風",
+      "description": "解説を聞く限りかなり攻めっ気が強く、定跡なしの2次予選では矢倉っぽい形を好む印象だった。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "かなり攻めっ気が強いようです"
+    }
+  ],
+  "character": "名前は教員の「十六式いろは」と学生が考えた「煌」を組み合わせた。学校のマスコット「かまトゥ」も名前の候補にあった。教育プロジェクトとしての側面が強い。",
+  "notes": "合議制（dlshogi・詰将棋エンジン）を予定していたが、大会当日のトラブルでNNUE単独になった。3/31版（予定）と5/19版（確定）の両方を載せる。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc34/team.html"
+}

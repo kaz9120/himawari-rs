@@ -1,0 +1,63 @@
+{
+  "wcsc": 28,
+  "year": 2018,
+  "dir": "Yorkies",
+  "team": "石田 計",
+  "software": "Yorkies",
+  "sources": [
+    "wcsc28/appeal/Yorkies/YorkiesPRwcsc28.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc28/appeal/Yorkies/YorkiesPRwcsc28.pdf"
+  ],
+  "summary": "KPPT形式の三駒関係をelmoメソッドで学習し、置換表のキーを256bit化したソフト。ノートPC1台を本体に、Google Compute Engineのプリエンプティブ価格のVMを複数台つなぎ、置換表の内容をやりとりして使う。",
+  "base": {
+    "engine": "やねうら王",
+    "eval_source": "elmo(WCSC27版)の定跡",
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "KPPT形式の手番ありの三駒関係"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "やねうら王。置換表のキーを256bit化"
+  },
+  "learning": "elmoメソッドで学習。教師データはやねうら王配布のdepth10の110億局面+自作のdepth8の50億局面",
+  "hardware": "MacBook Pro (2015 Mid)+Google Compute Engineのプリエンプティブ料金VM複数台（Ubuntu）",
+  "language": [
+    "C++17",
+    "Python3"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "並列・分散",
+      "title": "プリエンプティブVMを置換表の共有でつなぐ",
+      "description": "本体のMac BookProに、Google Compute Engineのプリエンプティブ（割当解除される可能性があるが安い）VMを複数つなぎ、置換表の内容をやりとりする。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "置換表の内容をやりとりする。"
+    },
+    {
+      "category": "探索",
+      "title": "置換表のキーを256bitにする",
+      "description": "置換表のキーを256bit化する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "置換表のキーを256bit化する。"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "C++17のヘッダオンリー化とconstexpr",
+      "description": "実装で楽できる部分はPython3を使い、C++側はヘッダオンリーにしてなるべくconstexprを使い、コンパイラによる高速化に期待する。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "Header Only化 なるべくconstexpr"
+    }
+  ],
+  "character": "名前はヨークシャテリアの略称「ヨーキー」の複数形。",
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc28/team.html"
+}

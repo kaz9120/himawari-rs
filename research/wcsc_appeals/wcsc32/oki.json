@@ -1,0 +1,63 @@
+{
+  "wcsc": 32,
+  "year": 2022,
+  "dir": "oki",
+  "team": "隠岐（Tomonobu Masumoto）",
+  "software": "隠岐",
+  "sources": [
+    "wcsc32/appeal/oki/bunshou.txt"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc32/appeal/oki/bunshou.txt"
+  ],
+  "summary": "思考部が約1013万ステップ（ソース約194MB・494ファイル）に達する巨大な自作ソフト。将棋の思考部はワンパターンになりやすいことを利用し、将棋のソースを生成するプログラムにコーディングさせている。序盤は定跡の同一・類似局面検索、中盤以降は森田将棋の故・森田和郎氏に教わった「2手読み」で、1手1秒を目標とする。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "手作り",
+    "detail": null
+  },
+  "search": {
+    "family": "その他",
+    "detail": "中盤以降は2手読み。読みの緩い部分を補正した結果ソースが巨大化"
+  },
+  "learning": null,
+  "hardware": "Core i7-7700HQ",
+  "language": [
+    "C",
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "開発手法・運用",
+      "title": "ソースを自動生成するプログラムでコーディング",
+      "description": "将棋の思考部がワンパターンになりやすい点を利用し、将棋ソースを作るプログラムを開発して、思考部のコードをコンピュータに書かせている。同じタイムスタンプのファイルが多いことを証拠に挙げる。",
+      "originality": "独自",
+      "evidence": "思考部約1013万ステップ、別に詰将棋部、画像部あり。コンパイルとリンクに約20分",
+      "quote": "将棋の思考部はワンパターンになりやすく，それを利用して将棋ソースを作るプログラムを開発してそのプログラムにやらせてます。"
+    },
+    {
+      "category": "探索",
+      "title": "森田将棋式の2手読み",
+      "description": "中盤以降は、森田将棋の森田和郎氏から教わった2手読みで人間の感覚に近いと判断し採用。読みの緩い部分の補正が巨大なソースになった。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "中盤以降は、２手読みなってます。"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "定跡の同一局面検索と類似局面検索",
+      "description": "序盤は定跡データの同一局面検索（乱数で棋譜ファイルを検索）と、見つからない場合の類似局面検索（if文の羅列）で指す。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "序盤は定跡データを使った同一局面検索と類似局面検索"
+    }
+  ],
+  "character": "「アピールとは野球の三塁ランナーのアピールのことか」と質問への戸惑いから始まる。ソースの詳細は弱点が知られるため非公開。ソースファイル一覧（dirの出力）を全文載せ、Bonanzaのソースが極端に少ないことに驚き、将棋文化が失われつつあることを危惧する。",
+  "notes": "技術説明が少なく、評価関数の種別は文書から読み取れない。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc32/team.html"
+}

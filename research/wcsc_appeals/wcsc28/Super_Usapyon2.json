@@ -1,0 +1,54 @@
+{
+  "wcsc": 28,
+  "year": 2018,
+  "dir": "Super_Usapyon2",
+  "team": "池 泰弘（うさぴょんの育ての親）",
+  "software": "スーパーうさぴょん２",
+  "sources": [
+    "wcsc28/appeal/Super_Usapyon2/wcsc28-usapyon.txt"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc28/appeal/Super_Usapyon2/wcsc28-usapyon.txt"
+  ],
+  "summary": "なのはminiをコードのベースにしたソフト。定跡を0から作り直し、AperyのSDT5版評価関数に、振り飛車が有利な条件で作った約5億局面を追加学習して振り飛車風味を付けた。四間飛車穴熊を準備したが、本番では居飛車の銀冠穴熊を崩せなかった。5/6に結果を踏まえて追記した文書。",
+  "base": {
+    "engine": "なのはmini",
+    "eval_source": "Apery（SDT5版）",
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "Aperyの評価関数に、振り飛車有利な条件の約5億局面で追加学習"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "Stockfish参考。効果のない枝刈りを外し、自前の枝刈りを追加（効果は未確認）"
+  },
+  "learning": "Apery(SDT5)で、振り飛車が有利な条件で対局させた約5億局面を作成して追加学習",
+  "hardware": "Ryzen 7 2800X（8コア16vCPU）+ AMD A9",
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": "AMD製CPU勢の1位を取り戻した（本人談）",
+  "ideas": [
+    {
+      "category": "棋風・人間らしさ",
+      "title": "振り飛車が有利な条件の局面で追加学習",
+      "description": "Apery(SDT5)の評価関数に、振り飛車が有利になる条件で対局させた約5億局面を作って学習させ、ほんのり振り飛車風味を付ける。精査はできておらず効果は不明。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "5億局面位、振り飛車が有利な条件で対局させた局面を作成してほんのり振り飛車風味を付けたつもりです。"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "0ベースで作った定跡と四間飛車穴熊",
+      "description": "定跡部を新たに書き起こして0から作成し、四間飛車穴熊を準備した。最近誰もやっていないからという理由。内容は他の開発者の対策を避けるため割愛している。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "定跡は四間飛車穴熊を準備して行きました。最近誰もやってないと思うので。"
+    }
+  ],
+  "character": "「AMD製CPU1位の座を取り戻す！」を目標にし、「上位はAWSで72vCPUとか普通になった中、8Core16vCPUで闘うのはキツイ」とぼやく。結果を踏まえ、一番振り飛車で戦ってほしかった形で飛車を振らない「脆弱性」が出たと自嘲する。",
+  "notes": "今回はソース・バイナリを公開しない予定。名前は昨年の「うさぴょん２’TURBO」からの連番。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc28/team.html"
+}

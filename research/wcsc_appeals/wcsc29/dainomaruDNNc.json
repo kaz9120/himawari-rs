@@ -1,0 +1,46 @@
+{
+  "wcsc": 29,
+  "year": 2019,
+  "dir": "dainomaruDNNc",
+  "team": "チームD（大坊和美、大坊功司）",
+  "software": "dainomaruDNNc",
+  "sources": [
+    "wcsc29/appeal/dainomaruDNNc/appeal.txt"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc29/appeal/dainomaruDNNc/appeal.txt"
+  ],
+  "summary": "DeepLearningShogi-wcsc28（dlshogi）を使い、詰み探索の深さ拡大など3点のみ変更した版。強化学習データは前回と変更なし。",
+  "base": {
+    "engine": "dlshogi",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "DL",
+    "detail": null
+  },
+  "search": {
+    "family": "MCTS",
+    "detail": "詰み探索を深さ7から9へ。20手以降は深さ6で3手詰め判定を追加"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "詰み・終盤",
+      "title": "詰み探索の深化と3手詰め判定",
+      "description": "詰み探索の深さを7から9へ増やし、20手以降は深さ6まで探索して3手詰めか判定する。探索回数最大の手が詰み確認済みなら勝率を設定する。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "詰み探索の深さを7から9"
+    }
+  ],
+  "character": null,
+  "notes": "ライブラリ選定理由はdlshogi作者のブログと質問対応への謝意",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc29/team.html"
+}

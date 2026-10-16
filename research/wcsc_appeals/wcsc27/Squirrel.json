@@ -1,0 +1,62 @@
+{
+  "wcsc": 27,
+  "year": 2017,
+  "dir": "Squirrel",
+  "team": "菅沼 幸太郎",
+  "software": "Squirrel",
+  "sources": [
+    "wcsc27/appeal/Squirrel/wcsc27PR.pdf"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc27/appeal/Squirrel/wcsc27PR.pdf"
+  ],
+  "summary": "2駒関係をボナンザメソッドで学習し、探索部はStockfish系にしたソフト。floodgateのレート2800以上のソフトの棋譜で学習。評価関数に進行度を入れたPPP（Piece-Piece-Progress）にしたいという目標を、けものフレンズやPPAPのネタで語る親しみやすい文書。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "2駒関係（PP）。進行度を取り入れたPPPを目標"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "Stockfish参考"
+  },
+  "learning": "ボナンザメソッド。floodgateのレート2800以上のソフトの棋譜を使用",
+  "hardware": "Core i7 4770K 4コア 16GB",
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "floodgateのレート2800以上の棋譜で学習",
+      "description": "ボナンザメソッドの教師にfloodgateのレート2800以上のソフトの棋譜を使う。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "棋譜はFloodgateのrate2800以上のソフトのものを使っているよ！"
+    },
+    {
+      "category": "評価関数",
+      "title": "進行度を加えたPPP評価（目標）",
+      "description": "評価関数に進行度を取り入れてPPP（Piece-Piece-Progress）にしたいという目標。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "評価関数に進行度を取り入れてPPP（Piece-Piece-Progress）にしたいよ！"
+    },
+    {
+      "category": "エンタメ・演出",
+      "title": "角成りの馬をUnicornと命名",
+      "description": "コード上で角が成った馬を「Unicorn」と名付けている（Ponanzaは馬をPegasusとする）。Unicornは補完でUnicodeが出て鬱陶しいと自虐している。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "Squirrelでは角が成った馬をUnicornという名前で扱っているよ！"
+    }
+  ],
+  "character": "「よろしくね！」と友達に話すようなテンションの文書。リスにちなんだ名前、電王トーナメントでの「リスさん」の愛称、アニメ「けものフレンズ」のぺぱぷとPPAPをかけたPPPのネタなど、軽い遊び心が前面に出る。",
+  "notes": null,
+  "team_list_url": "http://www2.computer-shogi.org/wcsc27/team.html"
+}

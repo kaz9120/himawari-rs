@@ -1,0 +1,52 @@
+{
+  "wcsc": 23,
+  "year": 2013,
+  "dir": "SS2013",
+  "team": "不明（SS2013）",
+  "software": "SS2013",
+  "sources": [
+    "wcsc23/appeal/SS2013/appeal.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc23/appeal/SS2013/appeal.txt"
+  ],
+  "summary": "探索が浅いときは全幅探索、深いときは選択探索と使い分け、選択探索では棋譜DBから類似局面を検索して候補手を割り出す。重みは棋譜DBを解析して定期的に調整する。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "手作り",
+    "detail": "ビットボードを使う。重みは棋譜DBの解析で定期調整"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "浅い場合は全幅探索、深い場合は選択探索"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "探索",
+      "title": "棋譜DBの類似局面を使う選択探索",
+      "description": "探索が深いときの選択探索で、棋譜DBから類似局面を検索して候補手を割り出す。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "選択探索では、棋譜DBから、類似局面を検索し、候補手を割り出しています。"
+    },
+    {
+      "category": "探索",
+      "title": "深さで使い分ける全幅と選択探索",
+      "description": "探索深さが浅ければ全幅探索、深ければ選択探索に切り替える。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "探索深さが浅い場合は全幅探索、探索深さが深く場合は選択探索を行っています。"
+    }
+  ],
+  "character": null,
+  "notes": "開発者名は文書・一覧から特定できなかった。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc23/team.html"
+}

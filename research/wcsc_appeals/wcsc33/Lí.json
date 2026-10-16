@@ -1,0 +1,56 @@
+{
+  "wcsc": 33,
+  "year": 2023,
+  "dir": "Lí",
+  "team": "ザイオソフト コンピュータ将棋サークル",
+  "software": "Lí",
+  "sources": [
+    "wcsc33/appeal/Lí/Li_appeal.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc33/appeal/L%C3%AD/Li_appeal.pdf"
+  ],
+  "summary": "やねうら王を改造した思考部に、マメット・ブンブク評価関数を長時間思考の対局棋譜でファインチューニングしたものを使う。MCTSでプレイアウト結果を反映する独自の定跡生成が特徴。",
+  "base": {
+    "engine": "やねうら王",
+    "eval_source": "マメット・ブンブク評価関数（長時間対局の棋譜でFine-tuning）",
+    "note": "水匠の教師データを使用、tanuki-は棋譜生成に使用"
+  },
+  "eval": {
+    "family": "NNUE",
+    "detail": "マメット・ブンブク評価関数をFine-tuning"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "やねうら王改造"
+  },
+  "learning": "水匠開発者の杉村氏公開データで、学習率を下げ、lambda=0.0（勝敗項のみ）で学習",
+  "hardware": "Amazon EC2 c6a.metal（192コア）",
+  "language": [
+    "C++",
+    "C#",
+    "Python"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "定跡・序盤",
+      "title": "MCTSベースの定跡生成",
+      "description": "floodgateレート3800以上の棋譜から定跡を作り、定跡データベース内でMCTSを行う。プレイアウト5回未満の局面に達したら長時間対局でプレイアウトし、結果を反映。勝率33%以上かつ出現2回以上かプレイアウト時の手だけ残す。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "定跡データベース内で MCTS を行う。"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "長時間思考の棋譜でのファインチューニング",
+      "description": "マメット・ブンブク評価関数を、長時間思考の対局棋譜でFine-tuningする。学習率を下げ、lambda=0.0（勝敗項のみ）で学習。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "マメット・ブンブク評価関数を、 長時間の思考による対局の棋譜で Fine-tuning しています。"
+    }
+  ],
+  "character": "名前の「Lí」は中国語で狸のピンイン。「そろそろチーム名を考えるのが大変になってきました」とチーム名の苦労を語る。",
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc33/team.html"
+}

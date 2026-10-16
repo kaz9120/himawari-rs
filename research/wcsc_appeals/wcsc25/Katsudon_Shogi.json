@@ -1,0 +1,52 @@
+{
+  "wcsc": 25,
+  "year": 2015,
+  "dir": "Katsudon_Shogi",
+  "team": "不明（カツ丼将棋）",
+  "software": "カツ丼将棋",
+  "sources": [
+    "wcsc25/appeal/Katsudon_Shogi/appeal.docx"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc25/appeal/Katsudon_Shogi/appeal.docx"
+  ],
+  "summary": "34万局程度の全指し手を定跡化し、探索部と学習部を全面書き直し中。間に合わなければ第2回電王トーナメント版で出場する。第24回でステイルメイトによる反則負けを喫した経験を逆手に取り「弱いが歴史に残る戦いをしたい」と書く。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "不明",
+    "detail": null
+  },
+  "search": {
+    "family": "不明",
+    "detail": null
+  },
+  "learning": "34万局程度の全指し手を定跡化",
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "定跡・序盤",
+      "title": "34万局の全指し手を定跡化",
+      "description": "34万局程度の全指し手を定跡化する。",
+      "originality": "独自",
+      "evidence": "34万局程度",
+      "quote": "34       万局       程度を       全指手を定石化"
+    },
+    {
+      "category": "エンタメ・演出",
+      "title": "歴史に残る戦いを目指す",
+      "description": "第24回でステイルメイトとなり反則負けした対局を引き、「弱いが歴史に残る戦いをしたい」と書く。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "弱いが歴史に残る戦いをしたい。"
+    }
+  ],
+  "character": "文書にはウィキペディアのステイルメイトの項（第24回libshogi対カツ丼将棋でステイルメイトの反則負けが記載された部分）と、北斗の拳の漫画のコマ（「おれは あの雲の様に自由きままに指す」）の画像を貼る。自虐的に反則負けを売りにするネタ文書。",
+  "notes": "docxの文字は少ないため、埋め込み画像2枚も確認した。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc25/team.html"
+}

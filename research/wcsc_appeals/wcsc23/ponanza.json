@@ -1,0 +1,47 @@
+{
+  "wcsc": 23,
+  "year": 2013,
+  "dir": "ponanza",
+  "team": "山本 一成",
+  "software": "Ponanza",
+  "sources": [
+    "wcsc23/appeal/ponanza/appeal.pdf"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc23/appeal/ponanza/appeal.pdf"
+  ],
+  "summary": "PVS・YBWC・Magic bitboards・0.5手延長・ボナメソ・楽観合議を備え、クラスタ部分はC#。名前は「Ponanza is Not bonANZA」のギャグで、Bonanzaライブラリは使わない。WCSC23準優勝、第2回電王戦でプロ棋士に初勝利。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": "Bonanzaライブラリは不使用"
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "ボナメソ"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "PVS、YBWC、0.5手延長、楽観合議"
+  },
+  "learning": null,
+  "hardware": "9台＋Xeon8台、計17台100コア",
+  "language": [
+    "C++",
+    "C#"
+  ],
+  "claimed_strength": "WCSC23準優勝、第二回電王戦でプロ棋士に初勝利、将棋倶楽部24最高レーティング更新",
+  "ideas": [
+    {
+      "category": "並列・分散",
+      "title": "楽観合議",
+      "description": "クラスタで楽観合議と木探索の並列化を併用する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "楽観合議"
+    }
+  ],
+  "character": "名前は「Ponanza is Not bonANZA」のギャグでBonanza作者の許可も得た。作者は将棋ウォーズの制作運営者で、将棋ウォーズと倶楽部24ともに五段程度。スポンサー紹介のスライドもある。",
+  "notes": null,
+  "team_list_url": "http://www2.computer-shogi.org/wcsc23/team.html"
+}

@@ -1,0 +1,94 @@
+{
+  "wcsc": 31,
+  "year": 2021,
+  "dir": "PAL",
+  "team": "山口 祐",
+  "software": "PAL",
+  "sources": [
+    "wcsc31/appeal/PAL/PAL_wcsc31.pdf",
+    "wcsc31/appeal/PAL/wcsc31_PAL_detail.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc31/appeal/PAL/PAL_wcsc31.pdf",
+    "https://www.apply.computer-shogi.org/wcsc31/appeal/PAL/wcsc31_PAL_detail.pdf"
+  ],
+  "summary": "AlphaZero型にSENetやSwishを加え、技巧にAQの探索・学習部を移植して強化学習したDLソフト。NNUE版の評価値と指し手を事前学習データにして初期学習し、Tesla V100換算で約2万GPU時間の強化学習を行った。2021年度からNHK杯将棋トーナメントの評価用AIに採用。",
+  "base": {
+    "engine": "独自",
+    "eval_source": "自作（WCSC29版PALのNNUE評価関数で教師データを生成）",
+    "note": null
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "20ブロック・256フィルターのResNet＋SENet（ボトルネック係数8）、Swish。入力77x81、出力1+3781"
+  },
+  "search": {
+    "family": "MCTS",
+    "detail": "PV-MCTS。LeelaChessZero参考のノード構造省メモリ化、非同期の複数スレッド探索、ルートのみdf-pn"
+  },
+  "learning": "WCSC29版PAL（NNUE）で作った5000万局面の評価値・候補手を事前学習し、技巧にAQの探索・学習部を移植した強化学習。256対局並列・1手800回探索",
+  "hardware": "Nvidia A100 x8（開発はTesla V100 約35基で棋譜生成）",
+  "language": "C++, Python",
+  "claimed_strength": "policy accuracy 50.8%、value accuracy 76.5%でdlshogi・GCTを上回る（floodgate棋譜での評価）",
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "NNUE版PALで作る初期学習データ",
+      "description": "プロ棋士の公式戦棋譜約15000の32手目までからランダムに選び、depth12・multipv5で探索。最善手から200cp以内の手は一定確率でランダムに選び局面を分散させた。評価値を温度付きsoftmaxで方策に変換して初期学習した。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "探索値の差が最善手から 200 cp 以下の手については一定確率でランダムに選択する"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "動的な投了閾値",
+      "description": "自己対局の90%は評価値推移から、負け確定判定の閾値を、その後実際には負けなかった対局が5%未満になるよう動的に調整して早期終了する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "動的に投了閾値を調整した。"
+    },
+    {
+      "category": "評価関数",
+      "title": "SENetとSwishの導入",
+      "description": "ResNetの各ブロックにSENetブロックを挿入し、活性化関数をReLUからSwishに変更。入力は77特徴平面で、利き・利き数・持ち駒を持つ。",
+      "originality": "既存手法の応用",
+      "evidence": "policy accuracy 50.8%（dlshogi 47.2%、GCT 47.3%）",
+      "quote": "ResNet の各畳み込みブロックに SENet ブロック (ボトルネック係数=8) を挿入し"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "技巧にAQの探索・学習部を移植",
+      "description": "強化学習は技巧に囲碁ソフトAQの探索部・学習部を移植して実装。1GPUごとに256の対局を割り当て、256末端局面をまとめてGPU推論する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "技巧に囲碁ソフト AQ の探索部、学習部を移植する形で実装した。"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "TensorRTによるGPUごとの最適化",
+      "description": "TensorRTでGPUごとに最適化。A100x1で32,000nps、A100x8で230,000nps（効率約90%）。",
+      "originality": "既存手法の応用",
+      "evidence": "RTX2080Ti 8,600nps、A100 3.7倍",
+      "quote": "TensorRT（7.2.3， CUDA11.1）を用いて GPU ごとに最適化したもの"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "前回大会のPopulation Based Training",
+      "description": "前回大会ではマルチエージェント（PBT）で評価・探索・定跡を同時に学習し、MCTS探索の実装と検証を行った。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "マルチエージェント（PopulationBasedTraining）"
+    },
+    {
+      "category": "解説・人間支援",
+      "title": "NHK杯将棋トーナメントの評価用AI",
+      "description": "2021年度からNHK杯将棋トーナメントの評価用AIとして採用された。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "2021年度よりNHK杯将棋トーナメントの評価⽤AIとして採⽤"
+    }
+  ],
+  "character": "名前は英語のpal（仲間、友だち）に由来。",
+  "notes": "概要版と詳細版の2本。詳細版は再現性にも触れ、RTX3090の4基で7か月程度あれば再現可能と述べる。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc31/team.html"
+}

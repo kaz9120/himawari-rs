@@ -1,0 +1,44 @@
+{
+  "wcsc": 30,
+  "year": 2020,
+  "dir": "Nanoha",
+  "team": "川端 一之",
+  "software": "なのは",
+  "sources": [
+    "wcsc30/appeal/Nanoha/Nanoha_appeal2020.txt"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc30/appeal/Nanoha/Nanoha_appeal2020.txt"
+  ],
+  "summary": "終盤力に極振りして頓死を避ける方針。それ以外は前年と同じ。",
+  "base": {
+    "engine": "不明",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "不明",
+    "detail": null
+  },
+  "search": {
+    "family": "不明",
+    "detail": null
+  },
+  "learning": null,
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "詰み・終盤",
+      "title": "終盤力への極振り",
+      "description": "頓死を避けるため、強化の方針を終盤力に絞る。",
+      "originality": "不明",
+      "evidence": null,
+      "quote": "頓死するのは嫌なので終盤力に極振りしたいと思います。"
+    }
+  ],
+  "character": null,
+  "notes": "前年（wcsc29）のアピール文書を参照するのみ",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc30/team.html"
+}

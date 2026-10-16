@@ -1,0 +1,62 @@
+{
+  "wcsc": 24,
+  "year": 2014,
+  "dir": "Gasyou!!!!!!!",
+  "team": "森岡 祐一",
+  "software": "GA将!!!!!!!",
+  "sources": [
+    "wcsc24/appeal/Gasyou!!!!!!!/Gasyou_Appeal_for_WCSC24.pdf"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc24/appeal/Gasyou%21%21%21%21%21%21%21/Gasyou_Appeal_for_WCSC24.pdf"
+  ],
+  "summary": "フルスクラッチ製で、棋譜も定跡も使わず、自己対戦だけから評価関数を学習する強化学習が最大の特徴。今年は独自考案のSR-PGLeaf（Split Reward-PGLeaf）を導入し、1手ごとの評価値の上下を「分割報酬」として使う。評価関数は約120万パラメータの線形、探索はシンプルなαβ。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": "フルスクラッチ"
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "駒割、絶対位置、2駒の相対/絶対位置関係、王の移動範囲、駒の自由度、入玉関連。約120万パラメータ"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "全幅ベース＋KFEnd流2段階静止探索、LMR、Null-Move、Extended Futility、王手0.5手延長、Ponder、ABC探索ベースの詰め"
+  },
+  "learning": "独自考案のSR-PGLeaf。自己対戦で50万〜100万局、全幅2手＋静止探索6手で24時間約4万局、収束まで2〜4週間",
+  "hardware": "Core i5 2430M（1スレッド）、学習はCore i7 4930K",
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": "floodgate 2週間レート1761。対sspで勝率83%（PGLeafでは約65%が限界）",
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "SR-PGLeaf（分割報酬の方策勾配）",
+      "description": "PGLeafを拡張し、1回の指し手選択を1エピソードとして、手の前後の予測報酬（評価値をシグモイドで近似）の差を分割報酬として与える。逆転負けの対局でも、評価値が上がった手を良い手と判断できる。",
+      "originality": "独自",
+      "evidence": "対sspの勝率65%（PGLeaf）から83%",
+      "quote": "分割報酬：ある局面 P より先の局面の予測報酬と、局面 P での予測報酬の差。"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "棋譜・定跡を使わない学習の棋風探索",
+      "description": "エキスパートの知識データを使わず、ほとんど事前知識なしで学習したら、新しい戦法が生まれるのか人間の経験に追従するのかを知りたい。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "棋譜や定跡といったエキスパート（≒プロ棋士）の知識データを用いずに"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "定跡を使わない",
+      "description": "定跡は一切使わず、初手から数十秒考える。自己対戦の棋譜から定跡を構築するなどの対策を検討している。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "定跡は一切使用していません。なので、初手から延々数十秒考えます。"
+    }
+  ],
+  "character": "「５八玉戦法」で2次予選に進んだ過去があり、観戦者に楽しんでもらえる将棋を目指す。ブログとTwitterも運営し、名前の「!」はバージョン番号。",
+  "notes": null,
+  "team_list_url": "http://www2.computer-shogi.org/wcsc24/team.html"
+}

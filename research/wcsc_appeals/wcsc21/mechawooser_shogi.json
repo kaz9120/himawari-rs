@@ -1,0 +1,49 @@
+{
+  "wcsc": 21,
+  "year": 2011,
+  "dir": "mechawooser_shogi",
+  "team": "木村健",
+  "software": "メカウーサー将棋",
+  "sources": [
+    "wcsc21/appeal/mechawooser_shogi/mechawooserWCSC21.pdf"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc21/appeal/mechawooser_shogi/mechawooserWCSC21.pdf"
+  ],
+  "summary": "ネタ全開のPowerPoint文書。CUDA並列化を掲げたが、まず並列でない強いプログラムが作れず、通常の反復深化・Negamaxで出場する。「基礎のないところに立派なプログラムは作れません」と自嘲する。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "手作り",
+    "detail": "主に駒得"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "反復深化、0.5手延長、Negamax、history heuristics。置換表・定跡なし"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": [
+    "C",
+    "C++",
+    "CUDA",
+    "Python"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "研究・実験的",
+      "title": "CUDA（Thrust）による将棋並列化の構想",
+      "description": "CUDAにThrustというテンプレートライブラリが登場したため、mapreduceっぽいC++の書き方でGPU並列化したい。今年は未実装。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "CUDA™にThrustというテンプレートライブラリが登場したので、これを使って並列化プログラムを作成したい"
+    }
+  ],
+  "character": "「0から20までを掛けるといくつ？」の小ネタから「基礎力がない」と自虐。FAQで「なぜCUDAにこだわる？そこに夢があるからです」「そんなに弱くて大丈夫？大丈夫だ、問題ない（たぶん）」と答え、「アピール文書でやらかすのが僕の役割」と書く。",
+  "notes": "前年の「棒玉」に言及。Twitter botのメカウーサーも宣伝。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc21/team.html"
+}

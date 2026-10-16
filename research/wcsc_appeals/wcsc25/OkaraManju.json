@@ -1,0 +1,54 @@
+{
+  "wcsc": 25,
+  "year": 2015,
+  "dir": "OkaraManju",
+  "team": "渡辺 敬介",
+  "software": "おから饅頭",
+  "sources": [
+    "wcsc25/appeal/OkaraManju/okara2015.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc25/appeal/OkaraManju/okara2015.txt"
+  ],
+  "summary": "駒番号の配列型盤面表現と、利き・ピン情報の差分計算を持つソフト。評価は駒割（Bonanza 6.0値）・手番（手調整）・任意2駒の関係・駒と利きの有無・玉周辺8マスと持ち駒の組合せの線形和で、平均化パーセプトロンのオンライン学習で重みを決める。",
+  "base": {
+    "engine": "Bonanza",
+    "eval_source": "駒割にBonanza 6.0の値を利用",
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "駒割、手番、2駒関係、駒位置と敵味方の利き有無、玉周辺8マス×相手持ち駒数"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "PVS、LMR、extended futility、null move、check extension。history heuristicと並列探索なし"
+  },
+  "learning": "平均化パーセプトロンによるオンライン学習",
+  "hardware": null,
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "玉周辺8マスと相手持ち駒数の組合せ",
+      "description": "玉周辺8マスのパターンと、駒種ごとの相手の持ち駒の数の組み合わせを評価特徴にする。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "玉周辺8マスのパターンと,駒種ごとの相手の持ち駒の数の組み合わせ"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "平均化パーセプトロンのオンライン学習",
+      "description": "駒割と手番を除く特徴の重みを、平均化パーセプトロンのオンライン学習で決める。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "平均化パーセプトロンを用いたオンライン学習により"
+    }
+  ],
+  "character": null,
+  "notes": null,
+  "team_list_url": "http://www2.computer-shogi.org/wcsc25/team.html"
+}

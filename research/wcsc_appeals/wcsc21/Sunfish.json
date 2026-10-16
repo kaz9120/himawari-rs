@@ -1,0 +1,62 @@
+{
+  "wcsc": 21,
+  "year": 2011,
+  "dir": "Sunfish",
+  "team": "久保亮介",
+  "software": "Sunfish",
+  "sources": [
+    "wcsc21/appeal/Sunfish/appeal.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc21/appeal/Sunfish/appeal.txt"
+  ],
+  "summary": "バージョン1.0の初出場。配列とbitboardを併用し、棚瀬将棋流の次数落としでスパースネスに対処したBonanza Methodの評価関数を使う。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "玉との相対位置・駒種・玉周辺の金銀・利き・ピン・桂の位置などを組み合わせた多数の項目。棚瀬将棋流で次数を落とす"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "BonanzaやCraftyを参考にした全幅探索と並列化。ルート局面のみdf-pnで詰探索"
+  },
+  "learning": "Bonanza Method",
+  "hardware": null,
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "実装・高速化",
+      "title": "配列とbitboardの併用",
+      "description": "れさぴょん同様の配列に、bitboardと利き情報を併せ持つ。最適な実装を探る試みだが、両方を更新するコストの方が大きい、と率直に報告する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "両方を用いることで最適な実装にならないかと考えてもいますが"
+    },
+    {
+      "category": "評価関数",
+      "title": "棚瀬将棋流の次数落としとスパースネス対策",
+      "description": "評価項目の次数を落として学習し、評価関数内のアクセス回数を減らすため、次数の高い方に足し込んで使う。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "棚瀬将棋流の方法で次数を落とし, スパースネス問題へ対処しています"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "座標差から方向へなど多数のテーブル",
+      "description": "あらかじめ計算した値の配列（座標差から方向への変換表など）を他より多く持って高速化する。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "Sunfishでは特に多くのテーブルを持っています"
+    }
+  ],
+  "character": null,
+  "notes": null,
+  "team_list_url": "http://www2.computer-shogi.org/wcsc21/team.html"
+}

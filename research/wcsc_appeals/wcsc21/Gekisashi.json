@@ -1,0 +1,52 @@
+{
+  "wcsc": 21,
+  "year": 2011,
+  "dir": "Gekisashi",
+  "team": "激指チーム",
+  "software": "激指",
+  "sources": [
+    "wcsc21/appeal/Gekisashi/appeal.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc21/appeal/Gekisashi/appeal.txt"
+  ],
+  "summary": "実現確率を打ち切りに使う狭くて深い探索に、ロジスティック回帰による遷移確率の推定を組み合わせる。評価関数は平均化パーセプトロンで学習し、基本深さ8の探索を回しながら最適化する。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": null
+  },
+  "search": {
+    "family": "その他",
+    "detail": "実現確率探索。有効分岐数約2〜2.5"
+  },
+  "learning": "平均化パーセプトロンをベースにした高速学習。学習時に基本深さ8の探索を行いながら最適化",
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "探索",
+      "title": "ロジスティック回帰による遷移確率の実現確率探索",
+      "description": "局面の実現確率を打ち切り条件にし、局面の遷移確率をロジスティック回帰で推定する。人間のエキスパートに近い狭く深い探索で、有効分岐数は約2〜2.5、20手以上先を読む。",
+      "originality": "独自",
+      "evidence": "有効分岐数約2〜2.5、20手以上先",
+      "quote": "ロジスティック回帰モデルを利用して局面の遷移確率の推定を行う"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "探索込みの評価関数学習",
+      "description": "平均化パーセプトロンをベースにした高速な手法で、学習時に基本深さ8の比較的深い探索を行いながらパラメータを最適化する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "平均化パーセプトロンをベースにした手法を用いており、高速な学習が可能"
+    }
+  ],
+  "character": null,
+  "notes": null,
+  "team_list_url": "http://www2.computer-shogi.org/wcsc21/team.html"
+}

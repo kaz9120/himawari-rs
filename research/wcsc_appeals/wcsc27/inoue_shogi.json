@@ -1,0 +1,35 @@
+{
+  "wcsc": 27,
+  "year": 2017,
+  "dir": "inoue_shogi",
+  "team": "井上 浩一",
+  "software": "井上将棋",
+  "sources": [
+    "wcsc27/appeal/inoue_shogi/appeal.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc27/appeal/inoue_shogi/appeal.txt"
+  ],
+  "summary": "流行のディープラーニングが本当に使えるかを自分で試したいという動機のソフト。公開されているプロの棋譜で評価関数を作り、αβの反復深化で探索する。村の行事で出場できない可能性があるとも書かれている。",
+  "base": {
+    "engine": "不明",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "公開されているプロの棋譜で評価関数を作成（ディープラーニングを試す意図）"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "評価関数によるαβの反復深化"
+  },
+  "learning": "公開プロ棋譜",
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [],
+  "character": "「流行のディープ何とかが本当に使えるものか自分で試してみたい」と語り、出場できないかもしれないという前置きも含めて飾らない文書。",
+  "notes": "参加者一覧ではキャンセル欄。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc27/team.html"
+}

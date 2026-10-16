@@ -1,0 +1,54 @@
+{
+  "wcsc": 23,
+  "year": 2013,
+  "dir": "Sessa",
+  "team": "森 建巳",
+  "software": "Sessa",
+  "sources": [
+    "wcsc23/appeal/Sessa/Sessa.pdf"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc23/appeal/Sessa/Sessa.pdf"
+  ],
+  "summary": "開発開始約4か月の新規参加ソフト。実現確率探索＋多重反復深化で、遷移確率のパラメータ数十万個をプロ棋譜で機械学習する。評価関数はBonanza式で、学習方法は激指を参考にし、ランダムサンプリング数kを多めにした。学習は途上。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": "激指の学習法を参考"
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "駒割＋KKP＋KPP"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "実現確率探索＋多重反復深化。Kindergarten Bitboards"
+  },
+  "learning": "プロ棋譜で機械学習。激指の方法を参考にし、ランダムサンプリング数kを多めに設定",
+  "hardware": null,
+  "language": [
+    "C/C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "探索",
+      "title": "棋譜学習した遷移確率の実現確率探索",
+      "description": "遷移確率を決める数十万のパラメータをプロの棋譜から機械学習し、実現確率探索に使う。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "遷移確率を求めるためのパラメータは数十万に上るので、"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "Bonanza式評価関数に激指方式の学習",
+      "description": "Bonanza式（KKP+KPP）の評価関数を激指の学習法で調整する。パラメータ数が多いため合法手のランダムサンプリング数kを多めにする。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "ランダムサンプリング数ｋを多めにしています。"
+    }
+  ],
+  "character": null,
+  "notes": "学習が上手くいっておらず、今も学習中と記載。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc23/team.html"
+}

@@ -1,0 +1,96 @@
+{
+  "wcsc": 27,
+  "year": 2017,
+  "dir": "Gikou",
+  "team": "出村 洋介",
+  "software": "技巧",
+  "sources": [
+    "wcsc27/appeal/Gikou/gikou_appeal_wcsc27.pdf"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc27/appeal/Gikou/gikou_appeal_wcsc27.pdf"
+  ],
+  "summary": "「駒の損得・駒の効率・玉の堅さ・手番」の4つの人間的な評価項目と、棋譜から手筋を学ぶ多クラスロジスティック回帰による探索が特徴のソフト。Xeon64台のクラスタを毎秒約8億手で動かす。学習・自己対戦・強さ評価をRubyで自動化している。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "駒の損得・駒の効率（2駒関係・利き）・玉の堅さ・手番の4項目。人間の棋譜とコンピュータの思考データの両方で学習"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "多クラスロジスティック回帰で手筋の確率を学習して探索に使う。疎結合並列探索と合議のハイブリッドでクラスタ化"
+  },
+  "learning": "人間の棋譜＋コンピュータ思考データ。平均化SGD、RMSprop、FOBOSのオンライン学習で1台約20時間",
+  "hardware": "Xeon 64台（前年比4倍）、毎秒約8億手。Amazon EC2 c4.8xlarge x64ほか",
+  "language": [
+    "C++",
+    "Java",
+    "Ruby"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "人間的な4評価項目での形勢判断",
+      "description": "羽生善治の著書に基づく駒の損得・駒の効率・玉の堅さと、手番の4項目を漏れなく考慮して、自然で隙のない形勢判断を目指す。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "以下の人間的な４つの評価項目*1をもれなく考慮することにより、"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "人間の棋譜とコンピュータ思考データの併用",
+      "description": "評価関数を人間の指し手の良さとコンピュータの指し手の良さの両方で学習し、バランスを取る。アルファ碁やチェスの論文も一部参考にする。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "①人間の棋譜と、②コンピュータの思考データの両方を用いて、評価関数を学習しています。"
+    },
+    {
+      "category": "探索",
+      "title": "多クラスロジスティック回帰で手筋を学習",
+      "description": "激指の2値分類を拡張した多クラスロジスティック回帰で、「底歩」「連打の歩」「田楽の香」「控えの桂」など具体的な手筋の確率を棋譜から学び、読みを強化する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "「多クラスロジスティック回帰」という手法により、棋譜から手筋を学習し、読みを強化しています。"
+    },
+    {
+      "category": "並列・分散",
+      "title": "疎結合並列探索と合議のハイブリッドクラスタ",
+      "description": "GPS将棋の疎結合並列探索とPonanzaの合議アルゴリズムを組み合わせたハイブリッド方式で、Xeon64台を毎秒約8億手の規模で動かす。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "①疎結合並列探索 ②合議アルゴリズム を組み合わせたハイブリッド方式を採用しました。"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "オンライン学習手法の採用で学習時間短縮",
+      "description": "平均化SGD、RMSprop、FOBOSを採用し、学習時間を1台約20時間に短縮した。",
+      "originality": "既存手法の応用",
+      "evidence": "1台で約20時間",
+      "quote": "これらの手法により、学習に必要となる時間を短縮できています（１台のコンピュータで２０時間程度）。"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "SIMDで各マスの利き数を一括計算",
+      "description": "各マスの利き数を1〜2バイトのbyteboard/wordboardで持ち、SSEで最大16マスを一度に計算する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "SSEを使った場合、最大１６マスの利き数をいっぺんに計算できる"
+    },
+    {
+      "category": "開発手法・運用",
+      "title": "学習から強さ評価までRubyで自動化",
+      "description": "GitHubからのビルド、学習、前バージョンとの約3000局の自己対戦、勝率による統計的な強さ確認までをRubyで自動化し、開発効率を上げる。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "以下の学習と自己対戦のプロセスをRubyで自動化し、開発効率を向上させています。"
+    }
+  ],
+  "character": "参考文献に羽生善治・木村一基・先崎学らの棋書を多数挙げ、人間の棋書の知見をソフトに取り込む姿勢を示す。",
+  "notes": null,
+  "team_list_url": "http://www2.computer-shogi.org/wcsc27/team.html"
+}

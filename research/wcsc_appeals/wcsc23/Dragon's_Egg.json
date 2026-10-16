@@ -1,0 +1,46 @@
+{
+  "wcsc": 23,
+  "year": 2013,
+  "dir": "Dragon's_Egg",
+  "team": "中谷 裕一",
+  "software": "竜の卵",
+  "sources": [
+    "wcsc23/appeal/Dragon's_Egg/WCSC23_appeal.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc23/appeal/Dragon%27s_Egg/WCSC23_appeal.txt"
+  ],
+  "summary": "VisualC++製。αβ探索、並列探索、df-pnを使い、自己対戦や棋譜から取り出した情報で評価関数と手選択を調整する。ソースは何年も前のものを部分改変。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "不明",
+    "detail": "自己対戦や棋譜から情報を取り出して評価関数に使用"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "反復深化、置換表、null move pruning、並列探索、df-pn"
+  },
+  "learning": "自己対戦や棋譜から得た情報を評価関数や手の選択に使用",
+  "hardware": "Core i7 980X、約100万nodes/s",
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "自己対戦と棋譜からの情報抽出",
+      "description": "自己対戦や棋譜から情報を取り出し、評価関数や手の選択に使う。",
+      "originality": "不明",
+      "evidence": null,
+      "quote": "自己対戦や棋譜から情報を取り出して評価関数や手の選択に使用しております。"
+    }
+  ],
+  "character": null,
+  "notes": "短い文書。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc23/team.html"
+}

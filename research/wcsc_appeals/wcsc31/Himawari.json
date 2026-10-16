@@ -1,0 +1,46 @@
+{
+  "wcsc": 31,
+  "year": 2021,
+  "dir": "Himawari",
+  "team": "ひまわり",
+  "software": "ひまわり",
+  "sources": [
+    "wcsc31/appeal/Himawari/appeal.txt"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc31/appeal/Himawari/appeal.txt"
+  ],
+  "summary": "前回までのプログラムを使わず、Rustで一から書き直している。今年は動くことが目標で、評価関数はニューラルネットワークへの変更を検討中。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "ニューラルネットワークへ変更を検討"
+  },
+  "search": {
+    "family": "不明",
+    "detail": null
+  },
+  "learning": null,
+  "hardware": null,
+  "language": [
+    "Rust"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "開発手法・運用",
+      "title": "Rustでの全面書き直し",
+      "description": "以前のプログラムは使わず、Rustで一から書き直した。データ構造は以前のC++版と同じ。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "前回までのプログラムは一切使用せず、Rustで一から書き直しています。"
+    }
+  ],
+  "character": null,
+  "notes": "文書は数行のみ。開発者の個人情報は未記載。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc31/team.html"
+}

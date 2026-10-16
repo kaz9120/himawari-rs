@@ -1,0 +1,62 @@
+{
+  "wcsc": 33,
+  "year": 2023,
+  "dir": "Daigorilla",
+  "team": "田中 大吾",
+  "software": "Daigorilla",
+  "sources": [
+    "wcsc33/appeal/Daigorilla/Daigorilla_appeal.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc33/appeal/Daigorilla/Daigorilla_appeal.pdf"
+  ],
+  "summary": "ディープラーニングで「振り飛車最強」を目指すソフト。多様な囲いと入玉を学習させ、攻めと入玉を重視した振り飛車を狙った。50億の学習データを回したが、水匠5に対しNPS比400倍の条件でも勝ち越しには遠い。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "15ブロックのモデル"
+  },
+  "search": {
+    "family": "不明",
+    "detail": null
+  },
+  "learning": "ランダムに振った局面から多様な形の棋譜を生成。相入玉局面を公開データやfloodgateの手数指定局面から多く学習。全戦型と振り飛車合わせて50億の学習データ",
+  "hardware": null,
+  "language": [
+    "Python"
+  ],
+  "claimed_strength": "水匠5にNPS比400倍の互角条件でも勝ち越しは遠い",
+  "ideas": [
+    {
+      "category": "棋風・人間らしさ",
+      "title": "振り飛車最強を目指す学習",
+      "description": "前回電王戦で苦戦した振り飛車DLソフトの弱点（型が決まっている、対振り飛車戦型に弱い、攻め込まれて押される）を分析し、振り飛車に特化した学習で最強を目指した。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "今回はディープラーニングを利用した学習で振り飛車最強を目指してみた。"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "ランダム局面から多様な囲いを生成",
+      "description": "美濃囲いなど典型的な囲いに限らず、ランダムに駒を振った後に様々な形の局面を生成・抽出して、多種多様な棋譜を作る。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "美濃囲いなどの典型的な囲いではなくて多種多様な形を学習させる。"
+    },
+    {
+      "category": "入玉",
+      "title": "相入玉局面を多く学習",
+      "description": "攻めを重視し最終的に入玉を目指すため、公開データやfloodgateの手数指定局面から相入玉局面を多く学習した。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "相入玉局面を多く学習した。"
+    }
+  ],
+  "character": "振り飛車一筋のコンセプト。",
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc33/team.html"
+}

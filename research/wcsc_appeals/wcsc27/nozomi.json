@@ -1,0 +1,71 @@
+{
+  "wcsc": 27,
+  "year": 2017,
+  "dir": "nozomi",
+  "team": "大森 悠平",
+  "software": "nozomi",
+  "sources": [
+    "wcsc27/appeal/nozomi/wcsc27.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc27/appeal/nozomi/wcsc27.txt"
+  ],
+  "summary": "Stockfishベースの探索と、KPP+KKPにKKPの手番を加えた評価関数を使うソフト。初手から10〜50手ランダムに進めた局面を6手読みで進め、評価値が2000点に達したら打ち切る独自の強化学習が特徴。学習が進んで伸び悩んだ後は、野生の勘で工夫を試して強くなったものだけ採用している。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "KPP+KKP、KKPに手番を追加"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "Stockfishベース。王手のときLMRを抑制して終盤の弱さを補う"
+  },
+  "learning": "初手から10〜50手ランダムに動かした局面を初期局面に、6手読みで進めながら点数を付ける。評価値2000点で打ち切り。1回の学習に10億局面で、評価値差の2乗を最小化。更新対象を棋譜生成時と別のパラメータにする、一定数ごとに元との平均を取るなどを試行",
+  "hardware": "AWS EC2 E5-2666 v3 2基 36コア 60GB",
+  "language": [
+    "C++",
+    "C#"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "ランダム開始＋評価値2000点打ち切りの強化学習",
+      "description": "初手から10〜50手ランダムに指した局面から、6手読みで局面を進めて点数を付ける。評価値が2000点に達したら打ち切り、1回の学習に10億局面を使う。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "評価値が2000点に達した時点で、探索を打ち切っています。"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "伸び悩み対策の試行錯誤的な工夫",
+      "description": "学習が進むと単純なやり方では強くならなくなったため、更新対象を棋譜生成時とは別パラメータにする、一定数ごとに元パラメータとの平均を取るなどを試し、強くなったものだけ採用する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "野生の勘でいろいろなことを試しては、ちょっとでも強くなったら採用しています。"
+    },
+    {
+      "category": "探索",
+      "title": "王手時にLMRを抑制して終盤を補強",
+      "description": "Stockfishベースだと終盤が弱いので、王手の場合はLMRを抑制する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "王手の場合、LMRを抑制しています。"
+    },
+    {
+      "category": "評価関数",
+      "title": "KKPに手番を加える",
+      "description": "KPP+KKPのKKPに手番を加える。KKPが盤面全体の評価なら手番が要る、という程度の理由で、試したら強くなったという。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "KKPに対して手番を加えています。"
+    }
+  ],
+  "character": null,
+  "notes": null,
+  "team_list_url": "http://www2.computer-shogi.org/wcsc27/team.html"
+}

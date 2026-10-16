@@ -1,0 +1,54 @@
+{
+  "wcsc": 33,
+  "year": 2023,
+  "dir": "Mattari_Yuuchan",
+  "team": "小谷 善行・柴原 一友（東京農工大学旧小谷研究室）",
+  "software": "まったりゆうちゃん",
+  "sources": [
+    "wcsc33/appeal/Mattari_Yuuchan/appeal2023.docx"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc33/appeal/Mattari_Yuuchan/appeal2023.docx"
+  ],
+  "summary": "1990年代に作り始め4半世紀以上開発している完全独自開発のシステム。パラメータ学習中心の流行とは別に、進化論的計算や、DLと多量パラメータ学習の中間的な仕組みを試そうとしている。複数システム間でデータをやり取りする並列方式も検討中。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": "完全独自開発で他のシステムを参考にしていない（考え方は参考）"
+  },
+  "eval": {
+    "family": "その他",
+    "detail": "不明（進化論的計算などを試行中）"
+  },
+  "search": {
+    "family": "不明",
+    "detail": null
+  },
+  "learning": null,
+  "hardware": "Ryzen 7 3800XT",
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "研究・実験的",
+      "title": "進化論的計算など非パラメータ学習の試行",
+      "description": "パラメータ学習に基づく手法とは別に、進化論的計算などを試す。DLと多量パラメータ学習の中間的なメカニズムも考える。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "ディープラーニングと多量パラメータ学習の中間的なメカニズムを考えたいと思っている。"
+    },
+    {
+      "category": "並列・分散",
+      "title": "複数システム間のデータ交換による並列動作",
+      "description": "複数のシステムを動かし、その間でデータをやり取りして並列動作させる方法を検討中。全面的な書き換えで新しい並列方式を目指す。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "複数のシステムを動作させて、その間でデータをやり取りして並列動作をする方法を検討している。"
+    }
+  ],
+  "character": "開発者の年齢が最も高いのではと自認し、コーディング能力がいつまで続くか試したいと、できる限り続ける意気込みを書く。",
+  "notes": "去年とほとんど同じと記載。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc33/team.html"
+}

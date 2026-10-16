@@ -1,0 +1,70 @@
+{
+  "wcsc": 27,
+  "year": 2017,
+  "dir": "Claire",
+  "team": "Claire開発室（上原 大輔）",
+  "software": "Claire",
+  "sources": [
+    "wcsc27/appeal/Claire/appeal.pdf"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc27/appeal/Claire/appeal.pdf"
+  ],
+  "summary": "第26回のやねうら王ベースをやめ、フルスクラッチで作り直したソフト。手調整の評価関数、玉近傍24升の利き数による安全度、floodgate約8万局からの定跡が特徴。開発が間に合っておらず、目標は時間切れ・反則負けをしないことと1勝。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "手作り",
+    "detail": "駒割＋α（玉の安全度、駒の自由度、手番）を手調整"
+  },
+  "search": {
+    "family": "不明",
+    "detail": null
+  },
+  "learning": null,
+  "hardware": "Core i7 6700HQ 4コア 16GB",
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "玉近傍24升の利き数で安全度",
+      "description": "玉の近傍24升の利きの数を数え、玉に近い内側ほど危険度が上がるよう重み付けして玉の安全度とする。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "安全度は玉近傍24升の利きの数を数え、内側ほど危険度が上がるように調整します。"
+    },
+    {
+      "category": "評価関数",
+      "title": "手番の価値を終盤ほど高く",
+      "description": "手番の価値が終盤ほど高くなるようにする。進行度は成り駒の枚数・持ち駒の種類と枚数・玉の安全度などから判定する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "手番の価値は終盤ほど高くなるようにしています。"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "floodgate約8万局から定跡抽出",
+      "description": "floodgateの棋譜約8万局から定跡を抽出し、局面の出現数と勝率を考慮して指し手を選ぶ。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "定跡はfloodgateの棋譜約8万局より抽出。"
+    },
+    {
+      "category": "探索",
+      "title": "飛・角・歩の不成も探索",
+      "description": "飛・角・歩の不成も探索の対象にする。",
+      "originality": "不明",
+      "evidence": null,
+      "quote": "飛・角・歩の不成も探索します。"
+    }
+  ],
+  "character": "「とても弱いですが、お手柔らかにお願いします」と素直に述べ、目標も「時間切れ・反則負けをしない」「1勝する」と等身大。",
+  "notes": null,
+  "team_list_url": "http://www2.computer-shogi.org/wcsc27/team.html"
+}

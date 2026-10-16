@@ -1,0 +1,86 @@
+{
+  "wcsc": 22,
+  "year": 2012,
+  "dir": "ym-shogi",
+  "team": "山田雅之",
+  "software": "ym将棋",
+  "sources": [
+    "wcsc22/appeal/ym-shogi/ymshogi.pdf"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc22/appeal/ym-shogi/ymshogi.pdf"
+  ],
+  "summary": "αβとモンテカルロ木探索を併用する構成を継続し、今回は通常探索・評価関数の詳細（TreeStrapによる学習、水平線効果対策、千日手対策）を加えて6ページに拡充した。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "2駒間の関係と3駒間の関係の一部（王－銀以上－銀以上）。駒割は固定値。TreeStrap（αβ）で他プログラムとの対戦から学習"
+  },
+  "search": {
+    "family": "αβ+MCTS",
+    "detail": "全幅探索＋静止探索（beta cut、null move、futility、aspiration 3段階、PV search、df-pn）とUCTを別スレッドで併用"
+  },
+  "learning": "TreeStrap（αβ）。他プログラムとの対戦により学習",
+  "hardware": null,
+  "language": [
+    "Java"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "探索",
+      "title": "αβとモンテカルロ木探索の併用",
+      "description": "別スレッドでαβとUCTを走らせ、詰み情報を共有し、条件でどちらの手を指すか決める。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "通常探索の短所をモンテカルロ木探索で補うことを目指したのがym将棋である"
+    },
+    {
+      "category": "探索",
+      "title": "評価関数による静止探索値でplayoutを打ち切る",
+      "description": "playoutを一定手数で打ち切り、ルート局面とplayout終了局面の静止探索評価値を比較して勝ち負けを決める。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "ルート局面とplayout終了局面の静止探索評価値を比較し、その大小によってplayoutの勝ち/負けを決定"
+    },
+    {
+      "category": "探索",
+      "title": "疑似探索延長による水平線効果対策",
+      "description": "A→B→Cが最善と判断されたとき、A→Bが水平線効果になりやすい組合せなら、その2手を指さずCを指した評価値と比較し、水平線効果と判断すれば大きなマイナス評価にする。持ち駒の優劣を使う比較も併用する。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "その2手を指さずにCを指した場合の評価値と比較する"
+    },
+    {
+      "category": "探索",
+      "title": "脅威を考慮した静止探索",
+      "description": "静止探索を2段階で行い、stand pat時に、一手パスしたときに取られそうな駒があれば評価値をマイナスにする（KFEndの「脅威」）。静止探索専用の置換表も持つ。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "stand pat時の評価には、いわゆる「脅威」を考慮している"
+    },
+    {
+      "category": "時間管理",
+      "title": "持ち時間が少ないときは千日手を歓迎",
+      "description": "千日手は基本的に評価値ゼロとするが、残り時間が相手より少ない場合はプラス評価とする。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "残り時間が相手より少ない場合は、プラス評価とする（千日手を歓迎する）"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "TreeStrapによる評価関数の学習",
+      "description": "TreeStrap（αβ）を使い、他プログラムとの対戦から学習する。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "TreeStrap（αβ）を使用"
+    }
+  ],
+  "character": null,
+  "notes": "第2版（2012-03-25）。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc22/team.html"
+}

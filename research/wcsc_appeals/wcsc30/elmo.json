@@ -1,0 +1,62 @@
+{
+  "wcsc": 30,
+  "year": 2020,
+  "dir": "elmo",
+  "team": "瀧澤 誠",
+  "software": "elmo",
+  "sources": [
+    "wcsc30/appeal/elmo/elmo_appeal_wcsc30.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc30/appeal/elmo/elmo_appeal_wcsc30.pdf"
+  ],
+  "summary": "評価関数の精度向上・高速化・解釈性の3点を扱う。KKPの残差をNNUEで学習するWide & Deep構成、全結合層の削減、NNUEの最後をKPに戻して駒ごとの効き具合を読めるようにする案が中心。",
+  "base": {
+    "engine": "やねうら王",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "NNUE",
+    "detail": "Wide & Deep型。KKPで先に評価し、その残差をNNUEで学習する。最後をKPに戻す新構成（積和数は18,976から19,174で誤差レベル）"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": null
+  },
+  "learning": null,
+  "hardware": "AWS利用予定",
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "KKP+NNUEのWide & Deep",
+      "description": "Wide & Deepの考えで、KKPを先に使い、その残差をNNUEで学習して精度を上げる。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "残差をNNUEで学習→精度向上"
+    },
+    {
+      "category": "評価関数",
+      "title": "全結合層の削減",
+      "description": "全結合層が多すぎるとして、適当に切って高速化する。",
+      "originality": "不明",
+      "evidence": null,
+      "quote": "全結合(FC) し過ぎじゃね？ 適当に切りたい"
+    },
+    {
+      "category": "解説・人間支援",
+      "title": "NNUEの解釈性を上げる構成",
+      "description": "NNUEは駒ごとの評価が見えないブラックボックスになる問題がある。最終層をKPに戻し（他37駒を考慮したKP）、どの駒が有効に働いているかを読めるようにする。積和数はほぼ同じで表現能力は大きく、解釈性も高いと評価する。ResNet風のスキップや複数回のスタックも示唆する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "多少弱くても解釈性が欲しい"
+    }
+  ],
+  "character": null,
+  "notes": "スライド形式でテキストが断片的。YouTubeの動画で解説を公開している（URLあり）",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc30/team.html"
+}

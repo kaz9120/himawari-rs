@@ -1,0 +1,63 @@
+{
+  "wcsc": 28,
+  "year": 2018,
+  "dir": "Novice",
+  "team": "熊谷 啓孝",
+  "software": "Novice",
+  "sources": [
+    "wcsc28/appeal/Novice/pr.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc28/appeal/Novice/pr.pdf"
+  ],
+  "summary": "過去のコードを全て捨て、Stockfish 9に沿ってゼロから作り直したソフト。横型のRotated Bitboardと、チェスのPolyglotBook定跡形式を採用し、評価バイナリ（AperyのKPP.bin/KKP.bin）以外は自作する。",
+  "base": {
+    "engine": "独自（Stockfish 9準拠）",
+    "eval_source": "Apery（KPP.bin/KKP.bin）",
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "AperyのKPP/KKP。自作コンバーターで横型に変換"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "Stockfish 9準拠から将棋に不向きなものを除去。指し手オーダリングは将棋向けに調整。王手周りは0.5手延長と枝刈りを甘く。高速1手詰めを実装"
+  },
+  "learning": null,
+  "hardware": "Core i9 7900X（友人から借用）。二次はGCE n1-highcpu-64",
+  "language": [
+    "C/C++",
+    "C#"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "実装・高速化",
+      "title": "横型Rotated Bitboardの採用",
+      "description": "盤面を横型のRotated Bitboardで実装し、Aperyの評価バイナリも自作コンバーターで横型に変換して使う。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "横型のRotated Bitboard を採用"
+    },
+    {
+      "category": "探索",
+      "title": "Stockfishの探索から将棋に不向きな部分を除去",
+      "description": "Stockfish 9に沿って作り、将棋に向かない探索を取り除き、指し手オーダリングも将棋向けに調整する。王手周りは0.5手延長や枝刈りを甘くする。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "StockFishの探索から将棋に向いてなさそうなものを除去"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "チェス形式のPolyglotBookを定跡に採用",
+      "description": "チェスと同じPolyglotBook形式を定跡に使う。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "PolyglotBook というチェスと同様の定跡形式を採用"
+    }
+  ],
+  "character": "2015年開発開始で、第3回電王トーナメントから5大会連続最年少出場（当社調べ）。「そろそろ最年少じゃなくなりそう」「人生いろいろ悩みます（ここに書くな）」と書く。",
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc28/team.html"
+}

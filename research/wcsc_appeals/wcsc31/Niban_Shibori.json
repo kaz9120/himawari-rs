@@ -1,0 +1,60 @@
+{
+  "wcsc": 31,
+  "year": 2021,
+  "dir": "Niban_Shibori",
+  "team": "曽根 壮大（ビール工房HFT支店）",
+  "software": "二番絞り",
+  "sources": [
+    "wcsc31/appeal/Niban_Shibori/wcsc31_appeal.txt"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc31/appeal/Niban_Shibori/wcsc31_appeal.txt"
+  ],
+  "summary": "Have Fun Tech代表の曽根壮大と第28回優勝・第29回準優勝の芝世弐のチーム。AobaZeroのデータ流用で作った二番絞りプロジェクトの後継。15ブロックのモデルの教師データで40ブロックのResNetを学習し、二世代前のGPU1枚でfloodgateレート3800近くを主張する。",
+  "base": {
+    "engine": "独自",
+    "eval_source": "AobaZeroからのデータ流用",
+    "note": null
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "ResNet 40ブロック（15ブロックの強化版モデルの教師データで学習）。ポリシー・バリューヘッドの変更も検証中"
+  },
+  "search": {
+    "family": "MCTS",
+    "detail": "AlphaZero型"
+  },
+  "learning": "AobaZeroのデータを流用して20ブロックのモデルを作り、強化した15ブロックモデルの教師データ数億で40ブロックを学習。強化学習を継続",
+  "hardware": null,
+  "language": null,
+  "claimed_strength": "二世代前のGPU1枚でfloodgateレート3800近く",
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "データ流用の世代間転用",
+      "description": "AobaZeroから流用した20ブロックモデルを作り、さらにデータ流用で強化した15ブロックモデルで数億の教師データを作って40ブロックモデルの学習に転用した。",
+      "originality": "独自",
+      "evidence": "二世代前のGPU1枚でfloodgate 3800近く",
+      "quote": "そのデータを40ブロックのモデルの学習に転用したものが現時点で最強となっています。"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "モデル構造の複数パターン検証",
+      "description": "ブロック数・チャンネル数だけでなく、ポリシーヘッド・バリューヘッドの部分変更も含めて複数パターンを試験し、本戦で40ブロックを使うか未定とする。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "ポリシーヘッド，バリューヘッドの部分変更など複数パターンをテスト中"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "囲碁との技術転用",
+      "description": "囲碁と将棋で技術を転用できると言及する。",
+      "originality": "不明",
+      "evidence": null,
+      "quote": "囲碁と将棋で技術転用が可能であるようです。"
+    }
+  ],
+  "character": "二番シード（第29回準優勝のシード）を捨てて二番絞りで参加するという言い回しで、「面白そうに言うと」と遊びを入れる。目標は優勝。電竜戦のテスト用の多様性プログラムから始まったという来歴。",
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc31/team.html"
+}

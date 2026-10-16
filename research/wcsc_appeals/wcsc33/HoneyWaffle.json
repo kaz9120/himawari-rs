@@ -1,0 +1,63 @@
+{
+  "wcsc": 33,
+  "year": 2023,
+  "dir": "HoneyWaffle",
+  "team": "渡辺 光彦",
+  "software": "HoneyWaffle",
+  "sources": [
+    "wcsc33/appeal/HoneyWaffle/HoneyWaffle_appeal_WCSC33.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc33/appeal/HoneyWaffle/HoneyWaffle_appeal_WCSC33.pdf"
+  ],
+  "summary": "「やっぱり振り飛車しかない」をコンセプトに、dlshogiとふかうら王の評価関数に対抗形の棋譜を追加学習し、振り飛車の定跡を新たに作り直している。ゲーミングPCクラスのGPU重視構成。",
+  "base": {
+    "engine": "ふかうら王+dlshogi",
+    "eval_source": "電竜戦用dlshogi評価関数に対抗形棋譜を追加学習したもの",
+    "note": null
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "dlshogi系モデルに対抗形棋譜を追加学習"
+  },
+  "search": {
+    "family": "MCTS",
+    "detail": "ふかうら王（やねうら王のdlshogi系探索）"
+  },
+  "learning": "第3回電竜戦用に、dlshogiの評価関数へ対抗形の棋譜を追加で学習したものを流用",
+  "hardware": "Core i5 11400 + RTX 3080 Ti、メモリ32GB",
+  "language": [
+    "Python",
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "棋風・人間らしさ",
+      "title": "振り飛車党の評価関数",
+      "description": "dlshogiの評価関数に対抗形の棋譜を追加で学習させ、振り飛車を指しこなすDL系評価関数にした。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "DL系の振り飛車党評価関数（dlshogiとふかうら王）"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "振り飛車定跡",
+      "description": "水匠電竜の先手角換わり定跡のような振り飛車の定跡を、これまでのものとは別に作り直している。NoBook相手には振り飛車の勝率が意外と高い。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "振り飛車でもそういうのができたらいいですよね？"
+    },
+    {
+      "category": "ハードウェア",
+      "title": "GPUだけ盛ったゲーミングPC",
+      "description": "Core i5 11400に対してRTX 3080 Tiという、GPUに偏らせた市販ゲーミングPC構成。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "GPUだけ盛った変な仕様。Core i5に負けたらどうします？"
+    }
+  ],
+  "character": "振り飛車党の開発者（将棋ウォーズ2級）が「やっぱり振り飛車しかない」で通す。名前の由来はワッフルが将棋盤に似ていることと、光彦→みつ→Honey。タブレット向けの軽さと振り飛車の軽い捌きも込めた。noteや文春オンラインでも発信。",
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc33/team.html"
+}

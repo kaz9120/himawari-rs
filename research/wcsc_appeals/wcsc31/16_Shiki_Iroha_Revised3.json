@@ -1,0 +1,70 @@
+{
+  "wcsc": 31,
+  "year": 2021,
+  "dir": "16_Shiki_Iroha_Revised3",
+  "team": "末吉 竜介",
+  "software": "十六式いろは改三",
+  "sources": [
+    "wcsc31/appeal/16_Shiki_Iroha_Revised3/16iroha_pr-wcsc31-2.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc31/appeal/16_Shiki_Iroha_Revised3/16iroha_pr-wcsc31-2.pdf"
+  ],
+  "summary": "ライブラリ不使用の自作エンジン。機械学習なしで、駒の損得と玉の硬さを手作業で調整した評価関数を使う。ランダムに指す「暴走モード」を搭載し、エンジョイ勢・ネタ勢として参加。Python移行は間に合わず、2020年の第1回電竜戦と同じ版で出場した。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "手作り",
+    "detail": "駒の損得と玉の硬さ。評価値は手作業で入力・調整"
+  },
+  "search": {
+    "family": "その他",
+    "detail": "相手の指し手を中心に狭い範囲でミニマックス、アルファベータで時間を稼ぎたい"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": [
+    "Lua"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "棋風・人間らしさ",
+      "title": "局地暴走モード",
+      "description": "相手が打った位置を中心とする9マスの範囲からランダムに指す。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "局地暴走モード：相手の打った位置を中心に９マスに、ランダムに指す。"
+    },
+    {
+      "category": "棋風・人間らしさ",
+      "title": "広域暴走モード（悪あがき）",
+      "description": "合法手の中からランダムに指す悪あがきモード。たまに奇跡を起こすことを狙う。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "広域暴走モード（悪あがきモード）：合法手の中から、ランダムに指す。"
+    },
+    {
+      "category": "エンタメ・演出",
+      "title": "初心者に優しい弱さ",
+      "description": "初心者にとってもっとも優しい弱さのエンジンを売りにする。初めて将棋を指した人3名にも負けたと主張。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "現在公開されている将棋所対応のエンジンの中で、もっとも初心者にとって優し い弱さです。"
+    },
+    {
+      "category": "開発手法・運用",
+      "title": "ライブラリ不使用・Lua実装",
+      "description": "外部ライブラリを使わず、希少なLuaで作った将棋エンジンを売りにする（Pythonへ移行予定だったが未完）。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "ライブラリ不使用です。"
+    }
+  ],
+  "character": "エンジョイ勢・ネタ勢を自称し、顔文字を多用した軽い文体。目標は「実力で1勝」と自分が楽しむこと。「記録よりも記憶に残りたい」。",
+  "notes": "2021-05-03追記でPython版は間に合わず、2020年の第1回電竜戦と同じ版で参加と明記。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc31/team.html"
+}

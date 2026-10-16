@@ -1,0 +1,44 @@
+{
+  "wcsc": 21,
+  "year": 2011,
+  "dir": "WILDCAT",
+  "team": "花井祐",
+  "software": "WILDCAT",
+  "sources": [
+    "wcsc21/appeal/WILDCAT/WILDCAT_introduction.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc21/appeal/WILDCAT/WILDCAT_introduction.txt"
+  ],
+  "summary": "基本は全幅探索で末端のみ選択探索し、進行度を探索前に16段階に確定して選択探索の範囲・深さを変える。評価関数はBonanza法（プロ棋譜33,000、特徴量約30,000）。「弱い。」と締める。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "Bonanza法。プロ棋譜33,000を使い特徴量約30,000"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "全幅探索＋末端で選択探索。null move、LMR、取り返し延長、予測読み、2並列探索。詰みは進歩本2の方法でトン死チェックあり"
+  },
+  "learning": "Bonanza法でプロ棋譜33,000局",
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "探索",
+      "title": "進行度16段階で変える末端の選択探索",
+      "description": "局面の進行度を探索前に16段階に確定して探索中は固定し、進行度に合わせて末端の選択的探索の範囲と深さを変える。自己対戦結果に基づく手作業の調整。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "局面の進行度は探索前に１６段階に確定し、探索中は固定している"
+    }
+  ],
+  "character": "文書の最後を「弱い。」の一言で締める。",
+  "notes": null,
+  "team_list_url": "http://www2.computer-shogi.org/wcsc21/team.html"
+}

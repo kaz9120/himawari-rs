@@ -1,0 +1,95 @@
+{
+  "wcsc": 36,
+  "year": 2026,
+  "dir": "Astra_Shogi",
+  "team": "恒岡 正年",
+  "software": "あすとら将棋",
+  "sources": [
+    "wcsc36/appeal/Astra_Shogi/WCSC36-Astra-20260506-2.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc36/appeal/Astra_Shogi/WCSC36-Astra-20260506-2.pdf"
+  ],
+  "summary": "dlshogi系のMCTSで、ResNetの浅い部分を共有し深い部分を2系統に並列させる独自のSkip Connection構造のモデルを使う。序中盤は精度優先、中終盤は軽量モデルとのHybrid探索に切り替えるRelay方式が特徴。学習後に重み平均などで派生モデルを作る追加工で、さらに+50 Elo程度を稼ぐ。",
+  "base": {
+    "engine": "dlshogi",
+    "eval_source": null,
+    "note": "探索部UctSearch.cppはWCSC35版を時間制御・ucb計算・最終手選択を変更して使用"
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "kernel数128のConv2d ResNet。1〜7層は4並列、8層目以降は2並列で、7層目出力を最終出力に結合。V445は7b+18b、17.38M、約55k nps@RTX4090"
+  },
+  "search": {
+    "family": "MCTS",
+    "detail": "Relay方式のHybrid探索。Temperatureは192"
+  },
+  "learning": "GCT公開データ（60%から33%へ）、無償公開NNUEで生成した自家棋譜157万棋譜（NNUE vs NNUE約84%）、floodgate高レート敗者側棋譜。lr=0.15から開始し等比数列で0.0002まで下げ、80ステップ程度で終了",
+  "hardware": "Ryzen 9 9950X + RTX4090",
+  "language": [
+    "C++",
+    "Python"
+  ],
+  "claimed_strength": "WCSC35のモデル・探索パラメータより+100〜120 Elo程度と推定",
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "並列分岐Skip Connectionモデル",
+      "description": "1〜7層を4個で共有し、8層目以降を2個並列にして、7層目の出力を最終出力に結合する。浅いネットワークと深いネットワークを並列に繋ぐことで深い側の負担を減らし、Skip Connection経由で逆伝播して学習も速いと考えている。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "７層のネットワークと 13 層～25 層のネットワークを並列に繋ぐ事により、深いネットワーク側の負担を減らす事が出来る"
+    },
+    {
+      "category": "探索",
+      "title": "Relay方式のHybrid探索",
+      "description": "序中盤は精度優先のV445のみ、中終盤はV445とV415を1:2で使うHybrid探索に切り替える。後手は先手より早めに移行する。84k nps@RTX4090。",
+      "originality": "独自",
+      "evidence": "Hybrid探索で84k nps@RTX4090程度",
+      "quote": "序中盤は V445(精度優先)、中終盤は上記 Hybrid(精度と nps のバランス型)を使う"
+    },
+    {
+      "category": "評価関数",
+      "title": "モデルの追加工",
+      "description": "Loss-AvAccが小さい中間モデルを複数保存してベンチし、基準モデルから加重平均・定数倍・乱数付加などで派生モデルを作って最良を選ぶ。学習終了時の基準モデルから+50 Elo程度向上することが多い。",
+      "originality": "独自",
+      "evidence": "基準モデルから+50 Elo程度",
+      "quote": "基準モデルから数学的演算(加重平均、定数倍、乱数付加等)により派生 model を複数作り"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "学習初期の局所解回避",
+      "description": "パラメータ初期値の選択、大きめのlrから開始、学習初期のブロック入れ替え、lrの等比数列的減少、終盤でのweight decay縮小などで、局所解に陥る次元を減らす。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "学習初期のブロックの入れ替え、lr の等比数列的な減少"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "NNUE対局による教師棋譜生成",
+      "description": "Tanuki-dr4・振電3・AobaNNUEなど無償公開のNNUEで自家対局棋譜を作る。どのNNUEで作るかで指し手の傾向が変わるため、データ比率を意図的に調整している。",
+      "originality": "既存手法の応用",
+      "evidence": "WCSC35でGCTデータ60%を33%に調整",
+      "quote": "棋譜の質が良くなるだけで強い model が得られる。"
+    },
+    {
+      "category": "探索",
+      "title": "乱数による探索パラメータの段階的調整",
+      "description": "過去の値を中心に7個同時に揺らし少ないn数でベンチ、勝率が上がれば中心を更新。その後は上位半分だけ追加ベンチを繰り返す。ベンチ回数を概ね半分にでき、同一モデルでR+30程度良い値が見つかった。",
+      "originality": "独自",
+      "evidence": "R+30程度",
+      "quote": "乱数を使って パラメータに揺らぎを与える(７個同時に変更)"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "後手の千日手狙い定跡",
+      "description": "floodgateの高レート棋譜から定跡に向く棋譜を選び、NNUE(定跡なし)対DL系(定跡あり)の長時間対局の評価値推移で定跡を追加・修正する。約68万局面（実効約30万）で、後手の定跡には千日手を目指す手も登録されている。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "後手の定跡には、千日手を目指す手も登録されている。"
+    }
+  ],
+  "character": null,
+  "notes": "WCSC35のアピール文書の誤り（conv2d(k=256)を128の2並列に置き換えるとパラメータ数は1/2）を追記で訂正している。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc36/team.html"
+}

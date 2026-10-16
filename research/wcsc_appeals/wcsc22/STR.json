@@ -1,0 +1,60 @@
+{
+  "wcsc": 22,
+  "year": 2012,
+  "dir": "STR",
+  "team": "チームSTR",
+  "software": "STR",
+  "sources": [
+    "wcsc22/appeal/STR/appeal.pdf"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc22/appeal/STR/appeal.pdf"
+  ],
+  "summary": "SVMとカーネル法で特徴を自動生成する路線の続き。今年は盤面を81ノードのグラフにして、グラフカーネルによる位置関係の学習を試したが「駄目だった」と正直に報告する。GUIはAA将棋を新規に作った。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "その他",
+    "detail": "SVMと多項式カーネル（前年と同じ）。グラフカーネルは不調"
+  },
+  "search": {
+    "family": "その他",
+    "detail": "探索なし（SVMが重いため）"
+  },
+  "learning": "プロ棋譜でSVM学習。グラフカーネルは10局で1.3GBとデータが重く、ほぼ全局面が同じ評価値になった",
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "盤面をグラフ化するグラフカーネル",
+      "description": "盤の各マスを81ノード、利きをエッジ、駒種をノードのラベル（ハッシュ値）とするグラフにして、近傍ノードの類似度で正例・負例を学習する。多項式カーネルより高速で、位置関係の学習に期待したが、良い結果は得られなかった。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "将棋の盤面をグラフ化"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "失敗の理由まで書いた実験報告",
+      "description": "ほぼどの局面も同じ評価値になり、持ち駒の扱いが難しい（空きマスに利いている？）、サンプルデータが重い（10局で約1.3GB）と、うまくいかなかった点を列挙する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "ギリギリまで学習を試行錯誤したものの，良い学習結果は得られず"
+    },
+    {
+      "category": "エンタメ・演出",
+      "title": "AA将棋のGUI",
+      "description": "GUIをAA将棋（New!）にした。駒画像・AA駒の素材の出典も明記する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "GUI は AA 将棋 （New !）"
+    }
+  ],
+  "character": "「が・・・駄目っ・・・！」と自虐的に失敗を書き、「今年も世界最弱の予感」と結ぶ。AA（アスキーアート）でGUIを作る遊び心もある。",
+  "notes": null,
+  "team_list_url": "http://www2.computer-shogi.org/wcsc22/team.html"
+}

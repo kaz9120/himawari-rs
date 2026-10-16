@@ -1,0 +1,62 @@
+{
+  "wcsc": 35,
+  "year": 2025,
+  "dir": "Nakatomisen_No.56",
+  "team": "横井 悟郎",
+  "software": "中富線56号",
+  "sources": [
+    "wcsc35/appeal/Nakatomisen_No.56/appeal.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc35/appeal/Nakatomisen_No.56/appeal.pdf"
+  ],
+  "summary": "合成生物学が専門の初出場者が、AobaZeroから蒸留した教師でNNUEを学ぶ。NNUEは表現力が限られるため、特定の戦型に特化して相手をその領域へ引きずり込む設計思想を掲げ、評価と定跡の両方でそれを実現する。",
+  "base": {
+    "engine": "やねうら王",
+    "eval_source": null,
+    "note": "探索部はやねうら王、学習はnnue-pytorch、教師生成にaobazeroを使用"
+  },
+  "eval": {
+    "family": "NNUE",
+    "detail": "AobaZeroで作成した教師からnnue-pytorchでGPU学習。使用ハードウェアに最適化したネットワーク構造を選ぶ"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "やねうら王"
+  },
+  "learning": "AobaZero由来の教師（知識蒸留）",
+  "hardware": "Core i7-14700F + RTX4090",
+  "language": [
+    "Python"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "棋風・人間らしさ",
+      "title": "得意戦型へ引きずり込む設計",
+      "description": "NNUEは表現力が限られ汎化が難しいため、特定の戦型に強いモデルを作り、定跡で相手をその戦型に誘導する。モデルの性能評価と取捨選択も、特定の戦型の局面からの自己対局で行う。ノーフリーランチ定理を根拠にする。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "「自分の得意なパターンに持っていく」ことができるモデルを目指している"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "自動と手動を併用した戦型誘導定跡",
+      "description": "特化させる戦型は作者の棋風に合わせ、戦型が定まった後は自動生成する。最序盤の戦型選択や合流手順の検討は人間のほうが上手だという観察を書く。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "最序盤の戦型選択や，合流手順の検討などは，人間の方が上手だったりするのは興味深い"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "AobaZero蒸留教師",
+      "description": "AobaZeroで作成した教師をnnue-pytorchで学習する。モデルの精度評価方法も独自化した。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "AobaZero を用いて作成した教師から nnue-Pytorch を用いて GPU で学習させている"
+    }
+  ],
+  "character": "作者の夢は、生体分子で作ったニューラルネットワークを生物に組み込んで将棋の手を考えさせること。「作者自身を強化学習させようという密かな野望」も書く。きふわらべのような独創的なアピール文書に参加動機をもらったと謝辞に記す。",
+  "notes": "初出場で「まずはエラー無く完走したい」",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc35/team.html"
+}

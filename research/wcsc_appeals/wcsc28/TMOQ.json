@@ -1,0 +1,54 @@
+{
+  "wcsc": 28,
+  "year": 2018,
+  "dir": "TMOQ",
+  "team": "山下 隆久",
+  "software": "TMOQ",
+  "sources": [
+    "wcsc28/appeal/TMOQ/appeal.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc28/appeal/TMOQ/appeal.pdf"
+  ],
+  "summary": "定跡と戦型にこだわる参加。自分が指さない横歩取りなどをソフトが選ぶのは納得できないとして、「まふ互角局面ver4」をベースに採用率の変更と指し手の追加を行い、自分らしい定跡・戦型へ「教育」する。CUDAで書かれている。",
+  "base": {
+    "engine": "やねうら王",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "やねうら王のもの（記載なし）"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "やねうら王。CUDA（並列化）にも挑戦"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": [
+    "CUDA"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "定跡・序盤",
+      "title": "作者らしい戦型へ定跡を「教育」",
+      "description": "「まふ互角局面ver4」（やねうら王形式）をベースに、指し手の採用率の変更と指し手の追加を行い、作者本人が指す戦型へソフトを寄せる。自分の分身が指すはずのない横歩取りなどを選ぶのは納得できないため。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "自分らしい特定の定跡/戦型になるべく教育を行っております。"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "CUDAで書いたソフト",
+      "description": "DL学習用に買ったGPU搭載ノートPCを活かすため、CUDAで書く。CUDA採用ソフト内1位を目指す（一覧上は1位確定、と書く）。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "TMOQ は CUDA というコンピュータ言語で書かれております。"
+    }
+  ],
+  "character": "「特大もっきゅ」と読み、愛娘が命名しキャラクターデザインもした。作者は開発が好きで将棋ソフトを始めた、海外出張の多い会社員で、大会翌日からインドへ飛ぶ（マンゴーが美味しい季節）と書く。「定跡を加工して楽しみ、並列化プログラミングにチャレンジして楽しみ、テスト対局を見て楽しむ」と楽しさを前面に出す。",
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc28/team.html"
+}

@@ -1,0 +1,60 @@
+{
+  "wcsc": 31,
+  "year": 2021,
+  "dir": "SENGAKU",
+  "team": "今井 義弥",
+  "software": "SENGAKU",
+  "sources": [
+    "wcsc31/appeal/SENGAKU/appeal.txt"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc31/appeal/SENGAKU/appeal.txt"
+  ],
+  "summary": "2駒関係・3駒関係のように駒数が固定される評価関数に代わり、任意の数の駒の位置関係を使うN駒関係の評価関数を採用。機械学習中に持っている位置関係を組み合わせて新しい位置関係を自動で作り、スパース性を考慮した算法で高速化した。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "任意の数の駒の位置関係（N駒関係）を特徴とする評価関数"
+  },
+  "search": {
+    "family": "不明",
+    "detail": "記述なし"
+  },
+  "learning": "機械学習によるパラメータ調整の中で、その時点の位置関係を組み合わせて新たな位置関係の集合を逐次自動生成",
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "N駒関係の評価関数",
+      "description": "任意の数の駒の位置関係を使い、2駒・3駒関係の固定数による評価能力の限界とパラメータの冗長性を解消する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "本プログラムでは任意の数の駒の位置関係を用いた評価関数を用いることでこれらの課題の解消を試みた。"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "位置関係の組み合わせによる自動生成",
+      "description": "機械学習のパラメータ調整時に、保持している位置関係を組み合わせて新たな位置関係を逐次生成し、集合を自動で作る。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "位置関係を組み合わせて新たな位置関係を逐次生成することにより集合を自動生成している。"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "位置関係のスパース性を利用した高速化",
+      "description": "各局面に現れる位置関係の数は総数よりも十分小さいというスパース性を考慮した算法で評価関数を高速化する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "「各局面に現れる位置関係の数は位置関係の総数よりも十分に小さい」"
+    }
+  ],
+  "character": null,
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc31/team.html"
+}

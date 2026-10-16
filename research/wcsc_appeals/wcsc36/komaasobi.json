@@ -1,0 +1,63 @@
+{
+  "wcsc": 36,
+  "year": 2026,
+  "dir": "komaasobi",
+  "team": "永吉 宏之",
+  "software": "こまあそび",
+  "sources": [
+    "wcsc36/appeal/komaasobi/komaasobi_appeal_20260331.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc36/appeal/komaasobi/komaasobi_appeal_20260331.pdf"
+  ],
+  "summary": "学習を使わず手でチューニングした評価関数と、αβ探索の組み合わせ。先手・後手別の延長深さ上限や、金・銀桂・飛車の位置に対する細かい手作業の点数づけが特徴。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": "手作りの評価関数"
+  },
+  "eval": {
+    "family": "手作り",
+    "detail": "学習は使わず手で調整。駒組みは落とし穴方式。銀桂は敵陣に近い手の点数を高く、金は上部に出る点を低く、金は角と筋違いの位置を高く、中終盤は角と金の価値をほぼ同じにし、竜王・飛車は高め"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "王手・王手回避・駒を取る手を延長。手を読む広さは探索深さで変える"
+  },
+  "learning": null,
+  "hardware": "Ryzen 7 6800H（一覧ページ）",
+  "language": [
+    "C",
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "探索",
+      "title": "先後別の延長深さ上限",
+      "description": "王手などの延長深さの上限を、先手番と後手番で別々に持つ。先手4手＋後手4手の計8手の延長は許すが、先手5手＋後手3手は許さない。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "延長深さの制限を先手番、後手番別々に持っている。"
+    },
+    {
+      "category": "評価関数",
+      "title": "駒ごとの位置点を手でチューニング",
+      "description": "銀桂は敵陣に近い手を高く、金は上部に出る点を低く、角と筋違いの位置の金を高く評価するなど、将棋の格言的な知識を点数に反映する。駒組みは落とし穴方式で行う。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "金は角と筋違いの位置の点数を高くしている。"
+    },
+    {
+      "category": "探索",
+      "title": "深さに応じた読みの広さの変更",
+      "description": "探索の深さによって、手を読む広さ（候補手の数）を変えている。",
+      "originality": "不明",
+      "evidence": null,
+      "quote": "手を読む広さは探索深さによって変えている。"
+    }
+  ],
+  "character": null,
+  "notes": "「落とし穴方式」の駒組みの詳細は記述なし。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc36/team.html"
+}

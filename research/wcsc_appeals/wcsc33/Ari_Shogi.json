@@ -1,0 +1,166 @@
+{
+  "wcsc": 33,
+  "year": 2023,
+  "dir": "Ari_Shogi",
+  "team": "兵頭 優空",
+  "software": "Ari Shogi",
+  "sources": [
+    "wcsc33/appeal/Ari_Shogi/Ari_Shogi_WCSC33_Appeal_6.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc33/appeal/Ari_Shogi/Ari_Shogi_WCSC33_Appeal_6.pdf"
+  ],
+  "summary": "python-dlshogi2をベースにしたPython製のDL将棋AI。外部の詰将棋エンジンをルートと全子ノードで使う詰み探索・詰み回避、手番別CPUCT、複数エンジン相手のOptuna調整が特徴。巻末に、まだ試していない7つのアイデア（アンサンブル、継ぎ足し学習、頓死誘発AIなど）を公開している。",
+  "base": {
+    "engine": "python-dlshogi2",
+    "eval_source": "自前モデル（電竜戦さくらリーグ用モデルにAoba駒落ちを追加学習）",
+    "note": "KomoringHeightsを詰み探索に併用、探索パラメータ調整にdlshogiのOptuna機構を流用"
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "ResNet 5ブロック128チャネル+SeBlock、全結合32、約190万パラメータ"
+  },
+  "search": {
+    "family": "MCTS",
+    "detail": "python-dlshogi2のMCTS+外部詰将棋エンジン併用"
+  },
+  "learning": "『強い将棋ソフトの創りかた』付録、floodgate 2018〜2022（レート3500以上・50手以上）、AobaZero棋譜（序盤強化の狙い）、dlshogi with GCT WCSC31教師を使用",
+  "hardware": "Core i7-10750H + GTX 1650Ti（Windows）",
+  "language": [
+    "Python"
+  ],
+  "claimed_strength": "floodgateでおよそR2900〜3000（定跡ON、WCSC33と同構成で測定）。さくらリーグ用モデルは当時R3200後半",
+  "ideas": [
+    {
+      "category": "詰み・終盤",
+      "title": "ルートでの外部詰将棋エンジン併用",
+      "description": "探索開始前にルート局面を外部の詰将棋エンジンへ送り、メイン探索が最善手を決めたころstopする。詰みを見つけていればその手を指し、長手数の詰みを拾えるようにした。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "手軽な改造だが長い手数の詰みが見つけられるようになるのが良い。"
+    },
+    {
+      "category": "詰み・終盤",
+      "title": "全子ノードの詰み回避",
+      "description": "通常探索の前にルートの全子ノードへ外部詰将棋エンジンを走らせ、詰みが見つかった手は探索せず選ばない。ここでは1万ノードに制限する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "詰みが見つかった局面は探索されない & 指し手として選ばれない"
+    },
+    {
+      "category": "探索",
+      "title": "手番別のCPUCT",
+      "description": "CPUCTを、局面の手番がルートと同じ場合と違う場合で別の変数にし、Optunaで調整する。両者の最適値に結構な差が出た。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "その局面の手番がroot局面の手番と同じ時に使う変数と、その局面の手番がroot局面の手番とは違う時に使う変数を用意して"
+    },
+    {
+      "category": "探索",
+      "title": "ルート勝率でN手詰め深さを切替",
+      "description": "末端のN手詰めルーチンのNを、ルートの推定勝率が50%からどれだけ離れているかで5と7に切り替える。進行度の代用。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "「root局面の推定勝率がどれだけ50%から離れているか」でNを5と7で切り替える"
+    },
+    {
+      "category": "開発手法・運用",
+      "title": "複数種類のエンジン相手のパラメータ自動調整",
+      "description": "dlshogiのOptuna調整を改造し、1種類でなく複数種類のエンジンとの対局でパラメータを調整して汎用的な値を得ようとした。効果は未検証。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "1種類のエンジンとの対局だけでなく、複数種類のエンジンとの対局でパラメータを調整するように変更した。"
+    },
+    {
+      "category": "棋風・人間らしさ",
+      "title": "形勢を損ねずに手を散らす",
+      "description": "開始から32手以内で定跡に当たらない局面に限り、形勢をあまり損ねない範囲で指し手をばらけさせる。dlshogiの実験を実装した。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "「開始局面から32手内で、かつ定跡などにhitしていない局面」で有効になっていた"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "時間を温存する定跡",
+      "description": "「そこそこな手を指しつつ時間を温存する」ことを目標に、floodgate棋譜や対局で定跡を抜けた局面を水匠5の約2億ノード最善手で登録した。約4万局面。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "「そこそこな手を指しつつ時間を温存する」という事を目標にしている。"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "cshogiのzobrist hashでメモ化",
+      "description": "cshogiのzobrist_hashを使って各種計算をメモ化し、Python探索を高速化した。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "cshogiのzobrist_hashを利用して色々メモ化する事でそこそこ高速化した。"
+    },
+    {
+      "category": "評価関数",
+      "title": "9x9畳み込みによる遠距離関係の学習（試行）",
+      "description": "9×9の畳み込みを入れて盤面全体を見せ、CNNの遠い駒の関係を学ぶには層が要るという弱点の緩和を狙った。間に合わず今回は不採用。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "9 * 9の畳み込み層の部分の効果で盤面全体を見れるようになり"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "CNNとSelf-Attentionのアンサンブル（案）",
+      "description": "CNN系とSelf-Attention系を別に学習し、出力層を外して結合し1つのネットとして学習する案。強さは未検証で、遅くても定跡や教師生成に使える評価関数になりうる。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "「Self-Attention系にない強みを持つCNN系」と「CNN系にはない強みを持つSelf-Attention系」を混ぜれば"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "ニューラルネットの継ぎ足し学習（案）",
+      "description": "Nブロックを飽和まで学習し、出力層を外してMブロックを継ぎ足して再学習する。大会前に最強のものを選べ、巨大ネット学習のギャンブルを避けられる。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "徐々にネットワークを大きくしていけば良いのでは"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "外部エンジンを使ったMultiPonder（案）",
+      "description": "ponderの予想手を、自分のMultiPVでなく外部エンジンA・Bの最善手から用意して的中率を上げる。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "候補1:本体のAIが考える最善手, 候補2: 外部エンジンAが考える最善手"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "極端な性能のAIを組む合議（案）",
+      "description": "DL系を弱点を作ってでも特化させ、弱点をNNUE系で補う合議。単体では弱いが混ぜると効く評価関数を探す、合議の出力を学習する合議AIも案に挙げる。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "DL系将棋AIを極端な性能にして、それを他のAI(NNUE系とか)で補う合議が強いかも"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "生成AIによる局面生成（案）",
+      "description": "GANなどで合法局面を生成し、互角中盤や入玉絡みなど特定要素の局面を作らせて教師データの元や対局の開始局面に使う。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "「互角な中盤局面」や「入玉が絡む局面」や「振り飛車に関する局面」などの「特定要素を持った局面」を生成できるAI"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "アンチコンピュータ戦略の自動発見と対策（案）",
+      "description": "囲碁AIの弱点発見の話を受け、弱点を突くAIを学習させて自動で見つけ、対策教師を生成して潰す仕組みを構想する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "アンチコンピュータ戦略(または脆弱性)を自動で見つけて自動で潰すシステム"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "頓死を誘発するAI（案）",
+      "description": "全合法手に占める詰み回避不能な手の割合などから「頓死度」を計算し、DL系の相手が劣勢側で頓死しやすい局面へ誘導する評価関数を作る案。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "「頓死度」を計算する評価関数を作り、それを探索部と組み合わせる事で、頓死を誘発するAIを作れる"
+    }
+  ],
+  "character": "巻末の「おまけ」で、試せていないアイデアを「ゴミみたいなアイディア」と自嘲しつつ気になる人に試してほしいと公開している。ビール工房HFT支店から参加費を寄付されたと謝辞。",
+  "notes": "1次予選10位で2次予選進出が目標。floodgateの計測では本番構成が後で測るとやや弱く、定跡OFF版のほうが強かった。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc33/team.html"
+}

@@ -1,0 +1,44 @@
+{
+  "wcsc": 22,
+  "year": 2012,
+  "dir": "auau_shogi",
+  "team": "氏家一朗",
+  "software": "帰ってきたあうあう将棋",
+  "sources": [
+    "wcsc22/appeal/auau_shogi/appeal.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc22/appeal/auau_shogi/appeal.txt"
+  ],
+  "summary": "評価関数にニューラルネットを用いる予定、との一文のみ。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "ニューラルネットを使う予定"
+  },
+  "search": {
+    "family": "不明",
+    "detail": null
+  },
+  "learning": null,
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "ニューラルネットの評価関数",
+      "description": "評価関数にニューラルネットを用いる予定。",
+      "originality": "不明",
+      "evidence": null,
+      "quote": "評価関数にニューラルネットを用いる予定です"
+    }
+  ],
+  "character": null,
+  "notes": "一文のみ。scherzoの後継。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc22/team.html"
+}

@@ -1,0 +1,62 @@
+{
+  "wcsc": 23,
+  "year": 2013,
+  "dir": "N4",
+  "team": "横内 健一",
+  "software": "N4",
+  "sources": [
+    "wcsc23/appeal/N4/appeal.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc23/appeal/N4/appeal.txt"
+  ],
+  "summary": "盤上の4駒の位置関係をパラメータとし、プロ棋士の棋譜から機械学習する評価関数が特徴。メモリを大量に使い、探索速度を犠牲にしても多くの特徴を取り込み、人間の感覚を学習する可能性を探る。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "盤上の4駒の位置関係"
+  },
+  "search": {
+    "family": "不明",
+    "detail": null
+  },
+  "learning": "プロ棋士の棋譜からの機械学習",
+  "hardware": "Xeon E5-2687W 2基、256GB",
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "4駒関係の評価関数",
+      "description": "盤上の4駒の位置関係をパラメータにし、プロ棋士の棋譜から学習する。計算が重く探索は遅くなるが、あえて多くの特徴を取り込む。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "盤上の4駒の位置関係をパラメータとし、プロ棋士の棋譜より機械学習を行っている"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "人間の感覚の学習を追う",
+      "description": "クラスタ勢とまともに対峙するのは難しいが、人間の感覚を学習する可能性を追究したいとする。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "人間の感覚を学習する可能性を追究できればと考えています。"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "差分計算",
+      "description": "評価値と評価リストの作成に差分計算を使う。指し手生成はビットボード。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "評価リストの作成も差分を用います。"
+    }
+  ],
+  "character": null,
+  "notes": null,
+  "team_list_url": "http://www2.computer-shogi.org/wcsc23/team.html"
+}

@@ -1,0 +1,54 @@
+{
+  "wcsc": 34,
+  "year": 2024,
+  "dir": "Hisui-5th",
+  "team": "翡翠将棋",
+  "software": "翡翠5号",
+  "sources": [
+    "wcsc34/appeal/Hisui-5th/appeal.txt"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc34/appeal/Hisui-5th/appeal.txt"
+  ],
+  "summary": "python-dlshogi2のニューラルネット部を改変し、層を減らしてチャンネル数を段階的に増やす構成にGhostModuleを加えた。",
+  "base": {
+    "engine": "python-dlshogi2",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "python-dlshogi2のネットワークを改変。層を減らし、チャンネル数を192->384->768->1536と段階的に増やし、GhostModuleを追加"
+  },
+  "search": {
+    "family": "不明",
+    "detail": null
+  },
+  "learning": null,
+  "hardware": "Core i5-1155G7",
+  "language": [
+    "Python"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "チャンネル漸増型のネット",
+      "description": "層を減らし、チャンネル数を192、384、768、1536と順に増やす構成にした。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "チャンネル数を192->384->768->1536に順々に増えていきます"
+    },
+    {
+      "category": "評価関数",
+      "title": "GhostModuleの導入",
+      "description": "入力に同一データのチャンネルが多いことを根拠に、GhostModuleとの相性が良いと見てネットへ加えた。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "入力データには全く同じデータのチャンネルが多く存在するのでGhostModuleと相性がかなり良いと思います"
+    }
+  ],
+  "character": null,
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc34/team.html"
+}

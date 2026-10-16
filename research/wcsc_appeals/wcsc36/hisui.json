@@ -1,0 +1,73 @@
+{
+  "wcsc": 36,
+  "year": 2026,
+  "dir": "hisui",
+  "team": "hisui製作委員会",
+  "software": "氷彗",
+  "sources": [
+    "wcsc36/appeal/hisui/hisui_appeal_v3.pdf",
+    "wcsc36/appeal/hisui/hisui_detail.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc36/appeal/hisui/hisui_appeal_v3.pdf",
+    "https://www.apply.computer-shogi.org/wcsc36/appeal/hisui/hisui_detail.pdf"
+  ],
+  "summary": "やねうら王をベースに、Stockfish由来のNNUEの考え方を取り入れて改良したNNUE系エンジン。電竜戦を2連覇した。ネットワーク構造そのものに継続的に手を入れる方針が強みで、今大会は電竜戦から変更なし、エンジョイ参加の気持ち。",
+  "base": {
+    "engine": "やねうら王",
+    "eval_source": null,
+    "note": "探索はやねうら王ベースにStockfishのアイデアを取り入れ、評価関数は自作"
+  },
+  "eval": {
+    "family": "NNUE",
+    "detail": "nnue-pytorchで学習。LayerStack的な局面別ネットワーク切り替え、特徴量設計の再検討、活性化関数・量子化方式の変更など。dlshogiから知識蒸留"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "やねうら王にStockfishの多くのアイデアを導入。SPSAで評価関数に合わせてパラメータを最適化"
+  },
+  "learning": "dlshogiからの知識蒸留。学習データは非公開",
+  "hardware": "GCP c4d-highcpu-384（一覧ページ）",
+  "language": [
+    "C++",
+    "Python"
+  ],
+  "claimed_strength": "電竜戦2連覇。2025年12月時点で最強クラスのNNUE系エンジンの一つ",
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "NNUE構造そのものの改良",
+      "description": "ネットワーク構成、特徴量設計、LayerStack的な局面別ネットワーク切り替え、活性化関数、量子化方式を継続的に改良する。チェスのStockfishのNNUEの進化を将棋に持ち込む発想で、他のNNUE系との差が広がったと考えている。",
+      "originality": "独自",
+      "evidence": "2024年末頃に他のNNUE系との差がかなり広がったと自己評価。電竜戦2連覇",
+      "quote": "NNUE の構造そのものへ継続的に手を入れ続けた点が、大きな差につながったのではないか"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "dlshogiからの知識蒸留",
+      "description": "NNUEの学習にdlshogiからの知識蒸留を使う。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "dlshogiから知識蒸留を行っています。"
+    },
+    {
+      "category": "探索",
+      "title": "StockfishアイデアとSPSA調整",
+      "description": "やねうら王にStockfishの多くのアイデアを取り入れ、評価関数に合わせてSPSAでパラメータを最適化する。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "評価関数に合わせてSPSAによるパラメータ最適化を行っています。"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "最小限の独自定跡",
+      "description": "既存の定跡に過度に依存しないよう、必要最小限の独自定跡を整備している。",
+      "originality": "不明",
+      "evidence": null,
+      "quote": "既存の定跡に過度に依存しないよう、必要最小限の独自定跡を整備しています。"
+    }
+  ],
+  "character": "2022年頃にNNUEは限界と言われた空気の中、「誰もやらないなら自分で試してみよう」と始めた開発動機。エンジョイ参加の気持ちを持って臨む。アピール文書自体をChatGPTで作成したと明記している。",
+  "notes": "概要版は4/7、詳細版は5/10。電竜戦以降、評価関数・探索・定跡は変更なし。実験結果やEloの差分は体系的に保存しておらず、ブログ（2024・2025年の記事）に記録としている。新特徴量はいくつか試したが採用を見送った。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc36/team.html"
+}

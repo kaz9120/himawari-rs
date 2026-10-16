@@ -1,0 +1,54 @@
+{
+  "wcsc": 35,
+  "year": 2025,
+  "dir": "Nanoha",
+  "team": "川端 一之",
+  "software": "なのは",
+  "sources": [
+    "wcsc35/appeal/Nanoha/Nanoha_appeal2025.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc35/appeal/Nanoha/Nanoha_appeal2025.pdf"
+  ],
+  "summary": "Stockfishを将棋化した探索（なのはmini）と3駒関係(KPPT)の評価で、「数年前に見たような平凡な構成」と自認する。今回はStockfish 8改から15.1改への探索強化と、配布教師データでの評価関数学習を予定。アニメ「魔法少女リリカルなのは」由来の名前と、現地会場からの参加を楽しむスタイル。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": "なのはminiはStockfishをベースに独自に将棋化"
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "3駒関係（KPPT）"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "Stockfish系（8改→15.1改の予定）。bitboard未使用（配列）"
+  },
+  "learning": "やねうら王配布の110億教師データ、nodchip配布の教師データを使う予定",
+  "hardware": "Ryzen 9 7940HS（Minisforum UM790Pro）",
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "定跡・序盤",
+      "title": "出現数と勝率で選ぶ定跡",
+      "description": "定跡部は、実戦での出現数と勝率を考慮して手を選択する。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "定跡部は実戦での出現数および勝率を考慮して手を選択"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "ミクロコスモスを解く・非コピーレフトでの開発",
+      "description": "今後の野望として、評価関数のNNUE化、詰将棋「ミクロコスモス」を解くこと、非コピーレフト系ライセンスでの開発を挙げる。",
+      "originality": "不明",
+      "evidence": null,
+      "quote": "ミクロコスモスを解く"
+    }
+  ],
+  "character": "名前は「魔法少女リリカルなのは」の高町なのはに由来し、「名前の割に強い」という声に「名前負けしている」と返す。作者紹介に好きなアニメと将棋ウォーズ1級・囲碁初段などを書き、イラストはCOCOさん。意気込みは現地会場から参加、0次予選突破、勝ち越し。",
+  "notes": "参考文献に『コンピュータ将棋の進歩』シリーズなどの古典を並べる。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc35/team.html"
+}

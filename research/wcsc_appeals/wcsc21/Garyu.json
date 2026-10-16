@@ -1,0 +1,37 @@
+{
+  "wcsc": 21,
+  "year": 2011,
+  "dir": "Garyu",
+  "team": "高田淳一",
+  "software": "臥龍",
+  "sources": [
+    "wcsc21/appeal/Garyu/garyu21.html"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc21/appeal/Garyu/garyu21.html"
+  ],
+  "summary": "Java実装の標準的なαβ探索。半年の長期出張で1年開発できず、前回からの変更はマシンが新しくなったのみ。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "手作り",
+    "detail": "パラメータ約750。学習・進行度は不採用"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "反復深化、置換表、null move pruning、王手延長。並列・df-pnなし"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": [
+    "Java"
+  ],
+  "claimed_strength": "約10万nodes/s（シングルスレッド）",
+  "ideas": [],
+  "character": null,
+  "notes": "前年から実質変更なし。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc21/team.html"
+}

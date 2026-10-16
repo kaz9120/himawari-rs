@@ -1,0 +1,70 @@
+{
+  "wcsc": 24,
+  "year": 2014,
+  "dir": "Mecha_Lady_Shogi",
+  "team": "メカ女子将棋部",
+  "software": "メカ女子将棋",
+  "sources": [
+    "wcsc24/appeal/Mecha_Lady_Shogi/WCSC24MechajyoVer2.pdf"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc24/appeal/Mecha_Lady_Shogi/WCSC24MechajyoVer2.pdf"
+  ],
+  "summary": "女流棋士2名を含む部がJulia言語で作る将棋ソフト。今回は前年版を予備に、Stockfishを移植したJulia版Chess「Mechajyo Chess」から将棋化する次世代版を開発中（進捗約20%）。ソースはGitHubで公開し、前年版はMIT、次世代版はGPLv3。英語併記のスライドで、マスコット「メカ女子ちゃん」を紹介する。",
+  "base": {
+    "engine": "独自",
+    "eval_source": "Bonanza 6.0のfv.bin",
+    "note": "次世代版はStockfishのJulia移植が土台"
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "Bonanzaのfv.bin（実装にバグがあると自己申告）"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "ヌルムーブ等のチェス流。1世代目は飛び駒の利きにmailbox"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": [
+    "Julia"
+  ],
+  "claimed_strength": "自己評価は13級程度",
+  "ideas": [
+    {
+      "category": "実装・高速化",
+      "title": "Julia言語での将棋プログラム",
+      "description": "世界初のJulia（#Julialang）製の将棋ソフト。型推論とLLVMベースのJITによる高速なネイティブ実行を選定理由に挙げる。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "The ﬁrst Julia Language (hash tag: #Julialang) based Shogi Playing"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "StockfishをJuliaに移植して将棋化",
+      "description": "Stockfish（C++製チェスソフト）をJuliaに移植した「Mechajyo Chess」を作り、そこから将棋版を作る。Magic bitboard、fv.bin評価、高NPSを目指す。",
+      "originality": "独自",
+      "evidence": "進捗約20%（2014-03-27時点）",
+      "quote": "About to port Stockﬁsh"
+    },
+    {
+      "category": "開発手法・運用",
+      "title": "ソースのGitHub公開",
+      "description": "前年版（MIT）と次世代版（GPLv3）をGitHubで公開する。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "Available at GitHub!"
+    },
+    {
+      "category": "エンタメ・演出",
+      "title": "マスコットとグッズ",
+      "description": "マスコット「メカ女子ちゃん」を作り、日本将棋連盟や楽天ストアで入手可能と紹介する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "Available at Japan shogi Association,"
+    }
+  ],
+  "character": "女流棋士2名・女性2名・自称12歳女子の「おっさん」1名という体制で、マスコットのメカ女子ちゃんを前面に出す。『彼女は私たちに勝てない（13級程度）』と自虐しつつ『ファンシーな棋風』を売りにする。英日併記。",
+  "notes": null,
+  "team_list_url": "http://www2.computer-shogi.org/wcsc24/team.html"
+}

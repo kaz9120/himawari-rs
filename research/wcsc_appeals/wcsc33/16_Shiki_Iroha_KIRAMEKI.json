@@ -1,0 +1,95 @@
+{
+  "wcsc": 33,
+  "year": 2023,
+  "dir": "16_Shiki_Iroha_KIRAMEKI",
+  "team": "日本工学院専門学校AIシステム科",
+  "software": "十六式いろは煌（きらめき）",
+  "sources": [
+    "wcsc33/appeal/16_Shiki_Iroha_KIRAMEKI/2023-05-12_16-168kirameki_wcsc33.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc33/appeal/16_Shiki_Iroha_KIRAMEKI/2023-05-12_16-168kirameki_wcsc33.pdf"
+  ],
+  "summary": "dlshogiとやねうら王の2エンジンによる楽観合議が最大の特徴。今年はやねうら王の評価関数を水匠5からAobaZero棋譜由来の定跡と自己対戦で作ったゼロからのNNUEに置き換え、定跡もAobaZero棋譜から新規に作った。",
+  "base": {
+    "engine": "dlshogi+やねうら王",
+    "eval_source": "独自（キラゼロ評価関数）",
+    "note": "Ayaneで両エンジンを呼び出し、評価値を比較して指し手を決める"
+  },
+  "eval": {
+    "family": "DL+NNUE",
+    "detail": "dlshogi: SENet 3ブロック384チャネル fcl128の軽量モデル。やねうら王: ゼロから学習したNNUE"
+  },
+  "search": {
+    "family": "αβ+MCTS",
+    "detail": "やねうら王のαβとdlshogiのMCTSを楽観合議で統合"
+  },
+  "learning": "人間の棋譜なしで、深さ1から6へ段階的に深めた自己対戦棋譜でNNUEを強化学習。dlshogiは「強い将棋ソフトの創りかた」付属データで学習",
+  "hardware": "Core i7-9700K + RTX 2070 SUPER（ゲーミングタワーPC）",
+  "language": [
+    "Python",
+    "C++"
+  ],
+  "claimed_strength": "floodgate R3524（合議全体）、やねうら王単独R3621、dlshogi単独R3861（大会後に測定。合議が互いの足を引っ張った様子）",
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "人間の棋譜なしのゼロNNUE",
+      "description": "水匠5をやめ、人間の棋譜を使わずAobaZero棋譜由来の定跡と自己対戦でゼロからNNUEを学習した。深さ1から6まで段階的に深くして強化学習を回す。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "人間の棋譜を用いず、 AobaZero の棋譜を元に作成した定跡（後述）を使い、 ゼロからの NNUE 評価関数を、自己対戦による棋譜を用い強化学習させた。"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "局面の段階別4ステージ学習",
+      "description": "序盤用（深さ4・評価値上限200・16手目まで）、中盤用（深さ6・上限1200・lambda 0.1）と段階を分けて教師を生成し、序盤→中盤の順に学習した。定跡が外れても見当外れの手を指さないようにする狙い。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "評価値 1200 くらいまでが勝負の要であるとみて、 この機械学習部分は最重要視している"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "AobaZero棋譜のテラショック定跡",
+      "description": "AobaZero棋譜10万局面から定跡を作り、深さ24で評価値を付けてテラショック化（ツリー化）し、元の定跡とマージした。評価値-150未満は削除。約13万局面で、手数制限は無視して使う。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "「きらめく Aoba 広葉樹定跡」（略称：キラショック Aoba 定跡）"
+    },
+    {
+      "category": "探索",
+      "title": "dlshogi+やねうら王の楽観合議",
+      "description": "Ayaneで両エンジンを呼び出し、評価値を比較して指し手を決める。20手目まではやねうら王のみを序盤用に使う。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "dlshogi とやねうら王（★）の両エンジンによる 楽観合議がこのソフトの最大の特徴"
+    },
+    {
+      "category": "評価関数",
+      "title": "軽量で幅広いSENetモデル",
+      "description": "SENetを3ブロック384チャネル、全結合層128で構成。ブロックを減らしチャネルを増やしてWideResNet的効果を狙い、fclを減らして軽量化した。",
+      "originality": "既存手法の応用",
+      "evidence": "TensorRT版でR3861、約2万7000nps",
+      "quote": "ブロック数減らしてチャネル数を増やしたのは、 WideResNet っぽい効果が狙い。"
+    },
+    {
+      "category": "時間管理",
+      "title": "序盤・中盤の固定思考時間",
+      "description": "序盤の思考時間を10秒固定、60手目までを40秒固定とした。先読み時間も序盤3秒、以降20秒に増やした。60手目までが勝負の要との考え。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "60 手目くらいまでが勝負の要になると考え、前回より増やした。"
+    },
+    {
+      "category": "解説・人間支援",
+      "title": "Electron将棋の評価値出力対応",
+      "description": "設定画面を実装し、Electron将棋への評価値出力に対応した。どのエンジンの手が選ばれたかの回数も出力する。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "Electron 将棋の評価値出力に対応。"
+    }
+  ],
+  "character": "ソフト名は2022年に学生と末吉先生が1か月かけて決めた「十六式いろは」＋「煌」。学校のマスコット案も候補だった。学生チームでの開発。",
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc33/team.html"
+}

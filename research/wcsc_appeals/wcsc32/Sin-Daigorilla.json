@@ -1,0 +1,60 @@
+{
+  "wcsc": 32,
+  "year": 2022,
+  "dir": "Sin-Daigorilla",
+  "team": "田中 大吾、門倉 新之助",
+  "software": "Sin-Daigorilla",
+  "sources": [
+    "wcsc32/appeal/Sin-Daigorilla/Daigorilla_appeal.doc"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc32/appeal/Sin-Daigorilla/Daigorilla_appeal.doc"
+  ],
+  "summary": "NNUE（hkpe4、ゼロベクトルから学習）とdlshogiの合議、またはどちらか片方で出場する。合議のため役割分担（NNUEは中終盤型、dlは序盤重視）を考えて調整した。後手の勝率低下に対し、後手評価の高い局面から連続対局してノード差を付ける定跡作成も試した。",
+  "base": {
+    "engine": "やねうら王+dlshogi",
+    "eval_source": "Suisho5を比較対象",
+    "note": null
+  },
+  "eval": {
+    "family": "DL+NNUE",
+    "detail": "NNUEはhkpe4。dlshogiは10ブロック"
+  },
+  "search": {
+    "family": "αβ+MCTS",
+    "detail": "やねうら王7.00をhkpe4対応にし、序盤重視率のハイパーパラメータを変更。NNUEとdlの合議"
+  },
+  "learning": "NNUEはゼロベクトルから、dlの教師データを使って強化。dlは約35億データ（psvと公開hcpeを約半々）、約3epoch",
+  "hardware": "Core i7 7700K、RTX 3080、RTX 2080、RTX 3070 Ti×2",
+  "language": null,
+  "claimed_strength": "対Suisho5/6.50で100戦4割程度（80T、1手1.2秒、投了値500、定跡なし）。dlはR4300程度",
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "NNUEとdlshogiの役割分担合議",
+      "description": "合議のため、NNUEは中終盤型、dlは序盤重視型になるようパラメータを調整して学習する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "NNUEは中終盤型にし、dlは序盤重視みたいな"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "後手評価の高い局面から先後でノード差を付ける定跡",
+      "description": "後手の勝率が低下している状況に対し、後手の評価が高い局面から徹底的に対局を始め、先手と後手の思考ノード数に差を付けてバランスの取れた定跡を作る。テラショックやふかうら王のスーパーテラショックとmergeしたが効果は不明。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "先手と後手の思考にノード差を付けることでバランスの取れた定跡を作成出来るのではないか"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "NNUEとdl教師の交互学習の課題",
+      "description": "やねうら教師との学習を交互に行うとtrain_lossとtest_lossが乱れるため、調整が課題になっている。",
+      "originality": "不明",
+      "evidence": null,
+      "quote": "やねうら教師との学習を交互に行うとtrain_lossとtest_lossがめちゃくちゃになる"
+    }
+  ],
+  "character": null,
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc32/team.html"
+}

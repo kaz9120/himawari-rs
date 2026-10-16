@@ -1,0 +1,52 @@
+{
+  "wcsc": 31,
+  "year": 2021,
+  "dir": "Tsubame_Shogi",
+  "team": "田中 智、椎野 良介、小国 英明、大野 弘喜、有賀 才貴",
+  "software": "ツバメ将棋",
+  "sources": [
+    "wcsc31/appeal/Tsubame_Shogi/appeal_210331.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc31/appeal/Tsubame_Shogi/appeal_210331.pdf"
+  ],
+  "summary": "やねうら王の定跡生成・評価関数・探索部を使い、NNUE評価関数で参加。探索部のアピールポイントは先読みで、数手（5手程度）先まで双方が最高評価の手を選ぶと仮定して進めた局面の評価値で、手を決める。",
+  "base": {
+    "engine": "やねうら王",
+    "eval_source": "Kristallweizen・Apery（使用するかもしれない）",
+    "note": null
+  },
+  "eval": {
+    "family": "NNUE",
+    "detail": "NNUE"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "やねうら王の探索部に先読みを追加"
+  },
+  "learning": "やねうら王、Kristallweizen評価関数、Aperyや公開教師データを使う可能性。学習パラメータの変更を予定",
+  "hardware": "Ryzen 9 5950X、GeForce RTX 3080、64GB",
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "探索",
+      "title": "数手先の先読み",
+      "description": "互いに最高評価の手を選ぶと仮定して5手程度進めた局面の評価値で手を決め、数手先の評価値をより正確に決める。先読みした局面に辿り着かないことがあるのが欠点。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "先読み: 数手先から先読みを行う"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "学習時のパラメータ変更",
+      "description": "学習時のパラメータを変更する予定とだけ記載。",
+      "originality": "不明",
+      "evidence": null,
+      "quote": "学習時のパラメータを変更する予定"
+    }
+  ],
+  "character": null,
+  "notes": "文書は簡素なスライド。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc31/team.html"
+}

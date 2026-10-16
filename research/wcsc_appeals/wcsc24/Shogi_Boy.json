@@ -1,0 +1,44 @@
+{
+  "wcsc": 24,
+  "year": 2014,
+  "dir": "Shogi_Boy",
+  "team": "不明（Shogi Boy）",
+  "software": "Shogi Boy",
+  "sources": [
+    "wcsc24/appeal/Shogi_Boy/appeal.docx"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc24/appeal/Shogi_Boy/appeal.docx"
+  ],
+  "summary": "達人一人の棋譜だけを使い、その達人の指した手だけを学習して、棋風に近い評価関数を作る。前年と同文。",
+  "base": {
+    "engine": "不明",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "不明",
+    "detail": "達人の棋風を学習"
+  },
+  "search": {
+    "family": "不明",
+    "detail": null
+  },
+  "learning": "一人の達人の棋譜のみ、その達人の指し手のみ",
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "棋風・人間らしさ",
+      "title": "達人別の棋風を学習する評価関数",
+      "description": "一人の達人の棋譜だけ、その達人の手だけを学習して棋風に近い評価関数を作る。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "棋風を達人の棋譜から学習し、それぞれの達人の棋風に近いそれぞれの"
+    }
+  ],
+  "character": null,
+  "notes": "前年と同文。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc24/team.html"
+}

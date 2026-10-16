@@ -1,0 +1,52 @@
+{
+  "wcsc": 21,
+  "year": 2011,
+  "dir": "scherzo",
+  "team": "氏家一朗",
+  "software": "scherzo",
+  "sources": [
+    "wcsc21/appeal/scherzo/appeal.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc21/appeal/scherzo/appeal.txt"
+  ],
+  "summary": "あうあう将棋の後継。今年は探索の閾値を深さから証明数・反証数に変え、評価関数は機械学習で作る予定で、教師には前年の選手権の棋譜を使う。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "手作り",
+    "detail": "昨年まで駒の損得と王との位置関係のみ。今年は機械学習を予定"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "昨年まで単純な全幅探索。今年は証明数/反証数を閾値とする探索を予定"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "探索",
+      "title": "証明数・反証数を閾値にする探索",
+      "description": "探索の打ち切りを深さでなく、証明数／反証数の閾値で行う。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "今年は深さではなく、証明数/反証明数をしきい値にしようと考えています"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "前年の選手権の棋譜を教師にする",
+      "description": "プロの棋譜でなく、昨年のコンピュータ将棋選手権の棋譜を教師データにして特徴量を機械学習する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "教師データとして用いるのは、プロの棋譜ではなく、昨年のコンピュータ将棋選手権の棋譜の予定です"
+    }
+  ],
+  "character": null,
+  "notes": "予定ベースの文書。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc21/team.html"
+}

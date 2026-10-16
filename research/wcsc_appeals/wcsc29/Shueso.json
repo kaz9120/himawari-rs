@@ -1,0 +1,62 @@
+{
+  "wcsc": 29,
+  "year": 2019,
+  "dir": "Shueso",
+  "team": "竹内 章",
+  "software": "習甦",
+  "sources": [
+    "wcsc29/appeal/Shueso/Shueso_wcsc29.txt"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc29/appeal/Shueso/Shueso_wcsc29.txt"
+  ],
+  "summary": "NNUE風のニューラルネットワーク評価関数を、MultiPV 16で5手目まで分岐させた自己対戦棋譜と強化学習で学習する。Stockfish参考のαβにルートの単スレッドdf-pnを組み合わせる。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": "利きデータ構造は技巧、NNのアーキテクチャはNNUEを参考"
+  },
+  "eval": {
+    "family": "NNUE",
+    "detail": "玉位置に対する各駒の位置と各升の利き数を特徴量とするNN（NNUE参考）"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "Stockfish参考のαβ、ルートで1スレッドのdf-pn詰み探索"
+  },
+  "learning": "5手目までMultiPV 16として16^5局の自己対戦棋譜を数セット作成。評価値推移のフィードバックから推定した勝率を割引報酬として強化学習。Adam、annealing、weight decay",
+  "hardware": "Amazon EC2 c5.9xlarge",
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "MultiPV 16で5手目まで分岐した自己対戦",
+      "description": "5手目までMultiPV 16で指して16^5局の自己対戦棋譜を作り、評価値の推移のフィードバックで推定した勝率を割引報酬として強化学習する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "5手目までMultiPV 16として16^5局の自己対戦棋譜を数セット作成し"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "初期状態から短時間で最適化",
+      "description": "Adamをベースに、annealingやweight decayを使い、ニューラルネットの初期化状態から短時間でパラメータを最適化する。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "ニューラルネットワークの初期化状態から短時間でパラメータを最適化するためAdamをベースとし"
+    },
+    {
+      "category": "詰み・終盤",
+      "title": "ルートの専用スレッドでdf-pn",
+      "description": "ルート局面でdf-pnにより1スレッドで詰みを探索する。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "ルート局面でdf-pn[1]により1Threadで詰みを探索する。"
+    }
+  ],
+  "character": null,
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc29/team.html"
+}

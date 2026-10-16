@@ -1,0 +1,76 @@
+{
+  "wcsc": 31,
+  "year": 2021,
+  "dir": "Kifuwarabe",
+  "team": "高橋 智史",
+  "software": "きふわらべ",
+  "sources": [
+    "wcsc31/appeal/Kifuwarabe/WCSC31_appeal.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc31/appeal/Kifuwarabe/WCSC31_appeal.pdf"
+  ],
+  "summary": "フロム・スクラッチを宣言した、Go言語製の将棋ソフト。開発期間約1か月。イラスト風の対話形式の文書で、イリーガルムーブ・二歩・打ち歩詰めなどの違法手を、自分の手番の1手目だけ避けて、読み筋では気にしないという割り切った設計を語る。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "手作り",
+    "detail": "駒得のみの評価関数（他文書の言及による）"
+  },
+  "search": {
+    "family": "その他",
+    "detail": "1手詰め判定と、違法手を1手目だけ避ける簡易探索"
+  },
+  "learning": null,
+  "hardware": "1時間3000円のクラウド機（記述）",
+  "language": "Go",
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "探索",
+      "title": "違法手を1手目だけ避ける割り切り",
+      "description": "二歩・打ち歩詰め・桂の世界一周・千日手などは、次の一手のときだけチェックし、2手目以降の読み筋では好きなだけ違反させる。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "次の一手 のとこだけ チェックしろだぜ。 二手目以降の読み筋では 好きなだけ 二歩 しろ だぜ"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "相手の飛車を直線上の好きな所に止まれる駒とみなす",
+      "description": "自分が飛び越えるミスを避けるため、相手の長い利きの駒は直線上の好きな所に止まれる扱いにし、王の逃げ場の判定を簡略化する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "相手の飛車は 直線上の好きな所に止まれる、 というルールにすれば いいのでは？"
+    },
+    {
+      "category": "詰み・終盤",
+      "title": "利きマスを駒に持たせる1手詰め判定",
+      "description": "駒に利きマスをくっつけて、駒を動かしたら利きも一緒に動かし、1手詰めの判定に使う。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "駒に 利きマスも くっつけて、駒を動かしたら   利きマスも 一緒に動くようにしようぜ？"
+    },
+    {
+      "category": "エンタメ・演出",
+      "title": "漫画風の対話形式アピール文書",
+      "description": "フリーフォントを使い、ひよ子との掛け合いでプログラミングの失敗談と割り切りを語るスライド。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "「 何言語で書いてもバグるから 使った事のある言語の数で競おうぜ？」"
+    },
+    {
+      "category": "開発手法・運用",
+      "title": "フロム・スクラッチ宣言",
+      "description": "思考部に大きな影響を与える、他者の作成したプログラム・データ等を利用していない宣言。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "思考部に大きな影響を与える、他者の作成したプログラム・ データ等を利用していません。"
+    }
+  ],
+  "character": "独創賞を狙ったと思われる、ネタに全振りした対話形式の文書。「Go言語で書こうぜ？」「何言語で書いてもバグるから使った事のある言語の数で競おうぜ？」。対局で「まだ相手の玉を詰ましたことがない」と自虐する。",
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc31/team.html"
+}

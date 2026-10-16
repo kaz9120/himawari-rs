@@ -1,0 +1,78 @@
+{
+  "wcsc": 29,
+  "year": 2019,
+  "dir": "GodWhale",
+  "team": "鈴木 雅博（宇宙将棋連合）",
+  "software": "大合神クジラちゃん",
+  "sources": [
+    "wcsc29/appeal/GodWhale/WCSC29.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc29/appeal/GodWhale/WCSC29.pdf"
+  ],
+  "summary": "生放送視聴者のパソコン数百台でクラスタを組む、視聴者参加型の将棋ソフト。GPS将棋方式のマスタ・スレーブ構成に、末端以外の親ノードでも探索する独自の工夫を加えた。擬人化したキャラクターのクジラちゃんとオリジナルGUIも持つ。",
+  "base": {
+    "engine": "やねうら王",
+    "eval_source": "tanuki-wcsc28をクジラ9生成の100億局面とillqpha3教師局面で追加学習",
+    "note": null
+  },
+  "eval": {
+    "family": "NNUE",
+    "detail": null
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "マスタ・スレーブのクラスタ探索（GPS将棋方式）。同じ手を2スレーブに探索させて冗長化"
+  },
+  "learning": null,
+  "hardware": "ニコ生・YouTube視聴者のパソコン（前回は400台以上のクラスタ）",
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": "第23回27位（独創賞）、第24回16位、第25回19位、第27回4位、第28回6位",
+  "ideas": [
+    {
+      "category": "並列・分散",
+      "title": "視聴者のPCによるクラスタ探索",
+      "description": "マスタがスレーブを管理するクラスタ探索で、スレーブは主にニコニコ生放送やYouTubeの視聴者のパソコンを使う。前回は400台以上。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "スレーブを動かすのは主にニコニコ生放送や YouTube 視聴者のパソコンを考えています。"
+    },
+    {
+      "category": "探索",
+      "title": "末端以外の親ノードでも探索",
+      "description": "従来は末端ノードだけ探索し、それ以外の手は「その他ノード」で探索させて比較が難しかった。親ノードでも探索して結果を加え、深さの違う評価値で安定して指し手を選べるようにした。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "探索を探索ツリーの末端ノードだけでなくすべてのノードで行うことで、スレーブの性能差を気にすることなく安定した棋力向上を可能にしました。"
+    },
+    {
+      "category": "並列・分散",
+      "title": "同じ手を2スレーブに探索させる冗長化",
+      "description": "クラスタの冗長性のため、同じ手を2つのスレーブに探索させる。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "冗長性を持たせるため同じ手を2つのスレーブに探索させています。"
+    },
+    {
+      "category": "エンタメ・演出",
+      "title": "擬人化キャラクターとオリジナルGUI",
+      "description": "クジラちゃんを擬人化したキャラクターとして自作GUIに取り込む。GUIはコンピュータ将棋を動かすためにも使える。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "クジラちゃんを擬人化し、GUI 内に取り込みました。"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "自前の教師局面でtanuki-評価関数を追加学習",
+      "description": "前回大会のクジラ9で生成した100億局面と、公開されているillqpha3の教師局面をtanuki-wcsc28の評価関数に追加学習させた。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "前回大会で使った「クジラ 9」により生成した 100 億局面から学習させました。"
+    }
+  ],
+  "character": "視聴者参加型のクジラちゃん。ニコニコ生放送・YouTubeの視聴者が計算資源を提供し、キャラクターとGUIを持つ。",
+  "notes": "テキスト化が文字化けのため原本PDF（2ページ）を画像で読んだ",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc29/team.html"
+}

@@ -1,0 +1,52 @@
+{
+  "wcsc": 23,
+  "year": 2013,
+  "dir": "Kakinoki-Shogi",
+  "team": "柿木 義一",
+  "software": "柿木将棋",
+  "sources": [
+    "wcsc23/appeal/Kakinoki-Shogi/appeal.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc23/appeal/Kakinoki-Shogi/appeal.txt"
+  ],
+  "summary": "従来の全幅探索と選択探索の2本立てをやめ、2007年開発の全幅探索版のみにした。Bonanza法の学習だが、bitboardを使わず利きデータを持ち、評価項目も独自。並列化と山下氏の0.5手延長を採用した。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": "2007年に開発開始"
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "Bonanza法で学習、評価項目は独自"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "全幅探索、0.5手延長、並列化"
+  },
+  "learning": "Bonanza法",
+  "hardware": null,
+  "language": null,
+  "claimed_strength": "floodgate 2184点（改良前2094点）。昨年版に対し7割程度の勝率",
+  "ideas": [
+    {
+      "category": "探索",
+      "title": "0.5手延長方式の採用",
+      "description": "山下氏の0.5手延長方式を採用した。",
+      "originality": "再現・追従",
+      "evidence": "改良全体でfloodgate +90点",
+      "quote": "山下さんの 0.5手延長方式を採用"
+    },
+    {
+      "category": "探索",
+      "title": "全幅探索と選択探索の統合をやめる",
+      "description": "昨年まで併用した全幅探索と選択探索のうち全幅探索だけにした。ようやくその方が強くなった。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "今年は、全幅探索のプログラムだけにしました。"
+    }
+  ],
+  "character": null,
+  "notes": "floodgateでのレートが不可解な動きをした点にも言及。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc23/team.html"
+}

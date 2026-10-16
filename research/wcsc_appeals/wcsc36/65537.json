@@ -1,0 +1,54 @@
+{
+  "wcsc": 36,
+  "year": 2026,
+  "dir": "65537",
+  "team": "257",
+  "software": "65537",
+  "sources": [
+    "wcsc36/appeal/65537/65537_appeal_after.docx"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc36/appeal/65537/65537_appeal_after.docx"
+  ],
+  "summary": "ResNet20ブロック256フィルターのDL評価関数とMCTSの構成。独自の売りは、Bitboardを用いてGPU上で合法手生成を行う探索部。文書は大会後に書かれた振り返りの形で、CNNとGNNのハイブリッドは学習安定性の問題で見送った。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": "MCTS探索を独自に実装"
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "ResNet 20ブロック256フィルター。CNNとGNNのハイブリッドも開発したが、学習が安定せず本大会では不採用"
+  },
+  "search": {
+    "family": "MCTS",
+    "detail": "従来のMCTSに、GPUによる合法手生成を組み合わせる"
+  },
+  "learning": null,
+  "hardware": "H100NVL GPU、メモリ64GB（一覧ページより）",
+  "language": [
+    "Python"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "実装・高速化",
+      "title": "GPUでの合法手生成",
+      "description": "Bitboardを使い、MCTSの合法手生成をGPU上で行う。バッチ処理や並列化と相性が良く、来年度に向けて期待している。本大会では真価を発揮できなかった。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "Bitboardを用いてGPUで合法手生成が可能になっております。"
+    },
+    {
+      "category": "評価関数",
+      "title": "CNNとGNNのハイブリッド",
+      "description": "CNNとグラフニューラルネットワークを組み合わせた評価関数を開発した。学習安定性の問題で、最終的にはResNetで出場した。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "CNNとGNNのハイブリッドアーキテクチャの開発に力を入れた"
+    }
+  ],
+  "character": null,
+  "notes": "文書は大会後アピール文書。チーム名はチーム257。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc36/team.html"
+}

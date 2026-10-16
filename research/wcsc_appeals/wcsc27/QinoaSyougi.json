@@ -1,0 +1,73 @@
+{
+  "wcsc": 27,
+  "year": 2017,
+  "dir": "QinoaSyougi",
+  "team": "山田 元気（きのあ）",
+  "software": "きのあ将棋",
+  "sources": [
+    "wcsc27/appeal/QinoaSyougi/appeal.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc27/appeal/QinoaSyougi/appeal.txt"
+  ],
+  "summary": "想定するキャラクタごとに振る舞いを制御できるカスタマイズ性と、思考・対局・学習を別プログラムに分ける構成が特徴。将棋と囲碁で共通の内部表現を目指す試みが頓挫し、囲碁で抽象表現の思考エンジンを模索している。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "不明",
+    "detail": null
+  },
+  "search": {
+    "family": "不明",
+    "detail": null
+  },
+  "learning": null,
+  "hardware": "ノートPC Core i7 4900MQ＋クラウド",
+  "language": [
+    "C",
+    "C++",
+    "PHP",
+    "AS3"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "棋風・人間らしさ",
+      "title": "キャラクタごとに振る舞いを制御",
+      "description": "想定したキャラクタごとに振る舞いを制御できるようカスタマイズ性を高めて作られている。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "想定したキャラクタごとに振る舞いを制御するため、カスタマイズ性の向上。"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "局面ごとに思考エンジンを逐次実行",
+      "description": "局面ごとに思考エンジンを逐次実行する構成にして、初期化コストを減らす。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "局面ごとに思考エンジンを逐次実行するため、初期化コストの低減。"
+    },
+    {
+      "category": "開発手法・運用",
+      "title": "思考・対局・学習を独立プログラムに",
+      "description": "思考、対局、学習を独立した実行プログラムにして、実験と運用の効率を上げる。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "思考/対局/学習などを、それぞれ独立実行プログラムとすることで実験/運用効率の向上。"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "将棋・囲碁共通の抽象的な内部表現",
+      "description": "将棋や囲碁で共通化した内部表現を目指して2010年頃から段階的な置き換えを試みたが頓挫した。2015年頃から囲碁で抽象表現の思考エンジンを模索し、将棋での実用化と、深層学習の部分的な導入を狙う。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "再度、抽象的な表現で思考エンジンを構築できないかと2015年ごろから模索を囲碁において進めていて"
+    }
+  ],
+  "character": null,
+  "notes": "「最近の模索と反省」として、頓挫の理由を「段階的に置き換える」発想の遅さと総括している。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc27/team.html"
+}

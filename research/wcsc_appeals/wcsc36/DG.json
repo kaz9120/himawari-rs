@@ -1,0 +1,60 @@
+{
+  "wcsc": 36,
+  "year": 2026,
+  "dir": "DG",
+  "team": "田中 大吾",
+  "software": "Daigorilla",
+  "sources": [
+    "wcsc36/appeal/DG/appeal.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc36/appeal/DG/appeal.pdf"
+  ],
+  "summary": "やねうら王のNNUE（768x2-8-64）を使う。AobaNNUEに自前の100億局面を追加学習し、水匠の評価関数から作ったデータでもさらに追加学習する。256コア以上のmultiponderで挑む。",
+  "base": {
+    "engine": "やねうら王",
+    "eval_source": "AobaNNUE・Suisho11a",
+    "note": "AobaNNUEに自前教師を追加学習"
+  },
+  "eval": {
+    "family": "NNUE",
+    "detail": "768x2-8-64"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "やねうら王"
+  },
+  "learning": "nnue-pytorch、gensfen.pyで生成。自前の互角局面集約2億を1手約1億ノードで生成し、評価値上限150、生成評価上限750",
+  "hardware": "合計256コア以上のmultiponder",
+  "language": [],
+  "claimed_strength": "AobaNNUEへの追加学習でSuisho10beta2に1000局・1手1秒で約+100 Elo",
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "AobaNNUEへの自前100億局面の追加学習",
+      "description": "AobaNNUEに自前の100億局面を追加学習し、同アーキテクチャのSuisho10beta2に対して約100 Elo上がった。さらにSuisho11aで生成した約10億局面を追加学習する予定で、+30以上を見込む。",
+      "originality": "既存手法の応用",
+      "evidence": "1000局、1手1秒でSuisho10beta2に約+100 Elo",
+      "quote": "Aoba_nnueに自前の100億の教師データを追加学習し、強化したところ"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "ペタショック対策の定跡掘り",
+      "description": "ペタショック24手目からSuisho11aで1手1億ノード以上探索し、既存定跡以外の指し手を探索させて定跡を生成する。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "ペタショック24手目からsuisho11aで一手1億ノード以上で探索させ"
+    },
+    {
+      "category": "並列・分散",
+      "title": "256コア以上のmultiponder",
+      "description": "複数マシンの合計256コア以上でmultiponderを行う。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "合計256コア以上のmultiponderで挑みます。"
+    }
+  ],
+  "character": null,
+  "notes": "原文の「課金評価関数」はSuisho11aを指すとみられる。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc36/team.html"
+}

@@ -1,0 +1,70 @@
+{
+  "wcsc": 25,
+  "year": 2015,
+  "dir": "Sunfish",
+  "team": "久保 亮介",
+  "software": "Sunfish",
+  "sources": [
+    "wcsc25/appeal/Sunfish/appeal.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc25/appeal/Sunfish/appeal.txt"
+  ],
+  "summary": "過去のプログラムを捨てて新規に作り直し、盤面はBitboardを使う。最新ソースをSunfish3としてGitHubで常時公開。評価はBonanzaのパラメータ。多数の一般的な探索手法に加え、SEEの結果のキャッシュ、静的評価差分値のキャッシュ、シグモイド関数による読み延長制御、玉位置と直前の手による3手詰み判定の要否の判断が他にない点。",
+  "base": {
+    "engine": "独自",
+    "eval_source": "Bonanzaの評価パラメータ",
+    "note": "Sunfish3として新規作成"
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "Bonanzaのパラメータを使用"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "NegaScout、Aspiration、Futility、ProbCut、Singular、Null Move、Distance Pruning、Razoring、LMR、YBWC、SHEK"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "探索",
+      "title": "シグモイド関数による読み延長制御",
+      "description": "シグモイド関数を使って探索の読み延長を制御する。他のプログラムではおそらくやっていない点として挙げる。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "シグモイド関数を使用した読み延長制御"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "SEEと静的評価差分値のキャッシュ",
+      "description": "SEEの結果と静的評価の差分値をキャッシュする。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "SEE の結果のキャッシュ"
+    },
+    {
+      "category": "詰み・終盤",
+      "title": "玉位置と直前の手で3手詰め判定を選ぶ",
+      "description": "3手詰み判定をするかどうかを、玉の位置と直前の指し手から判断する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "3手詰み判定するかどうかを玉の位置と直前の指し手から判断"
+    },
+    {
+      "category": "開発手法・運用",
+      "title": "最新ソースの常時公開",
+      "description": "Sunfish3として常に最新のソースをGitHubで公開している。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "常に最新のソースを公開しています。"
+    }
+  ],
+  "character": null,
+  "notes": null,
+  "team_list_url": "http://www2.computer-shogi.org/wcsc25/team.html"
+}

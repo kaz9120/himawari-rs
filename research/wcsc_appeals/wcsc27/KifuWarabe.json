@@ -1,0 +1,54 @@
+{
+  "wcsc": 27,
+  "year": 2017,
+  "dir": "KifuWarabe",
+  "team": "高橋 智史",
+  "software": "きふわらべ",
+  "sources": [
+    "wcsc27/appeal/KifuWarabe/appeal.pdf"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc27/appeal/KifuWarabe/appeal.pdf"
+  ],
+  "summary": "コンピュータ将棋の話は置いて「数学を勉強しようぜ」と、東方Projectの二次創作キャラが対話する漫画形式で、機械学習で使う釣り鐘型の分布（正規分布）と3シグマ区間を説明する156ページのスライド。エンジンはビットボードと探索だけで動かす予定で、学習も定跡もない。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "不明",
+    "detail": "学習なし"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "ビットボードとサーチだけで動かす構想。SEEやアスピレーション・ウィンドウは「どうぶつしょうぎ」で覚えたが採用は未確定"
+  },
+  "learning": null,
+  "hardware": "Core i7 N2830 2.5GHz 2コア 4GB Windows10",
+  "language": [
+    "C#"
+  ],
+  "claimed_strength": "電王トーナメント4回で33位（35チーム中）、UEC杯囲碁25位（30チーム中）",
+  "ideas": [
+    {
+      "category": "解説・人間支援",
+      "title": "釣り鐘型分布を対話で学ぶ数学解説",
+      "description": "どんぐりを拾う例や白クマと黒クマの交配で灰色クマが増える例えで、混ぜ合わせたものが釣り鐘型（正規分布）になる理由と、1クマ（68%）・2クマ（95%）・3クマ（99.7%）区間の考え方を説明する。機械学習の結果が集団の中で本当に突出しているか判別する道具として位置づける。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "今回は コンピュータ将棋の話しはおいといて、数学の話しをしようぜ☆"
+    },
+    {
+      "category": "エンタメ・演出",
+      "title": "東方Project二次創作キャラの漫画形式",
+      "description": "北白河ちゆりと岡崎夢美（東方夢時空のキャラ）と、きふわらべ自身が対話する漫画形式の156ページ。文末の「だぜ☆」口調で、数学の話題だけでアピールする。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "「 お父んは わたしをＰＲする気はないのか……。"
+    }
+  ],
+  "character": "「過去最大のどうでもいいPR文書」と自嘲する、数学の学習記録を漫画にした異色のアピール。ソフトの実装は触れず、「Let's code kifuwarabe by bitboard and search☆」で締める。きふわらべ自身がPRされないことに文句を言う自己言及のオチ。",
+  "notes": "テキストは95KBだが、対話形式の数学解説が大半で、エンジンの技術情報は終盤の数ページのみ（ビットボード、SEE等は構想）。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc27/team.html"
+}

@@ -1,0 +1,52 @@
+{
+  "wcsc": 31,
+  "year": 2021,
+  "dir": "ichibin",
+  "team": "いちびん",
+  "software": "ichibin",
+  "sources": [
+    "wcsc31/appeal/ichibin/ichibin_appeal.txt"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc31/appeal/ichibin/ichibin_appeal.txt"
+  ],
+  "summary": "評価関数の教師データを、評価が甘い・悪手と思われる指し手の前後を自動で選び出し、深い探索で再評価して入れ替えることで精度を上げる。深さ14で作った約2億7千万の教師局面が対象。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "NNUE",
+    "detail": "不明（第1回電竜戦ではNPS550万程度）"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "不明"
+  },
+  "learning": "深さ14で自作した約2億7千万局面から、アルゴリズムで抽出した局面を深さ20〜24で再評価して教師を差し替える",
+  "hardware": null,
+  "language": null,
+  "claimed_strength": "第1回電竜戦でA級7位",
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "悪手の疑い局面の再評価で教師を修正",
+      "description": "評価が甘い指し手や悪手の前後数手を選ぶアルゴリズムを自作し、該当局面を深さ20〜24で再探索して元の教師データの評価点と入れ替える。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "明らかに評価が甘い指手や悪手と思えわれる指手の前後数手を選び出すアルゴリズムを自作した。"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "確度でグループ分けして概査から精査へ",
+      "description": "アルゴリズムに引っかかった局面を確度でグループ分けし、概査から精査へ段階的に絞り込む。全自動で行い、開発者は寝て待つ。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "確度によってグループ分けすることで、概査から精査へと徐々に絞り込みを行う"
+    }
+  ],
+  "character": "「寝て待つだけ」と、時間のかかる処理を機械に任せる開発スタイルを軽く語る。",
+  "notes": "文書の作成日は2021年2月6日。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc31/team.html"
+}

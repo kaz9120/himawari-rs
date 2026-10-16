@@ -1,0 +1,46 @@
+{
+  "wcsc": 33,
+  "year": 2023,
+  "dir": "JHBR",
+  "team": "JHBR",
+  "software": "JHBR",
+  "sources": [
+    "wcsc33/appeal/JHBR/appeal1 jh85.txt"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc33/appeal/JHBR/appeal1%20jh85.txt"
+  ],
+  "summary": "指し手選択にスパイキングニューラルネットワーク（SNN）を使うのが特徴。評価関数はfloodgateの棋譜を使いSTDPルールで学習した。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": "cshogiライブラリを使用"
+  },
+  "eval": {
+    "family": "その他",
+    "detail": "スパイキングニューラルネットワーク。STDPで学習"
+  },
+  "search": {
+    "family": "その他",
+    "detail": "指し手選択にSNN"
+  },
+  "learning": "floodgate棋譜でspike timing dependent plasticity（STDP）ルールにより学習",
+  "hardware": null,
+  "language": [
+    "Python"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "スパイキングニューラルネットワークによる指し手選択",
+      "description": "指し手選択部にspiking neural networkを使い、評価関数をfloodgate棋譜からSTDPルールで学習した。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "指手選択部分にspiking neural network(SNN)を使用したこと"
+    }
+  ],
+  "character": null,
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc33/team.html"
+}

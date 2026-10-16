@@ -1,0 +1,52 @@
+{
+  "wcsc": 24,
+  "year": 2014,
+  "dir": "Bonanza",
+  "team": "保木 邦仁",
+  "software": "Bonanza",
+  "sources": [
+    "wcsc24/appeal/Bonanza/appeal.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc24/appeal/Bonanza/appeal.txt"
+  ],
+  "summary": "静的評価関数の大規模機械学習、チェス流の探索と盤データ構造、合議法・分散並列探索・詰将棋専用ワーカーによる分散環境の利用が特徴。2004年開始。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "静的評価関数の大規模な機械学習"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "コンピュータチェス流"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "評価関数の大規模機械学習",
+      "description": "静的評価関数を大規模に機械学習する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "静的評価関数の大規模な機械学習"
+    },
+    {
+      "category": "並列・分散",
+      "title": "合議法・分散並列探索・詰将棋専用ワーカー",
+      "description": "合議法、分散並列探索法、詰将棋専用ワーカーなどで分散並列環境を使う。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "合議法、分散並列探索法、詰将棋専用ワーカーなどによるによる分散並列環境の利用"
+    }
+  ],
+  "character": null,
+  "notes": "短い文書。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc24/team.html"
+}

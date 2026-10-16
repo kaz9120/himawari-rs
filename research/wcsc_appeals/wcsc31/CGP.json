@@ -1,0 +1,78 @@
+{
+  "wcsc": 31,
+  "year": 2021,
+  "dir": "CGP",
+  "team": "大熊 三晴",
+  "software": "CGP",
+  "sources": [
+    "wcsc31/appeal/CGP/CGP2021.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc31/appeal/CGP/CGP2021.pdf"
+  ],
+  "summary": "フルスクラッチの非ビットボード型エンジン。高NPSを目指し、各マスの利きや評価関数の途中結果を局面構造体に保持し、AVX-512などで高速化する。定跡や既存の評価値データを使わない。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "手番付きKPP。持ち駒周りを一般的な3駒関係より拡張"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "Lazy SMPを微修正した並列化"
+  },
+  "learning": "評価関数も自力で学習。一般に流布する定跡データ・局面と評価値のセット・読み筋は不使用",
+  "hardware": null,
+  "language": [
+    "C"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "実装・高速化",
+      "title": "非ビットボードで利きを保持",
+      "description": "局面構造体に各マスの利きを持ち、ビットボードより複雑な情報を保持して速く処理する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "局面構造体に各マスへの利きの状態を保持"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "評価の途中結果を保持してメモリ待ちに演算",
+      "description": "変化の少ない評価関数の途中結果を局面構造体に保持し、メモリアクセス待ちの間に演算を回して高速化。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "演算途中のデータを保持することによりメモリ アクセス待ち時に演算を回す事により高速化を狙っております。"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "AVX-512などSIMDの活用",
+      "description": "評価値算出・オーダリング・構造体コピーにSIMDを使う。非対応CPUでは無効化の可能性あり。",
+      "originality": "既存手法の応用",
+      "evidence": "Core i9 7940Xは1スレッドではRyzen9 3950Xより上、全体では及ばない",
+      "quote": "AVX-512 命令をはじめとした拡張命令を活用"
+    },
+    {
+      "category": "評価関数",
+      "title": "持ち駒周りを拡張したKPP",
+      "description": "手番付きKPPで、持ち駒周りの評価を一般的な3駒関係より拡張している。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "持ち駒周りの評価を一般的な 3 駒関係より拡張"
+    },
+    {
+      "category": "開発手法・運用",
+      "title": "外部データを使わない縛り",
+      "description": "定跡・評価値データ・読み筋などの流布データを使わずに作る。無駄なこだわりと自認。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "一般に流布している定跡データ、一般に流布している「局面と評価値のセット」"
+    }
+  ],
+  "character": "「無駄に一から作成」「無駄に高NPS」など、こだわりを自虐的に語る。",
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc31/team.html"
+}

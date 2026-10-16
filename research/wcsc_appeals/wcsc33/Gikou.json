@@ -1,0 +1,87 @@
+{
+  "wcsc": 33,
+  "year": 2023,
+  "dir": "Gikou",
+  "team": "出村 洋介",
+  "software": "技巧",
+  "sources": [
+    "wcsc33/appeal/Gikou/2023-05-05-appealv2.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc33/appeal/Gikou/2023-05-05-appealv2.pdf"
+  ],
+  "summary": "2017年以来の参加。C++版を止めてRustで全面的に書き直し、学習はPyTorch。評価関数はAlphaZero型のDLとMCTSで、既存データを使わず自己対局のみ1000万棋譜で強化学習した。当初のNNUE併用は間に合わなかった。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": "フルスクラッチ。将棋ライブラリは使わない"
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "深層学習の評価関数。将棋固有の入力特徴（影の利き、ピン、王手している駒）を追加"
+  },
+  "search": {
+    "family": "MCTS",
+    "detail": "Gumbelに倣った少ない探索量（1局面16シミュレーション）で強化学習"
+  },
+  "learning": "既存データセットを使わず、自己対局のみで約1000万棋譜を強化学習",
+  "hardware": null,
+  "language": [
+    "Rust",
+    "Python"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "開発手法・運用",
+      "title": "Rustでの全面書き直し",
+      "description": "ポインタ絡みの不具合が見つけにくくなったC++版をやめ、Rustで書き直した。危険なコードを最小化し、ユニットテストを活用し、PyO3経由でNumPy形式でPythonとデータを受け渡す。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "思い切って C++版の開発を停止し、安全性が高いと評判の Rust で全面的に書き直しました。"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "自動ベクトル化でApple Siliconに対応",
+      "description": "x86専用のintrinsicを原則廃止し、コンパイラの自動ベクトル化に切り替えた。Intel/AMDに加えApple M1/M2でも動く。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "intrinsic 関数の利用を原則廃止し、自動ベクトル化のアプローチを新たに採用しています。"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "AlphaZeroとNNUEの組み合わせ（開発中）",
+      "description": "AlphaZeroの深層強化学習に軽量なNNUEを組み合わせ、学習時間を短縮する案を試行錯誤していた。開発期間の都合で今大会はNNUEなしのDL+MCTSで参加。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "AlphaZero の深層強化学習に、軽量・高速な NNUE をうまく組み合わせることで"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "既存データを使わない自己対局のみの強化学習",
+      "description": "既存データセットを使わず、自己対局だけで約1000万棋譜を強化学習する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "既存のデータセットを利用せず、自己対局のみによる強化学習（1000 万棋譜程度）"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "少ない探索量での強化学習",
+      "description": "Gumbel手法を参考に、1局面あたり16シミュレーションという少ない探索量で強化学習を行う。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "比較的少ない探索量での強化学習（今回は１局面あたり 16 シミュレーション）"
+    },
+    {
+      "category": "評価関数",
+      "title": "将棋固有の入力特徴",
+      "description": "入力特徴に、影の利き、ピン、王手している駒などの将棋固有の情報を追加した。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "将棋固有の入力特徴の追加（影の利き、ピン、王手している駒なども考慮）"
+    }
+  ],
+  "character": "2017年以来の参加で、初心に戻ってフルスクラッチで開発している。",
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc33/team.html"
+}

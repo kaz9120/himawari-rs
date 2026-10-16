@@ -1,0 +1,52 @@
+{
+  "wcsc": 22,
+  "year": 2012,
+  "dir": "GPS_Shogi",
+  "team": "Team GPS（田中哲朗ほか）",
+  "software": "GPS将棋",
+  "sources": [
+    "wcsc22/appeal/GPS_Shogi/WCSC2012_appeal.pdf"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc22/appeal/GPS_Shogi/WCSC2012_appeal.pdf"
+  ],
+  "summary": "東大の教育用iMac（最大600台）を主力にした疎結合並列探索で参加する。2011年はiMac 208台とAmazon EC2で約800コア。第10回の参加で、疎結合探索のさらなる改善にも取り組む。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "序盤、中盤1、中盤2、終盤の4種類"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "実現確率探索、df-pn（並列協調）詰探索、疎結合並列探索"
+  },
+  "learning": "評価関数の自動学習",
+  "hardware": "東大駒場の教育用iMac端末（最大600台、約2,400コア。電力事情で変更の可能性）。2011年はiMac 208台とAmazon EC2で約800コア。2010年は666コア",
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "並列・分散",
+      "title": "教室のiMacとAmazon EC2を使った疎結合並列",
+      "description": "家庭用PC級のマシンをネットワークで結ぶ疎結合並列探索。2011年はiMac 208台とEC2で約800コア。2012年はiMac最大600台（約2,400コア）を主力にし、手法自体の改善も進める。",
+      "originality": "独自",
+      "evidence": "2010年666コア→2011年約800コア→2012年最大約2,400コア",
+      "quote": "疎結合並列探索システム"
+    },
+    {
+      "category": "開発手法・運用",
+      "title": "ソース・データの公開",
+      "description": "フリーソフトウェアとしてソースコードやデータを公開する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "フリーソフトウェアとしてソースコードやデータを公開しています"
+    }
+  ],
+  "character": null,
+  "notes": "PDFのテキストに文字化けした重複レイヤがあるが、日本語の本文は読み取れた。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc22/team.html"
+}

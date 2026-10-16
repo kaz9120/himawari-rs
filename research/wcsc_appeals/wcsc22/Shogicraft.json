@@ -1,0 +1,78 @@
+{
+  "wcsc": 22,
+  "year": 2012,
+  "dir": "Shogicraft",
+  "team": "出村洋介",
+  "software": "技巧",
+  "sources": [
+    "wcsc22/appeal/Shogicraft/appeal.pdf"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc22/appeal/Shogicraft/appeal.pdf"
+  ],
+  "summary": "2012年2月に開発を始めた、「3か月の限られた期間で可能な限り強く」を掲げる初参加ソフト。Redundant Bitboard、Magic/Rotatedを使わない計算による飛び駒の利き、激指メソッドの評価関数学習、「駒と空きマス」の関係を特徴に加える。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "2駒関係＋。平均化パーセプトロン（激指メソッド）で学習。「駒と駒」に加え「駒と空きマス」の関係も特徴にする"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "全幅探索＋静止探索、NegaScout、反復深化、置換表、hash・killer・SEE/MVV-LVAで並べ替え、Null Move、ProbCut（予定）。詰めはdf-pn"
+  },
+  "learning": "平均化パーセプトロン（激指メソッド）",
+  "hardware": null,
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": "探索速度は序盤80万局面/秒、終盤150万局面/秒（Core i7 2700K、シングルスレッド）",
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "「駒と空きマス」の関係を特徴に加える",
+      "description": "逆転の発想で、駒と駒だけでなく駒と空きマスの関係も考慮する。学習すると飛車の周りの空きマスにプラスの評価が付くことがわかった。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "「駒と駒」の関係だけではなく、「駒と空きマス」の関係も考慮しています"
+    },
+    {
+      "category": "探索",
+      "title": "ProbCutと実現確率の組み合わせ構想",
+      "description": "学習で高精度になった評価関数で将来局面を近似できると見て、前向き枝刈りにProbCutを採る。マージンを局面の実現確率と組み合わせるとうまくいくのではないかと考える。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "局面の実現確率と組み合わせるとうまくいくのではないかと考えています"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "Redundant Bitboardと計算による飛び駒の利き",
+      "description": "Rotated・Magic Bitboardを使わず、飛び駒のブロックパターンを計算で求める（レジスタ上で演算されるため少し速いと考える）。C++テンプレートで実行時分岐を排除し、指し手を逐次生成する。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "飛び駒のブロックパターンを計算で求めると、レジスタ上で演算されるため少しだけ速いと思います"
+    },
+    {
+      "category": "探索",
+      "title": "MVV-LVAをSEEの代替に使う",
+      "description": "MVV-LVAは計算量が極めて小さいため、時と場所によってはSEEより効率的ではないかと考える。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "MVV-LVA は計算量が極めて小さいため、時と場所によっては SEE よりも効率的"
+    },
+    {
+      "category": "詰み・終盤",
+      "title": "df-pnとGHI対策",
+      "description": "df-pn探索に、岸本・MullerのGHI解決策と最小距離法でサイクル問題に対処する。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "岸本・Muller の GHI 解決策"
+    }
+  ],
+  "character": "名前は「巧みな技を見せてほしい」という作者の願いから。開発期間の短さを前面に出す。",
+  "notes": "表記は「技巧」。のちの強豪ソフトの初出文書。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc22/team.html"
+}

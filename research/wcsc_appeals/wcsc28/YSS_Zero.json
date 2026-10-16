@@ -1,0 +1,54 @@
+{
+  "wcsc": 28,
+  "year": 2018,
+  "dir": "YSS_Zero",
+  "team": "山下 宏",
+  "software": "YSS Zero",
+  "sources": [
+    "wcsc28/appeal/YSS_Zero/yssappeal2018.txt"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc28/appeal/YSS_Zero/yssappeal2018.txt"
+  ],
+  "summary": "AlphaZeroの論文を参考に、将棋のルールだけを教えて自己対戦だけでディープラーニングするソフト。入力特徴はAlphaZeroと同一だが手数の情報は使わない。Bonanzaは盤・駒のデータ構造のみ利用し、評価関数は使わない。",
+  "base": {
+    "engine": "独自（Bonanzaの盤・駒データ構造のみ）",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "AlphaZero型。入力は現在+過去7手前までの8局面×（駒の配置・持ち駒・繰り返し回数）+手番で45×8+1=361種類"
+  },
+  "search": {
+    "family": "MCTS",
+    "detail": "AlphaZero型（詳細は書かれていない）"
+  },
+  "learning": "自己対戦のみ。50万棋譜からミニバッチ64局面をランダムに取り出して学習（Caffe）",
+  "hardware": "GTX 1080（学習）、Xeon W3680",
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "手数の情報を入力に使わない",
+      "description": "入力特徴はAlphaZeroと同一だが、手数の情報だけは使わない。プロの棋譜から学習させたときに、手数なしの方が収束が速かったため。",
+      "originality": "独自",
+      "evidence": "手数なしの方が収束が速い",
+      "quote": "プロの棋譜から学習させたときに、手数なしの方が収束が速かったためです。"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "ルールのみから自己対戦だけで学習",
+      "description": "AlphaZeroの論文を参考に、将棋のルールだけを教えて自己対戦だけでディープラーニングする。",
+      "originality": "再現・追従",
+      "evidence": null,
+      "quote": "AlphaZeroの論文を参考に将棋のルールだけを教えて自己対戦だけディープラーニングをしています。"
+    }
+  ],
+  "character": null,
+  "notes": "文書の大半は入力データのサンプル（ビット列の盤面）。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc28/team.html"
+}

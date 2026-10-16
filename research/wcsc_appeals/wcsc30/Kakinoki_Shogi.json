@@ -1,0 +1,62 @@
+{
+  "wcsc": 30,
+  "year": 2020,
+  "dir": "Kakinoki_Shogi",
+  "team": "柿木 義一",
+  "software": "柿木将棋",
+  "sources": [
+    "wcsc30/appeal/Kakinoki_Shogi/appeal2020.txt"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc30/appeal/Kakinoki_Shogi/appeal2020.txt"
+  ],
+  "summary": "1985年頃に開発を始めた長寿ソフト。2013年以降はBonanza法で学習した評価関数の全幅探索のみで、ほぼ同じプログラムとハードで毎年参加する。文書は2013〜2020年の同文面の累積。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "Bonanza法で学習した、独自の評価項目。利きデータを使用（bit-boardなし）"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "全幅探索、山下氏の0.5手延長、PVS並列化、null move枝刈、王手延長、静止探索"
+  },
+  "learning": null,
+  "hardware": "Core i7-6600U ノートPC（2018年まではCore i7-3960X自作PC）",
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": "floodgate R約2300（2017年）",
+  "ideas": [
+    {
+      "category": "探索",
+      "title": "山下氏の0.5手延長方式",
+      "description": "山下宏氏の0.5手延長方式を採用している。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "山下さんの 0.5手延長方式を採用"
+    },
+    {
+      "category": "評価関数",
+      "title": "利きデータを使う独自の評価項目",
+      "description": "bit-boardを使わず利きデータを使い、局面の評価項目は独自のものにする。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "利きデータを使用し、bit-boardは使っていない。"
+    },
+    {
+      "category": "開発手法・運用",
+      "title": "同じソフトを同じハードで出し続ける",
+      "description": "ほぼ同じソフトを同じハードで参加することで、大会のベンチマークになると位置づける。2018年は前年とまったく同じEXEとハードで参加した。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "ほぼ同じソフトを同じハードで参加しているので、そういう意味のベンチマークはなるかと思います。"
+    }
+  ],
+  "character": null,
+  "notes": "今年は昨年とほとんど変わらないとして、2013〜2019年の旧文書を添付している。フィッシャールールの持ち時間は昨年と同じ（15分＋毎手5秒加算）。floodgateのレーティングは2013年約2089〜2184、2015年2234、2017年約2300",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc30/team.html"
+}

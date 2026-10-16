@@ -1,0 +1,47 @@
+{
+  "wcsc": 29,
+  "year": 2019,
+  "dir": "Ayame",
+  "team": "渡辺 敬介",
+  "software": "あやめ",
+  "sources": [
+    "wcsc29/appeal/Ayame/iris_wcsc29.txt"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc29/appeal/Ayame/iris_wcsc29.txt"
+  ],
+  "summary": "前年の「おから饅頭」から改名し、プログラムを一から書き直した。盤面のデータ構造、実現確率探索の着手予測モデル、局面評価関数を大きく変更したと述べる。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "不明",
+    "detail": null
+  },
+  "search": {
+    "family": "その他",
+    "detail": "実現確率探索（着手予測モデルを使用）"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": [
+    "C++",
+    "Java"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "探索",
+      "title": "着手予測モデルを用いた実現確率探索",
+      "description": "実現確率探索に用いる着手予測モデルと局面評価関数を大きく変更した。具体的な内容は書かれていない。",
+      "originality": "不明",
+      "evidence": null,
+      "quote": "実現確率探索に用いる着手予測モデルや局面評価関数についても大きな変更を加えています。"
+    }
+  ],
+  "character": null,
+  "notes": "文書は3文のみで詳細なし。前年は「おから饅頭」の名で出場",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc29/team.html"
+}

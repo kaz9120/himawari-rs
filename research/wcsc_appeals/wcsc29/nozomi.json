@@ -1,0 +1,62 @@
+{
+  "wcsc": 29,
+  "year": 2019,
+  "dir": "nozomi",
+  "team": "大森 悠平",
+  "software": "nozomi",
+  "sources": [
+    "wcsc29/appeal/nozomi/nozomi_appeal_2019_0505.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc29/appeal/nozomi/nozomi_appeal_2019_0505.pdf"
+  ],
+  "summary": "Stockfishベースで、手番別にKPPとKKPを完全分離した評価関数（NNEU）、教師生成専用の評価関数の更新、指し手予測（オーダリング・枝刈り用）を持つ。5/5の更新で、うまくいかなかった点を率直に書き直した。",
+  "base": {
+    "engine": "Stockfish",
+    "eval_source": null,
+    "note": "一部Aperyを参考"
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "KPPとKKPを手番ごとに完全分離（先手番なら先手KPP[手番あり]+後手KPP[手番なし]+KKP先手番）。パラメータは従来の2倍"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "Stockfishベース。指し手予測でオーダリングと枝刈りを強化"
+  },
+  "learning": "floodgate等の棋譜の途中局面を使い、評価値は不使用。教師生成専用評価関数を2000万局面ごとに低学習率で更新。SGDからAdamへ",
+  "hardware": "Amazon EC2 m5.24xlarge",
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": "前回比で1手3秒4threadの定跡なしで173勝93敗34分",
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "手番ごとにKPPとKKPを完全分離",
+      "description": "手番を持つ側のKPPだけを使うよう、先手番・後手番で別のKPP/KKPテーブルを使う。2年前に実装して強くならず見送った案を再利用した。",
+      "originality": "独自",
+      "evidence": "前回比173勝93敗34分（1手3秒4thread、定跡なし）",
+      "quote": "KPPとKKPを手番ごとに完全分離しています"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "教師生成専用評価関数の逐次更新",
+      "description": "教師局面生成のためだけの評価関数を、2000万局面ごとに低学習率で更新し、5億局面後に通常の学習率で更新する。局面を分散させる意図だが、初期局面の生成を工夫するほうが正解で、このやり方は悪手と自己評価している。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "局面を分散させたい意図なのですが、このやり方は悪手で初期局面の生成を工夫する方が正解だと思っています"
+    },
+    {
+      "category": "探索",
+      "title": "指し手予測モデル",
+      "description": "depth 12の5億局面で学習した指し手予測を、オーダリングと枝刈りに使う。正解率は約38%で、強さへの寄与はほとんどないと自己評価している。",
+      "originality": "独自",
+      "evidence": "1手1秒の棋譜に対する正解率が約38%",
+      "quote": "nozomiの1手1秒の棋譜に対して正解率が約38%程度です"
+    }
+  ],
+  "character": "3/21版は誇大広告風（インテリジェント、卓越、驚くような強さ）で、5/5更新版で実際の効果を率直に訂正する、対比のユーモアがある。",
+  "notes": "3/21版と5/5更新の差分を併記する構成",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc29/team.html"
+}

@@ -1,0 +1,118 @@
+{
+  "wcsc": 36,
+  "year": 2026,
+  "dir": "KASANE",
+  "team": "石原 恵",
+  "software": "重-KASANE-",
+  "sources": [
+    "wcsc36/appeal/KASANE/README_KASANE26_20260518.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc36/appeal/KASANE/README_KASANE26_20260518.pdf"
+  ],
+  "summary": "ディープラーニングを使わず、2駒関係（全駒ペア）を特徴量とした線形回帰だけで評価関数を作る将棋AI。Google Antigravityによるエージェント型開発で、Optunaでの探索・評価パラメータの自動チューニングまで構築した。終盤の王手や入玉準備に特化した独自の探索制御が多い。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": "Python実装の自作エンジン。教師AIの評価値を学習の指標にする"
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "全駒ペアの種類と相対座標から0〜226,575のインデックスを作る226,576次元の線形回帰。絶対位置版PPや駒割とのブレンドもある。評価値は y から sign(y)(e^|y|-1)*600 で変換"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "反復深化PVS、インクリメンタル評価、LMR、Futility、PV・キラー・MVV/LVAオーダリング"
+  },
+  "learning": "線形回帰（SGD）の大規模学習。教師AIの評価値と対局結果をλ=0.3でブレンドするelmo式再学習。900局の棋譜から進行度のRidgeモデルも作成",
+  "hardware": "Ryzen 7 5800U（一覧ページ）、探索6プロセス",
+  "language": [
+    "Python"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "線形回帰のみの2駒関係評価",
+      "description": "ディープラーニングやNNに依存せず、盤上の全駒ペアの位置関係を特徴量とする線形回帰で評価関数を構築する。効きなどの概念は意図的に排除し、段階的に勾配ブースティングも検討する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "ディープラーニングに頼らず、線形回帰モデルだけで評価関数を構築した将棋 AI です。"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "ハッシング・トリックで特徴量圧縮",
+      "description": "独自ハッシュエンジンBunny Excaliperで2.5M次元を2^21の約2.1M次元にハッシング・トリックで圧縮し、7.5M features/sのインデックス計算を実現した。",
+      "originality": "独自",
+      "evidence": "7.5M features/s",
+      "quote": "2.5M 次元を 2.1M 次元(2^21)へハッシング・トリックで圧縮。"
+    },
+    {
+      "category": "探索",
+      "title": "PP-Bypassの超高速モード",
+      "description": "PP_BLEND_RATIOを0にすると、高次元のPP計算を物理的にスキップして駒割評価のみで動き、NPSが約40倍に上がり、より深く探索できる。",
+      "originality": "独自",
+      "evidence": "NPS約40倍（ベンチマーク確認済み）",
+      "quote": "NPS が約 40 倍に向上（ベンチマーク確認済み）"
+    },
+    {
+      "category": "詰み・終盤",
+      "title": "二段階の勝勢モード",
+      "description": "評価値3000で王手延長と探索候補の拡大（30手から100手）を解禁し、8000で入玉PSTバイアス（安全な宣言勝ちの準備）を解禁する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "WINNING_THRESHOLD2 (8000): 入玉 PST バイアス解禁（安全な宣言勝ちの準備）。"
+    },
+    {
+      "category": "詰み・終盤",
+      "title": "王手への特別待遇",
+      "description": "王手を掛ける手・王手がかかった手はLMRを禁止し、静止探索では自玉に王手がかかっているとき全回避手を生成して詰み見逃しを防ぐ。敵玉近傍の紐付き駒打ちは駒取り以上に優先する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "王手がかかっている、または王手をかける手に対しては深さ削減（LMR）を強制禁止。"
+    },
+    {
+      "category": "評価関数",
+      "title": "進行度に応じた駒割減衰",
+      "description": "進行度が0.8を超える終盤に向かうほど、駒割の評価を最大30%カットし、駒の枚数より王への近さを優先する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "終盤（Phase > 0.8）に向かうにつれて駒割の評価を最大 30% カット。"
+    },
+    {
+      "category": "探索",
+      "title": "覇権値による探索アクセル・ブレーキ",
+      "description": "盤上駒と持ち駒の「覇権値」に基づき、NMP・LMRの適用強度や思考打ち切りの目標時間（Soft Limit）を戦況に応じて動的に変える。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "NMP/LMR の適用強度を戦況（覇権値）に応じて動的に変更。"
+    },
+    {
+      "category": "探索",
+      "title": "簡易SEE（タダ取り検知）ペナルティ",
+      "description": "移動先が紐なしで相手に取られる場合に、評価値からその駒の価値を即座に引くペナルティを課す。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "評価値からその駒の価値を即座に没収するペナルティ・システム。"
+    },
+    {
+      "category": "開発手法・運用",
+      "title": "OptunaによるAI教師との自動チューニング",
+      "description": "教師AIの評価値を指標に、PPブレンド率、LMR、覇権値重みなどの5パラメータを4並列・500試行でOptuna最適化し、Dashboardでリアルタイムに観測する。ゾンビプロセスを防ぐ終了処理も入れている。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "教師 AI の評価値を指標とし、KASANE の探索・評価パラメータを自動最適化します。"
+    },
+    {
+      "category": "開発手法・運用",
+      "title": "Google Antigravityでエージェント開発",
+      "description": "Google Antigravityを使い、既存コードの拡張、コード生成とエラー修正の自動化、短期間の実験サイクルに挑戦する。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "Google Antigravity を活用した効率的開発"
+    }
+  ],
+  "character": "名前の由来は「重ねる」で、いろいろな手法を重ねたいという思い。目標は「エラーゼロの安定動作」と「1勝でもできたら嬉しい」。",
+  "notes": "5/18版のREADME（開発者向け手順を含む）と、3/31の事前アピール文を1ファイルにまとめた文書。Step 2〜4の絶対位置PP次元数の記述（257万・2268次元）にゆらぎあり。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc36/team.html"
+}

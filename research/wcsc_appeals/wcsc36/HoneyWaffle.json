@@ -1,0 +1,63 @@
+{
+  "wcsc": 36,
+  "year": 2026,
+  "dir": "HoneyWaffle",
+  "team": "渡辺 光彦",
+  "software": "HoneyWaffle",
+  "sources": [
+    "wcsc36/appeal/HoneyWaffle/HoneyWaffle_appeal_WCSC36.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc36/appeal/HoneyWaffle/HoneyWaffle_appeal_WCSC36.pdf"
+  ],
+  "summary": "「振り飛車で戦い続ける」をコンセプトにした、やねうら王の魔改造版。振り飛車の評価値が理不尽に低い点の修正への再挑戦と、複数の戦法を用意して狙いを絞らせない振り飛車定跡が柱。評価関数は水匠11betaに対向形の棋譜で追加学習する予定。",
+  "base": {
+    "engine": "やねうら王",
+    "eval_source": "水匠11beta（予定、対向形の棋譜で追加学習）",
+    "note": "やねうら王の最新版を魔改造。振電3は使わない"
+  },
+  "eval": {
+    "family": "NNUE",
+    "detail": "公開されている最強クラスの評価関数に、対向形の棋譜から追加学習"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "やねうら王を魔改造。序盤中盤の着手を工夫して振り飛車の評価値を補正する試み"
+  },
+  "learning": "対向形（振り飛車対居飛車）の棋譜からの追加学習",
+  "hardware": "AWS EC2 m8a.metal-48xl（EPYC 9R45 x2）、シングルインスタンス",
+  "language": [
+    "C++",
+    "Python"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "棋風・人間らしさ",
+      "title": "振り飛車で戦い続ける",
+      "description": "コンピュータ将棋で少数派の振り飛車をコンセプトに据え、先後ともに複数の戦法を用意して狙いを絞らせない振り飛車定跡を使う。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "先後ともに、複数の戦法を用意しておき狙いを絞らせません。"
+    },
+    {
+      "category": "評価関数",
+      "title": "振り飛車の評価値補正への挑戦",
+      "description": "振り飛車の評価値が相居飛車より理不尽に低い問題の修正に再挑戦する。勝ちまでの手数が長くなりがちなのが原因と推測し、序盤中盤の着手の工夫を探る。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "振り飛車の評価値が理不尽に低い点の修正に改めて挑戦します。"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "対向形の棋譜で追加学習",
+      "description": "公開されている最強クラスの評価関数（水匠11beta）に、対向形の棋譜から追加学習させる。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "公開されている最強クラスの評価関数に対向形の棋譜から追加学習させたもの"
+    }
+  ],
+  "character": "将棋ウォーズ2級、ぴよ将棋R900〜1000程度の振り飛車党のプログラマー。名前の由来は「渡辺がだめなら光彦→みつ→Honey、Waffleは将棋盤」。相手に変な手順で飛車を振らせない対策には「本気で軽蔑」と書き、相振り飛車は歓迎する。メンタル不調で不参加だった第32回後から毎回、今大会が最後でも悔いなくと書く。文春オンライン等の取材記事や、教材に載ったことも紹介している。",
+  "notes": "前回からの変更点は赤字で示されているが、テキストでは識別不能。振電3は振り飛車評価関数として公開されたものだが使わない（理由は「私が使うわけにはいきません」）。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc36/team.html"
+}

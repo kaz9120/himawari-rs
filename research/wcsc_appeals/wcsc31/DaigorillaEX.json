@@ -1,0 +1,78 @@
+{
+  "wcsc": 31,
+  "year": 2021,
+  "dir": "DaigorillaEX",
+  "team": "田中大吾、門倉新之助",
+  "software": "DaigorillaEX",
+  "sources": [
+    "wcsc31/appeal/DaigorillaEX/Daigorilla.docx",
+    "wcsc31/appeal/DaigorillaEX/Daigorillawcsc31_rev.pptx"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc31/appeal/DaigorillaEX/Daigorilla.docx",
+    "https://www.apply.computer-shogi.org/wcsc31/appeal/DaigorillaEX/Daigorillawcsc31_rev.pptx"
+  ],
+  "summary": "やねうら王ライブラリと水匠3改を土台に、拡張特徴量HKPE9の評価関数を育てた。独自の定跡生成ループ（テラショック定跡と棋譜生成の反復）と、HKPE9の学習条件調整が工夫点。",
+  "base": {
+    "engine": "やねうら王",
+    "eval_source": "水匠3改（教師生成・棋譜生成に使用）",
+    "note": null
+  },
+  "eval": {
+    "family": "NNUE",
+    "detail": "HKPE9。標準型の約10倍の学習パラメータ上限を持つ拡張特徴量のNNUE。玉の安全性も加えた新特徴量を開発中"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "やねうら王ライブラリを使用（探索部の独自工夫は未実施）"
+  },
+  "learning": "DG電竜1から、水匠とDG.bookを使い約5億局面を学習。eta=0.03、lambda=0.5程度",
+  "hardware": "AWS 48コア。クラスタ（計120C/240T）は不安定で見送り",
+  "language": "C++, Python",
+  "claimed_strength": "R4750程度（2021-04時点の自己推定、水匠3改との対戦ほぼ互角）",
+  "ideas": [
+    {
+      "category": "定跡・序盤",
+      "title": "テラショック定跡と棋譜生成の反復",
+      "description": "自作の初歩定跡から約30万棋譜をDGと水匠の対戦で生成し、やねうら王のテラショック定跡を作る。それをDGにセットして再度棋譜生成する循環を繰り返す。自己対戦棋譜はDG、floodgate棋譜は水匠3改で生成してマージする。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "以上を可能な限りloopした。（floodgateの棋譜もある程度利用）"
+    },
+    {
+      "category": "評価関数",
+      "title": "拡張特徴量HKPE9を選択",
+      "description": "標準型NNUEは表現の限界が近いとして、学習パラメータ上限が約10倍になるHKPE9を選ぶ。まだ余地があると考える。",
+      "originality": "既存手法の応用",
+      "evidence": "DG_denryu1 R4500→DG210311 R4670→DGwcsc31 R4750程度",
+      "quote": "標準型NNUEを使用せずHKPE9を質を上げたいと思った。"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "定跡を使った深浅2段階の教師生成",
+      "description": "作成した定跡を、浅い深さ（14）と深い深さ（26程度）の教師生成に活用した。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "定跡を浅いDepth(14)と深いDepth(26？)の教師生成時に上手く利用した。"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "HKPE9の学習条件の調整",
+      "description": "HKPE9は学習が難しく、etaとlambdaの調整が必須。etaを下げすぎると強くならなかった。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "eta=0.03　lambda=0.5程度で行った。"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "玉の安全性を入れた新NNUE特徴量",
+      "description": "0から新しいNNUE特徴量の開発を開始。玉の安全性も付与し、NPSは標準型の約6割。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "玉の安全性も付与した特徴量でNPSは標準型の役6割。"
+    }
+  ],
+  "character": "開発動機は大学の論文での、人とAIの共存の中で評価関数を育てて弱点を観察する研究。文系出身で、趣味として続けているという背景を語る。",
+  "notes": "docxとpptxの2ファイル。定跡評価値上限-75でも2手目34歩を指してしまう、など試行錯誤の記述あり。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc31/team.html"
+}

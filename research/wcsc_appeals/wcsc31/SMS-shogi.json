@@ -1,0 +1,60 @@
+{
+  "wcsc": 31,
+  "year": 2021,
+  "dir": "SMS-shogi",
+  "team": "藤丸 貴裕",
+  "software": "SMS将棋",
+  "sources": [
+    "wcsc31/appeal/SMS-shogi/appeal_rev.odt"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc31/appeal/SMS-shogi/appeal_rev.odt"
+  ],
+  "summary": "人間相手に人間らしい手を指すことを目標にした「接待将棋」。評価関数も探索関数も適当な数字を手入力した職人芸で、機械学習は使わない。最終目標は「探索の可視化」で、コンピュータの思考をGUIで見られるようにしたい。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "手作り",
+    "detail": "手で数字を入力した評価関数"
+  },
+  "search": {
+    "family": "その他",
+    "detail": "手で数字を入力した探索関数"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "棋風・人間らしさ",
+      "title": "接待将棋",
+      "description": "人間相手に人間らしい手を指し、対人でも楽しめることを目標とする。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "ＳＭＳ将棋は接待将棋です。"
+    },
+    {
+      "category": "解説・人間支援",
+      "title": "探索の可視化",
+      "description": "コンピュータがどう考えているかを、GUIで見られるようにすることを最終目標とする。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "最終的な目標は、やはり「探索の可視化」です。"
+    },
+    {
+      "category": "開発手法・運用",
+      "title": "ログとのにらめっこの手作業調整",
+      "description": "機械学習を使わず、評価関数・探索関数に数字を手で入れ、ログファイルとにらめっこして調整する職人的な開発。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "ログファイルと「にらめっこ」です。"
+    }
+  ],
+  "character": "アピールできるほどの代物ではないと謙遜する。大会で会話してアイデアをもらったことが良かったという。",
+  "notes": "文書はodt。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc31/team.html"
+}

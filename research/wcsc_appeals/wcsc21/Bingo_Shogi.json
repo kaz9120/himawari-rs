@@ -1,0 +1,35 @@
+{
+  "wcsc": 21,
+  "year": 2011,
+  "dir": "Bingo_Shogi",
+  "team": "恩本明典",
+  "software": "備後将棋",
+  "sources": [
+    "wcsc21/appeal/Bingo_Shogi/appeal.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc21/appeal/Bingo_Shogi/appeal.txt"
+  ],
+  "summary": "前年から評価関数を所々変更した。探索はPVSで、手生成は選択的。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "手作り",
+    "detail": null
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "PVS、選択的手生成"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [],
+  "character": null,
+  "notes": "前年（第20回）版との差分のみの短文。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc21/team.html"
+}

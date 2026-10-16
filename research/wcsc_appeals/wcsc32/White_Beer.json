@@ -1,0 +1,55 @@
+{
+  "wcsc": 32,
+  "year": 2022,
+  "dir": "White_Beer",
+  "team": "Barrel house",
+  "software": "白ビール",
+  "sources": [
+    "wcsc32/appeal/White_Beer/appeal2022_v2.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc32/appeal/White_Beer/appeal2022_v2.pdf"
+  ],
+  "summary": "岡山のビアバー名に由来するチームの白ビール。評価関数はトップチームに劣らないと過去に確認済みで、今年も決勝進出が目標。ノートPCを中継に、第5回電王トーナメントで披露したshotgunシステムの進化版Multi Ponderのクラスタリングをクラウド上で使う。日本将棋連盟モバイルでの勝率表示に採用された。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "不明",
+    "detail": null
+  },
+  "search": {
+    "family": "不明",
+    "detail": null
+  },
+  "learning": null,
+  "hardware": "クラウド（AWS EC2 c6a.metal×3、196vCPU×3）。ノートPC中継",
+  "language": [
+    "C++",
+    "Go"
+  ],
+  "claimed_strength": "評価関数は昨年・一昨年の計測でトップチームに劣らない",
+  "ideas": [
+    {
+      "category": "並列・分散",
+      "title": "Multi Ponderクラスタリング",
+      "description": "第5回電王トーナメントのshotgunシステムの進化版であるMulti Ponderでクラスタリングする。実装は文書化され多くの類似実装が選手権にも見られるとしている。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "shotgun システムの進化版である Multi Ponder のクラスタリングを用います"
+    },
+    {
+      "category": "解説・人間支援",
+      "title": "日本将棋連盟モバイルの勝率表示に採用",
+      "description": "2021年9月、日本将棋連盟が公式戦中継アプリで白ビールを使って勝率表示を行うと発表した。連盟公式のリアルタイム発信として初という点を強調している。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "公式戦の中継アプリに白ビールを使用して勝率表示を行うとのことです。"
+    }
+  ],
+  "character": "岡山のビアバーBarrel houseに由来するチーム名、白ビールの名前の変遷（Hefeweizen→Kristallweizen→白ビール）を語る。「おっさんチーム」を自認し、具体策はこれからという脱力調。",
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc32/team.html"
+}

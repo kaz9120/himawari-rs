@@ -1,0 +1,44 @@
+{
+  "wcsc": 22,
+  "year": 2012,
+  "dir": "Dragon's_Egg",
+  "team": "中谷裕一",
+  "software": "竜の卵",
+  "sources": [
+    "wcsc22/appeal/Dragon's_Egg/WCSC22_appeal.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc22/appeal/Dragon%27s_Egg/WCSC22_appeal.txt"
+  ],
+  "summary": "前年・前々年と同じ文面。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "不明",
+    "detail": null
+  },
+  "search": {
+    "family": "不明",
+    "detail": null
+  },
+  "learning": null,
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "自己対戦・棋譜からの情報抽出",
+      "description": "自己対戦や棋譜から情報を取り出して評価関数や手の選択に使う。強さへの貢献は今ひとつと述べる。",
+      "originality": "不明",
+      "evidence": null,
+      "quote": "自己対戦や棋譜から情報を取り出して評価関数や手の選択に使用しております"
+    }
+  ],
+  "character": null,
+  "notes": "第20・21回と同じ内容。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc22/team.html"
+}

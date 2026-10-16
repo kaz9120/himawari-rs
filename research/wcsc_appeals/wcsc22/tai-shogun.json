@@ -1,0 +1,54 @@
+{
+  "wcsc": 22,
+  "year": 2012,
+  "dir": "tai-shogun",
+  "team": "横内健一",
+  "software": "大将軍",
+  "sources": [
+    "wcsc22/appeal/tai-shogun/taishogun.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc22/appeal/tai-shogun/taishogun.txt"
+  ],
+  "summary": "Visual C++ 2010 64bit製。Bitboard＋SSEで合法手を計算し、局面の巻き戻しを行わない。第21回から評価関数の学習が「駒位置3点間および個別特徴」に変わった。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "駒位置3点間および個別特徴の学習。差分計算"
+  },
+  "search": {
+    "family": "不明",
+    "detail": null
+  },
+  "learning": null,
+  "hardware": null,
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "実装・高速化",
+      "title": "SSEによるBitboard論理計算",
+      "description": "Bitboardの論理計算にSSEを利用する。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "Bitboardの論理計算にSSE(SIMD)を利用"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "局面の巻き戻しを行わない",
+      "description": "局面を戻すUnmoveを行わない構造にする。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "局面の巻き戻し(Unmove)は行わない"
+    }
+  ],
+  "character": null,
+  "notes": "一覧ではキャンセル欄。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc22/team.html"
+}

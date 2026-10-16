@@ -1,0 +1,44 @@
+{
+  "wcsc": 31,
+  "year": 2021,
+  "dir": "DeepSAWANYAN",
+  "team": "宇賀神",
+  "software": "Deepさわにゃん",
+  "sources": [
+    "wcsc31/appeal/DeepSAWANYAN/Deep_Sawanyan_appeal_v1.txt"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc31/appeal/DeepSAWANYAN/Deep_Sawanyan_appeal_v1.txt"
+  ],
+  "summary": "第25回以来の参加で、前回のプログラムは使わず一から作り直したオープンソース開発。ほぼフルスクラッチで、Bitboard・PyTorchの深層学習・モンテカルロ木探索を使う。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "PyTorchによる深層学習"
+  },
+  "search": {
+    "family": "MCTS",
+    "detail": "モンテカルロ木探索"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "開発手法・運用",
+      "title": "オープンソースでほぼフルスクラッチ",
+      "description": "オープンソースで開発し、ほぼフルスクラッチで一から作り直した。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "オープンソースで開発"
+    }
+  ],
+  "character": null,
+  "notes": "ソフト名のよみ・チーム名は一覧のリンクのみ。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc31/team.html"
+}

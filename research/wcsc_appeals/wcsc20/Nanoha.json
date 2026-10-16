@@ -1,0 +1,60 @@
+{
+  "wcsc": 20,
+  "year": 2010,
+  "dir": "Nanoha",
+  "team": "川端一之",
+  "software": "なのは",
+  "sources": [
+    "wcsc20/appeal/Nanoha/Nanoha.html"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc20/appeal/Nanoha/Nanoha.html"
+  ],
+  "summary": "開発ブログ3本分をアピールとする。差分更新するピン情報と、不成の扱いを工夫したWPNS系の詰みルーチンが中心。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "不明",
+    "detail": null
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "詰みはWPNS（証明数・反証数）"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "実装・高速化",
+      "title": "玉の利きの延長線を使うピン情報の差分更新",
+      "description": "局面データに利き情報とピン情報を持ち、玉の利きを延長して持っておく。駒の移動元・移動先がその延長線上にあるときだけ、その線のピン情報を更新する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "玉の利きを延長し、利き情報に入れておく"
+    },
+    {
+      "category": "詰み・終盤",
+      "title": "不成を打ち歩詰め時のみ読むWPNS詰探索",
+      "description": "WPNSに優越関係・最小距離法・証明駒／反証駒を実装。王手生成は歩角飛の不成も含め、証明数計算では打ち歩詰めが絡まないときは不成を無視し、絡むときだけ含める。不成を生成しないプログラムが見逃す詰みも発見する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "打ち歩詰めが絡まないときは歩角飛の不成を無視する"
+    },
+    {
+      "category": "詰み・終盤",
+      "title": "探索中にハッシュをクリアしない",
+      "description": "実戦では必要ないと判断して、詰探索中のハッシュのクリアを行わない。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "探索中のハッシュのクリアは行っていない"
+    }
+  ],
+  "character": null,
+  "notes": "文書はブログ記事への誘導を含み、3本目「なのは詰」は本文が空。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc20/team.html"
+}

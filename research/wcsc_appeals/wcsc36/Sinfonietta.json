@@ -1,0 +1,63 @@
+{
+  "wcsc": 36,
+  "year": 2026,
+  "dir": "Sinfonietta",
+  "team": "谷合 廣紀",
+  "software": "Sinfonietta",
+  "sources": [
+    "wcsc36/appeal/Sinfonietta/WCSC36_Sinfonietta.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc36/appeal/Sinfonietta/WCSC36_Sinfonietta.pdf"
+  ],
+  "summary": "Rustによるフルスクラッチ実装で、Transformer系のPV-MCTSエンジン、sfnn系のNNUEエンジン、df-pn詰将棋ソルバーの3つを組み合わせた合議制エンジン。エンジン部にPythonバインディングを用意し、PyTorchの学習部から直接呼べる構成が特徴。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": "cshogiややねうら王には依存しないが、アルゴリズムは大いに参考にしている。Lc0、Stockfish、KomoringHeights、GPS将棋を参考"
+  },
+  "eval": {
+    "family": "DL+NNUE",
+    "detail": "LeelaChessZero参考のTransformer（PV-MCTS用）と、Stockfish参考のsfnnアーキテクチャのNNUE"
+  },
+  "search": {
+    "family": "αβ+MCTS",
+    "detail": "PV-MCTSとNNUE-αβの合議。KomoringHeightsとGPS将棋を参考にしたdf-pn詰将棋ソルバー"
+  },
+  "learning": "NNUEの学習データ形式にStockfishのbinpack形式を採用して、学習データを大幅に圧縮",
+  "hardware": "Google Cloud c4d-384 + vast.ai RTX5090（一覧ページ）",
+  "language": [
+    "Rust",
+    "Python"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "実装・高速化",
+      "title": "Rust製エンジンのPythonバインディング",
+      "description": "Rustの将棋エンジンのコア部分にPythonバインディングを用意し、PyTorchの学習部から直接呼び出せるようにして、学習部とエンジン部をシームレスに連携させる。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "PyTorch によるニューラルネットワークの学習部からも直接呼び出すことができます。"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "binpack形式で学習データを圧縮",
+      "description": "NNUE用の学習データ形式にStockfishのbinpack形式を採用し、データを大幅に圧縮した。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "NNUE 用の学習データ形式には Stockfish で用いられる binpack 形式を採用することで、学習データの大幅な圧縮を実現しています。"
+    },
+    {
+      "category": "探索",
+      "title": "3エンジンの合議構成",
+      "description": "Transformer PV-MCTS、sfnn NNUE、df-pn詰将棋ソルバーの3コンポーネントを組み合わせた合議制エンジンとして参加する。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "これらを組み合わせた合議制エンジンとして参加する予定です。"
+    }
+  ],
+  "character": null,
+  "notes": "合議の具体的な方式（多数決か否か）は書かれていない。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc36/team.html"
+}

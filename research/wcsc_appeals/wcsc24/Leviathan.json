@@ -1,0 +1,60 @@
+{
+  "wcsc": 24,
+  "year": 2014,
+  "dir": "Leviathan",
+  "team": "不明（リヴァイアサン）",
+  "software": "リヴァイアサン",
+  "sources": [
+    "wcsc24/appeal/Leviathan/appeal.pdf"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc24/appeal/Leviathan/appeal.pdf"
+  ],
+  "summary": "Bonanzaを複数個起動して最も有利な最善手を選ぶ、形勢判断に特化したアドバンス将棋システム。深読み（15手ほど）と浅読み（5・7手）の平均を取り、深読み途中の低評価を突かれるリスクを減らす。垂れ歩・たたきの歩など歩の使い方を重視する予定。",
+  "base": {
+    "engine": "Bonanza",
+    "eval_source": null,
+    "note": "Bonanzaを複数個起動"
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "Bonanza"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "Bonanza複数起動、深読み15手と浅読み5〜7手の平均"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "探索",
+      "title": "深読みと浅読みの平均",
+      "description": "サブルーチンとして15手ほどの深読みと5・7手ほどの浅読みを加えて平均をとり、深読みの途中にある低い点数の手を突かれるリスクを減らす。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "１５手ほどの深読みとともに５、７手ほどの浅読みを加えて平均をとります。"
+    },
+    {
+      "category": "探索",
+      "title": "Bonanzaの複数起動による最善手選択",
+      "description": "Bonanzaを複数個起動させ、最も有利になる最善手を選ぶ。予備読み機能やもっと駒打ち機能を加える予定。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "Bonanzaを複数個起動させて、もっとも有利になる最善手を選択します。"
+    },
+    {
+      "category": "棋風・人間らしさ",
+      "title": "歩の使い方の重視",
+      "description": "垂れ歩、たたきの歩、焦点の歩といった有効な局面が出たらその指し手を優先する予定。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "垂れ歩、たたきの歩、焦点の歩等"
+    }
+  ],
+  "character": "名前は「棋譜の海を泳ぐ怪物」というイメージから。ソフトの弱点を突く側に回る、「読み筋を外す」発想を語る。",
+  "notes": null,
+  "team_list_url": "http://www2.computer-shogi.org/wcsc24/team.html"
+}

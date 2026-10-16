@@ -1,0 +1,86 @@
+{
+  "wcsc": 25,
+  "year": 2015,
+  "dir": "Apery",
+  "team": "平岡 拓也、杉田 歩、山本 修平、白岩 大地",
+  "software": "Apery",
+  "sources": [
+    "wcsc25/appeal/Apery/appeal_wcsc25.pdf"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc25/appeal/Apery/appeal_wcsc25.pdf"
+  ],
+  "summary": "第24回の優勝チームによる文書。Stockfishベースの探索とBonanza流3駒関係評価で、王手のみの生成を省いたコンパクトな実装、コンピュータ将棋で恐らく初のPEXT Bitboard、AWAKEの利き情報を3駒関係へ落とす方法の導入が特徴。付録に、評価関数の近似的並進不変性を考慮したフーリエ変換ペナルティ項の研究（本番では不採用）を詳しく載せる。GPLv3で公開。",
+  "base": {
+    "engine": "独自",
+    "eval_source": "Bonanza Ver.6ライブラリ使用扱い（学習部の改造）",
+    "note": "Stockfishベース。学習部の一部にBonanzaを改造して使用"
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "Bonanza式3駒関係。KP排除、持ち駒0枚の排除、KPP・KKPのインデックス共通化、矩形配列化で高速化"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "Stockfishベース。静止探索で王手のみを調べる機能なし"
+  },
+  "learning": "Bonanza Methodを複数の方法で試す。学習部を書き直し、相対位置と絶対位置を重ねる方法、AWAKEの利き情報を3駒関係に落とす方法を採用",
+  "hardware": null,
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": "半年ごとに前バージョンに自己対局勝率7割。第24回優勝",
+  "ideas": [
+    {
+      "category": "探索",
+      "title": "王手のみの生成を省く",
+      "description": "多くのソフトが持つ王手のみの生成機能と、静止探索での王手探索を持たない。終盤が弱いとの評判だが中盤は十分戦え、コンパクトさを優先できるとする。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "探索において特徴的な点は、多くのプログラムに存在する王手のみを生成する機能が無いことでしょうか。"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "コンピュータ将棋初のPEXT Bitboard",
+      "description": "BMI2のPEXT命令によるBitboardを（おそらく）初めて採用し、Magic Bitboardより1%強高速化した。",
+      "originality": "独自",
+      "evidence": "Magic Bitboardより1%強の高速化",
+      "quote": "コンピュータ将棋で (おそらく) 初めて PEXT Bitboard を採用しました。"
+    },
+    {
+      "category": "評価関数",
+      "title": "評価関数の計算の簡素化と高速化",
+      "description": "対局時にKP要素の排除、持ち駒0枚の排除、KPPとKKPのインデックス共通化、三角配列から矩形配列への変更でBonanzaより高速化する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "KP 要素の排除や持ち駒 0 枚の排除、KPP と KKP のインデックスの共通化"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "フーリエ変換によるペナルティ項",
+      "description": "相対位置が同じ項の点数が滑らかになるよう、評価値をフーリエ変換した係数にペナルティを課す。k=0（並進不変）部分のペナルティを弱めることで次元下げと同様の効果を狙う。収束性の問題で本番では不採用。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "相対位置の同じ位置関係の点数が滑らかになるようにフーリエ変換でペナルティ項を調整"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "近似的並進不変性とペナルティ項の事前分布的活用",
+      "description": "評価関数が近似的な並進不変性を持つことを使い、通常のL1・L2ペナルティ（点数は小さく）より賢い推定を提案する。ペナルティ項はベイズ推定の事前分布の役割で、将棋の知識を積極的に入れられると主張する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "ペナルティ項を積極的に活用する方法を考えていきたい"
+    },
+    {
+      "category": "評価関数",
+      "title": "AWAKE方式の利き情報の3駒関係化",
+      "description": "AWAKEが行う、利き情報を3駒関係に落とし込む方法を取り入れた。",
+      "originality": "再現・追従",
+      "evidence": null,
+      "quote": "AWAKE がおこなっている利き情報を 3 駒関係に落とし込む方法も取り入れました。"
+    }
+  ],
+  "character": "名前は「猿真似」だが「新しいことが出来たら良い」と添える。第24回優勝の後に出す文書で、技術付録が長い。",
+  "notes": null,
+  "team_list_url": "http://www2.computer-shogi.org/wcsc25/team.html"
+}

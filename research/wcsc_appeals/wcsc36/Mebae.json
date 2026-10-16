@@ -1,0 +1,63 @@
+{
+  "wcsc": 36,
+  "year": 2026,
+  "dir": "Mebae",
+  "team": "芽生",
+  "software": "芽生将棋",
+  "sources": [
+    "wcsc36/appeal/Mebae/appeal_v2.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc36/appeal/Mebae/appeal_v2.pdf"
+  ],
+  "summary": "公開データと手元の計算資源だけで、到達できる最強クラスのモデルを目指した。探索部はふかうら王。評価値と方策を強いモデルで付け替えたhcpe3で学習し、ResNet 30x384を8億局面で鍛える。探索速度より盤面評価の精度を優先している。",
+  "base": {
+    "engine": "やねうら王+dlshogi",
+    "eval_source": null,
+    "note": "探索部にふかうら王を採用。PyTorch、dlshogi、cshogiを使用"
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "ResNet 30ブロック×384チャンネル（約8000万パラメータ）"
+  },
+  "search": {
+    "family": "MCTS",
+    "detail": "ふかうら王"
+  },
+  "learning": "無償公開教師3億局面、やねうら王5億局面、Nodchip氏の80億局面の一部をふかうら王2026Q1-40bで付け替えた8億局面のhcpe3、やねうら王7億局面の付け替えで再学習",
+  "hardware": "Ryzen 9 9950X + RTX5090",
+  "language": [
+    "C++",
+    "Python"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "強いモデルで評価値と方策を付け替え",
+      "description": "ふかうら王2026Q1-40bで、教師局面の評価値と方策を付け替える。ForwardのPolicyを合法手でマスクして確率分布とし、Best moveは最も確率の高い手に付け替えた。局面自体は弱くても、強いモデルで付け替えることでブースティングに成功した。",
+      "originality": "既存手法の応用",
+      "evidence": "方策正解率0.4878から0.5190、Total loss 2.1503から1.9809（水準は856,923局面の検証）",
+      "quote": "強いモデルで付け替えることでブースティングに成功しました。"
+    },
+    {
+      "category": "評価関数",
+      "title": "データ量の10倍規模に合わせた大型モデル",
+      "description": "強い教師局面が約8億局面で、8000万パラメータのおよそ10倍規模の学習データに相当する。探索速度は不利でも、同一持ち時間での棋力向上を狙って30x384を採用した。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "探索速度面で不利になる可能性が高いですが、同一持ち時間での棋力が伸びることを期待しております。"
+    },
+    {
+      "category": "開発手法・運用",
+      "title": "codexでデータ加工・学習・追従実験",
+      "description": "やねうらお氏のブログで紹介されていたcodexを使い、気軽にデータ加工・学習・追従実験を行った。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "紹介されていた codex を使用することで 気軽にデータの加工・学習や追従実験を行うことができて"
+    }
+  ],
+  "character": "「手軽に入手できる公開データと計算資源を最大限活用し、その範囲で到達できる最強クラスのモデル」という開発動機。メモリ値上がり前にPCを組めたことも書いている。",
+  "notes": "水匠11bの5万ノード5億局面、水匠5の1000万ノード1億局面、『強い将棋ソフトの創りかた』付属の2.2億局面なども教師データとして列挙。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc36/team.html"
+}

@@ -1,0 +1,55 @@
+{
+  "wcsc": 32,
+  "year": 2022,
+  "dir": "ichibin",
+  "team": "花井 祐",
+  "software": "いちびん",
+  "sources": [
+    "wcsc32/appeal/ichibin/ichibin_32_summary.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc32/appeal/ichibin/ichibin_32_summary.pdf"
+  ],
+  "summary": "やねうら王系エンジンをJavaで制御するプログラム。負けそうになると推定負けと判断し、時間切れを無視して残り時間を勝負手探索に注ぎ込む。往生際の悪い異常な長考が特徴。",
+  "base": {
+    "engine": "やねうら王",
+    "eval_source": "tanuki-系（改良）",
+    "note": null
+  },
+  "eval": {
+    "family": "NNUE",
+    "detail": "タヌキ系NNUEを祖先に自前の強化学習を繰り返す。今年はFV_SCALEを調整"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "やねうら王系の動作をJava（自作）で制御"
+  },
+  "learning": "数年前のタヌキの評価関数を祖先とし、強化学習を繰り返す",
+  "hardware": null,
+  "language": [
+    "C++",
+    "Java"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "探索",
+      "title": "推定負け時の勝負手探索",
+      "description": "評価値が−800〜−1200（対戦相手の想定強さで決まる閾値）を下回ると「推定負け」と判断する。相手が読み落とした数十手先の相手方の悪手の探索と、数十手先で効きそうな升目に利きを効かせる勝負手の探索の2つに、時間切れ負けを無視して残り時間を投入する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "勝負手を探索する。この２つのシミレーションに、時間切れ負けを無視して、残り時間を投入するアイデア"
+    },
+    {
+      "category": "時間管理",
+      "title": "負け筋で長考モードに突入",
+      "description": "推定負けの局面では、時間切れを度外視して残り時間を使い切る異常な長考に入る。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "負けそうになると、異常な長考モードに突入します。"
+    }
+  ],
+  "character": "「往生際が悪いプログラムですが、お許しください」と自称する、粘り特化の個性。",
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc32/team.html"
+}

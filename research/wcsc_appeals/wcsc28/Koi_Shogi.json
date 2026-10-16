@@ -1,0 +1,35 @@
+{
+  "wcsc": 28,
+  "year": 2018,
+  "dir": "Koi_Shogi",
+  "team": "児島 彰（CA研）",
+  "software": "こい将棋",
+  "sources": [
+    "wcsc28/appeal/Koi_Shogi/apeal-koi-wcs28-v0.txt"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc28/appeal/Koi_Shogi/apeal-koi-wcs28-v0.txt"
+  ],
+  "summary": "標準的な反復深化αβ探索と手番付き三駒関係の評価関数を独自コードで書いた初参加ソフト。評価関数と高速化はこれから工夫する段階で、DL導入も検討している。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "手番付き三駒関係"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "標準的な反復深化αβ"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [],
+  "character": null,
+  "notes": "独自の工夫の記述はない。ライブラリは今は使っていないが、強い探索部・評価関数やDL導入の可能性のために将来使う候補を申請している。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc28/team.html"
+}

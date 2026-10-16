@@ -1,0 +1,54 @@
+{
+  "wcsc": 35,
+  "year": 2025,
+  "dir": "Gravitational_field_Calculation_method",
+  "team": "重力団",
+  "software": "重力場計算法",
+  "sources": [
+    "wcsc35/appeal/Gravitational_field_Calculation_method/gravity.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc35/appeal/Gravitational_field_Calculation_method/gravity.pdf"
+  ],
+  "summary": "盤面評価を重力場理論（簡易版）で計算する、開発中のプログラム。今大会も間に合わないと自己申告している。第31回の過去文書に、深い読み・定跡・棋譜を一切使わず盤面評価の最高精度化だけで最善手を特定する、という構想が書かれている。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": "Rust製"
+  },
+  "eval": {
+    "family": "その他",
+    "detail": "重力場理論（簡易版）による盤面評価。異なる単位の設定を重力場で比較し、上昇値の合計を比べる"
+  },
+  "search": {
+    "family": "その他",
+    "detail": "深い読みを行わず、最小手数範囲の計算で済ませる構想"
+  },
+  "learning": "棋譜・定跡・解析データを一切使わない。ルールと評価設定のみ入力",
+  "hardware": "Ryzen 7 1700",
+  "language": [
+    "Rust"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "研究・実験的",
+      "title": "重力場理論による盤面評価",
+      "description": "駒ごとの設定値という異なる単位の量を、重力場理論（簡易版）で計測処理して比較し、上昇値の合計で盤面を評価する。読みを深くせず、評価の精度だけで最善手を特定する構想。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "盤面判断は重力場理論（簡易版）を使用して計算を行う。"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "棋譜・定跡・深い読みの全否定",
+      "description": "将棋のルールに棋譜や定跡の使用義務はないとして、それらを使わない。従来の技術と知識を否定するところから構成する点が「独自性」だとしている。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "「人間の知恵と技術と歴史と情熱を皆無にする事」が既存のプログラムにない「独自性」なのかも"
+    }
+  ],
+  "character": "第32回に哲学と理論物理学を語るPV動画（ニコニコ・YouTube）を公開。「究極AI産業革命」「神の一手を特定できる」など壮大な語り口で、毎年「次回以降に成果が出る」と書き続けている。",
+  "notes": "第35回の記述は「間に合わない」の一文のみ。第31〜34回の過去文書が同じPDFに併記されている。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc35/team.html"
+}

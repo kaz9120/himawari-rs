@@ -1,0 +1,62 @@
+{
+  "wcsc": 24,
+  "year": 2014,
+  "dir": "libshogi",
+  "team": "藤井 宏行、本田 優樹、高田 浩生",
+  "software": "libshogi",
+  "sources": [
+    "wcsc24/appeal/libshogi/libshogi140325.pdf"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc24/appeal/libshogi/libshogi140325.pdf"
+  ],
+  "summary": "香川高専藤井研による、教材向けの将棋プログラム用ライブラリ。C++の基本文法を知る学生が短期間で並列探索の将棋プログラムを書き始められることを目標に、速度より分かりやすさを優先して作る。Foundation層（アトミック、スピンロック、スレッド、二分木、HashTree）を実装し、Game層のルール部分にはれさぴょんを使う。",
+  "base": {
+    "engine": "れさぴょん",
+    "eval_source": null,
+    "note": "Game層の合法手生成等にれさぴょん"
+  },
+  "eval": {
+    "family": "不明",
+    "detail": null
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "並列探索（HashTreeで探索結果を共有）"
+  },
+  "learning": null,
+  "hardware": "Core i7 2600K、CentOS 6.4（開発環境）",
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "開発手法・運用",
+      "title": "学習用の将棋ライブラリ",
+      "description": "Boost・STLを使わずプリミティブなAPIのみで実装し、Foundation層は約2000行。学生が短期間で戦略部（探索・定跡・学習）から開発を始められるようにする教材。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "学習用の将"
+    },
+    {
+      "category": "並列・分散",
+      "title": "HashTreeによる探索結果の共有",
+      "description": "局面ハッシュをキーにした二分木コンテナで、木全体をロックせず並列に追加・検索できる。get()は他スレッドが評価をset()するまでスリープする。",
+      "originality": "独自",
+      "evidence": "1,600万ノード追加で木の高さ62、4スレッドまで直線的に高速化",
+      "quote": "局面のハッシュ値をキーとして局面情報を検索する"
+    },
+    {
+      "category": "並列・分散",
+      "title": "アトミック操作とスピンロック",
+      "description": "GCCのビルトインとglibc NPTLのスピンロックで軽量なロックを提供する。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "スピンロックは OS のスケジューラに依存しないため軽量です"
+    }
+  ],
+  "character": "将棋プログラムを学ぶ学生向けの教育用ライブラリというコンセプト。探索の強さではなく「分かり易さ」を第一目標にする。",
+  "notes": "ソースコードは十分な品質に達した時点で公開予定。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc24/team.html"
+}

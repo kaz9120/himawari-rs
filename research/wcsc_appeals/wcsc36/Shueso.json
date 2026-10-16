@@ -1,0 +1,55 @@
+{
+  "wcsc": 36,
+  "year": 2026,
+  "dir": "Shueso",
+  "team": "竹内 章",
+  "software": "習甦",
+  "sources": [
+    "wcsc36/appeal/Shueso/Shueso_wcsc36.txt"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc36/appeal/Shueso/Shueso_wcsc36.txt"
+  ],
+  "summary": "異種AI（αβ探索）が更新する思考データベースを使ってMCTSの性能を高める手法。αβ探索の置換表の情報をMCTSで活用し、policyとvalueの両方を補正する。文書は4行の短いもの。",
+  "base": {
+    "engine": "不明",
+    "eval_source": null,
+    "note": "土台は書かれていない"
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "一覧ページではCPUとGPU両方。具体的な記載なし"
+  },
+  "search": {
+    "family": "αβ+MCTS",
+    "detail": "αβ探索の置換表の情報をMCTSで活用する"
+  },
+  "learning": null,
+  "hardware": "Ryzen 7 + RTX4070Ti（一覧ページ）",
+  "language": [
+    "C++",
+    "Python"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "探索",
+      "title": "αβの置換表でMCTSのpolicyを補正",
+      "description": "αβ探索の置換表にある最善手に対して、UCB方策の式を調整して訪問回数を増やす。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "policyの補正：置換表の最善手に対してUCB方策の式を調整し訪問回数を増加させる"
+    },
+    {
+      "category": "探索",
+      "title": "探索深さと評価値でvalueを補正",
+      "description": "探索した深さと評価値の情報を使った条件により、確率的にリーフノードとして扱う。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "valueの補正：探索した深さと評価値の情報を用いた条件により確率的にリーフノードとする"
+    }
+  ],
+  "character": null,
+  "notes": "異種AIが思考データベースを更新するという題の手法。αβ側のエンジンなど詳細は書かれていない。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc36/team.html"
+}

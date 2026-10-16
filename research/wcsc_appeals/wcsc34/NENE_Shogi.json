@@ -1,0 +1,79 @@
+{
+  "wcsc": 34,
+  "year": 2024,
+  "dir": "NENE_Shogi",
+  "team": "日高 雅俊",
+  "software": "ねね将棋",
+  "sources": [
+    "wcsc34/appeal/NENE_Shogi/wcsc34_appeal_neneshogi_20240429.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc34/appeal/NENE_Shogi/wcsc34_appeal_neneshogi_20240429.pdf"
+  ],
+  "summary": "iPhone 15 Pro上でNeural Engineを使ってふかうら王を動かす、スマートフォンで指す将棋AI。有線LAN接続や冷却ファンなど、大会で安定動作させる運用ノウハウまで公開している。",
+  "base": {
+    "engine": "やねうら王（ふかうら王のiOS向け独自ビルド）",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "dlshogi系の20層192チャンネルCNN。PyTorchからCore MLの形式に変換"
+  },
+  "search": {
+    "family": "MCTS",
+    "detail": "ふかうら王（NPS約5000）"
+  },
+  "learning": null,
+  "hardware": "iPhone 15 Pro（A17 Pro、Neural Engine）",
+  "language": [
+    "C++",
+    "Swift"
+  ],
+  "claimed_strength": "floodgateレート3712（26勝24敗、2024-04-29時点）",
+  "ideas": [
+    {
+      "category": "ハードウェア",
+      "title": "iPhoneのNeural Engineで推論",
+      "description": "評価関数のCNNをCore ML形式に変換し、Core MLアダプタ（Objective-C++）経由でNeural Engineで実行する。iPad第9世代の約5倍の速度で、探索は約5000NPS。",
+      "originality": "独自",
+      "evidence": "約5000NPS、floodgateレート3712",
+      "quote": "Core ML は、Apple が提供する深層学習モデルの実行エンジンであり、機械学習専用チップ Neural Engine を利用することでモデルを高速に実行可能とする"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "USIの標準入出力をSwiftコールバックに置換",
+      "description": "ふかうら王のC++の標準入出力をSwiftのコールバック呼び出しに置き換え、プロセス内で完結させる。通信部がUSIとCSAを変換する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "通信部との連携は、C++言語の標準入出力を Swift 言語のコールバック関数呼び出しに置換することによりプロセス内で完結させる"
+    },
+    {
+      "category": "ハードウェア",
+      "title": "外付けファンで強制空冷",
+      "description": "発熱でiPhoneの速度が落ちるため、ゲーム向け冷却ファンを付けて強制空冷する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "外付けファンによる強制空冷を実施する"
+    },
+    {
+      "category": "開発手法・運用",
+      "title": "有線LANと運用ノウハウの公開",
+      "description": "USB接続のイーサネットアダプタで有線LANに接続する。機内モード、プロビジョニングプロファイル期限、充電器接続確認なども、安定動作のノウハウとして書く。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "単に将棋が指せるソフトができたあと、大会で安定して動作させるためのノウハウです"
+    },
+    {
+      "category": "開発手法・運用",
+      "title": "ソースとブログの公開",
+      "description": "ソースコードをGitHubで公開し、各技術要素の詳細をブログで解説している。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "ソースコードを公開しています"
+    }
+  ],
+  "character": "スマートフォンで大会に出るというコンセプト自体が売り。iPhone冷却や有線接続まで含めた運用の工夫が特徴。",
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc34/team.html"
+}

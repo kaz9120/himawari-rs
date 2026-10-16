@@ -1,0 +1,60 @@
+{
+  "wcsc": 34,
+  "year": 2024,
+  "dir": "Mattari_Yuuchan_",
+  "team": "まったりゆうちゃん（小谷善行・柴原一友）",
+  "software": "まったりゆうちゃん",
+  "sources": [
+    "wcsc34/appeal/Mattari_Yuuchan_/appeal2024.docx"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc34/appeal/Mattari_Yuuchan_/appeal2024.docx"
+  ],
+  "summary": "1990年過ぎから開発する完全独自の長寿システムで、今年は昨年と同一。複数システム間でデータをやり取りする並列方式や、進化論的計算、DLと多量パラメータ学習の中間的な仕組みを構想している。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "手作り",
+    "detail": "不明"
+  },
+  "search": {
+    "family": "不明",
+    "detail": null
+  },
+  "learning": null,
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "並列・分散",
+      "title": "複数システム間のデータ交換による並列",
+      "description": "複数のシステムを動作させ、その間でデータをやり取りして並列動作させる方式を検討している。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "複数のシステムを動作させて、その間でデータをやり取りして並列動作をする方法を検討している"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "進化論的計算など非DL方式",
+      "description": "パラメータ学習が主流の中、進化論的計算などの方式を試し、DLと多量パラメータ学習の中間的な仕組みも考えたい。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "進化論的計算などの方式を試そうとしている"
+    },
+    {
+      "category": "開発手法・運用",
+      "title": "最高齢開発者の挑戦",
+      "description": "1990年過ぎ以来の旧コードを書き直して新しい並列方式を実現する構想。開発者は最年長で、コーディング能力がいつまで続くか試したいと書く。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "コーディング能力がいつまで続くか試したい"
+    }
+  ],
+  "character": "四半世紀以上の開発歴と、最年長開発者として続けたいという思いがコンセプト。",
+  "notes": "今年は前回と同じシステム。改良できなかったと書かれている。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc34/team.html"
+}

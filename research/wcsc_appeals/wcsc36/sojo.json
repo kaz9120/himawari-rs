@@ -1,0 +1,107 @@
+{
+  "wcsc": 36,
+  "year": 2026,
+  "dir": "sojo",
+  "team": "United of Penguin & Fuuppi（山下公誠、山口奏、坂田大直、鋤田和司、福村彪真）",
+  "software": "奏乗",
+  "sources": [
+    "wcsc36/appeal/sojo/sojo_WCSC36_appeal.pdf",
+    "wcsc36/appeal/sojo/sojo_WCSC36_appeal_detail.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc36/appeal/sojo/sojo_WCSC36_appeal.pdf",
+    "https://www.apply.computer-shogi.org/wcsc36/appeal/sojo/sojo_WCSC36_appeal_detail.pdf"
+  ],
+  "summary": "計算資源不足を解決するため、決勝リーグ級のDLモデルを作るふうっぴ氏に声をかけ、ネットで協力者を募って多人数チームに発展させた。DL水匠からの知識蒸留、重複局面の削減、bullet-shogiへの学習移行、KP絶対の進行度でLayerStackを切り替えるSFNNwoP1536_V2が柱。実験結果をていねいに公開している。",
+  "base": {
+    "engine": "やねうら王",
+    "eval_source": "DL水匠（知識蒸留の教師）",
+    "note": "やねうら王を評価関数に合わせて調整。学習はbullet-shogi、rshogiも使用"
+  },
+  "eval": {
+    "family": "NNUE",
+    "detail": "SFNNwoP1536_V2（LayerStackの切り替えに進行度推定）。HalfKP 512x2_8_64で比較実験"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "やねうら王ベース"
+  },
+  "learning": "DL水匠で蒸留済みかつ重複削除済みのnodchip氏公開データを加工。240億局面から重複削除で145億局面。bullet-shogiで学習",
+  "hardware": "二次予選 EPYC 9654×2、決勝リーグ EPYC 9K65×2（一覧ページ）",
+  "language": [
+    "Python",
+    "C",
+    "C++",
+    "Rust"
+  ],
+  "claimed_strength": "第6回電竜戦版よりレーティング+150程度",
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "KP絶対による進行度でLayerStack切り替え",
+      "description": "玉の位置と各駒のBonaPieceの組み合わせ（KP絶対）の重み合計にsigmoidを掛けて進行度を0.0〜1.0で推定する。後手玉は盤面を反転して先手視点に統一する。総パラメータは81×1548=125,388。",
+      "originality": "既存手法の応用",
+      "evidence": "第6回電竜戦版比で+150程度（探索部・評価関数とも変更の合算）",
+      "quote": "SFNNのLayerStackの切り替えには、進行度推定を利用しています。"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "重複局面の削減",
+      "description": "重複局面を除去したほうがNNUEの性能が上がる。240億局面が145億局面になった。",
+      "originality": "既存手法の応用",
+      "evidence": "重複削除前vs後で1660勝120分1484敗 R+18.8",
+      "quote": "重複局面を除去した方がNNUEの性能が向上することを確認"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "知識蒸留は教師の選び方が決め手",
+      "description": "DL水匠を教師にした蒸留が最も有効で、他モデルを教師にした蒸留では十分な性能向上が得られなかった。水匠10に対するレート差は、DL水匠教師が-49.7、Fuka2025Q2-40bが-119.5、Kanade_WCSC35が-173.7。",
+      "originality": "既存手法の応用",
+      "evidence": "水匠10に対するレート差 DL水匠-49.7、Kanade-173.7",
+      "quote": "単独モデルにおいては、DL水匠を用いた知識蒸留が最も有効であることを確認した。"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "データ量のスケーリング確認",
+      "description": "教師局面を80億から160億に増やすと、水匠10に対するレート差が-49.7から-20.9に改善した。NNUEでもScaling Lawの傾向が確認できた。",
+      "originality": "既存手法の応用",
+      "evidence": "80億-49.7、160億-20.9（水匠10比）",
+      "quote": "学習データ量を増加させることで評価関数の性能が向上する傾向を、NNUEにおいても確認した。"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "学習をbullet-shogiへ移行",
+      "description": "チェス用のbulletを将棋用に改造した学習ツール（bullet-shogi）に移行し、nnue-pytorchと比べて3倍ほど高速化できた。",
+      "originality": "既存手法の応用",
+      "evidence": "nnue-pytorch比で約3倍高速",
+      "quote": "nnue-pytorchと比べ3倍ほど高速化できた"
+    },
+    {
+      "category": "開発手法・運用",
+      "title": "再現性を持つ複数人開発",
+      "description": "学習データ、ソースコード、学習コマンド、計測コマンドをチームで共有し、複数人で相互チェックすることでミスを減らして再現性を確保する。ネットで協力者を募って並列に実験を回し、PDCAを速くした。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "学習データ、ソースコード、学習コマンド、計測コマンドなども共有しており、チーム全体で再現性を確保できる体制を整えています。"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "うまくいかなかった手法の記録",
+      "description": "HalfKPを512x2_8_64より拡張しても性能向上はほとんどなく、DLモデルでペタショック定跡337万局面を再評価しても有名局面で誤評価が見られた（浅い読みではDLの評価値も信頼しにくい）。",
+      "originality": "独自",
+      "evidence": "HalfKP 512/1024/1536でレート差-173.7/-167.5/-167.5",
+      "quote": "浅い読みではDLモデルでも評価値の信頼性に課題があることが確認された。"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "ペタショック定跡に独自手順を追加",
+      "description": "ペタショック定跡をベースに独自の手順を加え、後手番での作戦の幅を広げた。",
+      "originality": "既存手法の応用",
+      "evidence": "対局準備の面で一定の効果",
+      "quote": "ペタショック定跡をベースに独自の手順を加えることで、後手番では作戦の幅が広がり"
+    }
+  ],
+  "character": "メンバーが小学生や学生時代の将棋との出会い、elmo囲い・雁木などAIが生む戦法への興味から「ユーザーから開発者側へ」と移った経緯を語る開発動機が読める。",
+  "notes": "概要版は課題と実験結果の公開が中心、詳細版は開発動機と独自の工夫。アーキテクチャ名のSFNNwoP1536は谷合氏がやねうら王へ移植したもの（六角堂狸の文書より）。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc36/team.html"
+}

@@ -1,0 +1,78 @@
+{
+  "wcsc": 28,
+  "year": 2018,
+  "dir": "Nanoha",
+  "team": "川端 一之",
+  "software": "なのは",
+  "sources": [
+    "wcsc28/appeal/Nanoha/Nanoha_appeal2018v2.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc28/appeal/Nanoha/Nanoha_appeal2018v2.pdf"
+  ],
+  "summary": "魔法少女リリカルなのはを由来とする、強力な詰めルーチン（なのは詰め）を売りにするソフト。探索はStockfishベースで、Bitboardを使わずAMD Ryzenに適したデータ構造を採る。",
+  "base": {
+    "engine": "自作（Stockfishベースの探索、なのはmini）",
+    "eval_source": "Apery",
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "Aperyの評価ベクトルを使用"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "Stockfishベース。df-pn詰めルーチン搭載。詰め探索専用スレッドを設定"
+  },
+  "learning": null,
+  "hardware": "AMD Ryzen 7 1700、32GB、Windows10",
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": "AMD CPUのシステム構成の中で第24・25・27回1位、第26回2位（総合順位は17・11・12・13位）",
+  "ideas": [
+    {
+      "category": "詰み・終盤",
+      "title": "強力な詰めルーチン「なのは詰め」",
+      "description": "df-pnベースの詰めルーチンを公開しており、江戸時代の611手詰め「寿」を解く。常に詰みを狙い一発逆転を狙う。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "なのは詰めは江戸時代の名作 611手詰めの「寿」を解く"
+    },
+    {
+      "category": "詰み・終盤",
+      "title": "詰め探索専用スレッドと最大手数の強化",
+      "description": "コア数が増えたため詰め探索専用のスレッドを設定し、高速化ではなく最大詰め手数の強化を優先する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "コア数が増加したため、詰め探索用のスレッドを設定"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "AMD Ryzenに適した非Bitboard設計",
+      "description": "Bitboardを使わず盤情報を配列で持ち、AMD Ryzenに適したデータ構造にする。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "Bitboard未使用(盤情報は配列) AMD RYZENに適したデータ構造"
+    },
+    {
+      "category": "探索",
+      "title": "歩・角・飛の不成も生成",
+      "description": "手生成で歩・角・飛の不成も生成する。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "手生成では歩、角、飛の不成も生成"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "実戦の出現数と勝率で選ぶ定跡",
+      "description": "定跡部は実戦での出現数と勝率を考慮して手を選ぶ。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "定跡部は実戦での出現数および勝率を考慮して手を選択"
+    }
+  ],
+  "character": "魔法少女リリカルなのはを由来とし、「名前の割に弱すぎる」と自嘲する。作者の好みのアニメ紹介、イラスト（COCOさん）、漫画の改変引用（詰め探索の「チャージタイムを増やして威力を大幅アップ」）、今後の課題に「カットインやエフェクトなど派手な演出！！」を挙げる。「AMD勢で1位」を目標にする。",
+  "notes": "V1とV2の併記。V2で評価ベクトルをやねうら王からAperyに変更した。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc28/team.html"
+}

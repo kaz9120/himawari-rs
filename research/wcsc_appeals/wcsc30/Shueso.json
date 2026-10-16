@@ -1,0 +1,70 @@
+{
+  "wcsc": 30,
+  "year": 2020,
+  "dir": "Shueso",
+  "team": "竹内 章",
+  "software": "習甦",
+  "sources": [
+    "wcsc30/appeal/Shueso/Shueso_wcsc30.txt"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc30/appeal/Shueso/Shueso_wcsc30.txt"
+  ],
+  "summary": "玉の位置に対する各駒の位置と升の利き数を特徴量にするNNを評価関数に使う。初手から5手目までMultiPV16の自己対戦で教師を作り、評価値の推移を使った強化学習で学習する。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "玉位置×（駒位置と升の利き数）を特徴量とするNN。特徴量の次元は(2110+4*4*81)*81=275886"
+  },
+  "search": {
+    "family": "不明",
+    "detail": null
+  },
+  "learning": "初手から5手目までMultiPV16の自己対戦棋譜。評価値の推移のフィードバックで推定した勝率を割引報酬とする強化学習",
+  "hardware": "Amazon EC2 c5.9xlarge",
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "利き数を特徴量にしたNN",
+      "description": "玉の位置に対する各駒の位置と各升の利き数を特徴量とするNNを評価関数にする。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "玉の位置に対する各駒の位置と各升の利き数を特徴量とするニューラルネットワーク"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "序盤5手を全分岐する自己対戦",
+      "description": "初手から5手目までMultiPV16で展開し、16^5局の自己対戦棋譜を数セット作る。着手決定の難易度を定式化して局面ごとに探索ノード数を変える。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "初手から5手目までMultiPV 16として16^5局の自己対戦棋譜を数セット作成"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "評価値推移を使った強化学習",
+      "description": "評価値の推移をフィードバックして推定した勝率を割引報酬とする強化学習で学ぶ。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "評価値の推移をフィードバックして推定された勝率を割引報酬とした強化学習"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "簡易版Batch Normalization",
+      "description": "平均のみを考慮したBatch Normalizationの簡易版を適用する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "平均のみを考慮したBatch Normalizationの簡易版を適用"
+    }
+  ],
+  "character": null,
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc30/team.html"
+}

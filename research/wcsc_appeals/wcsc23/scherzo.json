@@ -1,0 +1,54 @@
+{
+  "wcsc": 23,
+  "year": 2013,
+  "dir": "scherzo",
+  "team": "氏家 一朗",
+  "software": "scherzo",
+  "sources": [
+    "wcsc23/appeal/scherzo/appeal.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc23/appeal/scherzo/appeal.txt"
+  ],
+  "summary": "定跡の代わりに、自プログラムで時間をかけて考えた序盤の結果をいくつか保存して使う。評価関数は駒の損得と少しの王の危険度だけで、間に合えばニューラルネットを使う予定。詰将棋ルーチンはない。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "手作り",
+    "detail": "駒の損得と多少の王の危険度。ニューラルネット化を予定"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "全幅探索"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "定跡・序盤",
+      "title": "時間をかけて考えた序盤の保存",
+      "description": "通常の定跡でなく、自分のプログラムで時間をかけて考えた結果を保存して使う。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "あらかじめ自分のプログラムで時間をかけて考えた結果を、"
+    },
+    {
+      "category": "評価関数",
+      "title": "ニューラルネット評価関数",
+      "description": "今年は間に合えば評価関数にニューラルネットを使う予定。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "評価関数にニューラルネットを用いる予定です"
+    }
+  ],
+  "character": null,
+  "notes": null,
+  "team_list_url": "http://www2.computer-shogi.org/wcsc23/team.html"
+}

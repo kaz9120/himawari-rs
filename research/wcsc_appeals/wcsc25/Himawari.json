@@ -1,0 +1,62 @@
+{
+  "wcsc": 25,
+  "year": 2015,
+  "dir": "Himawari",
+  "team": "山本 一将",
+  "software": "ひまわり",
+  "sources": [
+    "wcsc25/appeal/Himawari/appeal.pdf"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc25/appeal/Himawari/appeal.pdf"
+  ],
+  "summary": "Bonanza式の駒割＋KPP＋KKPを方策勾配法で学習する。今年はプロ棋譜5.8万局との一致に加え、深い探索を教師にしたBootstrap的な学習を方策勾配法で行う。探索はAspiration・並列探索・1手/3手詰めを追加。来年はStockfish化を目指す。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "駒割＋KPP＋KKP"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "PVS、LMR、Null Move、SEE、Aspiration、並列探索、1手詰め・3手詰め"
+  },
+  "learning": "方策勾配法。プロ棋譜5.8万局との一致と、深い探索結果を教師にするBootstrap学習",
+  "hardware": null,
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "方策勾配法による評価関数学習",
+      "description": "Bonanza Methodでなく方策勾配法で学習する。報酬を柔軟に設定でき、勝敗・プロ棋譜との一致・入玉などに報酬を与えられる。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "学習を方策勾配法によって行っている点が特徴"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "深い探索を教師とするBootstrap学習",
+      "description": "プロの棋譜を使わず、深い探索結果を教師にしたBootstrap的な学習を方策勾配法で行う。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "Bootstrap的な学習を方策勾配法で行う"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "新手を編み出す",
+      "description": "来年に向け、序盤・中盤・終盤を別々に学習し、プロ棋譜をなるべく使わず、新手を編み出すことを目標にする。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "目標は新手を編み出すこと！"
+    }
+  ],
+  "character": null,
+  "notes": "前年の文書の発展版。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc25/team.html"
+}

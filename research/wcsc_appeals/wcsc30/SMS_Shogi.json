@@ -1,0 +1,44 @@
+{
+  "wcsc": 30,
+  "year": 2020,
+  "dir": "SMS_Shogi",
+  "team": "藤丸 貴裕",
+  "software": "SMS将棋",
+  "sources": [
+    "wcsc30/appeal/SMS_Shogi/appeal.txt"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc30/appeal/SMS_Shogi/appeal.txt"
+  ],
+  "summary": "テーマは接待将棋。評価点数を手作業で付けた、ポンダーもハッシュも使わない未完成のソフト。",
+  "base": {
+    "engine": "不明",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "手作り",
+    "detail": "評価点数を手作業で設定"
+  },
+  "search": {
+    "family": "不明",
+    "detail": null
+  },
+  "learning": null,
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "棋風・人間らしさ",
+      "title": "接待将棋",
+      "description": "接待将棋をテーマに掲げる。弱さを前面に出し、評価点数は独断で手作業で付けた。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "テーマは接待将棋です。"
+    }
+  ],
+  "character": "接待将棋をテーマとし、「弱いソフト」「まだ未完成」と自称する。ポンダーもハッシュも使わない。",
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc30/team.html"
+}

@@ -1,0 +1,79 @@
+{
+  "wcsc": 30,
+  "year": 2020,
+  "dir": "NineDayFever",
+  "team": "金澤 裕治",
+  "software": "NineDayFever",
+  "sources": [
+    "wcsc30/appeal/NineDayFever/NDF-2020.txt"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc30/appeal/NineDayFever/NDF-2020.txt"
+  ],
+  "summary": "Bonanza 6.0にStockfishの手法を取り入れたソフト。評価関数は三駒関係の次元落とし付きKPPT、「雑巾絞り」と呼ぶ対局結果による学習を使う。2020年は、movecount pruningとlazy SMPの相性についての仮説に基づく、PV共有とヘルパースレッドのヒストリへのノイズ付与などを試す。",
+  "base": {
+    "engine": "Bonanza",
+    "eval_source": null,
+    "note": "Bonanza 6.0にStockfishの手法を取り入れる。2012年ごろKPP/KKPの機械学習を試す時点でbonanza以外に選択肢がなく惰性で使い続ける"
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "KPPT。三駒関係の変数を分解して共通要素を抽出し学習（次元落とし）"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "movecount pruning＋lazy SMP。PVを共有して楽観合議（予定）"
+  },
+  "learning": "「雑巾絞り」と呼ぶ、対局結果を使った学習。定跡の自己対戦結果の局面からも対局結果を得る",
+  "hardware": "Xeon c5.24xlarge×8（AWS）",
+  "language": [
+    "C",
+    "Perl"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "探索",
+      "title": "movecount pruningとlazy SMPの相性仮説",
+      "description": "相性が良い理由を、PVを置換表で全スレッドに共有しつつ、2番目以降の枝を確率的に選ぶ「モンテカルロ指向αβ探索」になっているからだと仮説を立てる。PVを共有して楽観合議する予定。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "「movecount pruning と lazy SMP が相性がいいのはモンテカルロ指向αβ探索になっているから仮説」"
+    },
+    {
+      "category": "探索",
+      "title": "ヘルパースレッドのヒストリにノイズ",
+      "description": "2番目以降の手をばらけさせるため、スレッドごとにヒストリを持つ代わりに、ヘルパースレッドのヒストリにノイズを入れる実装を実験する（2019年）。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "ヘルパースレッドのヒストリにノイズを入れてやることで同じ効果が得られそうだ"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "雑巾絞りの初期局面生成",
+      "description": "対局結果を学習に使う「雑巾絞り」の初期局面を作る手法を実験中。王以外の駒を別の場所に動かした局面から始めたいが、候補が多すぎるので動かす駒の選び方を試す（2019年）。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "王以外の駒でも、違う場所に動かした局面を作ってそこから始めたい"
+    },
+    {
+      "category": "評価関数",
+      "title": "三駒関係の次元落とし",
+      "description": "三駒関係の変数を分解して共通要素を抽出し機械学習することで、未知の局面への対応力を高める（2018年）。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "三駒関係の各変数を分解して共通する要素を抽出したうえで機械学習することで未知の局面への対応能力を高めています"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "自己対戦の勝率分布で採用確率を決める定跡",
+      "description": "自己対戦結果から各局面の勝率分布を推定し、手の採用確率を決める。末端の勝率ベースで更新するため、Qhapaqの公開定跡など他の定跡も末端の勝率を求めて取り込める（2018年）。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "定跡では自己対戦結果から各局面の勝率の分布を推定して各手の採用確率を決めています。"
+    }
+  ],
+  "character": "「局面評価の極北を目指す。ただしディープラーニングに走るのは癪なので探索手法の改良に走る」という立場。",
+  "notes": "本文は2020年・2019年・2018年の累積記述。2020年の内容はPV共有の1項目のみ",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc30/team.html"
+}

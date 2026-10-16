@@ -1,0 +1,78 @@
+{
+  "wcsc": 30,
+  "year": 2020,
+  "dir": "Kifuwarabe",
+  "team": "高橋 智史",
+  "software": "きふわらべ",
+  "sources": [
+    "wcsc30/appeal/Kifuwarabe/WCSC30-Kifuwarabe-PR.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc30/appeal/Kifuwarabe/WCSC30-Kifuwarabe-PR.pdf"
+  ],
+  "summary": "アピール内容がなく、「ミスの少ないコーディング」のコーディング・テクニックを、将棋盤のアドレス（番地）の符号化で語る漫画風の文書。先後反転・東西反転・90度回転を相対番地の符号反転と辞書順マッピングで書く「辞書象限」を提案するが、検証は時間切れ。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "不明",
+    "detail": null
+  },
+  "search": {
+    "family": "不明",
+    "detail": null
+  },
+  "learning": null,
+  "hardware": null,
+  "language": [
+    "Rust"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "実装・高速化",
+      "title": "辞書順マッピングによる盤面アドレス",
+      "description": "筋（File）と段（Rank）を、足し算でも掛け算でもなく単に並べる「辞書順」で、アドレスに変換する。0筋・0段を番兵に使い、はみ出しは `|adr| mod 10 != 0` かつ `|adr/10| mod 10 != 0` で判定する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "ファイル、ランクの順に並べて足し算でも掛け算でもなくただ並べる “辞書順” という操作をして アドレス（番地）をマッピングしようぜ☆"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "先後反転は「110から引く」、相対番地は符号反転",
+      "description": "先手用のコードだけを書き、後手は110から引く（絶対番地）か、相対番地の符号を反転するだけで180度回転にする。17×17の相対番地空間で、東へ3・南へ3を-27の1回で表す。東西反転も、負号を外し辞書象限I上で変換して戻す。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "この相対番地の空間では、正負の符号を反転させるだけで180°回転できるぜ☆"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "辞書象限と回転・反転の統一的な式",
+      "description": "符号の象限の考えを拡張し、辞書象限・辞書半象限の概念を作る。90度の回転を式で表し、45度回転まで試みる。未検証で、時間切れとして続きを本番で示す予定とする。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "未認可な数学を勝手に作ってるけどな☆"
+    },
+    {
+      "category": "開発手法・運用",
+      "title": "言語を使いやすくする命名規則",
+      "description": "先手・後手を First/Second とし、手番側を Friend、相手側を Opponent と呼んで、First/Second を探索部に使わずにプログラムする。Black/Whiteは覚えられないので使わない。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "First や Second を使わずに、 Friend や Opponent を使ってプログラムしろだぜ☆"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "負数のmodの扱い",
+      "description": "-1 mod 10は、Wolfram Alphaでは9、Rustでは-1と結果が違うので、絶対値にしてからmodを取る。",
+      "originality": "不明",
+      "evidence": null,
+      "quote": "結果がバラけるのが嫌なら絶対値にしてから mod しろだぜ☆"
+    }
+  ],
+  "character": "東方Projectの北白河ちゆりと岡崎夢美（二次創作キャラクター）の掛け合い形式で、「今年も、わたしをPRする内容が無いのか……☆」と自虐する。文末の「☆」とボケ・ツッコミで、コーディングの失敗談を読み物にしている。「Make unauthorized math!」で締めるなど、毎年のネタ枠。",
+  "notes": "ソフトの探索・評価の説明はなく、実装技法（番地マッピング）の解説に徹する。図が多く、テキストは断片的",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc30/team.html"
+}

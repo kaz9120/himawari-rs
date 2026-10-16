@@ -1,0 +1,76 @@
+{
+  "wcsc": 31,
+  "year": 2021,
+  "dir": "YaneuraOu",
+  "team": "磯崎 元洋（みざうら王 with お多福ラボ）",
+  "software": "やねうら王",
+  "sources": [
+    "wcsc31/appeal/YaneuraOu/mizaura_PR_draft.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc31/appeal/YaneuraOu/mizaura_PR_draft.pdf"
+  ],
+  "summary": "dlshogi互換エンジン（dlshogiのモデルをそのまま使える）として実装し、改良版df-pnの詰将棋ルーチンを搭載。学習では教師データの配分を変えた複数のPCで並行学習し、最良の1台を残す「天国と地獄メソッド」を提案する。",
+  "base": {
+    "engine": "独自",
+    "eval_source": "dlshogiのモデルを使用可能",
+    "note": null
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "dlshogi互換のモデル"
+  },
+  "search": {
+    "family": "MCTS",
+    "detail": "dlshogi互換のエンジン。改良版df-pnを詰将棋ルーチンに使用"
+  },
+  "learning": "複数の教師データ（AobaZero、dlshogi、floodgate R3600以上、水匠の入玉絡み、自己対局800po/1600po/2400po…）を1ストリームずつとみなし、配分（例 AobaZero:dlshogi:水匠=4:5:1）から1epoch=500万局面を作って学習",
+  "hardware": "Amazon EC2 p4d.24xlarge（GCPのA100も検討）",
+  "language": "C++, Python",
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "教師ストリームの配分混合",
+      "description": "複数の教師データを独立ストリームとして扱い、AobaZero:dlshogi:水匠=4:5:1のような配分で1epoch分の500万局面を混ぜて学習する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "AobaZero : dlshogi : 水匠 = 4:5:1 のように書けば、その配分から成る 500 万局面"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "天国と地獄メソッド",
+      "description": "教師の配分を変えた条件で複数のPCで同時に学習し、最良のPCの結果だけ残して他は捨て（天国と地獄）、コピーして繰り返す。手戻りなしで最適配分を探る。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "そこで我々が考えたのは、天国と地獄メソッドである。"
+    },
+    {
+      "category": "詰み・終盤",
+      "title": "改良版df-pn",
+      "description": "メモリと時間が無限ならどんな長編でも間違いなく解けるdf-pnの改良版を詰将棋ルーチンに実装した。実際には50手を超えるものは解けないこともある。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "メモリと時間が無限にあるなら、どんな長編でも間違わずに解ける。"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "dlshogi互換エンジン",
+      "description": "dlshogiのmodelファイルをそのまま使えるエンジンを作り、dlshogiより優れた点もあるとする。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "dlshogi 互換エンジンを作った(dlshogi の model ファイルがそのまま使える)"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "教師配分の疑問リスト",
+      "description": "序盤と中終盤の割合、戦型のばらつき、入玉将棋の割合、対戦棋譜のプレイアウト数など、強化学習の教師の好ましい配分が分かっていないことを列挙。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "どのような教師をどういう配分で混ぜれば良いのかは知られていない。"
+    }
+  ],
+  "character": "ソフト名「みざうら王」はやねうら王のもじり（お多福ラボとのチーム名）。PR文書は選手権後に差し替えるかもしれないと書く。",
+  "notes": "index上のソフト名は「やねうら王」だがチーム名は「みざうら王 with お多福ラボ」。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc31/team.html"
+}

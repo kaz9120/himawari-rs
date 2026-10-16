@@ -1,0 +1,58 @@
+{
+  "wcsc": 35,
+  "year": 2025,
+  "dir": "INUGAMI",
+  "team": "ザイオソフト コンピュータ将棋サークル",
+  "software": "INUGAMI",
+  "sources": [
+    "wcsc35/appeal/INUGAMI/INUGAMI_appeal_20250510.pdf",
+    "wcsc35/appeal/INUGAMI/INUGAMI_appeal_detail.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc35/appeal/INUGAMI/INUGAMI_appeal_20250510.pdf",
+    "https://www.apply.computer-shogi.org/wcsc35/appeal/INUGAMI/INUGAMI_appeal_detail.pdf"
+  ],
+  "summary": "tanuki-の系譜（NNUE評価関数を2018年に世界で初めて搭載した将棋ソフト）で、CPUエンジンの自己対局データの評価値を、DL水匠とAobaZeroの勝率の平均に置き換えて学習する知識蒸留とアンサンブルが売り。ポンタマン比R+38、前回版比R+161。",
+  "base": {
+    "engine": "やねうら王",
+    "eval_source": "tanuki-（教師生成）、DL水匠・AobaZero（蒸留元）",
+    "note": "思考部はやねうら王の改造。nnue-pytorchを将棋向けに改造して学習に使用"
+  },
+  "eval": {
+    "family": "NNUE",
+    "detail": "nnue-pytorchで学習したNNUE。蒸留元はDL水匠とAobaZero WCSC34版"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "やねうら王を改造した思考部"
+  },
+  "learning": "CPUエンジン同士の自己対戦で局面と評価値を生成→GPUエンジンで勝率推論→評価値へ変換→複数エンジンの相加平均で評価値を置換→NNUE学習",
+  "hardware": "Amazon EC2 m7a.metal-48xl",
+  "language": [
+    "C++",
+    "C#",
+    "Python"
+  ],
+  "claimed_strength": "自己対局5000局ずつで、ポンタマン（電竜戦HWT版）にR+38.2、前回WCSC版にR+160.9（持ち時間5分+2秒、1スレッド）",
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "GPU系エンジンからの知識蒸留",
+      "description": "CPUエンジンの自己対戦で作った局面の評価値を、GPUエンジン（DL水匠）が出した勝率を評価値に変換した値に置き換えてNNUEを学習する。Response-basedのオフライン知識蒸留。",
+      "originality": "既存手法の応用",
+      "evidence": "2024年12月に有効性を確認",
+      "quote": "学習サンプルの評価値を 3. で置き換える"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "DL水匠とAobaZeroのアンサンブル蒸留",
+      "description": "DL水匠とAobaZeroの勝率をそれぞれ評価値に変換し、相加平均を取って置き換える。強すぎるモデルよりも、そこそこのモデルを混ぜるほうが良い場合があるという観察が大会後に語られている。",
+      "originality": "独自",
+      "evidence": "アンサンブルでレーティングがさらに向上",
+      "quote": "DL 水匠と AobaZero で勝率を出力し、評価値に変換したあと、相加平均を取ってから置き換えています"
+    }
+  ],
+  "character": "名前の由来は『松山騒動八百八狸物語』の化け狸、隠神刑部。AIで生成したイメージ画像を載せ、「境遇が不憫過ぎて悲しくなりました」と書く。過去バージョン名は「ポンタマン」「お前、CSA会員にならねーか？」など遊び心がある。校正をChatGPTにしてもらったことへの謝辞もある。",
+  "notes": "詳細版に開発史がある。Aperyの高速化から始め、2018年に世界初のNNUE搭載将棋ソフトを公開、2021年にNNUEをStockfishへ移植した。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc35/team.html"
+}

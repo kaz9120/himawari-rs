@@ -1,0 +1,60 @@
+{
+  "wcsc": 34,
+  "year": 2024,
+  "dir": "The_Great_Ushijima",
+  "team": "有賀 宏樹",
+  "software": "ザ・グレート・ウシジマ",
+  "sources": [
+    "wcsc34/appeal/The_Great_Ushijima/appealv3.docx"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc34/appeal/The_Great_Ushijima/appealv3.docx"
+  ],
+  "summary": "python-dlshogi2に定跡読み込みとkomoringheights連携の詰め将棋エンジン切替を加え、Floodgate棋譜で3回追加学習した。大会は申込後にキャンセルされた。",
+  "base": {
+    "engine": "python-dlshogi2",
+    "eval_source": "「強い将棋ソフトの創り方」第7章のモデル",
+    "note": null
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "python-dlshogi2"
+  },
+  "search": {
+    "family": "MCTS",
+    "detail": "詰みを見つけたらkomoringheightsへ切替"
+  },
+  "learning": "第7章のモデルcheckpoint.pthに、Floodgateの2023・2022・2019年度の棋譜で3回追加学習",
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "定跡・序盤",
+      "title": "定跡手は即指し",
+      "description": "定跡ファイルにある手が選ばれたら、考慮せず即座に指す。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "定跡に基づく手が選ばれると、プログラムは考慮せずに即座にその手を指します"
+    },
+    {
+      "category": "詰み・終盤",
+      "title": "詰め将棋エンジンへ自動切替",
+      "description": "komoringheightsが相手玉の詰みを見つけたら、自動でそちらに切り替えて指す。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "自動的に詰め将棋エンジンに切り替わり、指し手を行います"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "年度別Floodgate棋譜の追加学習",
+      "description": "2023、2022、2019年度のFloodgate棋譜で、モデルを3回学習させた。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "2023年度、2022年度、2019年度の棋譜を使って、モデルを3回学習させました"
+    }
+  ],
+  "character": null,
+  "notes": "参加者一覧ではキャンセル扱い。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc34/team.html"
+}

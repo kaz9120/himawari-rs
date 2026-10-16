@@ -1,0 +1,71 @@
+{
+  "wcsc": 27,
+  "year": 2017,
+  "dir": "GPS_Shogi",
+  "team": "Team GPS（東京大学ゲームプログラミングセミナー）",
+  "software": "GPS将棋",
+  "sources": [
+    "wcsc27/appeal/GPS_Shogi/wcsc-appeal.pdf"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc27/appeal/GPS_Shogi/wcsc-appeal.pdf"
+  ],
+  "summary": "東京大学のGPSセミナーが開発するフリーソフト。利きを管理する高速な盤、実現確率による探索、評価関数の自動学習に加え、局面進行に応じた4種の評価関数、疎結合並列探索、df-pnの並列協調詰探索が特徴。第19・22回の優勝経験を持つ。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "序盤・中盤1・中盤2・終盤の4種類の評価関数を使い分け。自動学習"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "実現確率を用いた探索、疎結合並列探索、df-pn（並列協調）の詰探索"
+  },
+  "learning": null,
+  "hardware": "Corei7 6950 10コア x7台ほか計16台・140コア",
+  "language": [
+    "C++",
+    "Go"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "局面進行別の4種類の評価関数",
+      "description": "序盤・中盤1・中盤2・終盤の4種類の評価関数を局面に応じて使う。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "評価関数は現在，序盤，中盤 1，中盤 2，終盤の 4 種類を用いています．"
+    },
+    {
+      "category": "探索",
+      "title": "実現確率を用いた探索",
+      "description": "局面の実現確率を使って探索を制御する。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "実現確率を用いた探索"
+    },
+    {
+      "category": "並列・分散",
+      "title": "疎結合並列探索",
+      "description": "多数の計算機を使う疎結合並列探索に対応する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "疎結合並列探索や df-pn（並列協調）を用いた詰探索にも対応しています．"
+    },
+    {
+      "category": "詰み・終盤",
+      "title": "df-pn並列協調の詰探索",
+      "description": "df-pnを並列協調させた詰探索に対応する。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "df-pn（並列協調）を用いた詰探索"
+    }
+  ],
+  "character": null,
+  "notes": "技術詳細は参考文献（金子・田中の論文など）に委ねる簡潔な文書。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc27/team.html"
+}

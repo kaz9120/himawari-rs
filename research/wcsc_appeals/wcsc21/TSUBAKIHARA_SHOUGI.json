@@ -1,0 +1,62 @@
+{
+  "wcsc": 21,
+  "year": 2011,
+  "dir": "TSUBAKIHARA_SHOUGI",
+  "team": "椿原治",
+  "software": "椿原将棋",
+  "sources": [
+    "wcsc21/appeal/TSUBAKIHARA_SHOUGI/TSUBAKIHARA_SHOUGI.doc"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc21/appeal/TSUBAKIHARA_SHOUGI/TSUBAKIHARA_SHOUGI.doc"
+  ],
+  "summary": "第20回と同一の文書で、日付のみ平成23年に更新。長手順詰将棋システムとコマ地図誘導による、人とマシンの協業で先手必勝法を目指すコンセプト。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "手作り",
+    "detail": "長手順詰将棋を前提とした評価"
+  },
+  "search": {
+    "family": "その他",
+    "detail": "終盤システム（最大19手詰・必至）と序中盤システム"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": [
+    "Visual Basic"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "詰み・終盤",
+      "title": "長手順詰将棋システムを核にした設計",
+      "description": "局面が狭ければ19手詰まで読める長手順詰システムを前提に、評価・戦略を構築する。5手詰設定との自己対戦で圧勝すると主張する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "長手順詰将棋を前提とした評価システムを構築する"
+    },
+    {
+      "category": "棋風・人間らしさ",
+      "title": "コマ地図誘導方式と突撃戦法",
+      "description": "指し手近傍の駒配置を条件に手を指定するコマ地図で人の意図を絶対服従で実現する。先手26歩を必勝法の候補とし、25歩・85歩の後に金で守らず24歩と突っかける突撃A・B戦法を研究する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "コマ地図誘導方式を採用し，指す人の思った通りのプロセス（将棋の進行）を実現させシステムとしている"
+    },
+    {
+      "category": "解説・人間支援",
+      "title": "思考経過を歓喜・悲鳴・きしみとして表示",
+      "description": "手の決定経過を「歓喜」「悲鳴」「きしみ」の言葉でウインドウに表示し、進行状況を楽しむ。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "歓喜（15手詰で詰みました），悲鳴（逃げ手はありません），きしみ"
+    }
+  ],
+  "character": "人とマシンの協業と、先手必勝法を産み出す夢を掲げ、最強を目指さないと明言する。思考経過に歓喜・悲鳴・きしみを表示して楽しむ。",
+  "notes": "第20回の同名文書と日付以外同一。詳細はwcsc20のTsubakihara_Shogiを参照。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc21/team.html"
+}

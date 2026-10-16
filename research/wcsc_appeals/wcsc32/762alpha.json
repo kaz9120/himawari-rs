@@ -1,0 +1,52 @@
+{
+  "wcsc": 32,
+  "year": 2022,
+  "dir": "762alpha",
+  "team": "天野 史斎",
+  "software": "762alpha",
+  "sources": [
+    "wcsc32/appeal/762alpha/762alpha_appeal_20220331-3.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc32/appeal/762alpha/762alpha_appeal_20220331-3.pdf"
+  ],
+  "summary": "学習の自動化を目的とし、局面の順序（良し悪し）を片っ端から暗記する手法をとる。計算資源を投入するほど完全解析に漸近するソフトを目指す。キャンセルチーム。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "その他",
+    "detail": "局面の順序を暗記する。2344個の0/1ベクトルで表した局面の線形分離で2局面の優劣を学ぶ"
+  },
+  "search": {
+    "family": "不明",
+    "detail": null
+  },
+  "learning": "2手分の探索と局面の線形分離で順序を修正する。N局面の順序記憶は最悪O(N^2)〜O(N^3)と見積もる",
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "局面の順序を暗記する学習",
+      "description": "ディープラーニングはレイヤー数やノード数の見積もりが困難でスケールしにくいとして、局面の良し悪しの順序をそのまま記憶する。1回の変更は2手分の探索と2344次元0/1ベクトルの線形分離で行い、必要な変更回数をO(N^3)と見積もる。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "762alpha では局面の順序を片っ端から暗記していく手法をとります。"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "計算資源に比例して強くなる学習の自動化",
+      "description": "コードを直さずに計算資源を投入するほど完全解析の結果に漸近するソフトを目標とする。酔歩運動を使って、誤り率εがある場合の学習手間を見積もる。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "コードの手直し無しで計算資源（CPU パワーとメモリー）を投入すればするほど完全解析の結果に漸近していくソフトウェアの実現"
+    }
+  ],
+  "character": null,
+  "notes": "キャンセルチーム。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc32/team.html"
+}

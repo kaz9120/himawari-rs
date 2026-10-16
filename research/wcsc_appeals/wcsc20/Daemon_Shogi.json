@@ -1,0 +1,70 @@
+{
+  "wcsc": 20,
+  "year": 2010,
+  "dir": "Daemon_Shogi",
+  "team": "堀川久、時田正彦",
+  "software": "デーモン将棋",
+  "sources": [
+    "wcsc20/appeal/Daemon_Shogi/Daemon_Shogi.html"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc20/appeal/Daemon_Shogi/Daemon_Shogi.html"
+  ],
+  "summary": "他実装を一切使わず独自開発する、オープンなプロジェクト。通常探索まで含めてdf-pn系の最良優先探索で作る点が特徴。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "不明",
+    "detail": null
+  },
+  "search": {
+    "family": "その他",
+    "detail": "df-pn法を通常探索にも使う最良優先探索。詰み・必至探索もdf-pnベース"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "開発手法・運用",
+      "title": "誰でも参加できるオープン開発",
+      "description": "プロジェクトを公開し、思考エンジンに興味がある人なら誰でも参加できる。ライブラリ使用制限（分家の予選通過数制限）と無縁だと位置づける。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "もっとも大きな特徴は、プロジェクトがopenである (開かれている) ことです"
+    },
+    {
+      "category": "探索",
+      "title": "df-pn法を通常探索に使う",
+      "description": "詰め探索のdf-pn法を通常探索にも適用し、置換表を最大限使う最良優先探索を行う。限られた時間で非常に深く読める場合がある。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "詰め将棋探索の epoch である df-pn法を通常探索にも使えないか"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "持ち駒違いで評価を共有する置換表",
+      "description": "置換表のハッシュに盤面と手番のみを使い、持ち駒だけが違う局面で評価値を共有する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "持ち駒のみが異なる局面で評価値を共有しています"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "読みやすさ優先のコード",
+      "description": "高速化に力を入れず、単純で読みやすいソースにする。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "単純かつ読みやすいソースコードになっています"
+    }
+  ],
+  "character": null,
+  "notes": "評価関数は作り直し中でTODO記載。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc20/team.html"
+}

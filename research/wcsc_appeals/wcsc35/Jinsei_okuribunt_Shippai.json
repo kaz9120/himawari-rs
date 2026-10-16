@@ -1,0 +1,54 @@
+{
+  "wcsc": 35,
+  "year": 2025,
+  "dir": "Jinsei_okuribunt_Shippai",
+  "team": "築地 毅",
+  "software": "人生送りバント失敗",
+  "sources": [
+    "wcsc35/appeal/Jinsei_okuribunt_Shippai/appeal2025.txt"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc35/appeal/Jinsei_okuribunt_Shippai/appeal2025.txt"
+  ],
+  "summary": "技術面は毎年コピペで、αβ探索（LMR・Futility）とボナンザメソッドの評価関数というごく普通の構成。「アピール箇所がないとアピール文書リジェクトになる」ことを2015年に実証したと語り、過去の更新履歴の自虐コメントと、大会の思い出話が本体になっている。フロムスクラッチ賞5位、通算10回出場34勝35敗。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": "フロムスクラッチ"
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "ボナンザメソッド"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "LMR、Futilityなどごく普通の技術"
+  },
+  "learning": "ボナンザメソッド。平均化パーセプトロンを試して中止した経緯あり",
+  "hardware": "Core i7-8700",
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "解説・人間支援",
+      "title": "解説記事の自動生成（2012年）",
+      "description": "第22回（2012年）に、対局の解説記事を生成する取り組みで独創賞を受賞した。",
+      "originality": "独自",
+      "evidence": "独創賞受賞",
+      "quote": "独創賞受賞（解説記事の生成）"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "マクドナルド定跡の毎年の検証",
+      "description": "有名なマクドナルド定跡を毎年試して、勝ち星が増えないので効果がないかもしれないと疑いつつ、試行回数不足として今年も試す。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "毎年試している割には全然勝ち星が増えないので、もしかすると効果がないのではないか"
+    }
+  ],
+  "character": "プログラム名の最初の案が「(´・ω・`)」で、読めないとリジェクトされたエピソード。アピール文書リジェクトの前例を作った人。罰ゲームで「うまるちゃん」のコスプレをした思い出、毎年の会場近くのラーメン店（川崎家）や名所巡り、野球の送りバントへの愛など、大会を楽しむ文化の記録になっている。最後は「まったりゆうちゃんを倒して師匠超えしたい」という目標で結ぶ。",
+  "notes": "技術部分は前回までの文書のコピペであり、更新履歴には「バグをとったら効いた」「今年は何も手を入れられていない」など自虐的なコメントが並ぶ。今年の技術的な変更はなし。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc35/team.html"
+}

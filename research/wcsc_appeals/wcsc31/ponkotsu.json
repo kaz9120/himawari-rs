@@ -1,0 +1,52 @@
+{
+  "wcsc": 31,
+  "year": 2021,
+  "dir": "ponkotsu",
+  "team": "竹内 元気",
+  "software": "ponkotsu",
+  "sources": [
+    "wcsc31/appeal/ponkotsu/WCSC31_appeal.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc31/appeal/ponkotsu/WCSC31_appeal.pdf"
+  ],
+  "summary": "初参加。ResNet50で約2000万パラメータのPolicy/Valueネットワークをマルチタスク学習し、MCTSで指す。思考部とUIの796行の小さな実装で、初手〜10手目くらいまではちゃんと指すが、中盤以降はポンコツと自虐する。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "Value Network＋Policy Network（ResNet50、約2000万パラメータ）をマルチタスク学習"
+  },
+  "search": {
+    "family": "MCTS",
+    "detail": "MCTS。10k〜200k nps"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "マルチタスク学習の土壇場実装",
+      "description": "Policy/Valueのマルチタスク学習を土壇場で実装したが、見た目にバグっていそうと書く。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "土壇場でマルチタスク学習モデルの実装ができましたが見た目バグってそうです…"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "796行の小さな実装",
+      "description": "思考部とUIを796行で書き、libtorchとcshogiを使う。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "思考部&UI 部 796 行(2021/5/2 現在)"
+    }
+  ],
+  "character": "名前の通り「ポンコツ」を自称する。",
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc31/team.html"
+}

@@ -1,0 +1,46 @@
+{
+  "wcsc": 34,
+  "year": 2024,
+  "dir": "Argo",
+  "team": "市村 豊",
+  "software": "Argo（アルゴ）",
+  "sources": [
+    "wcsc34/appeal/Argo/240331Argo_apeal_v2.txt"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc34/appeal/Argo/240331Argo_apeal_v2.txt"
+  ],
+  "summary": "WCSC32と同じ評価関数（水匠3改を元に、やねうらお氏配布の150GB教師データ3つで学習）をやねうら王7.50で使う。技術面の記述は短く、大半は人生観や囲碁将棋の有益性を語る長いエッセイで、アピール文書として異色。",
+  "base": {
+    "engine": "やねうら王",
+    "eval_source": "水匠3改を元に追加学習",
+    "note": null
+  },
+  "eval": {
+    "family": "NNUE",
+    "detail": "水匠3改ベースに教師データで学習（水匠5に対し約20勝30敗）"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "やねうら王7.50"
+  },
+  "learning": "水匠3改を、やねうらお氏が以前配布した150GBの教師データ3つで学習",
+  "hardware": "Core i5-2520M 4コア",
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": "水匠5に対し約50局で勝率約40%（20勝30敗、WCSC32時点の記述）",
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "水匠3改の追加学習版を再利用",
+      "description": "水匠3改を元に、配布の教師データ3つで学習した評価関数を、第32回からそのまま使う。",
+      "originality": "再現・追従",
+      "evidence": "水匠5に対して勝率約40%",
+      "quote": "水匠 3 改」を元にして以前やねさんが配布していた 150GB の教師データを 3 つ使って学習させたもの"
+    }
+  ],
+  "character": "技術説明に続けて、「人生は他人との競争ではない」「他人の不幸を願う理由はない」「囲碁・将棋やゲームの有益性」を語る長文の随想を載せる。市議会議員選挙に立候補して供託金30万円を没収された話など、自虐的で個人的な体験談が多い。技術より人柄で読ませる文書。",
+  "notes": "ソフト名の正式名は「【朗報】俺の許嫁になったアルゴ、大会では勝利しかない。」（一覧ページ）。エッセイ部分は技術と無関係。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc34/team.html"
+}

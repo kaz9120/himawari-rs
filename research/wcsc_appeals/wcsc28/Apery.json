@@ -1,0 +1,78 @@
+{
+  "wcsc": 28,
+  "year": 2018,
+  "dir": "Apery",
+  "team": "Aperyチーム(大阪市立大学数理工学研究室)",
+  "software": "Apery",
+  "sources": [
+    "wcsc28/appeal/Apery/appeal_wcsc28.txt"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc28/appeal/Apery/appeal_wcsc28.txt"
+  ],
+  "summary": "Stockfishの設計を取り入れた三駒関係の評価関数のオープンソースソフト。前年のelmoの勝敗考慮の学習方式を取り入れ、教師データ生成を協力者に分散するシステムを運用する。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "三駒関係（KPP）。利きデータを持たずシンプル。手番も評価"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "Stockfishの設計を取り入れる"
+  },
+  "learning": "自己対局で教師局面と後の勝敗を記録して学習（elmo方式）。教師データ生成の探索深さを8から10へ。結果は有意な向上なし",
+  "hardware": null,
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": "第24回優勝。第5回電王トーナメント時点でオープンソース中最高の評価関数性能（本人談）",
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "教師データ生成を皆に依頼する分散システム",
+      "description": "評価関数の教師データ生成をボランティアに依頼するシステムを運用する（今年はLinux限定）。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "評価関数の教師データ生成を皆さんにお願いするシステムを今年も使っています。"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "elmo方式の勝敗考慮学習の導入",
+      "description": "教師データ生成時の対局で勝敗を記録し、局面と後の勝敗を学習に考慮する方式を導入した。学習部の書き直しでバグも取れ、elmoのWCSC27版より精度が上がったとする。",
+      "originality": "再現・追従",
+      "evidence": null,
+      "quote": "学習にその局面と後の勝敗を考慮する方式を取り入れました。"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "深さ10の教師で学習",
+      "description": "AlphaZeroの発表を受け、既存手法でも計算量を増やせば伸びると考えて教師データの探索深さを8から10にした。結果はほとんど効果なし。",
+      "originality": "既存手法の応用",
+      "evidence": "探索深さ10での学習は有意な向上を確認できず（弱くはなっていない）",
+      "quote": "探索深さ 10 での学習は結局ほとんど効果がなく"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "勝った対局の手を全て登録する定跡",
+      "description": "二次予選でHefeweizenに80手近く定跡で押された反省から、一次・二次予選でelmo、the end of genesis、Hefeweizenが勝った時の手を全て登録して決勝2戦目から使う。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "勝った時の手を全て登録するという安直な定跡を追加し"
+    },
+    {
+      "category": "エンタメ・演出",
+      "title": "命名権をチャリティーオークションで販売",
+      "description": "過去の電王トーナメントで出場ソフト名をヤフオク！のチャリティーオークションで売り、落札者が命名した（大樹の枝、浮かむ瀬）。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "命名権をオークション(全額チャリティー)で販売して落札者の方に決めて頂きました。"
+    }
+  ],
+  "character": "GPLv3のオープンソースで、CSAライブラリ登録により誰でも改造して出場できる。過去の電王トーナメントではチャリティー命名権オークションで出場名を決めた。",
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc28/team.html"
+}

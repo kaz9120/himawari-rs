@@ -1,0 +1,73 @@
+{
+  "wcsc": 35,
+  "year": 2025,
+  "dir": "YaneuraOu",
+  "team": "やねさんのチーム",
+  "software": "やねうら王",
+  "sources": [
+    "wcsc35/appeal/YaneuraOu/YaneuraOu-WCSC35PR_V2.pdf",
+    "wcsc35/appeal/YaneuraOu/YaneuraOu-WCSC35PR_detailed.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc35/appeal/YaneuraOu/YaneuraOu-WCSC35PR_V2.pdf",
+    "https://www.apply.computer-shogi.org/wcsc35/appeal/YaneuraOu/YaneuraOu-WCSC35PR_detailed.pdf"
+  ],
+  "summary": "探索はふかうら王（dlshogi互換）そのままで、定跡に重点を置いた。1局面あたり2億ノード以上で探索した定跡を大規模クラスタで生成し、定跡ツリーをminimax化する「ペタショック化」したもの（約220万局面）を搭載する。評価関数はResNet80×512から40×384、20×256へ多段蒸留した。",
+  "base": {
+    "engine": "やねうら王",
+    "eval_source": null,
+    "note": "探索はふかうら王を公開版のまま使用"
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "ResNet80×512の巨大モデルを学習し、40×384、20×256へ蒸留（15b〜30bも想定）"
+  },
+  "search": {
+    "family": "MCTS",
+    "detail": "ふかうら王そのまま"
+  },
+  "learning": "既存の教師データで80×512を学習し、dlshogiのtrain.pyの知識蒸留機能で2段階に縮小",
+  "hardware": "vast.ai 4090×10〜12（本番）。定跡生成はXeon 2698 Dual×4台+9950X×4台のクラスタで数か月",
+  "language": [
+    "C++",
+    "Python"
+  ],
+  "claimed_strength": "大会直後にfloodgateへ8コアの低スペックPCで定跡搭載版を投入し、R4629（57勝3敗）",
+  "ideas": [
+    {
+      "category": "定跡・序盤",
+      "title": "新ペタショック定跡",
+      "description": "1局面1スレッド2億ノード以上で探索した定跡を作り、ツリーをminimax化（ペタショック化）する。局面数Nの定数倍の時間で処理できるアルゴリズム。大会当日で約220万局面。大会直後に、連続王手の千日手（反則負け）を小さな計算コストで処理する新アルゴリズムを考案し、コマンドへ実装した。",
+      "originality": "独自",
+      "evidence": "floodgateでR4629（57勝3敗、低スペック8コア機）",
+      "quote": "定跡ツリーを minimax 化したものが局面数 N の定数倍の時間で得られる非常に優れたアルゴリズム"
+    },
+    {
+      "category": "並列・分散",
+      "title": "1スレッドエンジンを論理コア数だけ起動する定跡生成",
+      "description": "並列探索の実効はスレッド数の平方根程度という通説から、128スレッドで1エンジンを動かすと8.8%しか使えないと見積もり、1スレッドのエンジンを論理コアの数だけ起動して定跡を掘る。約400のエンジンをsshで束ね、数か月生成した。",
+      "originality": "独自",
+      "evidence": "128スレッド並列の実効は約11.3倍（8.828%）",
+      "quote": "1 スレッドで思考させるエンジンをその PC の論理スレッドの数だけ起動させることが重要"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "MultiPVで掘る定跡と掘り残しの自滅の分析",
+      "description": "水匠方式の定跡と違い、MultiPVで掘るため変化が広い。主力の変化が先手必勝と分かった後手は、MultiPVの2番目の手を選びがちで、掘り残しがあると自滅する。後手はかなり掘り尽くす必要があると分かった。以前は1局面1000万ノードのMultiPV4で掘ったが終盤が弱かった。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "掘り残しがあると自滅するような指し手を選んでしまうことがわかった"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "巨大モデルからの多段蒸留",
+      "description": "ResNet80×512を学習し、40×384、さらに20×256へ蒸留する。80bから20bへの直接蒸留は時間がかかるため、まず40bを経由して15b・20b・25b・30bなど各サイズへ展開する。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "二段に分けて蒸留したのは 80b という巨大モデルから直接 20b に蒸留すると時間がかかるため"
+    }
+  ],
+  "character": null,
+  "notes": "定跡生成にはたぬき（野田氏）のポンタマンとその次のバージョンを提供してもらい、水匠10beta3と同程度の強さだった。次に掘る局面の選び方が重要で、まだ試行錯誤中と書く。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc35/team.html"
+}

@@ -1,0 +1,37 @@
+{
+  "wcsc": 27,
+  "year": 2017,
+  "dir": "Mirage",
+  "team": "荒木 伸夫",
+  "software": "Mirage",
+  "sources": [
+    "wcsc27/appeal/Mirage/Mirage.docx"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc27/appeal/Mirage/Mirage.docx"
+  ],
+  "summary": "10年以上コンピュータ囲碁に携わる開発者が、2016年末から作ったソフト。合法手生成と駒得のみの評価関数にStockfishの探索を組み合わせ、本番までにfloodgateの棋譜からボナンザメソッドで3駒関係を学習する予定。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "駒得のみ。本番までにfloodgate棋譜からボナンザメソッドで3駒関係を学習する予定"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "Stockfishの探索ルーチン（まだバグが取りきれていない）"
+  },
+  "learning": "floodgate棋譜からボナンザメソッド（予定）",
+  "hardware": "Core i7 4710MQ 4コア 8GB",
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [],
+  "character": "コンピュータ囲碁の研究で博士号を取得予定の開発者が、知見を広げるために将棋にも参加したという経歴。",
+  "notes": null,
+  "team_list_url": "http://www2.computer-shogi.org/wcsc27/team.html"
+}

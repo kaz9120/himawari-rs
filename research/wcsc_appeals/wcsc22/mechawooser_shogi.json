@@ -1,0 +1,64 @@
+{
+  "wcsc": 22,
+  "year": 2012,
+  "dir": "mechawooser_shogi",
+  "team": "木村健",
+  "software": "メカウーサー将棋",
+  "sources": [
+    "wcsc22/appeal/mechawooser_shogi/MechawooserWCSC22.pdf"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc22/appeal/mechawooser_shogi/MechawooserWCSC22.pdf"
+  ],
+  "summary": "GPGPU（CUDA）将棋を目指す年間報告。実現確率の拡張を国際学会で発表したが劇的には良くならず詰めが弱くなったため採用せず、Hex版で並列を試みたがシーケンシャル版で頓挫した。今年は前年の逐次版を投入し、検討中のYBWC・Jamboree系の並列探索「Mechawooser search（仮）」を紹介する。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "不明",
+    "detail": null
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "逐次版（GPGPUではない）。並列探索は検討中"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": [
+    "C",
+    "C++",
+    "Python"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "並列・分散",
+      "title": "Mecha・Darth・Wooserカウンターによる並列探索（仮）",
+      "description": "YBWC・Jamboree系で、good type2は長男しか同期しない。探索の進行をMechaカウンター（一種のply）で制御し、並列探索する可能手を3分割（4個・10個・残り全部）するDarthカウンター、null window／full windowの開始・結果待ち・終了の6状態を持つWooserカウンターを使う。Darthは不要かもと指摘を受けた。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "並列探索の進行状況をmechaカウンターというカウンターにより制御する"
+    },
+    {
+      "category": "探索",
+      "title": "実現確率の拡張の実装",
+      "description": "実現確率の拡張を実装して国際学会で発表したが、劇的な改善ではなく、実現確率で探索すると詰めが弱くなる傾向があり詰めルーチンもなく弱いままだったため、採用しなかった。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "実現確率で探索すると詰めが弱くなる傾向にある"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "Hexプログラムで並列版を試作",
+      "description": "並列版は小さなプログラムからとHexプログラムを作り始めたが、逐次版の完成で頓挫した。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "まずは並列版はちいさなプログラムからということでHexプログラムを作り始める"
+    }
+  ],
+  "character": "冒頭に「きむりんだよ☆」のキャラ口調の自己紹介（直後に「失礼いたしました」）。プロシンで「研究はまだ三合目」と発表したら、次の発表者が真似して切腹したくなったなどと書き、「目指せジャーナル（何か書かないと卒業できない）」と結ぶ。",
+  "notes": "一覧では実際の使用ライブラリにBonanza 6.0.0。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc22/team.html"
+}

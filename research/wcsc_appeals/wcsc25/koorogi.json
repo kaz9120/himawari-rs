@@ -1,0 +1,46 @@
+{
+  "wcsc": 25,
+  "year": 2015,
+  "dir": "koorogi",
+  "team": "Jonathan Huang",
+  "software": "コオロギ",
+  "sources": [
+    "wcsc25/appeal/koorogi/apjh2015a.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc25/appeal/koorogi/apjh2015a.txt"
+  ],
+  "summary": "新規参加（米国）。PVSと置換表、多段階の指し手生成、駒・玉の安全・SEE・利きによる評価、1手9〜15秒の時間制御というシンプルな構成。名前は中国古典小説『聊斎志異』の「促織」に由来する。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "手作り",
+    "detail": "所有駒、玉の安全、静的交換、制御升目"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "PVS、置換表。null moveとLMRは不使用。多段階指し手生成"
+  },
+  "learning": null,
+  "hardware": "Core i5 520M",
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "時間管理",
+      "title": "1手9〜15秒の固定的な時間制御",
+      "description": "通常は1手9〜15秒で指す。",
+      "originality": "不明",
+      "evidence": null,
+      "quote": "9～15 seconds per move usually"
+    }
+  ],
+  "character": "名前を『聊斎志異』の「促織」（コオロギ）に由来するとする。",
+  "notes": null,
+  "team_list_url": "http://www2.computer-shogi.org/wcsc25/team.html"
+}

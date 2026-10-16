@@ -1,0 +1,78 @@
+{
+  "wcsc": 34,
+  "year": 2024,
+  "dir": "Yamada_Shogi",
+  "team": "山田 泰広",
+  "software": "山田将棋",
+  "sources": [
+    "wcsc34/appeal/Yamada_Shogi/yamadashogi_appeal_2024.txt"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc34/appeal/Yamada_Shogi/yamadashogi_appeal_2024.txt"
+  ],
+  "summary": "クラシカルな構造とアルゴリズムの手作り評価型。配列盤面、駒背番号制、利き数、落とし穴表などのデータ構造と、YSS式の指し手反復生成、Crafty式並列探索などを組む。ビットボード・SEE・評価関数の学習は採用していない。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "手作り",
+    "detail": "駒割・玉の安全度・囲い・当たり・大駒の働き・利きの合算（SIMD）・そっぽ・金駒へのひも等を手調整で線形和"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "反復深化、静止探索的延長、NMP、LMR、killer、pass move、Crafty方式並列"
+  },
+  "learning": null,
+  "hardware": "Xeon E5-2687W v4 24コア",
+  "language": [
+    "C"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "囲いへ誘導する落とし穴表",
+      "description": "囲いに誘導するための「落とし穴表」と、玉位置からの距離に応じた評価値表を持つ。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "囲いへ誘導するための落とし穴表"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "駒背番号制と利きビットのOR値",
+      "description": "駒背番号制、利き数、飛び利き方向ビットのOR値、利いている駒背番号ビットのOR値など、配列ベースの独自データ構造を使う。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "駒背番号制、利き数、飛び利き方向ビットの OR 値"
+    },
+    {
+      "category": "探索",
+      "title": "YSS式の指し手反復生成",
+      "description": "指し手をYSS方式で反復的に生成し、並列探索はCrafty方式で行う。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "YSS 式指し手の反復生成、Crafty 方式の並列探索"
+    },
+    {
+      "category": "探索",
+      "title": "pass moveとfutility的枝狩り",
+      "description": "手調整した仮評価で手を並べ替えて前向き枝狩りし、null move、LMR、killer、pass moveを使う。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "null move pruning、late move reduction、killer move heuristic、pass move"
+    },
+    {
+      "category": "詰み・終盤",
+      "title": "簡易必死・一手詰み検出",
+      "description": "rootでの簡易必死検出と、leaf付近での簡易一手詰み検出、反復深化の詰将棋ルーチンを持つ。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "root ノードでの簡易必死検出"
+    }
+  ],
+  "character": null,
+  "notes": "未採用として、多重反復深化、影の利き、SEE、持ち駒の優劣表現、bitboard、実現確率探索、評価関数の学習を明記している。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc34/team.html"
+}

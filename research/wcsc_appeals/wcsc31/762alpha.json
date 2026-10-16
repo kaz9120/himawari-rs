@@ -1,0 +1,52 @@
+{
+  "wcsc": 31,
+  "year": 2021,
+  "dir": "762alpha",
+  "team": "天野 史斎",
+  "software": "762alpha",
+  "sources": [
+    "wcsc31/appeal/762alpha/762alpha_20210331.txt"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc31/appeal/762alpha/762alpha_20210331.txt"
+  ],
+  "summary": "学習の自動化を目的とするプログラム。計算資源を投入するほど完全解析の結果に漸近し、コードの手直しを要しないことを目標にする。評価値を持たず、局面の順序を評価とする珍しい評価関数が特徴。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "その他",
+    "detail": "局面の順序（順位付け）を評価値とする評価関数。プロトタイプ法・線形分離・赤黒木を組み合わせる"
+  },
+  "search": {
+    "family": "不明",
+    "detail": "探索部は細かいバグ修正を除き前回と同じ。NPSは1万程度の見込み"
+  },
+  "learning": "局面の順序を対戦の結果と途中経過から自動更新する",
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "局面の順序を評価値にする",
+      "description": "評価値を数値で持たず、局面の順序そのものを評価とする。順序は対戦結果と途中経過から自動更新し、プロトタイプ法・線形分離・赤黒木で実現する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "局面の順序を評価値とする評価関数。"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "学習の完全自動化",
+      "description": "人手のad-hocな最適化を排し、コードを直さず計算資源の投入だけで完全解析に漸近するソフトを目指す。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "コードの手直し無しで、 計算資源（CPUパワーとメモリー）を投入すればするほど"
+    }
+  ],
+  "character": null,
+  "notes": "探索部は前回と同じ。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc31/team.html"
+}

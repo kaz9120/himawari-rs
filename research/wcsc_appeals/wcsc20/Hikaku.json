@@ -1,0 +1,60 @@
+{
+  "wcsc": 20,
+  "year": 2010,
+  "dir": "Hikaku",
+  "team": "甲村実",
+  "software": "飛角",
+  "sources": [
+    "wcsc20/appeal/Hikaku/Hikaku.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc20/appeal/Hikaku/Hikaku.txt"
+  ],
+  "summary": "中盤・終盤でもデータベースを活用することを目標にした将棋プログラム。局所的な形と指し手をDB化し、手筋として検索する発想が核。bonanzaのfv.binは、クローン化を避けるため使わない。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "手作り",
+    "detail": "「コンピュータ将棋の進歩」シリーズ（YSS・TACOS）を参考"
+  },
+  "search": {
+    "family": "その他",
+    "detail": "データベース検索中心。登録がなければ指し手生成と検索"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "定跡・序盤",
+      "title": "中盤・終盤でもデータベースを使う",
+      "description": "序盤の定跡だけでなく、大量の棋譜から局所的な形と指し手（手筋）をDB化し、中盤・終盤でも検索で指す。DBが巨大化しても動作させることを優先する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "中盤や終盤でもデータベースを活用する事を目標にしています"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "手筋の局所パターンDB化仮説",
+      "description": "完全解は棋譜の序盤に含まれ、中終盤は局面全体でなく局所的な形と指し手が一致すると推定。穴熊攻めなどの形と攻防手をDB化する発想。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "局所的な形と指し手をデータベース化すれば、良い手が指せる可能性が高いと推定する"
+    },
+    {
+      "category": "開発手法・運用",
+      "title": "fv.bin・ライブラリを使わない判断",
+      "description": "bonanzaのfv.binを使うと「右脳移植を受けたクローン」になり、足切りの対象になりかねないとして使わなかった。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "bonanzaの子供ではなく、bonanzaの右脳移植を受けたクローンになりそう"
+    }
+  ],
+  "character": "「現状は予測と期待だけ」と仮説段階を率直に書く。コンピュータが定跡を暗記する人のようだと言われる点から発想した。",
+  "notes": null,
+  "team_list_url": "http://www2.computer-shogi.org/wcsc20/team.html"
+}

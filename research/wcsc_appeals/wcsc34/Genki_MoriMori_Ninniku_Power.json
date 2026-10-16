@@ -1,0 +1,71 @@
+{
+  "wcsc": 34,
+  "year": 2024,
+  "dir": "Genki_MoriMori_Ninniku_Power",
+  "team": "Vtuber 都賀町えいだ",
+  "software": "元気もりもりニンニクパワー",
+  "sources": [
+    "wcsc34/appeal/Genki_MoriMori_Ninniku_Power/appeal.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc34/appeal/Genki_MoriMori_Ninniku_Power/appeal.pdf"
+  ],
+  "summary": "Vtuberの都賀町えいだが、『強い将棋ソフトの創りかた』をもとにC#で作ったソフト。電竜戦版からの改善点は詰み部分の追加と学習棋譜の厳選。名前は公募とアンケートで決めた。",
+  "base": {
+    "engine": "独自（『強い将棋ソフトの創りかた』ベース）",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "『強い将棋ソフトの創りかた』のpython版相当をC#で実装"
+  },
+  "search": {
+    "family": "MCTS",
+    "detail": "詰み部分を追加"
+  },
+  "learning": "floodgate棋譜に加え、たややん氏公開の棋譜などを使い、棋譜を厳選して学習",
+  "hardware": "Ryzen 7 5700G / RTX 3060×2",
+  "language": [
+    "C#",
+    "Python"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "エンタメ・演出",
+      "title": "Vtuber製作とファン公募の名前",
+      "description": "Vtuber都賀町えいだが作り、名前は公募とアンケートで決めた。名付け親は牛車さん。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "名前は公募＋アンケートによって命名"
+    },
+    {
+      "category": "開発手法・運用",
+      "title": "C#でpython版超えを目指す",
+      "description": "『強い将棋ソフトの創りかた』をC#で実装し、python版を超える棋力にする。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "python版を超える棋力になること"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "学習棋譜の厳選",
+      "description": "電竜戦では2008年以降のfloodgate棋譜全部を使い微妙な棋譜も混ざったため、今回は棋譜を厳選し、floodgate以外（主にたややん氏公開分）も使う。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "学習する棋譜を厳選する"
+    },
+    {
+      "category": "詰み・終盤",
+      "title": "詰み部分の追加",
+      "description": "WCSC33・第4回電竜戦からの主な改善点として、詰み関連の処理を加えた。",
+      "originality": "不明",
+      "evidence": null,
+      "quote": "主に詰み部分関連の追加"
+    }
+  ],
+  "character": "Vtuberが作るソフトで、ファン参加の命名が特徴。",
+  "notes": "3/31時点では電竜戦版より強くなっておらず、下手をすると電竜戦版のまま出場するかもしれないと書く。定跡は使わない予定。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc34/team.html"
+}

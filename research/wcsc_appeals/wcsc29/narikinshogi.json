@@ -1,0 +1,46 @@
+{
+  "wcsc": 29,
+  "year": 2019,
+  "dir": "narikinshogi",
+  "team": "村山 正樹",
+  "software": "なり金将棋",
+  "sources": [
+    "wcsc29/appeal/narikinshogi/appeal.txt"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc29/appeal/narikinshogi/appeal.txt"
+  ],
+  "summary": "初回参加時のコードを使い回し、教師なしの強化学習（Q学習）で3駒関係の評価値を学習するソフト。2017年から2019年の文書が並ぶ。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "3駒関係（以前は3駒＋2駒）"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "αβ、ハッシュテーブル、null move"
+  },
+  "learning": "教師なし学習。2019年は強化学習（Q-Learn）のみ、2018年までは強化学習と遺伝的学習の併用",
+  "hardware": null,
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "強化学習と遺伝的学習による教師なし学習",
+      "description": "棋譜を使わず強化学習（Q-Learn）と遺伝的学習を組み合わせて3駒＋2駒の評価値を学習し、2019年はQ学習のみにした。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "学習方法は強化学習(Q-Learn)のみです。"
+    }
+  ],
+  "character": null,
+  "notes": "2017・2018・2019年の3年分のアピール文を並記",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc29/team.html"
+}

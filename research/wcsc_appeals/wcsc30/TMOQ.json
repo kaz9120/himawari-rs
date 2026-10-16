@@ -1,0 +1,63 @@
+{
+  "wcsc": 30,
+  "year": 2020,
+  "dir": "TMOQ",
+  "team": "山下 隆久",
+  "software": "TMOQ",
+  "sources": [
+    "wcsc30/appeal/TMOQ/TMOQ_appeal_20200329.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc30/appeal/TMOQ/TMOQ_appeal_20200329.pdf"
+  ],
+  "summary": "山岡忠夫氏のDeepLearningShogiを土台に、王手禁止ルールで自己対戦強化学習をする、ひと味違うソフト。定跡は棒銀を指す「まふ定跡」を含む1,000万手超をマージ。作者は愛娘の命名・キャラクターデザインの「特大もっきゅ」という名を使う。",
+  "base": {
+    "engine": "dlshogi",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "dlshogiのpolicy+value"
+  },
+  "search": {
+    "family": "MCTS",
+    "detail": null
+  },
+  "learning": "平岡氏の初期局面ファイルにfloodgate（2015/1〜2020/2）のR2300以上の棋譜をマージし、elmo_for_learnで教師局面を生成。その後、王手禁止ソフト同士の自己対戦で強化学習",
+  "hardware": "Core i7-7700HQ 4コア",
+  "language": [
+    "C++",
+    "Python"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "棋風・人間らしさ",
+      "title": "王手禁止ルールの導入",
+      "description": "王手龍取りで負けた対抗措置として「王手禁止」をルールに入れた。ただし詰みがあるときと、定跡・読み筋が王手のみのときは例外とする。このルールで学習し、WCSCに出る。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "対抗措置として『王手禁止』をルールに入れました"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "王手禁止ソフト同士の自己対戦強化学習",
+      "description": "教師局面から学習した後、王手禁止ソフト同士の自己対戦で強化学習を続ける。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "『王手禁止』ソフト同士の自己対戦による強化学習を継続。"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "棒銀を指す調教定跡と1,000万手超のマージ",
+      "description": "棒銀を指すよう調教した「まふ定跡」に、千田氏のC-Book、100テラショック定跡、floodgateのR3000以上の勝者棋譜をマージして1,000万手超にした。目的は序盤の変な手による早期投了を避けること。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "定跡の目的は主に序盤で変な手を指しての早期投了を避けるためです。"
+    }
+  ],
+  "character": "ソフト名「TMOQ」は「特大もっきゅ」と読み、愛娘が命名しキャラクターデザインした。理想の対局相手として育てるという趣旨で、「王手禁止」の自作ルールで大会に挑む。",
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc30/team.html"
+}

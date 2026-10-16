@@ -1,0 +1,60 @@
+{
+  "wcsc": 20,
+  "year": 2010,
+  "dir": "GPS_Shogi",
+  "team": "Team GPS（田中哲朗ほか）",
+  "software": "GPS将棋",
+  "sources": [
+    "wcsc20/appeal/GPS_Shogi/GPS_Shogi.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc20/appeal/GPS_Shogi/GPS_Shogi.txt"
+  ],
+  "summary": "東大の教員・学生によるゲームプログラミングセミナーが開発し、第19回優勝。ソースとデータを公開し、チェス・将棋の最新研究を取り込む。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "序盤、中盤1、中盤2、終盤の4種類の評価関数"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "実現確率を用いた探索、df-pn（並列協調）詰探索"
+  },
+  "learning": "評価関数の自動学習",
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "4局面別の評価関数",
+      "description": "序盤、中盤1、中盤2、終盤の4種類の評価関数を使い分ける。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "評価関数は現在、序盤、中盤１、中盤２、終盤の４種類を用いています"
+    },
+    {
+      "category": "探索",
+      "title": "実現確率探索と並列協調df-pn",
+      "description": "実現確率を用いた探索と、df-pnの並列協調による詰探索を使う。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "実現確率を用いた探索、評価関数の自動学習、df-pn (並列協調) を用いた詰探索"
+    },
+    {
+      "category": "開発手法・運用",
+      "title": "ソースとデータの公開",
+      "description": "フリーソフトウェアとしてソースコードやデータを公開し、Twitterでも発信する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "フリーソフトウェアとしてソースコードやデータを公開しています"
+    }
+  ],
+  "character": null,
+  "notes": "技術詳細は参考文献への誘導のみ。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc20/team.html"
+}

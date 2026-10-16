@@ -1,0 +1,71 @@
+{
+  "wcsc": 36,
+  "year": 2026,
+  "dir": "Dainagon",
+  "team": "大納言",
+  "software": "Dainagon",
+  "sources": [
+    "wcsc36/appeal/Dainagon/WCSC36_appeal.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc36/appeal/Dainagon/WCSC36_appeal.pdf"
+  ],
+  "summary": "学部1年（開発時）2人が作る、ほぼフロムスクラッチのDL系将棋AI。合法手生成・詰将棋・探索まですべて自作し、コードの8割はGeminiで書き、人間が方針を決める。CUDAが使えないRX9070XT上でDirectMLを使って学習・推論する。",
+  "base": {
+    "engine": "独自",
+    "eval_source": "水匠5（教師データ生成に使用）",
+    "note": "エンジンは完全自作。教師あり学習に水匠5を使うので「ほぼ」フロムスクラッチと表記"
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "独自のDainagonNet（仮）。ConvNeXtやYShapeを試した（ConvNeXtは不採用）。Chunagon_v17は15ブロック192ch、v18は7ブロック192ch"
+  },
+  "search": {
+    "family": "MCTS",
+    "detail": "自作のMCTSエンジン（C++）。独自の動的時間制御"
+  },
+  "learning": "FloodgateのCSA棋譜に水匠5の評価値と次の一手を付けたデータと、水匠5の1手1000万ノードデータセットで教師あり学習",
+  "hardware": "Core Ultra 5 245K + RX9070XT",
+  "language": [
+    "C++",
+    "Python"
+  ],
+  "claimed_strength": "実験モデルChunagon_v15/v16がFloodgate R2500程度（執筆時点）、v19はR2300程度",
+  "ideas": [
+    {
+      "category": "開発手法・運用",
+      "title": "コード8割をGeminiで生成",
+      "description": "ソースコードの8割をGeminiで書き、人間がアイデアと方針を決める。学部1年の2人が将棋AIを作る手段として使っている。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "ソースコードは8割Geminiを使用。なお、人間がアイデアや方針を決めている。"
+    },
+    {
+      "category": "ハードウェア",
+      "title": "DirectMLでAMD GPU上のDL将棋",
+      "description": "メインGPUがRX9070XTでCUDAが使えないため、DirectMLで学習と推論を行わせる。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "CUDAが使えないため、現状DirectMLで学習、推論を行わせている"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "全部自作のエンジン",
+      "description": "合法手生成・詰将棋・探索部をすべて自作し、将棋系ライブラリは学習時のpython-shogiのみ使う。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "エンジンは合法手生成、詰将棋、探索部含めすべて自作。"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "強化学習を使わず水匠5で教師作成",
+      "description": "AlphaZeroの強化学習のやり方を知らないので、無料公開の水匠5でFloodgate棋譜を再評価して教師データにする。来年は自己対局版かNNUE版でキャリーオーバーしてフロムスクラッチを目指す。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "水匠5を用いて学習データを作っていること"
+    }
+  ],
+  "character": "名前の由来は、太田が授業中に寝ぼけて「俺は大納言道陽だぞ」と言ったこと。開発の失敗談（盤面をCNNでなくNNで直線に見ていたので弱かった、ぴよ将棋3級から最強のぴよ帝に勝つまで）も、時系列で書いている。DL系で多分最弱級と謙虚に書く。",
+  "notes": "3月26日時点で大会版として動くものがまだできていない旨の記載。追記でConvNeXt不採用、v17・v18はだめだったのでv16かv19（またはv20）を出すとある。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc36/team.html"
+}

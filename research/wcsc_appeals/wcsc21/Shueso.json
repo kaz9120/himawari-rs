@@ -1,0 +1,60 @@
+{
+  "wcsc": 21,
+  "year": 2011,
+  "dir": "Shueso",
+  "team": "竹内章",
+  "software": "習甦",
+  "sources": [
+    "wcsc21/appeal/Shueso/Shueso.htm"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc21/appeal/Shueso/Shueso.htm"
+  ],
+  "summary": "前年と同趣旨。利き数を入力とする3層パーセプトロン類似の評価関数と、多目的最適化による学習、勝率予測のベイズ推定による指し手選択。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "その他",
+    "detail": "各升の利き数を入力、駒の位置評価と利きの有無を中間層、勝率予測を出力とする3層パーセプトロン類似"
+  },
+  "search": {
+    "family": "その他",
+    "detail": "αβ探索の勝率予測を事前分布に、対局シミュレーションでベイズ推定"
+  },
+  "learning": "棋譜との不一致度＋勝率予測と勝敗の負の対数尤度＋深さの違う探索結果の分散の多目的最適化",
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "利き数入力のNN評価関数",
+      "description": "各升目の利き数を入力、駒の位置評価と利きの有無を中間層、勝率予測を出力とする。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "評価関数は，各升目における利き数を入力層"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "3項の多目的最適化",
+      "description": "棋譜との不一致、勝率予測と勝敗の負の対数尤度、深さの違う探索結果の分散を最小化する多目的最適化として定式化する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "多目的最適化問題として定式化する"
+    },
+    {
+      "category": "探索",
+      "title": "勝率の事後分布をベイズ推定して指す",
+      "description": "αβの勝率予測を事前分布にして、棋譜DBがある局面までは対局シミュレーションの観測データを加味して事後分布を推定し、期待値最大の手を選ぶ。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "勝率予測の事後分布をベイズ推定して，勝率の期待値が最も高い指し手を選択する"
+    }
+  ],
+  "character": null,
+  "notes": "前年版とほぼ同じ。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc21/team.html"
+}

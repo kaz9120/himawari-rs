@@ -1,0 +1,105 @@
+{
+  "wcsc": 36,
+  "year": 2026,
+  "dir": "dlshogi",
+  "team": "山岡 忠夫",
+  "software": "dlshogi",
+  "sources": [
+    "wcsc36/appeal/dlshogi/dlshogi_appeal_wcsc36.pdf",
+    "wcsc36/appeal/dlshogi/dlshogi_appeal_detail_wcsc36.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc36/appeal/dlshogi/dlshogi_appeal_wcsc36.pdf",
+    "https://www.apply.computer-shogi.org/wcsc36/appeal/dlshogi/dlshogi_appeal_detail_wcsc36.pdf"
+  ],
+  "summary": "モデルを大きくしても探索速度が落ちて強くならなかった反省から、40ブロック512フィルタに固定し、アーキテクチャの改良で強くした。ResNetの一部をTransformerに置き換えるハイブリッドに、Gated Attention・SwiGLU・相対位置バイアス・入力層7x7カーネルなどを導入した。483万局面の自動定跡も継続している。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": "dlshogi自体が開発対象。PV-MCTS。ソースはGitHubで公開"
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "40ブロック512フィルタ。ResNetを10ブロック間隔でTransformerに置換し、Gated Attention、SwiGLU FFN、相対・絶対位置バイアス、入力層7x7ラージカーネル、5ブロック間隔のSEBlock"
+  },
+  "search": {
+    "family": "MCTS",
+    "detail": "PV-MCTS"
+  },
+  "learning": "60ブロック768フィルタモデルから蒸留したデータ、自己対局、NNUE系との対局で、dlshogiが誤評価した局面を中心に収集。重複を平均化して42.4億局面",
+  "hardware": "Xeon Gold 6430 + H100 PCI（一覧ページ）、評価実験はH100 PCI 1GPU",
+  "language": [
+    "C++",
+    "Python"
+  ],
+  "claimed_strength": "前回電竜戦のモデルに対し+51.2 Elo（終盤互角局面集による連続対局）。改良前の40ブロックに対し+55.4 Elo",
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "10ブロック間隔のTransformer置換",
+      "description": "角の効きを早期に捉えるため、ResNetを10ブロック間隔でTransformerに置き換えるハイブリッド構造にする。ResNetが局所特徴を、Transformerが大域的な統合を担う。",
+      "originality": "独自",
+      "evidence": "改良前40ブロックに対し+55.4 Elo（探索速度は91.4%に低下）",
+      "quote": "角の効きを早期に捉えるために、10 ブロック間隔で、ResNet を Transformer に置き換えるようにした。"
+    },
+    {
+      "category": "評価関数",
+      "title": "相対位置バイアスで遮蔽を捉える",
+      "description": "Transformerは離れた駒の関係を捉えられるが間にある駒は捉えにくいので、相対位置バイアスを学習させて、FFNで位置関係を考慮し遮蔽を捉える。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "相対的な位置関係を相対位置バイアスで学習することで、FFN で位置関係を考慮することができ、遮蔽を捉えることができる。"
+    },
+    {
+      "category": "入玉",
+      "title": "絶対位置バイアスで入玉を判断",
+      "description": "入玉を正確に判断するには自駒が相手陣にいることの識別が必要なので、座標の情報をモデルに明示的に与える。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "入玉を正確に判断するには、自駒が相手の陣にいることを正確に識別する必要がある。"
+    },
+    {
+      "category": "評価関数",
+      "title": "入力層だけラージカーネル化",
+      "description": "入力層のチャンネル数が中間層より小さいことを利用し、入力層のみ7x7カーネルにして、効率を大きく落とさず早期にグローバルな特徴を捉える。SwiGLUとともに特に効果が高かった。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "入力層のみをラージカーネルに置き換えることで、効率を大きく落とすことなく、精度を向上させることができた。"
+    },
+    {
+      "category": "評価関数",
+      "title": "Gated AttentionとSwiGLU FFN",
+      "description": "Attentionで入力に応じた要素ごとの重みを乗じ、重要でない駒関係にSoftmax確率が割り当たるのを防ぐ。FFNはLLMで標準のSwiGLUを採用した。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "重要でない駒の関係に Softmax の確率が割り当てられることを防ぐことができる。"
+    },
+    {
+      "category": "評価関数",
+      "title": "SEBlockの間引き配置",
+      "description": "以前は精度が上がっても探索速度が落ちて強くならず不採用だったSEBlockを、5ブロック間隔で挿入して採用した。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "5 ブロック間隔で挿入することで十分な効果があることが確認できた。"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "誤評価局面を中心にNNUE系との対局データ",
+      "description": "60ブロック768フィルタモデルからの蒸留データに加え、dlshogiが誤評価した局面を中心に、NNUE系エンジンとの対局から収集したデータを追加した。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "dlshogi が誤評価した局面を中心に、NNUE 系エンジンとの対局から収集したデータを追加した。"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "確率分布とNNUE手による自動定跡",
+      "description": "相手の応手を確率分布とNNUE系エンジンの手で生成し、実戦で出やすい手順を重点的に深く探索する。約483万局面。後手の6手目△1四歩による角換わり回避が他チームにも波及し、先手番では敗局がなかった。",
+      "originality": "独自",
+      "evidence": "先手番で敗局なし",
+      "quote": "大会実戦で出現しやすい手順を重点的に深く探索できる特徴がある。"
+    }
+  ],
+  "character": "2016年のAlphaGo対イ・セドル戦に衝撃を受け、将棋AIでもディープラーニングを自分で開発する意義があると考えて始めた。個人レベルの計算資源でも強くすることを目標に改良を続けている。",
+  "notes": "概要版と詳細版の2文書。Group conv、Nested Bottleneck、Pre Activationは効果がなく不採用。ファインチューニング前のモデルでの比較で、まだ伸びる余地ありと書いている。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc36/team.html"
+}

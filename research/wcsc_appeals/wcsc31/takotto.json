@@ -1,0 +1,68 @@
+{
+  "wcsc": 31,
+  "year": 2021,
+  "dir": "takotto",
+  "team": "杓子将棋（たこっと）",
+  "software": "たこっと",
+  "sources": [
+    "wcsc31/appeal/takotto/appeal_takotto_20210331.html"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc31/appeal/takotto/appeal_takotto_20210331.html"
+  ],
+  "summary": "電王戦を見て興味を持った筆者らが一から実装するフルスクラッチのソフト。AVX2を使いやすい非ビットボード構造と、Stockfish風の探索を持つ。今年はKKP3駒のNNからKP2駒のNN（NNUE方式）に変え、入力層はAdaGrad、他層はMomentumというハイブリッド最適化で学習を収束させた。",
+  "base": {
+    "engine": "独自",
+    "eval_source": "Apery（初回学習用の教師作成にのみ使用）",
+    "note": null
+  },
+  "eval": {
+    "family": "NNUE",
+    "detail": "KP 2駒のニューラルネットワーク（NNUE方式）。入力約25万特徴（81*1534*2）のone-hot"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "Stockfish風の探索アルゴリズム"
+  },
+  "learning": "オンライン学習ルーチン。Apery評価関数で初回の教師を作り、以降は自己学習の強化学習を反復",
+  "hardware": "Google Compute Engine n2-highcpu-64（64vCPU）",
+  "language": "C++",
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "実装・高速化",
+      "title": "AVX2とAVX2向きの非ビットボード構造",
+      "description": "各種処理をAVX2命令で実装し、AVX2を適用しやすい非ビットボードのデータ構造を持つ。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "各種処理が AVX2 命令で実装されていて高速"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "入力層AdaGrad・以降Momentumの併用",
+      "description": "one-hotでスパースな入力層にはAdaGrad、数十ユニットで多くが更新される中間層以降にはMomentumが適すると考え、層ごとに最適化手法を分けて収束を容易にした。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "入力層は AdaGrad，入力層以外は Momentum で学習させるようにしました。"
+    },
+    {
+      "category": "評価関数",
+      "title": "KKP3駒からKP2駒へ",
+      "description": "KKP3駒NNは評価が遅く教師作成が遅い、学習で64GB以上のメモリを使うという課題があり、tanuki-考案のNNUE方式KP2駒に変更。教師作成と学習の時間を大幅に短縮した。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "教師データの作成や学習にかかる時間を大幅に短縮することができ"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "オンライン学習と自己学習の反復",
+      "description": "評価関数の初回学習用教師データはApery評価関数で作り、以降は自己学習を繰り返してApery評価関数を使わない。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "以降の強化学習では自己学習を繰り返すためこの評価関数バイナリは使用していません。"
+    }
+  ],
+  "character": null,
+  "notes": "過去（第26〜30回、電王トーナメント第4・5回）のアピール文書への参照あり。他者のプログラムのソースコードは使っていない。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc31/team.html"
+}

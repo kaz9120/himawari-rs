@@ -1,0 +1,46 @@
+{
+  "wcsc": 34,
+  "year": 2024,
+  "dir": "narikin_shogi",
+  "team": "村山 正樹",
+  "software": "なり金将棋",
+  "sources": [
+    "wcsc34/appeal/narikin_shogi/appeal.txt"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc34/appeal/narikin_shogi/appeal.txt"
+  ],
+  "summary": "初回参加時から使い回すプログラムで、αβ法・ハッシュテーブル・null moveなど一般的な手法を使う。三駒間評価値を昨年作った学習データで強化学習した。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "三駒間評価値"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "αβ法、ハッシュテーブル、null move"
+  },
+  "learning": "昨年作成した学習データを元に三駒間評価値を強化学習",
+  "hardware": "Core i7 3635QM 4コア",
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "三駒間評価値の強化学習",
+      "description": "昨年作成した学習データを使って、三駒間の評価値を強化学習させている。",
+      "originality": "不明",
+      "evidence": null,
+      "quote": "３駒間評価値を去年作成した学習データを元に強化学習をさせています"
+    }
+  ],
+  "character": null,
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc34/team.html"
+}

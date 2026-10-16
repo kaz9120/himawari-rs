@@ -1,0 +1,79 @@
+{
+  "wcsc": 28,
+  "year": 2018,
+  "dir": "GPS_Shogi",
+  "team": "Team GPS（田中哲朗ほか）",
+  "software": "GPS将棋",
+  "sources": [
+    "wcsc28/appeal/GPS_Shogi/wcsc-appeal.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc28/appeal/GPS_Shogi/wcsc-appeal.pdf"
+  ],
+  "summary": "東京大学のゲームプログラミングセミナーが中心のフリーソフト。コンピュータチェス・将棋の最新研究（利きを管理する高速盤、実現確率探索、評価関数の自動学習、疎結合並列探索、並列df-pn）を取り入れてきた。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "序盤・中盤1・中盤2・終盤の4種の評価関数を使い分ける。自動学習"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "実現確率を用いた探索。疎結合並列探索。df-pn（並列協調）の詰探索"
+  },
+  "learning": "評価関数の自動学習",
+  "hardware": "多種構成（Corei7 6950X、Ryzen Threadripper 1950など計21台、238コア）",
+  "language": [
+    "C++",
+    "Go"
+  ],
+  "claimed_strength": "第19回・第22回優勝",
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "進行度別の4種の評価関数",
+      "description": "評価関数を序盤・中盤1・中盤2・終盤の4種類に分けて使う。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "評価関数は現在，序盤，中盤 1，中盤 2，終盤の 4 種類を用いています．"
+    },
+    {
+      "category": "探索",
+      "title": "実現確率を用いた探索",
+      "description": "局面の実現確率で探索の深さを決める手法を使う。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "実現確率を用いた探索"
+    },
+    {
+      "category": "並列・分散",
+      "title": "疎結合並列探索とパラメータフリーの非同期ツリーパイプライン",
+      "description": "複数台の計算機での疎結合並列探索を持つ。参考文献にパラメータフリー非同期パイプライン探索（ACG2015）を挙げる。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "疎結合並列探索"
+    },
+    {
+      "category": "詰み・終盤",
+      "title": "並列協調のdf-pn",
+      "description": "df-pnによる詰探索を並列で協調して行う。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "df-pn（並列協調）を用いた詰探索にも対応しています．"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "利きを管理する高速な将棋盤",
+      "description": "利きを管理する高速な盤面表現を持つ。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "利きを管理する高速な将棋盤"
+    }
+  ],
+  "character": null,
+  "notes": "文書は短く、技術の詳細は参考文献に委ねる。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc28/team.html"
+}

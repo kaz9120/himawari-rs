@@ -1,0 +1,46 @@
+{
+  "wcsc": 36,
+  "year": 2026,
+  "dir": "Katsudon_Shogi",
+  "team": "カツ丼将棋",
+  "software": "カツ丼将棋",
+  "sources": [
+    "wcsc36/appeal/Katsudon_Shogi/wcsc_2026.txt"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc36/appeal/Katsudon_Shogi/wcsc_2026.txt"
+  ],
+  "summary": "きふわらべライブラリーのきふわるべ（Aperyを改造）をさらに改造したもの。評価関数を読み込めない状態だったのを直し、本来の力を発揮できるようにした。人間最強レベルのR3100を、選手権でどのくらいか測るベンチマークにするという趣旨。",
+  "base": {
+    "engine": "Apery",
+    "eval_source": null,
+    "note": "きふわらべライブラリー（きふわるべ）を改造"
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "Apery系の評価関数（KPP）。読み込めなくなっていたものを読み込めるように直した"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "Apery系"
+  },
+  "learning": null,
+  "hardware": "Ryzen 9 5950（一覧ページ）",
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": "今はなき将棋倶楽部24でR3100（人間最強レベル）",
+  "ideas": [
+    {
+      "category": "その他",
+      "title": "人間最強レベルのベンチマーク",
+      "description": "将棋倶楽部24でR3100のきふわるべを、評価関数を読み込めるよう改造して参加する。人間最強がもし選手権に出たらどれくらいかという物差しにする。",
+      "originality": "独自",
+      "evidence": "将棋倶楽部24でR3100",
+      "quote": "人間最強がもし選手権になればどれくらいか、というベンチマークとしてみるとよいかと思う。"
+    }
+  ],
+  "character": "コンセプトは、人間最強の棋力を選手権に持ち込む実験的な参加。",
+  "notes": "文書は数行のみで技術詳細なし。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc36/team.html"
+}

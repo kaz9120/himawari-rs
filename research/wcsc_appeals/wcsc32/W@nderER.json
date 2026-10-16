@@ -1,0 +1,73 @@
+{
+  "wcsc": 32,
+  "year": 2022,
+  "dir": "W@nderER",
+  "team": "櫻井 博光",
+  "software": "W@nderER",
+  "sources": [
+    "wcsc32/appeal/W@nderER/wanderER_appeal_1(wcsc32).html",
+    "wcsc32/appeal/W@nderER/WanderER_WCSC32_appeal2.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc32/appeal/W%40nderER/wanderER_appeal_1%28wcsc32%29.html",
+    "https://www.apply.computer-shogi.org/wcsc32/appeal/W%40nderER/WanderER_WCSC32_appeal2.pdf"
+  ],
+  "summary": "入玉宣言による勝利を積極的に目指すやねうら王系ソフト。今年は開発機のSSD故障や出張で開発が進まず、構成は昨年とほぼ同じ（探索部をV7.10に更新、定跡の6手目までの採択率を手調整）。昨年の詳細として、複数のNNUE重みを混ぜた「鵺」評価関数と入玉前後局面での教師生成を添付する。",
+  "base": {
+    "engine": "やねうら王",
+    "eval_source": "W@nderER評価関数 2021-7（HalfKPKrank）",
+    "note": null
+  },
+  "eval": {
+    "family": "NNUE",
+    "detail": "HalfKPと玉の段位置（Krank）を入力特徴とするHalfKPKrank。複数の標準NNUEの重みを配合したキメラ"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "やねうら王V7.10"
+  },
+  "learning": "Floodgateの宣言勝ち・入玉後勝利棋譜の入玉前後局面を開始局面に、AperyのKPPT評価関数と探索部を改造したやねうら王でdepth8・約1000万局面の教師を生成して追加学習（昨年）",
+  "hardware": "Amazon EC2 hpc6a.48xlarge",
+  "language": [
+    "C++",
+    "Python"
+  ],
+  "claimed_strength": "2021-7は水匠5に平手で30勝4分66敗（6スレッド1手5秒固定）",
+  "ideas": [
+    {
+      "category": "入玉",
+      "title": "宣言勝ちを最優先する入玉志向エンジン",
+      "description": "入玉して宣言勝ちが容易な局面で寄せに行くエンジンが多いことへの疑問から、詰みより宣言勝ちを一目散に目指すエンジンを作る。決勝リーグでは変わった初手を指すことにも努めた。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "入玉して宣言勝ちが容易そうな展開から相手を寄せに行く将棋エンジンが多数みられ、一目散に宣言を目指せばいいのに"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "入玉前後の局面を開始局面とする教師生成",
+      "description": "教師データ生成時の開始局面を、Floodgateの宣言勝ち・入玉後勝利の棋譜の入玉前後局面にして、宣言まわりを学習しやすくする。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "教師データ生成時の開始局面を入玉前後にすることで宣言回りを学習しやすくした。"
+    },
+    {
+      "category": "評価関数",
+      "title": "重み行列のキメラ配合で棋風と強さを両立",
+      "description": "HalfKPと玉の段位置の特徴量変換の重み行列を、複数の標準NNUE（orqha1018、Kristallweizen、elmo2019、水匠3改など）の重みを配合して作り、中段玉志向を保ったまま強くする。",
+      "originality": "独自",
+      "evidence": "2021-7は水匠5に平手で30勝4分66敗",
+      "quote": "重み行列をキメラ的に混ぜることで、いわゆる棋風的なものと強さの両立を行った。"
+    },
+    {
+      "category": "評価関数",
+      "title": "HalfKPKrank（玉の段位置の特徴量）",
+      "description": "HalfKPに玉の段位置を加えたネットワークを作り、中段玉志向の評価関数を実現する。入玉ステップ数を入力特徴量にする案も事前に検討した。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "HalfKP と玉の段位置を入力特徴量としたネットワークの HalfKPKrank を作成した。"
+    }
+  ],
+  "character": "入玉宣言勝ちという棋風を個性として貫く。決勝では「やねうら王が初手5八玉を指して勝つ」ことの方に驚かされたと振り返る。ソフト名の由来も含め軽妙な語り口。",
+  "notes": "昨年のアピール文書の詳細版を添付。評価関数・定跡・探索部・ソースは公開済みで追試可能と記載。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc32/team.html"
+}

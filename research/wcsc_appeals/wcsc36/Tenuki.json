@@ -1,0 +1,46 @@
+{
+  "wcsc": 36,
+  "year": 2026,
+  "dir": "Tenuki",
+  "team": "手抜きチーム（鈴木太朗、玉川直樹）",
+  "software": "手抜き",
+  "sources": [
+    "wcsc36/appeal/Tenuki/tenuki36.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc36/appeal/Tenuki/tenuki36.pdf"
+  ],
+  "summary": "開発者らが将棋プログラムの仕組みを理解するために作る、D言語のCSAプロトコル対応のNNUE＋αβ探索のエンジン。評価関数はどうたぬき（tanuki-電竜戦バージョン）のnn.binを使う。差分評価・千日手チェック・詰将棋・ponderはTODO。",
+  "base": {
+    "engine": "独自",
+    "eval_source": "どうたぬき（tanuki- 第1回電竜戦バージョン）のnn.bin",
+    "note": "D言語による自作。リポジトリはtenuki-d"
+  },
+  "eval": {
+    "family": "NNUE",
+    "detail": "どうたぬきの評価関数ファイルnn.bin"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "差分評価・千日手チェック・詰将棋・ponderは未実装（TODO）"
+  },
+  "learning": null,
+  "hardware": "Amazon EC2 c7a.metal-48xl（192コア、Debian 13）",
+  "language": [
+    "D"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "開発手法・運用",
+      "title": "理解のための解説文書を毎年公開",
+      "description": "将棋プログラムの仕組みを理解するための開発として、過去のアピール文書でデータ構造、NNUEのnn.binの構造、Minimax入門の解説を公開している。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "開発者らが将棋のプログラムの仕組みを理解するために開発しています。"
+    }
+  ],
+  "character": "「なにしろ手抜きなのでいろいろな機能がTODOとなっております」という自虐的なトーン。過去のアピール文書3本（データ構造、nn.binの構造、私のためのMinimax入門）を「おまけ」として紹介している。",
+  "notes": "ほとんどの機能がTODOで、技術的な工夫の記述は少ない。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc36/team.html"
+}

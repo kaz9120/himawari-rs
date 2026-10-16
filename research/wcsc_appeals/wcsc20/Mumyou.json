@@ -1,0 +1,54 @@
+{
+  "wcsc": 20,
+  "year": 2010,
+  "dir": "Mumyou",
+  "team": "david wada",
+  "software": "無明",
+  "sources": [
+    "wcsc20/appeal/Mumyou/Mumyou.html"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc20/appeal/Mumyou/Mumyou.html"
+  ],
+  "summary": "固定深度の全幅探索の末端でモンテカルロ法を使い、評価値に織り込む。df-pnを使わず、ムーブオーダリングで高速化した独自の詰め検索を並列で回す。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "不明",
+    "detail": null
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "固定深度全幅探索＋末端でモンテカルロ。並列化済み"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": [
+    "Java"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "探索",
+      "title": "探索末端のモンテカルロ評価",
+      "description": "固定深度の全幅探索の末端でモンテカルロ法を使い、その結果を評価値に織り込んで精度・信頼度を上げる。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "検索木の末端でモンテカルロ法を使用し、その結果を評価値に織り込む"
+    },
+    {
+      "category": "詰み・終盤",
+      "title": "df-pnを使わない詰め検索",
+      "description": "詰め検索ルーチンはオリジナルで、df-pnでなくムーブオーダリングで高速化し、並列でも検索する。詰めろ検索は実装予定。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "ｄｆ－ｐｎを使用せず、ムーブオーダリングで高速化しました"
+    }
+  ],
+  "character": null,
+  "notes": null,
+  "team_list_url": "http://www2.computer-shogi.org/wcsc20/team.html"
+}

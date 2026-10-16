@@ -1,0 +1,70 @@
+{
+  "wcsc": 23,
+  "year": 2013,
+  "dir": "NineDayFever",
+  "team": "金澤 裕治",
+  "software": "NineDayFever",
+  "sources": [
+    "wcsc23/appeal/NineDayFever/NineDayFever.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc23/appeal/NineDayFever/NineDayFever.txt"
+  ],
+  "summary": "floodgateの常連PuppetMasterの後継。Bonanzaのほぼそのままで、機械学習結果の評価値の矛盾を見つけて解消する独自の改善手法でkkp・kpp表をアップデートする。弱く浅く読ませた一局数秒の対局を大量に生成して解析し、1回の更新に60万局程度を使い、レーティングが約190上がった。",
+  "base": {
+    "engine": "Bonanza",
+    "eval_source": "Bonanza 6.0（slug.bin）",
+    "note": "オリジナルのbonanzaほとんどそのままで、改良した評価関数が本体"
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "kppテーブルを3次元化したfv.bin（slug.bin）"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "Bonanza。LMRのパラメータ調整は今後"
+  },
+  "learning": "多数の局面の評価値の矛盾を見つけ、解消するようkkp・kppテーブルを更新。1回の更新に約60万局",
+  "hardware": null,
+  "language": [
+    "C"
+  ],
+  "claimed_strength": "Bonanza 6.0に対し持ち時間2分のリーグ戦でレーティング約190向上",
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "評価値の矛盾を解消する学習",
+      "description": "教師データを学習するのでなく、局面間の評価値の矛盾を発見して解消するようkkp・kpp表を更新する。自分の対戦結果を含め、任意の局面を解析対象にできる。",
+      "originality": "独自",
+      "evidence": "Bonanza 6.0に対しレーティング約190向上",
+      "quote": "「機械学習結果が誤っているところを見つけ出す」という方針"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "浅い読みの大量対局を解析に使う",
+      "description": "読みを浅くして弱くした一局数秒の対局を大量に作ると、評価値に問題のある局面が対局中に現れて矛盾を確実に見つけられる。1回の更新に約60万局を使う。",
+      "originality": "独自",
+      "evidence": "1回の更新に約60万局",
+      "quote": "読みを浅くして弱くして得た棋譜には、評価値に問題がある局面が対局中に現れる"
+    },
+    {
+      "category": "開発手法・運用",
+      "title": "floodgate常駐によるデータ収集",
+      "description": "floodgateに常駐して解析用データを集め、負けた結果を優先して解析対象にする。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "floodgateに常駐している目的の一つは、解析用のデータ収集です。"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "kppテーブルの3次元化と差分生成",
+      "description": "kpp配列の3次元化、インデックスリストの差分生成、ヒストリテーブルのglobal化、並列効率の向上で10〜30%程度高速化した。",
+      "originality": "既存手法の応用",
+      "evidence": "10〜30%の高速化",
+      "quote": "kpp テーブル配列の3次元化"
+    }
+  ],
+  "character": "floodgateでおなじみのPuppetMasterの改名版。名前を『侵略者の名前はどうよ』という話があったので改めたと冗談めかして説明している。",
+  "notes": null,
+  "team_list_url": "http://www2.computer-shogi.org/wcsc23/team.html"
+}

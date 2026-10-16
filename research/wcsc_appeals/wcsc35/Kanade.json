@@ -1,0 +1,64 @@
+{
+  "wcsc": 35,
+  "year": 2025,
+  "dir": "Kanade",
+  "team": "Kanadeチーム",
+  "software": "Kanade",
+  "sources": [
+    "wcsc35/appeal/Kanade/Kanade_appeal.docx",
+    "wcsc35/appeal/Kanade/Kanade_appeal_detail_v2.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc35/appeal/Kanade/Kanade_appeal.docx",
+    "https://www.apply.computer-shogi.org/wcsc35/appeal/Kanade/Kanade_appeal_detail_v2.pdf"
+  ],
+  "summary": "『強い将棋ソフトの創り方』とdlshogiを土台に、公開データだけで学習した標準的なDL系将棋AI。探索部はふかうら王。独自の工夫は少ないと自認しつつ、4種のNNUEソフトの対局結果を親ノードへ伝播して作る定跡と、人が間違い局面を再対局させる運用を特色とする。",
+  "base": {
+    "engine": "dlshogi+やねうら王",
+    "eval_source": null,
+    "note": "探索部はふかうら王。教師は公開データのみ"
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "標準的なResNet25x320。終盤の評価精度が低い傾向があると自己評価"
+  },
+  "search": {
+    "family": "MCTS",
+    "detail": "ふかうら王"
+  },
+  "learning": "Suisho10Mn_psv、直近5年のレート3800以上のfloodgate棋譜、GCT自己対局棋譜、GCT学習データの一部。左右反転で水増し。学習率を1/10ずつ3回下げ、最後にfloodgate棋譜でファインチューニング",
+  "hardware": "EPYC + RTX3090 vast.aiなど",
+  "language": [
+    "Python"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "定跡・序盤",
+      "title": "4種のNNUEソフトで作る定跡",
+      "description": "4つのNNUE系ソフトで対局し、結果をやねうら王のペタショック化コマンドで親ノードへ伝播して定跡を作る。評価の異なる複数のソフトを使うことで定跡の穴を見つけやすくする。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "複数（4 種類）のソフトを使用することで、それぞれの評価の違いから定跡上の穴をより発見しやすくし"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "人が見て間違い局面を再対局させる運用",
+      "description": "定期的に人間が定跡を確認し、評価が誤っていそうな局面を対局開始局面に設定し直して、より正確な結論を導く。同一棋譜が量産されるため、勝率に応じた開始局面の自動設定が今後の課題。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "その局面を対局の開始局面として設定し直すことで、より正確な結論を導けるよう工夫しています"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "教師データの厳選と左右反転拡張",
+      "description": "公開データのどれが学習に有効かを研究して厳選し、局面の左右反転で水増しする。反転の寄与は不明と書いている。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "どの教師データが学習に有効的かを研究し、厳選したデータを使用しました"
+    }
+  ],
+  "character": "初参加の学生が、藤井聡太の登場をきっかけに将棋AI開発を始めた経緯を書く。「誰でも比較的すぐに開発できる構成」と率直。",
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc35/team.html"
+}

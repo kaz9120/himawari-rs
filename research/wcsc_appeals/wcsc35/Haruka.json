@@ -1,0 +1,46 @@
+{
+  "wcsc": 35,
+  "year": 2025,
+  "dir": "Haruka",
+  "team": "小林 航太",
+  "software": "はるか",
+  "sources": [
+    "wcsc35/appeal/Haruka/Haruka_wcsc35_appeal_v2.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc35/appeal/Haruka/Haruka_wcsc35_appeal_v2.pdf"
+  ],
+  "summary": "AlphaZero型の手法で、実際に学習して動かすことを目標に制作した。floodgateの高レート棋譜、AobaZeroの棋譜、水匠の学習データで教師あり学習している。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": "合法手生成と入力特徴量にnshogiを使用"
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "AlphaZero型のpolicy/value"
+  },
+  "search": {
+    "family": "MCTS",
+    "detail": "AlphaZero型"
+  },
+  "learning": "floodgateの2020年以降のレート3800以上の約8万局、AobaZeroの約120万局、水匠の学習データの32手目以降約20万局を追加学習",
+  "hardware": "Amazon EC2 g4dn.xlarge（GPU1枚）",
+  "language": [
+    "Python"
+  ],
+  "claimed_strength": "GTX1660でfloodgate R2000程度",
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "水匠データの32手目以降で終盤補強",
+      "description": "AobaZeroとfloodgate棋譜で学習したうえで、中終盤の学習のために水匠の学習データの32手目以降の局面を追加学習する。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "中終盤の学習のために水匠の学習データの 32 手目以降の局面を約 20 万局分追加学習させました"
+    }
+  ],
+  "character": "「楽しんで参加できればいいな」という素朴なスタンス。",
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc35/team.html"
+}

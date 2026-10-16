@@ -1,0 +1,60 @@
+{
+  "wcsc": 20,
+  "year": 2010,
+  "dir": "HakusaSHOGI",
+  "team": "白砂青松",
+  "software": "白砂将棋",
+  "sources": [
+    "wcsc20/appeal/HakusaSHOGI/HakusaSHOGI.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc20/appeal/HakusaSHOGI/HakusaSHOGI.txt"
+  ],
+  "summary": "愛用戦法の「7七桂戦法を指しこなす」ことを目標に、れさぴょんの上に定跡約8,000手と専用評価関数を作る。",
+  "base": {
+    "engine": "れさぴょん",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "手作り",
+    "detail": "「駒損だが指しやすい」7七桂戦法の局面を有利と判断するよう調整。穴熊の評価はやや低め"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "NegaScout＋反復深化。詰みはpn-search"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "棋風・人間らしさ",
+      "title": "7七桂戦法を指しこなす",
+      "description": "自身の愛用戦法である7七桂戦法を指しこなすことを目標にする。定跡を外れてもできるだけ7七桂戦法から外れずに指し継ぐ。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "自身の愛用戦法である「７七桂戦法を指しこなす」こと"
+    },
+    {
+      "category": "評価関数",
+      "title": "駒損でも指しやすい局面の評価",
+      "description": "コンピュータが指しこなしにくい「駒は損しているが指しやすい」局面を有利と判断するよう評価を調整し、穴熊などの評価値はやや低めにする。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "「駒は損しているが指しやすい」という、７七桂戦法ではまま生じる局面を中心に"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "自身の実戦譜・研究による定跡約8,000手",
+      "description": "自分の実戦譜と研究から約8,000手を登録する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "自身の実戦譜・研究を元に約8,000手を登録"
+    }
+  ],
+  "character": null,
+  "notes": null,
+  "team_list_url": "http://www2.computer-shogi.org/wcsc20/team.html"
+}

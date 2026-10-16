@@ -1,0 +1,97 @@
+{
+  "wcsc": 29,
+  "year": 2019,
+  "dir": "Kristallweizen",
+  "team": "芝世弐、松下光則、但馬康宏（Barrel house）",
+  "software": "Kristallweizen",
+  "sources": [
+    "wcsc29/appeal/Kristallweizen/appeal2019_2.pdf",
+    "wcsc29/appeal/Kristallweizen/appeal2019.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc29/appeal/Kristallweizen/appeal2019_2.pdf",
+    "https://www.apply.computer-shogi.org/wcsc29/appeal/Kristallweizen/appeal2019.pdf"
+  ],
+  "summary": "前年優勝のHefeweizenの棋風（中盤の難解局面で最善手をあえて外して相手のPonderhitを避ける）を、教師局面を通じてNNUEへ引き継いだ評価関数が柱。学習の初期化ガチャをやり直すシード学習や、引き分けも0.5勝として学習する工夫、AWS 5台のMulti Ponderクラスタを使う。",
+  "base": {
+    "engine": "やねうら王",
+    "eval_source": "tanuki-のNNUE（HalfKP-256x2-32-32）に、Hefeweizen教師で追加学習",
+    "note": null
+  },
+  "eval": {
+    "family": "NNUE",
+    "detail": "HalfKP-256x2-32-32（やねうら王既定）"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "先読みのMulti Ponderをクラスタ化（Go言語で再実装）、Ponderのオーダリングに技巧を利用"
+  },
+  "learning": "Hefeweizen（KPPT）に居飛車・振り飛車を指させdepth10で約3.5億局面を生成。シード学習・ミニミニバッチ・通常ミニバッチ・最終やすりがけの4段階で学習",
+  "hardware": "Amazon EC2 m5.24xlarge x 5 + ノートPC",
+  "language": [
+    "C++",
+    "Go"
+  ],
+  "claimed_strength": "orqha1018+やねうら王4.83と5000万ノード指定の10局で8勝1敗1分",
+  "ideas": [
+    {
+      "category": "棋風・人間らしさ",
+      "title": "最善手を外して相手のPonderhitを外す",
+      "description": "中終盤の難解な局面であえて次善手を選び、相手の読み筋を外してPonderhitさせない。将棋倶楽部24の有段者とのスパーリングで調整し、「まるで大山将棋」と評された。この棋風をNNUEにも引き継がせた。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "あえて最善手を選ばずに、次善手を選択するようにすることで、相手の読み筋を意図的に外して Ponder hit させない。"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "引き分け局面も0.5勝として学習",
+      "description": "千日手や手数制限の引き分け棋譜を除かずにそのまま教師にする。「千日手も0.5勝という立派な勝ち」とし、結果として粘り強く入玉したがる棋風になった。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "千日手も 0.5 勝という立派な勝ちであるので、これを取り込まない手はないと思う。"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "初期の傾きガチャを避けるシード学習",
+      "description": "学習の1epoch目の勾配で結果が大きく左右されるため、200万局面の小さな教師で短時間学習を繰り返し、ロスとaccuracyを見て良いスタートだけを採用する。「傾きガチャのリセマラ」と呼ぶ。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "「傾きガチャのリセマラ」を短時間で繰り返すことによって、不要な過学習、鞍点へのハマりを抑えるようにした。"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "彫刻になぞらえた4段階学習",
+      "description": "シード→ミニミニバッチ（毎回初期ベクトルが変わる）→大バッチ→eta 0.01、lambda 0.1での最終やすりがけの4段階で学習した。最終段でmove accuracyが37%から42%へ急伸した。",
+      "originality": "独自",
+      "evidence": "move accuracy 37%から42%",
+      "quote": "最後にやけくそで eta 0.01、lambda 0.1 で 3.3.の学習を 1 ループだけ行ったところ、奇跡的に move accuracy がぐんぐん伸び"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "遺伝的アルゴリズム的な評価関数開発（たぬきにビールを呑ませる）",
+      "description": "近親の評価関数を選別・交配する手法とみなし、Hefeweizenの教師でtanuki-評価関数に追加学習する手順を「たぬきにビールを呑ませる」と称する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "同手順を「たぬきにビールを呑ませる」と略します。"
+    },
+    {
+      "category": "並列・分散",
+      "title": "Multi Ponderクラスタ",
+      "description": "先読みの先読みを行うMulti PonderをAWS 5台でクラスタ化し、Goで再実装した。今回は通信遅延の隠蔽程度の成果で、各ノードの情報をリアルタイムで得られるようにした。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "Multi Ponder のクラスタリングを行いました。"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "低スペックPCでも学習できる改修",
+      "description": "やねうら王の学習部のメモリ下限を下げ、低スペックPCでもNNUE学習ができるようにした。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "低スペック PC でも学習を行えるようにメモリ下限を下げる修正を行い"
+    }
+  ],
+  "character": "チーム名は岡山のビアバーBarrel house、ソフト名は白ビールHefeweizen（濁り）からKristallweizen（ろ過）へ。祝勝会はHefeweizenで乾杯予定、「ビールに辛子と納豆を入れたような棋風」など、ビール尽くしの語り口。",
+  "notes": "2ファイル（4月初版と5月改訂版）を統合。前年優勝者。評価関数完成は5/2 7:56で事前実験はなし",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc29/team.html"
+}

@@ -1,0 +1,70 @@
+{
+  "wcsc": 23,
+  "year": 2013,
+  "dir": "Shibaura_Shougi_Jr.",
+  "team": "芝浦工業大学（五十嵐 治一ほか）",
+  "software": "芝浦将棋Jr.",
+  "sources": [
+    "wcsc23/appeal/Shibaura_Shougi_Jr./appeal.pdf"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc23/appeal/Shibaura_Shougi_Jr./appeal.pdf"
+  ],
+  "summary": "探索エンジンをゼロから自作し、評価関数はBonanza 6.0を借りる学生チーム。「人間の専門知識に頼らず自己対局の試行錯誤だけで学ぶ」ことを目標に、定跡不使用・強化学習を掲げ、将来は方策勾配法を試す。盤面を縦3分割した64bit×3のbitboardとMagic bitboardの組み合わせが技術的な特徴。",
+  "base": {
+    "engine": "独自",
+    "eval_source": "Bonanza 6.0.0の評価関数",
+    "note": "探索エンジンは全面自作"
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "Bonanza 6.0.0をそのまま使用"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "単純なαβ。置換表と前向き枝刈りを導入中"
+  },
+  "learning": "将来は方策勾配法による強化学習を予定",
+  "hardware": null,
+  "language": [
+    "C"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "実装・高速化",
+      "title": "縦3分割64bit×3のbitboard",
+      "description": "盤面を縦方向に3領域に分け、64bit整数3つで表現する。飛び駒の利き算出が1変数内で済み、Magic bitboardで中央の変数P[1]だけに処理が集中する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "盤面は縦方向に３つの領域に分割されており"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "専門知識に頼らない自己学習",
+      "description": "人間の将棋知識に頼らず、コンピュータが対局を通した試行錯誤だけで学び、人間を超えることを目標にする。人間の定跡が再現されるか、新しい定跡が創発されるかに関心がある。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "人間の持っている将棋に関する専門知識に頼ることなく"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "定跡データベース不使用",
+      "description": "学習時と対局時に定跡DBを使わず、序盤局面も学習に貢献させる。新手らしきものが得られれば成果とする。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "評価関数の学習時（まだ未着手ですが），ならびに大会対局時には定跡データベースを"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "方策勾配法による強化学習",
+      "description": "TD(λ)・TDLeaf(λ)でなく方策勾配法で評価関数を学習し、シミュレーション方策学習やモンテカルロ探索、遷移確率による読みの深さ制御にも応用する構想。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "方策勾配法と呼ばれている強化学習の適用を試みたい"
+    }
+  ],
+  "character": "教育・研究プロジェクトとして活動し、共同研究者を学生・社会人問わず歓迎すると呼びかける。目標は「1次予選リーグでの初勝利」と控えめ。",
+  "notes": null,
+  "team_list_url": "http://www2.computer-shogi.org/wcsc23/team.html"
+}

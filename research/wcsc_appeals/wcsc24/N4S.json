@@ -1,0 +1,46 @@
+{
+  "wcsc": 24,
+  "year": 2014,
+  "dir": "N4S",
+  "team": "横内 健一",
+  "software": "N4S",
+  "sources": [
+    "wcsc24/appeal/N4S/appeal.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc24/appeal/N4S/appeal.txt"
+  ],
+  "summary": "盤上4駒の位置関係を評価関数のパラメータとし、プロ棋譜から学習する。今年は計算が重い4駒関係の一部だけを使って計算を速くし、より深く読めるようにした。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "4駒関係の一部"
+  },
+  "search": {
+    "family": "不明",
+    "detail": null
+  },
+  "learning": "プロ棋譜からの機械学習",
+  "hardware": null,
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "4駒関係の一部を使う高速化",
+      "description": "探索を遅くする4駒関係を一部に絞って評価の計算を速くし、より深く探索できるようにした。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "4駒の関係の一部分を利用して、評価関数を計算することとしました。"
+    }
+  ],
+  "character": null,
+  "notes": "前年N4からの改良。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc24/team.html"
+}

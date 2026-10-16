@@ -1,0 +1,46 @@
+{
+  "wcsc": 28,
+  "year": 2018,
+  "dir": "narikinshogi",
+  "team": "村山 正樹",
+  "software": "なり金将棋",
+  "sources": [
+    "wcsc28/appeal/narikinshogi/appeal.txt"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc28/appeal/narikinshogi/appeal.txt"
+  ],
+  "summary": "初回参加時から使い回すプログラム。教師なしで三駒間と二駒間の評価値を、強化学習と遺伝的学習を組み合わせて学習する。今年はバグ修正レベルの変更のみ。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "三駒間＋二駒間の評価値（教師なし学習）"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "不明"
+  },
+  "learning": "教師なし。強化学習と遺伝的学習の組み合わせ",
+  "hardware": null,
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "強化学習と遺伝的学習の組み合わせ",
+      "description": "教師なし学習を試したくなり、強化学習と遺伝的学習を組み合わせて三駒間・二駒間の評価値を学習する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "強化学習と遺伝的学習を組み合わせて作成している。"
+    }
+  ],
+  "character": null,
+  "notes": "2017年の文書も併載。序盤データは以前のものをそのまま使う。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc28/team.html"
+}

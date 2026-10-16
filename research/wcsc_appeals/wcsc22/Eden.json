@@ -1,0 +1,46 @@
+{
+  "wcsc": 22,
+  "year": 2012,
+  "dir": "Eden",
+  "team": "清水賢治",
+  "software": "エデン",
+  "sources": [
+    "wcsc22/appeal/Eden/appeal_doc.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc22/appeal/Eden/appeal_doc.txt"
+  ],
+  "summary": "Common Lispで作った将棋思考プログラム、との一文のみ。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "不明",
+    "detail": null
+  },
+  "search": {
+    "family": "不明",
+    "detail": null
+  },
+  "learning": null,
+  "hardware": null,
+  "language": [
+    "Common Lisp"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "実装・高速化",
+      "title": "Common Lispでの実装",
+      "description": "将棋思考プログラムをCommon Lispで作成。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "Common Lispで作成した将棋思考プログラムです"
+    }
+  ],
+  "character": null,
+  "notes": "一文のみ。一覧ではキャンセル欄。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc22/team.html"
+}

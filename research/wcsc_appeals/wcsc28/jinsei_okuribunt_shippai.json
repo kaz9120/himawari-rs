@@ -1,0 +1,54 @@
+{
+  "wcsc": 28,
+  "year": 2018,
+  "dir": "jinsei_okuribunt_shippai",
+  "team": "築地毅、阿部裕司、松原徹",
+  "software": "人生送りバント失敗",
+  "sources": [
+    "wcsc28/appeal/jinsei_okuribunt_shippai/appeal2018_2.txt"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc28/appeal/jinsei_okuribunt_shippai/appeal2018_2.txt"
+  ],
+  "summary": "「動いていることが奇跡」と言いつつ、アピール文書が空だとリジェクトされると冗談めかし、前回の技術記述を転載して思い出話を書く文書。技術はαβ（LMR・Futility）と平均化パーセプトロンによるオンライン学習。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "オンライン学習（平均化パーセプトロン）で調整する評価関数"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "LMR・Futilityなどの普通の技術。評価関数を変更したらLMRが効かなくなったと書く"
+  },
+  "learning": "オンライン学習として平均化パーセプトロンを試す",
+  "hardware": null,
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "解説・人間支援",
+      "title": "解説記事の自動生成（過去の独創賞）",
+      "description": "2012年に「解説記事の生成」で独創賞を受賞した。今回の文書は過去の実績として触れるのみ。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "独創賞受賞（解説記事の生成）"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "平均化パーセプトロンのオンライン学習",
+      "description": "オンライン学習を勉強するために、評価関数の学習に平均化パーセプトロンを試している。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "オンライン学習を勉強してみたかったので、平均化パーセプトロンを試しています"
+    }
+  ],
+  "character": "「アピール箇所がないとアピール文書リジェクトとなることを2015年に実証」（大会史上初のアピール文書リジェクト）、プログラム名「(´・ω・`)」が「読めません」とリジェクトされた逸話、2016年に罰ゲームでうまるちゃんのコスプレをした話、君津のネカフェ3泊4日の思い出など、ネタと思い出話が中心。目標は師匠筋のまったりゆうちゃんを倒すこと。",
+  "notes": "技術記述は前回アピール文書からのコピーと明記。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc28/team.html"
+}

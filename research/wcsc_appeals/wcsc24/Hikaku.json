@@ -1,0 +1,60 @@
+{
+  "wcsc": 24,
+  "year": 2014,
+  "dir": "Hikaku",
+  "team": "甲村 実",
+  "software": "飛角",
+  "sources": [
+    "wcsc24/appeal/Hikaku/appeal.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc24/appeal/Hikaku/appeal.txt"
+  ],
+  "summary": "アマ三段以上の棋譜100〜200万局から作るデータベースで候補手を選ぶ「ビッグデータ」方式。同一手順を手筋としてまとめ読みを簡素化し、戦法別の駒の存在確率表で囲いの強弱と駒の効率を判定する。新手を指せるようになる「奇跡」への期待も語る。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "その他",
+    "detail": "戦法別の升目ごと駒ごとの存在確率表、囲いの強弱は戦法別勝率から作成"
+  },
+  "search": {
+    "family": "不明",
+    "detail": "棋譜DBの候補手を使う"
+  },
+  "learning": "インターネットで集めた三段以上の棋譜100〜200万局のデータベース",
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "100〜200万局の棋譜DBによる候補手選択",
+      "description": "5年以上集めた三段以上の棋譜100〜200万局からDBを作り、候補手に勝率などのデータを付けて読みに使う。アマの方が多様な手を指すので新手も指せるかもという期待。",
+      "originality": "独自",
+      "evidence": "棋譜100〜200万局",
+      "quote": "「ビックデータ」の活用を将棋のプログラム"
+    },
+    {
+      "category": "探索",
+      "title": "手筋データによる中間評価の省略",
+      "description": "棋譜中に同一手順があれば途中の評価を飛ばして末端を評価し、読みを簡素化する。効果は不明。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "途中に評価を飛ばして、末端の評価を行うことで読みの簡素化を目指します。"
+    },
+    {
+      "category": "評価関数",
+      "title": "戦法別の駒存在確率表",
+      "description": "戦法別に棋譜から升目ごと駒ごとの存在確率表を作り、駒の効率を判定する。囲いの強弱は戦法ごとの勝率から作り、不都合は人間が補正する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "戦法別に棋譜から取得した、桝目毎駒毎の存在確率表を作成して"
+    }
+  ],
+  "character": "「ビッグデータ」の流行に乗るという謙遜と、新手を指せるかもしれない期待を軽やかに語る。",
+  "notes": null,
+  "team_list_url": "http://www2.computer-shogi.org/wcsc24/team.html"
+}

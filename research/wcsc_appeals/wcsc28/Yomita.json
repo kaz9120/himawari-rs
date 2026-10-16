@@ -1,0 +1,54 @@
+{
+  "wcsc": 28,
+  "year": 2018,
+  "dir": "Yomita",
+  "team": "塚本 隆三",
+  "software": "読み太",
+  "sources": [
+    "wcsc28/appeal/Yomita/appeal.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc28/appeal/Yomita/appeal.pdf"
+  ],
+  "summary": "KPPT型三駒関係にdepth8の200億局面で追加学習した評価関数と、技巧を参考にした疎結合並列（クラスタ）探索。AWSのc4.8xlarge16台を借りる。独自のByteboardはまだBitboardより速くなっていない。",
+  "base": {
+    "engine": "独自（技巧の並列化を参考）",
+    "eval_source": "第5回電王トーナメント版に追加学習",
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "KPPT型三駒関係+手番評価"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "Stockfish・やねうら王・Apery・技巧を参考。技巧の並列化を参考にした疎結合並列探索"
+  },
+  "learning": "第5回電王トーナメント版の評価関数に、depth8で作った200億局面の教師局面で追加学習",
+  "hardware": "Amazon EC2 c4.8xlarge x 16",
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": "WCSC27のelmoに勝率75%程度",
+  "ideas": [
+    {
+      "category": "並列・分散",
+      "title": "技巧を参考にした疎結合並列探索",
+      "description": "技巧の並列化部分のソース（公開されている唯一の例）を参考に、クラスタ並列探索を実装し、EC2のc4.8xlarge16台で動かす。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "疎結合並列探索（クラスタ並列探索）を行います。"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "Byteboardの採用",
+      "description": "Byteboardを使うが、現時点ではBitboardより速くない。指し手生成にByteboardを使ってはいけないと知って驚いたと書く。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "Byteboardというデータ構造を使っていますが、現時点ではBitboardよりも高速化できていません。"
+    }
+  ],
+  "character": "ノートPC1台での出場をやめ、AWSで臨む。「ハードウェアが強くなった分、もう言い訳はできません」。学校卒業でPCを借りられなくなり、近畿職業能力開発大学校の先生方に感謝する。",
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc28/team.html"
+}

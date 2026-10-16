@@ -1,0 +1,86 @@
+{
+  "wcsc": 23,
+  "year": 2013,
+  "dir": "Nanoha",
+  "team": "川端 一之",
+  "software": "なのは",
+  "sources": [
+    "wcsc23/appeal/Nanoha/NanohaWCSC23.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc23/appeal/Nanoha/NanohaWCSC23.txt"
+  ],
+  "summary": "アニメ「魔法少女リリカルなのは」由来の名で、AMD CPUでの出場と「コンピュータ将棋に萌えを導入する」野望を掲げる。詰め探索はWPNSからdf-pn（優越関係、最小距離法、証明駒、新規節点固定深さ探索、高速一手詰め）に刷新し、詰将棋図巧100番「寿」を1分31秒で解く。思考部はBonanza 6.0のfv.binを使う。",
+  "base": {
+    "engine": "Bonanza",
+    "eval_source": "Bonanza 6.0.0のfv.bin",
+    "note": "ボナンザ6.0.0、れさぴょん、Fruit等を参考ソースに挙げる"
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "Bonanza 6.0.0のfv.bin（駒割＋KKP＋KP＋KPP）"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "全幅探索＋静止探索、Null Move、LMR、Futility。単スレッド。定跡→詰探索→思考の順"
+  },
+  "learning": null,
+  "hardware": "AMD FX 8350 4.0GHz",
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": "将棋図巧100番「寿」を1分31秒（PhenomII X4 940）で解く。実戦詰将棋問題の95%を解く",
+  "ideas": [
+    {
+      "category": "詰み・終盤",
+      "title": "df-pnを核にした詰ルーチン",
+      "description": "WCSC21まで使ったWPNSからdf-pnに変更し、優越関係・最小距離法・証明駒/反証駒・新規節点での固定深さ探索・局面を更新しない高速一手詰めを実装する。",
+      "originality": "既存手法の応用",
+      "evidence": "図巧100番「寿」を1分31秒、実戦詰将棋の95%を解く",
+      "quote": "df-pnを基本にし、"
+    },
+    {
+      "category": "詰み・終盤",
+      "title": "不成と打ち歩詰めの扱い",
+      "description": "王手生成では歩角飛の不成も生成し、証明数計算では打ち歩詰めが絡まないときだけ不成を無視する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "打ち歩詰めが絡まないときは歩角飛の不成を無視する"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "局面キーの定跡DB",
+      "description": "実戦数と勝率で着手を選び、合流を考慮して木構造でなく局面をキーにしたデータ構造にする。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "定跡DBは合流を考慮して、tree構造でなく局面をキーにした構造にしている。"
+    },
+    {
+      "category": "エンタメ・演出",
+      "title": "萌えの導入",
+      "description": "「コンピュータ将棋に萌えを導入する」を野望に掲げる。第21回で独創賞を受賞。",
+      "originality": "独自",
+      "evidence": "第21回世界コンピュータ将棋選手権で独創賞",
+      "quote": "コンピュータ将棋に萌えを導入する。"
+    },
+    {
+      "category": "ハードウェア",
+      "title": "AMD CPUでの参戦",
+      "description": "AMD製CPUで活躍することでAMDを盛り上げ、IntelとAMDの均衡と市場活性化を狙う。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "AMD の CPU を搭載したマシンを使用して選手権で活躍することにより AMD を盛り上"
+    },
+    {
+      "category": "開発手法・運用",
+      "title": "詰将棋ソフトの公開",
+      "description": "詰将棋に特化した「なのは詰め」を公開し、デファクトスタンダードを目指す。一部で使われている。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "詰将棋に特化したソフトを公開し、デファクトスタンダードになる。"
+    }
+  ],
+  "character": "アニメ『魔法少女リリカルなのは』の高町なのはが名前の由来。「竜王と対局する」「萌えを導入する」「AMDを盛り上げる」といった野望を掲げ、成果を自己採点する形式の遊び心ある文書。",
+  "notes": null,
+  "team_list_url": "http://www2.computer-shogi.org/wcsc23/team.html"
+}

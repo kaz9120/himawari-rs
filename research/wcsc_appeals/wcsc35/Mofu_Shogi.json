@@ -1,0 +1,71 @@
+{
+  "wcsc": 35,
+  "year": 2025,
+  "dir": "Mofu_Shogi",
+  "team": "東京大学原田研究室",
+  "software": "もふ将棋",
+  "sources": [
+    "wcsc35/appeal/Mofu_Shogi/mofushogi_appeal_wcsc35_20250502.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc35/appeal/Mofu_Shogi/mofushogi_appeal_wcsc35_20250502.pdf"
+  ],
+  "summary": "人間の棋譜なしでゼロから学習する新しい強化学習アルゴリズムで評価関数を作り、最大30台のiPhone上で動かして合議する。スマホの分散計算を学習の棋譜生成と対局の両方に使う点が目立つ。",
+  "base": {
+    "engine": "やねうら王",
+    "eval_source": null,
+    "note": "ふかうら王ベースの探索エンジンをiPhone上で動作。評価関数は独自に学習"
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "ゼロから学習した深層学習系評価関数を10種類"
+  },
+  "search": {
+    "family": "MCTS",
+    "detail": "ふかうら王ベース。30台のiPhoneで10種類のモデルを合議"
+  },
+  "learning": "ボードゲーム向けの新しい強化学習アルゴリズムで、人間の棋譜なしでゼロから学習（アルゴリズムは後日論文化予定）",
+  "hardware": "iPhone（A15 Bionic）最大30台のNeural Engine",
+  "language": [
+    "C++",
+    "Swift"
+  ],
+  "claimed_strength": "プロ棋士に迫る強さの評価関数を目指す",
+  "ideas": [
+    {
+      "category": "ハードウェア",
+      "title": "iPhone30台による合議",
+      "description": "ふかうら王ベースの探索エンジンをiPhone上で動かし、30台で10種類のモデルを動作させ、合議して棋力を上げる。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "30台のiPhoneで10種類のモデルを動作させ、合議により棋力の向上を図ります"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "スマホ分散計算による棋譜生成",
+      "description": "学習用の棋譜を生成する計算資源として、強力な計算機に加えてiPhoneの分散計算も使った。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "スマートフォン(iPhone)を用いた分散計算を実施しました"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "ゼロからの新しい強化学習",
+      "description": "ボードゲーム向けの新しい強化学習アルゴリズムで、人間の棋譜を使わずにゼロから評価関数を学習する。学習方法が違うので新しい指し手や棋風が見られるかもしれない。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "新しい指し手や棋風が見られるかもしれません"
+    },
+    {
+      "category": "エンタメ・演出",
+      "title": "30個の合議画面の可視化",
+      "description": "合議の様子を画面で見せる。AobaZeroの山下氏は「30個の多数決画面は見てるだけで面白い」と評している。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "合議の様子"
+    }
+  ],
+  "character": "名前の由来はMobile Federation（連合）。「一つ一つの計算能力は強くないモバイル端末が力を合わせて課題に取り組む様子」を表す。",
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc35/team.html"
+}

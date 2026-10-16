@@ -1,0 +1,52 @@
+{
+  "wcsc": 21,
+  "year": 2011,
+  "dir": "Tohu",
+  "team": "佐々木貴広",
+  "software": "Tohu",
+  "sources": [
+    "wcsc21/appeal/Tohu/WCSC21_Tohu.html"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc21/appeal/Tohu/WCSC21_Tohu.html"
+  ],
+  "summary": "前年の構成に、手筋（田楽刺し・桂の高飛び歩の餌食・両取りの桂）の評価と差分計算を追加した。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "手作り",
+    "detail": "駒の損得（差分計算）、手筋評価"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "NegaMax。深さ1で並べ替え、深さ5で候補を挙げて指し手を決定。王手のみ延長"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "手筋の評価項目",
+      "description": "香車の田楽刺し、桂の高飛び歩の餌食、両取りの桂などの手筋を評価項目にする。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "田楽刺し 桂の高飛び歩の餌食 両取りの桂"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "不成の合法手削減",
+      "description": "歩・角・飛の不成と、香車の敵陣2段目の不成を削る。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "歩、角、飛の不成 香車の敵陣２段目の不成"
+    }
+  ],
+  "character": null,
+  "notes": "定跡・詰みルーチンは未実装。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc21/team.html"
+}

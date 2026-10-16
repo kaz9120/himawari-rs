@@ -1,0 +1,55 @@
+{
+  "wcsc": 35,
+  "year": 2025,
+  "dir": "Niban_Shibori",
+  "team": "ビール工房HFT支店",
+  "software": "二番絞り",
+  "sources": [
+    "wcsc35/appeal/Niban_Shibori/appeal.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc35/appeal/Niban_Shibori/appeal.pdf"
+  ],
+  "summary": "白ビールの強化学習データを流用した大きな深層学習モデルで、探索なしでプロ棋士レベルに到達した。2022年は準優勝。モデル拡大はGPUメモリの壁で頭打ちのため、強化学習アルゴリズムそのものの改造を進めている。間に合えば新型、間に合わなければ旧型で参加する。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": "白ビールの強化学習データを流用して出発"
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "最高精度を目指す大きな深層学習モデル。探索なしでプロ棋士レベル"
+  },
+  "search": {
+    "family": "MCTS",
+    "detail": "PV-MCTS"
+  },
+  "learning": "強化学習。1ステップ2か月規模で全体は1年半程度。教師は数十億局面",
+  "hardware": "Ryzen Threadripper 7995WX + RTX 6000 Ada 48GB×2。電竜戦HWTの統一ハードウェアで実機性能を示したい",
+  "language": [
+    "C++",
+    "Python"
+  ],
+  "claimed_strength": "2022年準優勝。探索なしでプロ棋士レベル",
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "強化学習アルゴリズムの改造",
+      "description": "モデルの大型化がGPUメモリで頭打ちのため、強化学習のアルゴリズムレベルの改造を進める。小規模実験ではAlphaZeroなどの欠点を克服する可能性を示したが、高負荷での性能は未測定。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "小規模実験レベルでは AlphaZero などの欠点を克服する可能性を示している"
+    },
+    {
+      "category": "評価関数",
+      "title": "探索なしでプロ棋士級の大型モデル",
+      "description": "最高精度を目指して大きな深層学習モデルを作り、探索なしでプロ棋士レベルの強さに到達した。2022年に準優勝。",
+      "originality": "独自",
+      "evidence": "探索なしでプロ棋士レベル",
+      "quote": "探索無しでプロ棋士レベルの強さに到達した"
+    }
+  ],
+  "character": "毎年「間に合えば新型、間に合わなかったら旧型」と書く。電竜戦HWTで使った統一ハードウェアで実機の性能を示したいと意気込む。",
+  "notes": "参考文献に、ゲーム情報学研究会やGPWの論文、ブログの戦型分析がある。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc35/team.html"
+}

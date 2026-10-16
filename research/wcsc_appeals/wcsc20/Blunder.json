@@ -1,0 +1,86 @@
+{
+  "wcsc": 20,
+  "year": 2010,
+  "dir": "Blunder",
+  "team": "下山晃",
+  "software": "Blunder",
+  "sources": [
+    "wcsc20/appeal/Blunder/Blunder.pdf"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc20/appeal/Blunder/Blunder.pdf"
+  ],
+  "summary": "C#製の60kstepのプログラムで、Bonanza Method評価関数を土台に、オーダリング・時間制御・futilityマージンまで学習で最適化する。自己対戦の探索結果から学習する点が特徴。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "約666万要素の特徴ベクトル（駒割、利き、玉24近傍、pinなど）をBonanza Methodで学習"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "PVS、Aspiration、置換表、反復深化、SEE、killer、history、futility、null move、LMR、df-pn+、YBWC並列"
+  },
+  "learning": "Bonanza Methodによる評価関数。さらに1手30秒の自己対戦から、オーダリング関数・時間制御・futilityマージンを別々にBonanza流で学習",
+  "hardware": null,
+  "language": [
+    "C#"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "自己対戦で指し手オーダリングを学習",
+      "description": "棋譜ではkillerやhistoryが機能しないため、1手30秒の自己対戦で順序付け改善により効率が上がる局面を学習対象にし、Beta Cutした手を最善手とみなす。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "1 手 30 秒の自己対戦を行い、各 30 秒の探索の中の、順序付けの改善により探索効率が向上する全ての局面を学習対象"
+    },
+    {
+      "category": "時間管理",
+      "title": "時間制御の学習",
+      "description": "探索の各反復の状態（最善手変更回数、評価値差、singular、PV一致長など）から、探索を打ち切ってよいかを学習した判定関数で決める。最大思考時間を短縮した複数データを1局から作り、データ不足を補う。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "最大思考時間が 160 秒のデータから、最大思考時間が 80 秒、40 秒、20 秒、10 秒だった場合のデータを作成"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "futilityマージンの学習",
+      "description": "枝刈りできたのにしなかった回数と、できないのにした回数を重み付き最小化して学習する。終盤ほど後者の重みを上げる。評価関数・オーダリングの学習と同時に回すと互いに最適化され、R50程度強くなった。",
+      "originality": "独自",
+      "evidence": "R50程度の強化（学習の並行実施）",
+      "quote": "互いに最適化されていくためか、個別に学習するよりも R50 程度強くなる現象が見られた"
+    },
+    {
+      "category": "探索",
+      "title": "独自のponderと局所Aspiration",
+      "description": "ponderに独自手法を用い、Aspiration Searchは反復深化ではなく各内部ノードのPV Search初手・再探索時に行い、置換表等で予測値を得る。終盤は窓幅をやや広げる。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "各内部ノードで、PV Search の初手や再探索時に行う実装"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "評価値重視の定跡DB",
+      "description": "プロ棋譜の局面を10秒探索し、評価値が高い局面を重視して定跡DBを作る。出現回数ベースの定跡に対し6割の勝率。",
+      "originality": "独自",
+      "evidence": "自己対戦で出現回数ベース定跡に6割",
+      "quote": "評価値が高かった局面を重視する形で定跡 DB の作成を行っている"
+    },
+    {
+      "category": "評価関数",
+      "title": "進行度込みの多数の特徴量",
+      "description": "玉24近傍、pin、利き数、玉との距離など多様な特徴を進行度と組み合わせた666万要素で評価する。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "6,662,378 個の要素を持つ特徴ベクトルを用いている"
+    }
+  ],
+  "character": null,
+  "notes": null,
+  "team_list_url": "http://www2.computer-shogi.org/wcsc20/team.html"
+}

@@ -1,0 +1,60 @@
+{
+  "wcsc": 23,
+  "year": 2013,
+  "dir": "Bonanza",
+  "team": "保木 邦仁",
+  "software": "Bonanza",
+  "sources": [
+    "wcsc23/appeal/Bonanza/ap.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc23/appeal/Bonanza/ap.txt"
+  ],
+  "summary": "評価関数の大規模機械学習、合議法とゲーム木の分散並列化、チェス流の探索と盤データ構造、ソースコード公開を特徴とする。2004年から自力で開発。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "静的評価関数の大規模な機械学習"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "コンピュータチェス流の探索"
+  },
+  "learning": "静的評価関数の大規模機械学習（Bonanzaメソッド）",
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "評価関数の大規模機械学習",
+      "description": "静的評価関数を棋譜から大規模に機械学習する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "静的評価関数の大規模な機械学習"
+    },
+    {
+      "category": "並列・分散",
+      "title": "合議法とゲーム木の分散並列化",
+      "description": "合議法による分散並列化と、木探索の分散並列化を併用する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "合議法による分散並列化と、木探索の分散並列化"
+    },
+    {
+      "category": "その他",
+      "title": "ソースコード公開",
+      "description": "ソースコードを公開する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "ソースコードの公開"
+    }
+  ],
+  "character": null,
+  "notes": "短い文書。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc23/team.html"
+}

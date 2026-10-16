@@ -1,0 +1,63 @@
+{
+  "wcsc": 27,
+  "year": 2017,
+  "dir": "Usapyon2'TURBO",
+  "team": "うさぴょんの育ての親（池 泰弘）",
+  "software": "うさぴょん2'TURBO",
+  "sources": [
+    "wcsc27/appeal/Usapyon2'TURBO/wcsc27-usapyon.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc27/appeal/Usapyon2%27TURBO/wcsc27-usapyon.txt"
+  ],
+  "summary": "なのはmini・Apery・やねうら王を組み合わせるソフト。目標は「AMD CPU勢で連続1位」だったが、AMD勢3チーム中3位で、評価関数が間に合わず、探索バグと評価バイナリの取り違えなどで何一つうまく行かなかったと反省を書く。来年はライブラリ不使用に戻す予定。",
+  "base": {
+    "engine": "やねうら王+Apery",
+    "eval_source": "Apery WCSC26（電王トーナメント版評価バイナリ）、真やねうら王の評価バイナリ（代打）",
+    "note": "ベースコードはなのはmini Ver.0.2.1.1"
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "Apery WCSC26と同じ形（KKP＋手番付きKPP）"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "3/16時点の最新Stockfishに準拠。256手ルール向けに最適化"
+  },
+  "learning": "うさぴょんと同じ駒価値だけを与えた後、floodgateの棋譜からBonanzaMethodで最初の評価バイナリを作成し、RootStrap（雑巾絞り）で強化。学習はやねうら王V3.30〜V3.68のルーチン",
+  "hardware": "Ryzen7 1800X 3.6GHz 8コア 16GB",
+  "language": [
+    "C++",
+    "C#"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "探索",
+      "title": "256手ルールへの最適化",
+      "description": "257手に及んだら引き分けを返し、入玉周りの評価を加え、256手までに宣言勝ちや劣勢からの引き分けを狙えるようにする。長手数にならず効果は不明。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "256手ルール向けに最適化。"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "振り飛車が不利になる理由の仮説と定跡調整",
+      "description": "飛車を振るだけで評価値が下がるのはおかしいとして、プロ棋士の棋譜等から学習すると振り飛車の採用率が低いため低い値が付くのでは、と推測し、振り飛車を指せるよう調整する。攻め棋風だと振り飛車側が受けるべき局面で攻めるのも遠因と見る。設定ミスで一度も指さなかった。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "プロ棋士の棋譜等から学習した場合に、振り飛車の採用率が低い為に棋譜からの学習では低い値が付いてしまうのではないだろうか"
+    },
+    {
+      "category": "開発手法・運用",
+      "title": "AMD CPU勢の中での順位を目標に",
+      "description": "AMD製CPU使用のチームの中での連続1位を目標にしていた。RYZENを使った3チーム中3位で終わった。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "AMD製CPU使用の中での連続1位ゲット"
+    }
+  ],
+  "character": "開発者が「うさぴょんの育ての親」と名乗る。当日の失敗（雷で瞬断し評価バイナリが消失、zipが壊れる、評価バイナリを取り違えるなど）を包み隠さず書き、「何一つうまく行かなかった」と総括する。",
+  "notes": "3/16初版と5/7改訂の2段構成（⇒で結果を追記）。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc27/team.html"
+}

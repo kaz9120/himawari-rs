@@ -1,0 +1,60 @@
+{
+  "wcsc": 20,
+  "year": 2010,
+  "dir": "Bingo_Shogi",
+  "team": "（備後将棋）恩本明典",
+  "software": "備後将棋",
+  "sources": [
+    "wcsc20/appeal/Bingo_Shogi/Bingo_Shogi.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc20/appeal/Bingo_Shogi/Bingo_Shogi.txt"
+  ],
+  "summary": "学習なしの手作り評価関数で、玉周り24近傍を重視する。PVSにnull move・history pruning・YSS式の半手延長を組み合わせる。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "手作り",
+    "detail": "玉の周り24近傍の状態、駒の状態、駒得、当たり。手番で一部非対称"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "PVS。ルートと2手目はほぼ全手、以降は最大55手幅。null move pruning、history pruning"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "玉周り24近傍と金銀パターンの評価",
+      "description": "玉の周り24近傍の状態と、玉周りの金銀のパターンを玉位置評価と組み合わせて駒組みを評価する。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "駒組みは玉の周りの金銀のパターンを持っていてそれと玉の位置評価を組み合わせて"
+    },
+    {
+      "category": "探索",
+      "title": "history pruningの再探索短縮",
+      "description": "history pruningにヒットし、前回反復でUP_BOUND(ALL)かつスコアが現在のalphaより低いノードは、読む手をさらに短くする。初出場時から使っている。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "さらに読む手を短くするようなこともしています"
+    },
+    {
+      "category": "評価関数",
+      "title": "評価関数内での一手詰め",
+      "description": "玉周りの状態によっては、評価関数の中から一手詰めを読む。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "玉の周りの状態によっては評価関数の中から一手詰めを読んでいます"
+    }
+  ],
+  "character": null,
+  "notes": "一覧の表記は「備後将棋」。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc20/team.html"
+}

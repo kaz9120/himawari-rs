@@ -1,0 +1,46 @@
+{
+  "wcsc": 36,
+  "year": 2026,
+  "dir": "Auau_Shogi",
+  "team": "氏家 一朗",
+  "software": "あうあう将棋",
+  "sources": [
+    "wcsc36/appeal/Auau_Shogi/appeal_auau.txt"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc36/appeal/Auau_Shogi/appeal_auau.txt"
+  ],
+  "summary": "ほとんど駒の価値だけの評価関数と、7〜9手読みのαβ探索という非常にシンプルなプログラム。唯一凝っているのがOpenGLによる3D盤面表示。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": "20年ほどほとんどコードを触っていない"
+  },
+  "eval": {
+    "family": "手作り",
+    "detail": "ほとんど駒の価値だけ"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "7〜9手読み"
+  },
+  "learning": null,
+  "hardware": "Ryzen AI 5 330（一覧ページより）",
+  "language": [
+    "Python"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "エンタメ・演出",
+      "title": "OpenGLの3D盤面",
+      "description": "3Dと分かるように斜め上からの絵にし、探索中に盤をくるくる回せる。ただし通信データの受信漏れが怖いので大会中は動かさない。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "OpenGLを用いた 3D の盤面になっています。"
+    }
+  ],
+  "character": "3Dにしても強くならず、グラフィックスと強さは関係なかったかもしれないという自虐。20年触っていないコードを、あと1か月で全面的に手入れしたいと意気込む。",
+  "notes": "言語はPythonと一覧にあるが、OpenGLの記述のみ文書にあり。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc36/team.html"
+}

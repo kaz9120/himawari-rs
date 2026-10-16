@@ -1,0 +1,60 @@
+{
+  "wcsc": 21,
+  "year": 2011,
+  "dir": "GPS_Shogi",
+  "team": "Team GPS（田中哲朗ほか）",
+  "software": "GPS将棋",
+  "sources": [
+    "wcsc21/appeal/GPS_Shogi/WCSC2011_ver2.pdf"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc21/appeal/GPS_Shogi/WCSC2011_ver2.pdf"
+  ],
+  "summary": "東大の教育用計算機システムのiMac約620台（のち節電で約208台に縮小）を使う、疎結合並列探索システムが特色。前年は総コア数666で参加し、あから2010の共通枠組みにも使われた。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "序盤、中盤1、中盤2、終盤の4種類"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "実現確率探索、df-pn（並列協調）の詰探索。疎結合並列探索"
+  },
+  "learning": "評価関数の自動学習",
+  "hardware": "東大駒場情報基盤センターiMac約620台（4/22追記で節電のため208台程度に縮小）。前年は320プロセッサ・666コア",
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "並列・分散",
+      "title": "教室のiMac数百台を使う疎結合並列探索",
+      "description": "家庭用PC級のマシンをネットワーク結合した疎結合並列探索システム。前年は総コア数666、今年は大学の教育用iMac約620台を使う予定が、節電で約208台（前年の3割減相当）に縮小した。",
+      "originality": "独自",
+      "evidence": "2010年は320プロセッサ・666コア",
+      "quote": "たくさんの、家庭用 PC と同クラスのマシンをネットワークで結合したもので、並列に協調しながら探索を行います"
+    },
+    {
+      "category": "並列・分散",
+      "title": "あから2010の共通枠組みになった並列システム",
+      "description": "改良した疎結合並列探索システムが、あから2010の4プログラム共通の枠組みとして使われた。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "あから 2010 において 4 プログラム共通の枠組みとして利用されました"
+    },
+    {
+      "category": "開発手法・運用",
+      "title": "ソース・データの公開",
+      "description": "フリーソフトウェアとしてソースコードやデータを公開している。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "フリーソフトウェアとしてソースコードやデータを公開しています"
+    }
+  ],
+  "character": null,
+  "notes": "参加実績（初優勝、3位、あから2010への参加）も書かれる。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc21/team.html"
+}

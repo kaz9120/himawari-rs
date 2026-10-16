@@ -1,0 +1,47 @@
+{
+  "wcsc": 36,
+  "year": 2026,
+  "dir": "YaneuraOu_with_GTNET",
+  "team": "やねさんのチーム（やねうらお、よみぃ）",
+  "software": "やねうら王 with GTNET",
+  "sources": [
+    "wcsc36/appeal/YaneuraOu_with_GTNET/PR20260330a.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc36/appeal/YaneuraOu_with_GTNET/PR20260330a.pdf"
+  ],
+  "summary": "ふかうら王（dlshogi互換エンジン）の評価関数モデルに、KataGoを参考にしたNested Bottleneck Residual Netsを採用した。1x1畳み込みでチャネルを縮小してから3x3畳み込みを行う構造で、計算効率を保ちながら表現力を高める。",
+  "base": {
+    "engine": "やねうら王+dlshogi",
+    "eval_source": null,
+    "note": "やねうら王オールスターズ。ふかうら王を使用"
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "Nested Bottleneck Residual Nets。縮小後の空間で3x3畳み込みを複数回重ね、その内部にもskip connectionを導入。KataGo由来"
+  },
+  "search": {
+    "family": "MCTS",
+    "detail": "ふかうら王（dlshogi互換）"
+  },
+  "learning": null,
+  "hardware": "Amazon EC2 c6a.metal（192vCPU、384GB）（一覧ページ）",
+  "language": [
+    "C++",
+    "Python"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "Nested Bottleneck Residual Nets",
+      "description": "通常のresidual blockは高チャネル幅のまま3x3畳み込みを行うので計算コストが大きい。1x1畳み込みで縮小してから3x3、最後に1x1で戻すbottleneckは単純だと不利なので、KataGoのように縮小後の空間で3x3を複数回重ね、内部にもskip connectionを入れる。圧縮空間で十分な変換をしつつ最適化の安定性も確保する。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "縮小後の空間で 3x3 畳み込みを複数回重ね、さらにその内部にも skip connection を導入した nested bottleneck residual block を採用した。"
+    }
+  ],
+  "character": "チーム名・資料の題が「やねうら王オールスターズ」。",
+  "notes": "文書は1ページの短いもの。GTNETの詳細は書かれていない。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc36/team.html"
+}

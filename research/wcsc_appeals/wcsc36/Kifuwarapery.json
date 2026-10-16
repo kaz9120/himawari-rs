@@ -1,0 +1,46 @@
+{
+  "wcsc": 36,
+  "year": 2026,
+  "dir": "Kifuwarapery",
+  "team": "きふわらべのお父ん（高橋 智史）",
+  "software": "きふわらぷりー",
+  "sources": [
+    "wcsc36/appeal/Kifuwarapery/WCSC36_PR_260125.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc36/appeal/Kifuwarapery/WCSC36_PR_260125.pdf"
+  ],
+  "summary": "第26回に出場したきふわらべのソースコード（Apery由来）を掘り返して改造して参加する。フロムスクラッチではなく、他者のエンジンを土台に使う宣言。文書の大半は、登場人物の掛け合いで綴るコミカルな読み物になっている。",
+  "base": {
+    "engine": "Apery",
+    "eval_source": null,
+    "note": "第26回のきふわらべ（大樹の枝ライブラリー、つまりApery）のコードを改造。第35回のKifuuuuuuwarabe Beginningはcshogiを使っていた"
+  },
+  "eval": {
+    "family": "不明",
+    "detail": "記載なし"
+  },
+  "search": {
+    "family": "不明",
+    "detail": "記載なし"
+  },
+  "learning": null,
+  "hardware": "Ryzen 7 5700U（一覧ページ）",
+  "language": [
+    "C#"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "開発手法・運用",
+      "title": "旧版ソースを掘り返して魔改造",
+      "description": "第26回のきふわらべのコードを、ライブラリというより将棋エンジン丸ごととして使う。まともな自力実装を休み、魔改造のコーディングに戻る。",
+      "originality": "不明",
+      "evidence": null,
+      "quote": "「 第２６回世界コンピュータ将棋選手権に出場した きふわらべ の ソースコードを改造して参加するぜ」"
+    }
+  ],
+  "character": "キャラクター同士の掛け合い（ひよ子、黒吉、猿とバナナのくだり、C++のunique_ptrの儀式をC#でやればいいという自虐ネタ）で綴る読み物形式。フリーフォントを使い、著作権上問題ないと注記し、「Dad, code! Making simple things seem difficult!!」で締める。ライブラリ使用宣言はあるが技術内容はほぼなく、エンタメ色が非常に強い。",
+  "notes": "2025年1月25日提出（日付は原文のまま）。技術的な詳細の記述はない。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc36/team.html"
+}

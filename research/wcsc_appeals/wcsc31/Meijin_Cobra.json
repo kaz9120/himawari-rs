@@ -1,0 +1,52 @@
+{
+  "wcsc": 31,
+  "year": 2021,
+  "dir": "Meijin_Cobra",
+  "team": "松山 洋章",
+  "software": "名人コブラ",
+  "sources": [
+    "wcsc31/appeal/Meijin_Cobra/appeal.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc31/appeal/Meijin_Cobra/appeal.pdf"
+  ],
+  "summary": "dlshogiをベースに、評価関数の学習と定跡作成に工夫を加える。簡易版のPrioritized Experience Replayで苦手局面を頻繁に学習し、MCTSと他の手法を組み合わせて、序盤で不利にならない定跡を作る。",
+  "base": {
+    "engine": "dlshogi",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "dlshogiの評価関数（policy+value）"
+  },
+  "search": {
+    "family": "MCTS",
+    "detail": "dlshogiのMCTS"
+  },
+  "learning": "Prioritized Experience Replayを簡易的に実装し、苦手な局面をより頻繁に学習。学習データ生成にApery、定跡作成にやねうら王を利用",
+  "hardware": "Google Compute Engine 48コア",
+  "language": "C++, Python",
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "簡易版Prioritized Experience Replay",
+      "description": "苦手な局面をより頻繁に学習する方法を簡易的に実装して評価関数を学習する。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "Prioritized Experience Replay を簡易 的に実装して学習します。"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "MCTSと他手法を組み合わせた定跡作成",
+      "description": "DL系の探索方法であるMCTSと他の方法を組み合わせて定跡を作る。定跡で勝ちにいくのではなく、序盤で不利にならなければよいという考え。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "定跡で積極的に勝ちにいくわけではなく、序盤で不利にならなければ良いという考え方です。"
+    }
+  ],
+  "character": "ソフト名は劇団鋼鉄村松の「二手目8七飛車成り戦法」の登場人物に由来し、「世界的ですもんね 乗るしかない このビッグウェーブに！」とdlshogiの流行に乗る。",
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc31/team.html"
+}

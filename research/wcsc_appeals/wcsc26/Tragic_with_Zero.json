@@ -1,0 +1,92 @@
+{
+  "wcsc": 26,
+  "year": 2016,
+  "dir": "Tragic_with_Zero",
+  "team": "岩崎 高宗",
+  "software": "悲劇的 with Zero",
+  "sources": [
+    "wcsc26/appeal/Tragic_with_Zero/wcsc26_appeal.pdf"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc26/appeal/Tragic_with_Zero/wcsc26_appeal.pdf"
+  ],
+  "summary": "Bonanza 6.0をそのまま使い、ゼロから学習した評価関数、独自の詰めエンジン「ゼロシステム」、宣言勝ちの実装と「宣言負け」の投了を特徴とするソフト。文書の大半は、改名の経緯、作者の自己紹介、1.0〜1.2版の進捗報告、大会後の反省で構成される読み物的な文書。",
+  "base": {
+    "engine": "Bonanza",
+    "eval_source": "Bonanza 6.0の特徴量（fv.binは使わずゼロから学習）",
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "KKP+KPP+駒価値（Bonanza 6.0のまま）。ゼロから学習、棋譜54,000強。深さ2のiterationを約170回回した時点で確定。38index化は未導入"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "Bonanza 6.0の探索そのまま。Rotated Bitboards。詰めは別エンジン"
+  },
+  "learning": "ゼロから学習。棋譜は54,000強。学習用マシンが故障し、深さ3の仕上げ学習はできなかった",
+  "hardware": "Xeon E5-1660 v3 3.0GHz 8コア、メモリ32GB",
+  "language": "C++",
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "詰み・終盤",
+      "title": "独自方式の詰めエンジン「ゼロシステム」",
+      "description": "1月末から開発した、ほぼ自作で方式もおそらく独自の詰めエンジン。7手詰めまでテストでき、深さ9で約1秒。ハッシュカットを入れ、深さ15・探索時間10秒で調整中。マルチコア化は間に合わなかった。",
+      "originality": "独自",
+      "evidence": "深さ9で約1秒（7手詰め）",
+      "quote": "詰めの方式もおそらく独自のものと思われます。"
+    },
+    {
+      "category": "棋風・人間らしさ",
+      "title": "宣言負け（敗者の美学）",
+      "description": "宣言勝ちを実装し、相手が宣言勝ちの局面にある場合は投了する。勝率は下がるかもしれないが「敗者の美学」とする。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "相手が宣言勝ちの局面である場合に、投了する仕様にしています。いわゆる「宣言負け」です。"
+    },
+    {
+      "category": "時間管理",
+      "title": "手数で序盤・中盤・終盤に分けた時間制御",
+      "description": "当初1手9秒固定だったが、手数で序盤・中盤・終盤を大まかに分けて時間制御を入れた。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "手数で序盤・中盤・終盤を大まかに分けて、時間制御を入れています。"
+    },
+    {
+      "category": "探索",
+      "title": "先読み機能とBonanzaの受信スレッド複数化",
+      "description": "先読み機能を実装するため、Bonanza 6.0の受信スレッドを複数に改造した。キューのためCからC++に変えた。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "Bonanza 6.0 の受信スレッドを複数になるように改造しています"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "強いライブラリを使わない選択",
+      "description": "Aperyややねうら王miniの使用もできたが、自分のスキルが上がらない気がして、今回はBonanza 6.0にとどめる。結果、Stockfish探索組み込み済みの相手に3〜5手の深さ差で負け、後悔と学びを書く。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "強いライブラリを使ってしまうと問題を自己解決できない人間ができあがってしまう気がする"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "大会後の振り返りの追記",
+      "description": "「強いライブラリを使う相手には負け、工夫している相手には勝ってしまう」と所感を書き、評価部も三駒関係から離れたい、実現確率探索を試したいとする。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "本来逆でないと困るのですが"
+    },
+    {
+      "category": "評価関数",
+      "title": "KPPと交換する特徴の構想",
+      "description": "KPPを、2駒相対（玉位置固定・自由）、玉周辺の利き、玉の自由度、大駒の位置と利き数などと交換する構想。教師なし学習にも興味。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "計算処理が重い KPP と幾つかの特徴を交換することを考えています。"
+    }
+  ],
+  "character": "改名の経緯（Warsenal Zero → 悲劇的 with Zero）をマーラーの交響曲第6番にかけて自虐的に語る。作者の身長・体重・頭髪（候補名「禿げ山の一夜 with Zero」）、入場テーマ（『ツァラトゥストラはこう語った』）、得意技（プロレスの受け身）、ニックネーム（「バグ作りの名人」ほか）、ビックカメラ大宮店への謝辞まで入れた、ユーモア満載の文書。",
+  "notes": "第3章は半分冗談としてフォントを変えたと注記。版1.0〜1.2（5/5）と、大会後の追記を含む",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc26/team.html"
+}

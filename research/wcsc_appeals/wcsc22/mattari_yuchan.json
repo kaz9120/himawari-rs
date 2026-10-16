@@ -1,0 +1,35 @@
+{
+  "wcsc": 22,
+  "year": 2012,
+  "dir": "mattari_yuchan",
+  "team": "東京農工大学 小谷研究室",
+  "software": "まったりゆうちゃん",
+  "sources": [
+    "wcsc22/appeal/mattari_yuchan/appeal.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc22/appeal/mattari_yuchan/appeal.txt"
+  ],
+  "summary": "去年と同じプログラム、との一文のみ。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "不明",
+    "detail": null
+  },
+  "search": {
+    "family": "不明",
+    "detail": null
+  },
+  "learning": null,
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [],
+  "character": null,
+  "notes": "前年（第21回）と同じ内容。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc22/team.html"
+}

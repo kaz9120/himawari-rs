@@ -1,0 +1,54 @@
+{
+  "wcsc": 25,
+  "year": 2015,
+  "dir": "Mumyou6",
+  "team": "David Wada",
+  "software": "無明6",
+  "sources": [
+    "wcsc25/appeal/Mumyou6/2015_appeal.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc25/appeal/Mumyou6/2015_appeal.txt"
+  ],
+  "summary": "今回は極めて古典的な探索（αβ、Aspiration、PV Split並列、Futility、Razoring、NFDP詰め）に回帰。Null MoveとLMRは使わず、CUT/ALLノードでPVからの距離で探索深度を減らす。ムーブオーダリングを並列処理し、ラップトップで探索時間が約3割短縮。4.2GHzにオーバークロック。",
+  "base": {
+    "engine": "Bonanza",
+    "eval_source": "Bonanza 6の評価関数・パラメータ",
+    "note": "Javaのため移植"
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "Bonanza 6"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "Aspiration、PV Split並列、Futility、Razoring、NFDP詰め"
+  },
+  "learning": null,
+  "hardware": "Core i5960X 4.2GHz（OC）",
+  "language": [
+    "Java"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "探索",
+      "title": "PVからの距離で深さを減らす",
+      "description": "Null MoveやLMRを使わず、CUT/ALLノードでPVからの距離に応じて探索深度を減らす。ムーブオーダリングに注力しているため上記枝刈りと相性が悪い。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "CUT/ALLノードにおいてPVからの距離により探索深度を減らしています。"
+    },
+    {
+      "category": "並列・分散",
+      "title": "ムーブオーダリングの並列処理",
+      "description": "コア数が十分あるのでムーブオーダリングを並列で処理し、ラップトップで探索時間が約3割短縮した。",
+      "originality": "独自",
+      "evidence": "探索時間約3割短縮",
+      "quote": "ムーブオーダリングを並列で処理しています。"
+    }
+  ],
+  "character": null,
+  "notes": "前年までのαβ不使用から古典的な探索へ方針転換。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc25/team.html"
+}

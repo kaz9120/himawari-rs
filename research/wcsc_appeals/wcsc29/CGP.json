@@ -1,0 +1,70 @@
+{
+  "wcsc": 29,
+  "year": 2019,
+  "dir": "CGP",
+  "team": "大熊 三晴",
+  "software": "CGP",
+  "sources": [
+    "wcsc29/appeal/CGP/CGP2019_2.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc29/appeal/CGP/CGP2019_2.pdf"
+  ],
+  "summary": "強さよりNPSを目指して一から自作した非ビットボード型エンジン。利きと評価関数の途中結果を局面構造体に保持し、AVX-512などSIMDやラージページを活用する。評価関数も自力学習で、既存の定跡・評価値データは使わない。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "手番付きKPP。駒割＋入玉時位置評価から、次元下げ＋ミニバッチBonanzaメソッド＋Adamで自力学習。さらにelmo方式ベースで追加学習"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "LazySMPで並列化"
+  },
+  "learning": "自力の機械学習（Adam、AdaBound）。一般流布の定跡・局面評価値は不使用",
+  "hardware": "Core i9-7940X（AVX-512）",
+  "language": [
+    "C"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "実装・高速化",
+      "title": "非ビットボードで利きを局面に保持",
+      "description": "各マスへの利きの状態を局面構造体に保持し、評価関数の途中結果もキャッシュする。メモリアクセス待ちの間に演算を回して高速化を狙う。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "局面構造体に各マスへの利きの状態を保持"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "AVX-512とSIMDの活用",
+      "description": "評価値算出・オーダリング・構造体コピーにSIMDを使い、VPMAX命令で次に試す手を条件分岐なしで抽出して挿入ソートより高速化した。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "オーダリングの一部は VPMAX 命令で次に試す手を抜き出す方式を取っております。"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "ラージページの利用",
+      "description": "置換表や評価値テーブルにラージページ（Huge Page）を使い高速化する。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "置換表や評価値テーブルのページテーブルにラージページ"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "一般データ不使用の自力学習",
+      "description": "一般に流布している定跡・局面と評価値のセット・読み筋を使わず、評価関数を自力で学習する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "一般に流布している定跡データや、一般に流布している「局面と評価値のセット」、"
+    }
+  ],
+  "character": "「無駄に一から作成」「無駄に高NPS」「無駄なこだわり」と、こだわりを自虐的に語るスタイル。",
+  "notes": "追加学習は失敗したと記載",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc29/team.html"
+}

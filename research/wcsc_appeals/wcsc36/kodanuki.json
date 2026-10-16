@@ -1,0 +1,55 @@
+{
+  "wcsc": 36,
+  "year": 2026,
+  "dir": "kodanuki",
+  "team": "こだぬき",
+  "software": "こだぬき",
+  "sources": [
+    "wcsc36/appeal/kodanuki/kodanuki_appeal_rev.txt"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc36/appeal/kodanuki/kodanuki_appeal_rev.txt"
+  ],
+  "summary": "将棋AI「お袖狸」のNNUE評価関数を初期値に、Feature Transformer層だけを追加学習した将棋AI。dlshogiのhcpeデータをやねうら王が読める形式に変換する自作ツールを使い、約12.8億局面の変換に成功した。学習はGoogle Colab Proで行っている。",
+  "base": {
+    "engine": "やねうら王",
+    "eval_source": "お袖狸（NNUE評価関数）",
+    "note": "お袖狸エンジンで直接使える評価関数を生成"
+  },
+  "eval": {
+    "family": "NNUE",
+    "detail": "Feature Transformer層のみ更新し、後段のネットワーク層はお袖狸のオリジナルで固定"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "お袖狸エンジン（やねうら王系）"
+  },
+  "learning": "やねうら王のevallearn。山岡氏公開のhcpeから変換したelmo自己対局（約5.3億局面）、自己対局（約6.8億局面）、floodgate加工（約6,430万局面）",
+  "hardware": "Ryzen 5 5500U（一覧ページ）、学習はGoogle Colab Pro",
+  "language": [
+    "Python",
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "Feature Transformer層のみ追加学習",
+      "description": "お袖狸の評価関数を初期値に、入力特徴を変換する層だけを更新して後段は固定し、学習後に両者を組み合わせて使う。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "Feature Transformer層のパラメーターのみを更新し、後段ネットワーク層は「お袖狸」のオリジナルのまま固定しました。"
+    },
+    {
+      "category": "開発手法・運用",
+      "title": "hcpe変換ツールと中断再開付きColab学習",
+      "description": "hcpe形式をやねうら王が読める形式に変換するツールをゼロから開発して12.8億局面を変換した。Colabのセッションが切れても最後の保存から自動再開できる仕組みを整えた。",
+      "originality": "独自",
+      "evidence": "約12.8億局面の変換に成功",
+      "quote": "セッションが切断されても最後の保存ファイルから自動再開できる仕組みを整備し"
+    }
+  ],
+  "character": null,
+  "notes": "AIを併用した開発の旨が「AI、Google Colab Pro〜」と一文あるが詳細は不明。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc36/team.html"
+}

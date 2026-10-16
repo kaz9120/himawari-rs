@@ -1,0 +1,68 @@
+{
+  "wcsc": 26,
+  "year": 2016,
+  "dir": "HakusaSHOGI",
+  "team": "白砂 青松",
+  "software": "白砂将棋",
+  "sources": [
+    "wcsc26/appeal/HakusaSHOGI/appeal.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc26/appeal/HakusaSHOGI/appeal.txt"
+  ],
+  "summary": "愛用戦法の「7七桂戦法」を指しこなすことを目標に、なのはminiの探索部を信頼し、評価関数を手で調整したソフト。約1万手の自作定跡も戦法から外れない方針で作った。",
+  "base": {
+    "engine": "なのはmini",
+    "eval_source": "なのはmini（fv_mini.binを手修正）",
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "三駒関係のfv_mini.binを手で修正。囲いや攻めの形は別の評価関数で評価"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "なのはminiの探索部を信頼して追加せず、細かい高速化のみ"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": "C++",
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "棋風・人間らしさ",
+      "title": "自分の愛用戦法を指しこなす",
+      "description": "作者が愛用する「7七桂戦法」を指しこなすことが目標。定跡も外れた後も7七桂戦法から外れないように指し継ぐ。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "自身の愛用戦法である「７七桂戦法」を指しこなすこと。"
+    },
+    {
+      "category": "評価関数",
+      "title": "機械学習でなく手で評価値を修正",
+      "description": "7七桂戦法の棋譜が少なく学習が難しいことと、「自分に理解できる」評価値を使いたいことから、fv_mini.binを手で修正する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "機械学習ではなく、手でfv_mini.binを修正している。"
+    },
+    {
+      "category": "評価関数",
+      "title": "囲い・攻めの形を別の評価関数で評価",
+      "description": "二駒関係には穴が多いため、囲いや攻めの形は別の評価関数で評価する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "囲いや攻めの形などは別の評価関数で評価した。"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "自己の実戦譜から約1万手の定跡",
+      "description": "自身の実戦譜と研究を元に約1万手を登録する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "自身の実戦譜・研究を元に約1万手を登録。"
+    }
+  ],
+  "character": "開発者自身の愛用戦法を指す「推し戦法」ソフト。ライブラリも「自分に理解できるか」で選んでいる。",
+  "notes": null,
+  "team_list_url": "http://www2.computer-shogi.org/wcsc26/team.html"
+}

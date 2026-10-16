@@ -1,0 +1,60 @@
+{
+  "wcsc": 31,
+  "year": 2021,
+  "dir": "Mattari_Yuuchan",
+  "team": "東京農工大学旧小谷研究室",
+  "software": "まったりゆうちゃん",
+  "sources": [
+    "wcsc31/appeal/Mattari_Yuuchan/appeal2021.docx"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc31/appeal/Mattari_Yuuchan/appeal2021.docx"
+  ],
+  "summary": "1990年過ぎから約四半世紀開発を続ける完全独自のシステム。ディープラーニングなどのパラメータ学習ではなく、進化論的計算などを試し、ディープラーニングと多量パラメータ学習の中間的なメカニズムを考えたい。システムを新しくして2〜3倍の高速化を見込む。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "不明",
+    "detail": "詳細の記述なし"
+  },
+  "search": {
+    "family": "不明",
+    "detail": "新しい並列方式を検討中"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "研究・実験的",
+      "title": "進化論的計算など非パラメータ学習の試行",
+      "description": "ディープラーニングが主流の中で、進化論的計算などパラメータ学習によらない方式を試す。DLと多量パラメータ学習の中間的な仕組みも考える。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "進化論的計算などの方式を試そうとしている。"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "コード全面書き換えで新並列方式",
+      "description": "適切でないコーディングを直して、新しい並列方式を実現し2〜3倍のスピードアップを見込む。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "それを直すことで、新しい並列方式が実現できると考えていて"
+    },
+    {
+      "category": "開発手法・運用",
+      "title": "四半世紀の完全独自開発",
+      "description": "1990年過ぎから、他システムを参考にせず（考え方は参考）に独自で開発している。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "完全独自開発であり、他のシステムを参考にしていない"
+    }
+  ],
+  "character": "開発者の年齢が最高齢ではないかと語り、コーディング能力がいつまで続くか試したいという意気込み。",
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc31/team.html"
+}

@@ -1,0 +1,63 @@
+{
+  "wcsc": 30,
+  "year": 2020,
+  "dir": "Novice",
+  "team": "Noviceチーム",
+  "software": "Novice",
+  "sources": [
+    "wcsc30/appeal/Novice/Novice_appeal.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc30/appeal/Novice/Novice_appeal.pdf"
+  ],
+  "summary": "Xeonマシンを大量に繋ぐフルスクラッチのソフト。depth8で2000億局面を用意して学習し、MPI上のMultiPonderとDeepLearning部を開発中。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "不明",
+    "detail": "DL部を改造中"
+  },
+  "search": {
+    "family": "不明",
+    "detail": null
+  },
+  "learning": "depth8で2000億局面を用意して学習。自己対戦だけで強くなった",
+  "hardware": "Xeonマシンを大量に接続（総コア288、メモリ1536GBの申告）",
+  "language": [
+    "C/C++",
+    "C#"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "depth8で2000億局面",
+      "description": "depth8の探索で2000億局面を用意して学習した。学習しても、自己対戦だけで強くなったようだと述べる。",
+      "originality": "不明",
+      "evidence": null,
+      "quote": "Depth8で2000億局面用意 学習するも自己対戦だけで強くなった模様"
+    },
+    {
+      "category": "並列・分散",
+      "title": "MPI上のMultiPonder",
+      "description": "MPI上で複数台のポンダーを走らせるMultiPonderを実装中。",
+      "originality": "不明",
+      "evidence": null,
+      "quote": "MPI上でMultiPonderを実装中"
+    },
+    {
+      "category": "並列・分散",
+      "title": "Xeonマシンの大量接続",
+      "description": "Xeonマシンを大量に繋ぐ。",
+      "originality": "不明",
+      "evidence": null,
+      "quote": "Xeonマシンを大量に繋ぎます（予定）"
+    }
+  ],
+  "character": "チーム代表がNintendo Switchを買った、引っ越した、手洗いうがいをしっかりする、といった近況をネタ交じりで書く。（当時のコロナ禍）",
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc30/team.html"
+}

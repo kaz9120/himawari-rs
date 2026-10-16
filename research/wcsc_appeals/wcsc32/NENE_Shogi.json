@@ -1,0 +1,70 @@
+{
+  "wcsc": 32,
+  "year": 2022,
+  "dir": "NENE_Shogi",
+  "team": "日高 雅俊",
+  "software": "ねね将棋",
+  "sources": [
+    "wcsc32/appeal/NENE_Shogi/wcsc32_appeal_neneshogi_20220501"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc32/appeal/NENE_Shogi/wcsc32_appeal_neneshogi_20220501"
+  ],
+  "summary": "iPad（Neural Engine、Swift）上で深層学習ベースの将棋AIをスクラッチ実装し、モバイル端末でどこまで強くできるかを検証する。選手権でWindows以外のタブレットを使うのは初と主張。初手と2手目をランダムにする独自の定跡と、候補手の読み筋と標準偏差を表示する独自GUIが特徴。",
+  "base": {
+    "engine": "独自",
+    "eval_source": "『強い将棋ソフトの創りかた』のサンプルコードで学習",
+    "note": null
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "15ブロック（30層）、224チャンネルのResNet"
+  },
+  "search": {
+    "family": "MCTS",
+    "detail": "シングルスレッド、バッチサイズ1、約330nps。思考開始局面のみ1手詰め。固定10秒思考＋ponder"
+  },
+  "learning": "『強い将棋ソフトの創りかた』のサンプルコードを使用",
+  "hardware": "iPad（第9世代、2021年発売、iPadOS 15、Apple A13 Bionic）。有線LANはLightning-USB+USB-Ethernet",
+  "language": [
+    "Swift"
+  ],
+  "claimed_strength": "floodgateで約3300（プロ並み）",
+  "ideas": [
+    {
+      "category": "ハードウェア",
+      "title": "iPad上のNeural Engineで対局",
+      "description": "iPadのNeural Engineで深層学習モデルを動かし、冷却などモバイル端末固有の課題も考察する。選手権でWindows以外のタブレット端末は初としている。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "世界コンピュータ将棋選手権において、Windows 以外のタブレット端末(iOS / iPadOS / Android)が用いられるのは初"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "初手と2手目のランダム化",
+      "description": "他ソフトと違う棋譜を残すため、初手は2六歩・7六歩と悪手を除く20通りからランダムに指し、後手は2手目も評価値上位3手（3四歩・8四歩を除く）からランダムに選ぶ。3手目以降は定跡なし。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "他のソフトと異なる棋譜を残すため、初手では２六歩、７六歩および悪手を除外した 20 通りの手からランダムに指すこととした。"
+    },
+    {
+      "category": "解説・人間支援",
+      "title": "探索木から読み筋を表示する独自GUI",
+      "description": "候補手3手と各応手3手を表示し、勝率の横に標準偏差で局面の複雑さを示し、背景の棒グラフで検討回数を示す。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "画面右中央で MCTS の探索木から複数の読み筋（候補手 3 手、それぞれに対し応手 3 手）を表示する点が特徴的"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "小さなノード数でバッチサイズ1を採用",
+      "description": "バッチサイズを2以上にするとNPSは数十%上がるが、読めるノード数が少ないと棋力が下がる場合があるため、バッチサイズ1にしている。",
+      "originality": "独自",
+      "evidence": "バッチ2以上でNPS数十%向上",
+      "quote": "読めるノード数が少ない状態でバッチサイズを上げると逆に棋力が低下する場合もあるため採用しなかった"
+    }
+  ],
+  "character": "iPadで有線LAN接続して参戦するモバイル挑戦。Swiftでの実装も選手権初で、専用GUIも自作している。",
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc32/team.html"
+}

@@ -1,0 +1,88 @@
+{
+  "wcsc": 29,
+  "year": 2019,
+  "dir": "elmo",
+  "team": "瀧澤 誠",
+  "software": "elmo",
+  "sources": [
+    "wcsc29/appeal/elmo/20190519-WCSC29-elmo.pdf",
+    "wcsc29/appeal/elmo/elmo_appeal_word_r2.docx"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc29/appeal/elmo/20190519-WCSC29-elmo.pdf",
+    "https://www.apply.computer-shogi.org/wcsc29/appeal/elmo/elmo_appeal_word_r2.docx"
+  ],
+  "summary": "やねうら王をベースにNNUE評価関数を作り直したelmo。Heの初期化によるゼロからの作成、時間（ノード数）指定の教師データ生成、Qhapaq方式の兄弟局面学習を試した。成功しなかった試行も率直に書く文書。",
+  "base": {
+    "engine": "やねうら王",
+    "eval_source": "tanuki-のNNUEを参照、教師生成にtanuki-・Aperyを利用",
+    "note": null
+  },
+  "eval": {
+    "family": "NNUE",
+    "detail": null
+  },
+  "search": {
+    "family": "αβ",
+    "detail": null
+  },
+  "learning": "elmo式（勝敗と探索評価値の併用）。ノード数指定の教師生成、Qhapaq方式の兄弟局面比較学習",
+  "hardware": "Amazon EC2 二次: m5.24xlarge、決勝: m5.metal",
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "He初期化でゼロから評価関数作成",
+      "description": "Affine層にHeの初期化を導入し、tanuki-のWCSC28版にあった2-3層間でActivationがほぼ0のニューロンを解消する。最初の層ではActivationが0になり学習されず使えなかった。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "Heの初期化(重みの初期化)をAffine変換層に導入"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "時間・ノード数指定の教師生成",
+      "description": "Depth固定の代わりに時間指定（のちにノード数指定）の対局で教師を生成し、終盤のノード数増加による偏りを平準化する。序盤強く終盤弱い傾向も出る。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "終盤のノード数増加による思考時間の偏りを平準化するもの"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "Qhapaq方式の兄弟局面学習",
+      "description": "教師の指し手による局面の評価値が高くなるよう更新する。指し手一致率は上がるが、一時的に良くなっても次第に悪化し使いづらいと報告。",
+      "originality": "再現・追従",
+      "evidence": null,
+      "quote": "教師の指し手による局面の評価値が高くなるように更新"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "勝ち対局と深読みの合成定跡",
+      "description": "1手1.2〜2.4億ノードの対局で評価値が逆転せず勝った手と、depth33程度の広い探索結果を合成する。短時間の対局では定跡を使うと勝率が下がり、平手と互角局面集の差も見られなかった。",
+      "originality": "独自",
+      "evidence": "vs水匠 平手812-59-718、互角局面集260-15-239（100万ノード/手）",
+      "quote": "1.は2年前に急ごしらえで作成した定跡生成法ですが、比較的少ない計算量で実践的な定跡が作成可能"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "CNN技術のNNUEへの取り込み構想",
+      "description": "NNUEへのCNN技術の取り込みやアンサンブル評価関数を構想するが、NNUEを強くすることに苦戦し次回以降に延期した。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "NNUEへのCNN技術取り込み"
+    },
+    {
+      "category": "開発手法・運用",
+      "title": "大会後の知見の公開",
+      "description": "上位チームの差が小さく教師の質が最重要、CNNは序盤に賢く終盤に弱い、MultiPonderは時間を削られる、など大会後の感想を追記している。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "教師の質が最重要っぽい"
+    }
+  ],
+  "character": "「野良関数強いっす」「NNUE難しい」など、うまくいかなかった点も含めて率直に語る。",
+  "notes": "PPT版とWord版の2ファイルを統合。elmo式学習はすでに差別化要素ではないとしている",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc29/team.html"
+}

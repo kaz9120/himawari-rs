@@ -1,0 +1,46 @@
+{
+  "wcsc": 25,
+  "year": 2015,
+  "dir": "Garyu",
+  "team": "高田 淳一",
+  "software": "臥龍",
+  "sources": [
+    "wcsc25/appeal/Garyu/garyu25.html"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc25/appeal/Garyu/garyu25.html"
+  ],
+  "summary": "Java製。持ち時間の変更に対応して時間制御を変えたのが前回からの改良点。手作り評価（約750パラメータ）。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "手作り",
+    "detail": "約750パラメータ"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "反復深化、置換表、null move、王手延長"
+  },
+  "learning": null,
+  "hardware": "Core i7 4960HQ、約30万nodes/s",
+  "language": [
+    "Java"
+  ],
+  "claimed_strength": "通算64勝100敗4分",
+  "ideas": [
+    {
+      "category": "時間管理",
+      "title": "持ち時間変更に合わせた時間制御",
+      "description": "持ち時間の変更に対応して時間制御を変更した。",
+      "originality": "不明",
+      "evidence": null,
+      "quote": "持時間の変更に対応し、時間制御を変更。"
+    }
+  ],
+  "character": null,
+  "notes": null,
+  "team_list_url": "http://www2.computer-shogi.org/wcsc25/team.html"
+}

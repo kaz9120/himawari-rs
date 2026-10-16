@@ -1,0 +1,44 @@
+{
+  "wcsc": 25,
+  "year": 2015,
+  "dir": "scherzo",
+  "team": "氏家 一朗",
+  "software": "scherzo",
+  "sources": [
+    "wcsc25/appeal/scherzo/appeal.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc25/appeal/scherzo/appeal.txt"
+  ],
+  "summary": "選手権とプロの棋譜から、終盤の必ず答えが出る部分を3層の浅いニューラルネットに学習させ、結果をテーブル化して評価関数に使う。入力は盤面のみ、出力は勝敗のみで、特徴量を人間が選ばず自動で学習する。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "その他",
+    "detail": "終盤を3層ニューラルネットで学習しテーブル化"
+  },
+  "search": {
+    "family": "不明",
+    "detail": null
+  },
+  "learning": "選手権の棋譜と一部プロの棋譜から、終盤の勝敗をニューラルネットに学習",
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "終盤専用の浅いニューラルネット",
+      "description": "終盤の必ず答えが出る部分を、盤面のみを入力・勝敗のみを出力とする3層ニューラルネットに学習させ、結果をテーブルにして評価関数に使う。3駒関係などの特徴量は人が選ばず自動で学習する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "特徴量を人間が選定するのでなく、自動的に学習するのが特徴です。"
+    }
+  ],
+  "character": null,
+  "notes": null,
+  "team_list_url": "http://www2.computer-shogi.org/wcsc25/team.html"
+}

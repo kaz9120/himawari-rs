@@ -1,0 +1,71 @@
+{
+  "wcsc": 29,
+  "year": 2019,
+  "dir": "Novice",
+  "team": "Noviceチーム（熊谷啓孝、矢内洋祐、幅野莞佑、笹井雄貴、堀越将司、中屋敷太一）",
+  "software": "Novice",
+  "sources": [
+    "wcsc29/appeal/Novice/wcsc29_appeal.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc29/appeal/Novice/wcsc29_appeal.pdf"
+  ],
+  "summary": "Stockfishベースのフルスクラッチ開発で、今回は教師生成・学習部を自作してライブラリから脱却した。Xeon Scalable 44台をOmni-Pathで結ぶ大規模クラスタ（LazyCluster）と、ルートでのみ使うDLのpolicyで下位2割の手を読みから外す人間的な探索が特徴。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": "Stockfishベース。横型Bitboard。ライブラリからの脱却"
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "KPPT型。elmo絞りで、0から数百億局面を深さ8〜10で生成しelmo式で学習"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "Stockfishベース。各種枝刈りを手動調整、Mate1Ply追加、置換表キー32bit化。ルートのみDL policyを併用"
+  },
+  "learning": "自作の教師生成部と学習部。数百億局面を深さ8〜10で生成、学習率・バッチサイズを調整",
+  "hardware": "Xeon Gold 6140 x 44台（Omni-Pathで接続）",
+  "language": [
+    "C/C++",
+    "C#"
+  ],
+  "claimed_strength": "第28回二次予選14位",
+  "ideas": [
+    {
+      "category": "並列・分散",
+      "title": "LazyClusterで置換表をノード間共有",
+      "description": "Lazy SMPを拡張したLazyClusterで置換表をノード間で共有し、Xeon Scalable 44台をOmni-Pathの高速通信で接続する大規模クラスタを構成する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "LazyClusterを実装 置換表をノード間で共有"
+    },
+    {
+      "category": "探索",
+      "title": "ルートのDL policyで下位2割の手を読まない",
+      "description": "任意の局面でpolicy valueを使って指し手を確率順に並べ替え、確率の低い2割を読みから外す。非常に荒いが人間的な探索と説明する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "確率の低い2割を読みから外す 非常に荒いが人間的な探索"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "横型Bitboardと置換表キー32bit化",
+      "description": "横型Bitboardを使い、置換表のキーを32bit化する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "置換表のKeyを32bit化"
+    },
+    {
+      "category": "開発手法・運用",
+      "title": "専門分野を分担するチーム体制",
+      "description": "舞台演出・FPGA・HPC・機械学習・居飛車/振り飛車アマ4段と、多様な専門分野の6人が最適化・ハード・学習・棋力を分担する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "今年のNoviceは人数+物量勝負で頑張ります"
+    }
+  ],
+  "character": "チームの専門に舞台演出・演劇・身体表現、アイドルマスターなどが並び、「人数+物量勝負」と宣言する。",
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc29/team.html"
+}

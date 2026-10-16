@@ -1,0 +1,44 @@
+{
+  "wcsc": 31,
+  "year": 2021,
+  "dir": "BFP",
+  "team": "後藤裕樹、小野一美",
+  "software": "BFP",
+  "sources": [
+    "wcsc31/appeal/BFP/appeal(BFP).pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc31/appeal/BFP/appeal%28BFP%29.pdf"
+  ],
+  "summary": "第29回のフルスクラッチ製FTS3から方針を変え、dlshogiを土台にして参加。floodgate 2018〜2020年の棋譜で深層学習し、その後1か月単位で強化学習を行った。工夫は主に学習の仕方。",
+  "base": {
+    "engine": "dlshogi",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "dlshogiのモデル"
+  },
+  "search": {
+    "family": "MCTS",
+    "detail": "dlshogiの探索"
+  },
+  "learning": "floodgate 2018〜2020年のデータで深層学習した後、強化学習を1か月単位で実施して検証",
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "教師あり学習の後に月単位の強化学習",
+      "description": "floodgate 2018〜2020年の棋譜で教師あり学習した後、1か月単位の強化学習で結果を検証しながら改良する。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "その後は強化学習を1か月単位で実施して結果検証をしております。"
+    }
+  ],
+  "character": null,
+  "notes": "第29回はFTS3（フルスクラッチ）で参加。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc31/team.html"
+}

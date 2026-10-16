@@ -1,0 +1,63 @@
+{
+  "wcsc": 20,
+  "year": 2010,
+  "dir": "bonkras",
+  "team": "伊藤英紀",
+  "software": "ボンクラーズ",
+  "sources": [
+    "wcsc20/appeal/bonkras/bonkras.html"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc20/appeal/bonkras/bonkras.html"
+  ],
+  "summary": "Bonanzaの探索エンジンをスレーブに使い、MPIでマスター・スレーブ型のクラスタ並列にした将棋ソフト。数百〜数千コアまで拡張できる構想を、開発ブログ記事で説明する。",
+  "base": {
+    "engine": "Bonanza",
+    "eval_source": "Bonanza",
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": null
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "マスターがルートから数手展開し、深さでスレーブに探索を委譲"
+  },
+  "learning": null,
+  "hardware": "Core i7 860機（4コア）、PhenomII X4機を追加予定。EC2も検討",
+  "language": [
+    "C",
+    "C++"
+  ],
+  "claimed_strength": "floodgateで1コアR約2300、4コアR約2400（2010-01時点。Bonanza本家は同じマシンで1コア2400、4コア2700）",
+  "ideas": [
+    {
+      "category": "並列・分散",
+      "title": "MPIによるクラスタ並列",
+      "description": "マスターとスレーブを別プロセスとしてMPIで接続する。共有メモリを前提にせず、安価なデスクトップCPUで数百〜数千の並列が可能になる。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "共有メモリを前提としないため、数百、数千といった大規模な並列処理が可能となります"
+    },
+    {
+      "category": "並列・分散",
+      "title": "マスターが探索木の上部を展開して委譲",
+      "description": "ルートから数手をマスターで展開し、適当な深さのノードを（局面、α、β、深さ）でスレーブへ送る。通信はマスター・スレーブ間のみ。",
+      "originality": "独自",
+      "evidence": "4コアで1.6〜1.8倍（本家は3倍程度）",
+      "quote": "マスターはルートから探索木を展開していき、適当な深さでノードの探索をスレーブに「ディスパッチ」します"
+    },
+    {
+      "category": "並列・分散",
+      "title": "スレーブ差し替え構想",
+      "description": "スレーブ側は探索関数を呼ぶだけなので、FPGA・ASICや他ソフト（GPS将棋など）もスレーブにできると考える。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "FPGAやASICのようなハードウェアをスレーブにすることも可能だし"
+    }
+  ],
+  "character": null,
+  "notes": "文書はブログ記事（2010-01）の転載。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc20/team.html"
+}

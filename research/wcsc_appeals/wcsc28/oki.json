@@ -1,0 +1,62 @@
+{
+  "wcsc": 28,
+  "year": 2018,
+  "dir": "oki",
+  "team": "tomonobu masumoto",
+  "software": "隠岐",
+  "sources": [
+    "wcsc28/appeal/oki/bunshou.txt"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc28/appeal/oki/bunshou.txt"
+  ],
+  "summary": "思考部が約673万ステップに及ぶ巨大なC言語ソフト。将棋の思考部はワンパターンになりやすいことを利用し、ソースをプログラムで自動生成している。序盤は定跡データ（同一局面・類似局面検索）、中盤以降は2手読みで指す。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "手作り",
+    "detail": "手作り（if文を羅列したルールベース。類似局面検索を含む）"
+  },
+  "search": {
+    "family": "その他",
+    "detail": "中盤以降は2手読み（森田将棋の故・森田和郎氏に教わった手法）。1手1秒を目標"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": [
+    "C"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "開発手法・運用",
+      "title": "ソースコードの自動生成",
+      "description": "将棋の思考部がワンパターンになりやすいことを利用し、将棋のソースを作るプログラムを開発して思考部（約673万ステップ、418ファイル）をコンピュータに書かせている。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "将棋の思考部はワンパターンになりやすく、それを利用して将棋ソースを作るプログラムを開発してそのプログラムにやらせてます。"
+    },
+    {
+      "category": "探索",
+      "title": "2手読みを基本にした思考",
+      "description": "中盤以降は2手読みで、人間の感覚に近いと判断して採用している。読みの緩い部分を補正した結果、ソースが巨大になった。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "２手読みとは、森田将棋の故・森田和郎さんが教えてくれた手法で人間の感覚に近いと判断しましたので"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "同一局面検索と類似局面検索",
+      "description": "序盤は定跡データの乱数による同一局面検索で指し、同一局面がなければif文の羅列による類似局面検索で指す。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "序盤は定跡データを使った同一局面検索と類似局面検索"
+    }
+  ],
+  "character": "冒頭で「アピールという言葉の意味がわからない」と野球のアピールプレーに例えてぼやく。ソースファイル一覧（418ファイル・約1.7億バイト）をdirの出力でそのまま貼り、同一タイムスタンプが多いのを自動生成の証拠とする。ソース公開は弱点がばれるのでできない、Bonanzaのソースは極端に少ない、将棋文化が失われるのを危惧するなど、独特の語り口。",
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc28/team.html"
+}

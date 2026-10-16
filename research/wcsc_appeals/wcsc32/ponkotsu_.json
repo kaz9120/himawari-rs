@@ -1,0 +1,63 @@
+{
+  "wcsc": 32,
+  "year": 2022,
+  "dir": "ponkotsu_",
+  "team": "竹内 元気",
+  "software": "ponkotsu",
+  "sources": [
+    "wcsc32/appeal/ponkotsu_/ponkotsu_wcsc32_appeal.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc32/appeal/ponkotsu_/ponkotsu_wcsc32_appeal.pdf"
+  ],
+  "summary": "定跡を使わず、DL系ソフトに振り飛車を指させることを目的にする。Policy専用とValue専用の2つの10ブロックResNetを別々に学習し、PolicyはHoneyWaffle同士の対局約2万局で学習する。",
+  "base": {
+    "engine": "dlshogi",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "Policy専用と Value専用の2つの10bResNet"
+  },
+  "search": {
+    "family": "MCTS",
+    "detail": "MCTS、並列化なし。1局面に2度推論するためNPSが低い"
+  },
+  "learning": "Policyは振り飛車ソフトHoneyWaffle同士の5分+5秒対局約2万局を20epoch（初期局面集・random move・重複局面削除なし）。Valueはfloodgate 2015〜2021年約50万局を年ごとにレーティング条件を上げ（1600〜3500）4epochずつ学習。マルチタスク学習",
+  "hardware": "Ryzen 7 2700X + GeForce RTX 2080 Ti",
+  "language": [
+    "C++",
+    "Python"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "棋風・人間らしさ",
+      "title": "定跡なしでDL系に振り飛車を指させる",
+      "description": "振り飛車ソフトHoneyWaffle同士の対局約2万局をPolicyネットの教師にして、定跡を使わずに振り飛車を指すDL系ソフトを目指す。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "定跡を用いることなくDL系ソフトに振り飛車を指させることを目的"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "PolicyとValueを別モデル・別教師で学習",
+      "description": "Policy専用はHoneyWaffle棋譜、Value専用はfloodgate棋譜で学習した2つのモデルを組み合わせる。結果として評価値が控えめで、居飛車のような将棋になるなどの課題が出たと分析する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "2つのNNモデルを使用して指し手を生成している"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "年ごとにレーティング条件を上げる学習",
+      "description": "floodgateの年ごとに下限レーティングを1600→3500に上げ、年単位で4epochずつ学習する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "各年毎にレーティングの条件指定を変えており"
+    }
+  ],
+  "character": null,
+  "notes": "課題として、評価値が控えめ、NPSが低い、捌く手を指さない、疑問手が多いを自己分析している。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc32/team.html"
+}

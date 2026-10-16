@@ -1,0 +1,46 @@
+{
+  "wcsc": 27,
+  "year": 2017,
+  "dir": "narikinshogi",
+  "team": "村山 正樹",
+  "software": "なり金将棋",
+  "sources": [
+    "wcsc27/appeal/narikinshogi/appeal.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc27/appeal/narikinshogi/appeal.txt"
+  ],
+  "summary": "初回参加時から使いまわしている基本プログラムで、教師無し学習として強化学習と遺伝的学習を組み合わせて評価関数を作っている。弱くなっても学習した評価値で臨むと書く。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "強化学習と遺伝的学習を組み合わせて作成"
+  },
+  "search": {
+    "family": "不明",
+    "detail": null
+  },
+  "learning": "強化学習と遺伝的学習を組み合わせた教師無し学習。序盤データは以前のものを使用",
+  "hardware": "Core i7 3635QM 4コア 8GB",
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "強化学習と遺伝的学習の組み合わせ",
+      "description": "教師無し学習を試すため、強化学習と遺伝的学習を組み合わせて評価値を作る。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "強化学習と遺伝的学習を組み合わせて作成している。"
+    }
+  ],
+  "character": "「たとえ、以前のものよりも弱くなっていたとしても、学習したデータで望むつもりである」と、学習の結果をそのまま受け止める姿勢。",
+  "notes": null,
+  "team_list_url": "http://www2.computer-shogi.org/wcsc27/team.html"
+}

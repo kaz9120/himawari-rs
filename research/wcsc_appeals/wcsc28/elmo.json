@@ -1,0 +1,78 @@
+{
+  "wcsc": 28,
+  "year": 2018,
+  "dir": "elmo",
+  "team": "瀧澤 誠",
+  "software": "elmo",
+  "sources": [
+    "wcsc28/appeal/elmo/elmo_wcsc28_r3.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc28/appeal/elmo/elmo_wcsc28_r3.pdf"
+  ],
+  "summary": "Ponanza方式（深い読みの評価値を教師）と激指方式（勝敗を教師）を併用して学習した評価関数と、自己対局で強化学習した定跡が売り。今年はBonanzaメソッドや定跡の強化学習を試したが、弱くて破棄した過程を率直に語るスライド。",
+  "base": {
+    "engine": "Apery（学習）+やねうら王（対局）",
+    "eval_source": "elmo(wcsc27)の評価関数",
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "KPP。elmo(wcsc27)の評価関数を土台に、評価関数マージ（足して2で割る）で改善"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "やねうら王"
+  },
+  "learning": "Ponanza方式の評価値教師と激指方式の勝敗教師を併用する強化学習（elmo方式）。自己対局で生成。Bonanzaメソッド追加は弱くて破棄",
+  "hardware": "GCE 96vCPUインスタンス",
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "勝敗と深い読みの評価値を両方教師にする",
+      "description": "激指式の自己対局の勝敗と、Ponanza式の深い読みの評価値の両方を教師にして強化学習する。単体ではPonanza式の方が強かったと報告する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "①と②両方を教師として用いる"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "Bonanzaメソッドの追加（不採用）",
+      "description": "自己対局の指し手を教師に、教師手の静止探索後の局面が他の手より高くなるよう要請するBonanzaメソッドを追加したが、弱かったので破棄した。",
+      "originality": "独自",
+      "evidence": "弱かったので破棄",
+      "quote": "弱かったので破棄"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "評価関数マージ",
+      "description": "別々に学習した評価関数を足して2で割る。最適化できていない部分同士が打ち消し合って最適解に近づく。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "評価関数マージ(評価関数を足して2で割る)の破壊力"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "自己対局の勝敗で定跡を強化学習",
+      "description": "定跡も評価関数と同様に、自己対局で勝てば重用し負ければ優先度を下げる。勝敗だけでは不安定なので探索の評価値で安定化する。12局ごとに更新。結局、定跡全体の更新は破棄した。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "定跡生成でも自己対局。勝てば重用、負ければ優先度を下げる。"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "狭く深い定跡と広く浅い定跡の合成",
+      "description": "対局による生成の狭く深い定跡と、やねうら王の定跡生成による広く浅い定跡（定跡外し対策）を組み合わせて最終的な定跡を作った。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "従来の対局による生成(狭く深い定跡) やねうら王の定跡生成(広く浅い定跡)を組み合わせて生成しました。"
+    }
+  ],
+  "character": "冒頭は「最初はマジメに作っていたのですが、挫折しました。なんか、ごめんなさい」。「もし、わしのみかたになればせかいのはんぶんをおまえにやろう」のネタ画像や、音付きの動画（YouTube）を添えた、ネタ寄りのスライド。「悔しいけど止めとく」「こっちも破棄」など失敗談を前面に出す。",
+  "notes": "評価関数・定跡はGoogle Driveで公開。Bonanza（NineDayFever）の手法を学習に借りた旨あり。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc28/team.html"
+}

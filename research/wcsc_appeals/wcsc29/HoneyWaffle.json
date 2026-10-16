@@ -1,0 +1,87 @@
+{
+  "wcsc": 29,
+  "year": 2019,
+  "dir": "HoneyWaffle",
+  "team": "渡辺 光彦",
+  "software": "HoneyWaffle",
+  "sources": [
+    "wcsc29/appeal/HoneyWaffle/HoneyWaffle_WCSC29_revised.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc29/appeal/HoneyWaffle/HoneyWaffle_WCSC29_revised.pdf"
+  ],
+  "summary": "「最強の振り飛車党ソフト」を目指す個人開発。評価関数や探索は前年のやねうら王＋Apery振り飛車評価関数のままで、半年かけて手作業で作り込んだ定跡と、AWS 96スレッド化が強化点。AlphaZeroから着想した「詰むか詰まないか」をDLで判定する構想は未実装に終わったが、その狙いを記す。",
+  "base": {
+    "engine": "やねうら王",
+    "eval_source": "Apery（振り飛車仕様に調整）",
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "Apery系KPPT。振り飛車を重視した教師で学習し、通常の評価関数とブレンド"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": null
+  },
+  "learning": "振り飛車をひいきした教師局面生成（電王トーナメント時）",
+  "hardware": "AWS EC2 1台、32スレッドから96スレッドへ",
+  "language": [
+    "C++",
+    "Go"
+  ],
+  "claimed_strength": "第28回決勝リーグ8位",
+  "ideas": [
+    {
+      "category": "棋風・人間らしさ",
+      "title": "最強の振り飛車党ソフト",
+      "description": "評価関数と定跡を振り飛車仕様にし、振り飛車対抗形に持ち込む。ソフトが振り飛車を-200などと低評価するのは「評価できていないだけ」で、振り飛車自体が悪いわけではないと主張する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "「自分の戦い方で、最強の振り飛車党ソフトを目指す」"
+    },
+    {
+      "category": "評価関数",
+      "title": "振り飛車ひいきの教師生成とブレンド",
+      "description": "振り飛車をひいきした教師局面生成で学習した評価関数を通常の評価関数とブレンドして、振り飛車評価関数を作る（第5回電王トーナメントで実施）。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "振り飛車をひいきした教師局面生成を行い、それを学習した評価関数を通常の評価関数とブレンドすることで振り飛車評価関数を作成。"
+    },
+    {
+      "category": "評価関数",
+      "title": "美濃囲い落とし穴の加点",
+      "description": "玉の美濃囲い落とし穴（28玉型）にボーナス加点する評価（第28回で採用）。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "玉の美濃囲い落とし穴（ 28玉型にボーナス加点）を採用。"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "半年かけた手作業の定跡",
+      "description": "前回の定跡ファイルをベースに、約半年かけて手動で作り込んだ定跡を使う。やねうら王のテラショック定跡の公開で、角交換振り飛車はほぼ無効化されたため、そちらへの対策を優先した。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "のべ半年程度かけて手動で作り込んだものを使用"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "詰む・詰まないの直感判定DL",
+      "description": "ディープラーニングで「詰むか詰まないか」だけを直感で分類し、玉が安全なら大駒を切って攻め、危険なら金駒で自陣を固める振り飛車党らしさを出す構想。実装の見通しが立たず断念した。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "ディープラーニングで、「詰むか詰まないか」だけを直感で判断するものを作りたかった。"
+    },
+    {
+      "category": "エンタメ・演出",
+      "title": "ゆるふわスイーツ的な名前と自作ワッフル",
+      "description": "名前は四角いワッフルが将棋盤に似ていることとスナック感覚の軽さに由来し、表紙やTwitterアイコンのワッフルは自作。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "表紙やTwitterアイコンのワッフルはうちで焼いたものを使用しています。"
+    }
+  ],
+  "character": "自称は将棋ウォーズ2級の振り飛車党。アピール文書は「ポエム」として個人の感想を多く記す。",
+  "notes": "選手権後の追記と「構成（予定）」「構成（実際の運用）」の差分を併記する構成",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc29/team.html"
+}

@@ -1,0 +1,55 @@
+{
+  "wcsc": 28,
+  "year": 2018,
+  "dir": "SilverBullet",
+  "team": "手塚 規雄、山内 浩之",
+  "software": "SilverBullet",
+  "sources": [
+    "wcsc28/appeal/SilverBullet/WCSC28_SilverBullet.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc28/appeal/SilverBullet/WCSC28_SilverBullet.pdf"
+  ],
+  "summary": "やねうら王・dlshogi・python-shogiなど異なるライブラリを1つのソフトに同居させ、局面に応じて切り替えるソフト。有名ライブラリが狙い撃ちされる対策も兼ねる。",
+  "base": {
+    "engine": "やねうら王+dlshogi",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "DL+NNUE",
+    "detail": "やねうら王系とdlshogi系の併用"
+  },
+  "search": {
+    "family": "αβ+MCTS",
+    "detail": "序中盤と中終盤でライブラリ（探索・評価）を切り替える"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": [
+    "C++",
+    "C#"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "探索",
+      "title": "局面に応じてライブラリを切り替える",
+      "description": "序盤・中盤・終盤で得意なライブラリが違うとして、序中盤と中終盤で使うライブラリを切り替える。切り替えのタイミングは手数でなく、持ち駒・駒の配置・成り駒の有無・打ち込み先の多さなどの局面から判断する（研究中）。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "ライブラリ変更タイミングは手数でなく局面から判断する。"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "有名ライブラリの狙い撃ち対策",
+      "description": "第5回電王トーナメントでやねうら王への露骨な対策が見られたため、有名ライブラリと狙い撃ちされにくいライブラリを同居させて対策する。棋力は下がるデメリットがある。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "有名ライブラリと狙い撃ちされにくいライブラリを同居させることでアンチ対策ができるメリットがある。"
+    }
+  ],
+  "character": "ソフト名は、ソフトウェア工学の論文「No Silver Bullet（銀の弾丸はない）」に反抗して「銀の弾丸はあるよ！」と挑む無謀な挑戦から。",
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc28/team.html"
+}

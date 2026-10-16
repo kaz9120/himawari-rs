@@ -1,0 +1,54 @@
+{
+  "wcsc": 25,
+  "year": 2015,
+  "dir": "N4S",
+  "team": "横内 健一",
+  "software": "N4S",
+  "sources": [
+    "wcsc25/appeal/N4S/appeal.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc25/appeal/N4S/appeal.txt"
+  ],
+  "summary": "4駒関係の評価関数をプロ棋譜から学習する。持ち駒を駒台という盤上配置の一部として学習して要素数を52から38に減らし、KKPP限定で探索速度を落とさずに評価できる。今回は相対的に同じ位置関係をまとめて学習する（絶対KPP・相対KPPの導入）。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "KKPP（4駒関係の一部）、絶対・相対KPP"
+  },
+  "search": {
+    "family": "不明",
+    "detail": null
+  },
+  "learning": "プロ棋譜から機械学習。相対的に同じ駒関係をまとめて学習",
+  "hardware": null,
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "持ち駒を駒台の配置として扱う",
+      "description": "持ち駒を「駒台」という盤上の一部の配置として学習し、評価リストの要素数を52から38に減らして計算量を減らす。",
+      "originality": "独自",
+      "evidence": "要素数52→38",
+      "quote": "『持ち駒』も『駒台』という『盤上』の一部の配置として学習すること"
+    },
+    {
+      "category": "評価関数",
+      "title": "絶対KPPと相対KPPの導入",
+      "description": "相対的に同じ駒の位置関係をまとめて学習する、絶対KPP・相対KPPを導入する。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "いわゆる絶対KPP,相対KPP"
+    }
+  ],
+  "character": null,
+  "notes": null,
+  "team_list_url": "http://www2.computer-shogi.org/wcsc25/team.html"
+}

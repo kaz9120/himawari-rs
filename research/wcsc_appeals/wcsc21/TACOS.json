@@ -1,0 +1,35 @@
+{
+  "wcsc": 21,
+  "year": 2011,
+  "dir": "TACOS",
+  "team": "TACOSチーム",
+  "software": "TACOS",
+  "sources": [
+    "wcsc21/appeal/TACOS/appeal.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc21/appeal/TACOS/appeal.txt"
+  ],
+  "summary": "昨年までとまったく同じ。選手権までに並列化のバグを直したい、という短文。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "不明",
+    "detail": null
+  },
+  "search": {
+    "family": "不明",
+    "detail": null
+  },
+  "learning": null,
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [],
+  "character": null,
+  "notes": "内容は第20回と同じ。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc21/team.html"
+}

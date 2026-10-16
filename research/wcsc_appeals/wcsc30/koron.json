@@ -1,0 +1,78 @@
+{
+  "wcsc": 30,
+  "year": 2020,
+  "dir": "koron",
+  "team": "野田 煌介",
+  "software": "koron",
+  "sources": [
+    "wcsc30/appeal/koron/appeal.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc30/appeal/koron/appeal.pdf"
+  ],
+  "summary": "やねうら王とNNUE型評価関数を使う初参加チーム。教師局面は量重視で大量生成し、評価関数を中終盤に特化して学習する。序盤限定の定跡とのハイブリッド方式で、定跡生成を他者の4倍の速さにする非公開の改造をしたと主張する。",
+  "base": {
+    "engine": "やねうら王",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "NNUE",
+    "detail": "NNUE型。中盤・終盤に特化して学習"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": null
+  },
+  "learning": "質より量を重視した大量の教師局面",
+  "hardware": "Ryzen 9 3950X 16コア",
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "中盤・終盤特化の学習",
+      "description": "評価関数を中盤と終盤に特化するように学習する。",
+      "originality": "不明",
+      "evidence": null,
+      "quote": "koron では評価関数を中盤、終盤に特化するように学習を行っている。"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "序盤限定の定跡と評価関数のハイブリッド",
+      "description": "中盤の局面を定跡に入れても実際にはその局面にならないため、定跡の生成局面を序盤に限り、中盤以降は評価関数で補うハイブリッド方式にする。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "生成局面を序盤に限定しお互いを補うハイブリット方式を採用。"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "定跡生成を4倍速にする秘密の改造",
+      "description": "定跡生成で秘密の改造をして、他者の4倍の生成速度を得たと主張する。弱点が突かれる懸念があるので、大会後に要望が多ければ公開するとする。",
+      "originality": "独自",
+      "evidence": "他者の4倍の生成速度",
+      "quote": "定跡の生成では秘密の改造を行うことにより他者の 4 倍の生成速度を手に入れることに成功した。"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "今大会最大容量の定跡",
+      "description": "定跡の大量生産で、今大会でいちばん容量の大きい定跡を目指す。",
+      "originality": "不明",
+      "evidence": null,
+      "quote": "定跡の大量生産(今大会で一番容量の大きい定跡を目指す。）"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "量重視の教師局面",
+      "description": "教師局面は質よりも量を重視して大量に生成する。",
+      "originality": "不明",
+      "evidence": null,
+      "quote": "教師局面は質よりも量を重視し、大量に生成する。"
+    }
+  ],
+  "character": null,
+  "notes": "暫定版の文書。NNUE採用の理由は、wcsc29の上位チームの多くがNNUE型だったため",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc30/team.html"
+}

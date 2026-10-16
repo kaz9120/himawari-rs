@@ -1,0 +1,71 @@
+{
+  "wcsc": 27,
+  "year": 2017,
+  "dir": "GANShogi",
+  "team": "大渡 勝己",
+  "software": "GAN将棋",
+  "sources": [
+    "wcsc27/appeal/GANShogi/wcsc27_ganshogi_2.pdf"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc27/appeal/GANShogi/wcsc27_ganshogi_2.pdf"
+  ],
+  "summary": "GANで評価関数を学習したいという構想で付けた名前だが、実際にはTensorflowによる1手も読まない方策ネットShogiNetを作ったところまで。Aperyをベースに、107チャネルの入力と移動元・移動先を別々に出力する13層CNNで、floodgateレート1370程度。",
+  "base": {
+    "engine": "Apery",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "ShogiNet。13層192チャネルのCNN。方策のみ"
+  },
+  "search": {
+    "family": "不明",
+    "detail": "ShogiNetは1手も読まない方策関数"
+  },
+  "learning": "プロ棋譜6万局、floodgate棋譜5万局、uuunuuun氏公開棋譜2万局程度（計1700万局面）の教師あり学習",
+  "hardware": null,
+  "language": [
+    "C++",
+    "Python"
+  ],
+  "claimed_strength": "ShogiNetのfloodgateレート1370程度（2017/5/2時点、最近2週間）。教師手との一致率51.8%",
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "移動元・移動先を分けた方策出力",
+      "description": "最終層で駒の移動元（盤面11x11+持ち駒7の128クラス）と移動先（11x11x駒種14の1694クラス）を別々に分類し、確率を掛けて手のスコアにする。移動先を駒種別にして「ここにこの駒があればいい」という感覚の獲得を狙う。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "移動先を駒種別に分けることで、「ここにこの駒があればいいな」という感覚の獲得を目指しています"
+    },
+    {
+      "category": "評価関数",
+      "title": "駒の動きに合わせた多様な畳み込みフィルタ",
+      "description": "1x9、3x5、3x3、1x1など様々な形の畳み込みフィルタをconcatして、将棋の駒の多様な動きに合わせる。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "将棋の駒は様々な動き方をするので、それに合わせて色々な形の畳み込みフィルターを使っています"
+    },
+    {
+      "category": "評価関数",
+      "title": "107チャネルの入力特徴",
+      "description": "11x11の入力に、盤上の駒・持ち駒・利き・飛び駒の隠れた利き・利いている駒の数・歩のある筋・成りゾーンなど計107チャネルを与える。Aperyのdc BBやpinnedも使う。後手番は盤面を反転する。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "ニューラルネットへの入力画像は 11 x 11 のサイズ(盤端にパディングあり) で"
+    },
+    {
+      "category": "棋風・人間らしさ",
+      "title": "序盤が綺麗で逆転の目がある人間向けの相手",
+      "description": "1手も読まないので序盤は綺麗で、中盤以降は頑張れば勝てそう、劣勢でも逆転の目があり絶望感がない。人間の対戦相手として面白い存在になると感じた。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "劣勢でも逆転の目があり絶望感がない（どうせ読めてないし）"
+    }
+  ],
+  "character": "名前はGANで学習したい思いから付けたが実際は教師あり学習、という構成。「王手ラッシュまで再現」といった手触りをユーモアも交えて紹介している。",
+  "notes": "Ponanza Chainer発表後に「既存ライブラリ+ディープラーニング」へ方針転換した経緯の記述あり。5/4付。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc27/team.html"
+}

@@ -1,0 +1,63 @@
+{
+  "wcsc": 34,
+  "year": 2024,
+  "dir": "Niban_Shibori",
+  "team": "芝 世弐（ビール工房HFT支店）",
+  "software": "二番絞り",
+  "sources": [
+    "wcsc34/appeal/Niban_Shibori/appeal.txt"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc34/appeal/Niban_Shibori/appeal.txt"
+  ],
+  "summary": "最高精度の大きなモデルを作る試みで、2022年に準優勝した。今年は新しい試みを加えたが十分に計測できておらず、旧版が強ければ旧版で出る可能性がある。2022年版は一手も読まずに将棋倶楽部24でレート2949・八段認定を得た。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "最高精度を目指す大型モデル"
+  },
+  "search": {
+    "family": "MCTS",
+    "detail": "PV-MCTS"
+  },
+  "learning": null,
+  "hardware": "GCP a2-megagpu-16g（A100×16）",
+  "language": [
+    "C++",
+    "Python"
+  ],
+  "claimed_strength": "2022年版は無探索で将棋倶楽部24レート2949・八段。GTX1080Ti版でfloodgate短期レート4500台、のち4100〜4200",
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "最高精度の大型モデル",
+      "description": "局面評価精度を最大化する大きなモデルを作る。2022年版は一手も局面展開せずに24で八段認定を受けた。",
+      "originality": "独自",
+      "evidence": "24でレート2949、八段認定",
+      "quote": "一手の局面展開も行わず将棋倶楽部24でレート2949、八段認定頂いている"
+    },
+    {
+      "category": "ハードウェア",
+      "title": "GTX1080Tiでのfloodgate投入",
+      "description": "電竜戦ハード統一戦準優勝の記念に、2017年の統一戦を思い出してGTX1080Ti版をfloodgateに投入し、短期レート4500台を記録した。",
+      "originality": "独自",
+      "evidence": "短期レート4500台、落ち着いて4100〜4200",
+      "quote": "GTX1080Tiの二番絞りをfloodgateに投入したところ短期レート4500台を記録した"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "学会発表と連動した研究",
+      "description": "深層学習モデルの最適化や探索の時間利用の研究を、ゲーム情報学研究会やGPWで発表している。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "芝，「将棋のPV-MCTSに向けた深層学習モデルの最適化」"
+    }
+  ],
+  "character": "強さ・精度への自信を強い言葉（前人未到の領域）で語る文体。",
+  "notes": "新しい試みは未計測。詳細は2022年のアピール文書を参照するよう書かれている。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc34/team.html"
+}

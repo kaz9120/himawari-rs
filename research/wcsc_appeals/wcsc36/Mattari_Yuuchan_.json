@@ -1,0 +1,62 @@
+{
+  "wcsc": 36,
+  "year": 2026,
+  "dir": "Mattari_Yuuchan_",
+  "team": "東京農工大学旧小谷研究室（小谷 善行）",
+  "software": "まったりゆうちゃん",
+  "sources": [
+    "wcsc36/appeal/Mattari_Yuuchan_/appeal2026.docx"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc36/appeal/Mattari_Yuuchan_/appeal2026.docx"
+  ],
+  "summary": "1990年過ぎから約四半世紀にわたり開発を続ける完全独自開発のシステム。ディープラーニング以外の進化論的計算など別方式や、複数システムを動かしてデータをやり取りする並列方式を試している。今年はデバッグと改良に生成AI（ChatGPT・Gemini）を活用した。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": "完全独自開発。他システムは考え方を参考にするのみ"
+  },
+  "eval": {
+    "family": "その他",
+    "detail": "進化論的計算など、パラメータ学習以外の方式や、DLと多量パラメータ学習の中間的なメカニズムを検討中"
+  },
+  "search": {
+    "family": "不明",
+    "detail": "複数のシステムを動作させ、データをやり取りして並列動作する方式を検討中"
+  },
+  "learning": null,
+  "hardware": "Ryzen 7（一覧ページ）",
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "研究・実験的",
+      "title": "進化論的計算などDL以外の方式",
+      "description": "AIといえばパラメータ学習が主流の中、進化論的計算などの方式を試す。ディープラーニングと多量パラメータ学習の中間的なメカニズムも考えたい。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "しかしそうでない進化論的計算などの方式を試そうとしている。"
+    },
+    {
+      "category": "並列・分散",
+      "title": "複数システム間のデータ交換による並列",
+      "description": "複数のシステムを動作させ、その間でデータをやり取りして並列動作をする方法を検討中。全面書き換えで実現できると考えている。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "複数のシステムを動作させて、その間でデータをやり取りして並列動作をする方法を検討している。"
+    },
+    {
+      "category": "開発手法・運用",
+      "title": "生成AIでデバッグと改良",
+      "description": "デバッグと改良にChatGPTとGeminiを活用する。新しいやり方になると思われるとしている。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "今回はデバッグと改良に生成AIを活用している。"
+    }
+  ],
+  "character": "開発者の年齢が最も高いのではないかとして、コーディング能力がいつまで続くか試したいと書く。当初のコードも多く残る、1990年過ぎからの長寿システム。",
+  "notes": "まだうまく動作するに至っていない、との記載。実現できるか分からないと自己申告。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc36/team.html"
+}

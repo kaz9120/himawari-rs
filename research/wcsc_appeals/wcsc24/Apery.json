@@ -1,0 +1,70 @@
+{
+  "wcsc": 24,
+  "year": 2014,
+  "dir": "Apery",
+  "team": "平岡 拓也、杉田 歩、山本 修平",
+  "software": "Apery",
+  "sources": [
+    "wcsc24/appeal/Apery/appeal_wcsc24.html"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc24/appeal/Apery/appeal_wcsc24.html"
+  ],
+  "summary": "Stockfish流の探索とBonanza流3駒関係の評価関数が基本。今回は評価関数をBonanza Methodで一から学習し、入玉評価の調整と高速化を行った。定跡はfloodgate上位ソフトの勝ち棋譜から生成した「やね裏定跡」で、相手によって最初の数手を決め打ちする。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": "Stockfish流探索、Bonanza流評価関数"
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "Bonanza式3駒関係を一から独自に学習"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "Stockfishを真似した探索、Magic Bitboard"
+  },
+  "learning": "Bonanza Methodで評価関数を学習",
+  "hardware": "Core i7 3930K",
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": "第23回9位、第1回電王トーナメント6位",
+  "ideas": [
+    {
+      "category": "定跡・序盤",
+      "title": "floodgate上位ソフトの勝ち棋譜から生成した定跡",
+      "description": "floodgateで上位のソフトが不利にならずに勝ち切った棋譜から定跡を作る。「やね裏定跡」で、前年の電王トーナメントで痛い目にあったため逆に仕込んだ。相手によって最初の数手は決め打ちする。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "いわゆる「やね裏定跡」で、昨年の将棋電王トーナメントで痛い目にあったので今回は逆に仕込んでみました。"
+    },
+    {
+      "category": "評価関数",
+      "title": "多項式や三角関数による評価関数の近似表現",
+      "description": "多項式や三角関数を使って評価関数を近似的に表現する試み。間に合わなかった。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "多項式や三角関数を使った評価関数の近似的表現の試み"
+    },
+    {
+      "category": "並列・分散",
+      "title": "クラスタ構成の開発",
+      "description": "クラスタ探索を開発中としたが、追記で間に合わなかったと述べる。",
+      "originality": "不明",
+      "evidence": null,
+      "quote": "クラスタ構成の為のプログラムは間に合いませんでした。"
+    },
+    {
+      "category": "入玉",
+      "title": "入玉評価の調整",
+      "description": "入玉を評価するための調整を行った。",
+      "originality": "不明",
+      "evidence": null,
+      "quote": "入玉を評価する為の調整を行いました。"
+    }
+  ],
+  "character": "「猿真似」の名と「最近は切られ役として良い感じです」「マクドばかり食べています」など自虐的な自己紹介。大阪市立大学数理工学研究室の2名が新加入。",
+  "notes": null,
+  "team_list_url": "http://www2.computer-shogi.org/wcsc24/team.html"
+}

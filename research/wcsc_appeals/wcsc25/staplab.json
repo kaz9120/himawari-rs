@@ -1,0 +1,35 @@
+{
+  "wcsc": 25,
+  "year": 2015,
+  "dir": "staplab",
+  "team": "不明（staplab）",
+  "software": "staplab",
+  "sources": [
+    "wcsc25/appeal/staplab/pr.pdf"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc25/appeal/staplab/pr.pdf"
+  ],
+  "summary": "「違う意味で有名な名前」「200回は成功しました」というネタを入れた短い文書。ひねもすのたりと同じ文面で、PVS全幅探索、配列の駒データと利きテーブル、Bonanza 6.0のfv.binを使い、毎秒260〜400万手を読む。",
+  "base": {
+    "engine": "Bonanza",
+    "eval_source": "Bonanza 6.0のfv.bin",
+    "note": "Bonanzaを少し改造"
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "Bonanza 6.0のfv.bin"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "PVS全幅探索、Bonanza流の枝刈り"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [],
+  "character": "名前がホッチキス（stapler）とNHKの「スタップ細胞」を連想させるネタで、「２００回は成功しましたぁ」と引用して笑いを取る。",
+  "notes": "文面の大半はひねもすのたり（第23〜24回）と共通。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc25/team.html"
+}

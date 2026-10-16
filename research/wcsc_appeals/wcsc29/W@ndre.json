@@ -1,0 +1,70 @@
+{
+  "wcsc": 29,
+  "year": 2019,
+  "dir": "W@ndre",
+  "team": "櫻井 博光",
+  "software": "W@ndre",
+  "sources": [
+    "wcsc29/appeal/W@ndre/wandre_appeal-v3.html"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc29/appeal/W%40ndre/wandre_appeal-v3.html"
+  ],
+  "summary": "振り飛車に強い評価関数を目指すチーム。居飛車を過大評価しない評価関数を、十数種類の特殊な初期局面から教師を生成して学習し、NNUEのネットワーク構造を変えた振り飛車NNUEと、向飛車の定跡を組み合わせる。後日追記で予想と違った結果も率直に記す。",
+  "base": {
+    "engine": "やねうら王",
+    "eval_source": "tanuki-のNNUE（ネットワーク構造を変更）。KPPT型の振り飛車評価関数",
+    "note": null
+  },
+  "eval": {
+    "family": "NNUE",
+    "detail": "halfKP_256x2-32-32-32-32-32-32（NPSは256x2-32-32比で約80%）"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": null
+  },
+  "learning": "通常の初期局面ではなく十数種類の特定初期局面から教師を生成して強化学習。orqha（R4330相当）で各初期局面からランダムムーブを入れて局面生成",
+  "hardware": "Core i7-7700HQ + Amazon EC2 m5.24xlarge",
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": "SDT5: 19位、WCSC28: 16位",
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "特殊初期局面からの教師生成で居飛車過学習を避ける",
+      "description": "通常の初期局面は飛車先を突きやすく居飛車を過大評価しやすいと仮定し、十数種類の特定の初期局面から教師局面を生成して学習する。着想はやねうら王の「人間の棋譜を用いない学習」と習甦。結果は予想に反し、矢倉を好む棋風になった。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "通常の初期局面が飛車先を突きやすく居飛車を過大評価しやすい状況だと仮定し"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "評価関数を読み込まない時の初手傾向の調査",
+      "description": "評価関数なしのエンジンの初手が探索部ごとに異なる（やねうら王4.83と技巧2は16歩、Aperyは飛車先、nozomiは角道、Bonanza6は16歩から26歩など）と調べた。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "やねうら王 (v4.83) や技巧2では16歩など端歩を突く、shogi686 (SDT4)、Apery (WCSC28) では飛車先を突く"
+    },
+    {
+      "category": "棋風・人間らしさ",
+      "title": "向飛車のレパートリー拡大",
+      "description": "去年の定跡（角頭歩、阪田流向飛車、都成流、ダイレクト向飛車）が向飛車ばかりだったことを踏まえ、角不換型の向飛車も指せるよう、奇襲戦法の棋書を参考に定跡を増やす。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "角不換型の向飛車も指せた方がいいだろう、ということで今年は向飛車のレパートリーを増やします。"
+    },
+    {
+      "category": "棋風・人間らしさ",
+      "title": "奇襲・変則戦法の棋書で定跡を作る",
+      "description": "「消えた戦法の謎」「超阪田流角命戦法」「奇襲大全」など、奇襲戦法の棋書を多数参考にして定跡を作る。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "勝俣清和　「消えた戦法の謎」"
+    }
+  ],
+  "character": "名前は「wander」で「wonder」な将棋を指してほしいという意図。奇襲・ワンダー戦法を並べた参考書リストに個性が出る。",
+  "notes": "1/17初版から5/17追記までの更新履歴付き。ディレクトリ名は W@ndre",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc29/team.html"
+}

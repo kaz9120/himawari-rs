@@ -1,0 +1,52 @@
+{
+  "wcsc": 31,
+  "year": 2021,
+  "dir": "NENE_Shogi",
+  "team": "日髙 雅俊",
+  "software": "ねね将棋",
+  "sources": [
+    "wcsc31/appeal/NENE_Shogi/wcsc31_appeal_neneshogi_20210318.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc31/appeal/NENE_Shogi/wcsc31_appeal_neneshogi_20210318.pdf"
+  ],
+  "summary": "昨年までの独自の探索・評価関数をやめ、dlshogiライブラリに全面依存。MCTSの方策関数が小さい確率を出す有望手を見落とす欠点を、やねうら王+elmo(2019)の1000ノード探索の最善手を方策にブレンドして補う。無改造のdlshogiよりレート+70程度。",
+  "base": {
+    "engine": "dlshogi",
+    "eval_source": "GCT（電竜戦2020版）。補助にelmo（WCSC29版NNUE型）",
+    "note": null
+  },
+  "eval": {
+    "family": "DL+NNUE",
+    "detail": "dlshogi（GCT評価関数）を使用。補助探索にelmo(2019)のNNUE"
+  },
+  "search": {
+    "family": "αβ+MCTS",
+    "detail": "dlshogiのMCTSに、やねうら王の1000ノード探索の最善手を方策関数の結果へブレンド"
+  },
+  "learning": null,
+  "hardware": "Core i5-7600K（4コア）、GeForce GTX 1060 6GB。dlshogi 約2500nps、やねうら王は1コア約900,000nps",
+  "language": "C++, Python",
+  "claimed_strength": "無改造のdlshogiと比べてレート+70程度",
+  "ideas": [
+    {
+      "category": "探索",
+      "title": "全幅探索の最善手を方策へブレンド",
+      "description": "MCTSの方策関数が有望手に小さい確率を付けるとその手を評価できない欠点を、やねうら王+elmo評価関数(2019)の1,000ノードの探索の最善手を方策とブレンドして補う。広義の評価関数アンサンブル。",
+      "originality": "独自",
+      "evidence": "無改造dlshogiよりレート+70程度。ただしelmoに対する勝率はわずかに下がり相性がある",
+      "quote": "1,000 ノード分の探索を行い、その最 善手を方策関数の結果とブレンドする手法を開発しました。"
+    },
+    {
+      "category": "開発手法・運用",
+      "title": "第三者が使いやすいdlshogiライブラリ依存",
+      "description": "強化学習の計算資源が捻出できず、改良箇所を第三者が利用しやすくするため、独自探索・評価関数からdlshogiへ全面依存に方針転換した。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "dlshogi ライブラリに全面的に依存するよう方針を変更しました。"
+    }
+  ],
+  "character": "棋風について「深層学習型とも従来型とも違う棋風が出たら面白い」と語る。",
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc31/team.html"
+}

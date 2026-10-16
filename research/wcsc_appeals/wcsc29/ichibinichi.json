@@ -1,0 +1,54 @@
+{
+  "wcsc": 29,
+  "year": 2019,
+  "dir": "ichibinichi",
+  "team": "花井 祐",
+  "software": "ichbinichi",
+  "sources": [
+    "wcsc29/appeal/ichibinichi/20190324_ichibinichi.txt"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc29/appeal/ichibinichi/20190324_ichibinichi.txt"
+  ],
+  "summary": "Java製で、プロ棋譜と自己対戦棋譜で別々にボナンザメソッド学習した2つの評価関数をブレンドする。他人のコードは使わない方針を貫く個人開発で、文書の後半は強化学習やJava並列化の苦闘を綴った開発月報。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "KP＋玉周りの利き＋序盤のみの簡易3駒関係。プロ棋譜学習のA、水平線効果を制限した自己対戦棋譜学習のBをブレンドしてC"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "全幅探索、aspiration、futility、null move、多重反復深化、ポンダー、先読み探索。並列探索は検討中。ビットボード不使用"
+  },
+  "learning": "プロ棋譜33000局でボナンザ法学習。水平線効果を制限した特別版の自己対戦約10万局から稀な局面を玉位置で選んで追加学習",
+  "hardware": null,
+  "language": [
+    "Java"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "プロ棋譜と自己対戦棋譜の評価関数ブレンド",
+      "description": "プロ棋譜で学習した評価関数Aと、水平線効果を極端に制限した特別版で約10万局の自己対戦を行い、プロ棋譜に稀な局面を玉の位置で選んで学習した評価関数Bを混ぜて最終評価関数Cとする。林らの半教師あり学習論文を参考にした。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "評価関数（A）と評価関数（B）をブレンドして評価関数（C）をつくり、これを最終的な評価関数にしています。"
+    },
+    {
+      "category": "開発手法・運用",
+      "title": "自力主義と開発月報の公開",
+      "description": "他人のコードを丸ごと使うことには興味がないとし、「富士山にヘリコプターで登っても楽しくない」と述べる。1年分の開発月報（バグ、強化学習、Java並列化の苦労）も添付する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "富士山にヘリコプターを使って登っても楽しくないのではないだろうか。"
+    }
+  ],
+  "character": "名前はドイツ語で「俺は俺だ」。「古典書のような内容」「これぞという工夫がない」と謙遜しつつ、苦闘を飾らず書く。",
+  "notes": "旧名Wildcat。方策勾配法による強化学習は半年粘ったが成功しなかったと記載",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc29/team.html"
+}

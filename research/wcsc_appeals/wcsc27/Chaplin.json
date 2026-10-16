@@ -1,0 +1,46 @@
+{
+  "wcsc": 27,
+  "year": 2017,
+  "dir": "Chaplin",
+  "team": "星井渡、酒井佑樹、陣ふゆ実（宇宙将棋連合 エビでクラゲを釣る支部）",
+  "software": "Chaplin",
+  "sources": [
+    "wcsc27/appeal/Chaplin/appeal.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc27/appeal/Chaplin/appeal.txt"
+  ],
+  "summary": "やねうら王ベースで、プロ棋士の棋譜からChainerで評価関数をディープラーニング学習したソフト。コンピュータ将棋へのディープラーニング応用への挑戦という位置づけ。",
+  "base": {
+    "engine": "やねうら王",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "Chainerでプロ棋士の棋譜から評価関数を学習"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "やねうら王の探索"
+  },
+  "learning": "プロ棋士の棋譜をもとにChainerで評価関数を学習",
+  "hardware": null,
+  "language": [
+    "Python"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "Chainerによる評価関数のDL学習",
+      "description": "Pythonのディープラーニングフレームワークchainerで、プロ棋士の棋譜から評価関数を学習する。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "プロ棋士の棋譜をもとに評価関数の学習を実行しました。"
+    }
+  ],
+  "character": null,
+  "notes": "参加者一覧のキャンセル欄に記載（開発者名は一覧の並びから推定）。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc27/team.html"
+}

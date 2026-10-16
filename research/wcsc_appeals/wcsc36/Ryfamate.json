@@ -1,0 +1,82 @@
+{
+  "wcsc": 36,
+  "year": 2026,
+  "dir": "Ryfamate",
+  "team": "駒の書体（Komafont）",
+  "software": "Ryfamate",
+  "sources": [
+    "wcsc36/appeal/Ryfamate/Ryfamate_appeal20260331(1).html",
+    "wcsc36/appeal/Ryfamate/review_ryfamate_20250519.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc36/appeal/Ryfamate/Ryfamate_appeal20260331%281%29.html",
+    "https://www.apply.computer-shogi.org/wcsc36/appeal/Ryfamate/review_ryfamate_20250519.pdf"
+  ],
+  "summary": "1台のPCでDL系エンジン（GPU）とNNUE系エンジン（CPU）を同時に動かし、意見が割れたときだけ第3のエンジンに聞く変則多数決合議のソフト。独自のDL評価関数RyfcNetは、盤面の全幅を覆うC-Layerが特徴。今年は終盤の詰みの見落としを教師に入れる工夫と、NNUE棋譜からの知識蒸留に取り組んだ。",
+  "base": {
+    "engine": "やねうら王+dlshogi",
+    "eval_source": null,
+    "note": "探索部にdlshogiとやねうら王を一部改良して使用。詰み手順の教師生成にKomoringHeightsを使用"
+  },
+  "eval": {
+    "family": "DL+NNUE",
+    "detail": "RyfcNet（ResNet+Transformer、S-Layer・C-Layer・A-Layer・F-Layer）。Gated AttentionとMixture of Expertsを導入。NNUE系との合議"
+  },
+  "search": {
+    "family": "αβ+MCTS",
+    "detail": "DL-MCTSとNNUE-αβの変則多数決合議。2エンジンの意見が異なるときのみ第3のエンジンに意見を聞く"
+  },
+  "learning": "低ノード探索で見落とした詰み手順を教師に含める。NNUE型エンジン生成の棋譜に、評価値が一定範囲内の局面のみDL系で再評価する知識蒸留（policyの合成も）",
+  "hardware": "Ryzen 9 5950X + RTX 4090 x1（決勝リーグのみ RTX 4090 x8）",
+  "language": [
+    "C++",
+    "C#",
+    "Python"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "探索",
+      "title": "変則多数決合議",
+      "description": "DL系エンジンとNNUE型エンジンを同時に思考させ、意見が異なる場合にのみ第3のエンジンに意見を聞く。DLは終盤、NNUEは序盤の精度が上がり、両者の一致率が増えているという観察も書く。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "両エンジンの意見が異なる場合にのみ第 3 のエンジンに意見を聞く変則合議"
+    },
+    {
+      "category": "評価関数",
+      "title": "C-Layer（盤面全幅カーネルの畳み込み）",
+      "description": "任意の2つ以上の次元について入力空間と同じ長さのカーネルを使い、それ以外の次元でのみ移動させる畳み込み。ResNetより少ない演算量で、絶対位置に依存する情報や離れたマス同士の関係を認識できる。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "C-Layer の発明が挙げられる。"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "低ノード探索が見落とした詰みを教師に",
+      "description": "低NPSのDL系評価関数は終盤に致命的な詰み見落としをするため、そうした詰み手順をKomoringHeightsで求めて学習対象に含める。小規模モデルでレーティングの改善はなかったが、終盤の逆転の頻度は大きく減った。",
+      "originality": "独自",
+      "evidence": "終盤の逆転頻度が大幅に減少（小規模モデル実験）",
+      "quote": "Mating lines missed by low-node search were included in the training targets."
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "NNUE棋譜に対するDL系の知識蒸留",
+      "description": "NNUE型エンジンの棋譜のうち、評価値が一定範囲の局面のみDL系で再評価して蒸留し、範囲外はそのまま教師にする。棋譜のpolicyとDLのpolicyを合成する。学習初期に使うと、正解手に極小確率を割り当てる頻度が大きく減った。",
+      "originality": "独自",
+      "evidence": "正解手に極端に小さい確率を割り当てる頻度が大幅に減少",
+      "quote": "棋譜の policy と DL 系評価関数の policy を合成するなど、教師信号の調整も行っている。"
+    },
+    {
+      "category": "評価関数",
+      "title": "空間方向とチャネル方向の適応的重み付けの併用",
+      "description": "Self-Attentionなど空間方向の適応的重み付けと、Squeeze-and-Excitation・Gate機構などチャネル方向の適応的重み付けを組み合わせる。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "Self-Attention などの空間方向の適応的重み付けと、Squeeze-and-Excitation や Gate 機構などのチャネル方向の適応的な重み付けを組み合わせている。"
+    }
+  ],
+  "character": "名前は、結核治療で耐性を防ぐ2剤併用薬のRifamateに由来する。NNUE-αβとDL-MCTSが互いの弱点を補う構想を、感染症の併用療法にたとえる。「おうちパソコンのパワーを最大限活用する」というコンセプトで、個人の計算資源でも合議と構造の工夫で戦えることを示す。",
+  "notes": "概要版（HTML、3/31、英語）と大会後アピール文（PDF、ファイル名は20250519だが内容はWCSC36）の2文書。大会後版には、MoEや蒸留の学習初期の成果の記述がある。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc36/team.html"
+}

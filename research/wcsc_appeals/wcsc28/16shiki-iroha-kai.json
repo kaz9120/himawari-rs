@@ -1,0 +1,70 @@
+{
+  "wcsc": 28,
+  "year": 2018,
+  "dir": "16shiki-iroha-kai",
+  "team": "末吉 竜介",
+  "software": "十六式いろは改",
+  "sources": [
+    "wcsc28/appeal/16shiki-iroha-kai/16iroha_pr-wcsc28.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc28/appeal/16shiki-iroha-kai/16iroha_pr-wcsc28.pdf"
+  ],
+  "summary": "Lua（luvi/LuaJIT）で書いた、ライブラリ不使用の「エンジョイ勢」ソフト。手作業調整の評価と浅い探索で、実力での1勝と記憶に残ることを目標にする。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "手作り",
+    "detail": "駒の損得・駒の効率・玉の硬さ・利き・ひも付き・手の強さ・厚み・位取りを手作業で調整"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "反復深化とαβ。狭く浅い（3手先程度）探索で静的評価を重視"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": [
+    "Lua"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "エンタメ・演出",
+      "title": "局地深読み・局地暴走・広域暴走モード",
+      "description": "相手の打った位置を中心に9〜16マスだけを深く読み王手を狙うモード、9マス内でランダムに指すモード、合法手からランダムに指す悪あがきモードを搭載する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "広域暴走モード（悪あがきモード）：合法手の中から、ランダムに指す。たまに奇跡を起こす！？"
+    },
+    {
+      "category": "棋風・人間らしさ",
+      "title": "序盤は箱入り娘を目指す",
+      "description": "序盤は居飛車で「箱入り娘」を目指し、その後は全合法手を評価して指す。ソフトを「娘」と位置づける。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "序盤は居飛車党で 「箱入り娘」 を一心不乱に目指し"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "Lua+luviで実行形式を生成",
+      "description": "スクリプト言語のLuaをLuaJIT入りのluviで実行形式にし、速度の遅さをある程度克服する。ソース量もC言語より20〜30%減ったとする。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "簡単に実行形式のファイルを出力でき、ソースの量も C 言語よりも 20～30％くらい減りました"
+    },
+    {
+      "category": "その他",
+      "title": "初心者に優しい弱さ",
+      "description": "将棋所対応エンジンの中で最も初心者に優しい弱さを売りにする。「いろはは待たせませんっ！」が大きな特徴。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "もっとも初心者にとって優しい弱さです"
+    }
+  ],
+  "character": "完全にエンジョイ勢・記念参加勢・イチから勢を自称。目標は実力での1勝と「記録よりも記憶に残る」こと。学習部はなしと言い切り、顔文字多用の軽い文体で、ネタ性が強い。",
+  "notes": "独自性は主に開発言語Luaと各種モードにある。評価値を出せても探索に活かせていない状態（2018/3時点）と書く。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc28/team.html"
+}

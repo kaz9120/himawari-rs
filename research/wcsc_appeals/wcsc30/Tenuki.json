@@ -1,0 +1,62 @@
+{
+  "wcsc": 30,
+  "year": 2020,
+  "dir": "Tenuki",
+  "team": "手抜きチーム（鈴木太朗、玉川直樹）",
+  "software": "手抜き",
+  "sources": [
+    "wcsc30/appeal/Tenuki/tenuki30.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc30/appeal/Tenuki/tenuki30.pdf"
+  ],
+  "summary": "CSAプロトコルで対局する、将棋プログラムの仕組みを理解する目的の学習用ソフト（D言語）。文書は技術の工夫ではなく、今年やりたいこと（リモート参加、GUI、時間管理など）の宣言が中心。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "不明",
+    "detail": null
+  },
+  "search": {
+    "family": "αβ",
+    "detail": null
+  },
+  "learning": null,
+  "hardware": "Amazon EC2 Ubuntu 18.04",
+  "language": [
+    "D"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "エンタメ・演出",
+      "title": "盤面をリアルタイム更新するWebGUI",
+      "description": "盤面を可視化するため、HTMLのtableを書いてWebブラウザで見る。去年はRailsで盤面を生成し、今年はリアルタイム更新にしたい。",
+      "originality": "不明",
+      "evidence": null,
+      "quote": "今年は盤面をリアルタイムに更新したいです。"
+    },
+    {
+      "category": "並列・分散",
+      "title": "リモート参加",
+      "description": "会場外の計算機で指し手を生成する。対戦サーバがインターネットに接続されていないため、プロキシが必要になる。",
+      "originality": "不明",
+      "evidence": null,
+      "quote": "会場外の計算機で指し手を生成することをリモート参加といいます"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "駒背番号制の検討",
+      "description": "局面を駒の1次元配列で表す駒背番号制ならKPPTで評価しやすそうだが、持ち駒と先後反転の扱いが難しそうだと考えている。",
+      "originality": "不明",
+      "evidence": null,
+      "quote": "駒背番号制のほうが KPPT で評価しやすそうです。"
+    }
+  ],
+  "character": "「手抜き」の名のとおり、「df-pnできる気がしません」「評価バイナリの自作はできる気がしません」など、できない項目を正直に並べる。作者は棋力30級程度。「好きなコードはadd9」の自己紹介も。",
+  "notes": "本文は目標の列挙で、実装済みの工夫は少ない。undoMoveの代わりにコピー、1手10秒固定、置換表は指し手のみ、オーダリングなし、という現状を書く",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc30/team.html"
+}

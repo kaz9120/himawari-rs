@@ -1,0 +1,55 @@
+{
+  "wcsc": 35,
+  "year": 2025,
+  "dir": "Tango",
+  "team": "渡辺 敬介",
+  "software": "タンゴ",
+  "sources": [
+    "wcsc35/appeal/Tango/wcsc35_tango.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc35/appeal/Tango/wcsc35_tango.pdf"
+  ],
+  "summary": "実現確率探索による深い読みと、Factorization Machinesを使った局面評価関数・着手確率で強さを狙う。FMを使うチームは自分だけと言う独自路線。2駒関係+玉周辺25マスの利き+手番の組み合わせを特徴にする。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": "FMによる評価と着手予測"
+  },
+  "eval": {
+    "family": "その他",
+    "detail": "Factorization Machines。2駒の位置関係（KP+PP+KK）、自玉周辺25マスの双方の利き、手番を入力し、先後のスコア差と駒損得を合算"
+  },
+  "search": {
+    "family": "その他",
+    "detail": "実現確率探索。着手確率にFactorization Bradley-Terryモデル"
+  },
+  "learning": "機械学習で最適化。学習データセットは大会後1年間保管",
+  "hardware": "GCP c4-highcpu-96",
+  "language": [
+    "C++",
+    "Java"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "Factorization Machinesによる評価関数",
+      "description": "2駒の位置関係（KP+PP+KK）、自玉周辺25マスの双方の利き、手番を、先後それぞれの盤面を入力としたFMでスコア化し、先後の差と駒損得を合算する。FMの組み合わせ特徴により、2駒関係同士の組み合わせは4駒関係（KKPP+KPPP+PPPP）に相当する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "2023年以前のコンピュータ将棋選手権でこのような手法を用いていたチームは、私の知る限りでは私のチーム以外に存在しません。"
+    },
+    {
+      "category": "探索",
+      "title": "Factorization Bradley-Terryによる着手確率と実現確率探索",
+      "description": "囲碁の着手予測のFactorization ranking modelを元に、実現確率探索用の着手確率を計算する。通常モデルと小規模の簡易モデルの2種を用意し、末端付近は簡易モデルで高速化する。盤面共通の特徴量は先に計算して再利用し、駒の位置の特徴は差分計算する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "通常のモデルと小規模で高速な簡易計算用モデルの2種類を用意し"
+    }
+  ],
+  "character": null,
+  "notes": "原本PDFを直接読んだ（テキストはほぼ空）。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc35/team.html"
+}

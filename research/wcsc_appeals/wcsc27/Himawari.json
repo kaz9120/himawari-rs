@@ -1,0 +1,62 @@
+{
+  "wcsc": 27,
+  "year": 2017,
+  "dir": "Himawari",
+  "team": "山本 一将、永塚 拓、高木 厚成",
+  "software": "ひまわり",
+  "sources": [
+    "wcsc27/appeal/Himawari/appeal.pdf"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc27/appeal/Himawari/appeal.pdf"
+  ],
+  "summary": "2012年頃から作る将棋ソフト。Bonanzaメソッドを使わず、方策勾配による教師あり学習のあとに自己対局の勝敗で強化学習する点が特徴。今回はLazy SMPの導入とBitboardの縦型化を行った。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "不明（Bonanzaメソッドではなく方策勾配で学習）"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "Lazy SMPを導入"
+  },
+  "learning": "方策勾配を用いた教師あり学習のあと、自己対局の結果（勝ち負けなど）から強化学習",
+  "hardware": "Core i7 5960X 8コア 64GB",
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": "第26回20位、第25回9位。電王トーナメント第3回ベスト8",
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "方策勾配の教師あり学習＋強化学習",
+      "description": "Bonanzaメソッドを使わず、方策勾配を用いた教師あり学習を行い、その後に自己対局の勝敗などから強化学習する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "Bonanzaメソッドを使用していない 方策勾配を用いた教師有り学習"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "Bitboardを縦型に変更",
+      "description": "Bitboardを横型から縦型に変更し、座標表現もBonanza形式からApery形式へ変えた。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "Bitboardを横型から縦型に変更"
+    },
+    {
+      "category": "並列・分散",
+      "title": "Lazy SMPの導入",
+      "description": "並列探索にLazy SMPを導入した。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "Lazy SMPを導入"
+    }
+  ],
+  "character": "「38時間かけて△２八角を回避した事で有名?」とバグ話をネタにする。メイン開発者は芝浦将棋の元開発者。",
+  "notes": "開発者の一人は本リポジトリのオーナー（kyamamoto）。魅力的な将棋AIコンテストのプレマッチで優勝。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc27/team.html"
+}

@@ -1,0 +1,92 @@
+{
+  "wcsc": 20,
+  "year": 2010,
+  "dir": "Dias_R7",
+  "team": "天野史斎",
+  "software": "Dias R7",
+  "sources": [
+    "wcsc20/appeal/Dias_R7/appeal_R7_02.pdf"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc20/appeal/Dias_R7/appeal_R7_02.pdf"
+  ],
+  "summary": "駒の価値でなくゲームの進行度を直接表す新規の評価関数を使う。手のオーダリングも反復深化も捨て、巨大な共有置換表とロックなしマルチコアで計算量を補う、思い切った設計。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "その他",
+    "detail": "駒の価値ベースでなく、自己が負けない制約の下でゲームの進行度を直接表す連続的な評価関数"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "最大深さ偶数固定、手番非対称の前向き枝刈り、手のオーダリングなし、探索延長なし。df-pnを併用"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "進行度を直接表す物理量的評価関数",
+      "description": "自己が負けない制約の下で進行度を直接表す連続的な評価関数を使い、前向き枝刈りのミスを敗着の兆候として素早く察知できる。差分計算は困難。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "ゲームの進行度をダイレクトに表すような新規の評価関数を用います"
+    },
+    {
+      "category": "探索",
+      "title": "偶数深さ固定と手番非対称の枝刈り",
+      "description": "最大深さを偶数に固定して末端を必ず自己の手番にし、前向き枝刈りも自己の手番でのみ行う。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "前向き枝刈りを自己の手番でのみ行う手番非対称なロジック"
+    },
+    {
+      "category": "探索",
+      "title": "オーダリングと反復深化を放棄",
+      "description": "手のオーダリングを行わず反復深化も捨て、巨大置換表の効果で穴埋めする。探索延長もしない。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "手のオーダリングは行いません"
+    },
+    {
+      "category": "並列・分散",
+      "title": "ロックなし共有置換表のマルチコア計算",
+      "description": "巨大な単一置換表をスレッド間で共有し、キャッシュを汚さずロックなしでアクセスする。計算中のスレッドを他が追い抜けるようにし、全スレッドの探索箇所が集中する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "ロックを一切しない。"
+    },
+    {
+      "category": "探索",
+      "title": "置換表のGHI対策と手番越え持ち越し",
+      "description": "置換が不用意な探索延長と等価になる危険を除く対応で、結果的にGHI対策になり、置換表データを手番を超えて安全に持ち越せる。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "結果的に GHI 対策にもなっており"
+    },
+    {
+      "category": "探索",
+      "title": "常時の予測読み",
+      "description": "αβもdf-pnも手番によらず回し続けて置換表を埋め、詰みが証明できれば即反映する。df-pnの最良優先判断にαβの置換表を使う。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "手番によらず常時回し続け、置換表をどしどし埋めさせます"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "対局中の前向き枝刈り自動調整",
+      "description": "進行度評価で敗着の兆候を早く察知できる見込みから、負けるペナルティを払わずに、試合しながら前向き枝刈りをじわじわ調整する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "試合しながら、学習と引き替えに負けるというペナルティーを支払うことなく"
+    }
+  ],
+  "character": null,
+  "notes": "文書冒頭で、完全な内容紹介ではなくオリジナリティの主張を優先したと断っている。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc20/team.html"
+}

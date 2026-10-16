@@ -1,0 +1,80 @@
+{
+  "wcsc": 34,
+  "year": 2024,
+  "dir": "koron",
+  "team": "野田 煌介",
+  "software": "koron",
+  "sources": [
+    "wcsc34/appeal/koron/koron_appeal.pdf",
+    "wcsc34/appeal/koron/koron-appeal-detail.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc34/appeal/koron/koron_appeal.pdf",
+    "https://www.apply.computer-shogi.org/wcsc34/appeal/koron/koron-appeal-detail.pdf"
+  ],
+  "summary": "NNUE系の序盤・終盤トレードオフに対し、評価値に応じて重いネットと軽いネットを切り替えるリレー式合議を行う。以前は手数で切り替えていたが成果が出なかったため、評価値で判断する方式に変えた。",
+  "base": {
+    "engine": "やねうら王",
+    "eval_source": "tanuki-系（Li、Hao）などの追加学習",
+    "note": null
+  },
+  "eval": {
+    "family": "NNUE",
+    "detail": "序盤の互角時はhalfkp-1024x2-8-16、中終盤はhalfkp-256x2-16-32の2種を切替"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "やねうら王"
+  },
+  "learning": "電竜戦版へ追加学習。序盤用ネットは教師データを序盤のみに絞る。nodchip氏とたややん氏の教師データを使用",
+  "hardware": "Amazon EC2 c6a.32xlarge 128コア",
+  "language": [
+    "Python"
+  ],
+  "claimed_strength": "LiとHaoのリレー対Liが55.91%（R41.24）、koron対Liが58.04%（R56.36）。5分+フィッシャー2秒、Ryzen 7950x 24T",
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "評価値による評価関数のリレー",
+      "description": "一定の評価値以内は重いネット、有利・不利に偏ったら軽いネットに切り替える。本番では評価値が+1000を超えるか-300を下回ったら切替える。優勢時は読み抜けによる頓死を防ぎ、劣勢時は相手の読み抜けを咎めやすい。",
+      "originality": "独自",
+      "evidence": "koron対LiでR56.36（58.04%）",
+      "quote": "一定の評価値以内では重いネットワークを使用し、評価値が有利不利どちらかに偏った場合、軽いネットワークを使用する"
+    },
+    {
+      "category": "入玉",
+      "title": "入玉時も軽いネットへ切替",
+      "description": "評価値に関係なく、どちらかが入玉したら軽いネットワークに切り替えて、入玉将棋の棋力を上げる。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "評価値に関係なく、どちらかが入玉した場合も軽いネットワークに変更する"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "序盤専用ネットの教師データ絞り込み",
+      "description": "序盤用のhalfkp-1024x2-8-16は、与える教師データを序盤の局面のみに絞って序盤の精度向上を狙う。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "与える教師データを序盤のみに絞り序盤の精度向上を狙った"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "手数基準リレーの反省",
+      "description": "前回までの手数で切り替える方式は、40〜60手で終盤になることも100手以上で形勢が変わらないこともあり不適切で、成果が出なかったと自己評価している。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "手数で序盤終盤を判断し、評価関数を切り替えるといった手法に問題があった"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "互角復帰時に戻す機能は不採用",
+      "description": "評価値が互角に戻ったら元のネットに戻す機能も作ったが、切替時の時間損失が複数回で棋力に影響すると考えて採用しなかった。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "切り替え時に多少の時間的損失が生じてしまい"
+    }
+  ],
+  "character": "小学生の頃にやねうらお氏のブログでKPTT雑巾絞りなどで遊んだのが趣味の入口、という開発動機を語る。",
+  "notes": "詳細版に、切替パラメータの探索が不十分で今後も研究したいとの記述がある。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc34/team.html"
+}

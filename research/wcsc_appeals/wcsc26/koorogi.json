@@ -1,0 +1,52 @@
+{
+  "wcsc": 26,
+  "year": 2016,
+  "dir": "koorogi",
+  "team": "Jonathan Huang",
+  "software": "コオロギ",
+  "sources": [
+    "wcsc26/appeal/koorogi/wcsc26_appeal.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc26/appeal/koorogi/wcsc26_appeal.txt"
+  ],
+  "summary": "米国の開発者による新規ソフト。多段階の指し手生成とPVS、置換表、駒の所有・玉の安全・静的交換・支配マスによる評価を持つ。1手9〜15秒で指す。名前は聊斎志異の「促織」に由来する。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "手作り",
+    "detail": "駒の所有、玉の安全、静的交換、支配マス"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "Principal Variation Search、置換表、多段階の指し手生成、手の順序付け"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": "C++",
+  "claimed_strength": "時間制御は通常1手9〜15秒",
+  "ideas": [
+    {
+      "category": "実装・高速化",
+      "title": "多段階の指し手生成",
+      "description": "指し手生成を複数の段階に分け、手の順序付けと選択を行う。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "Multiple stages move generator"
+    },
+    {
+      "category": "時間管理",
+      "title": "1手9〜15秒の固定的な時間制御",
+      "description": "通常1手9〜15秒で指す。",
+      "originality": "不明",
+      "evidence": null,
+      "quote": "9～15 seconds per move usually"
+    }
+  ],
+  "character": "名前は中国古典小説「聊齋志異」の「促織」（コオロギ）に由来する。作者は米国在住で日本語・英語混在の文書。",
+  "notes": "一覧ページではキャンセル扱い",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc26/team.html"
+}

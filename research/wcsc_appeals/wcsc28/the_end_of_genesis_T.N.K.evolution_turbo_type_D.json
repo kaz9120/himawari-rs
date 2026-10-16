@@ -1,0 +1,90 @@
+{
+  "wcsc": 28,
+  "year": 2018,
+  "dir": "the_end_of_genesis_T.N.K.evolution_turbo_type_D",
+  "team": "ザイオソフト コンピュータ将棋サークル（野田久順、岡部淳、鈴木崇啓、那須悠、河野明男）",
+  "software": "the end of genesis T.N.K.evolution turbo type D",
+  "sources": [
+    "wcsc28/appeal/the_end_of_genesis_T.N.K.evolution_turbo_type_D/appeal.pdf",
+    "wcsc28/appeal/the_end_of_genesis_T.N.K.evolution_turbo_type_D/nnue.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc28/appeal/the_end_of_genesis_T.N.K.evolution_turbo_type_D/appeal.pdf",
+    "https://www.apply.computer-shogi.org/wcsc28/appeal/the_end_of_genesis_T.N.K.evolution_turbo_type_D/nnue.pdf"
+  ],
+  "summary": "三駒関係を封印し、CPU上で1局面ずつ高速に評価できる全結合ニューラルネットワーク評価関数「NNUE」を初めて搭載したソフト。HalfKP特徴量と差分計算、整数SIMD演算で、三駒関係と同等のNPSを出す。アピール文書の一部として論文風のNNUE解説を併せて提出した。",
+  "base": {
+    "engine": "やねうら王",
+    "eval_source": "Apery（学習データ生成時の評価関数）",
+    "note": null
+  },
+  "eval": {
+    "family": "NNUE",
+    "detail": "全結合NN。入力はHalfKP（自玉と玉以外の駒1つの位置関係、125388次元）→256→32→32→1。clipped ReLU。手番側と非手番側の両視点を連結"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "やねうら王のαβ探索にそのまま組み込み。GPU・バッチ処理は使わない"
+  },
+  "learning": "三駒関係の学習で用いる手法と同様の、静止探索と組み合わせた学習、特徴量の分解による学習時のパラメータ共有",
+  "hardware": "Xeon E5-2690 / Core i7-6700K ほか（複数構成）",
+  "language": [
+    "C++",
+    "C#",
+    "Python"
+  ],
+  "claimed_strength": "やねうら王ベンチマークで三駒関係と同等のNPS（本人談）",
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "NNUE（CPUで高速に動く差分計算可能なNN評価関数）",
+      "description": "GPUもバッチ処理も使わず、CPUで1局面ずつ評価する全結合ニューラルネットワーク。パラメータの大半を占める第1層をベクトルへ拡張した差分計算で更新し、三駒関係と同等のNPSで非線形な評価を実現する。",
+      "originality": "独自",
+      "evidence": "三駒関係と同等のNPS（やねうら王ベンチマーク）",
+      "quote": "三駒関係と同等の NPS を実現する ディープラーニング評価関数を搭載"
+    },
+    {
+      "category": "評価関数",
+      "title": "HalfKP特徴量",
+      "description": "KPのうち敵玉を含む位置関係を使わず、自玉を含む位置関係だけを特徴量にする。手番側から見た自玉のKPと、非手番側から見た自玉のKPの両方を使えば局面全体を表現でき、KPより計算コストが小さい。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "敵玉を含む位置関係を使用せず，自玉を含む位置関係だけを使用する。"
+    },
+    {
+      "category": "評価関数",
+      "title": "手番側・非手番側の視点ベクトルの連結による手番評価",
+      "description": "手番側と非手番側から見た特徴ベクトルをそれぞれアフィン変換して連結し、手番を評価に組み込む（手番方向の畳み込みと解釈できる）。差分計算は先手・後手の両視点で行う。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "常に手番側の視点から見た局面を評価することによって手番評価を実現する。"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "整数SIMD演算（16-bit加減算・8-bit積和）",
+      "description": "第1層の重みを16-bit整数で保持しVPADDW/VPSUBWで差分更新し、以降の層は8-bit整数のVPMADDUBSWで内積、活性化はVPACKSSDW・VPMAXSBで計算する。clipped ReLUで値域が有限なので整数化に向く。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "パラメータを整数化し、SIMD演算で高速化しています"
+    },
+    {
+      "category": "評価関数",
+      "title": "列優先メモリレイアウトとスパース入力の列加算",
+      "description": "特徴ベクトルが二値でスパースなため、第1層を該当する列の重みの足し込みで計算し、メモリアクセスを連続にする。三駒関係の計算時間の大半を占めるランダムメモリアクセスを避ける。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "二値ベクトルであることを利用すると"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "ソースコード公開予定とカスタマイズ性",
+      "description": "クラステンプレートで特徴量やネットワーク構造を変えやすくし、後日ソースコードを公開する予定。他の開発者による構造の改善に期待する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "ソースコードを拡張して利用される他の開発者にも期待したい。"
+    }
+  ],
+  "character": "表紙に「コンピュータ将棋の概念を打ち砕き進化させるべく三駒関係を封印する」「乞うご期待…」と掲げた。論文風の解説は実験や棋力に言及せず、「選手権の結果を参照されたい」とする。",
+  "notes": "appeal.pdf（スライド）とnnue.pdf（論文風文書、2018/4/28）の2文書。NNUE（のちにやねうら王・Stockfishに採用される手法）の初出の文書。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc28/team.html"
+}

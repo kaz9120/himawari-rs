@@ -1,0 +1,60 @@
+{
+  "wcsc": 21,
+  "year": 2011,
+  "dir": "misaki",
+  "team": "安武和宏",
+  "software": "misaki",
+  "sources": [
+    "wcsc21/appeal/misaki/misaki2011.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc21/appeal/misaki/misaki2011.txt"
+  ],
+  "summary": "暫定版。PVS・静止探索・LMRなどの標準構成に、OpenMPの再帰split並列、Averaged Perceptronのbonanza method学習、非rotated bitboardの直接取得が入る。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "Averaged Perceptronによるbonanza method"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "PVS、静止探索、1手詰め、簡易詰将棋、null move、futility（残り3深さから）、LMR、hash move・SEE・historyでオーダリング"
+  },
+  "learning": "Averaged Perceptronによるbonanza methodでプロ棋譜から学習。自己対戦学習は予定",
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "探索の枝刈り条件をロジスティック回帰で学習（予定）",
+      "description": "枝刈り条件をロジスティック回帰で学習する予定。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "枝刈り条件をロジスティック回帰で学習（予定）"
+    },
+    {
+      "category": "並列・分散",
+      "title": "OpenMPの再帰split並列",
+      "description": "OpenMPを使い、Ponanzaを参考にした再帰的なsplitで並列探索する。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "OpenMPを用いた再帰split(Ponanza参考)"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "非rotated bitboardの縦・斜め利きをアセンブラで取得",
+      "description": "回転ビットボードを使わず、縦および斜めの利きをアセンブラで直接取得する。角の位置によっては斜めは3bit程度しかループしないので遅くない。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "縦および斜めはアセンブラで直接取得"
+    }
+  ],
+  "character": null,
+  "notes": "souleaterの後継。暫定版。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc21/team.html"
+}

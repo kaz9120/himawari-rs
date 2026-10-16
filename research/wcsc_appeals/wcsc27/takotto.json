@@ -1,0 +1,54 @@
+{
+  "wcsc": 27,
+  "year": 2017,
+  "dir": "takotto",
+  "team": "杓子将棋（瀧川正史、内宮大志、大場寿仁）",
+  "software": "たこっと",
+  "sources": [
+    "wcsc27/appeal/takotto/appeal.html"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc27/appeal/takotto/appeal.html"
+  ],
+  "summary": "電王戦を見てコンピュータ将棋に興味を持った開発者によるフルスクラッチのソフト。AVX2を使いやすいデータ構造（非ビットボード）で高速化し、今回、SGD・オンライン学習・ミニバッチ・複数の損失関数と最適化手法・正則化を備えた学習ルーチンを自作した。ゼロベクトル学習は浮かむ瀬や技巧に届かず、Aperyの評価関数バイナリを強化学習して参加する。",
+  "base": {
+    "engine": "独自",
+    "eval_source": "Apery（評価関数バイナリを強化学習）",
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "Aperyの評価関数バイナリを自作の学習ルーチンで強化学習"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "Stockfish風の探索"
+  },
+  "learning": "自作の学習ルーチン（SGD、オンライン学習、ミニバッチ、複数の損失関数と最適手法、正則化）",
+  "hardware": "Core i7 6700K 4コア 32GB",
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "実装・高速化",
+      "title": "AVX2で実装した非ビットボード",
+      "description": "各種処理をAVX2命令で実装し、AVX2を適用しやすい非ビットボードのデータ構造にして高速化する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "各種処理が AVX2 命令で実装されていて高速"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "自作の近代的な機械学習ルーチン",
+      "description": "確率的勾配降下法、オンライン学習、ミニバッチ、複数の損失関数と最適化手法、正則化を一通り自作し、様々な実験を容易にした。ゼロベクトルからの学習に取り組むが、浮かむ瀬や技巧に届かない。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "自分たちで学習ルーチンを実装したことにより、様々な実験が容易になりました。"
+    }
+  ],
+  "character": null,
+  "notes": "第26回アピール文書と第4回電王トーナメントPR文書に特徴を譲り、SDT4からの進化点中心に記述。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc27/team.html"
+}

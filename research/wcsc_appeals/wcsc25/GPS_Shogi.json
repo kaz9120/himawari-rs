@@ -1,0 +1,54 @@
+{
+  "wcsc": 25,
+  "year": 2015,
+  "dir": "GPS_Shogi",
+  "team": "Team GPS",
+  "software": "GPS将棋",
+  "sources": [
+    "wcsc25/appeal/GPS_Shogi/wcsc2015.pdf"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc25/appeal/GPS_Shogi/wcsc2015.pdf"
+  ],
+  "summary": "東京大学のゲームプログラミングセミナーによるソフト。実現確率探索、評価関数の自動学習、局面別4種の評価関数、疎結合並列探索と並列協調df-pnに対応。ソースとデータを公開している。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "序盤、中盤1、中盤2、終盤の4種類"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "実現確率探索、疎結合並列探索、並列協調df-pn"
+  },
+  "learning": "評価関数の自動学習",
+  "hardware": null,
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": "第19回・第22回優勝、第20回・第23回3位",
+  "ideas": [
+    {
+      "category": "並列・分散",
+      "title": "疎結合並列探索とdf-pnの並列協調",
+      "description": "疎結合並列探索と、並列協調df-pnによる詰探索に対応する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "疎結合並列探索やdf-pn（並列協調）を用いた詰探索にも対応しています。"
+    },
+    {
+      "category": "評価関数",
+      "title": "局面別の4種の評価関数",
+      "description": "序盤、中盤1、中盤2、終盤の4種類の評価関数を使う。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "評価関数は現在、序盤、中盤1、中盤2、終盤の4種類を用いています。"
+    }
+  ],
+  "character": null,
+  "notes": "第23回の文書とほぼ同内容。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc25/team.html"
+}

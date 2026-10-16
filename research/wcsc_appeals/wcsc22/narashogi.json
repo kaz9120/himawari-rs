@@ -1,0 +1,35 @@
+{
+  "wcsc": 22,
+  "year": 2012,
+  "dir": "narashogi",
+  "team": "奈良和文",
+  "software": "奈良将棋",
+  "sources": [
+    "wcsc22/appeal/narashogi/narashogi.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc22/appeal/narashogi/narashogi.txt"
+  ],
+  "summary": "2010年から開発が進んでいないため、2010年版のアピール文書を参照とする。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "不明",
+    "detail": null
+  },
+  "search": {
+    "family": "不明",
+    "detail": null
+  },
+  "learning": null,
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [],
+  "character": null,
+  "notes": "内容はwcsc20のnarashogiを参照。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc22/team.html"
+}

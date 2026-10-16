@@ -1,0 +1,70 @@
+{
+  "wcsc": 30,
+  "year": 2020,
+  "dir": "CGP",
+  "team": "大熊 三晴",
+  "software": "CGP",
+  "sources": [
+    "wcsc30/appeal/CGP/CGP2020.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc30/appeal/CGP/CGP2020.pdf"
+  ],
+  "summary": "一から自作した非ビットボード型の高NPS志向ソフト。局面構造体に利きと評価関数の途中結果を保持し、AVX-512などのSIMDを使う。手番付きKPPで、一般に流布する定跡・評価値データは使わない。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "手番付きKPP。持ち駒まわりの評価を一般的な三駒関係より拡張"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "LazySMPを微修正した並列化"
+  },
+  "learning": "評価関数も自力で学習。流布している定跡や局面と評価値のセットは使わない",
+  "hardware": "Ryzen 9 3950X 16コア（AVX-512非対応のため無効化）",
+  "language": [
+    "C"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "実装・高速化",
+      "title": "非ビットボードで利きと途中結果を保持",
+      "description": "局面構造体に各マスへの利きと、評価関数の演算途中結果のうち変化が少ないものを保持する。メモリ待ちの間に演算を回して高速化する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "局面構造体に各マスへの利きの状態を保持"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "SIMD・AVX-512の活用",
+      "description": "評価値の算出、オーダリング、構造体のコピーでSIMDを使う。AVX-512も対応するが、今回のマシンは非対応のため無効化する。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "AVX-512 命令をはじめとした拡張命令を活用"
+    },
+    {
+      "category": "評価関数",
+      "title": "持ち駒周りを拡張した手番付きKPP",
+      "description": "手番付きKPPで、持ち駒まわりの評価を一般的な三駒関係より拡張している。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "持ち駒周りの評価を一般的な 3 駒関係より拡張しております。"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "流布データを使わない自力学習",
+      "description": "一般に流布する定跡データ・局面と評価値のセット・読み筋を使わない。無駄なこだわりと自称する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "一般に流布している定跡データや、一般に流布している「局面と評価値のセット」、読み筋等は使用しておりません。"
+    }
+  ],
+  "character": "「無駄に一から作成」「無駄に高NPSを目指す」と、こだわりを自虐気味に語る。",
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc30/team.html"
+}

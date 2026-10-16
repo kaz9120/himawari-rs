@@ -1,0 +1,35 @@
+{
+  "wcsc": 22,
+  "year": 2012,
+  "dir": "Selene",
+  "team": "西海枝昌彦",
+  "software": "Selene",
+  "sources": [
+    "wcsc22/appeal/Selene/appeal.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc22/appeal/Selene/appeal.txt"
+  ],
+  "summary": "文書はブログ記事（2012-03-01）のURLのみで、内容を確認できなかった。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "不明",
+    "detail": null
+  },
+  "search": {
+    "family": "不明",
+    "detail": null
+  },
+  "learning": null,
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [],
+  "character": null,
+  "notes": "文書に本文なし。URLはd.hatena.ne.jp/SeleneShogi/20120301。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc22/team.html"
+}

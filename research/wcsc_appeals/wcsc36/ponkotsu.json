@@ -1,0 +1,89 @@
+{
+  "wcsc": 36,
+  "year": 2026,
+  "dir": "ponkotsu",
+  "team": "竹内 元気",
+  "software": "ponkotsu",
+  "sources": [
+    "wcsc36/appeal/ponkotsu/WCSC36appeal.pdf",
+    "wcsc36/appeal/ponkotsu/ponkotsu_WCSC36_detail.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc36/appeal/ponkotsu/WCSC36appeal.pdf",
+    "https://www.apply.computer-shogi.org/wcsc36/appeal/ponkotsu/ponkotsu_WCSC36_detail.pdf"
+  ],
+  "summary": "ResNet35x512のDL評価関数と、ふかうら王の探索の組み合わせ。27億局面の事前学習と、約3.3億局面・約4.6億局面の2段の追加学習で作る。定跡はやねうら王の生成機能と、DLのpolicy分布を使ったPV-MCTSの反復パイプラインで、約1230万局面まで育てた。",
+  "base": {
+    "engine": "やねうら王+dlshogi",
+    "eval_source": null,
+    "note": "探索はふかうら王。学習・定跡生成のコードはGitHubで公開"
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "ResNet 35ブロック×512（LayerNorm追加）。2025年版はResNet30x256。Policy accuracy 54.7%、Value accuracy 78.4%（WCSC35版は53.5%、78.0%）"
+  },
+  "search": {
+    "family": "MCTS",
+    "detail": "ふかうら王。探索パラメータをOptunaで調整（やねうら王V9.21+水匠11βに対して勝率56.0%から65.5%）"
+  },
+  "learning": "事前学習は約27億局面（AobaZero、shogi_hao_depth9、tanuki-、水匠5入玉棋譜）で299 epoch。追加学習はPhase1に約3.3億局面、Phase2に水匠11β 5万ノード自己対局とWCSC35版ponkotsu 5000プレイアウト自己対局を加え約4.6億局面",
+  "hardware": "EPYC 9654 x2 + RTX5090（vast.ai）",
+  "language": [
+    "C++",
+    "Python"
+  ],
+  "claimed_strength": "WCSC35版ponkotsuに対し200局で113勝59敗28分（勝率63.5%）",
+  "ideas": [
+    {
+      "category": "定跡・序盤",
+      "title": "DLのpolicyギャップで定跡の探索不足を発見",
+      "description": "定跡の最善手を辿りながら、DLのpolicy累積が95%を超えるまでの候補手数を調べ、閾値以上なのに定跡の候補手が閾値未満の局面を「探索不足」としてPV-MCTSの開始局面に選ぶ。一方の手番は最善手、他方は平手初期局面の評価値基準以下の手からランダムに選ぶ。",
+      "originality": "独自",
+      "evidence": "約1230万局面の定跡を構築",
+      "quote": "DL が複数の有力手を示唆しているが定跡ではまだ十分に調べられていない局面を優先的に深掘りできる"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "定跡ツリー上のPV-MCTS",
+      "description": "DLのpolicyをUCBの事前確率にしたPV-MCTSを定跡ツリー上で実行し、未登録局面で打ち切る。末端は未評価なので親ノードでの定跡スコアを反転して評価値にする。各開始局面20万プレイアウトで、訪問数上位の末端を次の探索対象にする。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "定跡に未登録の局面に達した時点でプレイアウトを打ち切る。"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "MultiPV=4による候補手拡充と千日手迂回",
+      "description": "ペタショック化された定跡で候補手が閾値未満の局面をMultiPV=4で再探索して分岐を増やす。最善手を辿って千日手になるときは、評価値差が最小の回避手へ自動で迂回する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "MultiPV=4 で再探索することで候補手を拡充した。"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "自作定跡の末端を初期局面にした水匠11自己対局",
+      "description": "自作定跡の末端局面を初期局面に、水匠11α同士・11β同士で1手1000万ノードの自己対局を行ったデータを学習に加える。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "自作定跡の末端局面を初期局面とし、水匠 11α 同士・水匠 11β 同士でそれぞれ 1 手 1000 万ノードで自己対局させたデータ"
+    },
+    {
+      "category": "開発手法・運用",
+      "title": "LLMに学習スケジュール判断をさせる",
+      "description": "スケジューラのハイパーパラメータや、追加学習の初期重みとして最適なepochの選定を、Claude Opus 4.6に判断させた。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "スケジューラのハイパーパラメータは Claude Opus 4.6 に決定させた。"
+    },
+    {
+      "category": "評価関数",
+      "title": "LayerNorm追加のResNet",
+      "description": "2024年の改良DenseNetからResNetに変更し、事前層正規化としてLayer Normalizationを追加した（LN+CNN+BN+ReLU）。",
+      "originality": "既存手法の応用",
+      "evidence": "Policy accuracy 51.2%から53.5%、Value 77.0%から78.0%（2024年版から2025年版）",
+      "quote": "ResNetにLayer Normalizationを追加"
+    }
+  ],
+  "character": "2017年の電王戦をきっかけに始め、五目並べ・オセロAIを経て、山岡氏の本でDL系将棋AIを学んだ。二次予選の奇跡の決勝進出を、推しのにじさんじ栞葉るりさんと、開運待ち受けを配布した狂蘭メロコさんのおかげと感謝している。",
+  "notes": "概要スライド版は2025年と2026年の改善点の振り返り。詳細版の数値を主に採用した。開発用マシンを貸与した筑波大学の研究室への謝辞あり。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc36/team.html"
+}

@@ -1,0 +1,81 @@
+{
+  "wcsc": 33,
+  "year": 2023,
+  "dir": "Niban_Shibori",
+  "team": "芝 世弐・曽根 壮大（ビール工房HFT支店）",
+  "software": "二番絞り",
+  "sources": [
+    "wcsc33/appeal/Niban_Shibori/appeal.pdf",
+    "wcsc33/appeal/Niban_Shibori/appeal2.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc33/appeal/Niban_Shibori/appeal.pdf",
+    "https://www.apply.computer-shogi.org/wcsc33/appeal/Niban_Shibori/appeal2.pdf"
+  ],
+  "summary": "最高精度を目指す大きなDLモデル（40ブロック）のプロジェクトで、昨年は準優勝。今年は昨年モデルに追加学習したが、1億局面の自己対局データでは過学習気味で、後手番を苦手とした。強化学習1ステップが1年を超えたため、大幅な方向転換が必要と述べる。",
+  "base": {
+    "engine": "dlshogi（コントリビュータとして開発に貢献）",
+    "eval_source": null,
+    "note": "dlshogiのソースを一部利用。開発者の一員との立場で、AMP対応のフィードバックなどを行った"
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "最高精度を狙う大型モデル（40ブロック）"
+  },
+  "search": {
+    "family": "MCTS",
+    "detail": "PV-MCTS（dlshogi系）"
+  },
+  "learning": "昨年モデルに追加学習。5000ノード探索の自己対局で約1億局面の教師データを生成し、約1週間学習。昨年は『強い将棋ソフトの創りかた』提供データも一部流用",
+  "hardware": "GCP a2-megagpu-16g 96vCPU、新規のRTX4090を2枚追加",
+  "language": [
+    "C++",
+    "Python"
+  ],
+  "claimed_strength": "昨年版は局面展開なしで将棋倶楽部24レート2949・八段認定。GTX1080Ti版でfloodgate短期レート4500台（落ち着いて4100〜4200）",
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "最高精度を目指す大型モデル",
+      "description": "最高精度の局面評価を目指して大きなモデルを作る試み。昨年版は1手も読まずに将棋倶楽部24で2949（八段認定）の局面評価精度に達した。",
+      "originality": "独自",
+      "evidence": "一手も展開せず将棋倶楽部24レート2949、八段認定",
+      "quote": "一手の局面展開も行わず将棋倶楽部 24 でレート 2949，八段認定頂いている。"
+    },
+    {
+      "category": "開発手法・運用",
+      "title": "自己対局教師データの質を上げる方針",
+      "description": "書籍付属データを上回る精度を目標に、5000ノード探索の自己対局で教師を作る。電力制限などで約1億局面にとどまり、過学習気味で後手番を苦手とした（初期局面の評価値が昨年約200、今年約250）。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "5000 ノード探索の自己対局を行った。"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "強化学習1ステップが1年超という限界の認識",
+      "description": "20ブロック当初は強化学習1ステップが約2か月、40ブロックで約半年、現資源では1年を超えるため、上位を目指すなら大幅な方向転換が必要と記す。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "現在の計算機リソースではとうとう 1 ステップが 1 年を超えてしまった"
+    },
+    {
+      "category": "開発手法・運用",
+      "title": "dlshogiへのAMP対応フィードバック",
+      "description": "2020年のプロジェクト開始後にAutomatic Mixed Precision対応を行い、学習時間を約半分にするフィードバックをdlshogi本家に返した。",
+      "originality": "独自",
+      "evidence": "学習時間約半分",
+      "quote": "AMP（Automatic Mixed Precision）対応を施すことにより学習時間を約半分にする"
+    },
+    {
+      "category": "開発手法・運用",
+      "title": "昨年版との切り替え方針",
+      "description": "今年のモデルが昨年より弱いと判断した場合は昨年度版で出場する可能性を示し、計測は不十分なまま臨む。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "もし昨年度より弱いと判断した場合は昨年度版で出場する可能性がある。"
+    }
+  ],
+  "character": "電竜戦ハードウェア統一戦を主催した運営者でもある。GTX1080Tiの二番絞りをfloodgateに投入して4500台を記録した「記念」の逸話や、将棋倶楽部24での八段認定を「前人未到」と誇る、自信と遊び心の混ざった文体。",
+  "notes": "選手権後に追記があり、追試は「ハードウェアを用意頂ければ可能」と回答。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc33/team.html"
+}

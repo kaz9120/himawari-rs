@@ -1,0 +1,52 @@
+{
+  "wcsc": 22,
+  "year": 2012,
+  "dir": "Jinsei_Okuri_bunt_Shippai",
+  "team": "築地毅",
+  "software": "人生送りバント失敗",
+  "sources": [
+    "wcsc22/appeal/Jinsei_Okuri_bunt_Shippai/jinsei_okuribunt_shippai.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc22/appeal/Jinsei_Okuri_bunt_Shippai/jinsei_okuribunt_shippai.txt"
+  ],
+  "summary": "出場2回目。Bonanza method、500棋譜ずつのオンライン学習で5000棋譜。小谷研クラスタを順に超えていく段階目標を並べ、「強化学習で強くなるべきだが、ゆうちゃんに勝てなくなるのでやらない」と書く。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "Bonanza method。特徴は参考文献の戦型別評価関数・重ね合わせ手法に概ね準拠（戦型別学習はしない）"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "αβ、0.5手延長、move ordering、LMR、置換表、Aspiration"
+  },
+  "learning": "500棋譜ずつのオンライン学習で5000棋譜",
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "オンライン学習によるBonanza method",
+      "description": "500棋譜ずつのオンライン学習で5000棋譜を使い、特徴は戦型別評価関数と重ね合わせによる人間特有の知識抽出の文献を参考にする。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "500棋譜ずつのオンライン学習で5000棋譜使っています"
+    },
+    {
+      "category": "エンタメ・演出",
+      "title": "定跡なし・詰探索なしの割り切り",
+      "description": "定跡は「ない方がAIぽくて素敵」、詰探索は「面倒くさいから」なし。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "なし！（ない方がAIぽくて素敵だとぼくは思います）"
+    }
+  ],
+  "character": "目標を「王手千日手で負けない」から「小谷研クラスタに勝つ」「まったりゆうちゃんに勝つ」まで段階的に並べ、「気が付いたら小谷研クラスタがたくさん参加する大会になっていた」と書く。独創賞に挑戦できないか考えて「無理だな」と締める。",
+  "notes": null,
+  "team_list_url": "http://www2.computer-shogi.org/wcsc22/team.html"
+}

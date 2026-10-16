@@ -1,0 +1,82 @@
+{
+  "wcsc": 29,
+  "year": 2019,
+  "dir": "Tanu-King",
+  "team": "ザイオソフト コンピュータ将棋サークル（野田久順、岡部淳、鈴木崇啓、河野明男）",
+  "software": "狸王",
+  "sources": [
+    "wcsc29/appeal/Tanu-King/appeal2019-04-21.pdf",
+    "wcsc29/appeal/Tanu-King/appeal_2.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc29/appeal/Tanu-King/appeal2019-04-21.pdf",
+    "https://www.apply.computer-shogi.org/wcsc29/appeal/Tanu-King/appeal_2.pdf"
+  ],
+  "summary": "tanuki-のNNUE（halfkp_256x2-32-32）の強化学習に、ノード数固定の教師生成と、生成器の探索パラメータ最適化を取り入れた。探索パラメータの自動調整、Lazy Cluster・ゲーム木分割・Multi Ponder・詰将棋専用ノードを組み合わせた大規模クラスタが特徴。",
+  "base": {
+    "engine": "やねうら王",
+    "eval_source": "tanuki-wcsc28のNNUE評価関数を強化学習",
+    "note": null
+  },
+  "eval": {
+    "family": "NNUE",
+    "detail": "halfkp_256x2-32-32"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "Stockfish型。クラスタ探索"
+  },
+  "learning": "elmo式学習法と「教師データが不足した環境での機械学習結果改善手法」。ノード数固定で自己対局し教師を生成。Aperyの評価関数でランダムスタートの教師を生成",
+  "hardware": "Core i7 + Amazon EC2（c5.xlarge x1、m5.metal x5、c5.large x5）、総計249コア",
+  "language": [
+    "C++",
+    "C#",
+    "Python"
+  ],
+  "claimed_strength": "評価関数: 対orqha1018（1スレッド1手200万ノード、1000局）で勝率52% R+16.77。探索パラメータ自動調整: 調整なしに対し勝率56% R+44.42（300万ノード、1000局）",
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "教師生成のノード数固定と生成器のパラメータ最適化",
+      "description": "探索深さに加えて思考ノード数も制限し、終盤のノード数増加による時間の肥大を抑えて棋譜生成時間を短縮した。さらに棋譜生成器の探索パラメータを短い思考に最適化し、教師の質を上げる。",
+      "originality": "独自",
+      "evidence": "評価関数はorqha1018に対し勝率52%（R+16.77）",
+      "quote": "探索深さと思考ノード数の制限 棋譜生成器の探索パラメータの調整"
+    },
+    {
+      "category": "開発手法・運用",
+      "title": "hyperoptとGaussian Processによる探索パラメータ自動調整",
+      "description": "TPE（Hyperopt）で探索パラメータと自己対局勝率をサンプリングし、出力をそのまま使わず、サンプルをGaussian Processで回帰して平均が最大のものを選ぶ。1パラメータセット48局、数百セット、約1か月。前回からランダムサーチの回数を増やし、自己対戦をノード数固定に変更した（時間固定だと勝率が50%に寄る問題を回避）。",
+      "originality": "独自",
+      "evidence": "自動調整なしに対し勝率56%（R+44.42）",
+      "quote": "Hyperoptの出力をそのまま使ったらダメ！"
+    },
+    {
+      "category": "並列・分散",
+      "title": "Lazy Cluster（置換表の共有）",
+      "description": "思考ノード間でUSIコマンドを拡張して置換表エントリを送受信し、PV上の局面のエントリのみを共有する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "PV上の局面に対応する置換表エントリのみ共有します"
+    },
+    {
+      "category": "並列・分散",
+      "title": "ゲーム木の分割とMulti Ponder",
+      "description": "ルート局面でmultipvを生成し、各手を別ノードに割り当てて子局面から読ませる。non-PVを子局面担当ノードがPVとして読むため読み抜けが減る。Multi Ponderの実装を再利用した。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "ルート局面のnon-PVを、子局面担当ノードがPVとして読むため、読み抜けが減る効果があると考えられます。"
+    },
+    {
+      "category": "詰み・終盤",
+      "title": "詰将棋専用ノード",
+      "description": "複数の詰将棋エンジンに現在局面・子局面・Multi Ponder各局面を割り当て、即詰みや頓死を発見する。結果はLazy Clusterで共有。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "現在の局面・Multi Ponderの各局面では即詰みを、子局面では頓死をそれぞれ発見できます。"
+    }
+  ],
+  "character": "アピール文書は「『〇〇〇〇〇〇〇〇タヌポン』にしたい」と提案して却下される会話で始まる。「狸王」は第6回電王トーナメントに使う予定だった名前で、ディフェンディングチャンピオンの意。",
+  "notes": "概要スライドと詳細版の2ファイルを統合",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc29/team.html"
+}

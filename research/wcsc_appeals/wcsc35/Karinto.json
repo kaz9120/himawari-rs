@@ -1,0 +1,46 @@
+{
+  "wcsc": 35,
+  "year": 2025,
+  "dir": "Karinto",
+  "team": "大野 彰仁",
+  "software": "かりんとう",
+  "sources": [
+    "wcsc35/appeal/Karinto/karintov2.txt"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc35/appeal/Karinto/karintov2.txt"
+  ],
+  "summary": "bitboardで指し手を生成し、駒の点数の和で評価する簡素な思考エンジン。符号なし64ビット整数2個で盤面を表し、ビットカウントやpextで高速化を図る。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "手作り",
+    "detail": "駒に点数をつけてその和を使う"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "評価が高い局面を優先して探索（詳細は不明）"
+  },
+  "learning": null,
+  "hardware": "Core i7-1260P",
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "実装・高速化",
+      "title": "64bit×2のbitboardとpext",
+      "description": "盤面を符号なし64ビット整数2個で表し、高速なビットカウントとpextで指し手生成を速くする。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "符号なし64ビット整数を2個使って盤面を表しました。"
+    }
+  ],
+  "character": null,
+  "notes": "文書は数行のみ",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc35/team.html"
+}

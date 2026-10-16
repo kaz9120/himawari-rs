@@ -1,0 +1,86 @@
+{
+  "wcsc": 23,
+  "year": 2013,
+  "dir": "ym-shogi",
+  "team": "山田 雅之",
+  "software": "ym将棋",
+  "sources": [
+    "wcsc23/appeal/ym-shogi/ymshogi.pdf"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc23/appeal/ym-shogi/ymshogi.pdf"
+  ],
+  "summary": "通常のαβ探索とモンテカルロ木探索（UCT）を別スレッドで同時に走らせ、結果を比較して指し手を選ぶのが売り。MCTSには、子ノードの最善勝率を親の勝率とする独自の修正、progressive widening、確定勝利優先、αβのハッシュ最善手を使ったUCB補正を施している。評価関数はTreeStrapで他ソフトとの対戦から学習する。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "2駒関係と3駒関係の一部（王－銀以上－銀以上）。駒割は固定値"
+  },
+  "search": {
+    "family": "αβ+MCTS",
+    "detail": "αβ（全幅＋2段階静止探索、df-pn）とUCT型MCTSを別スレッドで並走"
+  },
+  "learning": "TreeStrap（αβ）で他プログラムとの対戦から学習",
+  "hardware": null,
+  "language": [
+    "Java"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "探索",
+      "title": "αβとMCTSの並走併用",
+      "description": "通常探索とMCTSを別スレッドで同時に走らせ、ハッシュを互いに参照して詰み情報と最善手を共有し、条件に従ってどちらの指し手を採用するか決める。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "通常探索の短所をモンテカルロ木探索で補うことを目指したのがym将棋である。"
+    },
+    {
+      "category": "探索",
+      "title": "子ノードの最善勝率を親の勝率とするMCTS",
+      "description": "ノード勝率を全playoutの平均でなく、子ノードの中の最善の勝率にする。相手が間違える前提で勝率が高く出る問題を、αβ的な評価に近づけて避ける。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "あるノードでの勝率を計算する際、子ノードの中で最善の勝率を、そのノードの勝率とする。"
+    },
+    {
+      "category": "探索",
+      "title": "評価値による仮の勝率でprogressive widening",
+      "description": "未選択の指し手に評価値から仮の勝率とUCBを与え、評価値の高い手から順に枝を広げる前向き枝刈りを行う。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "枝刈りのアルゴリズムはprogressive wideningを基本としている。"
+    },
+    {
+      "category": "探索",
+      "title": "αβの最善手によるUCB補正",
+      "description": "UCB決定時に、通常探索のハッシュの最善手にプラス補正をかけ、駒損でも後で良くなる手をplayoutで選びやすくする。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "ハッシュの最善手であれば、UCBにプラスの補正を行う。"
+    },
+    {
+      "category": "探索",
+      "title": "擬似探索延長による水平線効果対策",
+      "description": "A→B→Cの指し手列が最善のとき、A→Bが水平線効果になりやすい組み合わせなら、その2手を指さずCを指した場合の評価値と比べ、水平線効果なら大きくマイナス評価する。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "疑似探索延長[3]"
+    },
+    {
+      "category": "時間管理",
+      "title": "千日手の扱いを残り時間で変える",
+      "description": "千日手は基本的に評価値0とするが、残り時間が相手より少ない場合はプラス評価にして千日手を歓迎する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "残り時間が相手より少ない場合は、プラス評価とする（千日手を歓迎する）"
+    }
+  ],
+  "character": null,
+  "notes": null,
+  "team_list_url": "http://www2.computer-shogi.org/wcsc23/team.html"
+}

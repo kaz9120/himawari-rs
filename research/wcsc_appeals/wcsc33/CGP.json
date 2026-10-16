@@ -1,0 +1,70 @@
+{
+  "wcsc": 33,
+  "year": 2023,
+  "dir": "CGP",
+  "team": "大熊 三晴",
+  "software": "CGP",
+  "sources": [
+    "wcsc33/appeal/CGP/CGP2023.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc33/appeal/CGP/CGP2023.pdf"
+  ],
+  "summary": "強さよりまず高NPSを狙って一から自作した非ビットボード型エンジン。利き情報や評価の途中結果を局面構造体に保持し、AVX-512を活用する。定跡・外部の評価値データは一切使わない。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": "一から自作。定跡データや「局面と評価値のセット」は使わない"
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "手番付きKPP（持ち駒周りの評価を一般的な3駒関係より拡張）、自力で学習"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "Lazy SMPを微修正した並列探索"
+  },
+  "learning": "評価関数も自力で学習。一般に流布している定跡・局面データ・読み筋は使わない",
+  "hardware": "Core i9-7940X",
+  "language": [
+    "C"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "実装・高速化",
+      "title": "利きと評価の途中結果を局面構造体に保持",
+      "description": "非ビットボード型で各マスへの利きを保持し、評価の途中結果も変化頻度の低いものを中心に保持する。メモリ待ちの間に演算を回して高速化を狙う。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "局面構造体に各マスへの利きの状態を保持"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "AVX-512などSIMDの活用",
+      "description": "評価値の算出、指し手生成、オーダリング、構造体のコピーにSIMDを使う。1スレッドあたりはAVX-512のi9-7940XがRyzen 9 3950Xを上回る。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "AVX-512 命令をはじめとした拡張命令を活用"
+    },
+    {
+      "category": "評価関数",
+      "title": "持ち駒周りを拡張したKPP",
+      "description": "手番付きKPPの持ち駒の評価を、一般的な3駒関係より拡張している。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "持ち駒周りの評価を一般的な 3 駒関係より拡張しております。"
+    },
+    {
+      "category": "開発手法・運用",
+      "title": "外部データを使わない縛り",
+      "description": "一般に流布する定跡や評価値付き局面は使わず、評価関数を自力で学習する。「無駄なこだわり」と自認。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "一般に流布している定跡データや、一般に流布している「局面と評価値のセット」、読み筋等は使用しておりません。"
+    }
+  ],
+  "character": "「無駄に一から作成」「無駄に高NPS」と自嘲気味に書く。去年からの変更点はほぼなし。",
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc33/team.html"
+}

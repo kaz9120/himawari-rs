@@ -1,0 +1,62 @@
+{
+  "wcsc": 24,
+  "year": 2014,
+  "dir": "Nanoha",
+  "team": "川端 一之",
+  "software": "なのは",
+  "sources": [
+    "wcsc24/appeal/Nanoha/NanohaWCSC24.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc24/appeal/Nanoha/NanohaWCSC24.txt"
+  ],
+  "summary": "前年に続き、アニメ「魔法少女リリカルなのは」由来で萌え導入・AMD応援などの野望を掲げる。今回はStockfish参考の探索に刷新し、マルチスレッドとponderに対応、無駄合い処理を省略。評価はBonanza 6.0のfv.bin、GUIはOpenGL 3D表示。",
+  "base": {
+    "engine": "Bonanza",
+    "eval_source": "Bonanza 6.0.0のfv.bin",
+    "note": "Stockfishを参考。Bonanza、れさぴょん、Fruit等を参考ソースとする"
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "Bonanza 6.0.0のfv.bin（駒割＋KKP＋KP＋KPP）"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "Stockfish参考、マルチスレッドとPonder、不成も生成。定跡→詰探索→思考の順"
+  },
+  "learning": null,
+  "hardware": "AMD FX 8350 4.0GHz",
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": "図巧100番「寿」を1分31秒で解く（前年版。今年は解けない）",
+  "ideas": [
+    {
+      "category": "エンタメ・演出",
+      "title": "OpenGLによる3D表示GUI",
+      "description": "OpenGLによる3D表示のGUIを実現し、USIに対応してエンジンを子プロセスで動かす。前年に応答が止まって時間切れ負けしたため、一次予選1・2回戦のみ使用。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "OpenGL による 3D 表示を実現した。"
+    },
+    {
+      "category": "詰み・終盤",
+      "title": "df-pnベースの詰ルーチン",
+      "description": "優越関係、最小距離法、証明駒・反証駒、新規節点での固定深さ探索、高速1手詰めを実装する。今年は無駄合い処理を省略し、最大深さを128手程度とした。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "今年のバージョンでは無駄合い処理を省略し"
+    },
+    {
+      "category": "エンタメ・演出",
+      "title": "萌えの導入とAMD応援",
+      "description": "「コンピュータ将棋に萌えを導入する」「AMD CPUで活躍してAMDを盛り上げる」といった野望を掲げる。第21回で独創賞を受賞。",
+      "originality": "独自",
+      "evidence": "第21回で独創賞",
+      "quote": "コンピュータ将棋に萌えを導入する。"
+    }
+  ],
+  "character": "アニメ『魔法少女リリカルなのは』の高町なのはが由来。竜王との対局やAMDを盛り上げる野望を掲げ、成果を自己採点する形式の文書。",
+  "notes": "構成は前年とほぼ同じ。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc24/team.html"
+}

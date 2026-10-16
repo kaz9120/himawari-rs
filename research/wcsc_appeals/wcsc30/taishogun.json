@@ -1,0 +1,54 @@
+{
+  "wcsc": 30,
+  "year": 2020,
+  "dir": "taishogun",
+  "team": "横内 健一、横内 靖尚",
+  "software": "大将軍",
+  "sources": [
+    "wcsc30/appeal/taishogun/appeal.txt"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc30/appeal/taishogun/appeal.txt"
+  ],
+  "summary": "やねうら王を探索・評価関数に使い、Multi-Ponderを導入して勝率を上げる。業界標準のない、候補手のポンダー手への割り当て方を試行錯誤し、複数の評価関数を持つことで同じ負け方を繰り返すリスクを減らす。",
+  "base": {
+    "engine": "やねうら王",
+    "eval_source": "Kristallweizen、Orqha、NNUEkai（使用の可能性）",
+    "note": null
+  },
+  "eval": {
+    "family": "NNUE",
+    "detail": null
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "Multi-Ponder"
+  },
+  "learning": null,
+  "hardware": "AWS 64コア",
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "並列・分散",
+      "title": "Multi-Ponderと候補手の割り当て",
+      "description": "複数台でMulti-Ponderを行う。候補手をPonder手に割り当てる方法に業界標準はなく、改良の余地があるとして、同じ資源で勝率が高いパターンを大会で採用する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "どのように候補手をPonder手として割り当てるなどについて、業界標準はなく、改良の余地がありそうです。"
+    },
+    {
+      "category": "評価関数",
+      "title": "複数の評価関数を使い分けるリスク分散",
+      "description": "1回負けると同じ負け方を繰り返す可能性があるため、評価関数を複数持ってリスクを減らす。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "評価関数を複数持つことでそのリスクを減らせると考えられます。"
+    }
+  ],
+  "character": null,
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc30/team.html"
+}

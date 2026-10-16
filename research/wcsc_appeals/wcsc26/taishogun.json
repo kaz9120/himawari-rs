@@ -1,0 +1,68 @@
+{
+  "wcsc": 26,
+  "year": 2016,
+  "dir": "taishogun",
+  "team": "横内 健一",
+  "software": "大将軍",
+  "sources": [
+    "wcsc26/appeal/taishogun/appeal.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc26/appeal/taishogun/appeal.txt"
+  ],
+  "summary": "前回の4駒関係（N4S）から、電王トーナメントのメモリ規制を受けて3駒関係に戻し、「大将軍」の名前を復活させたソフト。評価関数に相対位置と利きと手番を加え、ミニバッチで学習する。多スレッドの自己対戦ツールで、学習から評価まで2〜3日で改善を判断する。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "三駒関係に、駒の位置関係の相対位置による評価、利きをまとめて学習、手番の学習を加える"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": null
+  },
+  "learning": "ミニバッチによる学習。マルチスレッドの自己対戦ツールで評価",
+  "hardware": "Xeon E5-2687W v4×2 24コア",
+  "language": "C++",
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "盤上の4駒の位置関係を学習（前回）",
+      "description": "前回のN4Sでは盤上の4駒の位置関係で評価関数を学習していた。電王トーナメントのメモリ規制で困難になり、3駒関係に戻した。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "前回出場（N4S）においては、盤上の4駒の位置関係をもとに、評価関数を学習していました。"
+    },
+    {
+      "category": "評価関数",
+      "title": "相対位置・利き・手番を加えた三駒関係",
+      "description": "三駒関係に、駒の位置関係の相対位置による評価、利きをまとめて学習、手番の学習を加える。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "駒の位置関係の相対位置による評価・利きをまとめて学習・手番の学習"
+    },
+    {
+      "category": "開発手法・運用",
+      "title": "マルチスレッド同時並行の自己対戦ツール",
+      "description": "自己対戦をマルチスレッドで同時並行に行うツールを作り、短時間で改善効果を確認する。学習から評価まで2〜3日で判断する。",
+      "originality": "独自",
+      "evidence": "学習から評価までを2〜3日",
+      "quote": "マルチスレッドによる同時並行の自己対戦ツールを作成しました。"
+    },
+    {
+      "category": "開発手法・運用",
+      "title": "評価まわりを軽くしてターンアラウンドを短縮",
+      "description": "リソース不足を、評価まわりの動作を軽くして解消し、ターンアラウンドタイムを改善して開発スピードを上げた。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "評価まわりの動作を軽くすることで、リソース不足を解消し"
+    }
+  ],
+  "character": null,
+  "notes": "前回との差分の説明が中心",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc26/team.html"
+}

@@ -1,0 +1,44 @@
+{
+  "wcsc": 25,
+  "year": 2015,
+  "dir": "JPBR-0",
+  "team": "築地 毅",
+  "software": "JPBR-0",
+  "sources": [
+    "wcsc25/appeal/JPBR-0/jpbr-0.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc25/appeal/JPBR-0/jpbr-0.txt"
+  ],
+  "summary": "野球の打順に見立てた「JPBR-0の特徴で打線組んだ」形式の文書。ボナメソを「0手＋静止探索すらなし」で学習する大胆な試み（駒価値は固定）、ライブラリを一切使わない方針、αβ+LMR+Futilityの普通の探索が特徴。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": "ライブラリは絶対に使わない方針"
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "ボナメソで0手探索（静止探索もなし）で学習。駒価値は固定"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "LMR、Futilityなど普通の技術"
+  },
+  "learning": "ボナメソを探索なしで学習（再現性重視）",
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "探索なしのBonanza Method学習",
+      "description": "一般的な「x手＋静止探索」でなく、0手探索（静止探索もなし）で学習する。探索を入れると他プログラムで結果を再現しにくくなるのが理由。駒価値は正しく学習されにくいため固定にする。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "「０手＋静止探索すらなし」で学習するという暴挙に敢えて出ます"
+    }
+  ],
+  "character": "打順9人＋投手に見立てた自虐ネタ文書。自分の名前の由来や初参加時の旅の思い出、DQNネームの名札など脱力した語り口で、投手（目標）は「まったりゆうちゃんに勝って恩返し」。2日目の観光（東京ドイツ村・かずさアーク）にも触れる。",
+  "notes": null,
+  "team_list_url": "http://www2.computer-shogi.org/wcsc25/team.html"
+}

@@ -1,0 +1,71 @@
+{
+  "wcsc": 36,
+  "year": 2026,
+  "dir": "NENE_Shogi",
+  "team": "日高 雅俊",
+  "software": "ねね将棋",
+  "sources": [
+    "wcsc36/appeal/NENE_Shogi/wcsc36_appeal_neneshogi_20260429.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc36/appeal/NENE_Shogi/wcsc36_appeal_neneshogi_20260429.pdf"
+  ],
+  "summary": "局面の性質をDNNで認識し、局面ごとに8つのNNUE評価関数の重みを混ぜ合わせて、評価関数を動的に生成するExpert Blendingという手法の将棋AI。多次元の進行度に応じた評価関数のキメラを、Hypernetwork的に作る。評価損失は改善したが、対局での勝率向上は確認できていないと正直に書いている。",
+  "base": {
+    "engine": "やねうら王",
+    "eval_source": "tanuki-（学習データ）",
+    "note": "探索部はやねうら王（改造版）。nnue-pytorchを改造してGPUで学習"
+  },
+  "eval": {
+    "family": "NNUE",
+    "detail": "HalfKP 256x2-32-32のNNUEエキスパート8セットの重みを、DNNアダプタの出力（softmax）で重みパラメータ空間で加重平均して1つの評価関数を生成"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "やねうら王。手番ごとに評価関数を生成し直す。DNN推論は1手あたり1回のみ"
+  },
+  "learning": "たぬきチームが提供する局面データ（tanuki-.nnue-pytorch-2024-07-30.1）。ルート局面Aと最大50手後のランダム局面Bのペアで、Bの評価で損失を取る。ResNet backboneは固定",
+  "hardware": "Ryzen AI Max+ 395 + Radeon 8060S（CPUのみで対局）",
+  "language": [
+    "C++",
+    "Python"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "Expert Blending（動的な評価関数生成）",
+      "description": "局面を10ブロックのResNetに入力し、アダプタで8つのNNUEエキスパートへの混合重みを出す。重みパラメータ空間で加重平均して、局面ごとに専用の評価関数を作る。出力値のアンサンブルではないので、8つの離散エキスパートでは表せない中間的な評価関数も作れる。",
+      "originality": "独自",
+      "evidence": "全手数帯でバリデーション損失がベースラインより低く、中盤（70〜120手）で約4〜5%改善。ただし最善手一致率は63.3%でベースライン64.4%を下回り、対局での向上は未確認",
+      "quote": "多次元の進行度を定義し、局面ごとに異なる重み付けで評価関数のキメラを生成する。"
+    },
+    {
+      "category": "評価関数",
+      "title": "多次元の進行度",
+      "description": "序盤から終盤という1次元の進行度ではなく、戦型・入玉の有無・手数・評価値の差など局面の性質を多角的に捉えた特徴量を進行度として扱い、適したエキスパートを選ぶ。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "従来の「序盤→終盤」という 1 次元ではなく、戦型・入玉の有無・手数・評価値の差など局面の性質を多角的に捉えた多次元の特徴量"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "先読み局面で損失を取るペア学習",
+      "description": "混合重みはルート局面で決まるが、探索では数十手先の末端の評価が正しい必要がある。そこでルート局面Aと最大50手後の局面Bをペアにし、DNN推論はAのみで行い、損失はBの評価で計算する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "ルート局面の情報から先読みの評価も正確な評価関数を生成するよう end-to-end に学習される。"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "エキスパートの自動分化",
+      "description": "学習後、序盤専用（担当49%）、入玉専用が3つ、相振り飛車専用が2つ、穴熊的が1つといった特性が、手動設定でなく自動的に形成された。",
+      "originality": "独自",
+      "evidence": "検証10,000局面での担当割合の表1。入玉エキスパートのlift値は最大4.2倍",
+      "quote": "エキスパートの特性は手動で設定したものではなく、学習により自動的に形成された。"
+    }
+  ],
+  "character": "今回はモバイル端末を使用しないと明記。コンピュータ将棋ファン向けと機械学習エンジニア向けの2層構成の説明になっている。",
+  "notes": "LLMのモデルマージ（評価関数のキメラ）やHypernetworksに関連づけて説明している。「局面を8方向に分類するだけならもっと小さなネットワークでよい可能性」とも記す。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc36/team.html"
+}

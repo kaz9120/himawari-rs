@@ -1,0 +1,65 @@
+{
+  "wcsc": 33,
+  "year": 2023,
+  "dir": "yaneuraou",
+  "team": "やねうらお・たややん・fluke（やねうら王チーム）",
+  "software": "やねうら王",
+  "sources": [
+    "wcsc33/appeal/yaneuraou/yaneuraou_pr_wcsc33_pre.txt",
+    "wcsc33/appeal/yaneuraou/yaneuraou_wcsc33_after.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc33/appeal/yaneuraou/yaneuraou_pr_wcsc33_pre.txt",
+    "https://www.apply.computer-shogi.org/wcsc33/appeal/yaneuraou/yaneuraou_wcsc33_after.pdf"
+  ],
+  "summary": "今回はふかうら王（dlshogi互換）を採用。事前にleaf nodeでの置換表付きdf-pnの効率化を構想したが、予備実験で効果が薄く断念。代わりに、連続対局の勝ち枝だけを残す自動定跡作成が成果で、2000局面未満で後手番水匠に2000連勝以上できる定跡を作った。",
+  "base": {
+    "engine": "やねうら王（ふかうら王）",
+    "eval_source": "水匠系（水匠は教師・定跡エンジンとして使用）",
+    "note": "ふかうら王はdlshogi互換のAlphaZero型MCTS"
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "dlshogi系のモデル（層が深い）"
+  },
+  "search": {
+    "family": "MCTS",
+    "detail": "ふかうら王。leafでノード数固定のdf-pn詰め探索"
+  },
+  "learning": null,
+  "hardware": "Ryzen 3955WX + RTX 4090 x8（二次予選）、x9（決勝）",
+  "language": [
+    "C++",
+    "Python"
+  ],
+  "claimed_strength": "定跡を使った側が水匠（定跡なし）に対して100%勝つ。角換わり37手目基本図から後手番水匠に2000連勝以上",
+  "ideas": [
+    {
+      "category": "定跡・序盤",
+      "title": "連続対局の勝ち枝を残す自動定跡作成",
+      "description": "指定局面から連続対局し、指し手をすべて定跡に登録する。定跡内をミニマックスで探索して勝ちの枝があればその手を指し、負け枝のみ・未登録なら探索エンジンに思考させる。ノード数は対局開始時に水匠100万〜1億ノードの範囲でランダムに決める。連勝を続ける限り勝ち枝が多様なノード数に挑戦され続け、精度が上がる。",
+      "originality": "独自",
+      "evidence": "2000局面未満の定跡で、角換わり37手目基本図から後手番水匠に2000連勝以上。定跡使用側が100%勝つ",
+      "quote": "連勝を続ける限り、勝ちの枝は採用され続け、ノード数の異なる探索エンジンによって多数回その指し手が本当に勝ちか否かが挑戦され続ける"
+    },
+    {
+      "category": "探索",
+      "title": "leaf nodeでの置換表付きdf-pnの構想（断念）",
+      "description": "層の深いDLモデルでは探索が遅いため、leaf nodeでノード数固定の置換表なしdf-pnの代わりに、置換表あり・スレッド安全・先後共有のdf-pnが得かもしれないと考え、KomoringHeightsを参考に改良を構想。予備実験で効果が薄く断念した。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "簡単な予備実験によるとどうも効果が薄いようなので、わりと実装が大変だということもあり、今回は取り組むのを断念した。"
+    },
+    {
+      "category": "開発手法・運用",
+      "title": "札束勝負から逃れる定跡整備",
+      "description": "近年の評価関数の機械学習は札束の殴り合いになっているので、そこから逃走するべく定跡を整備することにした。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "評価関数モデルの機械学習が札束による殴り合いになっているので、そこから逃走すべく定跡を整備することにした。"
+    }
+  ],
+  "character": null,
+  "notes": "事前の文書（「あとで書き直す」と題）と大会後の文書の2本。詳しい記載は大会後版にある。水匠電竜は今大会ではやねうら王チームに参加（東横将棋の文書より）。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc33/team.html"
+}

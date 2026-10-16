@@ -1,0 +1,60 @@
+{
+  "wcsc": 23,
+  "year": 2013,
+  "dir": "Gekisashi",
+  "team": "激指チーム",
+  "software": "激指",
+  "sources": [
+    "wcsc23/appeal/Gekisashi/gekisashi.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc23/appeal/Gekisashi/gekisashi.txt"
+  ],
+  "summary": "実現確率を打ち切り条件に使う狭く深い探索と、平均化パーセプトロンによる高速な評価関数学習を特徴とする。有効分岐数は約2〜2.5で、短時間でも20手以上先を読める。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "平均化パーセプトロンをベースに学習"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "局面の実現確率を打ち切り条件に使う。遷移確率はロジスティック回帰で推定"
+  },
+  "learning": "平均化パーセプトロンベース。探索深さ6、棋譜5万、5回繰り返しで約24時間",
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "探索",
+      "title": "実現確率による狭く深い探索",
+      "description": "局面の実現確率を打ち切りに使い、人間のエキスパートに似た狭くて深い探索をする。有効分岐数は約2〜2.5。",
+      "originality": "独自",
+      "evidence": "有効分岐数約2〜2.5、20手以上先を読む",
+      "quote": "人間のエキスパートの思考法と似た、狭くて深い探索を実現しています"
+    },
+    {
+      "category": "探索",
+      "title": "ロジスティック回帰による遷移確率推定",
+      "description": "局面の遷移確率を盤面の局所パターン等の特徴量からロジスティック回帰で推定する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "局面の遷移確率は、ロジスティック回帰モデルによって"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "平均化パーセプトロンによる高速学習",
+      "description": "基本深さ6、棋譜5万、5回繰り返しの学習が約24時間で完了する。",
+      "originality": "既存手法の応用",
+      "evidence": "学習約24時間",
+      "quote": "学習が約24時間で完了します"
+    }
+  ],
+  "character": null,
+  "notes": null,
+  "team_list_url": "http://www2.computer-shogi.org/wcsc23/team.html"
+}

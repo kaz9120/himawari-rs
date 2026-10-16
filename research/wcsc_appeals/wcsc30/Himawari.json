@@ -1,0 +1,35 @@
+{
+  "wcsc": 30,
+  "year": 2020,
+  "dir": "Himawari",
+  "team": "山本一将、永塚拓",
+  "software": "ひまわり",
+  "sources": [
+    "wcsc30/appeal/Himawari/appeal.txt"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc30/appeal/Himawari/appeal.txt"
+  ],
+  "summary": "2年前（第28回）と同じ内容としてリンクを示すのみの文書。",
+  "base": {
+    "engine": "不明",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "不明",
+    "detail": null
+  },
+  "search": {
+    "family": "不明",
+    "detail": null
+  },
+  "learning": null,
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [],
+  "character": null,
+  "notes": "第28回のアピール文書（wcsc28/appeal/Himawari/appeal.pdf）を参照とするのみで、本文に内容なし",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc30/team.html"
+}

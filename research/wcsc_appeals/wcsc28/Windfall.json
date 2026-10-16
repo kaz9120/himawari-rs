@@ -1,0 +1,54 @@
+{
+  "wcsc": 28,
+  "year": 2018,
+  "dir": "Windfall",
+  "team": "井本 康宏",
+  "software": "Windfall",
+  "sources": [
+    "wcsc28/appeal/Windfall/appeal.pptx"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc28/appeal/Windfall/appeal.pptx"
+  ],
+  "summary": "評価関数をdeep neural networkに替え、合法手生成までTensorFlowのニューラルネットで行う、脱ビットボードのPython専用ソフト。探索ルーチンはなくなった（「ゲーム木探索：なくても何とかなる」）。「なぜか後退した」と自己申告する。",
+  "base": {
+    "engine": "独自（python-shogi）",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "2駒関係の行列演算から、DNNに変更。end-to-end学習は断念して特徴量を作り込む方針に変更"
+  },
+  "search": {
+    "family": "その他",
+    "detail": "探索ルーチンなし（C++連携のスレッド関連バグのため）"
+  },
+  "learning": null,
+  "hardware": "Core i5 4300 1.9〜2.5GHz（GPUなし）",
+  "language": [
+    "Python"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "実装・高速化",
+      "title": "TensorFlowで合法手を生成するライブラリ",
+      "description": "合法手の計算をニューラルネット（TensorFlow、ラッパーにsonnet）で実行する。多数の局面を同時にGPUで計算する狙いで、C++との連携を避けるために作った（世界初と自称）。大会PCにGPUがない。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "Tensorflow( ラッパーに sonnet) を利用して将棋の差し手を生成 たぶん 世界初"
+    },
+    {
+      "category": "評価関数",
+      "title": "2駒関係を行列演算で表現してDNNへ",
+      "description": "2駒関係を行列演算で表すものからDNNに変更した。内部表現が学習できず、end-to-endをやめて特徴量を作り込む計画に変えた。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "内部表現が全く学習できていなかった"
+    }
+  ],
+  "character": "「忙しい人のためのキーワード一覧」「つい、カッとなって作った」「なぜか後退した進捗」と、肩の力が抜けた書き方。開発コンセプトは「せっかく作るのだったら、独創性にあふれるソフトにしたい」。",
+  "notes": "pptxのテキストを読んだ（スライド文書）。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc28/team.html"
+}

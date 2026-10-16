@@ -1,0 +1,46 @@
+{
+  "wcsc": 28,
+  "year": 2018,
+  "dir": "S.S.E",
+  "team": "和田悠介、斉藤優輝、吉野拓真（芝浦工業大学）",
+  "software": "S.S.E.",
+  "sources": [
+    "wcsc28/appeal/S.S.E/appeal.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc28/appeal/S.S.E/appeal.pdf"
+  ],
+  "summary": "Stockfish 8をベースにゼロから作ったフルスクラッチのソフト。縦型ビットボードを使い、評価関数はelmoのものをそのまま使う予定。DL評価関数も開発中。",
+  "base": {
+    "engine": "独自（Stockfish 8ベース）",
+    "eval_source": "elmo",
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "elmoの評価関数をそのまま使用"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "Stockfish 8ベース。Stockfish 9の変更を一部取り入れる予定。定跡は使わない"
+  },
+  "learning": null,
+  "hardware": "Xeon E5-2609 v3 x2、128GB",
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "実装・高速化",
+      "title": "縦型ビットボードとオリジナルの合法手生成",
+      "description": "縦型ビットボードを使い、合法手生成部をオリジナルで実装した（Aperyを一部参考）。開き王手の生成にバグがあり、他にも不安がある。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "盤面を表現するビットボードは縦型ビットボードを使用しています．"
+    }
+  ],
+  "character": null,
+  "notes": "目立った独自の工夫はなく、実装の自作が主。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc28/team.html"
+}

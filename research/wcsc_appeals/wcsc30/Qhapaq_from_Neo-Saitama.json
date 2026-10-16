@@ -1,0 +1,87 @@
+{
+  "wcsc": 30,
+  "year": 2020,
+  "dir": "Qhapaq_from_Neo-Saitama",
+  "team": "オムラ・インダストリ ショウギ・クラブ",
+  "software": "Qhapaq from Neo-Saitama",
+  "sources": [
+    "wcsc30/appeal/Qhapaq_from_Neo-Saitama/Qhapaq_from_NeoSaitama.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc30/appeal/Qhapaq_from_Neo-Saitama/Qhapaq_from_NeoSaitama.pdf"
+  ],
+  "summary": "dlshogiをベースにやねうら王を封印して、深層学習で「新たな鉱脈」を狙う。ネットワーク構造の微調整と教師データ作成の改良が工夫。前年決勝リーグのソフトと殴り合える強さと自己申告。作者が締切を忘れたことを書く、完成度の低い文書。",
+  "base": {
+    "engine": "dlshogi",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "dlshogiから構造を微調整。表現力と計算速度の両立を新規に開拓"
+  },
+  "search": {
+    "family": "MCTS",
+    "detail": null
+  },
+  "learning": "SDT時代から継ぎ足してきた各種経験則を応用した教師データ作成",
+  "hardware": null,
+  "language": [
+    "C++",
+    "Python"
+  ],
+  "claimed_strength": "前年度の決勝リーグ出場ソフトと殴り合える程度",
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "ネットワーク構造の微調整",
+      "description": "表現力と計算速度を両立するネットワーク構造を、新規に開拓する。",
+      "originality": "不明",
+      "evidence": null,
+      "quote": "表現力と計算速度を両立できる構築を新規開拓"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "教師データ作成の改良",
+      "description": "SDT（電王トーナメント）時代から継ぎ足してきた各種の経験則を応用して、教師データ作成を改良する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "SDT時代から継ぎ足し続けてきた各種経験則を応用"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "やねうら王を封印した深層学習路線",
+      "description": "「新たな鉱脈の発見を目指し、できるだけやねうら王を封印する」と、深層学習で力を見せつける。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "深層学習ベースのエンジンの力を見せつける"
+    },
+    {
+      "category": "棋風・人間らしさ",
+      "title": "MCTSの棋風観察",
+      "description": "MCTS単体では9手詰程度も見逃すが、頓死しやすい局面を避け、勝ちやすい盤面に自然に持っていくように見え、AlphaZeroに近い棋風の気がする。負けるときは寄り筋を見逃して1手で悪くする、という印象。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "頓死しやすいような局面を避け、勝ちやすい盤面に自然に持っていく（ように見える）"
+    },
+    {
+      "category": "解説・人間支援",
+      "title": "棋力測定エンジンとの連携",
+      "description": "棋譜の評価値から、プレイヤーのレーティングを予測するエンジンを開発中。指し手の評価値と上位6手の評価値を入力とし、線形評価・xgboost・NNのアンサンブルで、従来手法比で予測レートの二乗誤差が約半分（？）。大会当日のリアルタイム棋力解析を夢見る。",
+      "originality": "独自",
+      "evidence": "予測レートの二乗誤差が従来手法の約半分（？）",
+      "quote": "棋譜の評価値からプレイヤーのレーティングを予測するエンジンを開発中。"
+    },
+    {
+      "category": "並列・分散",
+      "title": "やねうら王との合議・リレー対局",
+      "description": "武士道に反するが、強くなりそうなら、やねうら王との合議やリレー対局の導入を検討する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "やねうら王との合議、リレー対局"
+    }
+  ],
+  "character": "「ディープがもたらす楽しい将棋」と称して、MCTSの棋風を語る。「懺悔」の節で締切を忘れたことを白状し、ONE PIECEとニンジャスレイヤーに触れる脱線もする。",
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc30/team.html"
+}

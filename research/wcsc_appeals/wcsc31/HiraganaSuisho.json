@@ -1,0 +1,62 @@
+{
+  "wcsc": 31,
+  "year": 2021,
+  "dir": "HiraganaSuisho",
+  "team": "杉村 達也",
+  "software": "すいしょう",
+  "sources": [
+    "wcsc31/appeal/HiraganaSuisho/appeal.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc31/appeal/HiraganaSuisho/appeal.pdf"
+  ],
+  "summary": "Pythonだけで動く将棋プログラム。Python入門書で挫折した人でも書けるような簡単なコードで、盤面に番号を振る算術で合法手を生成し、駒得評価のみで探索する。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "手作り",
+    "detail": "駒得評価のみ"
+  },
+  "search": {
+    "family": "その他",
+    "detail": "最も評価値が高い手を選び、2手前の評価値と違えば更新してルートからやり直す"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": [
+    "Python"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "実装・高速化",
+      "title": "番号計算による合法手生成",
+      "description": "盤面に番号を振り、上に動かすなら1を引く、先手の桂馬なら11を引く又は9を足すと計算し、範囲外や10の倍数になる手を除いて合法手を作る。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "図のように盤面に番号を振り，上に動かしたい場合1を引く"
+    },
+    {
+      "category": "探索",
+      "title": "2手前の評価値で更新して再探索",
+      "description": "選択した手の評価値Aと2手前の手の評価値Bが異なる場合、BをAに更新してルートから再探索する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "評価値Bを評価値Aの値に変更して，ルートノードから再度探索をし なおす。"
+    },
+    {
+      "category": "開発手法・運用",
+      "title": "入門者でも書ける単純なコード",
+      "description": "Python入門書で挫折した人でも書ける簡単なコードのみで動かすことを方針にする。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "簡単なコードのみで動作させています。"
+    }
+  ],
+  "character": "目標は「反則負けをしないよう頑張ります」という素朴なもの。",
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc31/team.html"
+}

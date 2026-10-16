@@ -1,0 +1,46 @@
+{
+  "wcsc": 33,
+  "year": 2023,
+  "dir": "narikin_shogi",
+  "team": "村山 正樹",
+  "software": "なり金将棋",
+  "sources": [
+    "wcsc33/appeal/narikin_shogi/appeal.txt"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc33/appeal/narikin_shogi/appeal.txt"
+  ],
+  "summary": "初回参加時から使いまわすαβ・ハッシュ・null moveの基本構成。3駒関係の評価値を、プロ棋譜約2600局・選手権上位棋譜・強い将棋ソフトと旧なり金の対戦棋譜で教師あり学習している。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "3駒関係（教師あり学習）"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "αβ、ハッシュテーブル、null move"
+  },
+  "learning": "プロ棋譜約2600、選手権上位の棋譜、強いソフトと旧なり金との対戦棋譜で教師あり学習",
+  "hardware": "Ryzen 7 2700x",
+  "language": [
+    "VC"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "プロ棋譜と旧版との対戦棋譜での3駒関係学習",
+      "description": "3駒関係の評価値を、プロ棋譜約2600局、選手権上位の棋譜、強い将棋ソフトと旧なり金の対戦棋譜で教師あり学習する。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "３駒間評価値をプロ棋譜約2600とコンピュータ将棋選手権上位の棋譜、 強い将棋プログラムと旧なり金との対戦棋譜を使い教師あり学習させています。"
+    }
+  ],
+  "character": null,
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc33/team.html"
+}

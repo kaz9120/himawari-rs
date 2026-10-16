@@ -1,0 +1,62 @@
+{
+  "wcsc": 21,
+  "year": 2011,
+  "dir": "mumyou2",
+  "team": "david wada",
+  "software": "無明2",
+  "sources": [
+    "wcsc21/appeal/mumyou2/mumyou_appeal.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc21/appeal/mumyou2/mumyou_appeal.txt"
+  ],
+  "summary": "前年版からBitBoardで合法手生成を高速化し、df-pnの詰め将棋検索を実装した。評価関数は駒割に利き関係を足した程度で、「弱し」と述べる。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "手作り",
+    "detail": "駒割に少々の利き関係の評価"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "αβ、置換表、null move、LMR、history heuristics、マルチスレッド"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": [
+    "Java"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "実装・高速化",
+      "title": "BitBoardによる合法手生成の高速化",
+      "description": "BitBoardの使用で合法手生成だけは毎秒73,000回から毎秒12,000,000回（i7 950）へ約160倍に高速化。",
+      "originality": "既存手法の応用",
+      "evidence": "73,000回/秒から12,000,000回/秒",
+      "quote": "合法手生成「だけ」は高速化"
+    },
+    {
+      "category": "詰み・終盤",
+      "title": "df-pnの詰め将棋検索",
+      "description": "df-pnを使う詰め将棋検索を実装。GHI問題には無装備。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "DFPN　使用の詰め将棋検索を実装"
+    },
+    {
+      "category": "並列・分散",
+      "title": "競技用PCとノートPCの小クラスタ",
+      "description": "競技用マシンとラップトップで検索を分担する小さなクラスタを検討中。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "競技用マシンとラップトップで検索分担のプチクラスターを検討中"
+    }
+  ],
+  "character": "評価関数は「ロクなものが出来ず、出来たものは演算時間が掛かり過ぎたので廃棄」と正直に書く。",
+  "notes": null,
+  "team_list_url": "http://www2.computer-shogi.org/wcsc21/team.html"
+}

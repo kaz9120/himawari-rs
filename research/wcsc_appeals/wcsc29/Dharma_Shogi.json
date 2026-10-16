@@ -1,0 +1,44 @@
+{
+  "wcsc": 29,
+  "year": 2019,
+  "dir": "Dharma_Shogi",
+  "team": "島田 壮太",
+  "software": "だるま将棋",
+  "sources": [
+    "wcsc29/appeal/Dharma_Shogi/appeal.txt"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc29/appeal/Dharma_Shogi/appeal.txt"
+  ],
+  "summary": "初参加で、反則せずに投了することが目標。ディープラーニングとMCTSを予定するが、すべて予定段階という素朴な文書。",
+  "base": {
+    "engine": "不明",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "DL",
+    "detail": null
+  },
+  "search": {
+    "family": "MCTS",
+    "detail": null
+  },
+  "learning": "様々な棋譜を学習（予定）",
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "棋風・人間らしさ",
+      "title": "様々な棋譜で自由な棋風にする",
+      "description": "色々な棋譜を学習させて自由な棋風にしたいという構想。",
+      "originality": "不明",
+      "evidence": null,
+      "quote": "色々な棋譜を学習させ自由な棋風にしたいと思っています。"
+    }
+  ],
+  "character": "目標は反則せず投了すること。「全てが予定なので使わない（使えない）かもしれません」と正直に書く。",
+  "notes": "一覧ではれさぴょん・なのはmini・dlshogiを使用ライブラリとして記載",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc29/team.html"
+}
