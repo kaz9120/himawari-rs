@@ -50,8 +50,15 @@ jobs:
       - run: pip install --quiet ruff==0.8.0
       - run: ruff check .
 
+  # debugビルドのテストはopt-level=1で回す（#664）。opt-level=0では
+  # engineのlibテストとsearch_testsの実行だけで2分前後かかり、CIの
+  # クリティカルパスになっていた。debug_assertionsとoverflow-checksは
+  # opt-levelと独立に有効のままなので、debugでしか見つからない不具合を
+  # 守る役目は変わらない
   test:
     runs-on: ubuntu-latest
+    env:
+      CARGO_PROFILE_DEV_OPT_LEVEL: 1
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
@@ -76,6 +83,9 @@ jobs:
           - arch: 512x16x64
             args: --workspace
     runs-on: ubuntu-latest
+    # testジョブと同じ理由でopt-level=1にする
+    env:
+      CARGO_PROFILE_DEV_OPT_LEVEL: 1
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
@@ -88,6 +98,9 @@ jobs:
   # engine側の単体テストで確かめる
   test-tune:
     runs-on: ubuntu-latest
+    # testジョブと同じ理由でopt-level=1にする
+    env:
+      CARGO_PROFILE_DEV_OPT_LEVEL: 1
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
