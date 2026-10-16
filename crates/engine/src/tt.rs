@@ -175,12 +175,29 @@ impl Tt {
     }
 
     /// 全エントリの消去（usinewgameで呼ぶ）。対局間の独立性を保つ。
-    pub fn clear(&self) {
-        for cluster in &self.clusters {
-            for e in &cluster.0 {
-                e.word0.store(0, Ordering::Relaxed);
-                e.word1.store(0, Ordering::Relaxed);
+    ///
+    /// `threads` 本で分担する。確保直後の表はページがまだ割り当てられて
+    /// おらず（ゼロ埋めの確保はcallocに置き換わる）、初回の消去がページの
+    /// 確保を兼ねて重い。Hash 4096MBを1本で消すと約0.3秒かかった（issue #746）。
+    pub fn clear(&self, threads: usize) {
+        fn zero(part: &[Cluster]) {
+            for cluster in part {
+                for e in &cluster.0 {
+                    e.word0.store(0, Ordering::Relaxed);
+                    e.word1.store(0, Ordering::Relaxed);
+                }
             }
+        }
+        let n = threads.clamp(1, self.clusters.len());
+        if n == 1 {
+            zero(&self.clusters);
+        } else {
+            let chunk = self.clusters.len().div_ceil(n);
+            std::thread::scope(|s| {
+                for part in self.clusters.chunks(chunk) {
+                    s.spawn(move || zero(part));
+                }
+            });
         }
         self.generation.store(0, Ordering::Relaxed);
     }
@@ -299,6 +316,24 @@ mod tests {
         assert!(d.pv);
         // 別キーはmiss
         assert!(tt.probe(key ^ 0xFFFF_0000).is_none());
+    }
+
+    #[test]
+    fn clear_with_threads_empties_every_cluster() {
+        // 分担の端数（クラスタ数がスレッド数で割り切れない）も消し残さない
+        let tt = Tt::new(1);
+        let keys: Vec<u64> = (0..2_000u64)
+            .map(|i| i.wrapping_mul(0x9E37_79B9_7F4A_7C15))
+            .collect();
+        for threads in [1, 3, 7, 64] {
+            for &k in &keys {
+                tt.store(k, Move16(1), 10, 0, 3, Bound::Exact, false);
+            }
+            tt.new_search();
+            tt.clear(threads);
+            assert!(keys.iter().all(|&k| tt.probe(k).is_none()), "{threads}本");
+            assert_eq!(tt.generation(), 0);
+        }
     }
 
     #[test]
