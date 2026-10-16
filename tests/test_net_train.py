@@ -20,7 +20,7 @@ def trainer(tmp_path, monkeypatch):
     monkeypatch.setattr(paths, "NETS", tmp_path / "nets")
     monkeypatch.setattr(paths, "CHECKPOINTS", tmp_path / "checkpoints")
     monkeypatch.setattr(paths, "LOGS", tmp_path / "logs")
-    monkeypatch.setattr(net, "_ensure_extension", lambda **_: None)
+    monkeypatch.setattr(net, "_ensure_extension", lambda *_, **__: None)
 
     def fake_run(argv, **_):
         calls.append(argv)
@@ -157,3 +157,46 @@ def test_dry_run_neither_builds_nor_installs(extension):
     extension["installed"] = "512x16x64"
     net._ensure_extension(dry_run=True)
     assert extension["builds"] == [] and extension["installs"] == []
+
+
+def test_arch_rebuilds_the_extension_with_that_arch(extension):
+    """--archで別構成を指定したら、その構成で作り直す（ADR-0229の段階2の道）。"""
+    extension["installed"] = "1024x16x32"
+    net._ensure_extension("512x16x64", dry_run=False)
+    assert [b["HIMAWARI_ARCH"] for b in extension["builds"]] == ["512x16x64"]
+    assert extension["installs"] == ["512x16x64"]
+
+
+def test_extension_of_the_asked_arch_is_kept(extension):
+    extension["installed"] = "512x16x64"
+    net._ensure_extension("512x16x64", dry_run=False)
+    assert extension["builds"] == [] and extension["installs"] == []
+
+
+def test_train_passes_the_arch_and_records_it_as_a_condition(trainer, monkeypatch):
+    """net train --arch は拡張をその構成にし、構成を学習の条件に数える。"""
+    calls, train_dir = trainer
+    asked = []
+    monkeypatch.setattr(net, "_ensure_extension", lambda arch=None, **_: asked.append(arch))
+    assert cli.main(argv_for(train_dir, "d.psv", "--arch", "512x16x64")) == proc.OK
+    assert asked == ["512x16x64"]
+    record = (paths.CHECKPOINTS / "x" / "train.cond").read_text(encoding="utf-8")
+    assert "HIMAWARI_ARCH=512x16x64" in record
+    # 同じ名前で既定の構成を頼むと、条件が違うので上書きしない
+    assert cli.main(argv_for(train_dir)) == proc.RUNTIME
+
+
+def test_train_defaults_to_the_build_rs_arch_without_changing_the_record(trainer, monkeypatch):
+    """既定の構成では、--archを入れる前と同じ条件の行を控える。"""
+    calls, train_dir = trainer
+    asked = []
+    monkeypatch.setattr(net, "_ensure_extension", lambda arch=None, **_: asked.append(arch))
+    assert cli.main(argv_for(train_dir)) == proc.OK
+    assert asked == [net.default_arch()]
+    record = (paths.CHECKPOINTS / "x" / "train.cond").read_text(encoding="utf-8")
+    assert "HIMAWARI_ARCH" not in record
+
+
+def test_a_malformed_arch_is_a_usage_error(trainer):
+    _, train_dir = trainer
+    assert cli.main(argv_for(train_dir, "d.psv", "--arch", "big")) == proc.USAGE

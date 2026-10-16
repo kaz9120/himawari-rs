@@ -157,6 +157,7 @@ run = "hmwr match run adr0211-x --foreground"
 hmwr net train <名前> --data <名前> --valid valid_tanuki_dl430_q1 \
                       --rank rank_tanuki_210M     dlshogiのラベルで学習するレシピ
 hmwr net train <名前> --data <名前> --init-ckpt <ckpt> --lr 1e-4
+hmwr net train <名前> --data <名前> --arch 512x16x64  既定以外の構成で学習する
 hmwr net shapes 256x16 512x16x32 --seed 1   構成ごとに小さく学習して比べる
 hmwr net eval data/nets/*.hmwr.best
 hmwr net probe <名前> --focus focus_1M      FTを凍結して焦点のヒートマップを当てる
@@ -168,6 +169,10 @@ hmwr net reorder data/profile/act-<名前>.bin 512 --apply data/nets/<ネット>
 同じ名前・同じ条件で学習済みなら、何もせず成功で終わる。途中で止まった学習は、
 同じコマンドで `latest.ckpt` から再開する。同じ名前で条件が違うと止まるので、
 名前を変えるか `--force` で最初から学習し直す。
+
+py拡張は学習する構成で入れ直す。`--arch` を省くと `crates/engine/build.rs` の
+既定の構成になる。入っている拡張の構成が違えば、その構成で作り直してから学習する。
+`net shapes` の後に残った別構成の拡張で、黙って学習しないためである。
 
 **検証集合は学習データと同じ条件に揃える**（ADR-0136）。静止化した教師で
 学習するなら検証集合も静止化する。条件がずれると最良チェックポイントの選択が
