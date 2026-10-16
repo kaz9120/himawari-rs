@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.55.2](https://github.com/kaz9120/himawari-rs/compare/v0.55.1...v0.55.2) (2026-10-16)
+
+
+### その他の変更
+
+* hmwrの終了コードとdry-runの副作用を規約に揃える ([#774](https://github.com/kaz9120/himawari-rs/issues/774)) ([0e264cb](https://github.com/kaz9120/himawari-rs/commit/0e264cb411887d67a22099d5d7e59841c4e4aa8a)), closes [#756](https://github.com/kaz9120/himawari-rs/issues/756)
+
+## [0.55.1](https://github.com/kaz9120/himawari-rs/compare/v0.55.0...v0.55.1) (2026-10-16)
+
+
+### その他の変更
+
+* floodgateの対局者ページを2026年から今年まで読む（[#749](https://github.com/kaz9120/himawari-rs/issues/749)） ([#775](https://github.com/kaz9120/himawari-rs/issues/775)) ([1b94bbe](https://github.com/kaz9120/himawari-rs/commit/1b94bbe1c2849c8b92e35b06ab41f17f2116081e))
+* hmwr league summary が引数の受け渡しで落ちるのを直す ([#772](https://github.com/kaz9120/himawari-rs/issues/772)) ([f2580c5](https://github.com/kaz9120/himawari-rs/commit/f2580c594390d437d2b4a7e37546c35343c6042c)), closes [#755](https://github.com/kaz9120/himawari-rs/issues/755)
+* hmwr net の既定の学習データと検証集合を現行の組に直す ([#778](https://github.com/kaz9120/himawari-rs/issues/778)) ([c2ea67a](https://github.com/kaz9120/himawari-rs/commit/c2ea67ae62e728c2fc616694cc3dba948738f16e))
+* nn.bin互換ローダを削除する（ADR-0037の追記） ([#777](https://github.com/kaz9120/himawari-rs/issues/777)) ([3396000](https://github.com/kaz9120/himawari-rs/commit/33960009bff7d905c3c733c1959f43a49f86ed5c)), closes [#766](https://github.com/kaz9120/himawari-rs/issues/766)
+* USIへの出力をASCIIに揃え、非UTF-8の入力行でも終了しないようにする ([#779](https://github.com/kaz9120/himawari-rs/issues/779)) ([b3b32ae](https://github.com/kaz9120/himawari-rs/commit/b3b32ae8def19793094993827d4ac9926c939154)), closes [#745](https://github.com/kaz9120/himawari-rs/issues/745)
+* 置換表の初回のページ確保をisreadyで済ませ、usinewgameは消去の完了を待つ ([#783](https://github.com/kaz9120/himawari-rs/issues/783)) ([790c0f1](https://github.com/kaz9120/himawari-rs/commit/790c0f138adfed57f47e2abf9e22c33bbdfd935b)), closes [#746](https://github.com/kaz9120/himawari-rs/issues/746)
+* 評価関数を固定名で配り、EvalFileの既定を実行ファイルと同じフォルダにする ([#785](https://github.com/kaz9120/himawari-rs/issues/785)) ([fa2c783](https://github.com/kaz9120/himawari-rs/commit/fa2c783d0b21c257854d6b73e8785bb6fa79c305))
+
 ## [0.55.0](https://github.com/kaz9120/himawari-rs/compare/v0.54.2...v0.55.0) (2026-10-15)
 
 

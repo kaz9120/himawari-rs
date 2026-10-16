@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="360" viewBox="0 0 760 360" role="img" aria-label="floodgateのレートの推移">
+<style>
+svg { --bg: #fcfcfb; --ink: #0b0b0b; --ink2: #52514e; --grid: #e4e3df; --s1: #2a78d6; --s2: #eb6834; }
+@media (prefers-color-scheme: dark) {
+  svg { --bg: #1a1a19; --ink: #f0efec; --ink2: #c3c2b7; --grid: #3a3a36; --s1: #3987e5; --s2: #d95926; }
+}
+.bg { fill: var(--bg); }
+text { font-family: -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Yu Gothic', 'Segoe UI', sans-serif; fill: var(--ink2); font-size: 12px; }
+.title { fill: var(--ink); font-size: 16px; font-weight: 600; }
+.value { fill: var(--ink); font-weight: 600; }
+.note { font-size: 11px; }
+.grid { stroke: var(--grid); stroke-width: 1; }
+.axis { stroke: var(--ink2); stroke-width: 1; }
+.line { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.daily { stroke: var(--s1); }
+.two_weeks { stroke: var(--s2); }
+.dot-daily { fill: var(--s1); stroke: var(--bg); stroke-width: 2; }
+.dot-two_weeks { fill: var(--s2); stroke: var(--bg); stroke-width: 2; }
+</style>
+<rect class="bg" width="760" height="360" rx="6"/>
+<text class="title" x="56" y="30">floodgateのレートの推移</text>
+<text class="note" x="56" y="50">2026-10-16 取得。2週間のレートは、直近2週間の対局だけで計算した値</text>
+<line class="grid" x1="56" y1="300" x2="640" y2="300"/>
+<text x="48" y="300" dy="4" text-anchor="end">3000</text>
+<line class="grid" x1="56" y1="254.4" x2="640" y2="254.4"/>
+<text x="48" y="254.4" dy="4" text-anchor="end">3200</text>
+<line class="grid" x1="56" y1="208.8" x2="640" y2="208.8"/>
+<text x="48" y="208.8" dy="4" text-anchor="end">3400</text>
+<line class="grid" x1="56" y1="163.2" x2="640" y2="163.2"/>
+<text x="48" y="163.2" dy="4" text-anchor="end">3600</text>
+<line class="grid" x1="56" y1="117.6" x2="640" y2="117.6"/>
+<text x="48" y="117.6" dy="4" text-anchor="end">3800</text>
+<line class="grid" x1="56" y1="72" x2="640" y2="72"/>
+<text x="48" y="72" dy="4" text-anchor="end">4000</text>
+<line class="axis" x1="56" y1="300" x2="640" y2="300"/>
+<line class="axis" x1="78.2" y1="300" x2="78.2" y2="304"/>
+<text x="78.2" y="318" text-anchor="middle">2026年8月</text>
+<line class="axis" x1="307.3" y1="300" x2="307.3" y2="304"/>
+<text x="307.3" y="318" text-anchor="middle">9月</text>
+<line class="axis" x1="529.1" y1="300" x2="529.1" y2="304"/>
+<text x="529.1" y="318" text-anchor="middle">10月</text>
+<polyline class="line daily" points="56,259.4 63.4,256.7 70.8,251 181.7,190.6 307.3,174.6 640,147"/>
+<circle class="dot-two_weeks" cx="56" cy="263.3" r="2"/>
+<polyline class="line two_weeks" points="70.8,247.6 181.7,172.3 307.3,138.1 640,78.8"/>
+<circle class="dot-daily" cx="640" cy="147" r="4"/>
+<text class="value" x="652" y="147" dy="-1">3671</text>
+<text x="652" y="147" dy="13">日毎のレート</text>
+<circle class="dot-two_weeks" cx="640" cy="78.8" r="4"/>
+<text class="value" x="652" y="78.8" dy="-1">3970</text>
+<text x="652" y="78.8" dy="13">2週間のレート</text>
+<line class="line daily" x1="420" y1="26" x2="438" y2="26"/>
+<text x="444" y="30">日毎のレート</text>
+<line class="line two_weeks" x1="536" y1="26" x2="554" y2="26"/>
+<text x="560" y="30">2週間のレート</text>
+<text class="note" x="56" y="348">出典: https://wdoor.c.u-tokyo.ac.jp/shogi/x/2026/player/Himawari+6fd5a66.html</text>
+</svg>

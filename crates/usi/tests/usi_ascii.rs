@@ -91,10 +91,18 @@ fn responses_are_ascii_even_with_japanese_paths() {
     let _ = std::fs::remove_dir_all(&dir);
 }
 
+/// EvalFileが空なら、実行ファイルと同じフォルダの固定名を読みに行く（issue #744）。
+/// テストのバイナリの隣には置かないので、開けずに終わる。
 #[test]
-fn missing_eval_file_error_is_ascii() {
+fn empty_eval_file_falls_back_to_the_name_beside_the_binary() {
     let out = run_engine(b"usi\nisready\n");
     let stdout = assert_ascii(&out.stdout);
-    assert!(stdout.contains("EvalFile is not set"), "{stdout}");
+    assert!(stdout.contains("cannot open EvalFile"), "{stdout}");
+    let exe = Path::new(env!("CARGO_BIN_EXE_himawari"));
+    let expect = exe.with_file_name("himawari.hmwr");
+    assert!(
+        stdout.contains(&format!("path = {:?}", expect.to_string_lossy())),
+        "{stdout}"
+    );
     assert_eq!(out.status.code(), Some(1), "{stdout}");
 }
