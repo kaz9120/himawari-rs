@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.55.9](https://github.com/kaz9120/himawari-rs/compare/v0.55.8...v0.55.9) (2026-10-16)
+
+
+### その他の変更
+
+* net trainが学習する構成でpy拡張を作り直し、--archで構成を選べるようにする ([#824](https://github.com/kaz9120/himawari-rs/issues/824)) ([89371ff](https://github.com/kaz9120/himawari-rs/commit/89371ff5c026a608003ebefee3d2538a823370b4))
+
 ## [0.55.8](https://github.com/kaz9120/himawari-rs/compare/v0.55.7...v0.55.8) (2026-10-16)
 
 
