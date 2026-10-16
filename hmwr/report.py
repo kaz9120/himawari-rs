@@ -13,9 +13,6 @@ from pathlib import Path
 
 from . import paths, sprt_log
 
-REGISTRY = "training/runs/registry.tsv"
-
-
 def _option(argv: list[str], flag: str) -> str:
     return argv[argv.index(flag) + 1] if flag in argv and argv.index(flag) + 1 < len(argv) else ""
 
@@ -76,7 +73,7 @@ MATCH_HEAD = ["対局", "baseline → candidate", "局数", "W-D-L", "Elo [95%CI
 
 def train_row(name: str) -> list[str]:
     """学習1本を表の1行にする。学習の記録に同じ名前が複数あれば、最後の行を使う。"""
-    registry = paths.REPO / REGISTRY
+    registry = paths.registry()
     row = None
     if registry.is_file():
         with open(registry, encoding="utf-8", newline="") as fh:

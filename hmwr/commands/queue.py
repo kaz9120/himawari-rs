@@ -20,6 +20,7 @@ import re
 import shutil
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 from .. import config, paths, proc
@@ -34,6 +35,10 @@ LOG_TAIL = 30
 # 結果の記録に使うclaude。PATHのshimは端末の環境に依存するので、実体を先に探す
 CLAUDE_CANDIDATES = (Path.home() / ".local" / "bin" / "claude",)
 RECORD_TIMEOUT = 40 * 60
+# launchdの出力の置き場。launchdは起動のたびに開き直すので、名前を変えれば次の回から
+# 新しいファイルへ書く。大きさが上限を超えたら日付つきの名前へ退避する（消さない）
+LAUNCHD_LOG = "queue-launchd.log"
+ROTATE_BYTES = 4 * 1024 * 1024
 
 
 def add_parser(sub: argparse._SubParsersAction) -> None:
@@ -54,6 +59,11 @@ def add_parser(sub: argparse._SubParsersAction) -> None:
         description="実行中のIssueがあれば続きから、無ければ待ちの先頭を取る。"
         "専用のworktreeでは、コミットが進んでいたらツールを作り直してから走らせる。"
         "終わるまで戻らない。一時停止中と、別の実行が走っている間は何もしない。",
+    )
+    t.add_argument(
+        "--quiet",
+        action="store_true",
+        help="何もしなかった回は何も書かない（launchdのログを膨らませないため）",
     )
     t.set_defaults(func=tick)
 
@@ -126,9 +136,17 @@ def spec_name(body: str) -> str | None:
 # --- 1回ぶんの処理 -----------------------------------------------------
 
 
+def _say(text: str, *, err: bool = False) -> None:
+    """時刻つきで1行書く。launchdのログを後から読むとき、いつの出来事か分かるようにする。"""
+    stamp = time.strftime("%Y-%m-%d %H:%M:%S")
+    print(f"{stamp} {text}", file=sys.stderr if err else sys.stdout, flush=True)
+
+
 def tick(args: argparse.Namespace) -> int:
+    quiet = getattr(args, "quiet", False)
     if exp.pause_file().exists():
-        print("一時停止中（hmwr queue resume で解除）")
+        if not quiet:
+            print("一時停止中（hmwr queue resume で解除）")
         return proc.OK
 
     paths.QUEUE.mkdir(parents=True, exist_ok=True)
@@ -136,19 +154,21 @@ def tick(args: argparse.Namespace) -> int:
         try:
             fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
         except OSError:
-            print("別の実行が走っている。何もしない")
+            if not quiet:
+                print("別の実行が走っている。何もしない")
             return proc.OK
-        return _tick(dry_run=args.dry_run)
+        return _tick(dry_run=args.dry_run, quiet=quiet)
 
 
-def _tick(*, dry_run: bool) -> int:
+def _tick(*, dry_run: bool, quiet: bool = False) -> int:
     running = issues(RUNNING)
     issue = (running or issues(QUEUED) or [None])[0]
     if issue is None:
-        print("待ちの実験はない")
+        if not quiet:
+            print("待ちの実験はない")
         return proc.OK
     number, resumed = issue["number"], bool(running)
-    print(f"#{number} {issue['title']}（{'続きから' if resumed else '新規'}）")
+    _say(f"#{number} {issue['title']}（{'続きから' if resumed else '新規'}）")
     if dry_run:
         print(f"[dry-run] hmwr exp run {spec_name(issue['body'])}")
         return proc.OK
@@ -175,12 +195,13 @@ def _tick(*, dry_run: bool) -> int:
         check=False,
     )
     if result.returncode == proc.JUDGE and exp.pause_file().exists():
-        print("一時停止で止まった。ラベルは running のまま残す")
+        _say("一時停止で止まった。ラベルは running のまま残す")
         return proc.OK
     if result.returncode != proc.OK:
         return _fail(number, RUNNING, f"終了コード {result.returncode} で止まった。", name)
 
     relabel(number, add=DONE, remove=RUNNING)
+    _say(f"#{number} 全ステップが完了した")
     comment(number, f"全ステップが完了した。\n\n```\n{_progress(name)}\n```")
     _record(name, number)
     return proc.OK
@@ -207,7 +228,7 @@ def _record(name: str, number: int) -> None:
         "ADRへ記録するPRを出してください。スキルの「しないこと」を守ってください。"
     )
     log = paths.log("record", name)
-    print(f"結果の記録を始める（ログ: {paths.rel(log)}）", flush=True)
+    _say(f"結果の記録を始める（ログ: {paths.rel(log)}）")
     with open(log, "ab") as fh:
         try:
             result = subprocess.run(
@@ -247,7 +268,7 @@ def _fail(number: int, state: str, reason: str, name: str | None = None) -> int:
         body += "\n\n原因を直したら、ラベルを `queued` へ戻すと続きから走る。"
     relabel(number, add=FAILED, remove=state)
     comment(number, body)
-    print(f"#{number}: {reason}", file=sys.stderr)
+    _say(f"#{number}: {reason}", err=True)
     return proc.RUNTIME
 
 
@@ -274,25 +295,35 @@ def _detached() -> bool:
 
 
 def run(args: argparse.Namespace) -> int:
-    """コードをorigin/mainへ揃えてからtickを呼ぶ。"""
+    """コードをorigin/mainへ揃えてからtickを呼ぶ。
+
+    launchdが5分おきに呼ぶ入口なので、何もしなかった回は何も書かない。
+    書くのは実験を取った・終えた・失敗した回だけで、どの行にも時刻を付ける。
+    """
     if not _detached():
         raise proc.Fail(
             "ブランチ上の作業ツリーでは走らせない。ブランチの切り替えが実験のコードを変える。\n"
             "専用のworktreeを hmwr queue install で用意する"
         )
     if exp.pause_file().exists():
-        print("一時停止中（hmwr queue resume で解除）")
         return proc.OK
     if args.dry_run:
         print("[dry-run] git fetch origin main && git checkout --detach origin/main")
-        print("[dry-run] hmwr queue tick")
+        print("[dry-run] hmwr queue tick --quiet")
         return proc.OK
 
-    proc.run(["git", "fetch", "--quiet", "origin", "main"])
-    proc.run(["git", "checkout", "--quiet", "--detach", "origin/main"])
+    _rotate_log()
+    for argv in (
+        ["git", "fetch", "--quiet", "origin", "main"],
+        ["git", "checkout", "--quiet", "--detach", "origin/main"],
+    ):
+        code, _, err = proc.capture_code(argv)
+        if code != proc.OK:
+            _say(f"失敗した（終了コード {code}）: {proc.show(argv)}\n{err.strip()}", err=True)
+            return proc.RUNTIME
     # 揃えた後のコードで続きをやる。この処理自体は古いコードで動いている
     return subprocess.run(
-        [sys.executable, str(paths.REPO / "bin" / "hmwr"), "queue", "tick"],
+        [sys.executable, str(paths.REPO / "bin" / "hmwr"), "queue", "tick", "--quiet"],
         cwd=str(paths.REPO),
         check=False,
     ).returncode
@@ -348,6 +379,21 @@ def resume(args: argparse.Namespace) -> int:
     return proc.OK
 
 
+def _rotate_log() -> None:
+    """launchdのログが上限を超えたら、日付つきの名前へ退避する。
+
+    この回の出力は退避した側へ続けて入り、launchdは次の回で元の名前を
+    開き直す。古いログは消さない。
+    """
+    log = paths.LOGS / LAUNCHD_LOG
+    try:
+        if log.stat().st_size <= ROTATE_BYTES:
+            return
+    except FileNotFoundError:
+        return
+    log.rename(log.with_name(f"{log.stem}-{time.strftime('%Y%m%d-%H%M%S')}{log.suffix}"))
+
+
 # --- 常駐の用意 --------------------------------------------------------
 
 # worktreeには無く、開発用の作業ツリーと共有するもの。どれもgitignoreの対象
@@ -382,8 +428,8 @@ def plist(runner: Path) -> dict:
             "LANG": "ja_JP.UTF-8",
             "PATH": os.environ.get("PATH", ""),
         },
-        "StandardOutPath": str(paths.LOGS / "queue-launchd.log"),
-        "StandardErrorPath": str(paths.LOGS / "queue-launchd.log"),
+        "StandardOutPath": str(paths.LOGS / LAUNCHD_LOG),
+        "StandardErrorPath": str(paths.LOGS / LAUNCHD_LOG),
     }
 
 
@@ -434,7 +480,7 @@ def install(args: argparse.Namespace) -> int:
     proc.run(["launchctl", "bootstrap", domain, str(target)])
     print(f"常駐させた: {AGENT}（{INTERVAL}秒おき）")
     print(f"worktree : {runner}")
-    print(f"ログ     : {paths.rel(paths.LOGS / 'queue-launchd.log')}")
+    print(f"ログ     : {paths.rel(paths.LOGS / LAUNCHD_LOG)}")
     print("止めるには hmwr queue pause、外すには hmwr queue uninstall")
     return proc.OK
 

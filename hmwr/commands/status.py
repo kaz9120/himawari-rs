@@ -90,7 +90,7 @@ def _results() -> dict:
                         row[k] = v
             matches.append(row)
     nets = []
-    registry = paths.REPO / "training" / "runs" / "registry.tsv"
+    registry = paths.registry()
     if registry.is_file():
         lines = registry.read_text(encoding="utf-8").splitlines()
         if lines:

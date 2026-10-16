@@ -17,8 +17,9 @@ from .. import release as release_mod
 from ..tools import focus_labels, ft_reorder
 
 TRAINER = "training/train.py"
-REGISTRY = "training/runs/registry.tsv"
-RUNS = "training/runs/net_shape"
+
+# 学習曲線のTSVの置き場。paths.RUNS の下に置く
+CURVES = "net_shape"
 
 # 1局面40バイト固定（ADR-0038）
 BYTES_PER_POSITION = 40
@@ -311,8 +312,8 @@ def train(args: argparse.Namespace) -> int:
         "--device", args.device or "mps",
         "--seed", str(args.seed),
         "--checkpoint-dir", f"training/checkpoints/{name}",
-        "--log-file", f"{RUNS}/{name}.tsv",
-        "--registry", REGISTRY,
+        "--log-file", _curve(name),
+        "--registry", paths.rel(paths.registry()),
         "--name", name,
         "--notes", args.notes or f"{data} で学習",
     ]
@@ -335,7 +336,7 @@ def train(args: argparse.Namespace) -> int:
         argv += args.extra.split()
 
     if not args.dry_run:
-        for directory in (paths.NETS, paths.WORK / RUNS, paths.CHECKPOINTS / name):
+        for directory in (paths.NETS, paths.RUNS / CURVES, paths.CHECKPOINTS / name):
             directory.mkdir(parents=True, exist_ok=True)
 
     # 備考は学習の記録のメモで、学習の条件ではない
@@ -393,6 +394,11 @@ def train_progress(beat):
             beat.set_total(int(m.group(1)))
 
     return on_line
+
+
+def _curve(name: str) -> str:
+    """学習曲線のTSV。学習器へはリポジトリからの相対パスで渡す。"""
+    return paths.rel(paths.RUNS / CURVES / f"{name}.tsv")
 
 
 def _train_file(value: str, suffix: str) -> Path:
@@ -505,8 +511,8 @@ def probe(args: argparse.Namespace) -> int:
         "--log-interval", str(interval),
         "--device", args.device or "mps",
         "--seed", str(args.seed),
-        "--log-file", f"{RUNS}/probe-{name}.tsv",
-        "--registry", REGISTRY,
+        "--log-file", _curve(f"probe-{name}"),
+        "--registry", paths.rel(paths.registry()),
         "--name", f"probe_{name}",
         "--notes",
         f"焦点probe: {paths.rel(data)}、FT={paths.rel(init) if init else '乱数'}",
@@ -519,7 +525,7 @@ def probe(args: argparse.Namespace) -> int:
     if args.dry_run:
         argv += ["--out", "<一時ファイル>"]
         return proc.run(argv, dry_run=True, log=paths.log("probe", name))
-    (paths.WORK / RUNS).mkdir(parents=True, exist_ok=True)
+    (paths.RUNS / CURVES).mkdir(parents=True, exist_ok=True)
     # 学習器は必ずネットを書き出すが、probeのそれは捨てるものである。
     # FTは凍結していて1ビットも変わらず、学習した焦点ヘッドは載らない。
     # data/nets/ へ置くと128MBの使い道のないファイルが実行ごとに増える
@@ -569,8 +575,8 @@ def shapes(args: argparse.Namespace) -> int:
                 *BASE_FLAGS,
                 "--device", args.device,
                 "--seed", str(args.seed),
-                "--log-file", f"{RUNS}/{name}.tsv",
-                "--registry", REGISTRY,
+                "--log-file", _curve(name),
+                "--registry", paths.rel(paths.registry()),
                 "--name", f"{args.tag}_{spec}_s{args.seed}",
                 "--notes", f"構成の比較: {spec}、種 {args.seed}、{source}",
             ],
@@ -579,7 +585,7 @@ def shapes(args: argparse.Namespace) -> int:
         )
 
     print()
-    print(f"検証損失を比べる: column -t -s $'\\t' {REGISTRY} | grep '{args.tag}_'")
+    print(f"検証損失を比べる: column -t -s $'\\t' {paths.rel(paths.registry())} | grep '{args.tag}_'")
     return proc.OK
 
 
