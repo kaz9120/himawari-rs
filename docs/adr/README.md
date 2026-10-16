@@ -96,6 +96,8 @@ ROADMAPの注力を決めた判断。いまの注力は0229にある。
 - [0172](0172-multihot-input.md) 入力を玉と駒のマルチホットにする案（測って棄却）
 - [0183](0183-stacked-pairwise-product.md) FT積を2段にして4駒の相互作用を入れる案（測って棄却）
 - [0184](0184-cross-view-product.md) 視点をまたぐ対の積で両玉の相互作用を入れる案（測って棄却）
+- [0237](0237-effect-count-inputs.md) 駒×升×利き数の特徴を、細い別のaccumulatorで入力に足す
+- [0238](0238-effect-progress-layer-stack.md) 利きから出す2軸の進行度で後段を4組に切り替える（LayerStack）
 
 ### 学習
 
@@ -396,6 +398,8 @@ ROADMAPの注力を決めた判断。いまの注力は0229にある。
 | [0234](0234-king-danger-rfp.md) | 手番側の玉の周りに相手の利きが集まるノードでは、子ノードのfutilityで刈らない | 2026-10-17 |  | proposed |
 | [0235](0235-quiet-ordering-hanging.md) | 静かな手の並べ替えに、取られる駒を逃がす手と取られる升へ行く手の項を足す | 2026-10-17 |  | proposed |
 | [0236](0236-entering-king-path.md) | 玉の前進の余地を利きで測る指標を作り、探索と学習のどちらで使うかを測定で決める | 2026-10-17 |  | proposed |
+| [0237](0237-effect-count-inputs.md) | 駒×升×利き数の特徴を、細い別のaccumulatorで評価関数の入力に足す | 2026-10-17 |  | proposed |
+| [0238](0238-effect-progress-layer-stack.md) | 利きから出す2軸の進行度で、後段（L1から出力まで）を4組に切り替える | 2026-10-17 |  | proposed |
 
 ## バックログ
 
