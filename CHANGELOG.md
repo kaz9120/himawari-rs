@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.55.7](https://github.com/kaz9120/himawari-rs/compare/v0.55.6...v0.55.7) (2026-10-16)
+
+
+### その他の変更
+
+* ponder中は定跡を引かずに探索し、ponderhitで定跡を引く（ADR-0231） ([#822](https://github.com/kaz9120/himawari-rs/issues/822)) ([621dce8](https://github.com/kaz9120/himawari-rs/commit/621dce8ea7d0241f46e82c1aeb05eec54c00ed01))
+
 ## [0.55.6](https://github.com/kaz9120/himawari-rs/compare/v0.55.5...v0.55.6) (2026-10-16)
 
 
