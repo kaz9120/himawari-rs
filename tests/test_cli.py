@@ -511,4 +511,3 @@ def test_build_pair_can_build_the_candidate_from_a_ref(capsys):
     copies = [x for x in lines if " cp " in x]
     assert copies[0].endswith("data/bin/cand-adr0211-x")
     assert copies[1].endswith("data/bin/base-adr0211-x")
-
