@@ -262,7 +262,7 @@ hmwr diag phase <局面>          進行度の指標の候補を比べる
 ### 教師データを扱う
 
 ```
-hmwr data fetch all                                  取得→検査→psv作成
+hmwr data fetch all                                  取得→検査（既定 tanuki2024。haoはpsv作成まで）
 hmwr data shuffle <出力名> --raw <データセット>      生データを全体シャッフルする
 hmwr data split <出力名> --in <入力名> --count N     先頭から区間を切り出す
 hmwr data mix <出力名> --in <入力名> --in <入力名>   複数の教師を混ぜる

@@ -500,6 +500,13 @@ def test_data_fetch_covers_every_source_file(capsys):
     assert len(set(names)) == 381
 
 
+def test_data_fetch_defaults_to_the_current_teacher():
+    """既定は現行の教師tanuki2024で、READMEとDATASETS.mdの手順と揃える。"""
+    args = cli.build_parser().parse_args(["data", "fetch"])
+    assert args.dataset == "tanuki2024"
+    assert args.stage == "all"
+
+
 def test_data_fetch_excludes_the_validation_source(capsys, tmp_path):
     """検証データの供給元は学習データへ混ぜない。"""
     from hmwr.commands import data as data_cmd
