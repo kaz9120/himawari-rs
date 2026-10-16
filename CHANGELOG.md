@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.55.4](https://github.com/kaz9120/himawari-rs/compare/v0.55.3...v0.55.4) (2026-10-16)
+
+
+### その他の変更
+
+* hmwr build pair が比較元のファイルを作業木へ残さないようにする ([#795](https://github.com/kaz9120/himawari-rs/issues/795)) ([8142d19](https://github.com/kaz9120/himawari-rs/commit/8142d19f43031ef2d4c4524a8e1082f4fc603a9b)), closes [#776](https://github.com/kaz9120/himawari-rs/issues/776)
+* hmwr data fetch の既定データセットを現行の教師tanuki2024にする ([#800](https://github.com/kaz9120/himawari-rs/issues/800)) ([66ac579](https://github.com/kaz9120/himawari-rs/commit/66ac5796280557f717327a253d1f94320bbbb84a)), closes [#787](https://github.com/kaz9120/himawari-rs/issues/787)
+* kifu cycle・kifu report・book seed が2026年から今年までの棋譜を読むようにする ([#805](https://github.com/kaz9120/himawari-rs/issues/805)) ([6028a3f](https://github.com/kaz9120/himawari-rs/commit/6028a3f8aa9b06ac38a215033c575aaeb427267b)), closes [#791](https://github.com/kaz9120/himawari-rs/issues/791)
+* ログと成果物の置き場の揺れを片づける ([#798](https://github.com/kaz9120/himawari-rs/issues/798)) ([8161048](https://github.com/kaz9120/himawari-rs/commit/8161048551be55b0bcdd4117f10be3bb5760bcac)), closes [#760](https://github.com/kaz9120/himawari-rs/issues/760)
+* 放流機のUSIログを1局ごとに区切る hmwr kifu usilog を足す（[#748](https://github.com/kaz9120/himawari-rs/issues/748)） ([#801](https://github.com/kaz9120/himawari-rs/issues/801)) ([85af519](https://github.com/kaz9120/himawari-rs/commit/85af519856c661c0170da433fb295faeecf82a80))
+* 棄却済みのHalfKA入力を削除する（ADR-0193の追記） ([#799](https://github.com/kaz9120/himawari-rs/issues/799)) ([62d3289](https://github.com/kaz9120/himawari-rs/commit/62d3289b16c9f2fef7cd17086d0649a3f5effc8f)), closes [#767](https://github.com/kaz9120/himawari-rs/issues/767)
+* 状態ファイルと台帳に版を持たせ、棋譜のjsonlの形を文書にする ([#803](https://github.com/kaz9120/himawari-rs/issues/803)) ([4325430](https://github.com/kaz9120/himawari-rs/commit/4325430880cda20e9e103e46f4c8753b827247eb)), closes [#761](https://github.com/kaz9120/himawari-rs/issues/761)
+
 ## [0.55.3](https://github.com/kaz9120/himawari-rs/compare/v0.55.2...v0.55.3) (2026-10-16)
 
 
