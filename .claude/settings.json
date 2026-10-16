@@ -8,7 +8,6 @@
       "Bash(hmwr data stats:*)",
       "Bash(hmwr doc check:*)",
       "Bash(hmwr doc lint:*)",
-      "Bash(hmwr env:*)",
       "Bash(hmwr status:*)",
       "Bash(hmwr exp check:*)",
       "Bash(hmwr exp report:*)",
@@ -22,6 +21,8 @@
       "Bash(hmwr queue status:*)",
       "Bash(hmwr sprt show:*)",
       "Bash(hmwr sprt wait:*)",
+      "Bash(hmwr spsa show:*)",
+      "Bash(hmwr pr template:*)",
       "Bash(hmwr verify:*)",
       "Bash(./bin/hmwr --dry-run:*)",
       "Bash(./bin/hmwr ci wait:*)",
@@ -37,6 +38,9 @@
       "Bash(./bin/hmwr queue status:*)",
       "Bash(./bin/hmwr sprt show:*)",
       "Bash(./bin/hmwr sprt wait:*)",
+      "Bash(./bin/hmwr spsa show:*)",
+      "Bash(./bin/hmwr pr template:*)",
+      "Bash(./bin/hmwr status:*)",
       "Bash(awk *)",
       "Bash(cargo bench:*)",
       "Bash(cargo build:*)",
@@ -77,19 +81,19 @@
         "hooks": [
           {
             "type": "command",
-            "command": "cargo fmt --check || { echo 'cargo fmt が通っていない。cargo fmt を実行してからコミットする（CLAUDE.md「コミット規律」）' >&2; exit 2; }",
+            "command": "cd \"$CLAUDE_PROJECT_DIR\" || { echo \"rustfmtを検査できなかった（$CLAUDE_PROJECT_DIR へ移れない）\" >&2; exit 0; }; cargo fmt --check || { echo 'cargo fmt が通っていない。cargo fmt を実行してからコミットする（CLAUDE.md「コミット規律」）' >&2; exit 2; }",
             "statusMessage": "rustfmtを検査中",
             "timeout": 60
           },
           {
             "type": "command",
-            "command": "sh .claude/hooks/branch_commits.sh %B 2>/dev/null | grep -qE '\\([^()]*\\(' && { echo 'このブランチのコミット本文に入れ子の半角括弧がある。release-pleaseのパーサが失敗し、その回のリリースが黙って止まる。git commit --amend で直す（CLAUDE.md「コミット規律」）' >&2; exit 2; } || true",
+            "command": "sh \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/check_commits.sh parens",
             "statusMessage": "コミット本文を検査中",
             "timeout": 30
           },
           {
             "type": "command",
-            "command": "s=$(sh .claude/hooks/branch_commits.sh %s 2>/dev/null); [ -z \"$s\" ] && exit 0; [ -x node_modules/.bin/textlint ] || { echo 'コミット件名を検査できなかった（textlintが入っていない。npm ci で入る）' >&2; exit 0; }; printf '%s\\n' \"$s\" | node_modules/.bin/textlint --config .textlintrc.commit.json --stdin --stdin-filename commit.md || { echo 'コミット件名がtextlintに引っかかっている。件名はrelease-please経由でCHANGELOGへ載るので、後からdocsジョブを全PR巻き添えで壊す。git commit --amend で直す（CLAUDE.md「コミット規律」）' >&2; exit 2; }",
+            "command": "sh \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/check_commits.sh subject",
             "statusMessage": "コミット件名を検査中",
             "timeout": 60
           }
