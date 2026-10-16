@@ -6,7 +6,7 @@
 use std::cell::Cell;
 
 use crate::attacks::{
-    aligned, attacks, between, bishop_attacks, king_attacks, lance_attacks, rook_attacks,
+    aligned, attacks, between, bishop_attacks, king_attacks, lance_attacks, line, rook_attacks,
 };
 use crate::bitboard::Bitboard;
 use crate::hand::Hand;
@@ -1371,12 +1371,30 @@ impl Position {
             return true;
         }
 
-        let mut occ = occ0;
+        let attackers = (self.attackers_to(Color::Black, to, occ0)
+            | self.attackers_to(Color::White, to, occ0))
+            & occ0;
+        self.see_swap(to, swap, occ0, attackers)
+    }
+
+    /// see_geの交換の本体。`attackers` は占有 `occ` のもとでtoへ利く両色の駒
+    /// （ADR-0232）。
+    ///
+    /// 駒を除くたびに `attackers_to` を引き直す代わりに、除いた駒の背後から
+    /// 通る飛び利き（X線）だけを足す。除いた駒が落ちるのは `& occ` による。
+    #[inline]
+    fn see_swap(
+        &self,
+        to: Square,
+        mut swap: i32,
+        mut occ: Bitboard,
+        mut attackers: Bitboard,
+    ) -> bool {
         let mut stm = self.side;
         let mut res = true;
         loop {
             stm = stm.flip();
-            let stm_attackers = self.attackers_to(stm, to, occ) & occ;
+            let stm_attackers = attackers & self.by_color[stm.index()];
             if stm_attackers.is_empty() {
                 break;
             }
@@ -1396,8 +1414,31 @@ impl Position {
                 break;
             }
             occ ^= Bitboard::from_square(best);
+            attackers = (attackers | self.xray_attackers(to, best, occ)) & occ;
         }
         res
+    }
+
+    /// rを空けた占有occのもとで、toへ利く飛び駒（ADR-0232）。
+    ///
+    /// rとtoを結ぶ線の向きで、伸びうる飛び駒の種類が決まる。縦なら飛・竜・香、
+    /// 横なら飛・竜、斜めなら角・馬である。線上にない（桂の位置）なら何も通らない。
+    /// 返す集合は線の向きの飛び駒をまとめて引くので、r の背後以外の駒も入る。
+    /// どれもtoへ利く駒なので、攻め駒の集合へ足しても値は変わらない。
+    #[inline]
+    fn xray_attackers(&self, to: Square, r: Square, occ: Bitboard) -> Bitboard {
+        let lances = self.by_type[PieceType::LANCE.index()];
+        if r.file() == to.file() {
+            (rook_attacks(to, occ) & self.composite[COMP_ROOK_DRAGON])
+                | (lance_attacks(Color::White, to, occ) & lances & self.by_color[0])
+                | (lance_attacks(Color::Black, to, occ) & lances & self.by_color[1])
+        } else if r.rank() == to.rank() {
+            rook_attacks(to, occ) & self.composite[COMP_ROOK_DRAGON]
+        } else if !line(to, r).is_empty() {
+            bishop_attacks(to, occ) & self.composite[COMP_BISHOP_HORSE]
+        } else {
+            Bitboard::EMPTY
+        }
     }
 
     /// Move16を盤面情報で完全なMoveに復元する（ADR-0012）。
