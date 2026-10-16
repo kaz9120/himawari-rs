@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="360" viewBox="0 0 760 360" role="img" aria-label="floodgateのレートの推移">
+<style>
+svg { --bg: #fcfcfb; --ink: #0b0b0b; --ink2: #52514e; --grid: #e4e3df; --s1: #2a78d6; --s2: #eb6834; }
+@media (prefers-color-scheme: dark) {
+  svg { --bg: #1a1a19; --ink: #f0efec; --ink2: #c3c2b7; --grid: #3a3a36; --s1: #3987e5; --s2: #d95926; }
+}
+.bg { fill: var(--bg); }
+text { font-family: -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Yu Gothic', 'Segoe UI', sans-serif; fill: var(--ink2); font-size: 12px; }
+.title { fill: var(--ink); font-size: 16px; font-weight: 600; }
+.value { fill: var(--ink); font-weight: 600; }
+.note { font-size: 11px; }
+.grid { stroke: var(--grid); stroke-width: 1; }
+.axis { stroke: var(--ink2); stroke-width: 1; }
+.line { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.daily { stroke: var(--s1); }
+.two_weeks { stroke: var(--s2); }
+.dot-daily { fill: var(--s1); stroke: var(--bg); stroke-width: 2; }
+.dot-two_weeks { fill: var(--s2); stroke: var(--bg); stroke-width: 2; }
+</style>
+<rect class="bg" width="760" height="360" rx="6"/>
+<text class="title" x="56" y="30">floodgateのレートの推移</text>
+<text class="note" x="56" y="50">2026-10-16 取得。2週間のレートは、直近2週間の対局だけで計算した値</text>
+<line class="grid" x1="56" y1="300" x2="640" y2="300"/>
+<text x="48" y="300" dy="4" text-anchor="end">3000</text>
+<line class="grid" x1="56" y1="254.4" x2="640" y2="254.4"/>
+<text x="48" y="254.4" dy="4" text-anchor="end">3200</text>
+<line class="grid" x1="56" y1="208.8" x2="640" y2="208.8"/>
+<text x="48" y="208.8" dy="4" text-anchor="end">3400</text>
+<line class="grid" x1="56" y1="163.2" x2="640" y2="163.2"/>
+<text x="48" y="163.2" dy="4" text-anchor="end">3600</text>
+<line class="grid" x1="56" y1="117.6" x2="640" y2="117.6"/>
+<text x="48" y="117.6" dy="4" text-anchor="end">3800</text>
+<line class="grid" x1="56" y1="72" x2="640" y2="72"/>
+<text x="48" y="72" dy="4" text-anchor="end">4000</text>
+<line class="axis" x1="56" y1="300" x2="640" y2="300"/>
+<line class="axis" x1="78.2" y1="300" x2="78.2" y2="304"/>
+<text x="78.2" y="318" text-anchor="middle">2026年8月</text>
+<line class="axis" x1="307.3" y1="300" x2="307.3" y2="304"/>
+<text x="307.3" y="318" text-anchor="middle">9月</text>
+<line class="axis" x1="529.1" y1="300" x2="529.1" y2="304"/>
+<text x="529.1" y="318" text-anchor="middle">10月</text>
+<polyline class="line daily" points="56,259.4 63.4,249.6 70.8,243 78.2,231.1 85.6,215.2 93,214 100.4,204.5 107.7,208.6 115.1,200.6 122.5,199 129.9,199.2 137.3,195.1 144.7,193.5 152.1,192.4 159.5,192.6 166.9,189.2 174.3,189.9 181.7,189.4 189.1,189 196.5,188.3 203.8,189 211.2,191.2 218.6,183.7 226,183.3 233.4,182.1 240.8,181.2 248.2,179.2 255.6,178 263,178.2 270.4,175.7 277.8,174.8 285.2,175.1 292.6,175.5 299.9,174.4 307.3,173.5 314.7,172.1 322.1,170.5 329.5,170.7 336.9,170.5 344.3,168.4 351.7,169.4 359.1,168.9 366.5,169.6 373.9,168.7 381.3,166.8 388.7,165.7 396.1,164.8 403.4,164.3 410.8,163.2 418.2,162.5 425.6,160.9 433,160.5 440.4,160 447.8,158.6 455.2,158.6 462.6,158.2 470,158.2 477.4,157.7 484.8,157.5 492.2,156.8 499.5,156.4 506.9,155.7 514.3,155.2 521.7,154.8 529.1,154.1 536.5,154.3 543.9,153.4 551.3,153.2 558.7,153.2 566.1,152.7 573.5,152.3 580.9,151.1 588.3,150.7 595.6,149.3 603,149.1 610.4,148.6 617.8,147.9 625.2,147.7 632.6,147.2 640,147"/>
+<polyline class="line two_weeks" points="56,263.3 63.4,241.9 70.8,222.7 78.2,214.5 85.6,206.1 93,205.4 100.4,201.7 107.7,199.5 115.1,203.1 122.5,197.6 129.9,193.1 137.3,191.7 144.7,184.2 152.1,181.2 159.5,183 166.9,173.2 174.3,176 181.7,172.5 189.1,171 196.5,168.2 203.8,165 211.2,166.8 218.6,162.7 226,156.6 233.4,161.8 240.8,158.9 248.2,164.1 255.6,163.7 263,151.8 270.4,144.7 277.8,143.6 285.2,138.3 292.6,138.8 299.9,137.7 307.3,139.9 314.7,135.6 322.1,133.3 329.5,132 336.9,138.6 344.3,135.6 351.7,138.8 359.1,138.3 366.5,138.3 373.9,131.3 381.3,130.6 388.7,133.1 396.1,126.9 403.4,115.8 410.8,110.3 418.2,106.4 425.6,101 433,101.9 440.4,101.9 447.8,93.7 455.2,97.8 462.6,97.1 470,122.4 477.4,98.7 484.8,98 492.2,124.2 499.5,113.7 506.9,114.4 514.3,124.4 521.7,126.7 529.1,127.9 536.5,128.5 543.9,132.6 551.3,133.1 558.7,134.9 566.1,131.7 573.5,134 580.9,128.5 588.3,128.8 595.6,122.8 603,119 610.4,104.1 617.8,85 625.2,81.1 632.6,77.9 640,78.8"/>
+<circle class="dot-daily" cx="640" cy="147" r="4"/>
+<text class="value" x="652" y="147" dy="-1">3671</text>
+<text x="652" y="147" dy="13">日毎のレート</text>
+<circle class="dot-two_weeks" cx="640" cy="78.8" r="4"/>
+<text class="value" x="652" y="78.8" dy="-1">3970</text>
+<text x="652" y="78.8" dy="13">2週間のレート</text>
+<line class="line daily" x1="420" y1="26" x2="438" y2="26"/>
+<text x="444" y="30">日毎のレート</text>
+<line class="line two_weeks" x1="536" y1="26" x2="554" y2="26"/>
+<text x="560" y="30">2週間のレート</text>
+<text class="note" x="56" y="348">出典: https://wdoor.c.u-tokyo.ac.jp/shogi/x/2026/player/Himawari+6fd5a66.html</text>
+</svg>
