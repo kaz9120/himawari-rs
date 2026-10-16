@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.55.8](https://github.com/kaz9120/himawari-rs/compare/v0.55.7...v0.55.8) (2026-10-16)
+
+
+### その他の変更
+
+* kifu fetchの既定の置き場をpathsから引き、dry-runで問い合わせない ([#823](https://github.com/kaz9120/himawari-rs/issues/823)) ([db55625](https://github.com/kaz9120/himawari-rs/commit/db556256828d0ede0f60c666f6d49ff41d34087e)), closes [#802](https://github.com/kaz9120/himawari-rs/issues/802)
+
 ## [0.55.7](https://github.com/kaz9120/himawari-rs/compare/v0.55.6...v0.55.7) (2026-10-16)
 
 
