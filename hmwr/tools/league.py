@@ -104,7 +104,8 @@ def main(argv=None):
 
     players, table, n = read_games(args.jsonl)
     if not players:
-        sys.exit("棋譜が空")
+        print("エラー: 棋譜が空", file=sys.stderr)
+        return 3
     rating, pair = solve_elo(players, table)
 
     offset = rating[args.anchor] if args.anchor else sum(rating.values()) / len(rating)

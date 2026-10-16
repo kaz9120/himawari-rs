@@ -24,6 +24,7 @@ def add_parser(sub: argparse._SubParsersAction) -> None:
         help="ペアを作り、機能検証を通してから起動する",
         description="ビルド・機能検証・起動を順に行う。判定が出るまで走り、"
         "落ちても棋譜から再開する。すでに判定済みなら結果を返して終わる。",
+        epilog=match.VERDICT_EPILOG,
     )
     t.add_argument("name", help="実験名")
     t.add_argument("--baseline", metavar="REF", help="比較元のref（既定 origin/main）")
@@ -71,6 +72,7 @@ def add_parser(sub: argparse._SubParsersAction) -> None:
         help="ビルドを固定し、評価関数だけを差し替えて測る",
         description="同じビルドで対局し、評価関数を片側ずつ指定する。"
         "ネットとビルドの次元は揃える。",
+        epilog=match.VERDICT_EPILOG,
     )
     t.add_argument("base", metavar="baselineネット")
     t.add_argument("cand", metavar="candidateネット")
