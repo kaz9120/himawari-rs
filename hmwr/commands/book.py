@@ -7,6 +7,7 @@ from pathlib import Path
 
 from .. import config, paths, proc
 from .. import release as release_mod
+from ..tools import floodgate
 
 DB_HEADER = "#YANEURAOU-DB"
 
@@ -21,7 +22,12 @@ def add_parser(sub: argparse._SubParsersAction) -> None:
         description="1局面あたり深さ28で約34秒かかる。冪等なので、"
         "何度回しても取得済みの局面は増えない。",
     )
-    t.add_argument("--games", metavar="ディレクトリ", help="棋譜の置き場")
+    t.add_argument(
+        "--games",
+        nargs="+",
+        metavar="ディレクトリ",
+        help=f"棋譜の置き場（既定 data/raw/floodgate/ の{floodgate.FIRST_YEAR}年から今年まで）",
+    )
     t.add_argument("--out", metavar="DB", help="定跡ファイル（既定 data/book/main.db）")
     t.add_argument("--depth", type=int, default=28, metavar="N", help="探索の深さ")
     t.add_argument("--max-positions", type=int, default=50, metavar="N", help="追加の上限")
@@ -59,11 +65,11 @@ def _tool() -> str:
 
 def seed(args: argparse.Namespace) -> int:
     db = _db_path(args)
-    games = args.games or str(paths.RAW / "floodgate" / "2026")
+    games = args.games or [str(d) for d in floodgate.games_dirs(paths.RAW / "floodgate")]
     db.parent.mkdir(parents=True, exist_ok=True)
     argv = [
         _tool() if not args.dry_run else "target/release/book", "seed",
-        "--games", games,
+        "--games", *games,
         "--out", str(db),
         "--eval", config.get("EVAL_FILE", "（未設定）"),
         "--depth", str(args.depth),

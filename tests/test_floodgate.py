@@ -116,6 +116,28 @@ def test_parser_accepts_multiple_player_urls(tmp_path):
     assert args.player_url == ["https://a/1.html", "https://b/2.html"]
 
 
+def test_games_dirs_reads_every_year_up_to_this_year(tmp_path, monkeypatch):
+    """分析と定跡追加は、回収と同じ年の範囲を読む（#791）。"""
+    monkeypatch.setattr(fetch, "today", lambda: datetime.date(2028, 3, 1))
+    for year in ("2026", "2027", "2028"):
+        (tmp_path / year).mkdir()
+    assert fetch.games_dirs(tmp_path) == [tmp_path / "2026", tmp_path / "2027", tmp_path / "2028"]
+    assert fetch.games_dirs(tmp_path, 2027) == [tmp_path / "2026", tmp_path / "2027"]
+
+
+def test_games_dirs_skips_this_year_before_its_first_game(tmp_path, monkeypatch):
+    """年が明けた直後は今年の置き場がない。前年までを読む。"""
+    monkeypatch.setattr(fetch, "today", lambda: datetime.date(2027, 1, 1))
+    (tmp_path / "2026").mkdir()
+    assert fetch.games_dirs(tmp_path) == [tmp_path / "2026"]
+
+
+def test_games_dirs_names_this_year_when_nothing_is_there(tmp_path, monkeypatch):
+    """一つもなければ今年の置き場を返し、呼び出し側のエラーがそこを指す。"""
+    monkeypatch.setattr(fetch, "today", lambda: datetime.date(2027, 1, 1))
+    assert fetch.games_dirs(tmp_path) == [tmp_path / "2027"]
+
+
 def test_parser_puts_output_under_data_raw_floodgate(tmp_path):
     args = fetch.build_parser(tmp_path).parse_args([])
     assert args.out == str(tmp_path / "data" / "raw" / "floodgate")

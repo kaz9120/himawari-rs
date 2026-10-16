@@ -58,6 +58,19 @@ def player_urls(year=None):
     return [PLAYER_URL_TEMPLATE.format(year=y) for y in range(FIRST_YEAR, max(last, FIRST_YEAR) + 1)]
 
 
+def games_dirs(root, year=None):
+    """FIRST_YEARからyear（既定は今年）までの棋譜の置き場のうち、あるものを古い順に返す。
+
+    回収と同じ年の範囲を読む。年が明けた直後で今年の置き場がまだなくても、
+    前年までの棋譜を読める。一つもなければyearの置き場だけを返し、
+    呼び出し側のエラーがその場所を指すようにする。
+    """
+    last = year if year is not None else today().year
+    root = pathlib.Path(root)
+    dirs = [root / str(y) for y in range(FIRST_YEAR, max(last, FIRST_YEAR) + 1)]
+    return [d for d in dirs if d.is_dir()] or [root / str(last)]
+
+
 def error(message):
     """エラーメッセージを規約の書式でstderrへ出す。"""
     print(f"エラー: {message}", file=sys.stderr)
