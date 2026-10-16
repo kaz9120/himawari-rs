@@ -13,7 +13,7 @@ body:
     attributes:
       label: spec
       description: 実行するspecのパス。実行器はこの欄を読みます
-      placeholder: experiments/adr0210-teacher-mix-control.toml
+      placeholder: experiments/adr0228-floodgate.toml
     validations:
       required: true
   - type: input
@@ -21,7 +21,7 @@ body:
     attributes:
       label: ADR
       description: 仮説と読み方を事前登録したADR
-      placeholder: docs/adr/0210-teacher-mix-control.md
+      placeholder: docs/adr/0228-grow-labeled-pool.md
     validations:
       required: true
   - type: textarea

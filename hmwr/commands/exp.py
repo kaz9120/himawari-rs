@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 import time
 from pathlib import Path
@@ -73,7 +74,7 @@ def add_parser(sub: argparse._SubParsersAction) -> None:
         "積めない。同じspecが待ちか実行中なら積まない。",
     )
     t.add_argument("name", help="specの名前（拡張子なし）")
-    t.add_argument("--title", required=True, metavar="題", help="Issueの題。前の「実験: 」と末尾の番号は自動で付く")
+    t.add_argument("--title", required=True, metavar="題", help="Issueの題。前の「実験: 」と末尾の番号は自動で付く（題に書いてあれば足さない）")
     t.add_argument("--note", default="", metavar="文", help="メモ欄。所要の見込みや資源の使い方を書く")
     t.set_defaults(func=enqueue)
 
@@ -291,6 +292,17 @@ def queue_body(s: spec.Spec, adr_path: str, note: str) -> str:
     )
 
 
+def queue_title(title: str, adr: str) -> str:
+    """Issueの題。前の「実験: 」と末尾のADR番号を足す。
+
+    題に同じものが書いてあれば足さない。手で書いた番号と二重になった（#728）。
+    """
+    title = re.sub(r"^実験[:：]\s*", "", title.strip())
+    if f"ADR-{adr}" not in title:
+        title += f"（ADR-{adr}）"
+    return f"実験: {title}"
+
+
 def enqueue(args: argparse.Namespace) -> int:
     """specを実験キューへ積む。CLIで起票すると queued が漏れた（issue #652）。"""
     from . import queue
@@ -302,7 +314,7 @@ def enqueue(args: argparse.Namespace) -> int:
     if adr is None:
         raise proc.Fail(f"docs/adr/{s.adr}-*.md がない。事前登録のADRをmainへ入れてから積む")
     adr_path = adr.relative_to(paths.REPO).as_posix()
-    title = f"実験: {args.title}（ADR-{s.adr}）"
+    title = queue_title(args.title, s.adr)
     body = queue_body(s, adr_path, args.note)
     argv = [
         "issue", "create", "--title", title, "--body", body,
