@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import argparse
 import sys
+import traceback
 
 from . import paths, proc
 from .commands import MODULES
@@ -67,6 +68,11 @@ def main(argv: list[str] | None = None) -> int:
         return e.code
     except KeyboardInterrupt:
         print("\n中断した", file=sys.stderr)
+        return proc.RUNTIME
+    except Exception:
+        # 想定外の例外も実行時エラーとして返す。Pythonの既定の1は「判定結果」と
+        # 読まれ、呼び出し側が失敗を判定と取り違える
+        traceback.print_exc()
         return proc.RUNTIME
 
 

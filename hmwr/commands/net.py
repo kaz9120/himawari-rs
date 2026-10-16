@@ -336,8 +336,9 @@ def train(args: argparse.Namespace) -> int:
     if args.extra:
         argv += args.extra.split()
 
-    for directory in (paths.NETS, paths.REPO / RUNS, paths.CHECKPOINTS / name):
-        directory.mkdir(parents=True, exist_ok=True)
+    if not args.dry_run:
+        for directory in (paths.NETS, paths.REPO / RUNS, paths.CHECKPOINTS / name):
+            directory.mkdir(parents=True, exist_ok=True)
 
     # 備考は学習の記録のメモで、学習の条件ではない
     at = argv.index("--notes")

@@ -423,6 +423,12 @@ def show(args: argparse.Namespace) -> int:
 
 def stop(args: argparse.Namespace) -> int:
     f = files(args.name)
+    # 状態は最初のバッチを終えるまで書かれないので、init が書く対象一覧で見る
+    if not f["params"].is_file():
+        raise proc.Fail(f"その名前のSPSAはない: {args.name}", code=proc.USAGE)
+    if args.dry_run:
+        print(f"[dry-run] 停止ファイルを置く: {paths.rel(f['stop'])}")
+        return proc.OK
     f["stop"].touch()
     print(f"次のバッチの前で止まる。再開は hmwr spsa run {args.name}")
     return proc.OK

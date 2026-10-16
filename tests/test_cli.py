@@ -565,3 +565,56 @@ def test_league_summary_reads_the_kifu(capsys, tmp_path):
     out = capsys.readouterr().out
     assert "=== 2局 ===" in out
     assert "| x |" in out
+
+
+# --- 終了コードとdry-run -----------------------------------------------
+
+
+def test_unexpected_exception_returns_runtime(capsys, monkeypatch):
+    """想定外の例外は3で返す。Pythonの既定の1は「判定結果」と読まれる。"""
+    from hmwr.commands import analyze
+
+    def boom(argv):
+        raise RuntimeError("想定外")
+
+    monkeypatch.setattr(analyze.league_tool, "main", boom)
+    assert cli.main(["league", "summary", "x.jsonl"]) == proc.RUNTIME
+    assert "RuntimeError" in capsys.readouterr().err
+
+
+def test_league_summary_of_empty_kifu_is_a_runtime_error(capsys, tmp_path):
+    jsonl = tmp_path / "league.jsonl"
+    jsonl.write_text("")
+    assert cli.main(["league", "summary", str(jsonl)]) == proc.RUNTIME
+    assert "棋譜が空" in capsys.readouterr().err
+
+
+def test_net_train_dry_run_creates_no_directory(capsys, tmp_path, monkeypatch):
+    monkeypatch.setattr(paths, "CHECKPOINTS", tmp_path / "checkpoints")
+    monkeypatch.setattr(paths, "NETS", tmp_path / "nets")
+    code, _ = dry(capsys, ["net", "train", "x", "--data", "d.psv"])
+    assert code == proc.OK
+    assert not (tmp_path / "checkpoints").exists()
+    assert not (tmp_path / "nets").exists()
+
+
+def test_spsa_stop_needs_an_existing_run(capsys, tmp_path, monkeypatch):
+    monkeypatch.setattr(paths, "SPSA", tmp_path)
+    assert cli.main(["spsa", "stop", "nothing"]) == proc.USAGE
+    assert not (tmp_path / "nothing.stop").exists()
+
+
+def test_spsa_stop_dry_run_leaves_no_stop_file(capsys, tmp_path, monkeypatch):
+    monkeypatch.setattr(paths, "SPSA", tmp_path)
+    (tmp_path / "x.params.json").write_text("{}")
+    code, lines = dry(capsys, ["spsa", "stop", "x"])
+    assert code == proc.OK
+    assert "x.stop" in lines[0]
+    assert not (tmp_path / "x.stop").exists()
+
+
+def test_verdict_commands_explain_their_exit_codes():
+    """判定を返すコマンドだけ、2の意味が全体の規約とぶつかることをヘルプで示す。"""
+    for path in (["match", "run"], ["match", "wait"], ["sprt", "run"], ["sprt", "net"]):
+        sub = cli._subparser_for(cli._subparser_for(cli.build_parser(), path[0]), path[1])
+        assert "2=見送り" in sub.format_help()

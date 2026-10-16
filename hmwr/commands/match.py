@@ -56,6 +56,15 @@ class Spec:
     adopt: bool = False  # 条件の記録がない棋譜を、この条件のものとして引き継ぐ
 
 
+# 判定を返すコマンドの終了コードは、hmwr全体の規約（2=引数エラー）と2の意味が
+# ぶつかる。シェルから判定で分岐するための例外なので、ヘルプで明示する
+VERDICT_EPILOG = (
+    "終了コードは判定を表す。0=H1採択か指し切り、1=H0採択、"
+    "2=見送り・打ち切り・判定前、3=実行時エラー。"
+    "2は引数エラーの意味ではない（引数の誤りは解析の時点で止まる）。"
+)
+
+
 def add_parser(sub: argparse._SubParsersAction) -> None:
     p = sub.add_parser("match", help="2者を対局させて強さを測る")
     ss = p.add_subparsers(dest="sub", metavar="<操作>")
@@ -68,6 +77,7 @@ def add_parser(sub: argparse._SubParsersAction) -> None:
         "cand-<名前>（hmwr build pair の出力）を使い、無ければ target/release/himawari "
         "を両側に使う。判定か指し切りまで走り、落ちても棋譜から再開する。"
         "すでに結果があれば、それを返して終わる。",
+        epilog=VERDICT_EPILOG,
     )
     t.add_argument("name", help="実験名")
     t.add_argument("--build", metavar="名前", help="両側のビルド。data/bin/<名前>")
@@ -136,7 +146,7 @@ def add_show_wait(ss: argparse._SubParsersAction) -> None:
     t.add_argument("--all", action="store_true", help="完了した実行も並べる")
     t.set_defaults(func=show)
 
-    t = ss.add_parser("wait", help="結果が出るまで待つ")
+    t = ss.add_parser("wait", help="結果が出るまで待つ", epilog=VERDICT_EPILOG)
     t.add_argument("name", help="実験名")
     t.add_argument("--interval", type=int, default=60, metavar="秒", help="確認の間隔")
     t.set_defaults(func=wait)
