@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.55.5](https://github.com/kaz9120/himawari-rs/compare/v0.55.4...v0.55.5) (2026-10-16)
+
+
+### その他の変更
+
+* tot_best_move_changesの半減と汲み出しを時間管理の節へ寄せる ([#810](https://github.com/kaz9120/himawari-rs/issues/810)) ([2cd6c97](https://github.com/kaz9120/himawari-rs/commit/2cd6c970b4bce31f9c888c87203decd501eef0a4)), closes [#736](https://github.com/kaz9120/himawari-rs/issues/736)
+* 静止探索のstand patから常に真の決着判定を外す ([#797](https://github.com/kaz9120/himawari-rs/issues/797)) ([63ecd9e](https://github.com/kaz9120/himawari-rs/commit/63ecd9e8091e9cc8c23999bcd48422953cf5e489)), closes [#698](https://github.com/kaz9120/himawari-rs/issues/698)
+
 ## [0.55.4](https://github.com/kaz9120/himawari-rs/compare/v0.55.3...v0.55.4) (2026-10-16)
 
 
