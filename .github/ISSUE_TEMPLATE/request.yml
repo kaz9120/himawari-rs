@@ -7,7 +7,7 @@ body:
     attributes:
       value: |
         棋力に関わる変更（探索・評価関数・時間管理）は、ADRを起こしてSPRTで測ってから
-        取り込みます（[docs/adr](../../docs/adr/README.md)）。提案の段階では設計の
+        取り込みます（[docs/adr](https://github.com/kaz9120/himawari-rs/blob/main/docs/adr/README.md)）。提案の段階では設計の
         詳細は要りません。何に困っていて、どうなると良いかを書いてください。
   - type: textarea
     id: what
