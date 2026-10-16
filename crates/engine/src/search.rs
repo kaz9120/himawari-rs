@@ -645,6 +645,38 @@ impl Worker {
         }
     }
 
+    /// 局面とaccumulatorのスタックを1手進める。
+    ///
+    /// `do_move` と `push` は必ず対で行う。pushを欠かすと、accumulatorが
+    /// 1手前のまま計算済みとして読まれる。局面に付いて回る状態を足すときは、
+    /// ここと `unmake_move` に足す。
+    #[inline(always)]
+    fn make_move(&mut self, m: Move) {
+        self.pos.do_move(m);
+        self.evaluator.push(&self.pos);
+    }
+
+    /// `make_move` を戻す。進めたのと逆の順で戻す。
+    #[inline(always)]
+    fn unmake_move(&mut self, m: Move) {
+        self.evaluator.pop();
+        self.pos.undo_move(m);
+    }
+
+    /// null moveで1手進める。対の作法は `make_move` と同じ。
+    #[inline(always)]
+    fn make_null_move(&mut self) {
+        self.pos.do_null_move();
+        self.evaluator.push(&self.pos);
+    }
+
+    /// `make_null_move` を戻す。
+    #[inline(always)]
+    fn unmake_null_move(&mut self) {
+        self.evaluator.pop();
+        self.pos.undo_null_move();
+    }
+
     /// 引き分けの評価値を設定する（G10。S:1002-1009）。手番別の設定値を
     /// 歩の価値で換算し、rootの手番から見た値として持つ。
     /// 相手番のleafでは符号を反転させる。非対称な探索を避けるためである
@@ -1084,10 +1116,7 @@ impl Worker {
             if !self.pos.pseudo_legal(m) || !self.pos.is_legal(m) {
                 break;
             }
-            self.pos.do_move(m);
-            // do_moveとpushは対で行う（探索本体と同じ作法）。
-            // 欠かすとaccumulatorが1手前のまま計算済みとして読まれる
-            self.evaluator.push(&self.pos);
+            self.make_move(m);
             plies += 1;
         }
         plies
@@ -1521,8 +1550,7 @@ impl Worker {
             self.stack[STACK_OFFSET].stat_score = self.stat_score(m, &cont);
             self.set_current_move(0, m, capture);
             let nodes_before = self.nodes;
-            self.pos.do_move(m);
-            self.evaluator.push(&self.pos);
+            self.make_move(m);
             let mut child_pv = Vec::new();
             // rootはcut_node = false。PVの第1手と再探索はfalse、
             // 第2手以降のnull windowは反転してtrueになる（ADR-0109のG0）
@@ -1537,8 +1565,7 @@ impl Worker {
                     v
                 }
             };
-            self.evaluator.pop();
-            self.pos.undo_move(m);
+            self.unmake_move(m);
             // 打ち切られた分もこの手の探索コストなので先に計上（ADR-0062）
             self.root_moves[i].effort += self.nodes - nodes_before;
             if self.stopped() {
@@ -1908,8 +1935,7 @@ impl Worker {
                 let mut r = self.reduction_amount::<PV>(&node, m, &cont, r, alpha, depth, count);
 
                 self.set_current_move(ply, m, is_capture);
-                self.pos.do_move(m);
-                self.evaluator.push(&self.pos);
+                self.make_move(m);
 
                 let mut value = -VALUE_INFINITE;
                 if depth >= 2 && count > 1 {
@@ -1991,8 +2017,7 @@ impl Worker {
                         false,
                     );
                 }
-                self.evaluator.pop();
-                self.pos.undo_move(m);
+                self.unmake_move(m);
                 if self.stopped() {
                     break 'node VALUE_ZERO;
                 }
@@ -2638,8 +2663,7 @@ impl Worker {
             e.current_move = Move::NULL;
             e.cont_base = ContinuationHistory::SENTINEL;
             e.cont_corr_base = 0;
-            self.pos.do_null_move();
-            self.evaluator.push(&self.pos);
+            self.make_null_move();
             let v = -self.search::<false>(
                 -beta,
                 -beta + 1,
@@ -2650,8 +2674,7 @@ impl Worker {
                 // NMPの子はcut_node = false（ADR-0109のG0）
                 false,
             );
-            self.evaluator.pop();
-            self.pos.undo_null_move();
+            self.unmake_null_move();
             if self.stopped() {
                 return Some(VALUE_ZERO);
             }
@@ -2727,8 +2750,7 @@ impl Worker {
                         continue;
                     }
                     self.set_current_move(ply, m, !self.pos.piece_on(m.to()).is_empty());
-                    self.pos.do_move(m);
-                    self.evaluator.push(&self.pos);
+                    self.make_move(m);
                     // まずqsearchで確認（窓は (-probcut_beta, -probcut_beta+1)）
                     let mut v = -self.qsearch::<false>(-probcut_beta, -probcut_beta + 1, ply + 1);
                     // 通ったら同じ窓で通常探索 *depth-4 を確認する
@@ -2745,8 +2767,7 @@ impl Worker {
                             !cut_node,
                         );
                     }
-                    self.evaluator.pop();
-                    self.pos.undo_move(m);
+                    self.unmake_move(m);
                     if self.stopped() {
                         break 'probcut Some(VALUE_ZERO);
                     }
@@ -3007,11 +3028,9 @@ impl Worker {
                 }
 
                 self.set_current_move(ply, m, capture);
-                self.pos.do_move(m);
-                self.evaluator.push(&self.pos);
+                self.make_move(m);
                 let value = -self.qsearch::<PV>(-beta, -alpha, ply + 1);
-                self.evaluator.pop();
-                self.pos.undo_move(m);
+                self.unmake_move(m);
                 if self.stopped() {
                     break 'node VALUE_ZERO;
                 }
