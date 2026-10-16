@@ -19,7 +19,8 @@ permissions:
   contents: write
 
 env:
-  # 学習走行に使う評価関数。現行ネットを差し替えたら更新する
+  # 学習走行に使う評価関数。現行ネットを差し替えたら更新する。
+  # net-v16からアセットは固定名 himawari.hmwr になる（ADR-0080の追記）
   NET_TAG: net-v15
   NET_ASSET: pool1_2ep_reorder.hmwr
 

@@ -886,7 +886,10 @@ def release(args: argparse.Namespace) -> int:
     release_mod.check_prereqs(tag, dry_run=args.dry_run)
 
     lineage = read_lineage(path)
-    asset_name = path.name.removesuffix(".best")
+    # アセットは固定名で配る（ADR-0080の追記）。版はタグと学習来歴が持つ。
+    # 学習時の名前はノートと題に残し、どの実験のネットかを辿れるようにする
+    asset_name = config.NET_ASSET
+    train_name = path.name.removesuffix(".best")
     size = release_mod.file_size(path)
 
     notes = [
@@ -894,30 +897,31 @@ def release(args: argparse.Namespace) -> int:
         "## ファイル", "",
         "| 項目 | 値 |", "|---|---|",
         f"| アセット | `{asset_name}` |",
+        f"| 学習時の名前 | `{train_name}` |",
         f"| サイズ | {size} |",
         "| 形式 | Himawari NNUE |",
     ]
     if args.notes:
         notes += ["", "## 補足", "", args.notes]
     notes += [
-        "", "## 使い方", "", "```",
-        f"gh release download {tag} -p '{asset_name}' -D data/nets/",
-        "```", "",
-        "USIオプション `EvalFile` にパスを指定する。",
+        "", "## 使い方", "",
+        f"`{asset_name}` を実行ファイルと同じフォルダに置く。USIオプション `EvalFile` が空なら、"
+        "エンジンはそこを読む。更新は上書きコピーで済む。",
+        "", "開発機へ学習時の名前で取るときは、次のようにする。", "", "```",
+        f"gh release download {tag} -p '{asset_name}' -O data/nets/{train_name}",
+        "```",
     ]
 
     print(f"タグ    : {tag}")
-    print(f"アセット: {asset_name}（{size}）")
+    print(f"アセット: {asset_name}（{size}、学習時の名前 {train_name}）")
     print(f"学習来歴: {lineage}")
 
     with tempfile.TemporaryDirectory() as tmp:
-        # 配布名は .best を外したものにする。元のファイル名のままだと
-        # 利用者が「途中経過」と誤読する
         asset = Path(tmp) / asset_name
         shutil.copy2(path, asset)
         return release_mod.create(
             tag,
-            f"{tag}: {asset_name}",
+            f"{tag}: {train_name}",
             "\n".join(notes) + "\n",
             [asset],
             apply=args.apply,

@@ -398,6 +398,20 @@ def test_net_release_needs_an_existing_file(capsys):
     assert "ネットファイルがない" in capsys.readouterr().err
 
 
+def test_net_release_ships_the_fixed_asset_name(capsys, tmp_path):
+    """アセットは固定名で配り、学習時の名前はノートに残す（ADR-0080の追記）。"""
+    lineage = b"train-v2 data=x"
+    header = b"HMWRNNUE" + (10).to_bytes(4, "little") + bytes(5 * 4)
+    net_file = tmp_path / "pool9_2ep.hmwr.best"
+    net_file.write_bytes(header + len(lineage).to_bytes(4, "little") + lineage + bytes(8))
+    assert cli.main(["--dry-run", "net", "release", str(net_file), "16"]) == proc.OK
+    out = capsys.readouterr().out
+    assert "| アセット | `himawari.hmwr` |" in out
+    assert "| 学習時の名前 | `pool9_2ep.hmwr` |" in out
+    assert "--title net-v16: pool9_2ep.hmwr" in out
+    assert "-O data/nets/pool9_2ep.hmwr" in out
+
+
 def test_net_release_rejects_a_bad_version(capsys):
     assert cli.main(["--dry-run", "net", "release", "Cargo.toml", "0"]) == proc.USAGE
 
