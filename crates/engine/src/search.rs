@@ -1174,7 +1174,8 @@ impl Worker {
         let mut iter_value = [VALUE_ZERO; 4];
         let mut iter_idx = 0usize;
         // 最善手が入れ替わった回数の統計（S:1439）。反復ごとに半減させ、
-        // 全スレッドの計数を足し込む
+        // 全スレッドの計数を足し込む。読むのは時間管理だけなので、
+        // 更新も時間管理の節で行う
         let mut tot_best_move_changes = 0.0f64;
         // 今回goのtimeReduction（S:1439, 2062）。次のgoへ持ち越す
         let mut time_reduction = 1.0f64;
@@ -1197,11 +1198,6 @@ impl Worker {
             // ヘルパーは反復を深さでずらす（ADR-0202）
             if self.skip_iteration(depth) {
                 continue;
-            }
-            // 反復の世代が進んだので、最善手の入れ替わりの重みを半分にする
-            // （S:1577-1581）。メインだけが集計する
-            if is_main {
-                tot_best_move_changes /= 2.0;
             }
             for rm in &mut self.root_moves {
                 rm.prev_score = rm.score;
@@ -1341,9 +1337,18 @@ impl Worker {
             if !is_main {
                 continue;
             }
-            // 全スレッドの最善手の入れ替わり回数を汲み出す（S:1952-1956）
-            tot_best_move_changes +=
-                self.shared.best_move_changes.swap(0, Ordering::Relaxed) as f64;
+            if self.tm.use_time_management() {
+                // 反復の世代が進んだので、最善手の入れ替わりの重みを半分にし、
+                // 全スレッドの今回の入れ替わり回数を汲み出す（S:1577-1581,
+                // 1952-1956）。メインだけが集計する。
+                //
+                // 下の測り直しの条件より外に置く。stop_on_ponderhitは
+                // fail lowで下りるので、測り直さない反復の後にまた測る
+                // ことがある。その反復でも半減を飛ばさないためである
+                tot_best_move_changes /= 2.0;
+                tot_best_move_changes +=
+                    self.shared.best_move_changes.swap(0, Ordering::Relaxed) as f64;
+            }
             // 次の反復を回す時間があるか（S:1961-2053）。停止条件を満たして
             // もその場では止めず、秒単位で切り上げた終了時刻を予約する。
             // 予約済みなら終了は確定しているので測り直さない
