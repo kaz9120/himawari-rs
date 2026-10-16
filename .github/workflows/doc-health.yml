@@ -20,7 +20,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          # proposedの古さは最後のコミットの日付で測る。浅いcloneでは測れない
+          # proposedの古さはStatusの行を書き換えたコミットの日付で測る。浅いcloneでは測れない
           fetch-depth: 0
       - id: check
         run: |
