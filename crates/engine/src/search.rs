@@ -316,6 +316,7 @@ const MEAN_SQUARED_NONE: Value = -(VALUE_INFINITE * VALUE_INFINITE);
 /// goをまたいでメインスレッドが持ち越す記憶（G9。yaneuraou-search.h:207-247）。
 /// 参照実装はSearchManagerのメンバーで、`isready` でクリアされる。
 /// 本エンジンはスレッドループが持ち、`usinewgame` でクリアする
+#[derive(Clone, Copy)]
 pub struct MainMemory {
     /// 前回のgoの最終スコア（yaneuraou-search.h:215）。`iter_value` の
     /// 初期値に使う。`VALUE_INFINITE` は「前回がない」ことを表す番兵

@@ -469,6 +469,29 @@ fn load_book(path: &str) -> Option<Book> {
     }
 }
 
+/// 定跡を引き、ヒットしたら返すbestmoveの行を作る（ADR-0063）。
+/// 引いた経過はinfo stringで出す。
+fn probe_book(bopts: &mut BookOptions, pos: &Position, ponder: bool) -> Option<String> {
+    let mut notes = Vec::new();
+    let hit = bopts.probe(pos, &mut notes);
+    for n in notes {
+        print_line(&format!("info string {n}"));
+    }
+    let h = hit?;
+    print_line(&format!(
+        "info string book hit: score {} depth {}",
+        h.value, h.depth
+    ));
+    // 定跡の予想応手をponder手として返す（B:58、S:1364-1369）。
+    // これがないと定跡区間でGUIがponderを始められない
+    let ponder_hint = if ponder && h.ponder != himawari_core::Move::NONE {
+        format!(" ponder {}", h.ponder.to_usi())
+    } else {
+        String::new()
+    };
+    Some(format!("bestmove {}{}", h.mv.to_usi(), ponder_hint))
+}
+
 /// 配布する評価関数の固定名（ADR-0080の追記）。
 const DEFAULT_EVAL_NAME: &str = "himawari.hmwr";
 
@@ -569,10 +592,13 @@ fn main() {
 
     let mut opts = EngineOptions::default();
     let mut bopts = BookOptions::default();
-    // go ponder中に定跡へヒットしたときの保留（S:1157-1187）。
-    // 参照実装は探索をスキップしたままstop/ponderhitを待ち、そのあとで
-    // bestmoveを出す。探索スレッドが動いていないのでUSI層で保持する
+    // go infinite中に定跡へヒットしたときの保留（S:1157-1187）。
+    // 探索をスキップしたままstopを待ち、そのあとでbestmoveを出す。
+    // 探索スレッドが動いていないのでUSI層で保持する
     let mut pending_book: Option<String> = None;
+    // go ponderの局面。定跡はponderhitで引く（ADR-0231）。ponder中は
+    // 定跡を引かずに探索し、定跡を抜けた直後の置換表を温める
+    let mut ponder_root: Option<Position> = None;
     let mut pool: Option<ThreadPool> = None;
     let mut position = Position::from_sfen(SFEN_STARTPOS).expect("startpos");
 
@@ -628,6 +654,7 @@ fn main() {
             "usinewgame" => {
                 // 前局の保留が残っていても持ち越さない
                 pending_book = None;
+                ponder_root = None;
                 if let Some(p) = &pool {
                     p.new_game();
                 }
@@ -639,29 +666,18 @@ fn main() {
             "go" => {
                 let limits = parse_go(&tokens[1..]);
                 let is_ponder = tokens.contains(&"ponder");
-                // 定跡ヒットなら探索しない（ADR-0063）。go ponderでも引く
-                // （S:1115-1117。参照実装のsearch()はponderでも定跡を通る）
-                let mut notes = Vec::new();
-                let hit = bopts.probe(&position, &mut notes);
-                for n in notes {
-                    print_line(&format!("info string {n}"));
-                }
-                if let Some(h) = hit {
-                    print_line(&format!(
-                        "info string book hit: score {} depth {}",
-                        h.value, h.depth
-                    ));
-                    // 定跡の予想応手をponder手として返す（B:58、S:1364-1369）。
-                    // これがないと定跡区間でGUIがponderを始められない
-                    let ponder_hint = if opts.ponder && h.ponder != himawari_core::Move::NONE {
-                        format!(" ponder {}", h.ponder.to_usi())
-                    } else {
-                        String::new()
-                    };
-                    let line = format!("bestmove {}{}", h.mv.to_usi(), ponder_hint);
-                    // go ponder / go infinite ではGUIの指示を待ってから出す
+                // 前のgoの保留は持ち越さない
+                pending_book = None;
+                ponder_root = None;
+                // 定跡ヒットなら探索しない（ADR-0063）。go ponderでは引かずに
+                // 探索し、ponderhitで引く（ADR-0231。参照実装のS:1115-1117は
+                // ponderでも引くが、それだと定跡区間の相手番に探索しない）
+                if is_ponder {
+                    ponder_root = Some(position.clone());
+                } else if let Some(line) = probe_book(&mut bopts, &position, opts.ponder) {
+                    // go infiniteではGUIの指示を待ってから出す
                     // （S:1157-1160の `ponder || limits.infinite`）
-                    if is_ponder || limits.infinite {
+                    if limits.infinite {
                         pending_book = Some(line);
                     } else {
                         print_line(&line);
@@ -685,6 +701,8 @@ fn main() {
                 }
             }
             "stop" => {
+                // ponderが外れた。探索の結論をそのまま出す
+                ponder_root = None;
                 // 保留していた定跡のbestmoveをここで出す（S:1157-1187）
                 if let Some(line) = pending_book.take() {
                     print_line(&line);
@@ -696,16 +714,26 @@ fn main() {
             "gameover" => {
                 // 対局終了なのでbestmoveは出さない
                 pending_book = None;
+                ponder_root = None;
                 if let Some(p) = &pool {
                     p.stop();
                 }
             }
             "ponderhit" => {
-                if let Some(line) = pending_book.take() {
-                    print_line(&line);
-                }
-                if let Some(p) = &pool {
-                    p.ponderhit();
+                // ponderした局面を定跡で引く（ADR-0231）。ヒットしたら探索の
+                // 結論を出さずに止め、終わるのを待ってから定跡の手を出す。
+                // 1回のgoに対してbestmoveは1本だけになる
+                let book_line = ponder_root
+                    .take()
+                    .and_then(|root| probe_book(&mut bopts, &root, opts.ponder));
+                match (book_line, &pool) {
+                    (Some(line), Some(p)) => {
+                        p.abandon_ponder();
+                        print_line(&line);
+                    }
+                    (Some(line), None) => print_line(&line),
+                    (None, Some(p)) => p.ponderhit(),
+                    (None, None) => {}
                 }
             }
             "quit" => break,
