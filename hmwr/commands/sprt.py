@@ -12,7 +12,7 @@ import argparse
 from pathlib import Path
 
 from .. import config, paths, proc
-from . import build, match
+from . import build, match, queue
 from .match import Player, Spec, files, settings
 
 def add_parser(sub: argparse._SubParsersAction) -> None:
@@ -126,6 +126,7 @@ def run(args: argparse.Namespace) -> int:
 
     if match.decided(args.name):
         return proc.OK
+    queue.guard("SPRT", dry_run=args.dry_run)
 
     code = build.make_pair(
         args.name,
@@ -157,6 +158,7 @@ def run_net(args: argparse.Namespace) -> int:
 
     if match.decided(args.name):
         return proc.OK
+    queue.guard("SPRT", dry_run=args.dry_run)
 
     for net in (args.base, args.cand):
         if not Path(net).is_file() and not args.dry_run:

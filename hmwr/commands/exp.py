@@ -19,6 +19,9 @@ from pathlib import Path
 
 from .. import heartbeat, paths, proc, report as report_mod, spec
 
+# queue.STEP_ENV と同じ名前。queue は exp を読み込むので、ここでは文字列で持つ
+QUEUE_STEP_ENV = "HMWR_QUEUE_STEP"
+
 
 def add_parser(sub: argparse._SubParsersAction) -> None:
     p = sub.add_parser("exp", help="実験のspecを実行する")
@@ -184,7 +187,10 @@ def _run_steps(args: argparse.Namespace, s: spec.Spec, log: Path, beat) -> int:
         try:
             # ステップは数日かかることもある。途中も更新時刻を動かし、途絶と区別させる
             with beat.keepalive():
-                code = proc.run(argv, log=log, allowed=_allowed_codes(step))
+                # キュー自身のステップなので、計測と対局の入口の検査を外す
+                code = proc.run(
+                    argv, log=log, allowed=_allowed_codes(step), env={QUEUE_STEP_ENV: "1"}
+                )
         except proc.Fail as e:
             raise proc.Fail(f"ステップが失敗した: {s.name}/{step.id}\n{e}", e.code) from e
         if code == 2 and not _has_result(step):
