@@ -95,12 +95,12 @@ def stderr_of(i, players, pair, rating):
     return float("inf") if information <= 0 else 1.0 / math.sqrt(information)
 
 
-def main():
+def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("jsonl", help="league が書いた棋譜")
     ap.add_argument("--anchor", help="この参加者を0に揃える。省略時は平均が0")
-    args = ap.parse_args()
+    args = ap.parse_args(argv)
 
     players, table, n = read_games(args.jsonl)
     if not players:
@@ -140,7 +140,8 @@ def main():
                 w, d, loss = pair[(i, j)]
                 cells.append(f" +{w} ={d} -{loss} |")
         print(f"| {i} |" + "".join(cells))
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

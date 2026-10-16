@@ -511,3 +511,57 @@ def test_build_pair_can_build_the_candidate_from_a_ref(capsys):
     copies = [x for x in lines if " cp " in x]
     assert copies[0].endswith("data/bin/cand-adr0211-x")
     assert copies[1].endswith("data/bin/base-adr0211-x")
+
+
+# --- 全サブコマンド ----------------------------------------------------
+
+
+def _leaf_commands(parser, prefix=()):
+    """サブコマンドの経路を末端まで列挙する。領域だけの経路も含める。"""
+    for action in parser._actions:
+        choices = getattr(action, "choices", None)
+        if isinstance(choices, dict):
+            for name, sub in choices.items():
+                path = (*prefix, name)
+                yield path
+                yield from _leaf_commands(sub, path)
+
+
+ALL_COMMANDS = sorted(set(_leaf_commands(cli.build_parser())))
+
+
+@pytest.mark.parametrize("path", ALL_COMMANDS, ids=" ".join)
+def test_every_command_prints_help(capsys, path):
+    """どのサブコマンドも --help で落ちない。登録の食い違いはここで捕まる。"""
+    with pytest.raises(SystemExit) as e:
+        cli.main([*path, "--help"])
+    assert e.value.code == 0
+    assert capsys.readouterr().out
+
+
+def test_every_tool_main_takes_argv():
+    """hmwrはツールの main へ引数の列を渡す。受け取らない main は呼んだ時点で落ちる。"""
+    import importlib
+    import inspect
+    import pkgutil
+
+    from hmwr import tools
+
+    for info in pkgutil.iter_modules(tools.__path__):
+        module = importlib.import_module(f"hmwr.tools.{info.name}")
+        main = getattr(module, "main", None)
+        if main is None:
+            continue
+        assert inspect.signature(main).parameters, f"hmwr.tools.{info.name}.main が引数を受けない"
+
+
+def test_league_summary_reads_the_kifu(capsys, tmp_path):
+    jsonl = tmp_path / "league.jsonl"
+    jsonl.write_text(
+        '{"a": "x", "b": "y", "a_side": "black", "winner": "black"}\n'
+        '{"a": "x", "b": "y", "a_side": "white", "winner": "draw"}\n'
+    )
+    assert cli.main(["league", "summary", str(jsonl), "--anchor", "y"]) == proc.OK
+    out = capsys.readouterr().out
+    assert "=== 2局 ===" in out
+    assert "| x |" in out
