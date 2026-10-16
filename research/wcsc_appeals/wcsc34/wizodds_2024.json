@@ -1,0 +1,46 @@
+{
+  "wcsc": 34,
+  "year": 2024,
+  "dir": "wizodds_2024",
+  "team": "David Wada",
+  "software": "wizodds 2024",
+  "sources": [
+    "wcsc34/appeal/wizodds_2024/2024_wizodds_appeal.txt"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc34/appeal/wizodds_2024/2024_wizodds_appeal.txt"
+  ],
+  "summary": "探索木を2手進めた状態から展開するランダム化並列最良優先探索を使う。評価はApery WCS30、定跡はやねうら王のものを借りる。",
+  "base": {
+    "engine": "独自",
+    "eval_source": "Apery WCS30",
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "Apery WCS30の評価関数を使う予定"
+  },
+  "search": {
+    "family": "その他",
+    "detail": "randomized parallel best first search"
+  },
+  "learning": null,
+  "hardware": "i9 14900K単体の予定（EC2との記載もあり）",
+  "language": [
+    "java"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "探索",
+      "title": "ランダム化並列最良優先探索",
+      "description": "探索木を2手進めた状態から展開し、単純な最良優先探索にランダム因子を加える。末端ノードでは少しだけ探索する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "単なる最良探索にランダム因子を加えてました"
+    }
+  ],
+  "character": null,
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc34/team.html"
+}

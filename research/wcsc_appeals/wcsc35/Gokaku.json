@@ -1,0 +1,103 @@
+{
+  "wcsc": 35,
+  "year": 2025,
+  "dir": "Gokaku",
+  "team": "武田 敦志",
+  "software": "Gokaku",
+  "sources": [
+    "wcsc35/appeal/Gokaku/WCSC35appeal_Gokaku_20250429.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc35/appeal/Gokaku/WCSC35appeal_Gokaku_20250429.pdf"
+  ],
+  "summary": "2025年1月末に開発を始めた深層学習将棋。コンピュータ囲碁プログラムMaruのコードを流用し、人間の棋譜や既存AIの棋譜を使わず、ランダム着手から強化学習する。ConvNeXt+Attentionの独自ネットワークと、独自のGate付きSkip Connection、座標ごとの勝率を可視化するValue Headが特徴。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": "盤面管理・合法手・詰み探索・終局判定はcshogi。評価と探索は自作の囲碁プログラムMaruのコードを流用"
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "7x7 Depthwise ConvNeXtブロック→Multi-Head Attentionブロック。Gate Moduleつき独自Skip Connectionで接続。policy 82x9x9 + value"
+  },
+  "search": {
+    "family": "MCTS",
+    "detail": "PUCT。最終着手は訪問数でなく予測勝率のLCB最大。全ノードで5手詰め、浅いノードでdf-pn"
+  },
+  "learning": "人間の棋譜・既存AIの棋譜なしで、ランダム着手の棋譜からのAlphaGo Zero方式の強化学習。KataGoやGumbel AlphaZeroの知見を取り入れる",
+  "hardware": "EPYC 9374F + H100（本番）。学習はRTX3090×3とRTX A5000×2",
+  "language": [
+    "Python",
+    "C++"
+  ],
+  "claimed_strength": "選手権までの約1か月の学習では十分な棋力向上は見込めないが、プロ棋士同等を目指す",
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "Gate Moduleつき独自Skip Connection",
+      "description": "各ブロックが2^n個前のブロックの出力を受け取り、Attention構造のGate Moduleで足し込む特徴量を選ぶ。重みの総和が1になる設計で、通常のResidual Connectionと同様に勾配消失・爆発を起こさず学習が安定すると証明している。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "Gate Module は Attention 構造となっており、特徴量の抽出を行うが、伝播信号全体の減衰や増幅が発生しないように設計されている"
+    },
+    {
+      "category": "評価関数",
+      "title": "ConvNeXt+Attentionの盤面ネット",
+      "description": "7x7のDepthwise Convolutionで広域特徴を集約し、3x3 Convolutionで局所特徴を統合する。続けてMulti-Head Attentionを置き、2次元に拡張したPositional Encodingを加える。囲碁のMaruで最も棋力が上がった構造を採用した。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "3 つの ConvNeXt ブロックを用いることで盤面全体の情報を捉えることが可能である"
+    },
+    {
+      "category": "評価関数",
+      "title": "非線形化したAttention",
+      "description": "Multi-Head AttentionのQuery・Key・Value生成と統合処理に活性化関数を入れて非線形変換にする。計算量は増えるが表現力が上がる。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "Query、Key、Valueの生成処理と統合処理に活性化関数を導入することで非線形変換を行う"
+    },
+    {
+      "category": "探索",
+      "title": "予測勝率のLCBで着手決定",
+      "description": "最終着手を訪問数最大のノードではなく、各ノードの予測勝率のLower Confidence Boundが最大のノードにする。探索数が少なくても正確に着手できる。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "LCB の値が最も高いノードを選択することで、少ない探索数の場合でも正確に着手できる"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "ゼロからの強化学習",
+      "description": "人間の棋譜や既存将棋AIの棋譜を使わず、ランダム着手の棋譜から強化学習する。KataGoとGumbel AlphaZeroの知見で効率を上げる。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "ランダム着手によって生成した棋譜から強化学習を通じて生成した棋譜を学習データとして用いている"
+    },
+    {
+      "category": "解説・人間支援",
+      "title": "座標ごとの予測勝率を可視化するValue Head",
+      "description": "CAM（Class Activation Mapping）を参考に、Value Headの1x1畳み込みの出力をGlobal Average Poolingの前に取り出し、盤面の各座標の予測勝率をヒートマップにする。着手前後の差分から、1五歩が端攻めを狙うなど、手の意図を視覚的に読める。大会期間中、デモサイトを公開した。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "盤面のそれぞれの座標についての予測勝率も出力する構造になっている"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "定跡を搭載しない",
+      "description": "十分に学習したネットワークは定跡データベースと同等の働きをすると考え、定跡よりネットワークの性能向上を優先する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "十分に学習を行ったニューラルネットワークであれば定跡データベースと同等の機能を発揮すると考えている"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "囲碁AIのコード流用で短期開発",
+      "description": "強豪の囲碁プログラムMaruのコードとcshogiを組み合わせ、開発期間を短縮する。同じ技術で強豪将棋プログラムを作ることが目標。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "盤面評価と候補手探索にはコンピュータ囲碁プログラム「Maru」のコードを流用している"
+    }
+  ],
+  "character": null,
+  "notes": "MaruもGokakuも武田敦志の単独開発。盤面解析のデモ（takeda-lab.jp/ga/）を大会期間中に公開。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc35/team.html"
+}

@@ -1,0 +1,79 @@
+{
+  "wcsc": 34,
+  "year": 2024,
+  "dir": "Suisho",
+  "team": "たややん",
+  "software": "水匠",
+  "sources": [
+    "wcsc34/appeal/Suisho/WCSC34Suisho.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc34/appeal/Suisho/WCSC34Suisho.pdf"
+  ],
+  "summary": "勝った側の全手を登録し、負けた側の手は分岐点まで削除するだけで、ミニマックス計算なしに同等の定跡を作る新手法を採用した。評価関数はマメットブンプク由来を微調整し、入玉が苦手になる欠点を水匠5への切替で補う。",
+  "base": {
+    "engine": "やねうら王",
+    "eval_source": "マメットブンプク（WCSC32）からのファインチューニング",
+    "note": null
+  },
+  "eval": {
+    "family": "NNUE",
+    "detail": "マメットブンプクの評価関数をファインチューニング"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "やねうら王。Stockfishの探索部変更の採用とパラメータ調整"
+  },
+  "learning": "水匠の1手1000万ノードの対局データ。評価値の閾値、学習時FV_SCALE調整、勝敗項の教師信号低減。約1億局面を公開",
+  "hardware": "Ryzen Threadripper 7995WX（日本AMDからの借用機材含む）",
+  "language": [
+    "C++",
+    "Python"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "定跡・序盤",
+      "title": "勝敗だけで更新する定跡作成",
+      "description": "勝った側の全指し手を登録し、負けた側の手は、別の手が登録されている局面に当たるまで末端から削除する。ミニマックス探索なしで従来と同じ定跡になる。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "勝った側の指し手は全て定跡データベースに登録する"
+    },
+    {
+      "category": "入玉",
+      "title": "評価関数リレー",
+      "description": "学習の結果、入玉宣言が苦手な評価関数になるため、一定の評価値を超えたら水匠5に切り替える。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "一定の評価値を超えたら水匠5にスイッチする仕組みを採用します"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "学習の工夫と教師データ公開",
+      "description": "学習局面への評価値閾値、FV_SCALE調整、勝敗項の低減を使う。1手1000万ノードの教師データを一部約1億局面公開する。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "教師データとして、日本AMD株式会社様よりお借りした、AMD EPYC™ 9654プロセッサー"
+    },
+    {
+      "category": "探索",
+      "title": "Stockfishの変更の取り込み",
+      "description": "やねうら王を使い、Stockfishに入った探索変更の採用とパラメータ調整を行う。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "Stockfishに実装された探索部の変更部分の採用及びパラメータ調整をしています"
+    },
+    {
+      "category": "開発手法・運用",
+      "title": "定跡作成コードの公開",
+      "description": "定跡作成プログラムmakebook2.pyをGitHubで公開している。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "コードは公開されています"
+    }
+  ],
+  "character": null,
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc34/team.html"
+}

@@ -1,0 +1,62 @@
+{
+  "wcsc": 27,
+  "year": 2017,
+  "dir": "NiCoreShogi",
+  "team": "村田 敦",
+  "software": "にこあ将棋",
+  "sources": [
+    "wcsc27/appeal/NiCoreShogi/appeal.pdf"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc27/appeal/NiCoreShogi/appeal.pdf"
+  ],
+  "summary": "ニコニコ動画への敬意からその名を持つ、探索・評価をすべて自前で実装したソフト。パラメータ調整GUIの公開、ユーザー参加のグリッド化構想、重み付きモンテカルロ探索の採用がアピール点。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "手作り",
+    "detail": "基本パラメータ調整GUIで自動学習と手動調整を併用できる"
+  },
+  "search": {
+    "family": "MCTS",
+    "detail": "重み付きモンテカルロ法"
+  },
+  "learning": null,
+  "hardware": "Core i3 2コア",
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "開発手法・運用",
+      "title": "パラメータ調整GUIの公開とユーザー対戦",
+      "description": "基本パラメータの調整GUIを公開し、自動学習と手動調整を組み合わせた各ユーザー独自の思考エンジンを作れる。各ユーザーで対戦し、ランキング1位のパラメータで選手権に出る構想だった（間に合わず）。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "基本パラメータ調整 GUI を公開。自動学習と手動調整がユーザー独自の思考エンジンが可能です。"
+    },
+    {
+      "category": "並列・分散",
+      "title": "ユーザーのマシン全体をグリッド化",
+      "description": "にこあ将棋のユーザーのマシンをグリッド化して選手権に臨む構想（間に合わないかも）。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "にこあ将棋ユーザーのマシン全体でグリッド化し、選手権へ挑みます"
+    },
+    {
+      "category": "探索",
+      "title": "重み付きモンテカルロ探索",
+      "description": "探索に重み付きのモンテカルロ法を採用する。単体の効率はαβ探索に劣るが、グリッド化したときの効率低下が小さいのではないかという狙い。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "探索方法に重み付きのモンテカルロ法を採用。"
+    }
+  ],
+  "character": "ユーザーのマシンを束ねるコミュニティ型・参加型のコンセプト。ソフト名はニコニコ動画への敬意が由来。",
+  "notes": null,
+  "team_list_url": "http://www2.computer-shogi.org/wcsc27/team.html"
+}

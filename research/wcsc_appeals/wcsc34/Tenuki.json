@@ -1,0 +1,54 @@
+{
+  "wcsc": 34,
+  "year": 2024,
+  "dir": "Tenuki",
+  "team": "手抜きチーム（鈴木太朗・玉川直樹）",
+  "software": "手抜き",
+  "sources": [
+    "wcsc34/appeal/Tenuki/tenuki34.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc34/appeal/Tenuki/tenuki34.pdf"
+  ],
+  "summary": "開発者が将棋プログラムの仕組みを理解するために作るD言語のCSAプロトコル対応ソフト。評価関数にどうたぬきのnn.binを使うNNUE+αβ。過去回にNNUEとminimaxの解説文書を出している。",
+  "base": {
+    "engine": "独自",
+    "eval_source": "どうたぬき（tanuki- 第1回電竜戦版）のnn.bin",
+    "note": null
+  },
+  "eval": {
+    "family": "NNUE",
+    "detail": "どうたぬきのnn.bin"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": null
+  },
+  "learning": null,
+  "hardware": "EC2 c7a.metal-48xl 192vCPU",
+  "language": [
+    "D"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "解説・人間支援",
+      "title": "理解のための自作と解説文書",
+      "description": "仕組みを理解するための自作ソフト。過去の文書でNNUEのnn.bin構造とMinimax入門を解説している。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "開発者らが将棋プログラムの仕組みを理解するために作っています"
+    },
+    {
+      "category": "開発手法・運用",
+      "title": "D言語による実装",
+      "description": "αβ探索とNNUEをD言語で実装し、GitHubで公開している。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "D 言語"
+    }
+  ],
+  "character": "「手抜き」という名前と、勉強目的の自作・解説文書を出すスタンス。",
+  "notes": "TODOとして差分評価・千日手チェック・詰将棋・ponderを挙げる。第31回と第33回の解説文書を紹介。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc34/team.html"
+}

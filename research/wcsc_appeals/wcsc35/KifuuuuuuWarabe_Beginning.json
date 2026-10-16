@@ -1,0 +1,70 @@
+{
+  "wcsc": 35,
+  "year": 2025,
+  "dir": "KifuuuuuuWarabe_Beginning",
+  "team": "キフワラビアンズ（高橋 智史）",
+  "software": "KifuuuuuuWarabe Beginning",
+  "sources": [
+    "wcsc35/appeal/KifuuuuuuWarabe_Beginning/WCSC35_PR_250423c.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc35/appeal/KifuuuuuuWarabe_Beginning/WCSC35_PR_250423c.pdf"
+  ],
+  "summary": "Bonanza以前に戻り、機械学習も定跡も使わないルールベースの将棋AI。「やってはいけないこと」を並べて合法手を絞るネガティブ・ルールで、先手でも後手でも振り飛車（「振りキリン」）から片美濃囲いを目指し、駒の取り合いは自力実装のSEEで処理する。文書全体が、キャラクターの掛け合いで進む漫画形式。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": "ルール通りに指す部分のみcshogiを使用。思考部は全部自作"
+  },
+  "eval": {
+    "family": "手作り",
+    "detail": "駒の点数は作者の美意識で付与（ライオン1、他の駒98）。評価関数による探索は使わない"
+  },
+  "search": {
+    "family": "その他",
+    "detail": "探索なしのルールベース。駒の取り合いだけSEEによる静止探索"
+  },
+  "learning": null,
+  "hardware": "Ryzen 7 5700",
+  "language": [
+    "Python"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "研究・実験的",
+      "title": "ネガティブ・ルールによるルールベースAI",
+      "description": "「こうしろ」ではなく「こうするな」を並べ、合法手の全リストから条件に合う手を除外して残りを指す。ポジティブ・ルールは優先順位が衝突するため、最終的にどちらも成り立たないときは何もしないという設計で、含みのある号令を実現する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "ネガティブ・ルール でやっていくと、やらないべき条件が揃った号令が ２つ挙がってきたとき、どちらも やらなければいい"
+    },
+    {
+      "category": "棋風・人間らしさ",
+      "title": "振りキリン（振り飛車）+右壁を作るな",
+      "description": "どうぶつしょうぎ風の呼び名で、先手でも後手でも振り飛車から片美濃囲いを目指す。玉が右の進路を塞がないよう「右壁を作るな」（2段の駒が縦に並ぶな）、「玉が動くまで動くな」「6段目に上がるな」「戻るな」「名のある囲いを崩すな」など9つのネガティブ・ルールを提示する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "ライオンは とにかく 右から２筋目 を目指せ"
+    },
+    {
+      "category": "探索",
+      "title": "SEEによる駒の取り合い",
+      "description": "駒の取り合いと、ネガティブ・ルールに従う段階を分け、取り合いはSEE（Static Exchange Evaluation）の静止探索で行う。SEEは自力実装し、駒の点数は作者の美意識で決める。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "駒を取ったり、取り返したりするのは SEE という静止探索でできるからな。"
+    },
+    {
+      "category": "探索",
+      "title": "ルールの失効条件（リボーク）",
+      "description": "作戦がすでに破綻しているのに号令を守り続けて負けた対局を受け、失効条件を持たせる。たとえば自陣の歩が4枚未満なら振り飛車を断念し、右壁禁止を失効する。ポジティブ・ルールは指し手の候補リストへ追加し、条件に合致した手のみを残す方式。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "号令にはリボーク（Revoke；失効）する条件を付けておく必要がある"
+    }
+  ],
+  "character": "漫画風の掛け合いで構成された異色の文書。「機動原棋将きふわらべ」の扉と、ヒヨコ・ライオン・キリン・ゾウなどのどうぶつ将棋風の駒呼称、ガンダム『GQuuuuuuX』を11回観に行った自己紹介、PR文書の25ページ制限の由来（第27回に156ページを出した本人の逸話）、きふわらべメソッド（全ライブラリ事前申告）の自虐ネタなど。Quuxを使わないプレースホルダー論や「Dad, stand up!」で終わる。",
+  "notes": "WCSC33参加後のチーム。リンク先のfloodgateの棋譜（右壁ルールで7五に歩を突いて形勢を損ねた例）を失敗事例として載せている。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc35/team.html"
+}

@@ -1,0 +1,78 @@
+{
+  "wcsc": 30,
+  "year": 2020,
+  "dir": "NicoreShogi",
+  "team": "村田 敦",
+  "software": "にこあ将棋",
+  "sources": [
+    "wcsc30/appeal/NicoreShogi/WCSC30_NicoreShogi_APdoc.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc30/appeal/NicoreShogi/WCSC30_NicoreShogi_APdoc.pdf"
+  ],
+  "summary": "探索・評価ともすべて自前実装のソフト。パラメータ調整GUIがあり、自動学習と手動調整でユーザー独自の思考エンジンを作れる。第30回は利き重視で差別化する。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "手作り",
+    "detail": "複数の評価関数をミックスし状況で重みを変える構想。利き重視"
+  },
+  "search": {
+    "family": "αβ+MCTS",
+    "detail": "αβ探索とモンテカルロ探索を併用（うまくいっていないと自己評価）"
+  },
+  "learning": null,
+  "hardware": "Core i5-8250 4コア",
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "開発手法・運用",
+      "title": "パラメータ調整GUI",
+      "description": "パラメータ調整GUIを実装し、自動学習と手動調整でユーザー独自の思考エンジンを作れるようにする。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "パラメータ調整 GUI を実装。自動学習と手動調整でユーザー独自の思考エンジンが可能です。"
+    },
+    {
+      "category": "評価関数",
+      "title": "複数評価関数のミックス",
+      "description": "複数の評価関数を混ぜ、状況に応じて重みを変える構想。第30回は利き重視にして他と差別化する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "複数の評価関数をミックス、状況に応じて重みを変化でき…たらいいなぁ。"
+    },
+    {
+      "category": "エンタメ・演出",
+      "title": "ユーザー調整AIのランキング戦",
+      "description": "ユーザーが調整したAIで対戦できるようにし、ランキング1位のAIで大会に参戦する構想。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "ユーザーの調整した AI で対戦できるようにし、ランキング１位の AI で参戦。"
+    },
+    {
+      "category": "並列・分散",
+      "title": "ユーザーのマシンのグリッド化",
+      "description": "にこあ将棋ユーザーのマシン全体でグリッド化する構想。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "にこあ将棋ユーザーのマシン全体でグリッド化。"
+    },
+    {
+      "category": "開発手法・運用",
+      "title": "他ソフトを参考にしない自前実装",
+      "description": "他のソフト・ライブラリをほぼ参考にせず、探索・評価ほかすべて自前で実装した。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "探索、評価、その他もろもろ全て自前で実装しています。"
+    }
+  ],
+  "character": "名称は、ニコニコ動画への敬意を込めた「にこあ将棋」。将棋電王戦FINAL第4局の終了後に開発を始めた経緯を語る。",
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc30/team.html"
+}

@@ -1,0 +1,46 @@
+{
+  "wcsc": 24,
+  "year": 2014,
+  "dir": "sawanyan",
+  "team": "宇賀神 拓也",
+  "software": "さわにゃん",
+  "sources": [
+    "wcsc24/appeal/sawanyan/appeal.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc24/appeal/sawanyan/appeal.txt"
+  ],
+  "summary": "Magic bitboard（Byte Lookup）に変更して一から書き直した。利きテーブル中の重複を削除してテーブルサイズを減らすのがアピール点。評価関数はBonanza 6.0のfv.binのみ使用し、他は自作。",
+  "base": {
+    "engine": "独自",
+    "eval_source": "Bonanza 6.0のfv.bin",
+    "note": "fv.bin以外はすべて自作"
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "KKP・KPP"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "PVS、LMR、各種枝刈り、1手詰め"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "実装・高速化",
+      "title": "Byte Lookupの利きテーブル重複削除",
+      "description": "Magic bitboard（Byte Lookup）を使い、利きテーブルの中身の重複を削除してテーブルサイズを減らす。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "利きテーブルの中身の重複を削除することで、利きテーブルのサイズを削減。"
+    }
+  ],
+  "character": null,
+  "notes": "強化学習を止めたので特徴が少ないと述べる。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc24/team.html"
+}

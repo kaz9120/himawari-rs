@@ -1,0 +1,44 @@
+{
+  "wcsc": 20,
+  "year": 2010,
+  "dir": "Tsutsukana",
+  "team": "一丸貴則",
+  "software": "ツツカナ",
+  "sources": [
+    "wcsc20/appeal/Tsutsukana/Tsutsukana.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc20/appeal/Tsutsukana/Tsutsukana.txt"
+  ],
+  "summary": "αβ探索の打ち切り条件を、深さでなく「ルートからの各局面の分岐数の積」にする。パラメータを事前に決めずに自然な延長が得られる。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "不明",
+    "detail": null
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "分岐数の積（対数の和）が閾値を超えたらリーフ"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "探索",
+      "title": "分岐数の積で打ち切る探索",
+      "description": "探索深さの閾値でなく、ルートから通過した各局面の分岐数の積（または対数の和）が閾値を超えたらリーフとする。王手局面や必至など指し手を絞りやすい局面が自然に深く読まれ、事前に延長パラメータを定めなくて済む。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "ルートから通過してきた各局面の分岐数の積(or対数の和)が閾値を超えたらリーフとしています"
+    }
+  ],
+  "character": null,
+  "notes": null,
+  "team_list_url": "http://www2.computer-shogi.org/wcsc20/team.html"
+}

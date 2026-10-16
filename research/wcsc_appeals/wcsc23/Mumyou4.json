@@ -1,0 +1,70 @@
+{
+  "wcsc": 23,
+  "year": 2013,
+  "dir": "Mumyou4",
+  "team": "David Wada",
+  "software": "無明4",
+  "sources": [
+    "wcsc23/appeal/Mumyou4/mumyou4_appeal.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc23/appeal/Mumyou4/mumyou4_appeal.txt"
+  ],
+  "summary": "αβを使わず、並列乱数使用最良優先ミニマックス探索（Parallel Randomized Best First MiniMax Search）で探索するJava製のソフト。評価関数はBonanza 6の評価関数部分を移植し、詰めはdf-pn。今年はハッシュ導入、ノード選択ルール変更、最善手選択ルール変更、相手の消費時間も考慮した時間管理を加えた。",
+  "base": {
+    "engine": "Bonanza",
+    "eval_source": "Bonanza 6.0のfv.bin",
+    "note": "評価関数部分だけを移植"
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "Bonanza 6の評価関数"
+  },
+  "search": {
+    "family": "その他",
+    "detail": "並列乱数使用最良優先ミニマックス。αβは使わない。詰めはdf-pn"
+  },
+  "learning": null,
+  "hardware": "Core i7 3930K 4.5GHz",
+  "language": [
+    "Java"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "探索",
+      "title": "並列乱数使用最良優先ミニマックス",
+      "description": "αβ法を使わず、Korfの最良優先ミニマックスに乱数と並列化を加えた探索を使う。ノード選択の最良優先部分にバイアスを掛け、ランダム選択部分は確率を緩めて選択肢を広げる。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "「並列乱数使用最良優先ミニマックス」(Parallel Randomized Best First MiniMax Search)"
+    },
+    {
+      "category": "探索",
+      "title": "探索履歴を加味した最善手選択",
+      "description": "探索終了時に評価値が最高の手を選ぶとは限らず、探索途中の履歴を加味して選択手を決める。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "探索途中の履歴を加味して選択手を決定します。"
+    },
+    {
+      "category": "時間管理",
+      "title": "相手の消費時間を考慮",
+      "description": "探索時間を決める際に相手の消費時間も考慮する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "相手の消費時間も考慮して探索時間を調整します。"
+    },
+    {
+      "category": "探索",
+      "title": "ノード訪問回数を閾値にするハッシュ",
+      "description": "ハッシュテーブルの閾値に探索深度でなくノード訪問回数を使う。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "探索深度ではなくノード訪問回数を敷居値に使用。"
+    }
+  ],
+  "character": null,
+  "notes": "毎年恒例のアピール文章としてユーモアを交えた書き出し。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc23/team.html"
+}

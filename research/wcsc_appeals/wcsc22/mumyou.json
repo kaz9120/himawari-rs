@@ -1,0 +1,54 @@
+{
+  "wcsc": 22,
+  "year": 2012,
+  "dir": "mumyou",
+  "team": "david wada",
+  "software": "無明3",
+  "sources": [
+    "wcsc22/appeal/mumyou/2012_mumyou_appeal.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc22/appeal/mumyou/2012_mumyou_appeal.txt"
+  ],
+  "summary": "αβを使わず、Korfの最良優先ミニマックスの並列乱数版を探索の中核にする。3手読みで上位の手を探索し、評価関数はBonanza 6.0、詰みはdf-pn。詰め探索を別マシンで動かすクラスタ化を予定。",
+  "base": {
+    "engine": "独自",
+    "eval_source": "Bonanza 6.0",
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "Bonanza 6.0のfv.bin"
+  },
+  "search": {
+    "family": "その他",
+    "detail": "並列乱数使用最良優先ミニマックス（Parallel Randomized Best-First MiniMax Search）。3手読みして上位の手を探索"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": [
+    "Java"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "探索",
+      "title": "並列乱数使用最良優先ミニマックス探索",
+      "description": "主流のαβを使わず、Korfの最良優先ミニマックス探索と、その並列乱数版を使う。全幅探索できるハードがないため、3手読みして上位の手を探索する。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "つまり、ゲーム探索において主流アルゴリズムとされるアルファ・ベータを使用していません"
+    },
+    {
+      "category": "並列・分散",
+      "title": "詰め探索を別マシンで処理するクラスタ化",
+      "description": "クラスタ化の第一歩として、詰め将棋探索を別のマシンで処理する（予定）。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "クラスター化の第一歩として「詰め将棋探索」部分を別のマシンで処理。（予定）"
+    }
+  ],
+  "character": null,
+  "notes": "提出後の変更・補足はWebで掲載すると書く。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc22/team.html"
+}

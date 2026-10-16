@@ -1,0 +1,62 @@
+{
+  "wcsc": 29,
+  "year": 2019,
+  "dir": "Jinsei_okuribunt_shippai",
+  "team": "築地 毅",
+  "software": "人生送りバント失敗",
+  "sources": [
+    "wcsc29/appeal/Jinsei_okuribunt_shippai/appeal2019.txt"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc29/appeal/Jinsei_okuribunt_shippai/appeal2019.txt"
+  ],
+  "summary": "「アピール箇所がないとアピール文書がリジェクトされる」ため前年の技術的記述をコピペした文書。実質は思い出話と大会遠征の遊び方が中心の個性的な文書。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "ボナンザメソッド"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "LMR、Futilityなど一般的な技術"
+  },
+  "learning": "ボナンザメソッド。平均化パーセプトロンのオンライン学習を試して断念",
+  "hardware": null,
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "エンタメ・演出",
+      "title": "マクドナルド定跡を毎年試す",
+      "description": "大会会場近くのマクドナルドの名を冠した「マクドナルド定跡」を毎年試し、効果を検証し続けている。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "有名なマクドナルド定跡(関東人の意地としてマクド定跡とはよばない)について、毎年試している割には全然勝ち星が増えない"
+    },
+    {
+      "category": "エンタメ・演出",
+      "title": "会場外で遊ぶ・罰ゲームのコスプレ",
+      "description": "大会2日目は会場に行かず近くで遊ぶ。2016年には罰ゲームで「うまるちゃん」のコスプレをした。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "2016年には罰ゲームでうまるちゃんやりました。"
+    },
+    {
+      "category": "解説・人間支援",
+      "title": "解説記事の生成（過去の独創賞）",
+      "description": "2012年に「解説記事の生成」で独創賞を受賞したと振り返る。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "独創賞受賞（解説記事の生成）"
+    }
+  ],
+  "character": "プログラム名「(´・ω・`)」が「読めません」とリジェクトされた逸話、史上初のアピール文書リジェクト、うまるちゃんのコスプレなど、ネタに満ちた思い出語りが中心。目標は「まったりゆうちゃんを倒して師匠超え」。",
+  "notes": "技術的記述は前回のコピペと明記",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc29/team.html"
+}

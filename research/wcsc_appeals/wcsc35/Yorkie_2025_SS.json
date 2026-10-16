@@ -1,0 +1,52 @@
+{
+  "wcsc": 35,
+  "year": 2025,
+  "dir": "Yorkie_2025_SS",
+  "team": "石田 計",
+  "software": "Yorkie 2025 SS",
+  "sources": [
+    "wcsc35/appeal/Yorkie_2025_SS/appeal_Yorkie_2025SS.md"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc35/appeal/Yorkie_2025_SS/appeal_Yorkie_2025SS.md"
+  ],
+  "summary": "NNUE評価関数を使い、置換表の代わりにMCTSに似た方法で探索経過を保持する。Quotaの許す限りのCPU数・メモリのマシンを使い、Linux限定、CSAサーバプロトコルのみ実装、NUMA対応などで高速化する。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "NNUE",
+    "detail": null
+  },
+  "search": {
+    "family": "αβ+MCTS",
+    "detail": "置換表を使わず、MCTS探索に類似した方法で探索経過を保持する"
+  },
+  "learning": null,
+  "hardware": "Quotaで許されるかぎりのCPU数・メモリ",
+  "language": [],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "探索",
+      "title": "置換表の代わりにMCTS類似の木で保持",
+      "description": "探索時に置換表を使わず、MCTS探索に類似した方法で探索経過を保持する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "探索時に置換表を使わず、替わりにMCTS探索に類似した方法で探索経過を保持します。"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "Linux限定・NUMA対応・USI非実装",
+      "description": "実行環境をLinuxに限り、定数を極力定義し、NUMAを意識してメモリを割り当て、-march=native相当の最適化でビルドする。USIプロトコルは実装せず、CSAサーバプロトコルのみ実装する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "USIプロトコルを実装せず、CSA サーバプロトコルのみ実装する"
+    }
+  ],
+  "character": null,
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc35/team.html"
+}

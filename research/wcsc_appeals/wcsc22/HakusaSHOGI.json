@@ -1,0 +1,52 @@
+{
+  "wcsc": 22,
+  "year": 2012,
+  "dir": "HakusaSHOGI",
+  "team": "白砂青松",
+  "software": "白砂将棋",
+  "sources": [
+    "wcsc22/appeal/HakusaSHOGI/appeal.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc22/appeal/HakusaSHOGI/appeal.txt"
+  ],
+  "summary": "7七桂戦法を指しこなす目標は不変で、定跡を約10,000手に増やした。れさぴょんを土台に、NegaScoutと独自調整の評価関数を持つ。",
+  "base": {
+    "engine": "れさぴょん",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "手作り",
+    "detail": "駒損でも指しやすい7七桂戦法の局面を有利と判断。穴熊などは低め"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "NegaScout＋反復深化。詰みはpn-search"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "棋風・人間らしさ",
+      "title": "7七桂戦法を指しこなす",
+      "description": "愛用戦法の7七桂戦法を指しこなすことを目標に、定跡を外れても7七桂戦法を保つ。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "自身の愛用戦法である「７七桂戦法」を指しこなすこと"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "実戦譜・研究による定跡約10,000手",
+      "description": "定跡を8,000手→8,500手→10,000手と毎年増やす。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "自身の実戦譜・研究を元に約10,000手を登録"
+    }
+  ],
+  "character": null,
+  "notes": "第20・21回とほぼ同内容。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc22/team.html"
+}

@@ -1,0 +1,79 @@
+{
+  "wcsc": 33,
+  "year": 2023,
+  "dir": "ichibin",
+  "team": "花井 祐",
+  "software": "いちびん",
+  "sources": [
+    "wcsc33/appeal/ichibin/appeal_wcsc33 ichibin.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc33/appeal/ichibin/appeal_wcsc33%20ichibin.pdf"
+  ],
+  "summary": "やねうら王のラーニング機能でNNUEを学習した思考部を、自作のJavaプログラムで制御する。自作の教師データ（約15億局面）で完全なゼロから評価関数を作り、探索ルーチンはやねうら王のものを使う。",
+  "base": {
+    "engine": "やねうら王",
+    "eval_source": null,
+    "note": "探索ルーチンはやねうら王。Javaプログラムで動作を制御"
+  },
+  "eval": {
+    "family": "NNUE",
+    "detail": "やねうら王のラーニング機能で学習したNNUE"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "やねうら王の探索ルーチン"
+  },
+  "learning": "3駒関係の旧評価関数（Dorphin?）で、やねうら王（Ver.4か5）の改変版により1手最大100万局面・探索枝刈りを緩めて教師データを生成。深さ12〜16、約15億局面を数年かけて作り、全データで評価関数をゼロから学習",
+  "hardware": "Core i9-9900T（2次予選）",
+  "language": [
+    "C++",
+    "Java"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "探索枝刈りを緩めた大規模教師データ",
+      "description": "やねうら王のソースを改変し、1手あたり最大100万局面、枝刈りを緩めて深さ12〜16の教師データを生成する。数年かけて約15億局面を集め、その集大成として全データで新規に学習した。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "１手あたり最大で１００万局面、探索枝狩りをゆるくして教師データを作成しています。"
+    },
+    {
+      "category": "時間管理",
+      "title": "評価値の異常値検査による思考時間制御",
+      "description": "評価値が突然楽観読みに変わったときなどを検出し、Java側で思考時間を操作する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "評価値の異常値検査（突然、評価が楽観読みに変わったときに、思考時間操作）"
+    },
+    {
+      "category": "探索",
+      "title": "勝負手探索（マイナス評価時のみ）",
+      "description": "評価値が一定以下のマイナスのときだけ、対人間にしか役立たない勝負手探索を使う。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "勝負手探索（対人間しか役立たない。評価値が一定以下のマイナス評価の際に使用）"
+    },
+    {
+      "category": "棋風・人間らしさ",
+      "title": "みっともない負け方をしない投了",
+      "description": "相入玉が期待できない局面になったら、さっさと投了信号を送る機能。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "みっともない負け方をしない機能（相入玉が期待できない局面になったら、さっさと投了信号を送る）"
+    },
+    {
+      "category": "開発手法・運用",
+      "title": "Javaによる外部制御",
+      "description": "やねうら王の探索の通信内容・時間管理・評価値異常検査・勝負手探索などの制御を自作Javaプログラムで行う。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "自作のプログラム（JAVA）を用いて、動作をコントロールしています。"
+    }
+  ],
+  "character": "開発者は毎年「今年を最後に」と思いつつ、事務局のメールに誘われて参加する。会場の雰囲気を楽しもうと呼びかけ、最終日の懇親会（アルコールなし）にも触れる。",
+  "notes": "画像のみのPDFのため原本を読んだ。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc33/team.html"
+}

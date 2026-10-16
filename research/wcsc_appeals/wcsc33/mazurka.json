@@ -1,0 +1,63 @@
+{
+  "wcsc": 33,
+  "year": 2023,
+  "dir": "mazurka",
+  "team": "谷合 廣紀",
+  "software": "mazurka",
+  "sources": [
+    "wcsc33/appeal/mazurka/WCSC33_mazurka.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc33/appeal/mazurka/WCSC33_mazurka.pdf"
+  ],
+  "summary": "policy+value+MCTSの枠組みはDL系だが、盤面を95文字の列にして埋め込み層で入力するNLP的エンコードと、gMLPモデルが独自。policy出力は非合法手を除いた1496クラスの分類にした。",
+  "base": {
+    "engine": "ふかうら王",
+    "eval_source": null,
+    "note": "dlshogi/ふかうら王とモデル構造・入出力が大きく異なる"
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "gMLP（LayerNormalization除去、12層、d_model=256、d_ffn=512）。入力は95個のトークン列"
+  },
+  "search": {
+    "family": "MCTS",
+    "detail": "policy+value+MCTS（ふかうら王系）"
+  },
+  "learning": "『強い将棋ソフトの創り方』公開データを使用",
+  "hardware": "GCP a2-highgpu-4g",
+  "language": [
+    "C++",
+    "Python"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "盤面を文字列にするNLP的入力エンコード",
+      "description": "1一から9九の駒（81マス）と先後の持ち駒（7種x2）を並べた95文字の列にエンコードし、埋め込み層でベクトル化する。画像的な9x9特徴量に代わる自然言語処理的な入力。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "自然言語処理的なエンコードと捉えることができます。"
+    },
+    {
+      "category": "評価関数",
+      "title": "gMLPによるモデル構造",
+      "description": "Transformerは TensorRTでの高速化が難しいため、MLPベースのgMLPを採用した。LayerNormalizationを除去し、12層、d_model 256、d_ffn 512。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "mazurka では gMLP と呼ばれる MLP ベースのモデルを採用しています。"
+    },
+    {
+      "category": "評価関数",
+      "title": "非合法手を除いたpolicy出力",
+      "description": "dlshogiのpolicy 2187クラスから決して現れない非合法の組み合わせ691通り（約32%）を除いた1496クラス分類にしたところ、policyの学習がうまくいった。",
+      "originality": "独自",
+      "evidence": "学習が改善（数値の記載なし）",
+      "quote": "非合法手 691 通りを除いた 1496 のクラス分類問題として解いた方が、policy の学習がうまくいくことがわかりました。"
+    }
+  ],
+  "character": null,
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc33/team.html"
+}

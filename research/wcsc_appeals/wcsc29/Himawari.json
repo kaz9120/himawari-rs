@@ -1,0 +1,46 @@
+{
+  "wcsc": 29,
+  "year": 2019,
+  "dir": "Himawari",
+  "team": "チームひまわり（山本一将、永塚拓、高木厚成）",
+  "software": "ひまわり",
+  "sources": [
+    "wcsc29/appeal/Himawari/appeal.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc29/appeal/Himawari/appeal.pdf"
+  ],
+  "summary": "AlphaZeroアルゴリズムで新規作成したが開発が間に合わず、前年のプログラムで参加するチーム。教師あり学習のみで強化学習は未実施。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "DL",
+    "detail": null
+  },
+  "search": {
+    "family": "MCTS",
+    "detail": null
+  },
+  "learning": "教師あり学習（Tensorflow）。強化学習は間に合わず",
+  "hardware": null,
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "研究・実験的",
+      "title": "AlphaZero方式の新規実装",
+      "description": "前年からの流用はルール部分のみで、AlphaZeroのアルゴリズムで新規に作成した。ただし今大会は前年版で参加する。",
+      "originality": "再現・追従",
+      "evidence": null,
+      "quote": "AlphaZeroのアルゴリズムで新規に作成"
+    }
+  ],
+  "character": null,
+  "notes": "前年のアピール文書を参照とある",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc29/team.html"
+}

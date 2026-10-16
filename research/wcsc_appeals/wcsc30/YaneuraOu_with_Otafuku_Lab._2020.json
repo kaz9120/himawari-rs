@@ -1,0 +1,56 @@
+{
+  "wcsc": 30,
+  "year": 2020,
+  "dir": "YaneuraOu_with_Otafuku_Lab._2020",
+  "team": "磯崎 元洋（やねうら王 with お多福ラボ 2020）",
+  "software": "やねうら王",
+  "sources": [
+    "wcsc30/appeal/YaneuraOu_with_Otafuku_Lab._2020/WCSC30_YANE_PR.txt"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc30/appeal/YaneuraOu_with_Otafuku_Lab._2020/WCSC30_YANE_PR.txt"
+  ],
+  "summary": "テラショック定跡の末端評価値を、手数に応じた期待勝率で補正して、浅い局面への誘導バイアスを除く改良を示す。",
+  "base": {
+    "engine": "やねうら王",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "NNUE",
+    "detail": null
+  },
+  "search": {
+    "family": "αβ",
+    "detail": null
+  },
+  "learning": null,
+  "hardware": "Surface Go + AWS c5d.metal×8（総386コア、メモリ1540GB）",
+  "language": [
+    "C++",
+    "C#",
+    "Python"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "定跡・序盤",
+      "title": "手数補正付きテラショック定跡",
+      "description": "テラショックでは、深く掘れていない局面（plyが浅い）が偶然高い評価値になり、そちらへ誘導する定跡ができる。後手は先手の勝率55%ゆえ、深く掘るほど不利な局面に当たりやすい。そこで末端の評価値を、手数plyに応じた期待勝率で補正する。先手勝ちの対局の平均期待勝率は終局に向け直線的に増加すると仮定し、補正値で leaf_node_eval = 探索評価値 - 補正値(ply) とする。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "末端の評価値に対してplyに応じた何らかの補正を行う必要がある。"
+    },
+    {
+      "category": "並列・分散",
+      "title": "AWSのc5d.metal×8のクラスタ",
+      "description": "Surface GoからAWSのc5d.metal 8インスタンスを使い、総計386コアで動かす。クラスタ化部分はC#/Pythonで書く。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "C++(エンジン本体), C#/Python(クラスター化部分)"
+    }
+  ],
+  "character": null,
+  "notes": "文書は定跡の手数補正の1点のみで、エンジンの概要の記述なし。評価値の補正値の式は原文で略されている。ハードウェア・言語は一覧ページから",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc30/team.html"
+}

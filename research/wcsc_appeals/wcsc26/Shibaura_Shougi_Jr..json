@@ -1,0 +1,100 @@
+{
+  "wcsc": 26,
+  "year": 2016,
+  "dir": "Shibaura_Shougi_Jr.",
+  "team": "芝浦工業大学（五十嵐治一、原悠一、和田悠介、古根村光、桐井杏樹）",
+  "software": "芝浦将棋Jr.",
+  "sources": [
+    "wcsc26/appeal/Shibaura_Shougi_Jr./appeal.pdf"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc26/appeal/Shibaura_Shougi_Jr./appeal.pdf"
+  ],
+  "summary": "人間の専門知識に頼らず、コンピュータが対局から試行錯誤で将棋を学び、人間を超えることを目標に、強化学習で評価関数を作る大学チーム。定跡を一切使わず、新しい定跡や戦法が創発されるかを見る。縦3分割・64bit整数3つのbitboardとMagic bitboardを自作し、探索エンジンをゼロから作っている。",
+  "base": {
+    "engine": "独自",
+    "eval_source": "Bonanza 6.0（特徴量のみ）",
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "特徴量はBonanza 6.0そのまま。重みは2012年の芝浦将棋の値（駒の重み以外は最急降下TDLeaf(λ)で強化）。差分計算で評価時間が約1/10"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "αβ、置換表、killer、LMR、Futility、静止探索（20手まで）とSEE、YBWC並列化（Stockfish参考）、相手手番中の先読み"
+  },
+  "learning": "対局結果を報酬にした強化学習（TDLeaf(λ)）。方策勾配によるPGLeaf法、深い探索結果を教師にするTreeStrap法を試行中",
+  "hardware": "Core i7-6700 3.4GHz",
+  "language": "C",
+  "claimed_strength": "昨年21位。探索並列化で従来の約2倍の探索速度、2手ほど深く読めるように",
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "人間の知識に頼らない強化学習が基本目標",
+      "description": "プロ棋士の棋譜を教師にせず、コンピュータが対局を通して試行錯誤で学ぶ。人間の定跡や戦法が再現されるか、新しい定跡や戦法が創発されるかに興味がある。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "人間の持っている将棋に関する専門知識に頼ることなく，コンピュータが対局を通して試行錯誤しながら，自ら将棋を学び"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "定跡の不使用",
+      "description": "対局でも学習でも序盤定跡を使わない。新手らしきものが得られれば成果と期待する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "大会対局時には定跡データベースを使用しません。"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "縦3分割・64bit整数3つのbitboardとMagic bitboard",
+      "description": "盤面を縦方向に3分割し64bit整数3つで持つ。飛び駒の利きがほぼ中央の1変数で処理でき、Magic numberも1つで済み、9×9でも8×8のチェス並みに処理できる。Ponanzaの上6段・下3段の2変数方式より簡素。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "盤面サイズが 9×9 の将棋であっても 8×8 のチェスの場合と同じように，1 変数についての処理で殆ど済ませる"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "評価関数の差分計算",
+      "description": "局面間の駒配置の差分から評価値の差分を計算し、評価関数の計算時間を約1/10にした。",
+      "originality": "独自",
+      "evidence": "評価関数の計算時間が約1/10、探索速度2.3倍、勝率約72%",
+      "quote": "評価関数の計算時間は差分計算を行わない従来と比べて約 10 分の 1 にまで減少"
+    },
+    {
+      "category": "並列・分散",
+      "title": "YBWC並列化（Stockfish参考）",
+      "description": "今年、YBWCで並列化した。Stockfishを参考に、評価の差分計算や前向き枝刈りがスレッド間で競合しないように調整し、探索プログラムの約40%を書き換えた。",
+      "originality": "既存手法の応用",
+      "evidence": "従来の約2倍の探索速度、2手ほど深く読める",
+      "quote": "探索プログラムの約 40％を書き換えることになりました"
+    },
+    {
+      "category": "時間管理",
+      "title": "相手手番中の先読みの強化",
+      "description": "先読み中の探索の時間・深さの制限を撤廃して相手の考慮時間を使い切り、先読みがヒットしても一定時間さらに探索を続ける。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "先読みがヒットした場合にもすぐに指すのではなく、一定の時間，さらに探索を行うようにしてあります。"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "方策勾配法による強化学習",
+      "description": "TD(λ)ではなく方策勾配法による評価関数と探索制御の強化学習（PGLeaf法）を研究。シミュレーション方策の学習、モンテカルロ探索への応用、読みの深さ制御へ展開する構想。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "方策勾配法と呼ばれている強化学習の適用を試みたい"
+    },
+    {
+      "category": "探索",
+      "title": "soft-maxと累積遷移確率のマルチエージェント探索（構想）",
+      "description": "αβ＋反復深化ではなく、soft-max法と累積遷移確率に基づく、並列処理向きのマルチエージェントシステム的な探索を検討中。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "soft-max 法と累積遷移確率とをベースにした並列処理向きのマルチエージェントシステム的な探索法も検討中"
+    }
+  ],
+  "character": "教育・研究プロジェクトとして学生と教員で活動するチーム。学生・社会人を問わず共同研究・開発への参加を歓迎し、メーリングリストや豊洲キャンパスでの討論で他チームとも交流する。",
+  "notes": "2013年から「芝浦将棋Jr.」。ひまわりの開発者は元芝浦将棋の開発者（ひまわりの文書より）",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc26/team.html"
+}

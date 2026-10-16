@@ -1,0 +1,57 @@
+{
+  "wcsc": 32,
+  "year": 2022,
+  "dir": "Meijin_Cobra",
+  "team": "松山 洋章",
+  "software": "名人コブラ",
+  "sources": [
+    "wcsc32/appeal/Meijin_Cobra/appeal_WCSC32.pdf",
+    "wcsc32/appeal/Meijin_Cobra/appeal_WCSC32_detail.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc32/appeal/Meijin_Cobra/appeal_WCSC32.pdf",
+    "https://www.apply.computer-shogi.org/wcsc32/appeal/Meijin_Cobra/appeal_WCSC32_detail.pdf"
+  ],
+  "summary": "第4位となった。当初はdlshogiとやねうら王のMultiPV評価値や局面情報を入力特徴とするスタッキング評価関数を作ったが、時間と予算が足りず標準NNUEのやねうら王単体で出場した。結果的に独自の工夫は、floodgate棋譜から作った定跡のみ。",
+  "base": {
+    "engine": "やねうら王",
+    "eval_source": "水匠3",
+    "note": null
+  },
+  "eval": {
+    "family": "NNUE",
+    "detail": "当初はスタッキング評価関数を計画したが、実際は水匠3のNNUEを使用"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "やねうら王（大会時最新版）"
+  },
+  "learning": "定跡はfloodgate 2019〜2022年4月のレーティング3500以上・50手以上の棋譜から作成",
+  "hardware": "Amazon EC2 c6a.metal",
+  "language": [
+    "C++",
+    "Python"
+  ],
+  "claimed_strength": "第32回選手権第4位",
+  "ideas": [
+    {
+      "category": "定跡・序盤",
+      "title": "評価値と勝敗の勝率平均による定跡作成",
+      "description": "floodgate棋譜の評価値を勝率に変換し前向き（終局方向）の指数移動平均で平滑化したものと、対局結果による勝率の平均で局面評価値を作る。出現回数が少ない局面は、勝率45%のダミーデータ10個を加えて45%に寄せる。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "二つの勝率の平均値をとって局面の評価値を作成"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "スタッキング評価関数",
+      "description": "MultiPVで出したdlshogiとやねうら王の評価値や局面情報を入力特徴にした評価関数でアンサンブルする計画。手元では効果が確認できたが、本番環境の時間と予算が足りず採用に至らなかった。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "MultiPVで出力したdlshogiとやねうら王の評価値や、局面情報等を入力特徴としたスタッキング評価関数を作成します。"
+    }
+  ],
+  "character": "ソフト名は劇団鋼鉄村松の「二手目8七飛車成り戦法」の登場人物に由来する。後日提出の詳細版では、評価関数を取り違えていたことの告白など正直な振り返りを書いている。",
+  "notes": "詳細版は大会後の記述（2次予選前半では定跡フォーマットの勘違いのバグで先手番に定跡が使われていなかった）。次回はdlshogi系で出場したいと表明。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc32/team.html"
+}

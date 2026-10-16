@@ -1,0 +1,52 @@
+{
+  "wcsc": 21,
+  "year": 2011,
+  "dir": "Bonanza",
+  "team": "保木邦仁",
+  "software": "Bonanza",
+  "sources": [
+    "wcsc21/appeal/Bonanza/appeal.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc21/appeal/Bonanza/appeal.txt"
+  ],
+  "summary": "静的評価関数の大規模機械学習と、チェス由来の探索・盤データ構造が特徴。合議法、クラスタ並列、詰将棋専用マシンによる疎結合並列化を検討中。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "静的評価関数の大規模機械学習"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "コンピュータチェス由来の探索と盤データ構造"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "並列・分散",
+      "title": "合議法・クラスタ並列・詰将棋専用マシンの疎結合並列",
+      "description": "合議法、クラスタ並列探索、詰将棋専用マシンによる疎結合並列化の採用を検討している。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "合議法、クラスター並列探索、詰将棋専用マシンによる疎結合並列化"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "静的評価関数の大規模機械学習",
+      "description": "評価関数を大規模に機械学習する。今では新しくないが実装は全て自作と述べる。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "静的評価関数の大規模な機械学習"
+    }
+  ],
+  "character": null,
+  "notes": null,
+  "team_list_url": "http://www2.computer-shogi.org/wcsc21/team.html"
+}

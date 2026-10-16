@@ -1,0 +1,44 @@
+{
+  "wcsc": 26,
+  "year": 2016,
+  "dir": "Novice",
+  "team": "熊谷 啓孝",
+  "software": "Novice",
+  "sources": [
+    "wcsc26/appeal/Novice/Wcsc26PR.pdf"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc26/appeal/Novice/Wcsc26PR.pdf"
+  ],
+  "summary": "電王戦FINALを見て2015年3月にプログラミングを始めた作者による、フルスクラッチのソフト。評価関数はBonanzaのfv.binを使う。floodgateでR2000程度。名前は「初心者」が由来。",
+  "base": {
+    "engine": "独自",
+    "eval_source": "Bonanza 6.0（fv.binのみ）",
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "Bonanzaのfv.bin"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "αβ、PVS、Null Move Pruning、HashCut、FutilityCut（マージンは手動調整）。SEEを実装中、静止探索は駒の取り合いのみ"
+  },
+  "learning": null,
+  "hardware": "Core i5 4250U 1.3GHz",
+  "language": "C",
+  "claimed_strength": "floodgateでR2000程度（2/23時点）。第3回電王トーナメントからR700程度伸びた",
+  "ideas": [
+    {
+      "category": "開発手法・運用",
+      "title": "ゼロからの作り直しで作る",
+      "description": "電王戦FINALを見てプログラミングを0から始め、拡張性がなく弱かった我流のver0.9を捨て、池泰弘氏のサイトを参考に再度0から作り直した。12月末にもう一度0から作り始めた。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "12月終わりから再度 0 から作り始める。"
+    }
+  ],
+  "character": "名前は、作者がプログラミング初心者であることと、開発初期にソフトが初心者級だったことに由来。電王戦FINAL後にプログラミングを0から始めた経緯と、第3回電王トーナメント25位/28の実績を正直に書く。",
+  "notes": null,
+  "team_list_url": "http://www2.computer-shogi.org/wcsc26/team.html"
+}

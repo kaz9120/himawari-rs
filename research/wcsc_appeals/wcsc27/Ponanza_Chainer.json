@@ -1,0 +1,64 @@
+{
+  "wcsc": 27,
+  "year": 2017,
+  "dir": "Ponanza_Chainer",
+  "team": "山本一成、下山晃、齋藤真樹、藤田康博、秋葉拓哉、土井裕介、菊池悠太、奥田遼介、須藤武文、大川和仁",
+  "software": "Ponanza Chainer",
+  "sources": [
+    "wcsc27/appeal/Ponanza_Chainer/Ponanza_Chainer.pdf"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc27/appeal/Ponanza_Chainer/Ponanza_Chainer.pdf"
+  ],
+  "summary": "Ponanzaに、Chainerで学習したディープラーニングの方策ネットを組み合わせたソフト。GPUサーバーがPonanzaの指し手オーダリングを指示し、さくらインターネット高火力コンピューティング（1092 CPU＋GPU128基）で動かす。クラスタ版Lazy SMP（eXtreme Lazy SMP）も開発した。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": "Ponanza＋Chainer（Python）"
+  },
+  "eval": {
+    "family": "その他",
+    "detail": "Ponanzaの評価関数と、ディープラーニングの方策ネット。詳細な構造は書かれていない"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "Ponanzaの探索。GPUサーバーのDLが指し手オーダリングを指示。eXtreme Lazy SMPのクラスタ"
+  },
+  "learning": "Chainerによるディープラーニング。Ponanzaの指し手やプロ棋士の棋譜を予測",
+  "hardware": "さくらインターネット高火力コンピューティング: Xeon 1092コア（22台）、GPU 128基（Maxwell Titan X、4枚刺し32台）、4.8TB",
+  "language": [
+    "C++",
+    "Python",
+    "C#"
+  ],
+  "claimed_strength": "Ponanza(88core)に対して勝率約80%。DL部分のみで1手も読まずにアマ有段レベル。Ponanzaの指し手を55%、プロ棋士の手を50%以上の確率で予測",
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "ディープラーニングで指し手オーダリング",
+      "description": "Chainerで学習したDLが、Ponanzaの指し手を1手も読まずに55%、プロ棋士の手を50%以上の確率で予測する。GPUサーバーがPonanzaに指し手のオーダリングを指示する。",
+      "originality": "独自",
+      "evidence": "Ponanzaの指し手を55%、プロ棋士の手を50%以上の確率で予測。Ponanza(88core)に勝率約80%",
+      "quote": "将棋で初めて実用レベルのディープラーニングに成功"
+    },
+    {
+      "category": "ハードウェア",
+      "title": "高火力コンピューティングの利用",
+      "description": "さくらインターネットの高火力コンピューティングでCPU 1092コア、GPU 128基を使う。前回、技巧にマシンリソースで見劣りして敗れたことへの対策。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "今回は「さくらインターネット高火力コンピューティング」を利用"
+    },
+    {
+      "category": "並列・分散",
+      "title": "eXtreme Lazy SMP（クラスタ版Lazy SMP）",
+      "description": "Lazy SMPのクラスタ版を開発し、全対全通信で探索結果を複数マシンで非同期に相互共有する。開発者は「クラスタ探索の決定版」と考えている。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "Lazy Smpのコンピュータ・クラスタバージョンを開発した"
+    }
+  ],
+  "character": "「大会5連覇を目指します」と掲げる王者の文書。産学（HEROZ・PFN・さくらインターネットなど）のチーム編成も前面に出している。",
+  "notes": null,
+  "team_list_url": "http://www2.computer-shogi.org/wcsc27/team.html"
+}

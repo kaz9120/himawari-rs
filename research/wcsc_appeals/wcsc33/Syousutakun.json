@@ -1,0 +1,44 @@
+{
+  "wcsc": 33,
+  "year": 2023,
+  "dir": "Syousutakun",
+  "team": "有賀 宏樹",
+  "software": "将スタ君",
+  "sources": [
+    "wcsc33/appeal/Syousutakun/appeal230412.docx"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc33/appeal/Syousutakun/appeal230412.docx"
+  ],
+  "summary": "末吉竜介氏の「将スタ（将棋スタジオ）」で作ったソフト。超序盤はやねうら王（水匠）、定跡を抜けてからpython-dlshogi2を使い、Ayaneで制御する（煌のプロトタイプ版）。",
+  "base": {
+    "engine": "やねうら王+python-dlshogi2",
+    "eval_source": "水匠",
+    "note": "「将スタ-将棋スタジオ-」を使い、Ayaneで制御"
+  },
+  "eval": {
+    "family": "DL+NNUE",
+    "detail": "超序盤はやねうら王（水匠のNNUE）、定跡抜け後はpython-dlshogi2のDL"
+  },
+  "search": {
+    "family": "αβ+MCTS",
+    "detail": "局面でエンジンを切り替え"
+  },
+  "learning": null,
+  "hardware": "Ryzen 5 3550H + GTX1650",
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "探索",
+      "title": "序盤はやねうら王、定跡抜け後はDLへ切替",
+      "description": "超序盤にやねうら王（水匠）、定跡を抜けてからpython-dlshogi2に切り替える。定跡機能を追加予定。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "超序盤「やねうら王（水匠）を使う」 python-dlshogi2（定跡抜けてから使う）"
+    }
+  ],
+  "character": null,
+  "notes": "末吉竜介氏の将棋スタジオを使用。制御プログラムは過去の煌のプロトタイプ版。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc33/team.html"
+}

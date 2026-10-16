@@ -1,0 +1,35 @@
+{
+  "wcsc": 26,
+  "year": 2016,
+  "dir": "Mumyou7",
+  "team": "David Wada",
+  "software": "無明7",
+  "sources": [
+    "wcsc26/appeal/Mumyou7/2016_appeal_david_wada.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc26/appeal/Mumyou7/2016_appeal_david_wada.txt"
+  ],
+  "summary": "去年のコードをベースに、忙しい中でチクチク改造した短い文書。αβ・Aspiration・PV Split並列・Futility/Razoring・df-pn系の詰探索を使い、評価関数のパラメータはBonanza 6.0から借りている。",
+  "base": {
+    "engine": "独自",
+    "eval_source": "Bonanza 6.0",
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "Bonanza 6.0のパラメータを借用"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "Aspiration Search、PV Split並列探索、Futility Pruning、Razoring、df-pn（NFDPと表記）の詰探索"
+  },
+  "learning": null,
+  "hardware": "Core i7-5960X 4.2GHz（OC）、メモリ32GB",
+  "language": "Java",
+  "claimed_strength": null,
+  "ideas": [],
+  "character": "「多忙な社畜と化した我は」「来年こそ独自路線を歩みたい」と、時間がない自虐を書く。更新情報は外部サイトに掲載。",
+  "notes": null,
+  "team_list_url": "http://www2.computer-shogi.org/wcsc26/team.html"
+}

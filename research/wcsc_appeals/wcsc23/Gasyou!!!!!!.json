@@ -1,0 +1,70 @@
+{
+  "wcsc": 23,
+  "year": 2013,
+  "dir": "Gasyou!!!!!!",
+  "team": "森岡 祐一",
+  "software": "GA将!!!!!!",
+  "sources": [
+    "wcsc23/appeal/Gasyou!!!!!!/Gasyou.pdf"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc23/appeal/Gasyou%21%21%21%21%21%21/Gasyou.pdf"
+  ],
+  "summary": "フルスクラッチで作られ、プロ棋譜DBを使わず自己対戦の強化学習（PGLeaf）だけで評価関数を学習するのが最大の特徴。評価関数は約220万パラメータの線形、探索は意図的にシンプルなαβ。本将棋の学習はまだ成功しておらず、5五将棋では成功したと正直に書く。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": "フルスクラッチ"
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "駒割・位置・2駒/3駒関係・駒の自由度・王の移動範囲など約220万パラメータ"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "全幅αβ＋KFEnd流2段階静止探索、LMR、王手・再捕獲の延長。詰将棋はルートのみ"
+  },
+  "learning": "REINFORCEを拡張したPGLeafによる強化学習。自己対戦数十万〜数百万局、勝った側の手を正例、負けた側の手を負例として棋譜DBなしで学習",
+  "hardware": "Core i7 940で1スレッド約150kNPS",
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "棋譜DBなしの自己対戦強化学習",
+      "description": "プロ棋士やアマ高段者の棋譜を使わず、自己対戦の勝敗だけから評価関数を学習する。勝った側の手を正例、負けた側の手を負例とする。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "プロ棋士やアマ高段者の棋譜 DB を用いずに、自己対戦の結果から評価関数"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "PGLeaf",
+      "description": "REINFORCEに探索を組み合わせたPGLeafという拡張アルゴリズムを使う。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "REINFORCE を拡張した PGLeaf というアルゴリズムを使用します"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "定跡と手調整を使わない",
+      "description": "棋士の知識を極力使わない方針で、定跡も手作業のパラメータ調整（ドーピング）も一切使わない。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "定跡は学習時・対局時共に一切使用していません"
+    },
+    {
+      "category": "探索",
+      "title": "単純構成の探索",
+      "description": "評価関数と学習以外は不要なものを実装せず、素のαβ＋2段階静止探索＋LMRにとどめる。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "基本方針は「シンプル＆手抜き」です。"
+    }
+  ],
+  "character": "名前はGA（遺伝的アルゴリズム）に由来し、「!」の数はメジャーバージョン。ノリで増えた「!」が年々増えている。本将棋の学習が未成功と正直に書き、「何とかしないと本当にマズイ」と語る親しみやすい文書。",
+  "notes": "本将棋の学習はまだ成功していないと記載（5五将棋では成功）。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc23/team.html"
+}

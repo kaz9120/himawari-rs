@@ -1,0 +1,70 @@
+{
+  "wcsc": 28,
+  "year": 2018,
+  "dir": "NineDayFever",
+  "team": "金澤 裕治",
+  "software": "NineDayFever",
+  "sources": [
+    "wcsc28/appeal/NineDayFever/NDF-2018.txt"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc28/appeal/NineDayFever/NDF-2018.txt"
+  ],
+  "summary": "Bonanza 6.0にStockfishの手法を取り入れた「局面評価の極北」を目指すソフト。今年は、勝率ベースの定跡生成手法を流用して強化学習用の自己対戦棋譜の初期状態を作り、elmo方式で学習した。",
+  "base": {
+    "engine": "Bonanza",
+    "eval_source": "独自学習",
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "三駒関係の変数を分解して共通要素を抽出したうえで学習（未知局面への対応力向上）。手番考慮の評価値"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "Bonanza 6.0にStockfishの手法を取り入れた"
+  },
+  "learning": "定跡の拡張候補局面から各数十局の自己対戦棋譜（約5千万局）を作り、elmo方式（勝率のロジスティック回帰+数手先探索結果のクロスエントロピー）で学習。同時に勝率でbook内の各手の採用確率を決める",
+  "hardware": "Amazon EC2 c5.18xlarge",
+  "language": [
+    "C"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "定跡・序盤",
+      "title": "自己対戦勝率で採用確率を決める定跡と強化学習の連結",
+      "description": "定跡の拡張候補各局面から数十局の自己対戦棋譜を生成し、約5千万局の棋譜でelmo方式の学習をすると同時に、勝率でbook内各手の採用確率を決める。定跡生成と強化学習の初期状態生成を1つの流れにした。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "以前からやっていた自己対戦の勝率に基づいた定跡生成手法を流用しています。"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "定跡末端の勝率で他の定跡を取り込む",
+      "description": "定跡の末端の勝率で更新する手法なので、Qhapaqの公開定跡など他の定跡でも末端の勝率を求めれば取り込める。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "他の定跡でもその末端の勝率を求めることで取り込むことができるようになってます。"
+    },
+    {
+      "category": "評価関数",
+      "title": "三駒関係の変数分解",
+      "description": "三駒関係の各変数を分解して共通要素を抽出したうえで機械学習し、未知の局面への対応能力を高める（2017年からの継続）。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "三駒関係の各変数を分解して共通する要素を抽出したうえで機械学習することで"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "対戦で出た局面から学習の欠陥を修正",
+      "description": "対戦中に現れた局面を調べて機械学習結果の欠陥を探し、修正する（2017年からの継続）。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "対戦中に現れた局面を調べ、機械学習結果の欠陥を探して修正しています。"
+    }
+  ],
+  "character": "「局面評価の極北を目指しています」。ライブラリ選択理由は「惰性です」。",
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc28/team.html"
+}

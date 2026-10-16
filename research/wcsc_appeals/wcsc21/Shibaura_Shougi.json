@@ -1,0 +1,60 @@
+{
+  "wcsc": 21,
+  "year": 2011,
+  "dir": "Shibaura_Shougi",
+  "team": "芝浦工業大学（五十嵐治一、山本一将）",
+  "software": "芝浦将棋",
+  "sources": [
+    "wcsc21/appeal/Shibaura_Shougi/Shibaura_Shougi.pdf"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc21/appeal/Shibaura_Shougi/Shibaura_Shougi.pdf"
+  ],
+  "summary": "Bonanza 4.1.3の評価関数パラメータを初期値に、Bonanza同士の自己対戦で最急降下TD(λ)法の強化学習を追加する。前年版のバグを直し、問題点（探索量低下・計算時間・シグモイド近似）も正直に列挙する。",
+  "base": {
+    "engine": "Bonanza",
+    "eval_source": "Bonanza 4.1.3",
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "Bonanza 4.1.3の評価関数（駒の価値と2種の3駒関係の線形和）"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "Bonanza"
+  },
+  "learning": "Bonanza同士の対局で、最急降下TD(λ)法による予測勝利確率の学習。評価値と勝率の対応にシグモイド関数（温度τ約1250）を用いる",
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "Bonanzaの評価関数に最急降下TD(λ)学習",
+      "description": "Bonanza 4.1.3の評価関数パラメータを初期値に、Bonanza同士の対局で予測勝利確率をシグモイドで近似し、TD(λ)で重みを更新する。教師付き学習は教師の棋力を超えにくいという考えから。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "Bonanza のパラメータ値を初期値として，強化学習の手法により，さらに追加的に学習することを試みました"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "学習の課題を列挙し、対戦相手を徐々に強くする",
+      "description": "学習プログラム側の探索量低下や25分切れ負け環境での計算時間などの問題点を挙げ、学習時の対局相手を自分より強い相手に徐々に変える改良をする。方策勾配法の適用も長期方針とする。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "学習時の対局相手を自分よりも強い相手に徐々に変えていくことで棋力向上を試みています"
+    },
+    {
+      "category": "開発手法・運用",
+      "title": "学生・社会人を問わず参加歓迎",
+      "description": "強化学習を中心に棋力向上を目指す理念に賛同する人なら、学生・社会人を問わず参加・協力を歓迎すると連絡先付きで書く。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "どなたでも歓迎いたします"
+    }
+  ],
+  "character": null,
+  "notes": "学習の詳細は文献（情処全国大会2011、コンピュータ将棋協会誌）にある。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc21/team.html"
+}

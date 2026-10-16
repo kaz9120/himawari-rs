@@ -1,0 +1,60 @@
+{
+  "wcsc": 22,
+  "year": 2012,
+  "dir": "YSS",
+  "team": "山下宏",
+  "software": "YSS",
+  "sources": [
+    "wcsc22/appeal/YSS/yssappeal2012.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc22/appeal/YSS/yssappeal2012.txt"
+  ],
+  "summary": "前年の文面に「2台のマシンでの楽観合議を行う予定」が加わった。選択的探索とBonanza Method学習の評価関数（22万個）、入玉は旧評価関数を組み込む。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "王との2駒の関係、味方金銀の絶対位置による上部5箇所の駒など多数の組み合わせ。22万個。進行度は学習なし"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "選択的探索。手の生成の種類と数を残り深さで変更。前回最善手を0.5手延長"
+  },
+  "learning": "Bonanza Method。学習専用の全幅探索＋簡易静止探索で学習",
+  "hardware": "2台のマシンで楽観合議（予定）",
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "並列・分散",
+      "title": "2台のマシンでの楽観合議",
+      "description": "2台のマシンで楽観合議を行う予定。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "2台のマシンでの楽観合議を行う予定です"
+    },
+    {
+      "category": "入玉",
+      "title": "入玉評価は旧評価関数を手作業で組み込む",
+      "description": "学習がうまくいかなかったため、旧評価関数を組み込み、先手玉が4段目に上がれば約+1500点、相手に入玉された場合は7段目から過激に加点する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "先手玉が4段目に上がれば＋1500点ぐらい加算して"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "学習専用の全幅探索＋簡易静止探索",
+      "description": "YSSの探索は2手読みでは手をほとんど生成せず学習がいびつになるため、専用の全幅探索＋簡易静止探索で学習させる。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "専用の全幅探索＋簡易静止探索、で学習させています"
+    }
+  ],
+  "character": null,
+  "notes": "前年の文面に楽観合議の予定を加えたもの。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc22/team.html"
+}

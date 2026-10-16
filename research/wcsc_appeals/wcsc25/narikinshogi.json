@@ -1,0 +1,35 @@
+{
+  "wcsc": 25,
+  "year": 2015,
+  "dir": "narikinshogi",
+  "team": "村山 正樹",
+  "software": "なり金将棋",
+  "sources": [
+    "wcsc25/appeal/narikinshogi/appeal.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc25/appeal/narikinshogi/appeal.txt"
+  ],
+  "summary": "前年から進めているボナンザ学習の作り込みとバグ修正が主な変更。pvs・nullmove・futility・ビットボードの構成。過去の年次文書も併記。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "ボナンザ学習を作り込み中"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "pvs、nullmove、futility、ビットボード"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [],
+  "character": null,
+  "notes": "2011〜2014年の文書も併記。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc25/team.html"
+}

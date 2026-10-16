@@ -1,0 +1,56 @@
+{
+  "wcsc": 32,
+  "year": 2022,
+  "dir": "Ryfamate",
+  "team": "Ryfamate（りふぁめいと）",
+  "software": "Ryfamate",
+  "sources": [
+    "wcsc32/appeal/Ryfamate/Ryfamate_appeal_20220330.html"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc32/appeal/Ryfamate/Ryfamate_appeal_20220330.html"
+  ],
+  "summary": "結核治療薬リファメイトの併用療法の発想で、NNUEのαβ探索とDLのMCTSを組み合わせて互いの弱点を補う。今年はNNUE1つ、ResNet1つに、より深いResNetやTransformerなどの新DL関数を加えAdaBoost学習とアンサンブル推論を行う。",
+  "base": {
+    "engine": "やねうら王+dlshogi",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "DL+NNUE",
+    "detail": "NNUE1つ、ResNet1つ、新型DL関数（深いResNetやTransformer）の組み合わせ"
+  },
+  "search": {
+    "family": "αβ+MCTS",
+    "detail": "NNUEのαβ探索とDLのMCTSの併用"
+  },
+  "learning": "AdaBoost学習。加納・山岡・たやんさんが公開した大量データを使用",
+  "hardware": "Ryzen Threadripper 2950X + GeForce RTX 3090",
+  "language": [
+    "C++",
+    "C#",
+    "Python"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "研究・実験的",
+      "title": "併用療法に学ぶ異種探索の組み合わせ",
+      "description": "耐性菌が複数薬剤の併用で出にくくなる発想で、NNUEのαβ探索とDLのMCTSを組み合わせ、互いの欠点を補う。ソフト名もリファメイトに由来する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "Ryfamate aims to combine an NNUE alpha-beta search with deep learning (DL) Monte Carlo tree search"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "AdaBoostとアンサンブル推論",
+      "description": "推論が遅いが認識容量の高い新DL関数を加え、従来Ryfamateの弱点を補うようAdaBoostで学習し、アンサンブルで推論する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "compensate for the weak points of the previous Ryfamate with AdaBoost learning and ensemble inferenc"
+    }
+  ],
+  "character": "ソフト名を結核治療薬Rifamateの併用療法に由来させ、医学的比喩でコンセプトを語る。",
+  "notes": "英語の文書。前年は NNUE 2つ + ResNet 1つの構成。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc32/team.html"
+}

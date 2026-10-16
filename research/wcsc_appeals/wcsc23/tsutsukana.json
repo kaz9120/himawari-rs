@@ -1,0 +1,54 @@
+{
+  "wcsc": 23,
+  "year": 2013,
+  "dir": "tsutsukana",
+  "team": "一丸 貴則",
+  "software": "ツツカナ",
+  "sources": [
+    "wcsc23/appeal/tsutsukana/WCSC23_tsutsukana_20130331.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc23/appeal/tsutsukana/WCSC23_tsutsukana_20130331.txt"
+  ],
+  "summary": "指し手を読む深さを機械学習で決めることが一番の特徴で、他手法と合わせて20手前後を先読みする。開発方針はなるべくシンプルで、データ構造にkindergarten bitboardsを採用する。詳細は2011年（第21回）のアピール文書参照。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "不明",
+    "detail": null
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "読みの深さを機械学習で決める"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "探索",
+      "title": "読みの深さを機械学習で決める",
+      "description": "指し手ごとの読む深さを機械学習で決定し、他手法と組み合わせて20手前後を先読みする。",
+      "originality": "独自",
+      "evidence": "20手前後の先読み",
+      "quote": "指し手を読む深さを機械学習によって決定していることです。"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "kindergarten bitboardsで簡潔に保つ",
+      "description": "データ構造にkindergarten bitboardsを採用し、ソースを簡潔に保ちつつ各所でbitboardを使えるようにする。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "データ構造では kindergarten bitboards を採用し、"
+    }
+  ],
+  "character": null,
+  "notes": "詳細は第21回のアピール文書を参照とある。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc23/team.html"
+}

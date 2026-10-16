@@ -1,0 +1,100 @@
+{
+  "wcsc": 26,
+  "year": 2016,
+  "dir": "President_X",
+  "team": "天野 史斎",
+  "software": "President_X",
+  "sources": [
+    "wcsc26/appeal/President_X/President_X_01.pdf"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc26/appeal/President_X/President_X_01.pdf"
+  ],
+  "summary": "開発から調整の手間をなくすことを目的に、調整の自動化とモデル生成の自動化を掲げる新規ソフト。単純ベイズ学習器で、null moveの発動条件とKPPをオンライン学習する。置換表で巡回手順の影響を排し、Search Instability対策を明示するなど探索の設計を詳述する。一次予選の反省も正直に書く。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "駒得＋駒位置の利得1（隣接駒との関係）＋駒位置の利得2（KPP）＋進行度利得（玉までの手数）"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "NegaScout。分割指し手生成、null move条件の自動調整、探索窓を広げないケチケチ探索、王手を阻害しないfutility。平均7〜8手"
+  },
+  "learning": "単純ベイズ学習器で、null moveの成否とKPPをオンライン学習する",
+  "hardware": "Core i7 6700K",
+  "language": "C++",
+  "claimed_strength": "約20万〜30万NPS",
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "null move発動条件のオンライン学習",
+      "description": "null moveの成否をそのつど記録し、当座の駒得・βに対するマージン・累積的な王手状況から、単純ベイズ学習器で成功確率を更新する。置換表クリア時に更新し、成功率が低ければ発動しない。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "Null move purningのためのnull move発動条件のオンライン学習機能"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "負けた対局だけからKPPをオンライン学習",
+      "description": "負けたとき、自分視点のKPPを負けパターン、相手視点を勝ちパターンとして単純ベイズ学習器で学習する。勝ったときは相手が弱いだけかもしれないとして何もしない。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "当方が勝ったときは何もしない。（相手が不当に弱かっただけかもしれない。）"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "サンプルを説明する最小パラメータのモデル自動生成",
+      "description": "動かせるパラメータが多すぎてボナンザメソッドでないと扱えない問題に対し、サンプルを説明する最小パラメータ個数のモデルを自動生成する（真の次元下げ）。クラスタブームの次に来ると予想。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "サンプルを説明する最小パラメータ個数のモデルを自動生成させる（真の次元下げ）"
+    },
+    {
+      "category": "探索",
+      "title": "置換表に配置・深さ・手番・出現回数を区別",
+      "description": "置換表で駒の配置、葉からの深さ、手番、同局面の出現回数をすべて区別し、巡回手順が探索に影響しないようにする。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "駒の配置 葉からの深さ（rdepth） 手番 同じ局面の初手以降の出現回数"
+    },
+    {
+      "category": "探索",
+      "title": "Search Instabilityの2種の対策",
+      "description": "置換表の誤情報と、null move成功時のβ値などad-hocな返り値を別の窓の境界値として採ってしまう問題の両方に対策する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "どっちも対策した。"
+    },
+    {
+      "category": "探索",
+      "title": "王手状況をルートに持ち帰る機能",
+      "description": "子ノード以下の王手状況をルートに持ち帰り、ルートでのPV並べ替えに使う。通常探索の評価値はPV先端の王手状況しか反映しないため。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "子ノード以下の王手状況をROOTに持ち帰る機能（置換表経由でも無問題）"
+    },
+    {
+      "category": "探索",
+      "title": "王手延長を阻害しないfutility pruning",
+      "description": "王手状況での探索延長を阻害しないようにfutility pruningを実装する。評価関数もfutilityに都合の良い形にした。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "王手状況での探索延長を阻害しないfutility purningの実装"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "一次予選の大反省会",
+      "description": "バグを直したと思ったがNPSを確認しなかったことを反省し、駒位置の利得2がまったく効いていないことも認める。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "バグを直した（と思った）らNPSぐらいは確認しよう…"
+    }
+  ],
+  "character": "「調整の手間を未来永劫なくす」「放流しておけば勝手に強くなる」と宣言し、NP困難の議論や「秘中の秘」の見出しで語る。名前の由来は「大いに投了させる」・某旋風・GALAXの総裁X。ソース公開は「1か月様子を見て冷静になって判断したい」。",
+  "notes": "V2.0（5/7付）。ソースコード対応箇所のファイル名が多数載っている。第1部と記す",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc26/team.html"
+}

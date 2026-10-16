@@ -1,0 +1,92 @@
+{
+  "wcsc": 26,
+  "year": 2016,
+  "dir": "Gikou",
+  "team": "出村 洋介",
+  "software": "技巧",
+  "sources": [
+    "wcsc26/appeal/Gikou/gikou_appeal_wcsc26_ver3.pdf"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc26/appeal/Gikou/gikou_appeal_wcsc26_ver3.pdf"
+  ],
+  "summary": "人間的な4つの評価項目で形勢判断し、多クラスロジスティック回帰で棋譜から手筋を学習して探索を強化するソフト。疎結合並列探索と合議を組み合わせたハイブリッド方式のクラスタ（Xeon 16台、毎秒約2億手）が特徴。学習と自己対戦評価をRubyで自動化している。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "駒の損得・駒の効率・玉の堅さ・手番の4項目。進行度で重要度を変える"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "多クラスロジスティック回帰で手筋の確率を学習し探索を強化"
+  },
+  "learning": "平均化確率的勾配降下法、RMSprop、FOBOSなどのオンライン学習。1台で約20時間",
+  "hardware": "Xeonサーバー16台（約毎秒2億手）",
+  "language": "C++・Ruby",
+  "claimed_strength": "毎秒約2億手のクラスタ",
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "人間的な4評価項目と進行度による重み変化",
+      "description": "駒の損得・駒の効率・玉の堅さ・手番の4項目を落とさず評価し、局面の進み具合で重要度を変える。序盤は持ち駒の価値が高く、終盤は手番の価値が高い。羽生善治『上達するヒント』を参照。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "人間的な４つの評価項目（①駒の損得、②駒の効率、③玉の堅さ、④手番）を考慮して、形勢判断を行います。"
+    },
+    {
+      "category": "探索",
+      "title": "多クラスロジスティック回帰による手筋学習",
+      "description": "棋譜から底歩・連打の歩・田楽の香・控えの桂などの手筋の確率を、多クラスロジスティック回帰で学習して探索を強化する。激指の2値分類を拡張した。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "「多クラスロジスティック回帰」という手法により、棋譜から手筋を学習しています。"
+    },
+    {
+      "category": "並列・分散",
+      "title": "疎結合並列探索と合議のハイブリッド",
+      "description": "サーバー4台ごとにGPS将棋方式のクラスタを複数作り、各クラスタの結果を多数決で決める。耐障害性と台数効果を両取りするバランス型。",
+      "originality": "独自",
+      "evidence": "毎秒約2億手のクラスタ（Xeon 16台）",
+      "quote": "「GPS将棋方式のクラスタを複数作って、多数決をとる」"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "オンライン学習手法で学習時間を短縮",
+      "description": "平均化確率的勾配降下法、RMSprop、FOBOSを採用し、1台で約20時間まで学習時間を縮める。",
+      "originality": "既存手法の応用",
+      "evidence": "1台で約20時間",
+      "quote": "評価関数の学習に最近のオンライン学習の手法を採用"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "SIMDで各マスの利き数を計算",
+      "description": "1マス1〜2バイトのbyteboard/wordboardで、SSEにより最大16マスの利き数を一度に計算する。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "各マスの利き数の計算をSIMD演算により高速化"
+    },
+    {
+      "category": "開発手法・運用",
+      "title": "学習から強さ評価までのRuby自動化",
+      "description": "GitHubから取得、コンパイル、学習、前版と3000局程度の自己対戦、勝率から統計的に強くなったかの確認までをRubyで自動化する。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "学習と自己対戦のプロセスをRubyで自動化し、開発効率を向上"
+    },
+    {
+      "category": "棋風・人間らしさ",
+      "title": "棋書を参考文献にした設計",
+      "description": "木村一基、羽生善治、先崎学、藤井猛らの棋書を、基本の考え方・形勢判断・手筋・定跡の設計に参考にしている。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "開発にあたっては、多くの棋書も参考にしております。"
+    }
+  ],
+  "character": "参考にした書籍・棋書を詳しく挙げて謝意を述べるなど、文献の丁寧さが特徴。第22回参加。",
+  "notes": null,
+  "team_list_url": "http://www2.computer-shogi.org/wcsc26/team.html"
+}

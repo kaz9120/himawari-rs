@@ -1,0 +1,52 @@
+{
+  "wcsc": 22,
+  "year": 2012,
+  "dir": "Kakinoki-Shogi",
+  "team": "柿木義一",
+  "software": "柿木将棋",
+  "sources": [
+    "wcsc22/appeal/Kakinoki-Shogi/appeal.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc22/appeal/Kakinoki-Shogi/appeal.txt"
+  ],
+  "summary": "全幅探索と選択探索の2プログラムを序中盤と終盤で切り替える従来方式。全幅探索側はBonanzaと違いbit-boardを使わず利きデータを使う。1年間少し改良したが、floodgateのレートはほとんど変化なしと正直に書く。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "手作り",
+    "detail": "選択探索側は手作業調整（一部Bonanza方式学習）。全幅側は学習"
+  },
+  "search": {
+    "family": "その他",
+    "detail": "全幅探索プログラムと選択探索プログラムの併用"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "探索",
+      "title": "全幅探索と選択探索の切り替え",
+      "description": "序中盤は選択探索（20年以上の歴史）、思考時間の短い終盤は全幅探索（2007年開発）に切り替える。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "序中盤は選択探索のプログラムを使い、終盤になると、全幅探索のプログラムに切り替えています"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "bitboardを使わず利きデータを使う",
+      "description": "全幅探索側はBonanzaの影響を受けつつ、bit-boardでなく利きデータを使うなど違いがある。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "bit-boardは使わず、利きデータを使っています"
+    }
+  ],
+  "character": null,
+  "notes": "文書冒頭の年が「2112年」と誤記されている。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc22/team.html"
+}

@@ -1,0 +1,37 @@
+{
+  "wcsc": 35,
+  "year": 2025,
+  "dir": "Argo",
+  "team": "塩対応のアルゴさんが俺にだけ甘い",
+  "software": "Argo",
+  "sources": [
+    "wcsc35/appeal/Argo/250121WCSC_argov4.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc35/appeal/Argo/250121WCSC_argov4.pdf"
+  ],
+  "summary": "水匠3改を元に、やねさん配布の150GB教師データ3つで学習した評価関数を使う。WCSC34・32と同じものを使い続けている。アピール文の大半は、仮想通貨による株式発行、孫子の兵法、経営学は工学であるなどの随筆である。",
+  "base": {
+    "engine": "やねうら王",
+    "eval_source": "水匠3改",
+    "note": "やねうら王7.50を使用。評価関数は前回までと同じ"
+  },
+  "eval": {
+    "family": "NNUE",
+    "detail": "水匠3改を初期値に、やねさん配布の150GB教師データ3本で追加学習"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "やねうら王の探索"
+  },
+  "learning": "水匠3改+やねさんの教師データ(150GB×3)",
+  "hardware": "Core i5-2520M 4コア",
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": "水匠5に対して約50局で勝率40%程度（20勝30敗くらい）",
+  "ideas": [],
+  "character": "本題は短く切り上げ、「おまけ」として随筆を5本載せる。仮想通貨で株式を発行する話、孫子の兵法のビジネス応用、ボードゲームで孤独解消、経営学・商学は工学である、開発物語の体験記（カクヨム連載）。",
+  "notes": "技術的な工夫の記述はなく、前回までと同じ構成。随筆部分は将棋AIの技術とは無関係。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc35/team.html"
+}

@@ -1,0 +1,71 @@
+{
+  "wcsc": 35,
+  "year": 2025,
+  "dir": "nshogi",
+  "team": "中屋敷 太一",
+  "software": "nshogi",
+  "sources": [
+    "wcsc35/appeal/nshogi/nshogi_appeal_v3.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc35/appeal/nshogi/nshogi_appeal_v3.pdf"
+  ],
+  "summary": "AlphaZeroの再現実装で、Gumbel AlphaZeroの棋譜生成アルゴリズムを使い、ランダムな重みから強化学習した。最大手数の振り分け、引き分け点数による勝率調整、手数に応じたシミュレーション回数の調整が工夫点。RTX4080を約10か月使い約7500万棋譜を生成した。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": "ルール部分(nshogi)と思考部分(nshogi-engine)の両方をOSS公開"
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "20×256のResNet、policy+value"
+  },
+  "search": {
+    "family": "MCTS",
+    "detail": "Gumbel AlphaZero方式。手数に応じてシミュレーション数を変える"
+  },
+  "learning": "Gumbel AlphaZeroの棋譜生成でランダムな重みから強化学習。RTX4080 1基を約10か月使用し約7500万棋譜",
+  "hardware": "RunPod 192 vCPU + H200×8",
+  "language": [
+    "C++",
+    "Python"
+  ],
+  "claimed_strength": "floodgate R4200弱（RTX 4060 Ti 1基、2025-03-16時点）",
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "最大手数を振った自己対局",
+      "description": "最大手数を160〜1024手で振って自己対局し、勝勢で早く勝つ手（延命されない手）・敗勢で延命する手を学習させる。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "様々な最大手数設定（160 手から 1024 手）での自己対局"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "引き分け点数による先後の勝率調整",
+      "description": "先手勝ちが多いときは引き分けを後手有利に、後手勝ちが多いときは先手有利にして、自己対局データの勝率を調整する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "先手勝ちが多いときは，引き分けを後手有利に"
+    },
+    {
+      "category": "探索",
+      "title": "手数に応じたシミュレーション数の調整",
+      "description": "序盤・終盤はシミュレーション回数を64〜256程度と少なめにし、中盤は128〜512程度と多めにして、自己対局の計算を重要な局面に配分する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "序盤，終盤は少なめの simulation 回数 (64 から 256 程度)"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "Gumbel AlphaZeroによる効率的な棋譜生成",
+      "description": "強化学習の棋譜生成にGumbel AlphaZeroのアルゴリズムを使う。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "強化学習に Gumbel AlphaZero の棋譜生成アルゴリズムを使用"
+    }
+  ],
+  "character": null,
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc35/team.html"
+}

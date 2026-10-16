@@ -1,0 +1,60 @@
+{
+  "wcsc": 21,
+  "year": 2011,
+  "dir": "QinoaSyougi",
+  "team": "山田元気",
+  "software": "きのあ将棋",
+  "sources": [
+    "wcsc21/appeal/QinoaSyougi/QinoaSyougi.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc21/appeal/QinoaSyougi/QinoaSyougi.txt"
+  ],
+  "summary": "昨年からほとんど変わっておらず、4つのテーマを掲げる。重大局面で複数エンジンが協力する意思決定モデル、少ない計算資源で多数の人間と対局するサーバ側の仕組みなど、強さ以外の関心が中心。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "不明",
+    "detail": null
+  },
+  "search": {
+    "family": "不明",
+    "detail": null
+  },
+  "learning": null,
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "研究・実験的",
+      "title": "複数エンジンの意思決定モデル",
+      "description": "モンテカルロ法や単純多数決は重大・危機的局面に危うさがある。複数エンジンが協力する仕組みの検討は、社会システムの意思決定モデルの検討につながる。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "重大な局面で、複数のエンジンが効果的に協力する仕組みを検討することは"
+    },
+    {
+      "category": "エンタメ・演出",
+      "title": "少ない資源で複数の人間と同時対局",
+      "description": "思考エンジンをサーバ側で動かし、少ないサーバ資源で多数の人間と同時対局する。震災後の電力事情で重要性が増した。断続した思考でも連続した着手方針になるよう、着手前後で似た手が選ばれやすい仕組みを検討する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "少ないコンピュータ資源で、効率よく複数の人間する仕組み"
+    },
+    {
+      "category": "並列・分散",
+      "title": "複数コンピュータ資源で1人の人間と対局",
+      "description": "複数のコンピュータ資源で1人の人間と効率よく対局する仕組みを、今年こそ実現したい。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "複数のコンピュータ資源で、一人の人間と効率よく対局する仕組み"
+    }
+  ],
+  "character": "人間の思考を超えることより、社会システムの意思決定モデルへの関心をコンピュータ将棋への興味の理由として挙げる。",
+  "notes": "2011/3/22と3/30の追記が並ぶ。大会が再開されれば追加したいと記載（東日本大震災の影響）。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc21/team.html"
+}

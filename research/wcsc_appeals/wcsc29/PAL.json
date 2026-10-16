@@ -1,0 +1,80 @@
+{
+  "wcsc": 29,
+  "year": 2019,
+  "dir": "PAL",
+  "team": "山口 祐",
+  "software": "PAL",
+  "sources": [
+    "wcsc29/appeal/PAL/wcsc29_PAL.pdf",
+    "wcsc29/appeal/PAL/wcsc29.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc29/appeal/PAL/wcsc29_PAL.pdf",
+    "https://www.apply.computer-shogi.org/wcsc29/appeal/PAL/wcsc29.pdf"
+  ],
+  "summary": "探索・評価関数・定跡を同時に学習する「Trinity Learning」が柱。探索木を初期局面から保持して末端を学習開始局面にし、探索パラメータはPopulation Based Trainingで調整する。MCTS導入は線形評価関数では弱くなり不採用だった。",
+  "base": {
+    "engine": "やねうら王",
+    "eval_source": "tanuki-(WCSC28)のNNUEを初期値",
+    "note": null
+  },
+  "eval": {
+    "family": "NNUE",
+    "detail": "NNUE型（KPPT型からの変更）"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "Stockfish型。探索パラメータをPopulation Based Trainingで調整"
+  },
+  "learning": "Trinity Learning。深さ8〜10で生成した2億局面ごとに1世代、評価関数学習〜レーティング計測〜エージェント更新を40世代程度",
+  "hardware": "Amazon EC2 c5.18xlarge 32インスタンス（学習）、本番は2x36コア",
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": "前年のPALに対しTL+NNUEでレート+139（±24）、TL+KPPTで+70（±22）。1スレッド1秒1000局",
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "Trinity Learning（三位一体学習）",
+      "description": "探索パラメータ調整・評価関数学習・定跡作成を別々に行うと相互依存が強い問題に対し、3つを並列的に学習する。",
+      "originality": "独自",
+      "evidence": "TL+NNUEでR+139 (±24)、TL+KPPTでR+70 (±22)",
+      "quote": "評価/探索/定跡を同時に学習する Trinity Learning"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "初期局面からの単一探索木を保持して末端から学習",
+      "description": "棋譜や定跡にランダム手を加える代わりに、初期局面からの探索木を学習全体で保持し、末端ノードを順次学習の開始局面にする。有力手ほど探索が多くなり、閾値で定跡に転用できる。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "初期局面からの単一の探索木を学習を通じて保持し、末端ノードを順次学習の開始局面として学習データを生成する手法を採用した。"
+    },
+    {
+      "category": "開発手法・運用",
+      "title": "Population Based Trainingでの探索パラメータ調整",
+      "description": "探索パラメータを一定幅でランダム初期化した16エージェントを並列に学習し、レーティングが低いものを高いものに置き換えながら調整する。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "探索パラメータの調整には Population Based Training を用い"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "線形評価関数へのMCTS導入（不採用）",
+      "description": "KPPTを方策関数としても使い、親子の評価差のsoftmaxで方策確率を定めるMCTSを試したが、αβより265弱く不採用だった。方策確率を線形関数では十分に表現できない可能性を示唆する。",
+      "originality": "独自",
+      "evidence": "MCTS探索はR-265 (±29)",
+      "quote": "線形評価関数でもこれに類する学習が実現すれば、探索・評価・定跡を同時に向上できる"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "探索木の探索回数閾値から作る定跡",
+      "description": "探索木の訪問回数が多い手を閾値で選んで定跡化し、相掛かり・角換わりで不利な変化を減らすため閾値を上げて30手程度に抑えた（一部は手動延長）。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "採用する探索回数の閾値を大きくし、角換わりを中心に 30 手程度までに抑えたものを選手権では使用した。"
+    }
+  ],
+  "character": "名前はPal（仲間）。前回の工夫として敵対的学習、クラウド並列学習、96スレッド最適化を挙げる。",
+  "notes": "詳細版（論文風）と概要スライドの2ファイルを統合",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc29/team.html"
+}

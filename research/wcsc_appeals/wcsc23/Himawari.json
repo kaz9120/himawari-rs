@@ -1,0 +1,54 @@
+{
+  "wcsc": 23,
+  "year": 2013,
+  "dir": "Himawari",
+  "team": "山本 一将",
+  "software": "ひまわり",
+  "sources": [
+    "wcsc23/appeal/Himawari/appeal.pdf"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc23/appeal/Himawari/appeal.pdf"
+  ],
+  "summary": "プロの棋譜を使わず、強化学習（TDLeaf(λ)）で評価関数を調整し、定跡DBも使わない。探索はシングルスレッドで動く段階で、PGLeafの導入やponder・並列探索を予定している。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "不明",
+    "detail": "TDLeaf(λ)で調整"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "特別な工夫なし。シングルスレッド"
+  },
+  "learning": "強化学習TDLeaf(λ)で評価関数を調整。PGLeafを検討",
+  "hardware": null,
+  "language": [
+    "C/C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "棋譜を使わない強化学習",
+      "description": "プロの棋譜を使わず、TDLeaf(λ)による強化学習のみで評価関数を調整する。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "プロの棋譜を利用せずに、強化学習によって評価関数の調整を行っています"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "定跡データベース不使用",
+      "description": "定跡DBを利用しない。",
+      "originality": "不明",
+      "evidence": null,
+      "quote": "定跡データベースも利用していません"
+    }
+  ],
+  "character": null,
+  "notes": "選手権までの予定にPGLeaf導入、ponder、並列探索を記載。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc23/team.html"
+}

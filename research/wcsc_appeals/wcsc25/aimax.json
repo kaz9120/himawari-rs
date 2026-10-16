@@ -1,0 +1,47 @@
+{
+  "wcsc": 25,
+  "year": 2015,
+  "dir": "aimax",
+  "team": "チーム大橋",
+  "software": "aimax",
+  "sources": [
+    "wcsc25/appeal/aimax/appeal.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc25/appeal/aimax/appeal.txt"
+  ],
+  "summary": "前年からほとんど変更のない単純なソフト。αβ・反復深化・置換表・null move・深さ優先の詰め探索に加え、先読みした評価値を使い最小2乗法で評価関数のパラメータを最適化する。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "駒得、駒の絶対位置、王との相対位置。パラメータは先読み評価値による最小2乗法で最適化"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "反復深化、置換表、null move、詰め探索"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": [
+    "C",
+    "Java"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "先読み評価値への最小2乗法",
+      "description": "評価関数のパラメータを、局面を先読みした評価値を使い最小2乗法で最適化する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "評価関数のパラメータは局面の先読みした評価値を使って、最小２乗法により最適化"
+    }
+  ],
+  "character": null,
+  "notes": "前年からほぼ変更なし。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc25/team.html"
+}

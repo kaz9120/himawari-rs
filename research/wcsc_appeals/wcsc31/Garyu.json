@@ -1,0 +1,60 @@
+{
+  "wcsc": 31,
+  "year": 2021,
+  "dir": "Garyu",
+  "team": "高田 淳一",
+  "software": "臥龍",
+  "sources": [
+    "wcsc31/appeal/Garyu/garyu_wcsc31.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc31/appeal/Garyu/garyu_wcsc31.pdf"
+  ],
+  "summary": "従来の思考部を捨て、Value Networkによる1手読みだけで指す。浅いネットワークにドメイン知識を入力層へ入れて性能を出す方針で、評価関数だけでどこまで行けるかを追求する。Jetson Nano（約15,000円）で参加。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "Value Network。入力38チャネル、CNN 7層＋全結合2層、約260万パラメータ"
+  },
+  "search": {
+    "family": "その他",
+    "detail": "1手読み（詰み探索はJava思考部に7000行）"
+  },
+  "learning": "floodgate 2016年棋譜のうち、レーティング2500以上のプレイヤーの評価値・局面を使い、AWS Sagemakerで学習",
+  "hardware": "Jetson Nano（CPU Arm Cortex-A57 4コア、GPU Maxwell 128 CUDA、4GB。約15,000円）",
+  "language": "Java, Python",
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "1手読みのValue Network",
+      "description": "従来の思考部を捨て、Value Networkで1手読みのみを行う。評価関数のみでどこまで強くなるかを追求する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "いわゆるValue Networkで、1手読みを行う"
+    },
+    {
+      "category": "評価関数",
+      "title": "ドメイン知識を入力層に入れた浅いNN",
+      "description": "盤面情報だけでなくドメイン知識を38チャネルの入力層に入れ、浅いネットワークで性能を出す。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "盤面情報だけではなく、ドメイン知識を入力層に入れ、 浅いネットワークで性能を出す"
+    },
+    {
+      "category": "ハードウェア",
+      "title": "約15,000円のJetson Nanoで参加",
+      "description": "参加マシンの中で最安値と思われるJetson Nano（約15,000円）で参加する。エッジデバイスとして注目の製品。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "参加マシンの中で最安値?"
+    }
+  ],
+  "character": "第3回から参加、通算80勝121敗4分。名前は摩訶大大将棋の駒の1つ。大規模学習ができず「非常に弱い！(泣)」と正直に書く。",
+  "notes": "参考文献は山岡忠夫著『将棋AIで学ぶディープラーニング』。UI部（Java 1万行）はソケット通信で推論部（Python）と接続。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc31/team.html"
+}

@@ -1,0 +1,60 @@
+{
+  "wcsc": 20,
+  "year": 2010,
+  "dir": "FUKAKU_GPU_SHOGI",
+  "team": "今石正夫",
+  "software": "歩角GPU将棋",
+  "sources": [
+    "wcsc20/appeal/FUKAKU_GPU_SHOGI/FUKAKU_GPU_SHOGI.pdf"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc20/appeal/FUKAKU_GPU_SHOGI/FUKAKU_GPU_SHOGI.pdf"
+  ],
+  "summary": "CUDAによるGPGPUで指し手生成を高速化し、CPUと協調させる。ビットマップテーブル3種と7bitパックド演算も使う。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "不明",
+    "detail": null
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "GPUで指し手生成、CPUでハッシュ管理と詰探索"
+  },
+  "learning": null,
+  "hardware": "GPGPU（CUDA）",
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "ハードウェア",
+      "title": "GPGPUとCPUの協調",
+      "description": "駒ごとの指し手生成が独立なのでCUDAで並列に生成する。GPUはグローバルメモリが遅くハッシュ向きでないため、ハッシュ管理と詰探索はCPUが担う。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "CUDA を利用して GPGPU を行い、指し手生成を高速に行います"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "大駒2種・小駒1種のビットマップ表",
+      "description": "チェス由来の大駒用ビットマップ2種に加え、小駒の多い将棋向けに小駒用1種を使って指し手生成を高速化する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "小駒の多い将棋向けに小駒用のビットマップテーブルを使用し"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "7bit値のパックド演算",
+      "description": "盤上位置を0〜120の11x11で表して7bitに収め、1レジスタで4〜8個の駒移動演算をまとめて行う。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "4 つあるいは 8 つ以上のパックド演算を行うことが可能になります"
+    }
+  ],
+  "character": null,
+  "notes": "参加資格（思考部に自力で十分な工夫）を満たすことの主張として書かれている。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc20/team.html"
+}

@@ -1,0 +1,54 @@
+{
+  "wcsc": 28,
+  "year": 2018,
+  "dir": "tenuki",
+  "team": "鈴木 太朗、玉川 直樹（手抜きチーム）",
+  "software": "手抜き",
+  "sources": [
+    "wcsc28/appeal/tenuki/tenuki28.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc28/appeal/tenuki/tenuki28.pdf"
+  ],
+  "summary": "CSAプロトコルで通信する「手を抜いて作る」簡単なソフト。目的は将棋プログラムの仕組みを理解すること。今年はD言語に移行し、KP（なのはminiのfv_nano.bin）で評価する。各改良の効果を探索時間とノード数の実測で示すのが特徴。",
+  "base": {
+    "engine": "なのはmini（評価ベクトルfv_nano.bin）",
+    "eval_source": "なのはminiのfv_nano.bin",
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "KP（二駒）の評価ベクトル。なのはminiのfv_nano.binを使用"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "全幅αβ。利きなし、詰めルーチンなし、定跡なし、持ち時間管理なし"
+  },
+  "learning": null,
+  "hardware": "Core i5 2520M（Debian 9）",
+  "language": [
+    "D"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "開発手法・運用",
+      "title": "改良ごとに探索時間とノード数を実測",
+      "description": "ルートのαβ化、前回最善手からの探索、駒を取る手の先行生成、静止探索、KP評価、置換表の6改良を、同じ局面・反復深化6で探索時間・ノード数を前後で比べて示す。例えばルートをαβにして784秒が85秒に、駒を取る手を先に生成して81秒が68秒（ノード数は約半分）。",
+      "originality": "独自",
+      "evidence": "ルートのαβ化で784秒→85秒、取る手を先に生成でノード数約1.3億→約6千万",
+      "quote": "探索時間 784 秒, 探索ノード数 1,803,710,077"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "C++からC#、さらにD言語へ",
+      "description": "C++のスタックトレース・ヘッダ・STL/Boostが嫌になりC#に移して3倍遅くなり、さらに前方宣言不要でC++並みの速度のD言語に移した。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "D は.h を書かなくていいところや前方宣言がいらないところや C++ と同じ速度で動くところがいいです。"
+    }
+  ],
+  "character": "「手を抜いて作っています」が方針で、「今年の目標はルール通りに指すことと、投了すること（去年は投了しませんでした）」。開発者紹介は「P兼召喚士」で将棋ウォーズ2段、「KPPとレーティングシステムを疑っている」など軽い自己紹介。コンパクトなコードを目指す。",
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc28/team.html"
+}

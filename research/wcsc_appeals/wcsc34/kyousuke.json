@@ -1,0 +1,48 @@
+{
+  "wcsc": 34,
+  "year": 2024,
+  "dir": "kyousuke",
+  "team": "山下 公誠（ペンギンクミマヌ）",
+  "software": "恭祐",
+  "sources": [
+    "wcsc34/appeal/kyousuke/appeal_WCSC34_v2.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc34/appeal/kyousuke/appeal_WCSC34_v2.pdf"
+  ],
+  "summary": "『強い将棋ソフトの創りかた』に準じたdlshogiベースで、探索部はふかうら王。電竜戦後は自前で教師局面を生成し、たややん氏公開の教師データも加えて学習した。目標は二次予選進出。",
+  "base": {
+    "engine": "dlshogi（ふかうら王）",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "dlshogi、cshogi、『強い将棋ソフトの創りかた』準拠"
+  },
+  "search": {
+    "family": "MCTS",
+    "detail": "ふかうら王"
+  },
+  "learning": "電竜戦版は付属データとAobaZero棋譜。今回は自前生成の教師局面（1日1万局面）とたややん氏公開の教師データを併用",
+  "hardware": "Ryzen 7 3700X + RTX 3060",
+  "language": [
+    "Python",
+    "C",
+    "C++"
+  ],
+  "claimed_strength": "第4回電竜戦版はfloodgateで3600〜3800程度（定跡なし）",
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "自前の教師局面生成",
+      "description": "公開棋譜での棋力向上に限界を感じ、電竜戦後から自前で教師局面を生成している。1日1万局面しか作れないと書く。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "自前で教師局面生成に取り組んでいます(1日1万局面しか作れず😂)"
+    }
+  ],
+  "character": "名前は「自分の名前を冠してほしい」という知人の希望に由来する。",
+  "notes": "WCSC初参加。電竜戦で定跡だけでは棋力を補えないと痛感した、と書く。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc34/team.html"
+}

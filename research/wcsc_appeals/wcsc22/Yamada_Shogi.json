@@ -1,0 +1,35 @@
+{
+  "wcsc": 22,
+  "year": 2012,
+  "dir": "Yamada_Shogi",
+  "team": "山田泰広",
+  "software": "山田将棋",
+  "sources": [
+    "wcsc22/appeal/Yamada_Shogi/yamadashogi_appeal_2012.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc22/appeal/Yamada_Shogi/yamadashogi_appeal_2012.txt"
+  ],
+  "summary": "前年から大きな変化はなく、コードを整理して軽快に動作させたい、との短文。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "手作り",
+    "detail": null
+  },
+  "search": {
+    "family": "αβ",
+    "detail": null
+  },
+  "learning": null,
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [],
+  "character": null,
+  "notes": "前年と同じ路線。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc22/team.html"
+}

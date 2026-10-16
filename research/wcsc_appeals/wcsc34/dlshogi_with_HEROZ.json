@@ -1,0 +1,169 @@
+{
+  "wcsc": 34,
+  "year": 2024,
+  "dir": "dlshogi_with_HEROZ",
+  "team": "HEROZチーム（山岡忠夫・加納邦彦・大森悠平）",
+  "software": "dlshogi with HEROZ",
+  "sources": [
+    "wcsc34/appeal/dlshogi_with_HEROZ/dlshogi_with_HEROZ_appeal_wcsc34.pdf",
+    "wcsc34/appeal/dlshogi_with_HEROZ/dlshogi_with_HEROZ_appeal_detail_wcsc34_v2.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc34/appeal/dlshogi_with_HEROZ/dlshogi_with_HEROZ_appeal_wcsc34.pdf",
+    "https://www.apply.computer-shogi.org/wcsc34/appeal/dlshogi_with_HEROZ/dlshogi_with_HEROZ_appeal_detail_wcsc34_v2.pdf"
+  ],
+  "summary": "AlphaGo・AlphaZero系の手法で2017年から開発するDL系将棋AIで、終盤の読み抜けへの対策として詰み探索を多層に組み込む独自の工夫が売り。今大会は定跡の自動生成に1年を費やしたが、先手には効き、後手は難しかったと正直に報告している。",
+  "base": {
+    "engine": "独自（Aperyを局面管理・合法手生成に使用）",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "30ブロック384フィルタのResNet（決勝の後手のみ20ブロック512フィルタ）。入力特徴に利き数と王手情報を追加"
+  },
+  "search": {
+    "family": "MCTS",
+    "detail": "PUCT。AND/OR木による詰み伝播、df-pn、確率的Ponderなど"
+  },
+  "learning": "elmo自己対局データで事前学習後、AlphaZero式の自己対局強化学習。既存プログラムを1/8の割合でリーグに加える。水匠の入玉宣言勝ち棋譜を混ぜる。SWA、ブートストラップ、評価値補正など",
+  "hardware": "EPYC 7742 + A100×8の9台クラスタ",
+  "language": [
+    "C++",
+    "Python"
+  ],
+  "claimed_strength": "定跡使用時、定跡なし版に対し先手勝率ほぼ100%、後手約50%（厳密な測定ではない）。今大会はモデルのレーティング向上なし",
+  "ideas": [
+    {
+      "category": "定跡・序盤",
+      "title": "1年かけた自動定跡生成（角換わり回避）",
+      "description": "手番側はαβ探索の最善手、相手側はdlshogiの訪問回数分布とNNUE系の手からサンプリングして初期局面から自動生成する。先手角換わりが優勢なら自動的に角換わりを避ける定跡ができるはずという発想。末端はNNUE系との評価乖離をチェックして延長する。",
+      "originality": "独自",
+      "evidence": "定跡抜け時の評価が500点以上4局、300点以上6局。定跡手数は先手平均66.5、後手平均33.75",
+      "quote": "先手角換わりが先手優勢であれば、初期局面から自動で定跡を作成することで、自動的に角換わりを避ける定跡ができるはずと考えて"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "後手番定跡の限界の報告",
+      "description": "後手は有望な手順がすべて先手に潰されて深く掘れず、深い手順も先手有利と出ると回避してしまうため、有効かもしれない手順を自ら避ける課題が出た。後手は角換わりを受けるか、避けて相手の定跡切れを期待するしかなかった。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "後手番で精度の高い定跡を作るのは現実的に困難である"
+    },
+    {
+      "category": "評価関数",
+      "title": "決勝の後手のみ別モデル",
+      "description": "二次予選で終盤の読み抜けで負けたため、決勝の後手のみ20ブロック512フィルタの別モデルに替えた。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "決勝では後手のみ終盤読み抜けが比較的少ない 20 ブロック 512 フィルタのモデルを使用した"
+    },
+    {
+      "category": "詰み・終盤",
+      "title": "多層の詰み探索",
+      "description": "MCTS葉での5手詰み、ルートでの専用スレッドdf-pn、勝敗確定ノードのゲーム木伝播（AND/OR木との組合せ）、PV上局面への長手数詰み探索の4種で終盤の読み抜けを補う。dlshogi以前にDL系で導入した例はないと主張する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "「MCTS の葉ノードでの短手数の詰み探索」、「ルート局面で df-pn による長手数の詰み探索」"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "df-pnの詰み結果を報酬にした強化学習",
+      "description": "自己対局で詰み探索要求をキューに溜め、専用スレッドで処理する。GPU計算待ちの間に詰み探索が終わるので、速度を落とさずに長手数の詰みを報酬にできる。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "強化学習時に df-pn により詰み探索を行い詰みを報酬とする"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "既存プログラムを加えたリーグ戦強化学習",
+      "description": "自分自身だけの強化学習は戦略に弱点が出るため、オープンソースの既存プログラムを1/8の割合でリーグに入れ、エージェントを増やさずにリーグ戦の効果を得る。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "オープンソースで公開されている既存の将棋プログラムを 1/8 の割合でリーグに加えて強化学習を行うようにした"
+    },
+    {
+      "category": "入玉",
+      "title": "水匠の入玉宣言勝ち棋譜を混ぜて学習",
+      "description": "自己対局では入玉宣言勝ちの棋譜が少ないため、水匠の自己対局から入玉宣言勝ちの棋譜を作って混ぜて学習する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "入玉宣言勝ちの棋譜を生成し、dlshogi の自己対局のデータに混ぜて学習した"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "評価値の補正と同一局面の平均化",
+      "description": "ブートストラップ項の評価値が実際の勝率と乖離していたので自己対局の勝率に合わせて補正する。同一局面は指し手分布と勝敗を平均化して1サンプルにする。引き分けと指し手の確率分布も学習する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "評価値を実際の自己対局での勝率に合うように、補正を行った"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "探索パラメータをOptunaで最適化",
+      "description": "対局勝率を目的関数にOptunaで探索パラメータを最適化するスクリプトを作った。確率分布を学習すると棋譜一致率は上がるが弱くなるのは、探索パラメータの未調整が原因で、調整すれば指し手のみのモデルを上回った。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "将棋エンジン同士の連続対局の勝率を目的関数として、探索パラメータの最適化に使えるようにするスクリプトを開発した"
+    },
+    {
+      "category": "探索",
+      "title": "未探索ノードの価値に親ノードの価値を使用（FPU reduction）",
+      "description": "未探索の子ノードの初期値を、探索中の親の価値で動的に決め、訪問が増えると減衰させて幅より深さを優先する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "それまでの探索で見積もった親のノードの価値を動的に初期値として使用する"
+    },
+    {
+      "category": "並列・分散",
+      "title": "1スレッドでバッチ処理し2スレッドを交互に使用",
+      "description": "複数シミュレーションをまとめてGPUに渡し、1スレッドで完結させることでGPU計算後のスレッド再開の資源競合（大群の問題）を避ける。GPU計算中のCPUの空きを、もう1つの同型スレッドで埋める。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "マルチスレッドによる実装で課題となる GPU の計算後にスレッドが再開する際にリソース競合が起きる問題"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "2値入力を1bitで転送",
+      "description": "4GPU以上でCPU-GPU間の帯域が詰まるため、2値の入力特徴量を1bitで転送してGPU側でfloatに戻す。",
+      "originality": "独自",
+      "evidence": "NPSが36.6%向上",
+      "quote": "2 値の入力特徴量を float の代わりに、1bit で表現し、GPU にビットで転送後"
+    },
+    {
+      "category": "時間管理",
+      "title": "確率的PonderとStochastic Multi Ponder",
+      "description": "MCTSの確率的な木成長を使い、相手手番に相手局面から探索する。さらに相手の次の手を複数予測し並列に探索する。予測は多くの場合、展開済みゲーム木のルートの子ノード訪問回数から取る。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "相手が思考中に、相手局面からモンテカルロ木探索を行うことで、確率的に相手の手を予測して探索を行うことができる"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "ゲーム木管理を変更しノード再利用を高速化",
+      "description": "ノード再利用に10秒以上かかる問題に対し、Leela Chess Zero方式のツリー管理に変え、ルートの兄弟ノードをGCする。ノード合流は扱えなくなるが短時間で再利用できる。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "ルートの兄弟ノードをガベージコレクションする方式に変更した"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "定跡作成にfloodgate統計の分布を混ぜる",
+      "description": "定跡作成時のPUCTで、方策ネットワークの確率とfloodgate棋譜の統計の確率を平均して、致命的な読み抜けを防ぐ。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "floodgate の棋譜の統計を利用した確率分布を平均化した確率分布を利用し"
+    },
+    {
+      "category": "評価関数",
+      "title": "入力特徴へドメイン知識を積極活用",
+      "description": "盤面の駒配置に加え、利き数と王手情報を入力に入れる。ドメイン知識を使うほうが計算資源を節約でき、学習時間の短縮に有効だと実験で確かめた。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "入力特徴に盤面の駒の配置の他に、利き数と王手がかかっているかという情報を加えている"
+    }
+  ],
+  "character": "AlphaGoに衝撃を受けて個人で将棋AIを始めた経緯と、今大会はHEROZ社の計算資源で参加したことを語る。定跡の失敗事例まで公開する率直さ。",
+  "notes": "第33回からの差分に下線を引いた文書。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc34/team.html"
+}

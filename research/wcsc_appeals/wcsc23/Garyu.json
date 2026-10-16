@@ -1,0 +1,37 @@
+{
+  "wcsc": 23,
+  "year": 2013,
+  "dir": "Garyu",
+  "team": "高田 淳一",
+  "software": "臥龍",
+  "sources": [
+    "wcsc23/appeal/Garyu/garyu23.html"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc23/appeal/Garyu/garyu23.html"
+  ],
+  "summary": "Javaで書かれた臥龍。探索部約2万行、評価パラメータ約750個の手作り評価関数を持つ。並列探索・学習・df-pnは使わない。今回は微修正のみ。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "手作り",
+    "detail": "駒損得、成駒、当たり駒、駒の絶対位置、玉の自由度、利き、囲い、ピン等 約750"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "反復深化、置換表、null move、王手延長、詰み探索は深さ優先"
+  },
+  "learning": null,
+  "hardware": "Core 2 Duo T7700 2.4GHz、約10万nodes/s",
+  "language": [
+    "Java"
+  ],
+  "claimed_strength": "通算成績56勝94敗4分（第3回から）",
+  "ideas": [],
+  "character": null,
+  "notes": "前回から微修正のみ。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc23/team.html"
+}

@@ -1,0 +1,62 @@
+{
+  "wcsc": 30,
+  "year": 2020,
+  "dir": "Jinsei_okuribunt_shippai",
+  "team": "築地 毅",
+  "software": "人生送りバント失敗",
+  "sources": [
+    "wcsc30/appeal/Jinsei_okuribunt_shippai/appeal2020.txt"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc30/appeal/Jinsei_okuribunt_shippai/appeal2020.txt"
+  ],
+  "summary": "探索はαβ中心でLMR・Futilityなどの普通の技術を使い、ボナンザメソッドで学習するソフト。技術的な記述は前回のコピペ中心で、文書の大半はWCSC参加の思い出話（初参加、うまるちゃんのコスプレ罰ゲーム、会場近くのラーメンなど）。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "いわゆるボナンザメソッド"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "LMR、Futilityなど普通の技術"
+  },
+  "learning": "ボナンザメソッド。オンライン学習として平均化パーセプトロンを試したが、怪しかったので試すのをやめた（2019年）",
+  "hardware": null,
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "エンタメ・演出",
+      "title": "コスプレ（罰ゲーム）とマクドナルド定跡",
+      "description": "大会会場でうまるちゃんのコスプレ（2016年の罰ゲーム）をした一式を保管し、希望者に貸せる。毎年マクドナルド定跡を試して勝ち星が増えないので、効果があるのか疑っている。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "2016年には罰ゲームでうまるちゃんやりました。"
+    },
+    {
+      "category": "エンタメ・演出",
+      "title": "大会の合間に周辺で遊ぶ",
+      "description": "会場に行かず近くで遊ぶ。東京ドイツ村、マザー牧場、東京湾観音、家系ラーメンの川崎家など、訪問先をURL付きで列挙する。自動対局のため、ラーメン中に対局が始まっても問題なく進む。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "自動化されているって素晴らしいなって思いました、もう会場いかなくてずっと川崎家でラーメン食べててもいいですね。"
+    },
+    {
+      "category": "解説・人間支援",
+      "title": "解説記事の生成（2012年独創賞）",
+      "description": "2012年に、「解説記事の生成」で独創賞を受賞した。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "2012年に独創賞いただきました"
+    }
+  ],
+  "character": "「動いていることが奇跡で、特段アピールすることなんてない」と開き直り、アピールがないと文書がリジェクトされる（2015年に実証）ので前回の技術部分をコピペしたと説明する。プログラム名「(´・ω・`)」を最初は申請して「読めません」とリジェクトされた逸話、大会史上初のアピール文書リジェクトなど、思い出話が中心。目標は師匠のまったりゆうちゃんを倒すこと。",
+  "notes": "一覧ページの表記は「人生送りバント失敗」。第21回が初出場（二次予選20位）。探索の不具合（打ち歩詰め、王手を受ける手のバグ）を修正した旨も記述",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc30/team.html"
+}

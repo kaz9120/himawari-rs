@@ -1,0 +1,52 @@
+{
+  "wcsc": 20,
+  "year": 2010,
+  "dir": "Tohu",
+  "team": "佐々木貴広",
+  "software": "Tohu",
+  "sources": [
+    "wcsc20/appeal/Tohu/Tohu_ver2.html"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc20/appeal/Tohu/Tohu_ver2.html"
+  ],
+  "summary": "評価は駒の損得のみ、定跡・詰みなしの素朴な構成。浅い探索で候補手を絞って、深い探索で上位候補から乱択する。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "手作り",
+    "detail": "盤上と持ち駒の駒の損得のみ"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "NegaMaxのαβ。深さ1で並べ替え、深さ5で候補を挙げ、ランダムに指し手決定"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "棋風・人間らしさ",
+      "title": "深さ5の候補からランダムに指す",
+      "description": "深さ1固定で合法手を並べ替え、深さ5固定の探索で評価の高い手を候補に挙げ、その中からランダムに指し手を決める。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "候補からランダムで指し手を決定"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "不成の合法手削減",
+      "description": "歩・角・飛の不成と、香車の敵陣2段目の不成を合法手から削って探索を速くする。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "歩、角、飛の不成 香車の敵陣２段目の不成"
+    }
+  ],
+  "character": null,
+  "notes": "深さ等の設定はINIファイルにある。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc20/team.html"
+}

@@ -1,0 +1,54 @@
+{
+  "wcsc": 33,
+  "year": 2023,
+  "dir": "aieshogi",
+  "team": "安藤 潤",
+  "software": "aieshogi",
+  "sources": [
+    "wcsc33/appeal/aieshogi/WCSC33_aieshogi_appeal.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc33/appeal/aieshogi/WCSC33_aieshogi_appeal.pdf"
+  ],
+  "summary": "AI推論処理をAMD(Xilinx)のAI Engine上に実装することが特徴の将棋ソフト。AI Engineのプログラミング習得を目的に開発しており、大会参加は開発を加速するためとしている。エンジン本体は最小限の実装の予定。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": "書籍「強い将棋ソフトの創りかた」を参考に開発"
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "ResNeXt（dlshogiのPlain ResNetに代えて軽量化）"
+  },
+  "search": {
+    "family": "MCTS",
+    "detail": "モンテカルロ木探索を素朴にC++で実装予定"
+  },
+  "learning": "「強い将棋ソフトの創りかた」配布の学習データでモデルを学習し量子化",
+  "hardware": null,
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "ハードウェア",
+      "title": "AI Engineへの推論実装",
+      "description": "dlshogi型のAI推論をAMD AI Engine（FPGAと親和性が高いプロセッサアレイ）にデータフローとして実装する。量子化したモデルを配置配線してFPGAで動かす計画。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "AIの推論処理をAI Engine（エイアイエンジン、略してAIE）に実装している点が特徴です。"
+    },
+    {
+      "category": "評価関数",
+      "title": "ResNeXtによる軽量化",
+      "description": "dlshogiのPlainなResNetをResNeXtに置き換えて軽量化した。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "aieshogiでは軽量化のためResNeXtを採用しています。"
+    }
+  ],
+  "character": "将棋の強さより、AI Engineプログラミングの習得が目的。「お尻に火を付けるために申し込んだ」と書く。",
+  "notes": "開発途上（配置配線の段階）。エンジンの工夫は「特にありません」と明記。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc33/team.html"
+}

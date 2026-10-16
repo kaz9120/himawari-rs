@@ -1,0 +1,55 @@
+{
+  "wcsc": 23,
+  "year": 2013,
+  "dir": "GodWhale",
+  "team": "鈴木 雅博",
+  "software": "大合神クジラちゃん",
+  "sources": [
+    "wcsc23/appeal/GodWhale/appeal.html"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc23/appeal/GodWhale/appeal.html"
+  ],
+  "summary": "Bonanza 6.0をほぼそのまま使い、ニコニコ生放送のリスナーのPCをクラスタ化して動かす参加型のソフト。PC性能で優先順位を変える。",
+  "base": {
+    "engine": "Bonanza",
+    "eval_source": "Bonanza 6.0",
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "Bonanza 6.0を使用"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "Bonanza 6.0"
+  },
+  "learning": null,
+  "hardware": "ニコニコ生放送リスナーのPCによるクラスタ",
+  "language": [
+    "C",
+    "Perl"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "並列・分散",
+      "title": "視聴者PCのクラスタ化",
+      "description": "ニコニコ生放送のリスナーのPCでクラスタを組み、PC性能に応じて優先順位を変える。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "ニコニコ生放送のリスナーＰＣでクラスタリングを行う"
+    },
+    {
+      "category": "エンタメ・演出",
+      "title": "視聴者参加型の対局",
+      "description": "リスナーのPCを計算資源として使う、放送と一体の参加型の仕組み。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "ＰＣ性能によって優先順位を変更"
+    }
+  ],
+  "character": "ニコニコ生放送のリスナーが計算資源を提供する視聴者参加型のコンセプト。",
+  "notes": null,
+  "team_list_url": "http://www2.computer-shogi.org/wcsc23/team.html"
+}

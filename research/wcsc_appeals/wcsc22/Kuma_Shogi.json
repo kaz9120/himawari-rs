@@ -1,0 +1,70 @@
+{
+  "wcsc": 22,
+  "year": 2012,
+  "dir": "Kuma_Shogi",
+  "team": "上瀧剛",
+  "software": "クマ将棋",
+  "sources": [
+    "wcsc22/appeal/Kuma_Shogi/kuma.pdf"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc22/appeal/Kuma_Shogi/kuma.pdf"
+  ],
+  "summary": "熊本大学付属図書館のキャラクター「くまぽん」の名を冠した初参加ソフト。簡単な構造（非ビットボード・利き保存なし）、穴熊特化の棋風、R/DPPとテンプレートマッチングによる新規特徴を3目標に掲げる。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "駒割＋KPP＋KKP＋KP。飛龍に特化した3駒関係[飛/龍][駒][駒]とテンプレートマッチングによる玉周辺12マスの評価を追加"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "詰めルーチンなし、並列探索・先読みなし"
+  },
+  "learning": "2chkifu.csaでBonanzaメソッド。穴熊局の重みと勝った手番の重みを大きくして学習",
+  "hardware": null,
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": "floodgateでsimkとして参加。Bonanza 6.0のfv.binで2週間レート最高約R2200、自力学習の特徴（大会版）で約R1900",
+  "ideas": [
+    {
+      "category": "棋風・人間らしさ",
+      "title": "穴熊特化の棋風",
+      "description": "50手目に玉が角の4隅にある棋譜を穴熊局とみなし、重みを大きくして学習する。勝った手番の重みも大きくする。定跡は穴熊を優先し、「クマ将棋なのになぜ矢倉」という声に応える。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "穴熊局の重みを大きくして学習"
+    },
+    {
+      "category": "評価関数",
+      "title": "テンプレートマッチングによる玉周辺12マス評価",
+      "description": "学習局面から玉周辺12マスのテンプレートを大量に切り出して保存し、一致したら評価値v[i]を足す。一致はハッシュ値の比較で高速。評価値はBonanzaメソッドで決める。",
+      "originality": "独自",
+      "evidence": "テストデータでの一致率が1.5%向上",
+      "quote": "テンプレートマッチングによる玉周辺１２マスの評価を追加"
+    },
+    {
+      "category": "評価関数",
+      "title": "飛龍特化の3駒関係",
+      "description": "飛・龍と2駒の3駒関係を追加する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "飛龍に特化した３駒関係 [飛/龍][駒][駒] を追加"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "非ビットボード・利き情報なしの簡単構造",
+      "description": "開発が楽な反面低速（指し手生成は初期局面で130万手/秒、指手生成祭局面で65万手/秒）。SEEが遅いため詰ルーチンはなし。大会後に整理して公開予定。",
+      "originality": "独自",
+      "evidence": "初期局面130万手/秒",
+      "quote": "非ビットボード、利き保存もなし"
+    }
+  ],
+  "character": "熊本大学付属図書館のキャラクター「くまぽん」の名を冠し、「クマ将棋なのに矢倉」と言われたことから穴熊指向を目標に据える。",
+  "notes": null,
+  "team_list_url": "http://www2.computer-shogi.org/wcsc22/team.html"
+}

@@ -1,0 +1,63 @@
+{
+  "wcsc": 30,
+  "year": 2020,
+  "dir": "Suisho",
+  "team": "杉村 達也",
+  "software": "水匠",
+  "sources": [
+    "wcsc30/appeal/Suisho/WCSC30_appeal.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc30/appeal/Suisho/WCSC30_appeal.pdf"
+  ],
+  "summary": "やねうら王の探索部でNNUE評価関数を動かすソフト。elmo式の学習に「投了までの手数」を加える手数からの学習、深い読みで強い評価関数の追求、テラショック定跡を勝率ベースに変えた定跡が独自工夫。",
+  "base": {
+    "engine": "やねうら王",
+    "eval_source": "自作（Kristallweizen、illqha+dolphin、Qhapaq、tanuki-、Apery、tttak氏の評価関数は教師局面作成・定跡作成時の対局相手に使用）",
+    "note": null
+  },
+  "eval": {
+    "family": "NNUE",
+    "detail": "elmo式の学習に、投了までの手数の要素を追加"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": null
+  },
+  "learning": null,
+  "hardware": "Ryzen Threadripper 3990X 64コア",
+  "language": [
+    "C++",
+    "Python"
+  ],
+  "claimed_strength": "WCSC29で7位",
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "投了までの手数を考慮した学習",
+      "description": "elmo式（局面の評価値と対局の勝敗を考慮）の学習に、その局面から投了までの手数を加える。投了からの手数が短い局面ほど勝敗が正しい可能性が高いという考え方である。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "当該局面の投了までの手数（すなわち、「○手後に死ぬ局面」ということです。）を考慮します。"
+    },
+    {
+      "category": "評価関数",
+      "title": "深い読みで強い評価関数",
+      "description": "同じ探索部でも評価関数によって、浅い読みでしか強くならないものがあると考え、どんな場合にそうなるかを予想して、深い読みでこそ強い評価関数になるよう学習を進める。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "深い読みでこそ強い評価関数にするにはどうすればよいかという点について、ある程度の予想をもって、学習を進めています。"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "勝率ベースの定跡",
+      "description": "テラショック定跡（末端に評価値を付けてmin-max）の代わりに、末端局面の勝率に着目して、定跡ツリー全体で勝率の高いものを採用する。shotgunの定跡作成手法も参考にした。先手角換わり定跡は、後手の指し手に対する応手を1つずつ入力しただけで、佐藤天彦九段対三浦弘行九段の順位戦と85手目まで一致した。",
+      "originality": "独自",
+      "evidence": "第78期順位戦A級5回戦の対局と85手目まで一致",
+      "quote": "末端局面の勝率に着目し、定跡ツリー全体で末端局面の勝率が高いものを採用するといった定跡作成方法を採用します"
+    }
+  ],
+  "character": "WCSC29で「極めて運良く7位」になったと謙遜し、検索サイトで「水匠」を入れると「将棋」がサジェストされるようになったと感謝する。Twitterアカウント名の注記（たややんで、ただやんではない）も。",
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc30/team.html"
+}

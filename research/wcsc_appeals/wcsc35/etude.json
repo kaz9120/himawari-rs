@@ -1,0 +1,37 @@
+{
+  "wcsc": 35,
+  "year": 2025,
+  "dir": "etude",
+  "team": "David Wada（アメリカ）",
+  "software": "etude",
+  "sources": [
+    "wcsc35/appeal/etude/2025_etude.txt"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc35/appeal/etude/2025_etude.txt"
+  ],
+  "summary": "ごく一般的なαβ探索に、Apery(WCSC30)の評価関数とやねうら王由来の定跡を組み合わせた、素朴な構成。独自の工夫はアピールされていない。",
+  "base": {
+    "engine": "独自",
+    "eval_source": "Apery WCSC30",
+    "note": "定跡は数年前に使用したやねうら王から借用"
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "Apery WCSC30の評価関数を使用予定"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "ごく一般的なαβ探索"
+  },
+  "learning": null,
+  "hardware": "Core i9-14900K 単体",
+  "language": [
+    "Java"
+  ],
+  "claimed_strength": null,
+  "ideas": [],
+  "character": null,
+  "notes": "文書は数行のみ",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc35/team.html"
+}

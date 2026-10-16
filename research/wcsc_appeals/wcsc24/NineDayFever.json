@@ -1,0 +1,70 @@
+{
+  "wcsc": 24,
+  "year": 2014,
+  "dir": "NineDayFever",
+  "team": "金澤 裕治",
+  "software": "NineDayFever",
+  "sources": [
+    "wcsc24/appeal/NineDayFever/NDF.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc24/appeal/NineDayFever/NDF.txt"
+  ],
+  "summary": "「局面評価の極北」を目指し、対戦ログ中の評価値が怪しい局面を抽出して機械学習結果の欠陥を直す方式を発展させた。kppパラメータを絶対/相対とpp絶対/相対に分割して未知の局面へ汎化させ、手番を考慮した評価関数も実装。前年版より約+200、Bonanza 6.0との差は約380レーティング。",
+  "base": {
+    "engine": "Bonanza",
+    "eval_source": "Bonanza 6.0を改造（slug.bin）",
+    "note": "プログラムはほぼbonanza 6.0のまま。Stockfishを参考に探索を一部更新"
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "kppをkpp絶対・kpp相対・pp絶対・pp相対に分割。手番ボーナスSturnを3駒関係で持つ"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "Bonanza 6.0＋Stockfish参考の更新、null move pruningの効率化"
+  },
+  "learning": "評価値の誤りを探して修正。ログ中の思考中の局面から評価値が怪しい局面を抽出、2乗正則化付きの分割パラメータで学習",
+  "hardware": null,
+  "language": [
+    "C"
+  ],
+  "claimed_strength": "前年版から約+200（200弱）、Bonanza 6.0に対し約380レーティング（持ち時間2分リーグ戦）",
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "思考ログ中の怪しい評価値の局面を解析",
+      "description": "対局棋譜だけでなく、思考ログ中の手順に現れる評価値が誤っていそうな局面を抽出して解析対象にする。頭打ちだったレーティングが向上した。",
+      "originality": "独自",
+      "evidence": "去年版から約+200",
+      "quote": "ログに出力されている手順中に現れた局面を調べるようにしたところ"
+    },
+    {
+      "category": "評価関数",
+      "title": "kppの絶対/相対・pp分割で汎化",
+      "description": "kppをkpp絶対・kpp相対・pp絶対・pp相対に分割して学習し、和をとって従来のkppテーブルに入れる。2乗正則化で共通パターンを相対側に吸収し、学習データに現れない配置にも評価値を持たせる。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "kpp絶対、kpp相対、pp絶対、pp相対のパラメータに分割"
+    },
+    {
+      "category": "評価関数",
+      "title": "手番を考慮する評価関数",
+      "description": "評価値をSboard(X)とSturn(X)で表し、手番側ならSboard+Sturn、相手ならSboard−Sturnとする。先後反転で符号が逆になる性質と差分計算を保ち、一手パスのペナルティを精度よく見積もれる。nps低下は約10%。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "先手の評価値に -1 をかけると後手の評価値になるという性質を満たすこと"
+    },
+    {
+      "category": "探索",
+      "title": "手番考慮を使ったnull move pruningの効率化",
+      "description": "一手パス直後のスコアでbeta cutが起こらなさそうだと分かればnull move pruningを打ち切る。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "null move pruningを打ち切っています。"
+    }
+  ],
+  "character": "冒頭で「局面評価の極北を目指しています」と宣言。名前は前年までのPuppetMasterの後継。",
+  "notes": null,
+  "team_list_url": "http://www2.computer-shogi.org/wcsc24/team.html"
+}

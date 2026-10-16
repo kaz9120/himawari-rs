@@ -1,0 +1,46 @@
+{
+  "wcsc": 36,
+  "year": 2026,
+  "dir": "Nebula",
+  "team": "佐々木蛍太、堀内大寛",
+  "software": "ねびゅら",
+  "sources": [
+    "wcsc36/appeal/Nebula/nebula_appeal_20260501.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc36/appeal/Nebula/nebula_appeal_20260501.pdf"
+  ],
+  "summary": "nshogiライブラリで局面管理と合法手生成を行い、水匠5のNNUE評価関数（halfKP）をαβ探索に載せた、C言語製の初参加エンジン。新規性には乏しいと断ったうえで、ラップトップでどれだけ動かせるかに挑戦する。",
+  "base": {
+    "engine": "独自",
+    "eval_source": "水匠5",
+    "note": "局面管理・合法手生成にnshogiライブラリを使用"
+  },
+  "eval": {
+    "family": "NNUE",
+    "detail": "halfKP特徴量。水匠5を使用"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "反復深化とハッシュテーブルを作成"
+  },
+  "learning": null,
+  "hardware": "Core i7-1360P（ノートPC）",
+  "language": [
+    "C"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "ハードウェア",
+      "title": "ラップトップでの挑戦",
+      "description": "新規性には乏しいと断ったうえで、ラップトップでどれくらい動かせるかを試す。",
+      "originality": "不明",
+      "evidence": null,
+      "quote": "新規性には乏しいですがラップトップでどれくらい動かせるのかを挑戦したいと考えています。"
+    }
+  ],
+  "character": null,
+  "notes": "NNUEの推論部はC言語で自作とみられる（記述は短い）。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc36/team.html"
+}

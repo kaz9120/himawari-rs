@@ -1,0 +1,44 @@
+{
+  "wcsc": 31,
+  "year": 2021,
+  "dir": "Auau_shogi",
+  "team": "氏家 一朗",
+  "software": "あうあう将棋",
+  "sources": [
+    "wcsc31/appeal/Auau_shogi/auau.txt"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc31/appeal/Auau_shogi/auau.txt"
+  ],
+  "summary": "8〜9手程度のαβ探索と、駒の損得ほか非常に単純な評価関数。静止探索で数手の詰みを判断することを試みている。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "手作り",
+    "detail": "駒の損得ほか非常にシンプル"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "8〜9手程度のαβ探索。静止探索で数手の詰みの判断を試行"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "詰み・終盤",
+      "title": "静止探索で数手の詰み判断",
+      "description": "静止探索の中で数手の詰みを判断できるよう試みている（実現度は未知）。",
+      "originality": "不明",
+      "evidence": null,
+      "quote": "静止探索時に数手の詰みを判断できるようにトライしています"
+    }
+  ],
+  "character": null,
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc31/team.html"
+}

@@ -1,0 +1,79 @@
+{
+  "wcsc": 35,
+  "year": 2025,
+  "dir": "Bakuretsu_Komahiroi_Taro",
+  "team": "Yoltsプロジェクト",
+  "software": "爆裂駒拾太郎",
+  "sources": [
+    "wcsc35/appeal/Bakuretsu_Komahiroi_Taro/20250331_appeal.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc35/appeal/Bakuretsu_Komahiroi_Taro/20250331_appeal.pdf"
+  ],
+  "summary": "「詰将棋が意味ないことを証明する」を掲げ、詰みでなく入玉宣言勝ちを目指す、他者の創作物に頼らないフロムスクラッチ将棋。ルールベース探索と、入玉でなければ勝てない自分自身との対局で評価関数を育てる自己対局ループが独特。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": "指し手生成のみライブラリ（Rust製yasai 0.5.0を改変）。フロムスクラッチ方針"
+  },
+  "eval": {
+    "family": "NNUE",
+    "detail": "PPe4-4型（2駒関係特徴量3335次元、埋め込み4次元の浅い小型ネット）。差分計算を行う"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "反復深化、静止探索（駒取り・王手・王手回避を最大3手延長）、Null Move、LMR、Mate Distance Pruning、History/Killer"
+  },
+  "learning": "自己対局の局面と評価値だけで学習。勝率近似にtanh、最適化にRAdamScheduleFree",
+  "hardware": null,
+  "language": [
+    "Rust",
+    "Python"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "入玉",
+      "title": "入玉宣言勝ちを狙う方針",
+      "description": "開発方針が「詰将棋が意味ないことを証明する」であり、詰みではなく入玉宣言による勝ちを基本目標にする。評価関数も入玉を目指す方針で作る。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "詰みではなく基本的に入玉宣言による勝ちを目指す"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "詰ますと負けになる自分との自己対局",
+      "description": "探索部で強制的に相手を詰ますと負けになるようにし、入玉でなければ勝てない爆裂駒拾太郎を作って通常版と対局させ、その棋譜で評価関数を学習する。作った評価関数を新しい版にして繰り返す。過去の評価関数との対局も混ぜ、勝率の高い版との対局割合を小さくする。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "探索部により強制的に相手を詰ますと負けになるようにし、入玉でなければ勝てないようにした爆裂駒拾太郎を作成する"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "Thompson Samplingで棋譜をばらけさせる",
+      "description": "既出の局面では勝ち数・負け数・引き分け数からThompson Samplingで指し手を選び、棋譜の多様性を確保する。引き分けが半数以上を占める手は選択率を下げる。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "Thompson Samplingアルゴリズムに基づいて指し手を選択する"
+    },
+    {
+      "category": "評価関数",
+      "title": "駒価値と前進だけの初期評価関数",
+      "description": "初期値は小駒100点、大駒500点、敵陣に近いほど最大9点加点という単純な評価関数から出発し、自己対局で育てる。既存の評価関数や教師データを使わない。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "初期値は小駒100点、大駒500点とし、敵陣に近いほど1点加点(最大9点加点)"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "学習データ生成の副産物としての定跡",
+      "description": "学習棋譜の各局面の勝敗数からThompson Samplingで指し手を選ぶ。訪問数が10未満の局面となる手は選ばない。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "学習データの生成時の副産物として作成"
+    }
+  ],
+  "character": "表紙に「なんとかなれー(入玉)」と書き、入玉に懸ける姿勢を前面に出す。",
+  "notes": "WCSC34からの差分はLMRパラメータ調整、静止探索への王手生成、評価関数のPPe4-4型への変更、学習の最適化手法変更。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc35/team.html"
+}

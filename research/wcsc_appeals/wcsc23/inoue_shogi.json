@@ -1,0 +1,47 @@
+{
+  "wcsc": 23,
+  "year": 2013,
+  "dir": "inoue_shogi",
+  "team": "井上",
+  "software": "井上将棋",
+  "sources": [
+    "wcsc23/appeal/inoue_shogi/Inoue_Shogi.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc23/appeal/inoue_shogi/Inoue_Shogi.txt"
+  ],
+  "summary": "PHP+Cで全面書き換えを行った非ボナンザ系のソフト。単純な評価関数のαβ反復深化で、思考部の大半がスクリプト言語のため遅い。決号作戦＋αを目指す。目標は最下位にならないこと。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "手作り",
+    "detail": "単純な評価関数"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "反復深化"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": [
+    "PHP",
+    "C"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "棋風・人間らしさ",
+      "title": "決号作戦＋αを目指す",
+      "description": "丸山スペシャルもどきの決号作戦＋αを目指す。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "決号作戦＋α（例の丸山スペシャルもどき）を目指します。"
+    }
+  ],
+  "character": "目標を「最下位にならないこと」と明言する控えめな文書。",
+  "notes": "思考ルーチンをCに置き換え中と記載。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc23/team.html"
+}

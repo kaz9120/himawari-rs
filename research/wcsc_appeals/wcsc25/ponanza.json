@@ -1,0 +1,60 @@
+{
+  "wcsc": 25,
+  "year": 2015,
+  "dir": "ponanza",
+  "team": "山本 一成、下山 晃",
+  "software": "Ponanza",
+  "sources": [
+    "wcsc25/appeal/ponanza/appeal.pdf"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc25/appeal/ponanza/appeal.pdf"
+  ],
+  "summary": "深い探索結果を教師にして評価関数を調整（約100億局面を生成し、ボナメソ単体よりR100程度向上）。定跡は主にfloodgateの棋譜から、終盤までの道のりが長く早めに人間の定跡から外れるものを選ぶ。NDFの学習手法、Stockfishの探索、GPS将棋のクラスタ手法に影響を受け、最終的にはXeon 4台の楽観合議を採用。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": "Bonanzaの評価関数構造、NDFの学習手法、Stockfishの探索、GPS将棋のクラスタ手法を参考"
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "Bonanza式の構造。深い探索結果を教師に調整"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "Stockfishの探索手法"
+  },
+  "learning": "深い探索結果を教師に評価関数を調整。約100億局面を教師局面として生成",
+  "hardware": "Xeon 4台の楽観合議",
+  "language": null,
+  "claimed_strength": "深い探索教師でボナメソ単体よりR100程度上昇",
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "深い探索結果を教師にした学習",
+      "description": "深い探索結果を教師にして評価関数を調整する。約100億局面を教師局面として生成し、ボナメソ単体よりR100程度上昇した。",
+      "originality": "独自",
+      "evidence": "ボナメソ単体よりR100程度向上、約100億局面",
+      "quote": "深い探索結果を教師に評価関数を調整"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "floodgate棋譜由来の「早く外れる」定跡",
+      "description": "定跡は主にfloodgateの棋譜から作り、終盤までの道のりが長い定跡を選び、早めに人間の定跡から外れる方針。長く指せばPonanzaが有利と考える。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "早めに人間の定跡から外れる方針"
+    },
+    {
+      "category": "並列・分散",
+      "title": "GPS流クラスタより楽観合議を採用",
+      "description": "GPS流クラスタを準備したが、実験の結果、楽観合議の方が強いのでXeon4台の楽観合議にした。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "色々実験したのですが、楽観合議の方が強いの"
+    }
+  ],
+  "character": null,
+  "notes": "文書内に「抱負：最後まで（コンピュータが）頑張ります！！」。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc25/team.html"
+}

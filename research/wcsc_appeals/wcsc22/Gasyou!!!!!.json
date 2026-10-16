@@ -1,0 +1,60 @@
+{
+  "wcsc": 22,
+  "year": 2012,
+  "dir": "Gasyou!!!!!",
+  "team": "森岡祐一",
+  "software": "GA将!!!!!",
+  "sources": [
+    "wcsc22/appeal/Gasyou!!!!!/appeal.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc22/appeal/Gasyou%21%21%21%21%21/appeal.txt"
+  ],
+  "summary": "TDLeaf(λ)で評価関数を学習し、floodgateの2週間レートは1424。今後は多数決合議と、合議向けの強化学習アルゴリズムの開発を計画し、目標を「レーティング+1500、+500、+200」と笑える形で並べる。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "駒割、駒の位置評価、二駒の相対位置関係、その他"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "全幅ベース（枝刈りはLMRのみ）＋2段階静止探索。詰将棋ルーチンは10〜20手程度"
+  },
+  "learning": "TDLeaf(λ)による評価関数の強化学習",
+  "hardware": null,
+  "language": null,
+  "claimed_strength": "floodgate 2週間レーティング1424（Core 2 Duo 2.4GHz、2012-04-28）",
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "合議で強くなる強化学習アルゴリズム",
+      "description": "異なる評価項目・パラメータの評価関数による多数決合議を実装予定で、合議で強くなることを目的にした強化学習アルゴリズムを開発中。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "合議で強くなる事を目的とした強化学習アルゴリズムの開発中です"
+    },
+    {
+      "category": "並列・分散",
+      "title": "複数クライアントの合議と情報共有",
+      "description": "マルチコアのマシン上で、単スレッド探索の複数クライアントが合議し、局面の詰み・不詰み情報を共有する。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "クライアント間での情報共有（例えば局面の詰み・不詰み情報の共有）を行うつもり"
+    },
+    {
+      "category": "時間管理",
+      "title": "進行度と経過手数による思考時間制御",
+      "description": "思考時間を局面の進行度と経過手数に応じて制御する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "思考時間は局面の進行度と経過手数に応じて制御しています"
+    }
+  ],
+  "character": "「最終目標（という名の妄想）」として、学習成功でレーティング+1500、合議で+500、デュアルプロセッサ購入で+200と加算し、決勝クラスに追いつくと書く。",
+  "notes": null,
+  "team_list_url": "http://www2.computer-shogi.org/wcsc22/team.html"
+}

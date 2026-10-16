@@ -1,0 +1,84 @@
+{
+  "wcsc": 26,
+  "year": 2016,
+  "dir": "Himawari",
+  "team": "山本 一将、永塚 拓、高木 厚成",
+  "software": "ひまわり",
+  "sources": [
+    "wcsc26/appeal/Himawari/appeal.pdf"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc26/appeal/Himawari/appeal.pdf"
+  ],
+  "summary": "Bonanzaメソッドを使わず、方策勾配による教師あり学習のあと自己対局の勝敗から強化学習する評価関数が特徴のソフト。今回は探索速度の改善が中心で、Stockfish7を参考にした。プロ棋士の棋譜を使わず強化学習だけで評価関数と新しい定跡を作ることを目標にする。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "その他",
+    "detail": "方策勾配を用いた教師あり学習のあとに強化学習した評価関数（詳細は不明）"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "Stockfish7を参考に高速化"
+  },
+  "learning": "Bonanzaメソッドを使わず、方策勾配を用いた教師あり学習、続いて自己対局の結果から強化学習",
+  "hardware": null,
+  "language": null,
+  "claimed_strength": "第3回電王トーナメント ベスト8、第25回選手権9位",
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "方策勾配による教師あり学習",
+      "description": "Bonanzaメソッドを使わず、方策勾配を使った教師あり学習で評価関数を学習する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "Bonanzaメソッドを使用していない 方策勾配を用いた教師有り学習"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "教師あり学習後の強化学習",
+      "description": "教師あり学習のあとに、自己対局の勝敗などから評価関数を強化学習する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "教師付学習後に強化学習している"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "棋譜を使わず強化学習のみで評価関数を作る",
+      "description": "プロ棋士の棋譜を使わず、強化学習だけで評価関数を作ることを目標とする。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "最終的には強化学習のみで評価関数を作りたい"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "棋譜に頼らず新手を編み出す定跡",
+      "description": "プロの棋譜を使わない結果、新しい定跡や新手を編み出すことを目標とする。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "新しい定跡を作ること"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "探索速度の改善",
+      "description": "探索速度が遅すぎると痛感し、Stockfish7を参考に半年かけて速度を改善した。成果はあまり出ていない。",
+      "originality": "再現・追従",
+      "evidence": null,
+      "quote": "この半年は処理速度改善を中心に実施"
+    },
+    {
+      "category": "エンタメ・演出",
+      "title": "魅力的な将棋AIコンテストへの参加",
+      "description": "選手権とは別に「魅力的な将棋AIコンテスト（プレマッチ）」に参加中。魅力的な要素はGUI側で実装し、USI将棋を元にしたGUIでUSI対応ソフトを使える。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "魅力的な要素はGUI側で実装"
+    }
+  ],
+  "character": "作者はかつて芝浦将棋の開発者。「38時間かけて△2八角を回避した事で有名?」と自虐ネタを入れる。魅力的な将棋AIコンテストへの参加も紹介した。",
+  "notes": "本リポジトリ himawari-rs の源流にあたるソフト。ハードウェア・言語の記載なし",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc26/team.html"
+}

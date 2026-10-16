@@ -1,0 +1,68 @@
+{
+  "wcsc": 31,
+  "year": 2021,
+  "dir": "Kakinoki_Shogi",
+  "team": "柿木 義一",
+  "software": "柿木将棋",
+  "sources": [
+    "wcsc31/appeal/Kakinoki_Shogi/kakinoki_appeal2021.txt"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc31/appeal/Kakinoki_Shogi/kakinoki_appeal2021.txt"
+  ],
+  "summary": "1985年頃から開発しているベテランソフト。2013年以降は、ボナンザ法で学習した評価関数を使う全幅探索プログラムのみ。ここ数年は開発しておらず、ほぼ同じソフトを同じハードで出し続けるベンチマークの意味合いがある。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "ボナンザ法で学習した評価関数。評価項目は独自"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "全幅探索、PVS並列化、Nullmove枝刈り、王手延長、静止探索、山下さんの0.5手延長方式"
+  },
+  "learning": "ボナンザ法",
+  "hardware": "Core i9 9900K 3.6GHz 8コア",
+  "language": "C++",
+  "claimed_strength": "floodgateで約2300（2017年、2014年は2234）",
+  "ideas": [
+    {
+      "category": "探索",
+      "title": "全幅探索と選択探索の統合の経緯",
+      "description": "1985年頃は前向き枝刈りの選択探索でαβ法、2007年にボナンザの影響で全幅探索の新プログラムを作り、2008〜12年は併用、2013年に全幅探索のみとした。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "2013年、新しい全幅探索のプログラムだけとしました。"
+    },
+    {
+      "category": "探索",
+      "title": "0.5手延長方式の採用",
+      "description": "山下宏さんの0.5手延長方式を採用している。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "山下さんの 0.5手延長方式を採用"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "ビットボードを使わず利きデータを使用",
+      "description": "ボナンザとは違い、bit-boardを使わず利きデータを使う。評価項目も独自のもの。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "利きデータを使用し、bit-boardは使っていない。"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "同一ソフト・同一ハードの定点観測",
+      "description": "ほぼ同じソフトを同じハードで毎年参加することで、そのような意味のベンチマークになると述べる。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "ほぼ同じソフトを同じハードで参加しているので、そういう意味のベンチマークはなるかと思います。"
+    }
+  ],
+  "character": "1985年頃に開発開始という歴史の長さを毎年のアピール文に積み重ねている。",
+  "notes": "2013年から2021年までの過去アピール文を連ねた版。320手引き分けにはまだ未対応で、今後対応予定。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc31/team.html"
+}

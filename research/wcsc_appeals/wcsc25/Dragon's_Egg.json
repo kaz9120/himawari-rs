@@ -1,0 +1,37 @@
+{
+  "wcsc": 25,
+  "year": 2015,
+  "dir": "Dragon's_Egg",
+  "team": "中谷 裕一",
+  "software": "竜の卵",
+  "sources": [
+    "wcsc25/appeal/Dragon's_Egg/WCSC25_appeal.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc25/appeal/Dragon%27s_Egg/WCSC25_appeal.txt"
+  ],
+  "summary": "前年と同一文書。VisualC++製で約110万nodes/s、αβ・並列探索・df-pn、自己対戦や棋譜の情報を評価関数と手選択に使う。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "不明",
+    "detail": "自己対戦や棋譜から取り出した情報"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "反復深化、置換表、null move、並列探索、df-pn"
+  },
+  "learning": null,
+  "hardware": "約110万nodes/s",
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [],
+  "character": null,
+  "notes": "前年と同一。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc25/team.html"
+}

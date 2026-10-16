@@ -1,0 +1,98 @@
+{
+  "wcsc": 32,
+  "year": 2022,
+  "dir": "YaneuraOu",
+  "team": "やねうら王チーム",
+  "software": "やねうら王",
+  "sources": [
+    "wcsc32/appeal/YaneuraOu/WCSC_PR.pdf",
+    "wcsc32/appeal/YaneuraOu/wcsc32-yaneuraou-pr2.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc32/appeal/YaneuraOu/WCSC_PR.pdf",
+    "https://www.apply.computer-shogi.org/wcsc32/appeal/YaneuraOu/wcsc32-yaneuraou-pr2.pdf"
+  ],
+  "summary": "公開されているやねうら王の探索部と水匠5、AWSのc6a.metalに、新手法「スーパーテラショック定跡」を組み合わせて世界大会3位になった。ふかうら王（DL系）で1局面1秒思考し、ranged alpha beta searchで次に掘る局面を選ぶ自動定跡生成で、外部棋譜も対戦相手の想定も要らない。結論が千日手となるため、初手5八玉などを指して話題になった。",
+  "base": {
+    "engine": "やねうら王",
+    "eval_source": "水匠5",
+    "note": null
+  },
+  "eval": {
+    "family": "NNUE",
+    "detail": "水匠5（水匠6はテストで強くなく不採用）"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "やねうら王V7.00から4月に探索部を改良し、長い持ち時間で+R70以上。GitHub上のソースのまま出場"
+  },
+  "learning": "定跡生成はふかうら王（dlshogi互換）で1局面1秒思考し、全合法手の評価値を1手先の評価値とみなす",
+  "hardware": "Amazon EC2 c6a.metal（192vCPU、384GB）",
+  "language": [
+    "C++",
+    "C#",
+    "Python"
+  ],
+  "claimed_strength": "第32回選手権3位。やねうら王V7.00からR+70以上（長い持ち時間）。スーパーテラショック定跡側は先手専用s-book_blackに対し後手番で55勝42敗3分（水匠4で29手目から100戦）",
+  "ideas": [
+    {
+      "category": "定跡・序盤",
+      "title": "スーパーテラショック定跡生成",
+      "description": "DL系エンジン（ふかうら王）で1局面1秒思考して全合法手の評価値を得て、有望な局面だけを展開し、最後に定跡ツリー上でMinimax（テラショック化）して評価値を伝播する。外部棋譜を使わず、ノーメンテナンスで、対戦相手の思考エンジンも仮定せずに生成できる。",
+      "originality": "独自",
+      "evidence": "80万局面ほど思考した定跡で、初手7六歩に対する3四歩を明確な悪手（評価値−243）と認定。s-book_blackに後手番で55勝42敗3分",
+      "quote": "本論文で提案するスーパーテラショック定跡生成手法では、これらの要求をすべて満たすことが出来た。"
+    },
+    {
+      "category": "探索",
+      "title": "ranged alpha beta search",
+      "description": "定跡ツリー上でαβ探索を行い、PV（最善応手列）のleaf nodeを次に思考する局面として選出する。思考中の局面のhash keyの集合を持ち、そこに至る手を非合法手とみなすので、並行して何局面でも選出できる。1500万局面規模でも1回の選出を1秒未満にする。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "思考中であるなら、この指し手 m はないもの(非合法手)として扱えば、次に良い評価値を持つ leaf node が探せる"
+    },
+    {
+      "category": "探索",
+      "title": "棋譜上の局面への+100加点で既存棋譜を掘る",
+      "description": "選出時、与えた棋譜上に出現した局面のleaf評価値に100点を加点して優遇する。評価値が悪い局面はそれでも選ばれず、有望な枝だけが延長される。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "棋譜上に出現した局面であれば、leaf node の評価値に加点している。"
+    },
+    {
+      "category": "探索",
+      "title": "banned nodesによる千日手回避",
+      "description": "「思考」済みの局面が再び「選出」されたら千日手手順で到達したとみなしてbanned nodes集合に入れ、循環局面に至る指し手を非合法手として扱う。千日手のスコアは0とする。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "「思考」済みの局面が再び「選出」された時、それは千日手手順でその局面に到達したものだと考えられる。"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "128bitのhash keyで局面を識別",
+      "description": "hash衝突を避けるため、変換コストの高いPackedSfenでなくやねうら王の128bit hash keyで局面を識別する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "本手法では、128bit の hash key を用いることにした。"
+    },
+    {
+      "category": "探索",
+      "title": "PV/NonPVとfail low/highの上界・下界を定跡探索に適用",
+      "description": "Stockfish由来のPV/NonPVの2モードと、bound lower・upperによる枝刈りをranged alpha beta searchに導入する。千日手が絡むcyclic scoreはNonPVでは信用する実装にして、組み合わせ爆発を避ける。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "cyclic score に関してはきちんと取り扱うことは諦め、NonPV では cyclic score であろうと信用するような実装にしてある。"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "「将棋の結論は千日手」という所見",
+      "description": "スーパーテラショック定跡では評価関数の評価値のぶれのため、初期局面からほとんどの指し手の評価値が0になり、折り合う手順が千日手になる。ぶれのない神の評価関数がない限りどの手法でもこうなるとし、同評価値はランダム選択に設定したため初手5八玉や9六歩を好んで指した。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "スーパーテラショック定跡においては、将棋の結論は千日手だということになっている。"
+    }
+  ],
+  "character": "決勝最終局で初手5八玉を指して勝利し、SNSで話題になった。「公開ソフト+公開評価関数+AWSの誰でも借りられるインスタンス+定跡」の4つで世界大会3位になれると自ら証明したと述べ、やねうら王を使って大会に参加する人が増えることを願う。",
+  "notes": "PR文書（スーパーテラショック定跡の解説論文形式）と、大会後のアピール文書その2の2文書。第1章は定跡生成手法の歴史（人間棋譜、floodgate、手作業、自己対局型、テラショック化）の整理。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc32/team.html"
+}

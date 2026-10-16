@@ -1,0 +1,46 @@
+{
+  "wcsc": 27,
+  "year": 2017,
+  "dir": "tenuki",
+  "team": "鈴木太朗、玉川直樹",
+  "software": "tenuki",
+  "sources": [
+    "wcsc27/appeal/tenuki/README.md"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc27/appeal/tenuki/README.md"
+  ],
+  "summary": "Bonanzaのコードが難しいと感じて作った、手抜きの簡単な将棋プログラム。評価は駒得のみ、探索は全幅のαβ。C++11でテンプレートもマクロも使わない読みやすさ重視の実装。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "手作り",
+    "detail": "駒得のみ"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "αβ法の全幅探索"
+  },
+  "learning": null,
+  "hardware": "Core2Duo SL9400 2コア 4GB Linux",
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "開発手法・運用",
+      "title": "簡単で読みやすいコード方針",
+      "description": "C++11、マス目の2次元配列、テンプレートなし、マクロなし、機械学習なし、DRYなコードという方針で、簡単な将棋プログラムを目指す。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "テンプレートを書かない マクロを書かない 機械学習をしない DRYなコード"
+    }
+  ],
+  "character": "名前の「手抜き」と「Bonanzaのコードが難しいので簡単なものを作りたかった」という動機を素直に書く。",
+  "notes": null,
+  "team_list_url": "http://www2.computer-shogi.org/wcsc27/team.html"
+}

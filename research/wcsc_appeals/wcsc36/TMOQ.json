@@ -1,0 +1,54 @@
+{
+  "wcsc": 36,
+  "year": 2026,
+  "dir": "TMOQ",
+  "team": "TMOQ開発チーム（Claude、山下隆久）",
+  "software": "TMOQ（特大もっきゅ）",
+  "sources": [
+    "wcsc36/appeal/TMOQ/TMOQ_appeal_20260412.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc36/appeal/TMOQ/TMOQ_appeal_20260412.pdf"
+  ],
+  "summary": "人間が一行もコードを書かず、LLM（Claude。Claude Codeではない）だけが実装を担当した、Rust製のフルスクラッチエンジン。人間の役割は、コンパイル・実行と、エラーや対局結果のフィードバックに限る。Bitboardから探索まで、プロンプトのみで構築した。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": "外部ライブラリに依存しない完全自作のRust実装。やねうら王のブログ記事やソースを参考にし、やねうら王nano-plusの設計思想を継承"
+  },
+  "eval": {
+    "family": "手作り",
+    "detail": "駒得評価に、駒の利き、玉の8近傍、位置評価などを追加。実対局データに基づくパラメータ最適化システム"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "反復深化、置換表、LMR、Futility Pruning、Killer・Counter Move・History。Bitboard、マジックビットボード、USI対応"
+  },
+  "learning": "評価関数パラメータを外部化し、Pythonによる自動チューニング環境で最適化",
+  "hardware": "Core i7-11700K（一覧ページ）",
+  "language": [
+    "Rust"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "開発手法・運用",
+      "title": "完全非介入型のLLMペアプログラミング",
+      "description": "Claudeのみが実装を担当し、人間はコードの修正・編集を一切行わない。人間の役割はコンパイル、実行、エラーや対局結果のフィードバックだけで、Bitboardから探索アルゴリズムまでプロンプトエンジニアリングだけで構築した。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "「人間が一行もコードを書かない」という制約下での開発"
+    },
+    {
+      "category": "開発手法・運用",
+      "title": "自動チューニング環境",
+      "description": "評価関数パラメータを外部化し、Pythonによる自動チューニング環境を構築して、実対局データでパラメータを最適化する。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "評価関数パラメータの外部化と、Python による自動チューニング環境を構築"
+    }
+  ],
+  "character": "愛娘がデザイン・命名したソフト名「特大もっきゅ」。第5回電竜戦本戦では独創賞を受賞。LLMによる純粋生成エンジンという実験性そのものがアピール。2026年1月のPythonプロトタイプから4月の最適化システムまで、月ごとの開発の軌跡を表にまとめている。",
+  "notes": "TMOQは第31回で合議の仕組みを使い、そのしくみはAri Shogiなど他チームにも参照されている（Ari Shogi文書より）。本文書は今大会の実装内容のみ。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc36/team.html"
+}

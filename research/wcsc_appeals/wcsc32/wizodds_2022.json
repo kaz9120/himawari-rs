@@ -1,0 +1,54 @@
+{
+  "wcsc": 32,
+  "year": 2022,
+  "dir": "wizodds_2022",
+  "team": "David Wada",
+  "software": "wizodds 2022",
+  "sources": [
+    "wcsc32/appeal/wizodds_2022/wizodds_appeal_2022.txt"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc32/appeal/wizodds_2022/wizodds_appeal_2022.txt"
+  ],
+  "summary": "最良優先ミニマックス探索をアレンジした探索。末端展開で終わらず最低深度まで展開し、評価値のぶれを抑えるため最終評価値に平均値を使う。AWS/EC2で並列処理を予定。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "不明",
+    "detail": null
+  },
+  "search": {
+    "family": "その他",
+    "detail": "Best First MinMax Search のアレンジ"
+  },
+  "learning": null,
+  "hardware": "AWS/EC2",
+  "language": [
+    "Java"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "探索",
+      "title": "最低深度まで展開する最良優先ミニマックス",
+      "description": "通常は末端でノード展開したら終わるが、結果が不安定だったため最低深度まで展開する。以前の探索がそこまで達していれば、そこから更に探索を続ける。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "最低深度まで展開します。以前の探索がそこまで達していた場合、そこから更に探索します。"
+    },
+    {
+      "category": "探索",
+      "title": "最終評価値に平均値を使う",
+      "description": "評価値がぶれることがあるため、最終評価値には平均値を使用する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "時として、評価値がぶれるので最終評価値は平均値を使用。"
+    }
+  ],
+  "character": null,
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc32/team.html"
+}

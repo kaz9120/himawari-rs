@@ -1,0 +1,100 @@
+{
+  "wcsc": 34,
+  "year": 2024,
+  "dir": "Lightweight",
+  "team": "神田 剛志",
+  "software": "Lightweight",
+  "sources": [
+    "wcsc34/appeal/Lightweight/Lightweight_appeal.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc34/appeal/Lightweight/Lightweight_appeal.pdf"
+  ],
+  "summary": "家庭用PCでも上位ソフトに匹敵する棋力を示すため、「軽く速く」を掲げる。ResNetをEfficientNetで再構築し、蒸留・教師あり学習と強化学習・KL情報量による時間制御・NNUEとの合議などを組む。大会は申込後にキャンセルされた。",
+  "base": {
+    "engine": "dlshogi",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "本家ResNetをEfficientNetで再構築。入力部に7層のResidual blockを入れてEfficientNetへ接続"
+  },
+  "search": {
+    "family": "MCTS",
+    "detail": "PUCT。着手確率を使った簡易枝刈り"
+  },
+  "learning": "dlshogiチーム公開データ（floodgate・GCT電竜自己対局・水匠の入玉局面・書籍付属）とLightweight自己対局の強化学習。第3回電竜戦モデルからの知識蒸留",
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "EfficientNet再構築と7層Residual入力部",
+      "description": "ResNetをEfficientNetで作り直し、入力側に7層のResidual blockを置いて接続する。層・チャネルを増やしPolicyとValueの精度を上げた。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "本家のResNetをEfficientNetで再構築し、１から学習しなおしました"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "バッチサイズ1024で軽量モデルのNPS向上",
+      "description": "GPUに渡すバッチサイズを1024に上げ、軽量モデルと組み合わせて平均NPSを上げる。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "GPUに局面を渡す際のバッチサイズを1024に上げています"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "知識蒸留",
+      "description": "第3回電竜戦のDNNモデルを教師にして、Lightweightのモデルを学習させる。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "第3回世界将棋AI電竜戦に使用したDNNモデルを教師として"
+    },
+    {
+      "category": "時間管理",
+      "title": "KL情報量による時間制御",
+      "description": "Policyの確率分布と探索後の分布のKL情報量を使って時間を制御する。dlshogi本家に倣った。",
+      "originality": "再現・追従",
+      "evidence": null,
+      "quote": "KL情報量を用いた時間制御を導入しています"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "初期局面の事前探索で時間節約",
+      "description": "Lightweightのモデルで初期局面の事前探索結果を利用し、持ち時間の消費を抑える。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "初期局面の事前探索結果を利用することで、持ち時間の消費を抑えます"
+    },
+    {
+      "category": "探索",
+      "title": "着手確率を使った簡易枝刈り",
+      "description": "PUCTで木を降りるとき、各子ノードの着手確率を使った簡易枝刈りで、最大UCB値の子ノード選択の時間を短縮する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "各子ノードの着手確率を利用した簡易的な枝刈りを実施することで"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "MultiStreamと入力特徴量作成の改善",
+      "description": "dlshogi本家に倣い、MultiStream対応と入力特徴量作成の改善でNPSを上げる。",
+      "originality": "再現・追従",
+      "evidence": null,
+      "quote": "dlshogi本家に倣いMultiStreamに対応することでNPSを向上させます"
+    },
+    {
+      "category": "評価関数",
+      "title": "DLとNNUEの合議",
+      "description": "これまでDLのみだったが、今大会ではNNUEとの合議を採用する予定。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "本大会ではNNUEとの合議を採用する予定です"
+    }
+  ],
+  "character": "高価な計算資源がなくても家庭用PCで上位に迫れることを示す、が開発動機。",
+  "notes": "参加者一覧ではキャンセル扱い。追試は可能と書く。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc34/team.html"
+}

@@ -1,0 +1,63 @@
+{
+  "wcsc": 35,
+  "year": 2025,
+  "dir": "Godflygoooon!",
+  "team": "田中 大吾",
+  "software": "Godflygoooon!",
+  "sources": [
+    "wcsc35/appeal/Godflygoooon!/godflygooon_wcsc35.docx"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc35/appeal/Godflygoooon%21/godflygooon_wcsc35.docx"
+  ],
+  "summary": "ふかうら王（dlshogiベース）と水匠系の評価関数を使い、今回は先手番の定跡生成を最大の取り組みにした。先手は初手26歩をほぼ固定して定跡の枝を掘りやすくし、後手番の秘策は非公開とした。評価関数は電竜戦版から約+100 Eloの改良にとどまる。",
+  "base": {
+    "engine": "やねうら王+ふかうら王",
+    "eval_source": "水匠",
+    "note": "水匠10beta2、水匠15bなどを利用。Clang21向けにビルド"
+  },
+  "eval": {
+    "family": "DL+NNUE",
+    "detail": "水匠系の追加学習。ふかうら王で生成した棋譜も利用"
+  },
+  "search": {
+    "family": "αβ+MCTS",
+    "detail": "変更なし。Clang21向けにビルドした"
+  },
+  "learning": "水匠で生成した約10億局面（dlshogiで評価値を付け替えたものを半数含む）と、ふかうら王の自己対局約30万棋譜（NNUE対DL、15b対20bなど）を最新の水匠で深さ10評価した教師データを追加学習",
+  "hardware": "EPYC 7K62×2 96コア",
+  "language": [
+    "Python",
+    "C++"
+  ],
+  "claimed_strength": "電竜戦版から約+100 Elo。水匠10beta2に対し、指定局面20手目から1000局で6割程度",
+  "ideas": [
+    {
+      "category": "定跡・序盤",
+      "title": "初手26歩固定の先手定跡",
+      "description": "先手番は初手26歩をほぼ固定して枝を掘りやすい基盤にした。たややん氏公開のプログラムとふかうら王を4GPU機で動かし、1局面10万ノードで約20万局面相当を追加した。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "先手番としては初手▲26歩をほぼ固定させ枝を掘りやすいように基盤を立てたファイルを基本定跡とした"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "sfen出力した定跡の確率を手動調整",
+      "description": "定跡DB形式の出力が読み込めないことがあるため、sfen形式で出力して指し手の確率を手動で変更した。AIに指し継いでもらいながら微調整し、出現確率の高い順に確率的に指す。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "指し手の確立を手動で変更した"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "先手番定跡に引っかからない対策",
+      "description": "先手番で相手の定跡に引っかからないための対策を考えて作り込んだと述べる。後手番の秘策は非公開。",
+      "originality": "不明",
+      "evidence": null,
+      "quote": "先手番定跡に引っかからない対策を考え尽力を尽くした"
+    }
+  ],
+  "character": "後手番の秘策を「秘密」とする。",
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc35/team.html"
+}

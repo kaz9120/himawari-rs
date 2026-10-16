@@ -1,0 +1,62 @@
+{
+  "wcsc": 28,
+  "year": 2018,
+  "dir": "OkaraManju",
+  "team": "渡辺 敬介",
+  "software": "おから饅頭",
+  "sources": [
+    "wcsc28/appeal/OkaraManju/OkaraWCSC28.txt"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc28/appeal/OkaraManju/OkaraWCSC28.txt"
+  ],
+  "summary": "自己対戦棋譜から評価関数と着手確率を学習し、モンテカルロ木探索で定跡を生成する。文書は昨年からの変更点4項目の列挙のみ。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "局面評価関数を拡張（詳細なし）"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "不明"
+  },
+  "learning": "自己対戦棋譜から局面評価関数と着手確率を学習",
+  "hardware": null,
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "自己対戦棋譜から評価関数と着手確率を学習",
+      "description": "自己対戦棋譜から局面評価関数と、着手確率（指し手の予測）を学習する。",
+      "originality": "不明",
+      "evidence": null,
+      "quote": "自己対戦棋譜からの局面評価関数と着手確率の学習"
+    },
+    {
+      "category": "探索",
+      "title": "着手確率を多クラス分類モデルに",
+      "description": "着手確率の特徴を拡張し、モデルを多クラス分類へ変更した。",
+      "originality": "不明",
+      "evidence": null,
+      "quote": "着手確率の特徴の拡張、及び多クラス分類へのモデルの変更"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "モンテカルロ木探索による定跡生成",
+      "description": "モンテカルロ木探索を使って定跡を生成する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "モンテカルロ木探索を用いた定跡生成"
+    }
+  ],
+  "character": null,
+  "notes": "4項目の列挙のみで詳細は書かれていない。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc28/team.html"
+}

@@ -1,0 +1,62 @@
+{
+  "wcsc": 27,
+  "year": 2017,
+  "dir": "OkaraManju",
+  "team": "渡辺 敬介",
+  "software": "おから饅頭",
+  "sources": [
+    "wcsc27/appeal/OkaraManju/OkaraWCSC27.pdf"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc27/appeal/OkaraManju/OkaraWCSC27.pdf"
+  ],
+  "summary": "実現確率探索と強いプレイヤの棋譜による評価関数最適化を軸にしたソフト。今回はYBWCにルートsplitとhelpful masterを加え、評価関数の学習に勝敗も使い、残り深さが少ない局面のLMRを実装した。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "指し手だけでなく勝敗も教師データに使うようにした"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "実現確率探索。YBWC並列でルートでもsplitし、helpful master conceptを実装。残り深さが少ない局面のLMR"
+  },
+  "learning": null,
+  "hardware": "Ryzen 7 1700 8コア 32GB Ubuntu16.04",
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "並列・分散",
+      "title": "YBWCのルートsplitとhelpful master",
+      "description": "YBWCをベースに、ルートでもsplitするよう変更し、helpful master conceptを実装した。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "ルートにおいても split するように変更しました。また、helpful master concept を実装しました。"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "指し手に加えて勝敗も教師に",
+      "description": "評価関数の学習で、指し手だけでなく勝敗も教師データとして使う。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "指し手だけでなく、勝敗も教師データとして利用するようにしました。"
+    },
+    {
+      "category": "探索",
+      "title": "遷移確率計算の特徴変更",
+      "description": "指し手の遷移確率の計算に使う特徴を変更し、残り深さが少ない局面のLMRを実装した。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "指し手の遷移確率計算に用いる特徴の変更などを行っています。"
+    }
+  ],
+  "character": null,
+  "notes": null,
+  "team_list_url": "http://www2.computer-shogi.org/wcsc27/team.html"
+}

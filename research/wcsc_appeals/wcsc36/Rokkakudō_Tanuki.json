@@ -1,0 +1,65 @@
+{
+  "wcsc": 36,
+  "year": 2026,
+  "dir": "Rokkakudō_Tanuki",
+  "team": "tanuki- 制作委員会",
+  "software": "六角堂狸",
+  "sources": [
+    "wcsc36/appeal/Rokkakudō_Tanuki/tanuki_appeal.pdf",
+    "wcsc36/appeal/Rokkakudō_Tanuki/tanuki_appeal_detail_2026-05-05.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc36/appeal/Rokkakud%C5%8D_Tanuki/tanuki_appeal.pdf",
+    "https://www.apply.computer-shogi.org/wcsc36/appeal/Rokkakud%C5%8D_Tanuki/tanuki_appeal_detail_2026-05-05.pdf"
+  ],
+  "summary": "やねうら王を改造した思考部に、SFNNwoP1536のネットワークを載せたNNUE系エンジン。レイヤースタックの選択に、KP特徴量のロジスティック回帰で推定した進行度を使うのが独自の工夫。DL水匠による知識蒸留とAobaZeroとのアンサンブルを組み合わせ、前年版に対し+85.48 Elo。",
+  "base": {
+    "engine": "やねうら王",
+    "eval_source": "DL水匠、AobaZero（WCSC34/35の重み）",
+    "note": "思考部はやねうら王を改造。ネットワークSFNNwoP1536は谷合氏がやねうら王へ移植したもの。棋譜生成にtanuki-、学習にnnue-pytorch"
+  },
+  "eval": {
+    "family": "NNUE",
+    "detail": "SFNNwoP1536。レイヤースタックの切り替えを進行度で行う。進行度推定はKP特徴量のロジスティック回帰"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "やねうら王を元にした改造"
+  },
+  "learning": "知識蒸留（DL水匠を教師）とアンサンブル（AobaZero WCSC34/35の重み）。nnue-pytorchを将棋向けに改造して学習",
+  "hardware": "Amazon EC2 c8i.metal-96xl（384コア）（一覧ページ）",
+  "language": [
+    "C++",
+    "Python"
+  ],
+  "claimed_strength": "前年版INUGAMIに対しR+85.48（8秒+0.08秒、1スレッド、置換表16MB、SPRT）",
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "進行度によるレイヤースタック切り替え",
+      "description": "SFNNのレイヤースタック切り替えを、局面の進行度に応じて行う。進行度はKP特徴量を使ったロジスティック回帰で推定する。切り替えインデックスの算出を速くするため、パラメータの量子化、差分計算、テーブル参照によるシグモイド計算の省略を実装した。",
+      "originality": "独自",
+      "evidence": "前年版に対しR+85.48（他の改良との合算）",
+      "quote": "SFNN のレイヤースタック切り替えを、局面の進行度に応じて行う方式を導入しました。"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "知識蒸留とアンサンブル",
+      "description": "2024年12月に、コンピュータ将棋で知識蒸留が有効なことを確認した。教師にはGPUエンジンの評価関数の中で最もレーティングが高かったDL水匠を使い、AobaZeroとのアンサンブルでさらに向上した。",
+      "originality": "独自",
+      "evidence": "DL水匠とAobaZeroのアンサンブルでレーティング向上",
+      "quote": "知識蒸留（Knowledge Distillation）がコンピュータ将棋において有効であることを確認しました。"
+    },
+    {
+      "category": "開発手法・運用",
+      "title": "SPRTで前年版と比較",
+      "description": "dlshogi互角局面集から角換わりの割合が10%になるよう調整した局面群を開始局面に使い、SPRTで有意差が出るまで自己対局した。",
+      "originality": "既存手法の応用",
+      "evidence": "R+85.48",
+      "quote": "開始局面には、dlshogi 互角局面集から、角換わりの割合が 10%となるよう調整した局面群を用い"
+    }
+  ],
+  "character": "名前の由来は、手に持った髑髏で人を誑かすイタズラ狸の六角堂狸。イメージ画像はAI生成で、「イタズラした狸が改心する話は鉄板」と締める。2018年に世界で初めてNNUE評価関数を搭載した将棋ソフトを公開、2021年にStockfishへ移植した経歴にも触れる。",
+  "notes": "概要版と詳細版の2文書。詳細版の校正にChatGPTを使用したと明記。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc36/team.html"
+}

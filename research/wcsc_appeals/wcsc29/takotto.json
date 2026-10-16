@@ -1,0 +1,86 @@
+{
+  "wcsc": 29,
+  "year": 2019,
+  "dir": "takotto",
+  "team": "杓子将棋（瀧川正史、内宮大志、大場寿仁）",
+  "software": "たこっと",
+  "sources": [
+    "wcsc29/appeal/takotto/appeal.html"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc29/appeal/takotto/appeal.html"
+  ],
+  "summary": "フルスクラッチのAVX2最適化エンジンで、先後ではなく攻める側・守る側として扱うKKPAR特徴を提案する。1手ごとに盤面を180度回転させるため、2手前から差分計算する。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": "Stockfish・Apery・やねうら王・tanuki-・Bonanza 6.0のソースを参考"
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "ニューラルネットワーク。特徴はKKPAR（1手ごとに180度回転した盤面から抽出するKKP）"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "Stockfish風。AVX2命令で実装、非ビットボード"
+  },
+  "learning": "Aperyの評価関数で約25億局面の教師を生成。左右反転による教師の水増し。AdaBound実装予定",
+  "hardware": "GCP / Intel Broadwell 160コア",
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "KKPAR特徴（攻守交代の180度回転盤面）",
+      "description": "先手・後手と手番の4状態を、1手ごとに交互に180度回転させた盤面を使うことで「攻める側・守る側」の2状態にまとめ、メモリと計算量を半分にする。そこから抽出したKKP（KKPAR）をNNの入力にする。ただし今のところ強くなっていないと正直に書く。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "1 手毎に交互に 180 度回転させた盤面 (Alternate Rotating shogi board) から KKP を抽出します。"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "2手前からの差分計算",
+      "description": "KKPARでは1手ごとに盤面が回転して1手前から差分計算できないため、現局面と180度回転局面の評価値を両方持ち、2手前から交互に差分計算して入力層のみ差分更新する。上位ノードの入力層はキャッシュ可能にした。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "2 手前の局面から差分計算することで速度を向上させました。"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "AVX2と非ビットボードのデータ構造",
+      "description": "各種処理をAVX2命令で実装し、AVX2を適用しやすい非ビットボードのデータ構造にする。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "AVX2 命令を適用しやすいデータ構造 (非ビットボード)"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "左右反転による教師局面の水増し",
+      "description": "画像認識のように、教師局面を左右反転した局面を生成して2倍に増やす。KKPARでは180度回転は意味がないため左右反転のみ。入力層のミラー学習と水増しの優劣は未検証。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "画像認識などで行われる教師データの水増しを行うツールを作成しました。"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "ランダム局面生成と特徴の出現率分析",
+      "description": "Apery評価関数による25億局面でKKPの特徴の出現率が約89.2%と分析した。偏り解消のためランダム局面ツールを作ったが、変な駒組みを覚えて弱くなったため不採用。",
+      "originality": "独自",
+      "evidence": "合法な特徴のうち約89.2%が出現",
+      "quote": "対局しているところを眺めたところ変わった駒組などを覚えてしまったようです。"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "最新オプティマイザの実装予定",
+      "description": "AdaBound・AMSBoundを実装予定だが、メモリ不足で動かせないかもしれない。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "これを実装予定ですが，PC のメモリが不足しており"
+    }
+  ],
+  "character": "「今のところ強くなってないため，誰の興味も引かないかもしれません」と率直。",
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc29/team.html"
+}

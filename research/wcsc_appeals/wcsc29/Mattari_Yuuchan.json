@@ -1,0 +1,54 @@
+{
+  "wcsc": 29,
+  "year": 2019,
+  "dir": "Mattari_Yuuchan",
+  "team": "東京農工大学旧小谷研究室（小谷善行、柴原一友）",
+  "software": "まったりゆうちゃん",
+  "sources": [
+    "wcsc29/appeal/Mattari_Yuuchan/appeal2019.docx"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc29/appeal/Mattari_Yuuchan/appeal2019.docx"
+  ],
+  "summary": "1990年過ぎに開発を始めた約四半世紀の完全独自システム。パラメータ学習ではない進化論的計算や、ディープラーニングと多量パラメータ学習の中間的な仕組みを試し、新しい並列方式のため全面書き換えを構想する。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "不明",
+    "detail": null
+  },
+  "search": {
+    "family": "不明",
+    "detail": null
+  },
+  "learning": null,
+  "hardware": null,
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "研究・実験的",
+      "title": "進化論的計算など非パラメータ学習の試み",
+      "description": "ディープラーニングや駒価値学習が主流の中、進化論的計算などパラメータ学習に基づかない方式を試し、DLと多量パラメータ学習の中間的なメカニズムを考える。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "しかしそうでない進化論的計算などの方式を試そうとしている。"
+    },
+    {
+      "category": "並列・分散",
+      "title": "全面書き換えによる新しい並列方式",
+      "description": "古いコーディングを直して新しい並列方式を実現する書き換えに少し着手している。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "それを直すことで、新しい並列方式が実現できると考えていて、少しとりかかっている。"
+    }
+  ],
+  "character": "「開発者の年齢がもっとも高いのではないか」と自認し、コーディング能力がいつまで続くか試したいと述べる。",
+  "notes": "具体的な実装の詳細は記載なし",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc29/team.html"
+}

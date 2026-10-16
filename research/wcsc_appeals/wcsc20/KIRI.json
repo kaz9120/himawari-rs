@@ -1,0 +1,44 @@
+{
+  "wcsc": 20,
+  "year": 2010,
+  "dir": "KIRI",
+  "team": "佐藤佳州",
+  "software": "棋理",
+  "sources": [
+    "wcsc20/appeal/KIRI/KIRI.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc20/appeal/KIRI/KIRI.txt"
+  ],
+  "summary": "評価関数だけでなく、探索中のパラメータ調整にも学習を積極的に使う予定という短い仮アピール。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "不明",
+    "detail": null
+  },
+  "search": {
+    "family": "不明",
+    "detail": null
+  },
+  "learning": null,
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "探索パラメータにも学習を適用",
+      "description": "評価関数に加え、探索中のパラメータ調整にも学習を採用する。他のプログラムと異なる点だと考えている。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "探索中のパラメータ調整にも積極的に学習を採用する点が他のプログラムと異なる"
+    }
+  ],
+  "character": null,
+  "notes": "アピール文章（仮）と題された短文。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc20/team.html"
+}

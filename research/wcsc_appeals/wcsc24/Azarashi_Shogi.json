@@ -1,0 +1,52 @@
+{
+  "wcsc": 24,
+  "year": 2014,
+  "dir": "Azarashi_Shogi",
+  "team": "不明（あざらし将棋）",
+  "software": "あざらし将棋",
+  "sources": [
+    "wcsc24/appeal/Azarashi_Shogi/appeal.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc24/appeal/Azarashi_Shogi/appeal.txt"
+  ],
+  "summary": "Bonanza評価関数の特徴に入玉局面用の特徴を追加し、入玉要素だけを自己対戦で強化学習して、入玉棋譜の少なさを補う。探索はBonanza由来で、SEE負の手を省く条件を駒価値SEEと小駒1点・大駒5点SEEの両方が負の場合に限る。",
+  "base": {
+    "engine": "Bonanza",
+    "eval_source": null,
+    "note": "Bonanzaを少し改良"
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "駒の価値＋KKP＋KPPに入玉用の特徴を追加"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "Bonanzaを改良"
+  },
+  "learning": "Bonanzaメソッドで全要素を学習後、入玉要素のみ自己対戦で強化学習",
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "入玉",
+      "title": "入玉要素の自己対戦強化学習",
+      "description": "入玉局面の特徴をいくつか追加し、全要素をBonanzaメソッドで学習した後、入玉要素だけを自己対戦で強化学習して入玉棋譜の少なさをカバーする。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "入玉局面のための要素だけを自己対戦で強化学習することで"
+    },
+    {
+      "category": "探索",
+      "title": "2種類のSEEが両方負の手だけ刈る",
+      "description": "SEE負の手を探索しない規則を、通常の駒価値SEEと小駒1点・大駒5点のSEEの両方が負になる手に限る。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "両方が負になる指し手のみ探索しないようにします。"
+    }
+  ],
+  "character": null,
+  "notes": "開発者名は不明。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc24/team.html"
+}

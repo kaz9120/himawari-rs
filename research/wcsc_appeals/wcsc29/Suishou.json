@@ -1,0 +1,81 @@
+{
+  "wcsc": 29,
+  "year": 2019,
+  "dir": "Suishou",
+  "team": "杉村 達也",
+  "software": "水匠",
+  "sources": [
+    "wcsc29/appeal/Suishou/appeal.pdf",
+    "wcsc29/appeal/Suishou/WCSC29_appeal_2.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc29/appeal/Suishou/appeal.pdf",
+    "https://www.apply.computer-shogi.org/wcsc29/appeal/Suishou/WCSC29_appeal_2.pdf"
+  ],
+  "summary": "NNUEkaiで知られる初参加者が、自己対局の教師データを前後の評価値から事後的に修正して質を上げる手法を持ち込んだ。圧勝率で作る白黒定跡や、振り飛車側の敗局を減らして振り飛車NNUEを作る応用も示す。",
+  "base": {
+    "engine": "やねうら王",
+    "eval_source": "tanuki-(wcsc28)のNNUEを追加学習。教師生成にApery評価関数",
+    "note": null
+  },
+  "eval": {
+    "family": "NNUE",
+    "detail": "NNUE評価関数（NNUEkai系）"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": null
+  },
+  "learning": "自己対局の教師データを事後的に修正。elmo式でLambdaを概ね1にして勝敗項を見ない学習",
+  "hardware": "Core i9-7960X（16コア）",
+  "language": [
+    "C++",
+    "Python"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "教師データの事後的変更",
+      "description": "自己対局で作った教師データの評価値を、前後の局面の評価値を見て事後的に修正する。n手目の手番側が負けていてScore(n)<Score(n-2)<Score(n+2)かつScore(n-1)<Score(n+1)なら、Score(n)をScore(n-2)まで引き上げる。深い探索を行わずに教師の質を上げる狙い。",
+      "originality": "独自",
+      "evidence": "depth14約4000万局面での事後実験で、move accuracyがelmo式Lambda 0.5/0.8より高い（検証用局面1: 38.19% 対 37.87%/38.10%）",
+      "quote": "教師データの質を高め、その結果、より質の高い評価関数を作成するという手法"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "勝敗と評価値がずれた局面の除外",
+      "description": "勝者側の手番なのに評価値が負、敗者側なのに正という局面を教師から排除し、そのかわりelmo式のLAMBDAを概ね1（勝敗項を見ない）にする。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "その局面の判断が間違っている可能性が高いため、教師局面から排除してしまうこととしました。"
+    },
+    {
+      "category": "棋風・人間らしさ",
+      "title": "振り飛車側の敗局を減らして振り飛車評価関数を作る",
+      "description": "対抗形の自己対局で振り飛車側が負けた対局を減らして教師の振り飛車の勝率を上げ、elmo式で振り飛車を指す評価関数（NNUEkaiXF）を作る。従来の飛車位置による評価値増減に対する新しい選択肢。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "振り飛車側の勝率を変更するという選択肢も増えた"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "圧勝率で作る白黒定跡",
+      "description": "単なる勝率ではなく、先手・後手の評価値が一度も敗者側に振れずに勝ち切った対局の割合（圧勝率）を考慮して定跡を作る。「自分が勝ちやすい展開」という考えを踏まえる。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "圧勝率（先手番評価値及び後手番評価値が、一度も敗者側に振れないまま全く紛れなく勝ち切った対局の勝率）を考慮して作成した"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "NNUEの学習限界局面数の分析",
+      "description": "NNUEはネットワークが小さく、三駒関係より学習限界局面数が少なく、少ない局面でも大きく変容する繊細な学習が必要と分析した。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "学習限界局面数が、三駒関係評価関数に比べて少ない"
+    }
+  ],
+  "character": "文書は法律文書風の文体。「ガチ素人」「異世界転生もの」と自称し、「全く期待せず見守ってください」と結ぶ。",
+  "notes": "3/21付の初版と5/13付の（2）を統合",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc29/team.html"
+}

@@ -1,0 +1,47 @@
+{
+  "wcsc": 29,
+  "year": 2019,
+  "dir": "SMS_Shogi",
+  "team": "藤丸 貴裕",
+  "software": "SMS将棋",
+  "sources": [
+    "wcsc29/appeal/SMS_Shogi/appeal.txt"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc29/appeal/SMS_Shogi/appeal.txt"
+  ],
+  "summary": "れさぴょんをベースに、稲庭将棋のアルゴリズムを採用し、評価は手作業で行った。",
+  "base": {
+    "engine": "れさぴょん",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "手作り",
+    "detail": "評価は手作業"
+  },
+  "search": {
+    "family": "不明",
+    "detail": null
+  },
+  "learning": null,
+  "hardware": null,
+  "language": [
+    "C",
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "探索",
+      "title": "稲庭将棋のアルゴリズムの採用",
+      "description": "稲庭将棋のアルゴリズムを採用した。具体的な内容は記載なし。",
+      "originality": "再現・追従",
+      "evidence": null,
+      "quote": "工夫した点は、稲庭将棋のアルゴリズムを採用した所です。"
+    }
+  ],
+  "character": null,
+  "notes": "文書は数行のみ。ライブラリ選定理由はれさぴょんのソースが理解しやすかったから",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc29/team.html"
+}

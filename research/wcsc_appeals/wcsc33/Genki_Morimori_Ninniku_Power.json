@@ -1,0 +1,55 @@
+{
+  "wcsc": 33,
+  "year": 2023,
+  "dir": "Genki_Morimori_Ninniku_Power",
+  "team": "都賀町 えいだ",
+  "software": "元気もりもりニンニクパワー",
+  "sources": [
+    "wcsc33/appeal/Genki_Morimori_Ninniku_Power/appeal.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc33/appeal/Genki_Morimori_Ninniku_Power/appeal.pdf"
+  ],
+  "summary": "Vtuber都賀町えいだが作る、書籍『強い将棋ソフトの創りかた』のC#実装。cshogiを使わずに、Python版を超える棋力を目指す。前回から主にponder関連を追加した。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": "『強い将棋ソフトの創りかた』をC#で再実装。cshogiは使わない"
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "dlshogi型（書籍準拠）"
+  },
+  "search": {
+    "family": "MCTS",
+    "detail": "書籍準拠"
+  },
+  "learning": null,
+  "hardware": "Ryzen 7 5700G + RTX 3060 x2",
+  "language": [
+    "C#",
+    "Python"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "開発手法・運用",
+      "title": "C#でdlshogiを再実装",
+      "description": "書籍『強い将棋ソフトの創りかた』を元に、cshogiライブラリを使わずC#で作り、Python版を超える棋力を目指す。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "python版を超える棋力になること ライブラリ「cshogi」は使用しない"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "定跡なしで特定の戦型を指す",
+      "description": "特定の戦型を定跡なしで指せるようにする。3月31日時点で対応中で、間に合わないかもしれないとしている。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "特定の戦型を定跡なしでできるようにする"
+    }
+  ],
+  "character": "Vtuberが作ったソフトで、名前は公募とアンケートで決め、名付け親がいる。",
+  "notes": "大会後に、できた部分とできなかった部分を追記すると予告。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc33/team.html"
+}

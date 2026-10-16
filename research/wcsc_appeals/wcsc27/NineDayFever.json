@@ -1,0 +1,78 @@
+{
+  "wcsc": 27,
+  "year": 2017,
+  "dir": "NineDayFever",
+  "team": "金澤 裕治",
+  "software": "NineDayFever",
+  "sources": [
+    "wcsc27/appeal/NineDayFever/NDF-2017.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc27/appeal/NineDayFever/NDF-2017.txt"
+  ],
+  "summary": "「局面評価の極北」を掲げ、対戦中に現れた局面から機械学習結果の欠陥を探して修正する評価関数と、自己対戦の勝率分布で手の採用確率を決める定跡が特徴。Bonanza 6.0にStockfishの手法を取り入れ、今年はLazy SMPと楽観合議(8台)を実装した。",
+  "base": {
+    "engine": "Bonanza",
+    "eval_source": null,
+    "note": "Bonanza 6.0にStockfishの手法を取り入れ"
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "三駒関係の各変数を分解して共通要素を抽出したうえで学習し、未知の局面への対応力を高める。手番を考慮した評価値"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "Lazy SMP、楽観合議（8台）。実現確率探索を試作"
+  },
+  "learning": null,
+  "hardware": "AWS EC2 E5-2666 v3、マスター1台＋スレーブ8台（18コア）",
+  "language": [
+    "C"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "対戦中の局面から学習結果の欠陥を探して修正",
+      "description": "対戦中に現れた局面を調べ、機械学習結果の欠陥を探して修正する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "対戦中に現れた局面を調べ、機械学習結果の欠陥を探して修正していています。"
+    },
+    {
+      "category": "評価関数",
+      "title": "三駒関係の変数を分解して共通要素を学習",
+      "description": "三駒関係の各変数を分解して共通する要素を抽出してから学習し、未知の局面への対応能力を高める。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "三駒関係の各変数を分解して共通する要素を抽出したうえで機械学習することで未知の局面への対応能力を高めています。"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "自己対戦の勝率分布から手の採用確率を決める定跡",
+      "description": "自己対戦結果から各局面の勝率分布を推定し、各手の採用確率を決める。自己対戦で振り飛車が不利なため、振り飛車に弱い定跡が残る（人力調整はしない方針）。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "定跡では自己対戦結果から各局面の勝率の分布を推定して各手の採用確率を決めています。"
+    },
+    {
+      "category": "並列・分散",
+      "title": "楽観合議による8台並列化",
+      "description": "Lazy SMPに加えて、楽観合議(8台)で並列化する。連休中に作ったので効果は不明だが、弱くはなっていないという。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "楽観合議(8台)による並列化となりました。"
+    },
+    {
+      "category": "探索",
+      "title": "実現確率探索の試作と失敗",
+      "description": "王手・駒取り・手番ボーナスが高い手が評価値の変化が大きいことを利用し、評価値やSEEと数手先での評価値逆転確率の関係をロジスティック回帰で求めて実現確率探索にしようとした。手抜き実装では評価値ベースの打ち切りと効果が変わらなかった。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "こんな手抜きな実装では評価値ベースの打ち切りと効果が変わらず、きちんと機械学習しないといけないらしい"
+    }
+  ],
+  "character": "「局面評価の極北を目指しています」と掲げる。失敗した試作や、定跡の弱点（振り飛車に自爆する）を隠さず書く率直な文書。",
+  "notes": null,
+  "team_list_url": "http://www2.computer-shogi.org/wcsc27/team.html"
+}

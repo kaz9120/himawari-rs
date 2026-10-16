@@ -1,0 +1,46 @@
+{
+  "wcsc": 20,
+  "year": 2010,
+  "dir": "Eden",
+  "team": "清水賢治",
+  "software": "エデン",
+  "sources": [
+    "wcsc20/appeal/Eden/Eden.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc20/appeal/Eden/Eden.txt"
+  ],
+  "summary": "Common Lispで実装した将棋思考ルーチン、との一文のみ。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "不明",
+    "detail": null
+  },
+  "search": {
+    "family": "不明",
+    "detail": null
+  },
+  "learning": null,
+  "hardware": null,
+  "language": [
+    "Common Lisp"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "実装・高速化",
+      "title": "Common Lispでの実装",
+      "description": "将棋の思考ルーチンをCommon Lispで実装している。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "Common Lispで実装した将棋思考ルーチンです"
+    }
+  ],
+  "character": null,
+  "notes": "一行のみの文書。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc20/team.html"
+}

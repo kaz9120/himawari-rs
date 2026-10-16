@@ -1,0 +1,70 @@
+{
+  "wcsc": 34,
+  "year": 2024,
+  "dir": "Nanoha",
+  "team": "川端 一之",
+  "software": "なのは",
+  "sources": [
+    "wcsc34/appeal/Nanoha/Nanoha_appeal2024.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc34/appeal/Nanoha/Nanoha_appeal2024.pdf"
+  ],
+  "summary": "Stockfishを将棋化したなのはminiをベースに、KPPT評価で出場する。本人が「平凡な構成」と書く一方、キャラクター性と、現地参加・詰め将棋ルーチン・NNUE化などの意気込みと野望を語る。",
+  "base": {
+    "engine": "独自（Stockfish 8改を将棋化したなのはmini）",
+    "eval_source": "やねうらお氏配布の110億教師データ、nodchip氏配布の教師データ（予定）",
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "KPPT（3駒関係）"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "Stockfish 8改から15.1改への強化を予定"
+  },
+  "learning": "一般に流布する教師データで評価ベクトルを学習する予定",
+  "hardware": "Minisforum UM790Pro、Ryzen 9 7940HS",
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "探索",
+      "title": "Stockfishの将棋化",
+      "description": "Stockfishをベースに独自に将棋化したなのはminiを使い、探索部をStockfish 8改から15.1改へ強化する予定。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "Stockfishをベースに独自に将棋化しました"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "出現数と勝率で選ぶ定跡",
+      "description": "定跡部は実戦での出現数と勝率を考慮して手を選ぶ。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "定跡部は実戦での出現数および勝率を考慮して手を選択"
+    },
+    {
+      "category": "探索",
+      "title": "歩・角・飛の不成の生成",
+      "description": "手生成で歩、角、飛の不成も生成する。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "手生成では歩、角、飛の不成も生成"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "今後の野望",
+      "description": "Ryzen AIの活用、NNUE化、ミクロコスモスを解く、非コピーレフト系ライセンスでの開発を挙げる。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "ミクロコスモスを解く"
+    }
+  ],
+  "character": "名前はアニメ『魔法少女リリカルなのは』の主人公に由来する。「名前負けしている」と自虐し、好きなアニメや絵（COCOさん）も載せた、パーソナリティを前面に出すスライド。現地会場から参加する。",
+  "notes": "本人が「数年前に見たような平凡な構成」と書く。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc34/team.html"
+}

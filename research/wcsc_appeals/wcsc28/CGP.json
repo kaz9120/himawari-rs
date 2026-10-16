@@ -1,0 +1,70 @@
+{
+  "wcsc": 28,
+  "year": 2018,
+  "dir": "CGP",
+  "team": "大熊 三晴",
+  "software": "CGP",
+  "sources": [
+    "wcsc28/appeal/CGP/appeal.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc28/appeal/CGP/appeal.pdf"
+  ],
+  "summary": "ライブラリを使わず一から作った非ビットボード型のソフト。高NPSを目指して利き・評価途中結果を保持し、AVX-512やラージページなどでの高速化が売り。評価関数は手番付きKPPで自力学習する。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "手番付きKPP。駒割+入玉位置評価の初期値から自力で機械学習（精度は低いと自己評価）"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "LazySMPで並列化"
+  },
+  "learning": "評価関数テーブルを駒割と入玉時位置評価のみの初期値から自力で機械学習。定跡・既存の局面評価値セット・読み筋は不使用",
+  "hardware": "Core i9 7940X（AVX-512）",
+  "language": [
+    "C"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "実装・高速化",
+      "title": "非ビットボードで利き・途中結果を保持",
+      "description": "局面構造体に各マスの利きと、評価関数の演算途中結果（変化が少ないもの）を保持する。メモリ待ち時間に演算を回すことで高速化する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "局面構造体に各マスへの利きの状態を保持"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "AVX-512・SIMDの活用",
+      "description": "評価値算出・オーダリング・構造体コピーでSIMDを使う。オーダリングはVPMAX命令で次に試す手を分岐なしで抜き出し、挿入ソートより高速化する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "オーダリングの一部は VPMAX 命令で次に試す手を抜き出す方式"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "ラージページの利用",
+      "description": "置換表や評価値テーブルにラージページ（Huge Page）を使いTLBミスを減らす。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "置換表や評価値テーブルのページテーブルにラージページ"
+    },
+    {
+      "category": "開発手法・運用",
+      "title": "全部自作のこだわり",
+      "description": "一般に流布する定跡や局面と評価値のセット、読み筋を使わず、ライブラリも使わない。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "一般に流布している定跡データや、一般に流布している「局面と評価値のセット」"
+    }
+  ],
+  "character": "「無駄に一から作成」「無駄に高NPS」と自虐的に書く、こだわりの自作派。これまで5大会すべて勝率5割。",
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc28/team.html"
+}

@@ -1,0 +1,169 @@
+{
+  "wcsc": 33,
+  "year": 2023,
+  "dir": "dlshogi_with_HEROZ",
+  "team": "HEROZチーム",
+  "software": "dlshogi with HEROZ",
+  "sources": [
+    "wcsc33/appeal/dlshogi_with_HEROZ/dlshogi_with_HEROZ_appeal_wcsc33.pdf",
+    "wcsc33/appeal/dlshogi_with_HEROZ/dlshogi_with_HEROZ_appeal_detail_wcsc33_2.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc33/appeal/dlshogi_with_HEROZ/dlshogi_with_HEROZ_appeal_wcsc33.pdf",
+    "https://www.apply.computer-shogi.org/wcsc33/appeal/dlshogi_with_HEROZ/dlshogi_with_HEROZ_appeal_detail_wcsc33_2.pdf"
+  ],
+  "summary": "AlphaGoの手法を参考にしたDL将棋AI。30ブロック384フィルタのResNetに大型化し、終盤の詰み探索、強化学習の工夫、Stochastic Multi Ponderなど多数の独自工夫を持つ。今大会は、水匠の先手角換わり定跡への後手番対策を自動定跡作成で行った。",
+  "base": {
+    "engine": "独自（dlshogi）",
+    "eval_source": null,
+    "note": "局面管理・合法手生成にApery(WCSC28)を使用"
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "ResNet 30ブロック384フィルタ、Policy+Value。入力に利き数・王手などのドメイン知識を使う"
+  },
+  "search": {
+    "family": "MCTS",
+    "detail": "PUCT+FPU reduction、MCTSとAND/OR木の併用、df-pn詰み探索"
+  },
+  "learning": "自己対局の強化学習。elmo自己対局での事前学習、既存プログラム混在のリーグ戦、詰み探索を報酬、SWAなど",
+  "hardware": "EPYC 7742 A100x8、9台クラスタ構成",
+  "language": [
+    "C++",
+    "Python"
+  ],
+  "claimed_strength": "電竜戦のモデルからレーティング約+40。方策正解率55.85%、価値正解率77.65%",
+  "ideas": [
+    {
+      "category": "定跡・序盤",
+      "title": "自動定跡作成と後手番の角換わり対策",
+      "description": "水匠の先手角換わり定跡に対し、角換わり同型腰掛け銀の37手目基本図が先手必勝か検証した。dlshogiと水匠5の手を考慮して約1か月の自動定跡作成で、後手がどう指しても先手の評価値400以上と判明。後手からの角交換を負け扱いにして回避する定跡を作った。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "後手がどのように指しても先手番が評価値 400 以上になることがわかった。"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "8手目後手1四歩で引き分け",
+      "description": "新定跡で、二次予選でやねうら王（水匠定跡）の先手に、ほとんど指されていない8手目1四歩を指して後手で引き分けた。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "8 手目１四歩というこれまでほとんど指されていない手で後手番で引き分けることができた。"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "有望手順を選択的に追加する事前探索定跡",
+      "description": "自分の手は最善手1手（または数手）を登録し、応手は公開定跡や棋譜の統計から確率的に選んで、頻度が高い局面は深く、低い局面は浅い定跡にする。作成時はPUCTの方策をfloodgate棋譜統計と平均化して読み抜けを防ぐ。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "固定の手数までの定跡を作成するよりも、有望な手順を選択的に定跡に追加する方が良い。"
+    },
+    {
+      "category": "詰み・終盤",
+      "title": "MCTSに詰み探索を多層で統合",
+      "description": "末端で5手詰、ルートでdf-pnの長手数詰、確定ノードのAND/OR木伝播、PV上局面の長手数詰を組み合わせ、DL系の終盤の弱さを補う。末端の詰みはGPU計算中のCPU空き時間に行う。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "dlshogi 以前にこれらを導入しているディープラーニング系の将棋 AI はなかった。"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "df-pnの詰み結果を報酬にした強化学習",
+      "description": "自己対局で詰み探索要求をキューに溜め、専用スレッドで処理して、速度を落とさず長手数の詰みを報酬に使う。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "df-pn による高速な長手数の詰み探索の結果を報酬とした。"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "既存プログラムを1/8混ぜたリーグ戦",
+      "description": "自己対局だけでは戦略に弱点が生まれるため、公開済みの既存将棋プログラムを1/8の割合でリーグに加えて強化学習する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "既存の将棋プログラムを 1/8 の割合でリーグに加えて強化学習を行うようにした。"
+    },
+    {
+      "category": "入玉",
+      "title": "水匠の入玉宣言勝ち棋譜を混ぜて学習",
+      "description": "dlshogiが入玉宣言勝ちを目指さない課題に対し、水匠の自己対局から入玉宣言勝ちの棋譜を作って学習データに混ぜた。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "入玉宣言勝ちの棋譜を生成し、dlshogi の自己対局のデータに混ぜて学習した。"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "確率分布学習・同一局面の平均化・評価値補正",
+      "description": "MCTSのルート子ノードの訪問回数分布を学習し、重複局面は確率分布と勝敗を平均して1サンプルにし、記録した評価値を実際の勝率に合わせて補正する。確率分布学習はOptunaで探索パラメータを再調整して強くなった。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "局面の偏りをなくするために、同一の局面を集約し、指し手の確率分布と勝敗を平均化し、1 サンプルとして学習した。"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "SWAの導入",
+      "description": "学習時に一定間隔で重みを平均化するStochastic Weight Averagingを取り入れ、アンサンブル効果を狙う。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "SWA では学習時に一定間隔で重みを平均化することでアンサンブルの効果を実現する。"
+    },
+    {
+      "category": "並列・分散",
+      "title": "Stochastic Multi Ponder",
+      "description": "ponder中に相手局面からMCTSを行い（Stochastic Ponder）、ルートの子ノードの訪問回数から有望な予測手N手を取って分散探索する（Multi Ponder）。外れても遜色ない手を指せる。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "Stochastic Ponder と Multi Ponder を組み合わせて使う。"
+    },
+    {
+      "category": "探索",
+      "title": "GPUバッチ処理向けの並列化",
+      "description": "複数シミュレーションの末端を1スレッドでまとめてGPUにバッチ処理し、CPUが空く間に同じ処理のスレッドをもう一つ走らせる。マルチGPUでも4GPUまでほぼ線形に伸びる。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "2 つのスレッドが相互に CPU と GPU を利用するため、利用効率が高い処理が可能となる。"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "2値入力特徴を1ビット転送",
+      "description": "4GPU以上でCPU-GPU間の帯域がボトルネックになるため、2値の入力特徴を1ビットで送りGPU側でfloatに戻す。",
+      "originality": "独自",
+      "evidence": "NPS +36.6%",
+      "quote": "NPS が 36.6%向上した。"
+    },
+    {
+      "category": "開発手法・運用",
+      "title": "Optunaで対局勝率から探索パラメータ最適化",
+      "description": "将棋エンジン同士の連続対局の勝率を目的関数にしてOptunaで最適化するスクリプトを作った。枝刈りで少ない対局数で収束させる。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "Optuna の枝刈り機能により、少ない対局数で収束させることができる。"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "ノード再利用のGC方式の見直し",
+      "description": "ハッシュ全走査で10秒以上かかったノード再利用を、Leela Chess Zero型の木構造管理に変え、ルートの兄弟ノードのGCにして短時間化した。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "ルートの兄弟ノードをガベージコレクションする方式に変更した。"
+    },
+    {
+      "category": "評価関数",
+      "title": "入力特徴にドメイン知識を使う",
+      "description": "盤面の駒配置に加え利き数と王手の有無を入力し、学習時間の短縮を実験で確認した。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "入力特徴に盤面の駒の配置の他に、利き数と王手がかかっているかという情報を加えている。"
+    },
+    {
+      "category": "探索",
+      "title": "未探索ノードの価値に親の価値を使う",
+      "description": "UCB計算で未探索の子ノードの価値に親の価値を動的に使い、訪問が増えると減衰させて深さ優先にする（FPU reduction）。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "それまでの探索で見積もった親のノードの価値を動的に初期値として使用する。"
+    }
+  ],
+  "character": "HEROZ社の将棋AI開発者チームとして初参加。社内の計算資源で強化学習し、戦型・定跡の作戦を準備した。",
+  "notes": "アピール文書の本編は第32回との差分に下線を付ける形式。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc33/team.html"
+}

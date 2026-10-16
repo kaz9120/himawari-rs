@@ -1,0 +1,60 @@
+{
+  "wcsc": 26,
+  "year": 2016,
+  "dir": "Claire",
+  "team": "Claire開発室",
+  "software": "Claire",
+  "sources": [
+    "wcsc26/appeal/Claire/wcsc26_appeal.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc26/appeal/Claire/wcsc26_appeal.txt"
+  ],
+  "summary": "プログラミング歴2年半、将棋ウォーズ初段程度の作者による初参加ソフト。やねうら王の評価パラメータを使い、Stockfish7風の探索にLazy SMPを載せる。目標は最後まで指しきること。",
+  "base": {
+    "engine": "やねうら王",
+    "eval_source": "やねうら王",
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "駒割り、手番、玉の安全度（玉周辺の利きの数）、KKP/KPP。パラメータはやねうら王のもの"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "PVS、Null Move Pruning、Razoring。結局Stockfish7風に少しパラメータを変えた程度。Lazy SMP"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": "C++",
+  "claimed_strength": "1手1秒の500戦で269-8-223（勝率54%、攻撃手番ボーナスの効果）",
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "攻撃の手番を持つ側へのボーナス",
+      "description": "攻撃の手番を持っている側の評価値にボーナスを加える。",
+      "originality": "独自",
+      "evidence": "1手1秒500戦で269-8-223、勝率54%",
+      "quote": "攻撃の手番を持っている側の評価値にいくらかのボーナスを加えています。"
+    },
+    {
+      "category": "評価関数",
+      "title": "玉周辺の利きの数で玉の安全度",
+      "description": "玉の安全度として、玉周辺の利きの数を見る。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "玉の安全度として、玉周辺の利きの数を見ています。"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "32手目まで定跡で指す",
+      "description": "2015年のfloodgateの棋譜約8万局から、前例が多く勝率の高い手で定跡を作る。終盤に時間を残すため、最大32手目まで定跡を使う。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "少しでも終盤に時間を残したかったので最大32手目まで定跡で指すようにしました。"
+    }
+  ],
+  "character": "目標は「最後まで指しきること」。「ルール通り指せます（たぶん）」と書き、5月の追記で「指せてなかった」と認める飾らない文体。",
+  "notes": "5/8追記あり",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc26/team.html"
+}

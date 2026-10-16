@@ -1,0 +1,62 @@
+{
+  "wcsc": 23,
+  "year": 2013,
+  "dir": "Yamada_Shogi",
+  "team": "山田 泰広",
+  "software": "山田将棋",
+  "sources": [
+    "wcsc23/appeal/Yamada_Shogi/yamadashogi_appeal_2013.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc23/appeal/Yamada_Shogi/yamadashogi_appeal_2013.txt"
+  ],
+  "summary": "クラシカルな構造・アルゴリズムの手作り評価関数ソフト。駒背番号制、囲いへ誘導する落とし穴表、玉からの距離評価表、pinned/coverの概念などデータ構造に工夫が多い。YSS式の指し手反復生成、Crafty方式の並列探索、簡易必死・一手詰め検出を使う。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "手作り",
+    "detail": "駒割、玉の安全度、囲い、盤上の利き、当たり、大駒の働き、そっぽ、金駒のひも等の線形和"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "反復深化、静かでない局面の延長、null move、LMR、killer、pass move、予測読み、Crafty方式並列"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": [
+    "C"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "落とし穴表で囲いへ誘導",
+      "description": "駒組みを囲いへ誘導するための「落とし穴表」と、玉位置からの距離に応じた評価値表を持つ。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "囲いへ誘導するための落とし穴表、"
+    },
+    {
+      "category": "詰み・終盤",
+      "title": "簡易必死・一手詰め検出",
+      "description": "rootノードで簡易必死検出、leaf付近で簡易一手詰み検出（今回新規）を行う。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "leaf ノード付近での簡易一手詰み検出(今回新規導入)"
+    },
+    {
+      "category": "探索",
+      "title": "手調整した仮評価によるオーダリングと枝刈り",
+      "description": "手調整した仮評価で手の並べ替えと前向き枝刈りを行う。YSS式の指し手の反復生成も使う。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "手調整した仮評価による手のオーダリングと前向き枝狩り"
+    }
+  ],
+  "character": null,
+  "notes": null,
+  "team_list_url": "http://www2.computer-shogi.org/wcsc23/team.html"
+}

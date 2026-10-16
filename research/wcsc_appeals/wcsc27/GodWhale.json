@@ -1,0 +1,70 @@
+{
+  "wcsc": 27,
+  "year": 2017,
+  "dir": "GodWhale",
+  "team": "宇宙将棋連合 タイでエビを釣る支部（鈴木 雅博）",
+  "software": "大合神クジラちゃん",
+  "sources": [
+    "wcsc27/appeal/GodWhale/appeal.pdf"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc27/appeal/GodWhale/appeal.pdf"
+  ],
+  "summary": "ニコニコ生放送のリスナーのパソコンをクラスタにするボランティアコンピューティングで動くソフト。前回は200台以上で動かした。GUIも自作し、クジラちゃんを擬人化して取り込んでいる。",
+  "base": {
+    "engine": "Apery",
+    "eval_source": "SILENT_MAJORITY（微修正、Aperyへ変更の可能性あり）",
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "スレーブはSILENT_MAJORITYの微修正"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "マスタ/スレーブのクラスタ。ルートで1手だけ分配してスレーブに探索させる。スレーブはLazySMP"
+  },
+  "learning": null,
+  "hardware": "ニコニコ生放送リスナーのPC（前回は200台以上）",
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "並列・分散",
+      "title": "視聴者PCのボランティアクラスタ",
+      "description": "ニコニコ生放送のリスナーのPCをスレーブにして、マスタが管理するクラスタ探索を行う。前回の選手権では200台以上で動かした。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "スレーブを動かすのは主にニコニコ生放送リスナーのパソコンを考えています。"
+    },
+    {
+      "category": "並列・分散",
+      "title": "ルートで1手ずつ分配し同じ手を2スレーブへ",
+      "description": "ルートで1手だけ手を分配してその局面をスレーブに探索させる。スレーブの冗長性のため、同じ手を2つのスレーブに探索させる。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "スレーブに冗長性を持たせるため同じ手を 2 つのスレーブに探索させています。"
+    },
+    {
+      "category": "エンタメ・演出",
+      "title": "クジラちゃんを擬人化した自作GUI",
+      "description": "将棋を動かすGUIを自作し、クジラちゃんを擬人化してGUI内に取り込んだ。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "クジラちゃんを擬人化し、GUI 内に取り込みました。"
+    },
+    {
+      "category": "開発手法・運用",
+      "title": "配信リスナーと一緒に開発",
+      "description": "ニコニコ生放送の毎週の配信の中で開発を始め、リスナーと一緒に進めている。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "開発は放送リスナーと一緒に進めており"
+    }
+  ],
+  "character": "ニコ生配信とリスナー参加型の開発、クジラちゃんの擬人化GUI、リスナーPCによるボランティアコンピューティングで、コミュニティ性を前面に出す。第23回では独創賞を獲得した。",
+  "notes": "過去の戦績は第23回27位（独創賞）、第24回16位、第25回19位。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc27/team.html"
+}

@@ -1,0 +1,52 @@
+{
+  "wcsc": 22,
+  "year": 2012,
+  "dir": "QinoaSyougi",
+  "team": "山田元気",
+  "software": "きのあ将棋",
+  "sources": [
+    "wcsc22/appeal/QinoaSyougi/appeal.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc22/appeal/QinoaSyougi/appeal.txt"
+  ],
+  "summary": "思考エンジンの強化より、コンピュータ将棋を使った人間の振る舞いの調査が面白くなっている、という報告。弱い相手ほど人間が対局してくれるか、不利になると人間が嫌になるかなどを調べた。新バージョンは旧版に勝率7.9%と後退し、今年は旧版に勝ち越すことが目標。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "不明",
+    "detail": null
+  },
+  "search": {
+    "family": "不明",
+    "detail": null
+  },
+  "learning": null,
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "研究・実験的",
+      "title": "コンピュータの思考時間と人間の振る舞いの調査",
+      "description": "コンピュータの思考時間を変えると人間の対局行動がどう変わるかを調べる実験を、Webで報告している。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "コンピュータの思考時間と人間の振る舞いの調査"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "勝率ごとの対局数・試合対局数の調査",
+      "description": "弱いコンピュータほど人間が対局してくれるか、不利になると人間が嫌になるかを、勝率別の対局数で確かめる。統計は資料化していない。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "弱いコンピューターほど人間が対局してくれるかどうかの確認"
+    }
+  ],
+  "character": "強さより人間の振る舞いへの関心が中心。新きのあ将棋が旧版に7.9%（38局）しか勝てず、「今年は昔の旧きのあ将棋に勝ち越せるようにしたい」と書く。",
+  "notes": "「きのあ」を使うオンライン将棋サービスの関心が背景にある。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc22/team.html"
+}

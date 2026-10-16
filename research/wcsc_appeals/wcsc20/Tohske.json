@@ -1,0 +1,55 @@
+{
+  "wcsc": 20,
+  "year": 2010,
+  "dir": "Tohske",
+  "team": "草野一彦、須藤郁弥、本田耕一（東北大学）",
+  "software": "Tohske",
+  "sources": [
+    "wcsc20/appeal/Tohske/tohske.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc20/appeal/Tohske/tohske.txt"
+  ],
+  "summary": "約7万局面の勝ち越し局面を定跡にし、Bonanza Methodで評価を学習する。ミニマックス探索の評価値をベクトル化して、1つの探索で複数プログラム分の合議を行う「ぼっち合議」が独自。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "駒の価値、持駒の価値、駒の位置、2駒の相対位置"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "αβ＋静止探索、局面表、反復深化・キラー・SEEで並べ替え、Null Move、王手1手延長、Scout"
+  },
+  "learning": "Bonanza Methodで学習中",
+  "hardware": null,
+  "language": [
+    "C++",
+    "Python"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "並列・分散",
+      "title": "ぼっち合議",
+      "description": "合議アルゴリズムを密結合な1プログラムに適用する。静止探索の評価値に仮想プログラムごとの正規乱数を加えてベクトルにし、ミニマックス/αβを要素ごとに更新する。実行時間の大半は静止探索と手生成なので、仮想プログラム8台でも1台の約2倍の時間に収まる。",
+      "originality": "独自",
+      "evidence": "仮想プログラム8台で1台の約2倍の思考時間",
+      "quote": "合議アルゴリズムを密結合なシステムに適用すること"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "勝ち越し局面のみを定跡化",
+      "description": "プロ・アマ強豪の棋譜から、手番側が2勝以上した約7万局面を抽出し、勝ち数の多い手を優先してランダムに返す。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "手番を持っている側が２勝以上している約７万局面を抽出し、定跡としている"
+    }
+  ],
+  "character": null,
+  "notes": "「ぼっち合議」は組み込み中と記載。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc20/team.html"
+}

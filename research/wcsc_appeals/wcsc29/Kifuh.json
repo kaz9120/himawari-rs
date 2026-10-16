@@ -1,0 +1,46 @@
+{
+  "wcsc": 29,
+  "year": 2019,
+  "dir": "Kifuh",
+  "team": "Vo Chi Cong",
+  "software": "棋風",
+  "sources": [
+    "wcsc29/appeal/Kifuh/appeal.md"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc29/appeal/Kifuh/appeal.md"
+  ],
+  "summary": "AlphaZeroベースの強化学習で、相手に応じて棋風を変えて指すソフトを実装中とする短い文書。大会はキャンセル。",
+  "base": {
+    "engine": "やねうら王",
+    "eval_source": "Apery・tanuki-の利用を検討",
+    "note": null
+  },
+  "eval": {
+    "family": "DL",
+    "detail": null
+  },
+  "search": {
+    "family": "MCTS",
+    "detail": null
+  },
+  "learning": "AlphaZeroベースの強化学習",
+  "hardware": null,
+  "language": [
+    "Python"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "棋風・人間らしさ",
+      "title": "相手に応じて棋風を変える",
+      "description": "対戦相手に応じて棋風を変えて対局する構想（実装中）。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "相手に応じて棋風を変えて対局"
+    }
+  ],
+  "character": null,
+  "notes": "一覧では「キャンセル」。使用ライブラリは検討中の段階。探索はやねうら王とある",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc29/team.html"
+}

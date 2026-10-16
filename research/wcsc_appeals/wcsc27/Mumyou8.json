@@ -1,0 +1,37 @@
+{
+  "wcsc": 27,
+  "year": 2017,
+  "dir": "Mumyou8",
+  "team": "David Wada",
+  "software": "無明8",
+  "sources": [
+    "wcsc27/appeal/Mumyou8/appeal_2017.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc27/appeal/Mumyou8/appeal_2017.txt"
+  ],
+  "summary": "Javaで書かれた海外開発者のソフト。多忙で開発時間が取れず、昨年のコードを少しずつ改造した。評価関数はBonanza 6のパラメータを借用している。",
+  "base": {
+    "engine": "独自",
+    "eval_source": "Bonanza Ver.6（評価値のみ）",
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "Bonanza 6からパラメータを借用"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "Aspiration、PV Split並列、Futility Pruning、Razoring、NFDP詰探索"
+  },
+  "learning": null,
+  "hardware": "Core i7 5960X 4.2GHz(OC) 8コア 32GB",
+  "language": [
+    "Java"
+  ],
+  "claimed_strength": null,
+  "ideas": [],
+  "character": "「多忙な社畜と化した我」と書く自虐的な語り口。来年こそ独自路線をと添える。",
+  "notes": null,
+  "team_list_url": "http://www2.computer-shogi.org/wcsc27/team.html"
+}

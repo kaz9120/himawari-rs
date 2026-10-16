@@ -1,0 +1,87 @@
+{
+  "wcsc": 28,
+  "year": 2018,
+  "dir": "Hefeweizen",
+  "team": "Barrel house（芝世弐、角南宏美、松下光則、三宅泰宏）",
+  "software": "Hefeweizen",
+  "sources": [
+    "wcsc28/appeal/Hefeweizen/appeal.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc28/appeal/Hefeweizen/appeal.pdf"
+  ],
+  "summary": "やねうら王の探索部に、分岐先読みクラスタ（Multi Ponder）と、人造棋士18号で作った評価関数（棋人ブゥ）を組み合わせたクラウド構成。5月16日の追記は選手権後に書かれ、優勝ソフトの実態を明かしている。",
+  "base": {
+    "engine": "やねうら王",
+    "eval_source": "人造棋士18号で作成した評価関数（棋人ブゥ13番）",
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "人造棋士18号が生成した評価関数。延べ14種を作り、対戦で2つを選定し本番は13番のみ使用"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "やねうら王の探索部。5つの同一探索部を持つ先読みクラスタ（shotgunの亜種）"
+  },
+  "learning": "人造棋士18号のツールで評価関数14種を生成し、複数エンジンとの対戦でエース級2つを選別",
+  "hardware": "VAIO Z13A + AWS m5.24xlarge 5台（東京リージョン）",
+  "language": [
+    "C++",
+    "Python"
+  ],
+  "claimed_strength": "第28回優勝",
+  "ideas": [
+    {
+      "category": "並列・分散",
+      "title": "分岐先読みクラスタ（Multi Ponder）",
+      "description": "同一の探索部5台が、自分の手を指した直後から相手の候補手ごとの局面を探索する。1つでも予想が当たれば相手の考慮時間分の探索が済んでおり、時間的優位を作る。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "Multi Ponder のひとつでも正解すれば相手の考慮時間分既に探索されています。"
+    },
+    {
+      "category": "探索",
+      "title": "独自学習した技巧型の相手手予測",
+      "description": "Multi Ponderの相手の手予測に、技巧2を改造し独自に学習させた予測エンジンを使った。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "相手の手を予測する部分（Multi Ponder）には独自に学習させた技巧型の予測エンジンを用いました。"
+    },
+    {
+      "category": "評価関数",
+      "title": "人造棋士18号による評価関数の量産と選抜",
+      "description": "人造棋士18号のツールで棋人ブゥシリーズを延べ14種作り、複数エンジンとの対戦でエース級2つ（12番・13番）を選んで本番は13番を使った。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "棋人ブゥシリーズは延べ 14 種類あり"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "定跡外しを自動延長する定跡",
+      "description": "仮想敵の複数エンジンに定跡を外された局面を列挙し、自動で定跡を延長する。勝率が低い戦型は手動で枝刈りする。前回shotgunの定跡が土台で、depth24程度の部分は深く再計算した。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "仮想敵とされた複数のエンジンに対して定跡を外されたものをリストアップし、定跡延長を行う自動ルーチンで生成されています。"
+    },
+    {
+      "category": "ハードウェア",
+      "title": "東京リージョンに全AWSを置く通信遅延対策",
+      "description": "通信遅延が気になるため、AWSのm5.24xlarge5台を東京リージョンで確保し、一次予選を早指しして遅延テストにした。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "通信遅延が気になったため AWS インスタンスは全て東京リージョンで確保し"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "魔改造した技巧2",
+      "description": "技巧2を改造し（用途は最後まで迷った）、探索部のオーダリングと手予測で使った。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "魔改造した技巧２"
+    }
+  ],
+  "character": "チーム名はメンバーが集まった岡山のビアバー「Barrel house」から、ソフト名は南ドイツの白ビールから。全員初参加で「冷たい白ビールのようなフレッシュなチーム」と自称する。5/16追記で「書き方が雑というか予定ばっかり」と自己ツッコミし、優勝後に正直に内訳を明かす。",
+  "notes": "本文は4月13日版と5月16日追記の2層構成。評価関数バイナリはネットで公開と書く。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc28/team.html"
+}

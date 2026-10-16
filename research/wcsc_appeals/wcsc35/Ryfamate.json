@@ -1,0 +1,74 @@
+{
+  "wcsc": 35,
+  "year": 2025,
+  "dir": "Ryfamate",
+  "team": "駒の書体",
+  "software": "Ryfamate",
+  "sources": [
+    "wcsc35/appeal/Ryfamate/Ryfamate_appeal20250331.html",
+    "wcsc35/appeal/Ryfamate/review_ryfamate_20250519.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc35/appeal/Ryfamate/Ryfamate_appeal20250331.html",
+    "https://www.apply.computer-shogi.org/wcsc35/appeal/Ryfamate/review_ryfamate_20250519.pdf"
+  ],
+  "summary": "「おうちパソコンのパワーを最大限活用する」をコンセプトに、DL系評価関数RyfcNetと、1台のPCでDL+NNUEの変則多数決合議を行うシステムが特徴。今大会は合議の第3エンジンを対局途中で切り替える試みを採用した。大会後版では、決勝のdlshogi with HEROZ戦の逆転を振り返る。",
+  "base": {
+    "engine": "やねうら王+dlshogi",
+    "eval_source": null,
+    "note": "dlshogiとやねうら王を一部改良して合議の探索部に使用"
+  },
+  "eval": {
+    "family": "DL+NNUE",
+    "detail": "RyfcNet（ResNet+TransformerとC-Layerの組み合わせ）と公開NNUE評価関数"
+  },
+  "search": {
+    "family": "αβ+MCTS",
+    "detail": "DL系エンジンとNNUE型エンジンの変則多数決合議"
+  },
+  "learning": "加納氏・山岡氏・たややん氏・nodchip氏の公開教師局面と評価関数を使用。アンサンブルと知識蒸留、RAdam・LAMBとSGDを層ごとに切り替えるハイブリッド最適化",
+  "hardware": "Ryzen Threadripper 2950X + RTX 4090（一部の対局は5950X+3090+c7a.24xlarge）",
+  "language": [
+    "C++",
+    "C#",
+    "Python"
+  ],
+  "claimed_strength": "事前の短時間計測で、第3エンジン切替の合議はR+10〜+30程度",
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "C-Layer: 盤全幅カーネルの畳み込み",
+      "description": "9×9固定の盤面を利用し、2つ以上の次元について入力と同じ長さのカーネルを持ち、残りの次元だけを移動させる畳み込み（9x1と1x9など）。離れたマスの関係を少ない層で捉え、NNUEのように駒の絶対位置を認識できる。5x5や7x7のカーネルとは、絶対位置依存の重みを持つ点で根本的に異なる。",
+      "originality": "独自",
+      "evidence": "dlshogiが採用（9x1・1x9・1x1の置換）",
+      "quote": "絶対位置に依存する重みパラメータを持つという点において、5×5 や 7×7 などのカーネルを採用する手法とは根本的に異なる性質を有する"
+    },
+    {
+      "category": "探索",
+      "title": "変則多数決合議",
+      "description": "DL系とNNUE型の2エンジンを同時に思考させ、意見が異なるときだけ第3のエンジンに意見を聞く。1台のPCで、GPU向けのDLとCPU向けのNNUEを並走させて資源を使い切る。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "両エンジンの意見が異なる場合にのみ第 3 のエンジンに意見を聞く変則合議"
+    },
+    {
+      "category": "探索",
+      "title": "対局途中で第3エンジンを切り替える",
+      "description": "序盤はDL系2つ+NNUE型1つ、終盤はDL系1つ+NNUE型2つの構成に切り替える。長時間の大会では終盤の逆転が少なくなるため、効果は不明。決勝のdlshogi with HEROZ戦の逆転は、合議で避けられなかったと分析している。",
+      "originality": "独自",
+      "evidence": "事前の短時間計測でR+10〜+30",
+      "quote": "序盤は DL 系エンジン 2 つと NNUE 型エンジン 1 つ、終盤は DL 系エンジン 1 つと NNUE 型エンジン 2 つで合議を行う"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "活性化関数・スキップ接続・混合オプティマイザ",
+      "description": "複数の活性化関数と改良したスキップ接続で勾配劣化を和らげ、アンサンブルと知識蒸留で教師にし、RAdam/LAMBとSGDを層単位で使い分ける。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "RAdam or LAMB optimizers alongside Stochastic Gradient Descent (SGD) at the layer level"
+    }
+  ],
+  "character": "名前は結核の2剤併用薬Rifamateに由来し、耐性菌を防ぐ併用療法のように、NNUEのαβとDLのMCTSの併用で弱点を補い合う。闘病から復帰した経歴と「おうちパソコンのパワーを最大限活用する」というコンセプトが、応援を集めた。",
+  "notes": "大会後版(review)は5/19付で、決勝の逆転局面の分析（89手目75角と77桂の意見相違）を含む。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc35/team.html"
+}

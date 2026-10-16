@@ -1,0 +1,68 @@
+{
+  "wcsc": 26,
+  "year": 2016,
+  "dir": "nozomi",
+  "team": "大森 悠平",
+  "software": "nozomi",
+  "sources": [
+    "wcsc26/appeal/nozomi/nozomi20160501.pdf"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc26/appeal/nozomi/nozomi20160501.pdf"
+  ],
+  "summary": "お手軽に強くすることを目指したソフト。電王トーナメントでBonanza改造の評価バイナリを使っていたが、今回から自前の学習部で評価を作る。KPPとKKPを絶対・相対・次元下げの項に分解して学習し、Stockfishの最新のLazy SMPを採用。",
+  "base": {
+    "engine": "Stockfish",
+    "eval_source": "Aperyを参考（コードは直接使用せず）",
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "KPPとKKPを絶対と相対のKPP/KP/PPなどに分解し、盤上の各駒を進める方向でも分解。手番評価なし"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "Stockfishから多くを流用。Lazy SMP。置換表のキーを32bitにし、枝刈りを少なめに調整"
+  },
+  "learning": "インターネットの棋譜約55000局とfloodgateの棋譜約25000局から学習。1手0.1秒の3000局の自己対局をするようになった",
+  "hardware": "",
+  "language": "C++",
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "KPP・KKPを絶対項と相対項に分解",
+      "description": "KPPを絶対KPP+相対KPP+絶対KP+相対KP+絶対PP+相対PP、KKPを絶対KKP+相対KKP+絶対KP+相対KP+絶対KKに分解して学習し、さらに盤上の各駒を進める方向でも分解する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "KPP = 絶対KPP + 相対KPP + 絶対KP + 相対KP + 絶対PP + 相対PP"
+    },
+    {
+      "category": "探索",
+      "title": "置換表キーの32bit化と枝刈り緩め",
+      "description": "Stockfishの置換表キーを32bitにし、基本的に枝刈りを少なくする方向でパラメータを調整する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "TranspositionTableのKeyを32bitにしています"
+    },
+    {
+      "category": "並列・分散",
+      "title": "Stockfishに合わせたLazy SMP",
+      "description": "最新のStockfishに合わせてLazy SMPを採用。4コアでは誤差程度だが、8スレッドなら効くとする。",
+      "originality": "再現・追従",
+      "evidence": null,
+      "quote": "最新のStockfishに合わせてLazySMPを採用しています"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "1手0.1秒3000局の自己対局",
+      "description": "流行に乗って1手0.1秒で3000局の自己対局をするようになった。ただしパラメータの自動調整はできていない。",
+      "originality": "再現・追従",
+      "evidence": null,
+      "quote": "1手0.1秒で3000局の自己対局をやるようになりました"
+    }
+  ],
+  "character": "「ラブライブ！」の東條希と新幹線ののぞみが名前の由来。「最近ようやくラブライブを見ました。希ちゃんってあんな子だったんですね」と書く。",
+  "notes": null,
+  "team_list_url": "http://www2.computer-shogi.org/wcsc26/team.html"
+}

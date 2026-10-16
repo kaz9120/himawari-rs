@@ -1,0 +1,54 @@
+{
+  "wcsc": 24,
+  "year": 2014,
+  "dir": "AWAKE",
+  "team": "巨瀬 亮一",
+  "software": "AWAKE",
+  "sources": [
+    "wcsc24/appeal/AWAKE/appeal.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc24/appeal/AWAKE/appeal.txt"
+  ],
+  "summary": "Stockfishの探索を土台に多数の前向き枝刈り（ProbCut、Singular Extensionなど）を採用し、BonanzaのKKP・KPP特徴を約4万局から学習。KPのPを利きに、KPPのPPを利きと駒の関係に分解して特徴に加え、過学習を抑える。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": "Stockfishの探索をベース"
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "KKP・KPP。KPのPを利き、KPPのPPを利きと駒の関係に分解して特徴に追加"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "Null Move、Razoring、ProbCut、Futility、Static Null Move、Move Count、Singular Extension、Check Extension、三手詰め"
+  },
+  "learning": "Bonanza Methodで約4万局から学習",
+  "hardware": null,
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "特徴の分解による過学習抑制",
+      "description": "二駒関係KPのPを利きに、三駒関係KPPのPPを利きと駒の関係に分解して特徴に加え、学習時の過学習を抑える。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "過学習を抑制しています。"
+    },
+    {
+      "category": "探索",
+      "title": "Stockfish系の多数の枝刈りと延長",
+      "description": "Null Move Reduction、Razoring、Probcut、Futility、Static Null Move、Move Count、Singular Extension、Check Extensionを採用する。",
+      "originality": "再現・追従",
+      "evidence": null,
+      "quote": "Stockfishの探索をベースとして以下の探索手法を採用しています。"
+    }
+  ],
+  "character": null,
+  "notes": null,
+  "team_list_url": "http://www2.computer-shogi.org/wcsc24/team.html"
+}

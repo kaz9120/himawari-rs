@@ -1,0 +1,54 @@
+{
+  "wcsc": 27,
+  "year": 2017,
+  "dir": "Meijin_Cobra",
+  "team": "松山洋章、川名亮、高橋依里",
+  "software": "名人コブラ",
+  "sources": [
+    "wcsc27/appeal/Meijin_Cobra/meijin_cobra_wcsc27.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc27/appeal/Meijin_Cobra/meijin_cobra_wcsc27.txt"
+  ],
+  "summary": "やねうら王にAperyの評価関数初期値を使うソフト。探索パラメータの自動調整にバンディット手法HyperBandを、評価関数パラメータの学習に進化戦略を試している。",
+  "base": {
+    "engine": "やねうら王",
+    "eval_source": "Apery（初期値）",
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "評価関数パラメータを進化戦略で学習（うまくいかず変更の可能性）"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "やねうら王の探索。パラメータはHyperBandで自動調整"
+  },
+  "learning": "進化戦略: 親パラメータにランダムノイズを乗せ、うまくいったものを新たな親にして世代を重ねる",
+  "hardware": "24コア 64GB Linux",
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "開発手法・運用",
+      "title": "HyperBandで探索パラメータを自動調整",
+      "description": "ランダムなハイパーパラメータの組を多数用意し、うまくいかなそうなものを途中で切り捨てながら反復回数を増やして、少ない試行回数で最適なものを選ぶ。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "HyperBandというバンディットアルゴリズムを応用した手法を使用しています"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "進化戦略による評価関数学習",
+      "description": "親パラメータにランダムノイズを乗せて、成績の良いものを新たな親にして世代を重ねる進化戦略を実装した。うまくいかず変更の可能性ありと書かれている。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "最近、一部で話題となっている進化戦略(Evolution Strategies)を実装しておりますが、うまくいかない"
+    }
+  ],
+  "character": null,
+  "notes": null,
+  "team_list_url": "http://www2.computer-shogi.org/wcsc27/team.html"
+}

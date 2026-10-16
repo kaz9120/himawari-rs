@@ -1,0 +1,71 @@
+{
+  "wcsc": 36,
+  "year": 2026,
+  "dir": "wanderer",
+  "team": "櫻井 博光",
+  "software": "W@nderER",
+  "sources": [
+    "wcsc36/appeal/wanderer/wanderer_appeal_wcsc36_final.html"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc36/appeal/wanderer/wanderer_appeal_wcsc36_final.html"
+  ],
+  "summary": "入玉宣言による勝利を積極的に目指すエンジン。入玉志向を学習させたエンジンだけでは安定しなかったため、通常のやねうら王と、入玉関連の手を優先して探索する複数のやねうら王を、ラッパーで制御して手を比較・選択する方式にした。",
+  "base": {
+    "engine": "やねうら王",
+    "eval_source": "水匠11β（メイン）、自作の入玉志向HalfKP-KSDG型NNUE",
+    "note": "メインはやねうら王V9.30開発版。入玉志向エンジンは、そのソースをベースにビルドしたHalfKP-KSDG型NNUE。LLMを多数活用"
+  },
+  "eval": {
+    "family": "NNUE",
+    "detail": "メインは水匠11β。入玉志向側はゼロから学習させたHalfKP-KSDG型NNUE"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "ラッパーで複数のやねうら王を制御し、出力を比較・選択。理論上は任意のUSI対応エンジンを組み合わせ可能"
+  },
+  "learning": "入玉特徴量を使い、Floodgateや電竜戦で入玉が発生した棋譜をベースに教師を生成",
+  "hardware": "Core i5-11400H（一覧ページ）",
+  "language": [
+    "C++",
+    "Python"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "入玉",
+      "title": "玉前進手の優先採用ラッパー",
+      "description": "通常エンジンの最善手と、玉が前進する手を比較し、評価値の差が小さければ前進手を採用する。局面の有利・不利に応じて許容する差を変える。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "評価値の差が小さければ前進手を採用します。局面の有利・不利に応じて、どの程度差を許容するかを変えています。"
+    },
+    {
+      "category": "入玉",
+      "title": "前進できないときと入玉後の候補手拡張",
+      "description": "玉の前方に自駒がいて進めないときは、その駒を動かす手も候補として探索する。玉が敵陣に入った後は、玉の周囲に駒を打つ手も候補にする。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "玉の前方に自駒がいて前に進めない場合、その駒を動かす手も候補として探索します。"
+    },
+    {
+      "category": "入玉",
+      "title": "入玉志向エンジンの併用",
+      "description": "入玉志向を学習したエンジンだけでは積極的な入玉が安定しなかったため、探索段階で補助として使う。入玉に関連する手を優先して探索する複数のやねうら王と通常のやねうら王を、ラッパーで制御する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "入玉に関連する手を優先的に探索する複数のやねうら王をラッパーにて制御する方式を採用しました。"
+    },
+    {
+      "category": "開発手法・運用",
+      "title": "複数のLLMを活用した開発",
+      "description": "DeepSeek、Qwen、OpenAI GPT、Gemini、Claudeなど複数のLLMを開発に活用した。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "Deepseek (V3, V4), Qwen (3.5, 3.6), OpenAI GPT (5.2, 5.3), Gemini (3.0 Flash, 3.1 pro), Claude (Sonnet 4.6)"
+    }
+  ],
+  "character": "毎回、入玉宣言による勝利を積極的に目指す個性的な棋風。大会後に、似た序盤をなぞってしまう、閾値が手動調整、Ponderで非合法手が出たため使えなかった、といった課題を正直に書いている。",
+  "notes": "2026/05/15更新の大会後の文書（課題の節を含む）。2026/03/31版は入玉特徴量の短い記述のみ。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc36/team.html"
+}

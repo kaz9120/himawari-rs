@@ -1,0 +1,84 @@
+{
+  "wcsc": 26,
+  "year": 2016,
+  "dir": "elmo",
+  "team": "瀧澤 誠",
+  "software": "elmo",
+  "sources": [
+    "wcsc26/appeal/elmo/elmo_WCSC26_appeal2.pdf"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc26/appeal/elmo/elmo_WCSC26_appeal2.pdf"
+  ],
+  "summary": "評価関数だけに絞って開発し、どのプログラムにも移植できることを理想とする新規ソフト。Bonanzaメソッドで初期値を与えたKPP評価値を、Thompson Samplingによる強化学習で更新する試みを行った。本番では超弱く、強化学習はKPPの特徴空間が大きすぎて厳しいという結論を出した。",
+  "base": {
+    "engine": "Apery",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "KPPファミリ。評価値は勝敗数から直接算出。5月追記でr_ee・ee・xee・yeeを削除"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "Aperyの探索を流用"
+  },
+  "learning": "BonanzaメソッドでKPPの初期値を与え、自己対局の勝敗を報酬にThompson Samplingで評価値を更新する",
+  "hardware": "ノートPC（2コア）",
+  "language": "C++",
+  "claimed_strength": "Apery twigに勝率4割程度（踏み台仕様）",
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "Thompson Samplingによる評価値の強化学習",
+      "description": "各特徴量の評価値を確率分布（ベータ分布）として持ち、事後確率に従って評価値を決めて対局し、勝敗で分布を更新する。試行の少ない特徴も採用され、学習履歴（確信度）を考慮できる。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "各特徴量の事後確率に従って評価値を設定→対局(学習)を繰り返す。"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "勝率を補正してレーティングに近づける",
+      "description": "勝率と評価値を同一視する当初案では、どの特徴も勝率50%に漸近した。3/27に気付き、計算上勝率を補正する方式へ変えた。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "実績を出してみるとどの特徴も勝率50%に漸近する"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "Bonanzaメソッドの結果を事前分布に流用",
+      "description": "Thompson Samplingの事前確率にBonanzaメソッドの結果を使う。目的関数が違い両者が馴染まない問題の回避策でもある。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "Thompson Samplingの事前確率はボナメソの結果を流用。"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "強化学習の失敗の分析",
+      "description": "150手で報酬が勝敗の1つでは少なすぎ、特徴の0.01%の誤りでも巻き添えが多く、サンプルを稼げない。ボナメソは優秀で、Aperyなら手の分散にThompson Samplingも要らないと結論した。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "150手指して報酬1つ(勝ち負け)は少な過ぎ。"
+    },
+    {
+      "category": "評価関数",
+      "title": "KPP特徴の削減",
+      "description": "Aperyのr_ee・ee・xee・yeeを特徴量として不要と判断して削除し、計算量を減らした。利きが無い位置関係では影響を無視する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "r_ee, ee, xee, yeeが特徴量的に不要と思い、削除。"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "学習時に浅い探索で一致を学習",
+      "description": "Bonanzaメソッドの学習時にさらに浅い探索を入れ、指し手が教師と一致するようにもついでに学習する。NDFの簡易版。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "ボナメソ学習時に更に浅い探索を入れて指し手が教師と一致するように"
+    }
+  ],
+  "character": "「強化学習分かりません。誰か教えて」「超弱かったです。でも良くあること」と、失敗も含めて公開する姿勢。2コアのノートPCで参加し、5月にKPPを落とした「踏み台仕様」を予告した。",
+  "notes": "5/1追記と踏み台仕様の記載あり。評価関数以外は今後やるか未定",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc26/team.html"
+}

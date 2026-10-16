@@ -1,0 +1,62 @@
+{
+  "wcsc": 27,
+  "year": 2017,
+  "dir": "taishogun",
+  "team": "横内健一、横内靖尚",
+  "software": "大将軍",
+  "sources": [
+    "wcsc27/appeal/taishogun/appeal.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc27/appeal/taishogun/appeal.txt"
+  ],
+  "summary": "評価関数に主眼を置くソフト。やねうら王をライブラリに、プロ棋譜のボナンザメソッド（手番評価とミニバッチ）と、自己探索結果の強化学習の2段階で評価関数を作る。電王トーナメントのメモリ制限と学習効率から4駒関係を3駒関係にした。",
+  "base": {
+    "engine": "やねうら王",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "KKPT型（3駒＋手番）。手番評価はkppt型よりコストが小さく探索速度が15%程度向上"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "やねうら王の探索を基本使用"
+  },
+  "learning": "1. プロ棋譜のボナンザメソッド（手番評価、ミニバッチ）。2. 勝率が飽和したら、浅い探索と深い探索の評価値の不整合を修正する強化学習",
+  "hardware": "Xeon E5-2687W v4 2基 24コア 128GB",
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "kkpt型で手番評価と探索速度15%向上",
+      "description": "3駒に手番を加えたkkpt型を採用する。kppt型より計算コストが小さく、探索速度が15%程度向上する。",
+      "originality": "既存手法の応用",
+      "evidence": "探索速度が15%程度向上",
+      "quote": "手番に関する評価は、3駒に手番加えたkkpt型を採用しています。"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "ミニバッチでボナンザメソッドを安定化",
+      "description": "ボナンザメソッドにミニバッチを取り入れ、学習を安定させて短時間で成果を確認できるようにする。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "ミニバッチを用いることで、学習が安定し、短時間で学習の成果を確認することができます。"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "プロ棋譜の勝率飽和後に浅深の評価値不整合を修正",
+      "description": "プロ棋譜での学習で勝率が飽和したところから、浅い探索結果と深い探索結果の評価値の不整合を修正する強化学習に移る。局面の設定が勝率に影響する点は今後の課題。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "浅い探索結果と深い探索結果の評価値を用いて、評価値の不整合を修正していきます。"
+    }
+  ],
+  "character": null,
+  "notes": null,
+  "team_list_url": "http://www2.computer-shogi.org/wcsc27/team.html"
+}

@@ -1,0 +1,54 @@
+{
+  "wcsc": 34,
+  "year": 2024,
+  "dir": "AUAU_Shogi",
+  "team": "氏家 一朗",
+  "software": "あうあう将棋",
+  "sources": [
+    "wcsc34/appeal/AUAU_Shogi/appeal_2024.txt"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc34/appeal/AUAU_Shogi/appeal_2024.txt"
+  ],
+  "summary": "7〜9手先を読むαβ探索と、末端で1〜2手読みに相当する静的評価を使う。強さ以外の売りとして、盤面を斜め上から3D描画するGUIに力を入れている。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "手作り",
+    "detail": "末端で1〜2手読みに相当する静的評価関数"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "7〜9手先読み"
+  },
+  "learning": null,
+  "hardware": "Core i5 2コア",
+  "language": [
+    "c++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "エンタメ・演出",
+      "title": "盤面の3D表示GUI",
+      "description": "盤面を斜め上から見た3D画像にして、リアルタイムで動かせるようにしている。ただし相手の手の受信漏れを恐れ、当日は動かさない予定。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "盤面を3Dで斜め上から見た絵にしています"
+    },
+    {
+      "category": "探索",
+      "title": "末端の静的評価",
+      "description": "末端では1〜2手読むのに相当する静的評価関数を使う。",
+      "originality": "不明",
+      "evidence": null,
+      "quote": "末端では、1-2手読むのに相当する静的評価関数を使っています"
+    }
+  ],
+  "character": "強さより3D盤面GUIに力を入れた。ただし受信ミスが怖いので本番では動かさない、という割り切りが特徴。",
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc34/team.html"
+}

@@ -1,0 +1,54 @@
+{
+  "wcsc": 36,
+  "year": 2026,
+  "dir": "Argo",
+  "team": "時々ボソッと機械語でデレる隣のアルゴさん",
+  "software": "Argp",
+  "sources": [
+    "wcsc36/appeal/Argo/260330argov2.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc36/appeal/Argo/260330argov2.pdf"
+  ],
+  "summary": "AIのGeminiに、やねうら王のコードを見ずにやねうら王互換の将棋ソフトを作らせる、バイブコーディングでの開発。間に合わなければ前年のやねうら王ベース版で出る。文書の大半は、困ったときの対処や学び方についての長い随筆である。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": "Geminiにやねうら王互換のソフトを作らせる。動かなければ前年のやねうら王ベース版で参加する予定"
+  },
+  "eval": {
+    "family": "不明",
+    "detail": "記載なし"
+  },
+  "search": {
+    "family": "不明",
+    "detail": "記載なし"
+  },
+  "learning": null,
+  "hardware": "Core i5-8250U、メモリ8GB（一覧ページより）",
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "開発手法・運用",
+      "title": "LLMだけでエンジン実装",
+      "description": "Gemini CLIに「やねうら王の互換の将棋ソフトを、やねうら王のコードを見ないで作って」と指示し、バイブコーディングで将棋ソフトを作る。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "やねうら王の互換の将棋ソフトをやねうら王のコードを見ないで作ってください"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "将棋の手法を囲碁へ転用",
+      "description": "将棋ソフトの方法を囲碁ソフトに転用したら通用するかという技術的な興味から、そうした実験もしてみたいと述べている。",
+      "originality": "不明",
+      "evidence": null,
+      "quote": "将棋ソフトの方法を囲碁ソフトに転用してみたら通用するだろうか？"
+    }
+  ],
+  "character": "フルスクラッチ部門の5位以内入賞を長期目標に置きつつ、成功に向かって挑戦している今が楽しいという姿勢。アピール文の後半は、LLMへの相談、負け組の勝ち方、斬られ役戦略、勉強の4タイプなどのおまけ随筆で、読み物としての個性が強い。",
+  "notes": "技術内容は冒頭数行のみ。残りは随筆で、将棋ソフトの工夫とは無関係なので省略。バイブコーディングが動かなかった場合の前年版の詳細は書かれていない。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc36/team.html"
+}

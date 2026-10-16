@@ -1,0 +1,70 @@
+{
+  "wcsc": 25,
+  "year": 2015,
+  "dir": "shogi686",
+  "team": "merom686",
+  "software": "shogi686",
+  "sources": [
+    "wcsc25/appeal/shogi686/appeal686.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc25/appeal/shogi686/appeal686.txt"
+  ],
+  "summary": "将棋クエスト2級の個人が、自分の600局あまりの棋譜から定跡と評価関数（駒割と2駒関係）を作ったソフト。第2回電王トーナメント後のTwitterコンピュータ将棋クラスタの盛り上がりに影響されて開発開始。探索はStockfishの実装を参考にしたPVS系。同一局面合流や持ち駒違いの情報利用など、細かい工夫の記録が詳しい。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": "4年前に作ったプログラムが元"
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "駒割と2駒関係（KK・KP・PP絶対）をボナンザメソッドで学習。2駒相対や玉からの距離で価値を下げる縛りも"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "PVS、Aspiration、Null Move、SEE、LMR・Futility（Stockfish式）、Countermove、Mate Killers、One Reply Extension"
+  },
+  "learning": "開発者自身が将棋クエスト（5分切れ負け）で指した600局あまりの自分の指し手のみから、定跡と評価関数を生成",
+  "hardware": null,
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "自分の棋譜だけで評価関数と定跡を作る",
+      "description": "将棋クエストで指した自分の600局あまりの指し手のみから、定跡と評価関数を生成する。棋譜が少ないため、2駒相対や玉から離れるほど価値が下がる縛りを入れ、玉を含まない離れた2駒関係は0にする。",
+      "originality": "独自",
+      "evidence": "約600局",
+      "quote": "開発者自身が将棋クエスト(5分切れ負け)で指した600局あまりの棋譜から生成。"
+    },
+    {
+      "category": "探索",
+      "title": "同一局面・持ち駒違いの情報の利用",
+      "description": "探索中に同一局面へ合流したり持ち駒だけが違う局面になったとき、その情報をできるだけ利用する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "探索中、同一局面に合流したり持ち駒だけ変わっていたりしたら"
+    },
+    {
+      "category": "探索",
+      "title": "負け確定時の指し方の検討",
+      "description": "負けが確定したらなるべく王手をかけない案を試して外した。負けを読み切ったなら角不成などなりふり構わず勝ちに行ったほうがいいのではと考える（未実装）。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "「負けが確定したらなるべく王手をかけない」というのを実装してみた。"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "SSE経由のロックなし置換表",
+      "description": "置換表エントリは16byteで、局面ハッシュに持ち駒をxorして特定する。並列はロックなしでSSEアクセスだが、危険なので使わない予定。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "置換表のエントリは1つ16byte。"
+    }
+  ],
+  "character": "将棋クエスト2級の開発者が、Twitterのコンピュータ将棋クラスタの盛り上がりに影響されて開発を始めた経緯。自分の棋譜が対戦相手がいたからこそ生まれたものと述べ、更新日付きで試行錯誤を残す。",
+  "notes": null,
+  "team_list_url": "http://www2.computer-shogi.org/wcsc25/team.html"
+}

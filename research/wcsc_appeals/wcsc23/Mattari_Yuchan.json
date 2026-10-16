@@ -1,0 +1,44 @@
+{
+  "wcsc": 23,
+  "year": 2013,
+  "dir": "Mattari_Yuchan",
+  "team": "小谷研究室",
+  "software": "まったりゆうちゃん",
+  "sources": [
+    "wcsc23/appeal/Mattari_Yuchan/appeal.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc23/appeal/Mattari_Yuchan/appeal.txt"
+  ],
+  "summary": "東京農工大学小谷研究室のソフト。実現確率探索、0.5手延長、PDSによる詰め探索、手調整の評価関数を使い、2013年に向けて機械学習によるムーブオーダリングを実装中。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "手作り",
+    "detail": "駒価値、玉に対する駒価値、進行度。手調整"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "反復深化、実現確率探索、0.5手延長、futility pruning、null move、PDSによる詰め探索"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "探索",
+      "title": "機械学習によるムーブオーダリング",
+      "description": "機械学習で指し手の順序付けを改善し、その結果を枝刈りにも反映して探索部分を強化する。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "機械学習を利用したMO(Move Ordering)の改善を実装中"
+    }
+  ],
+  "character": null,
+  "notes": null,
+  "team_list_url": "http://www2.computer-shogi.org/wcsc23/team.html"
+}

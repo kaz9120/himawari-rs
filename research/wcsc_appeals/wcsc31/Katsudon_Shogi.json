@@ -1,0 +1,76 @@
+{
+  "wcsc": 31,
+  "year": 2021,
+  "dir": "Katsudon_Shogi",
+  "team": "松本 浩志（カツ丼将棋）",
+  "software": "カツ丼将棋",
+  "sources": [
+    "wcsc31/appeal/Katsudon_Shogi/katsudonshogi_apeal_wcsc31.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc31/appeal/Katsudon_Shogi/katsudonshogi_apeal_wcsc31.pdf"
+  ],
+  "summary": "公開ソフト（やねうら王v6.0.0+水匠3）をカツ丼将棋exeで包み、multiponder（複数候補先読み）で予選から決勝まですべてノータイムで指す。穴角戦法や不成の活用など、人間に近い作戦で意表を突く構成。",
+  "base": {
+    "engine": "やねうら王",
+    "eval_source": "水匠3",
+    "note": null
+  },
+  "eval": {
+    "family": "NNUE",
+    "detail": "水匠3の評価関数（公開ソフトの利用）"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "やねうら王v6.0.0。multiponderでノータイム指し"
+  },
+  "learning": null,
+  "hardware": "AMD 5950x+RTX3090のマシンを購入（開発用）。本番はGoogle Cloud等",
+  "language": "C++, Excel, vba",
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "時間管理",
+      "title": "multiponderによるノータイム指し",
+      "description": "相手の手番中に複数の候補手を先読みし、相手の指し手に対する応手を即指しする。候補になければ0.2秒考えた手を指す。将棋所の標準機能ではできず通信も自作が必要。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "カツ丼将棋exeにmultiponder(複数候補先読み)を実装し、予選から決勝まですべてノータイムで指します。"
+    },
+    {
+      "category": "棋風・人間らしさ",
+      "title": "穴角戦法を目指す",
+      "description": "相手の強さを鑑みて、穴角を目指す場合がある。駒得のみの評価関数に試したら、探索順序の都合で偶然に穴角戦法（9八香・9九角・6九金の反復横跳び）ができた。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "相手の強さを鑑みて、穴角を目指す場合があります。"
+    },
+    {
+      "category": "探索",
+      "title": "不成を積極的に活用",
+      "description": "不成を積極的に使い、相手の読み筋を外して時間を使わせる。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "不成を積極的に活用し、相手の読み筋を外して時間を使わせます。"
+    },
+    {
+      "category": "開発手法・運用",
+      "title": "公開ソフトを包んで中身を入れ替え可能",
+      "description": "公開ソフトをカツ丼将棋exeが包んでコラボ・リレーする構成にし、中身を丸ごと入れ替えられる利点を持つ。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "公開ソフトをカツ丼将棋exeが包むことで、中身をまるっと入れ替えられるメリットもある。"
+    },
+    {
+      "category": "エンタメ・演出",
+      "title": "将棋倶楽部24のノータイム指しAI",
+      "description": "将棋倶楽部24を自動操縦するカツ丼坊で、光速で指す非人間的なノータイムAIを放流して、普通の指す将にもAIに触れてもらう。24のHTML5化でselenium＋通信ログによる高速認識に作り直した。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "ノータイム指しソフトを作ってみようと思った。"
+    }
+  ],
+  "character": "「友達のなくなるソフト」としてノータイムの非人間的な指し方をネタにし、きふわらべの駒得だけの動きに触発された穴角の逸話などを語る。開発者はNPO法人AI電竜戦プロジェクト理事長。",
+  "notes": "第5回電王トーナメント準優勝のshotgunに近い手法だが、微妙に最善手でない手を使う部分は今は行わないとする。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc31/team.html"
+}

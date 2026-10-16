@@ -1,0 +1,44 @@
+{
+  "wcsc": 20,
+  "year": 2010,
+  "dir": "Shogi_Boy",
+  "team": "長谷川雅也",
+  "software": "Shogi Boy",
+  "sources": [
+    "wcsc20/appeal/Shogi_Boy/Shogi_Boy.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc20/appeal/Shogi_Boy/Shogi_Boy.txt"
+  ],
+  "summary": "達人ごとの棋風を、その人1人の棋譜だけで評価関数に学習し、達人の評価関数を選んで指す構想。詰探索はosl-for-csaを借りる予定。",
+  "base": {
+    "engine": "GPS将棋",
+    "eval_source": null,
+    "note": "詰探索にosl-for-csaを使用予定"
+  },
+  "eval": {
+    "family": "線形",
+    "detail": null
+  },
+  "search": {
+    "family": "不明",
+    "detail": null
+  },
+  "learning": "1人の達人の棋譜のみから、その達人が指した手だけを学習",
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "棋風・人間らしさ",
+      "title": "達人ごとの棋風を評価関数にする",
+      "description": "1人の達人の棋譜だけを使い、その達人が指した手のみを学習して棋風が近い評価関数を作る。対局では達人（評価関数）を1人選んでその選択手を指す。今回は最大2人。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "達人が何に重点をおいて指し手を決定しているか、すなわち棋風を達人の棋譜から学習し"
+    }
+  ],
+  "character": "人間の棋風が人によって違う点に注目し、達人の棋風を再現する評価関数を目指す。",
+  "notes": null,
+  "team_list_url": "http://www2.computer-shogi.org/wcsc20/team.html"
+}

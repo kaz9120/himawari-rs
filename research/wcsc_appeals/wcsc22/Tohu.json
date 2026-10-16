@@ -1,0 +1,35 @@
+{
+  "wcsc": 22,
+  "year": 2012,
+  "dir": "Tohu",
+  "team": "佐々木貴広",
+  "software": "Tohu",
+  "sources": [
+    "wcsc22/appeal/Tohu/appeal.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc22/appeal/Tohu/appeal.txt"
+  ],
+  "summary": "去年と同じ。第21回の文書を参照とする。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "不明",
+    "detail": null
+  },
+  "search": {
+    "family": "不明",
+    "detail": null
+  },
+  "learning": null,
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [],
+  "character": null,
+  "notes": "第21回のTohuを参照。一覧ではキャンセル欄。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc22/team.html"
+}

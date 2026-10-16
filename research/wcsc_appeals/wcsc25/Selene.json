@@ -1,0 +1,44 @@
+{
+  "wcsc": 25,
+  "year": 2015,
+  "dir": "Selene",
+  "team": "西海枝 昌彦",
+  "software": "Selene",
+  "sources": [
+    "wcsc25/appeal/Selene/Selene.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc25/appeal/Selene/Selene.txt"
+  ],
+  "summary": "プロ棋譜約5万局を方策勾配法で学習した後、自己対局1万局で学習する。自己対局は大会日まで続け、探索を深めにする。特徴は絶対3駒・相対2駒・玉位置固定の相対2駒の組み合わせ。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "絶対3駒、相対2駒、玉位置固定の相対2駒"
+  },
+  "search": {
+    "family": "不明",
+    "detail": null
+  },
+  "learning": "方策勾配法でプロ棋譜約5万局、その後自己対局1万局（継続）",
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "方策勾配法での棋譜学習後に自己対局学習",
+      "description": "プロ棋譜約5万局を方策勾配法で学習した後、探索を深めにした自己対局を行って学習を続ける。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "方策勾配法によりプロ棋士の棋譜約５万局を学習後、自己対局１万局を行って学習を行っています。"
+    }
+  ],
+  "character": null,
+  "notes": null,
+  "team_list_url": "http://www2.computer-shogi.org/wcsc25/team.html"
+}

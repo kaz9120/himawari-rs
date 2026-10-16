@@ -1,0 +1,71 @@
+{
+  "wcsc": 36,
+  "year": 2026,
+  "dir": "JHBR",
+  "team": "李 知ひょん",
+  "software": "JHBR",
+  "sources": [
+    "wcsc36/appeal/JHBR/appeal_2026_updated.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc36/appeal/JHBR/appeal_2026_updated.pdf"
+  ],
+  "summary": "dlshogiとLeela Chess Zero（Lc0）を参考に作り直した、Transformerベースのネットワーク。Lc0のBT4（Smolgenによるattention bias、PE-Dense入力埋め込み）を将棋用に書き直した約1.21億パラメータのモデルが売り。BAI-MCTSによる時間制御は間に合わなかった。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": "dlshogiとLc0を参考にMCTSごと作り直し"
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "Lc0 BT4の将棋版。Transformer encoder 20層、embedding 768、16ヘッド、Mish、LayerNorm、約121Mパラメータ。policy 2187 logits、value（WDL）、moves-left"
+  },
+  "search": {
+    "family": "MCTS",
+    "detail": "BAI-MCTS（Best Arm Identification）の時間制御を目指したが未実装"
+  },
+  "learning": "やねうら王配布の教師データ詰め合わせを使用",
+  "hardware": "EPYC + RTX-5090 8基（一覧ページ）",
+  "language": [
+    "Python",
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "Lc0 BT4の将棋への移植",
+      "description": "チェスのLc0のBT4ネットワークを将棋用に書き直した。盤面を48個の入力plane（駒28、持ち駒14、補助6）で表し、手番側を常に盤の下側に正規化する。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "Lc0 の BT4 ネットワークを将棋用に書き直したものです。"
+    },
+    {
+      "category": "評価関数",
+      "title": "Smolgenによる動的attention bias",
+      "description": "各層の小モジュールが入力embeddingから(ヘッド数,81,81)のattention-bias行列を生成し、softmax前に加算する。全層で共有するglobal_gen行列により、桂馬の動きや飛角香の遠距離移動などの位置関係を、Q/Kの容量を消費せずに安価に学習できると期待している。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "桂馬の動き、飛角香の遠距離の移動、打ち駒の候補マスなどの位置関係を安価に学習できることが期待されます。"
+    },
+    {
+      "category": "評価関数",
+      "title": "PE-Dense入力埋め込み",
+      "description": "28個の駒planeを(81×28)のベクトルにflattenし、Linearで各マスのdense表現を作ってから残りのplaneと連結する。その後、マスごとに学習するmultiply/add gateなどを通す。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "28 個の駒 plane を 1 つの (81 × 28) ベクトルに flatten して、それを Linear を通して各マスごとの dense representation を作ります。"
+    },
+    {
+      "category": "時間管理",
+      "title": "BAI-MCTSによる時間制御",
+      "description": "最適腕識別の考え方でMCTSの時間制御を行う計画だった。マルチスレッド対応のエラー処理に時間を取られ、実装できなかった。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "BAI-MCTS は実装できていません"
+    }
+  ],
+  "character": "moves-left headは盤面の危険度の予測に役立てたかったのに、学習するのを忘れていたという正直な告白。",
+  "notes": "BAI-MCTSは未実装のため、実装ずみの工夫ではない。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc36/team.html"
+}

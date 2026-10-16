@@ -1,0 +1,63 @@
+{
+  "wcsc": 29,
+  "year": 2019,
+  "dir": "komaasobi",
+  "team": "永吉 宏之",
+  "software": "こまあそび",
+  "sources": [
+    "wcsc29/appeal/komaasobi/appeal_20190329.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc29/appeal/komaasobi/appeal_20190329.pdf"
+  ],
+  "summary": "手調整の評価関数と、先後別の延長上限を持つαβ探索のエンジン。落とし穴方式の駒組みや、金は角と筋違い、竜・飛を高めにするなど、人間的な駒の価値付けを手でチューニングする。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "手作り",
+    "detail": "学習なしの手チューニング。落とし穴方式の駒組み、銀桂は敵陣寄りを高く、金は上部に出る点を低く、角と筋違いの金を高く、竜・飛車を高めなど"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "王手・王手回避・駒を取る手を延長。延長深さの上限を先手番・後手番別々に持つ。探索深さに応じて読む広さを変える"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": [
+    "C",
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "探索",
+      "title": "先後別の延長深さ上限",
+      "description": "王手・王手回避・駒を取る手などの延長に、先手番と後手番で別々の上限を持つ。先手4手＋後手4手の計8手延長はOKだが、先手5＋後手3はNGとする。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "延長深さの制限を先手番、後手番別々に持っている。"
+    },
+    {
+      "category": "評価関数",
+      "title": "人間的な駒配置の手調整",
+      "description": "金は上部に出る点を低く、角と筋違いの位置を高く、銀桂は敵陣近くの手を高く、中終盤は角と金の価値をほぼ同じ、竜王・飛車を高めにするなどを手でチューニングする。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "金は角と筋違いの位置の点数を高くしている。"
+    },
+    {
+      "category": "探索",
+      "title": "探索深さに応じて読む広さを変える",
+      "description": "探索深さによって手を読む広さ（幅）を変える。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "手を読む広さは探索深さによって変えている。"
+    }
+  ],
+  "character": null,
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc29/team.html"
+}

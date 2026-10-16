@@ -1,0 +1,54 @@
+{
+  "wcsc": 23,
+  "year": 2013,
+  "dir": "sawanyan",
+  "team": "宇賀神 拓也",
+  "software": "さわにゃん",
+  "sources": [
+    "wcsc23/appeal/sawanyan/appeal.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc23/appeal/sawanyan/appeal.txt"
+  ],
+  "summary": "強化学習をやめてBonanza Methodに切り替えた。Kindergarten bitboard、PVS、LMR、各種枝刈りの標準的な構成のため、特徴は少ないと自己申告する。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "KKP・KPP"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "PVS、LMR、多重反復深化、Killer、History、Null move、Futility、Move count pruning、Razoring、Delta pruning"
+  },
+  "learning": "強化学習からBonanza Methodへ変更",
+  "hardware": null,
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "強化学習からBonanza Methodへ変更",
+      "description": "昨年までの強化学習をやめ、Bonanza Methodに変更した。",
+      "originality": "再現・追従",
+      "evidence": null,
+      "quote": "強化学習→Bonanza Methodに変更"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "SSEの不使用",
+      "description": "SSEは遅くなったので使わないことにした。",
+      "originality": "不明",
+      "evidence": null,
+      "quote": "SSEの不使用(遅くなったので)"
+    }
+  ],
+  "character": null,
+  "notes": "特徴が少ないと本人が述べている。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc23/team.html"
+}

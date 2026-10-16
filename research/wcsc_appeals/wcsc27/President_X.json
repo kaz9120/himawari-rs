@@ -1,0 +1,87 @@
+{
+  "wcsc": 27,
+  "year": 2017,
+  "dir": "President_X",
+  "team": "天野 史斎",
+  "software": "President_X",
+  "sources": [
+    "wcsc27/appeal/President_X/President_X_WCSC27_01.pdf"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc27/appeal/President_X/President_X_WCSC27_01.pdf"
+  ],
+  "summary": "「プログラム開発から調整の手間を未来永劫なくす」を目的に、対局結果から詰みが判明した局面のWin/Loseを学習して評価関数の重みを調整する独自路線のソフト。KPPのベイジアンフィルタ、盤の平行移動を考慮した仮説生成、決定木による局面分類を組み合わせる。本番は時間管理のバグで切れ負けを連発した。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "駒得＋駒位置の評価（速度重視の単純なもの）。Win/Lose分類器は間接的な教師として関与"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "反復深化。時間が来たら即打ち切り、不完全な深さdの結果と深さd-1の完全な結果を混ぜる。詰探索は持駒の包含関係を考慮"
+  },
+  "learning": "自己の対局で負けが確定した局面から勝ち・負けを学習。KPPをbag of wordsとみなしたベイジアンフィルタ（log Prob(Win|局面)-log Prob(Lose|局面)）",
+  "hardware": "Core i7 6700 4コア 16GB",
+  "language": [
+    "C++",
+    "Perl"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "KPPのベイジアンフィルタによるWin/Lose分類器",
+      "description": "詰みが判明した局面から勝ち局面と負け局面を学習する。KPPをbag of wordsとみなしたベイジアンフィルタで、局面ごとにlog(Prob(Win))-log(Prob(Lose))を出力する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "KPPをbag of wordsとみなしたベイジアンフィルタでやる。"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "盤の平行移動を考慮した仮説生成と決定木分類",
+      "description": "Win/Lose分類器と、そこへ至る前の局面の関係を説明する仮説を生成する。盤の縦横斜めの平行移動を特徴に選ばれやすくし、良い仮説を並べた決定木で局面を分類し、分類ごとに評価関数の重みを切り替える。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "将棋盤は2次元平面のような見かけをしているから、縦横斜めの平行移動の組み合わせが他よりも大きいチャンスで仮説を構成する特徴に選ばれるようにするのが妥当"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "探索結果との矛盾を基準にした重み調整",
+      "description": "Win/Lose分類器の出力を真として、通常探索の結果（局面の予想推移と評価値の系列）に矛盾（Lose予想なのに評価値が上昇など）があれば、対局用評価関数のパラメータを上げ下げして整合する方向へ調整する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "一貫性を基準に行う。"
+    },
+    {
+      "category": "時間管理",
+      "title": "不完全な探索結果と完全な探索結果の混合",
+      "description": "時間が来たら即打ち切り、深さdの探索が根の子s_kまでで途切れたら、s_1…s_(k-1)を深さd、s_k以降を深さd-1で探索した等価な結果を出力する。以前の探索完了予測による時間管理の仕組みは廃止した。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "深さdの不完全な探索結果を深さd-1の完全な探索結果とMIXし"
+    },
+    {
+      "category": "詰み・終盤",
+      "title": "持駒の包含関係を考慮した詰み/不詰み判定とGHI対策",
+      "description": "詰探索で持駒の包含関係を考慮して判定し、置換表のヒット条件を緩めつつ、一定以上古い「不詰み」エントリを破棄してGHI対策とする。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "持駒の包含関係を考慮した詰み/不詰み判定を導入"
+    },
+    {
+      "category": "探索",
+      "title": "千日手・%KACHIを反復深化の節目で判定",
+      "description": "探索中の千日手/連続王手の千日手/%KACHI判定をやめ、反復深化の1 iterationごとにPVを調べて、成立局面を置換表に積む。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "探索中の判定を廃止。代わりに、反復深化の1 iteration終了毎に、得られたPVを観察し"
+    }
+  ],
+  "character": "総裁Xという名前はGALAXの超AIの由来。「調整の手間を未来永劫なくす！！」と大言を掲げ、5/12の反省会追記で、学習に前のめりになり基本機能の時間を使い切って切れ負けを連発したと率直に謝罪している。",
+  "notes": "V3.1（反省会追記）版。昨年（WCSC26）との違いを節で説明。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc27/team.html"
+}

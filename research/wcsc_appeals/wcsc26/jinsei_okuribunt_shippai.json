@@ -1,0 +1,52 @@
+{
+  "wcsc": 26,
+  "year": 2016,
+  "dir": "jinsei_okuribunt_shippai",
+  "team": "築地 毅",
+  "software": "人生送りバント失敗",
+  "sources": [
+    "wcsc26/appeal/jinsei_okuribunt_shippai/appeal.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc26/appeal/jinsei_okuribunt_shippai/appeal.txt"
+  ],
+  "summary": "ライブラリを使わず一から書いた、トップを目指さず楽しむソフト。αβ中心でLMR・Futilityなどの普通の技術と、オンライン学習の平均化パーセプトロンを試している。文書の大半は、名札やプログラム名、観光の雑談に当てた自虐的な読み物。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "不明"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "LMRやFutilityなどの普通の技術"
+  },
+  "learning": "オンライン学習の勉強として平均化パーセプトロンを試している",
+  "hardware": null,
+  "language": "C++",
+  "claimed_strength": "最高順位20位（二次予選敗退）",
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "平均化パーセプトロンの試用",
+      "description": "オンライン学習を勉強したくて平均化パーセプトロンを試している。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "オンライン学習を勉強してみたかったので、平均化パーセプトロンを試しています"
+    },
+    {
+      "category": "解説・人間支援",
+      "title": "解説記事の生成",
+      "description": "過去に独創賞を受賞した工夫として、解説記事の生成を挙げる。今回の説明はなし。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "賞罰：独創賞受賞（解説記事の生成）、アピール文書リジェクト"
+    }
+  ],
+  "character": "洒落た名前が多い中のふざけたプログラム名を名札に掲げる恥ずかしさ、名前を変えたら開発者本人が覚えられず元に戻した話、「アピール文書リジェクト」を受けた前回、会場周辺のグルメ話など、ネタに全振りした文書。デビュー戦は王手千日手負け。",
+  "notes": "技術の記述は2点のみ。「前回は技術的なことを書かずリジェクト」と自己申告",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc26/team.html"
+}

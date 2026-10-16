@@ -1,0 +1,44 @@
+{
+  "wcsc": 20,
+  "year": 2010,
+  "dir": "LeChat",
+  "team": "釜塚信平",
+  "software": "LeChat",
+  "sources": [
+    "wcsc20/appeal/LeChat/LeChat.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc20/appeal/LeChat/LeChat.txt"
+  ],
+  "summary": "オセロプログラムCharlyのMOUSE(μ)手法を応用し、棋譜なしで評価関数を学習する。αβを非再帰で書く予定。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "不明",
+    "detail": null
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "非再帰で記述（予定）"
+  },
+  "learning": "MOUSE(μ)手法（モンテカルロ法の応用）による棋譜なし学習",
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "オセロのMOUSE手法による棋譜なし学習",
+      "description": "オセロのCharlyで使われたモンテカルロ法応用のMOUSE(μ)を将棋に応用し、棋譜を使わず評価関数を作る。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "評価関数を棋譜なし学習で作成"
+    }
+  ],
+  "character": null,
+  "notes": "「予定」を含む短文。一覧ではキャンセル欄。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc20/team.html"
+}

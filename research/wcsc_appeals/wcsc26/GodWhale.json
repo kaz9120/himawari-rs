@@ -1,0 +1,76 @@
+{
+  "wcsc": 26,
+  "year": 2016,
+  "dir": "GodWhale",
+  "team": "宇宙将棋連合 タイでエビを釣る支部",
+  "software": "大合神クジラちゃん",
+  "sources": [
+    "wcsc26/appeal/GodWhale/appeal.pdf"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc26/appeal/GodWhale/appeal.pdf"
+  ],
+  "summary": "ニコニコ生放送のリスナーのPCをスレーブにして探索を分担するボランティア・コンピューティング型クラスタのソフト。スレーブはAperyベースで、Lazy SMP導入で大きく強くなった。クジラちゃんを擬人化した自作GUIも持つ。",
+  "base": {
+    "engine": "Apery",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "Aperyベースの改良（スレーブ）"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "マスタがルートで1手ずつ手を配り、スレーブがその局面を探索。同じ手を3台に探索させ冗長性を持たせる。スレーブはLazy SMP"
+  },
+  "learning": null,
+  "hardware": "ニコニコ生放送リスナーのPC（前回は200台以上のクラスタ）",
+  "language": "C++",
+  "claimed_strength": "スレーブ単体で、Lazy SMP導入により棋力を大幅に向上",
+  "ideas": [
+    {
+      "category": "並列・分散",
+      "title": "視聴者PCによるボランティア・コンピューティング",
+      "description": "ニコニコ生放送のリスナーのPCをスレーブとして、マスタ/スレーブ型で探索を分担する。前回は200台以上のクラスタで動かした。",
+      "originality": "独自",
+      "evidence": "前回は200台以上のクラスタ",
+      "quote": "世界コンピュータ将棋選手権ではリスナーのパソコンを使ったボランティア・コンピューティングによるクラスタも行っています"
+    },
+    {
+      "category": "並列・分散",
+      "title": "手を配り冗長性を持たせる単純なクラスタ",
+      "description": "時間がなくGPS将棋方式ではなく、ルートで1手ずつ手を配分してスレーブに探索させる。同じ手を3台に探索させ、スレーブの脱落に備える。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "同じ手を3つのスレーブに探索させています"
+    },
+    {
+      "category": "並列・分散",
+      "title": "Lazy SMPの導入",
+      "description": "スレーブにLazy SMPを入れて棋力を大幅に上げた。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "LazySMP を導入することで棋力を大幅に向上させました"
+    },
+    {
+      "category": "解説・人間支援",
+      "title": "擬人化キャラ入りの自作GUI",
+      "description": "将棋ソフトを動かすGUIを自作し、クジラちゃんを擬人化したキャラクターをGUIに取り込んだ。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "クジラちゃんを擬人化し、GUI内に取り込みました。"
+    },
+    {
+      "category": "開発手法・運用",
+      "title": "放送リスナーとの共同開発",
+      "description": "毎週のニコニコ生放送で開発し、リスナーと一緒に進める。スレーブ単体は「SILENT_MAJORITY」としてオープンソース公開。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "開発は放送リスナーと一緒に進めており"
+    }
+  ],
+  "character": "ニコニコ生放送のリスナーと作る、擬人化キャラ「クジラちゃん」のソフト。第23回に独創賞を獲得した実績がある。",
+  "notes": "テキスト化済みファイルは日本語が欠落していたため、原本PDFを画像として読んだ。5/11付",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc26/team.html"
+}

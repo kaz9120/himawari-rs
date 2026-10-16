@@ -1,0 +1,72 @@
+{
+  "wcsc": 32,
+  "year": 2022,
+  "dir": "Qha",
+  "team": "Quorax 党 将棋部（Ryoto Sawada、Yuki Ito、Toshihiro Shirakawa、Keigo Nitadori）",
+  "software": "ख़（Qha）",
+  "sources": [
+    "wcsc32/appeal/Qha/Qha.pdf",
+    "wcsc32/appeal/Qha/WCSC32_Qha_detail.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc32/appeal/Qha/Qha.pdf",
+    "https://www.apply.computer-shogi.org/wcsc32/appeal/Qha/WCSC32_Qha_detail.pdf"
+  ],
+  "summary": "PR文書はMuZeroの将棋再現実装の失敗報告。「MuZeroはAlphaZeroより弱かった」と結論し、大会では採用を見送った。大会では、やねうら王とdlshogiの楽観合議（評価値の補正パラメータ付き）に、振り飛車用の定跡を使い分けて出場した。",
+  "base": {
+    "engine": "やねうら王+dlshogi",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "DL+NNUE",
+    "detail": "やねうら王（NNUE）とdlshogi（10層192ch）の合議。MuZero再現実装はpolicy・dynamics双方192ch・10層ResNet"
+  },
+  "search": {
+    "family": "αβ+MCTS",
+    "detail": "やねうら王とdlshogiの楽観合議"
+  },
+  "learning": "MuZero実験の学習データはfloodgate棋譜から生成（train 2000万、test 10万）。MuZeroは局面でなく棋譜が必要で既存教師を流用できない",
+  "hardware": "やねうら王側: EPYC 7452 デュアル、メモリ512GB。dlshogi側: Ryzen 5 3600X、RTX 3080、メモリ64GB",
+  "language": [
+    "Python"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "研究・実験的",
+      "title": "MuZeroの将棋再現実装と検証",
+      "description": "python-dlshogi2をMuZero形式に改造し、1手1秒で20連敗した。MuZeroの盤面評価の一致率はAlphaZero部分切り出し版より低く（公開モデルfinetuneで40.6%対53.1%、ゼロから35.3%対48.1%）、将棋のように軽いシミュレータがある場合に伝言ゲーム（dynamics）を挟む利点は薄いと結論した。",
+      "originality": "独自",
+      "evidence": "MuZero一致率40.6%（finetune）・35.3%（ゼロから）に対し、AlphaZero部分は53.1%・48.1%",
+      "quote": "MuZeroはAlphaZeroより弱かった"
+    },
+    {
+      "category": "探索",
+      "title": "合議用評価値の補正パラメータ",
+      "description": "エンジン別補正、手数に比例して負の補正をかける終盤正確度（dlshogiに手数×8点のペナルティ）、評価値が過大なら詰み相当のボーナスを与える勝ち/負け確信ボーナス（やねうら王は評価値334以上）の3つで、評価値スケールとエンジン間の実力差を補正する。",
+      "originality": "独自",
+      "evidence": "dlshogiの意見を入れた効果は0〜20Elo程度と推定。追試として、やねうら王10万ノードとdlshogi 1000ノードの合議でdlshogiに300点程度のペナルティを付けると、floodgate 3500以上の手の一致率が0.5%程度上がる",
+      "quote": "終盤正確度 ...... 手数に応じて各々のエンジンの評価値にボーナスをつける。"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "HoneyWaffle開発者が後悔した振り飛車定跡の使い分け",
+      "description": "HoneyWaffleの開発者が後悔している振り飛車用の定跡と、それをベースに生成した定跡を、対戦相手によって使い分ける。長く同じ定跡を使っているが対策された様子はない。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "HoneyWaffleの開発者が後悔している振り飛車用の定跡と、その定跡をベースにして生成した定跡を、対戦相手によって使い分けていた。"
+    },
+    {
+      "category": "解説・人間支援",
+      "title": "実況ツールの公開予定",
+      "description": "出す内容が乏しいため実況を頑張る案を挙げ、実況ツールの公開も予定する。ただしlinuxでは動くがwindowsで動かない。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "実況を頑張る"
+    }
+  ],
+  "character": "PR文書は575で「MuZeroはAlphaZeroより弱かった」と要約し、「大会で出すネタがねえどうしよう」「全部、論文のレフェリーが悪い」と原論文にツッコミを入れる軽妙な語り口。今から飛車を振る、負けても振り飛車のせいにする、など自虐的なネタも。大会後にMuZeroのソースコードを公開予定。",
+  "notes": "PR文章（MuZero実験）と実装内容詳細（実際に使った合議構成）の2文書。実際に大会で使ったのは合議で、MuZeroは採用見送り。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc32/team.html"
+}

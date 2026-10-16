@@ -1,0 +1,54 @@
+{
+  "wcsc": 24,
+  "year": 2014,
+  "dir": "tsutsukana",
+  "team": "一丸 貴則",
+  "software": "ツツカナ",
+  "sources": [
+    "wcsc24/appeal/tsutsukana/WCSC24_tsutsukana_20140331.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc24/appeal/tsutsukana/WCSC24_tsutsukana_20140331.txt"
+  ],
+  "summary": "読みの深さを機械学習で決めるのが一番の特徴。今年は学習結果に人手の調整を加え、レーティングがさらに約100点上がった（1手1秒の対Bonanza 6.0勝率より推定）。データ構造はkindergarten bitboardsでシンプルに。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "不明",
+    "detail": null
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "読みの深さを機械学習で決定"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": "学習結果の人手調整でレーティング約+100（対Bonanza6.0、1手1秒勝率から推定）",
+  "ideas": [
+    {
+      "category": "探索",
+      "title": "読みの深さを機械学習で決める",
+      "description": "指し手ごとの読む深さを機械学習で決定する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "指し手を読む深さを機械学習によって決定していることです。"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "学習結果への人手調整",
+      "description": "機械学習で得た結果に人手で調整を加えたところ、レーティングが約100点向上した。",
+      "originality": "独自",
+      "evidence": "約+100レーティング（対Bonanza 6.0の1手1秒勝率より推定）",
+      "quote": "これによってレーティングが更に100点程度向上しました。"
+    }
+  ],
+  "character": null,
+  "notes": "詳細は第21回の文書を参照とある。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc24/team.html"
+}

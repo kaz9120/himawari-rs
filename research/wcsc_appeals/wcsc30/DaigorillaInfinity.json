@@ -1,0 +1,87 @@
+{
+  "wcsc": 30,
+  "year": 2020,
+  "dir": "DaigorillaInfinity",
+  "team": "田中 大吾",
+  "software": "Daigorilla∞",
+  "sources": [
+    "wcsc30/appeal/DaigorillaInfinity/Daigorilla.pptx"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc30/appeal/DaigorillaInfinity/Daigorilla.pptx"
+  ],
+  "summary": "NNUE評価関数は前年と同じで、棋譜操作（sfen変換）で詰みと入玉の精度を上げ、対振り飛車局面を教師生成で増やす。dlshogiのソースを応用した対振り飛車の連続対局や、30万超の定跡も使う。",
+  "base": {
+    "engine": "不明",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "NNUE",
+    "detail": "WCSC29と同じNNUE。オールラウンダー的に仕上げる"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "Clangでコンパイルして20〜30%高速化"
+  },
+  "learning": "sfen変換による棋譜操作で詰み・入玉の精度向上。対振り飛車局面を教師生成で増やす",
+  "hardware": "AWS利用予定",
+  "language": [
+    "C++",
+    "Python"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "棋譜操作で詰みと入玉の精度向上",
+      "description": "棋譜をsfen変換で操作し、詰みと入玉の精度を上げる。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "棋譜操作（ sfen 変換）により Mate と入玉の精度を上げる"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "対振り飛車Killerの教師生成",
+      "description": "振り飛車党ソフトが一定数参加すると見込み、教師生成時に対振りの局面を増やす。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "対振り飛車 Killer として教師生成時に 対振りの局面を増やす"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "dlshogiを使った対振り飛車の連続対局",
+      "description": "dlshogiのソースを応用し、対振り飛車の局面だけから連続対局する。高性能GPUが手に入れば教師生成より優先したい。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "dlshogi のソースを応用し対振り飛車のみの局面から連続対局を実施する。"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "Clangコンパイルで高速化",
+      "description": "対局用の探索部をClangでコンパイルし、WCSC29より20〜30%速くなった。",
+      "originality": "既存手法の応用",
+      "evidence": "20〜30%の高速化",
+      "quote": "Clang でコンパイルをした。➡ wcsc29 より 20 ％から 30 ％の高速化がかかった。"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "オリジナルと千田氏の定跡の合成",
+      "description": "登録30万以上。自作定跡と千田さんの定跡を合成して調整する。depth6〜8のソフトで質重視に作り、指定局面から1手500万NPSで対局させて勝率のよい手をsbkに取り込む。最後は定跡ツリーを人の目で調整する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "オリジナルと千田さんの定跡を合成しそこから調整"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "非公開の秘策定跡",
+      "description": "定跡に秘策があるとして、大会当日まで非公開にする。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "またその他定跡には秘策あり！（当日まで非公開）"
+    }
+  ],
+  "character": "「定跡には秘策あり！」と当日まで伏せるなど、対振り飛車の狙い撃ちを前面に出す。",
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc30/team.html"
+}

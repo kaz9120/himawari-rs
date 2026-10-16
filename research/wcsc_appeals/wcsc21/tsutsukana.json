@@ -1,0 +1,60 @@
+{
+  "wcsc": 21,
+  "year": 2011,
+  "dir": "tsutsukana",
+  "team": "一丸貴則",
+  "software": "ツツカナ",
+  "sources": [
+    "wcsc21/appeal/tsutsukana/WCSC21_tsutsukana_20110327.pdf"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc21/appeal/tsutsukana/WCSC21_tsutsukana_20110327.pdf"
+  ],
+  "summary": "指し手ごとに読む深さをプロの棋譜から学習する探索が今年の特徴。LMR相手に自己対戦で225勝75敗（勝率0.750）。「指し手の相対消費深さ」という概念を挟んで、学習問題を単純にした。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "不明",
+    "detail": null
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "NegaScoutに「指し手の相対消費深さ」を組み込んだ探索。王手局面は消費深さを変えない"
+  },
+  "learning": "プロ棋譜の指し手を重要な手とみなし、棋譜の手以下を読むコストを最小化するよう指し手の絶対消費深さを学習",
+  "hardware": null,
+  "language": null,
+  "claimed_strength": "自己対戦（1手5秒・300局）で提案手法がLMRに225勝75敗（勝率0.750）、深さ差なし（ALL）に234勝66敗。LMRはALLに199勝101敗（0.663）",
+  "ideas": [
+    {
+      "category": "探索",
+      "title": "指し手の相対消費深さを使う探索",
+      "description": "指し手に絶対的な消費深さを割り当て、現在見つかっている最小値の手との差に1を足して消費深さにする。有力な手が見つかっていれば端歩などはほとんど読まず、有力な手が見つからなければそれなりに読む。オーダリングに依存し、動的に深さが決まる。",
+      "originality": "独自",
+      "evidence": "LMRに対し自己対戦で225勝75敗（勝率0.750）",
+      "quote": "指し手の相対消費深さを利用した探索"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "読む深さの学習（コスト最小化）",
+      "description": "プロの棋譜の手以下をn手読むための全体コストの最小化を学習目的にする。消費深さはシグモイドで0〜sに制限し、指し手特徴（取る手・成る手・王手・逃げる手・駒の位置関係）から求め、Bpは合法手数の平方根とする。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "プロの棋譜で指された手を重要な手と見なし、他の手よりも相対的に深く読むように調整すること"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "間接的に学習する概念の挟み込み",
+      "description": "直接読む深さを学習せず、実現確率探索のように、探索手法を先に定義し、そこで使う量を学習して深さに変換する間接的な方式をとる。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "直接指し手を読む深さを学習するのではなく、概念を一枚噛ませることで問題を簡単にしよう"
+    }
+  ],
+  "character": null,
+  "notes": "ツツカナは前年の分岐数の積による打ち切りから探索方式を変更した。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc21/team.html"
+}

@@ -1,0 +1,52 @@
+{
+  "wcsc": 26,
+  "year": 2016,
+  "dir": "inoue_shogi",
+  "team": "井上 浩一",
+  "software": "井上将棋",
+  "sources": [
+    "wcsc26/appeal/inoue_shogi/ins16_appeal.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc26/appeal/inoue_shogi/ins16_appeal.txt"
+  ],
+  "summary": "第19回に出場したプログラムと同程度の攻撃型（コードネーム「サイロン版」）。単純な評価関数のαβ反復深化とプロの定跡を使う予定。体調によりキャンセルの可能性ありと明記している。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "手作り",
+    "detail": "単純な評価関数"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "αβの反復深化と高速化"
+  },
+  "learning": "できれば我流のものを追加したい",
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "棋風・人間らしさ",
+      "title": "攻撃型",
+      "description": "第19回出場版と同程度の攻撃型。コードネームは「サイロン版」。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "第19回に出場したプログラムと同程度の攻撃型（コードネーム：サイロン版）"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "プロの定跡を使う",
+      "description": "プロの定跡を使う予定。",
+      "originality": "不明",
+      "evidence": null,
+      "quote": "プロの定跡を使う予定。"
+    }
+  ],
+  "character": null,
+  "notes": "一覧ページではキャンセル扱い",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc26/team.html"
+}

@@ -1,0 +1,55 @@
+{
+  "wcsc": 34,
+  "year": 2024,
+  "dir": "Meijin_Cobra",
+  "team": "松山 洋章",
+  "software": "名人コブラ",
+  "sources": [
+    "wcsc34/appeal/Meijin_Cobra/appeal_WCSC34.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc34/appeal/Meijin_Cobra/appeal_WCSC34.pdf"
+  ],
+  "summary": "dlshogiとやねうら王を評価の土台に、複数のNNUE評価関数をマージしたアンサンブルを使う。定跡は意図的にランダム手を混ぜた自己対戦で作る。ソフト名の由来は劇団鋼鉄村松の舞台「二手目8七飛車成り戦法」。",
+  "base": {
+    "engine": "やねうら王+dlshogi",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "DL+NNUE",
+    "detail": "dlshogiの評価を土台に、複数のNNUE評価関数をマージして利用"
+  },
+  "search": {
+    "family": "αβ+MCTS",
+    "detail": "やねうら王とdlshogiを併用"
+  },
+  "learning": null,
+  "hardware": "Amazon EC2 c7a.metal 96コア",
+  "language": [
+    "Python",
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "複数NNUEのマージとアンサンブル",
+      "description": "複数のNNUE評価関数をマージして使い、dlshogiの評価と組み合わせたアンサンブル構成にする。dlshogiは序中盤の評価、やねうら王は読みの速さを担当する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "複数のNNUE評価関数をマージして利用します"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "ランダム手入り自己対戦の定跡",
+      "description": "意図的にランダムな手を混ぜた自己対戦で定跡を作る。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "意図的にランダムな手を混ぜた自己対戦により定跡を作成します"
+    }
+  ],
+  "character": "ソフト名は劇団鋼鉄村松の演劇「二手目8七飛車成り戦法」の登場人物に由来する。",
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc34/team.html"
+}

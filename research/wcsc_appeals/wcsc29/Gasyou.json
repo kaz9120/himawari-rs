@@ -1,0 +1,94 @@
+{
+  "wcsc": 29,
+  "year": 2019,
+  "dir": "Gasyou",
+  "team": "森岡 祐一",
+  "software": "GA将？",
+  "sources": [
+    "wcsc29/appeal/Gasyou/Gasyou10_Appeal_for_WCSC29.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc29/appeal/Gasyou/Gasyou10_Appeal_for_WCSC29.pdf"
+  ],
+  "summary": "強化学習PGLeaf Dreiでゼロから評価関数を学習し、評価関数をDropout風に変えた8クライアントの多数決合議で指す。票の割れ方で思考時間を延ばす。大会はキャンセルしたが文書は提出されている。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "駒割＋PPT（二駒関係＋手番）＋王将の移動可能範囲。C++ templateで評価とパラメータ修正の制御構文を共通化"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "全幅ベースの各種枝刈り、KFEnd流2段階静止探索（取る手と成る手）。多数決合議"
+  },
+  "learning": "自己対局からの強化学習でゼロから学習。PGLeaf Drei",
+  "hardware": null,
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": "自己対局は24時間あたり10万局程度。学習に2週間〜1か月必要",
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "PGLeaf Drei",
+      "description": "方策勾配法とQ学習を組み合わせたPGQをベースに、αβ探索のPV Leaf評価値から勾配計算するよう拡張した強化学習。両者の組み合わせで単体のPGLeafより強くなった。",
+      "originality": "独自",
+      "evidence": "PGLeaf単体より棋力向上",
+      "quote": "“PGLeaf Drei”と命名した、強化学習とαβ探索を組み合わせた手法です。"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "パラメータに平均と標準偏差を持たせる",
+      "description": "Noisy Networks風に各パラメータに平均と標準偏差を持たせて学習し、自己対局の棋譜のバリエーションを増やして学習効率を上げる。",
+      "originality": "独自",
+      "evidence": "学習効率が向上",
+      "quote": "Noisy Networks[8]風に各パラメータに「平均と標準偏差」を持たせ、その両方を学習します。"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "エース評価関数との勝率ゲート",
+      "description": "100局の自己対局と更新を10回繰り返し、過去最強の評価関数と400局対戦して55%以上ならエースを更新する。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "勝率が５５％以上であれば、現時点でのパラメータをエース評価関数のパラメータとする。"
+    },
+    {
+      "category": "並列・分散",
+      "title": "シングルスレッド8台の多数決合議",
+      "description": "探索を並列化せず、シングルスレッド探索の8クライアント＋詰将棋1クライアントで多数決合議する。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "シングルスレッド探索のクライアント8つで多数決合議[2]を行います。"
+    },
+    {
+      "category": "探索",
+      "title": "Dropout風のパラメータ変異で合議の多様性を作る",
+      "description": "学習で得た1つのパラメータベクトルの一部をランダムに0にして、複数の評価関数バリエーションを生成する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "「一部のパラメータをランダムに０にする」事で、複数のバリエーションのパラメータベクトルを生成します。"
+    },
+    {
+      "category": "時間管理",
+      "title": "票の割れ方で思考時間を延長",
+      "description": "7対1のように票がそろえば早めに打ち切り、票が割れれば難しい局面とみなして思考時間を延ばす。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "「合議クライアントの票の割れ具合」をベースに思考時間の延長制御を行っています。"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "定跡を一切使わない",
+      "description": "定跡なしで指す。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "定跡は一切無し。"
+    }
+  ],
+  "character": "名前は初期にGAを使ったことに由来。バージョン10なので「！」10個の代わりに「？」1個とする表記遊び。",
+  "notes": "一覧では「キャンセル」扱い。ディレクトリ名はGasyou",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc29/team.html"
+}

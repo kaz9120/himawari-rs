@@ -1,0 +1,47 @@
+{
+  "wcsc": 28,
+  "year": 2018,
+  "dir": "SMS_Shogi",
+  "team": "藤丸 貴裕",
+  "software": "SMS将棋",
+  "sources": [
+    "wcsc28/appeal/SMS_Shogi/appeal.txt"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc28/appeal/SMS_Shogi/appeal.txt"
+  ],
+  "summary": "れさぴょんを土台に、序盤は深く終盤は広く探索し、評価を手作業で細かく調整するソフト。",
+  "base": {
+    "engine": "れさぴょん",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "手作り",
+    "detail": "手作業で細かく調整"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "序盤は深く、終盤は広く探索"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": [
+    "C",
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "探索",
+      "title": "序盤は深く・終盤は広い探索",
+      "description": "探索を序盤は深く、終盤は広くする。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "探索を序盤は深く、終盤は広くしています。"
+    }
+  ],
+  "character": null,
+  "notes": "文書は短い。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc28/team.html"
+}

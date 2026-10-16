@@ -1,0 +1,68 @@
+{
+  "wcsc": 31,
+  "year": 2021,
+  "dir": "Miacis",
+  "team": "迫田 真太郎",
+  "software": "Miacis",
+  "sources": [
+    "wcsc31/appeal/Miacis/WCSC31_Miacis_appeal.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc31/appeal/Miacis/WCSC31_Miacis_appeal.pdf"
+  ],
+  "summary": "評価値を確率分布として出力するのが特徴のAlphaZero型のソフト。前年からTensorRT導入（約+100）と、強化学習の前の教師あり学習の導入（約+100）で改善し、floodgateでR3800程度。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "評価値を確率分布として出力するDL"
+  },
+  "search": {
+    "family": "MCTS",
+    "detail": "AlphaZero型"
+  },
+  "learning": "教師あり学習と強化学習（TD学習）を併用。教師あり学習は最終結果[-1,0,1]を予測するが全局面で同じ分布になるため、TD学習で数手先の評価値を予測",
+  "hardware": "Core i7-7700（4コア）",
+  "language": "C++",
+  "claimed_strength": "floodgateでR3800程度",
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "評価値を確率分布として出力",
+      "description": "評価値を1つの数値でなく確率分布として出力する。初期局面は0付近、中盤の難所は幅広い値、勝ちの終盤は1付近に高い確率を示す。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "評価値を確率分布として出力"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "TensorRT導入（TRTorch）",
+      "description": "LibTorchと連携したTRTorchを使ってTensorRTを導入し、高速化によりR+100ほどの向上。",
+      "originality": "既存手法の応用",
+      "evidence": "R+100ほど",
+      "quote": "TensorRTの導入 LibTorchと連携したTRTorchを利用"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "強化学習の前の教師あり学習",
+      "description": "強化学習の前に教師あり学習を導入し、評価関数の精度が上がってR+100ほどの向上。",
+      "originality": "既存手法の応用",
+      "evidence": "R+100ほど",
+      "quote": "強化学習の前に教師あり学習を導入"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "TD学習で評価値の安定度を学習",
+      "description": "最終結果の予測だと全局面が同じ分布になる問題を、TD学習で数手先の評価値を予測することで、評価値の安定度を学習する形で解決。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "強化学習(TD学習)により数手先の評価値を予測"
+    }
+  ],
+  "character": null,
+  "notes": "文書の日付は2020/03/24（2021の誤記と思われる）。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc31/team.html"
+}

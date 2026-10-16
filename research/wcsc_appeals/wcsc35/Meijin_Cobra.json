@@ -1,0 +1,55 @@
+{
+  "wcsc": 35,
+  "year": 2025,
+  "dir": "Meijin_Cobra",
+  "team": "松山 洋章",
+  "software": "名人コブラ",
+  "sources": [
+    "wcsc35/appeal/Meijin_Cobra/appeal_WCSC35_20250504.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc35/appeal/Meijin_Cobra/appeal_WCSC35_20250504.pdf"
+  ],
+  "summary": "dlshogiを使い、今年のテーマを「ディープ浪漫」と称して、ブロック数を増やして深くすることと、入力特徴量を一切加工しないことを掲げる。40ブロック化は結局うっかりミスで15ブロックになった。",
+  "base": {
+    "engine": "dlshogi",
+    "eval_source": null,
+    "note": "水匠の教師データを使用"
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "15ブロック（当初40ブロックの予定をミスで変更）。入力は局面データそのまま"
+  },
+  "search": {
+    "family": "MCTS",
+    "detail": "dlshogi"
+  },
+  "learning": "水匠の教師データ",
+  "hardware": "Xeon + RTX3090 10枚",
+  "language": [
+    "Python",
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "特徴量を加工しないディープ浪漫",
+      "description": "駒の利き数や入玉の点数といった加工した特徴を入力せず、局面データをそのまま入力する。「入力データを加工して使うのはディープ浪漫に反する」という美学。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "駒の利き数や入玉の点数は甘えです。"
+    },
+    {
+      "category": "評価関数",
+      "title": "深さを優先するネットワーク",
+      "description": "昨年のdlshogiが30ブロックなので、40ブロックに増やしてフィルター数は減らす予定だった。うっかりミスで15ブロックになったと、5/4に追記している。",
+      "originality": "不明",
+      "evidence": null,
+      "quote": "深さこそ正義！"
+    }
+  ],
+  "character": "「ディープ浪漫」というテーマ設定と、「ディープは深い！」「甘えです」などの調子の語り口。ミスを隠さず追記している。",
+  "notes": "AobaZeroの感想によれば、双方が相手を良いと思う妙な局面が長い対局が見られた。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc35/team.html"
+}

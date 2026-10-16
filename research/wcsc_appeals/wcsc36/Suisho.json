@@ -1,0 +1,106 @@
+{
+  "wcsc": 36,
+  "year": 2026,
+  "dir": "Suisho",
+  "team": "水匠プロジェクト（たややん、AIcia_Solid、熊田ゴウ）",
+  "software": "水匠",
+  "sources": [
+    "wcsc36/appeal/Suisho/appeal.pdf",
+    "wcsc36/appeal/Suisho/appeal2.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc36/appeal/Suisho/appeal.pdf",
+    "https://www.apply.computer-shogi.org/wcsc36/appeal/Suisho/appeal2.pdf"
+  ],
+  "summary": "SFNNwithoutPSQT（HalfKAv2-1024_8_64）のNNUEを、Ryfamateの最新DLモデル、DL水匠、AobaZeroの3モデルのアンサンブル評価値で蒸留して学習する。評価値の極端な勝率データによる出力クリッピングを、Ponanza定数の調整で解消した。もう一つの柱は、LLMで観戦向けの解説文を生成する仕組みと、MultiPV用のスレッド数を制限するMultiPV_Threadsである。",
+  "base": {
+    "engine": "やねうら王",
+    "eval_source": null,
+    "note": "SFNNwithoutPSQT（やねうら王GitHubに記載）。DLモデルはRyfamateの最新モデルを借用"
+  },
+  "eval": {
+    "family": "NNUE",
+    "detail": "SFNNwoP、HalfKAv2-1024_8_64"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "やねうら王系。MultiPV_Threadsを実装"
+  },
+  "learning": "知識蒸留。DL水匠・AobaZero・Ryfamateの3モデルでアンサンブルした評価値データを使う。評価値を学習する目標（勝率のシグモイド整数化）を小さくする（Ponanza定数を大きくする）ことでクリッピングを避ける",
+  "hardware": "Amazon EC2 c8a.metal（192コア、384GB）（一覧ページ）",
+  "language": [
+    "Python",
+    "C++",
+    "Rust"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "Ponanza定数でint8クリッピングを解消",
+      "description": "教師データの3割以上が勝率1%以下か99%以上の極端な評価値で、削減すると棋力が下がる。そのためFV_SCALEが大きくなり、最終W4層の約15%がint8上限に張り付いていた。学習目標の評価値を小さく（Ponanza定数を大きく）して、クリッピングを避けた。",
+      "originality": "独自",
+      "evidence": "最終W4層の約15%がint8上限に張り付いていた（改善後の数値は記載なし）",
+      "quote": "学習の目標とすべき評価値を小さくすること（いわゆる Ponanza 定数を大きくすること）で、クリッピングが生じないようにした"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "3モデルのアンサンブル蒸留",
+      "description": "Ryfamateの最新DLモデル、DL水匠、AobaZeroの3モデルでアンサンブルした評価値を、NNUEの知識蒸留の教師に使う。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "DL 水匠、AobaZero の 3 モデルでアンサンブルした評価値データを使用した。"
+    },
+    {
+      "category": "解説・人間支援",
+      "title": "事実は外部、表現はLLMの分業解説",
+      "description": "評価値は水匠、次の一手候補はdlshogi系モデル、戦術イベント（取り合い・成り・王手・両取り）の抽出はルールベースで担当させ、LLMは事実を日本語に組み立てる役割に絞る。LLMに局面を直接語らせると起きる、駒位置や手番の取り違えと王手の捏造をなくした。",
+      "originality": "独自",
+      "evidence": "LLM直叩きで頻発した捏造解説がなくなった（定量値なし）",
+      "quote": "「事実は外部エンジンとルールが拾い、表現は LLM が組み立てる」分業構造を試したかった。"
+    },
+    {
+      "category": "解説・人間支援",
+      "title": "級位者視点と高段者視点の併記",
+      "description": "級位者向けと高段者向けのAIを同時に走らせて読み筋を併記する。「自分なら指しそうな手」と「高段者が選ぶ手」のズレが見え、「級位者は取りに行くが高段者は受ける」型の対比解説が自然に出る。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "級位者向けと高段者向けの AI を同時に走らせ、読み筋を併記する。"
+    },
+    {
+      "category": "解説・人間支援",
+      "title": "戦型・囲いの自動判定",
+      "description": "盤面パターンをSFENマスクで照合し、相掛かり・四間飛車・美濃囲いなどを自動でラベル付けし、解説の冒頭に文脈を与える。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "盤面パターンを SFEN マスクで照合し、相掛かり・四間飛車・美濃囲い等を自動でラベル付け。"
+    },
+    {
+      "category": "エンタメ・演出",
+      "title": "語り口の着せ替えで解説者の人格を演出",
+      "description": "同じ局面を、ですます調、解説者風、弁護士風などの語り口で語らせる。フレーズ・レンダラ単位で口調を差し替えられ、視聴者の好みや配信場面に合わせて雰囲気を切り替えられる。観戦をエンタメコンテンツとして楽しめる。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "「ですます調」「解説者風」「弁護士風」等の語り口で語らせられる。"
+    },
+    {
+      "category": "解説・人間支援",
+      "title": "手筋判別で解説文を自然化",
+      "description": "手筋などを判別するスクリプトを入れ、「▲2四歩…と進むと△1五角で王手飛車となってしまうので注意してください」のように、昨年より自然な解説文を目指す。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "手筋等を判別するスクリプトを入れることで、昨年の解説文に比べて、自然な解説文生成を目指しています。"
+    },
+    {
+      "category": "解説・人間支援",
+      "title": "MultiPV_Threads",
+      "description": "やねうら王系は全スレッドをMultiPVに使うので、MultiPV=4でMultiPV=1より約200レートが下がる。MultiPVで探索するスレッド数を制限し、全力でPVを探索するスレッドを増やして、棋力を保ったまま複数候補手を表示する。研究・検討用途で、会場のYouTube配信で紹介予定。",
+      "originality": "独自",
+      "evidence": "MultiPV=4で従来は約200レート低下",
+      "quote": "MultiPV で探索するスレッド数を制限し、全力で PV を探索するスレッドを増やす仕組みを実装しました。"
+    }
+  ],
+  "character": "大会に勝つこととは直接関係がなくても、将棋AIを使った将棋研究や観戦体験の役に立つ技術を前面に出している。会場のYouTube配信で紹介する予定。",
+  "notes": "概要版（3/31）と追加提出（5/25）の2文書。追加提出に解説文生成の詳細があり、解説用のコードは非公開で追試は難しいとのこと。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc36/team.html"
+}

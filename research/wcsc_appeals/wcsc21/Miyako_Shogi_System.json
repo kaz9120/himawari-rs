@@ -1,0 +1,68 @@
+{
+  "wcsc": 21,
+  "year": 2011,
+  "dir": "Miyako_Shogi_System",
+  "team": "前田大和",
+  "software": "Miyako Shogi System",
+  "sources": [
+    "wcsc21/appeal/Miyako_Shogi_System/MiyakoShogiSystem.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc21/appeal/Miyako_Shogi_System/MiyakoShogiSystem.txt"
+  ],
+  "summary": "Bitboardを使わず利きデータを更新する、Glaurung・Fruit・Craftyを参考にしたレトロな構成。評価関数は序中盤と終盤で分け、学習ではペナルティを勝者・手数別に調整する。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "序中盤と終盤で関数を分割。駒割、位置表、攻め駒の動ける量、玉周囲24マスの利き、ピン駒など"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "反復深化、Aspiration Windows（歩2/3枚・桂1枚・∞）、null move、IID、PVS、futility、LMR、Recapture 0.5手延長、静止探索最大12段"
+  },
+  "learning": "保木の方法で、まずプロ棋譜1000対局で駒割を学習。その駒割で、GPS・Bonanza・GNU Shogiの自動対戦データとWCSC第16〜20回の2次予選・決勝の棋譜から評価関数を学習",
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "勝者の中盤以降のペナルティを軽くし、序盤は重くする",
+      "description": "学習に「報酬」の味を出すため、勝った方の中盤以降の重みのペナルティを少なくする。序盤の特徴は強く出すぎるので、10手未満3倍、20手未満2倍、30手未満1.2倍のペナルティをかける。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "勝った方の中盤以降の重みのペナルティを少なくしている"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "他ソフトの対戦棋譜と大会棋譜で学習",
+      "description": "GPS・Bonanza・GNU Shogiの自動対戦データと、過去5回のWCSC2次予選・決勝棋譜を教師にする。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "GPS、Bonanza、GNU Shogiの自動対戦データおよび、WCSC第16回～第20回の２次予選と決勝の棋譜を用い"
+    },
+    {
+      "category": "評価関数",
+      "title": "進行度を探索前だけで求める",
+      "description": "進行度を探索の前に一度だけ求め、探索中は求め直さない。20手以内は序盤、中盤・終盤は条件（歩の枚数、持ち駒、玉周りの利き、玉の自由度を含む重み付き合計が50以上）で判定する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "探索の前だけで進行度を求める(探索中には進行度を求めなおさない)"
+    },
+    {
+      "category": "探索",
+      "title": "手のオーダリングの細かな順序",
+      "description": "TT手、詰みのキラー、駒得駒取、終盤王手、駒得成り、パス手応手、キラーなどの順で並べ、駒得の判断はSEEで行う。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "トランスポジションテーブルに登録された手"
+    }
+  ],
+  "character": null,
+  "notes": "不利なときは千日手を選ぶことがある、との記述あり。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc21/team.html"
+}

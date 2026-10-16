@@ -1,0 +1,52 @@
+{
+  "wcsc": 23,
+  "year": 2013,
+  "dir": "Shueso",
+  "team": "竹内 章",
+  "software": "習甦",
+  "sources": [
+    "wcsc23/appeal/Shueso/Shueso.htm"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc23/appeal/Shueso/Shueso.htm"
+  ],
+  "summary": "盤面全体の利き・持駒・手番から、駒が将来働くかのポテンシャルを滑らかに変動させる非線形な局面評価が特徴。学習では棋譜の指し手と勝敗に加え、探索結果も教師データとする。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "その他",
+    "detail": "利き・持駒・手番から駒のポテンシャルを滑らかに変動させる非線形評価"
+  },
+  "search": {
+    "family": "不明",
+    "detail": null
+  },
+  "learning": "棋譜の指し手、勝敗、探索結果を教師データにする",
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "駒のポテンシャルを滑らかに変動させる非線形評価",
+      "description": "先手・後手それぞれから見た局面状況に応じ、駒が将来働くかのポテンシャルを滑らかに変える構造で、非線形な特性を評価に取り込む。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "駒が将来的に働くかどうかやそのポテンシャルを滑らかに変動させる構造"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "探索結果も教師にする",
+      "description": "棋譜の指し手・勝敗に加えて探索結果も教師データにし、評価値の精度と安定性の向上を目指す。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "棋譜の指し手や勝敗さらには探索結果も教師データとする"
+    }
+  ],
+  "character": null,
+  "notes": null,
+  "team_list_url": "http://www2.computer-shogi.org/wcsc23/team.html"
+}

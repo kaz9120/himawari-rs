@@ -1,0 +1,37 @@
+{
+  "wcsc": 24,
+  "year": 2014,
+  "dir": "JPBR-0",
+  "team": "築地 毅",
+  "software": "JPBR-0",
+  "sources": [
+    "wcsc24/appeal/JPBR-0/jpbr-0.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc24/appeal/JPBR-0/jpbr-0.txt"
+  ],
+  "summary": "作り直しが間に合わず、序盤中盤終盤隙だらけの将棋になるが、仮に動けば参加したいと語る文書。名前の由来を詳しく語る。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "不明",
+    "detail": null
+  },
+  "search": {
+    "family": "不明",
+    "detail": null
+  },
+  "learning": null,
+  "hardware": "Core i7 4770K",
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [],
+  "character": "名前JPBR-0の由来を語る。PBRはPoor BRainで同僚3人に勧められ、0は「王」の代わりの形が似た字。「ハイフン」と読む。『ゆうちゃんとメカ女子とさわにゃんはお世話になったので倒したい』という友好的な対抗心。",
+  "notes": "技術的な記述はほとんどなく、現状は動いていないと述べる。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc24/team.html"
+}

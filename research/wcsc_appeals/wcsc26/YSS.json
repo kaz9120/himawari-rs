@@ -1,0 +1,52 @@
+{
+  "wcsc": 26,
+  "year": 2016,
+  "dir": "YSS",
+  "team": "山下 宏",
+  "software": "YSS",
+  "sources": [
+    "wcsc26/appeal/YSS/yssappeal2016.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc26/appeal/YSS/yssappeal2016.txt"
+  ],
+  "summary": "16台のマシンでGPS将棋風のクラスタ探索を行う予定の、短い文書。評価関数は手番の情報を含み、3駒以上の関係を考慮する評価関数を作る予定。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "手番の情報を含む。3駒以上の関係を考慮する評価関数を作成予定"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "GPS風のクラスタ探索"
+  },
+  "learning": null,
+  "hardware": "Amazon EC2 c4.8xlarge×16（288コア）",
+  "language": "C++",
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "並列・分散",
+      "title": "16台のGPS将棋風クラスタ",
+      "description": "16台のマシンでGPS将棋風のクラスタ探索を行う予定。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "16台のマシンでGPS風のクラスタ探索を行う予定です。"
+    },
+    {
+      "category": "評価関数",
+      "title": "3駒以上の関係を考慮する評価関数",
+      "description": "手番の情報を含め、3駒以上の関係を考慮する評価関数を作成する予定。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "3駒以上の関係を考慮する評価関数を作成する予定です。"
+    }
+  ],
+  "character": null,
+  "notes": "詳細は外部のCSA例会資料とYSS 7.0の解説を参照とする",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc26/team.html"
+}

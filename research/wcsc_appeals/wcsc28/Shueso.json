@@ -1,0 +1,62 @@
+{
+  "wcsc": 28,
+  "year": 2018,
+  "dir": "Shueso",
+  "team": "竹内 章",
+  "software": "習甦",
+  "sources": [
+    "wcsc28/appeal/Shueso/Shueso_wcsc28.txt"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc28/appeal/Shueso/Shueso_wcsc28.txt"
+  ],
+  "summary": "多層構造の評価関数（非線形の駒の価値＋玉との位置関係の駒の働き）を持つソフト。前世代の評価関数でフィッシャーランダムチェス風の局面から自己対戦し、評価値の推移から推定した勝率を割引報酬として強化学習する。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "その他",
+    "detail": "多層構造。駒の価値は盤面全体の利き・持駒・手番から算出した玉の安全度に対応する非線形関数。駒の働きは入玉していない玉と他の2駒の位置関係"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "不明"
+  },
+  "learning": "前世代の評価関数で、フィッシャーランダムチェスに準じた2494800通りのユニークな初期局面から自己対戦棋譜を作成。評価値の推移から推定した勝率を割引報酬として強化学習",
+  "hardware": "Amazon EC2 c3.8xlarge",
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "玉の安全度に連動する非線形の駒の価値",
+      "description": "駒の価値を、盤面全体の利きと持駒・手番から算出した玉の安全度に応じた非線形関数にする。入玉して玉が安全になると、持駒と敵陣の駒が小駒：大駒＝1：5の駒割に近づく。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "入玉して玉の安全度が高くなると、持駒と敵陣にいる駒が小駒：大駒＝１：５の駒割に近づく。"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "フィッシャーランダム式の初期局面から自己対戦",
+      "description": "駒を無作為に並べるフィッシャーランダムチェスに準じ、2494800通りのユニークな初期局面から自己対戦棋譜を作る。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "フィッシャーランダムチェスに準じたユニークな初期局面2494800からの自己対戦棋譜"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "評価値推移から推定した勝率を割引報酬に",
+      "description": "自己対戦棋譜の評価値の推移をフィードバックして推定した勝率を、割引報酬として強化学習する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "推定された勝率を割引報酬として強化学習する。"
+    }
+  ],
+  "character": null,
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc28/team.html"
+}

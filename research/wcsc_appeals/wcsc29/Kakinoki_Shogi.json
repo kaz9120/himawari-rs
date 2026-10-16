@@ -1,0 +1,54 @@
+{
+  "wcsc": 29,
+  "year": 2019,
+  "dir": "Kakinoki_Shogi",
+  "team": "柿木 義一",
+  "software": "柿木将棋",
+  "sources": [
+    "wcsc29/appeal/Kakinoki_Shogi/appeal2019.txt"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc29/appeal/Kakinoki_Shogi/appeal2019.txt"
+  ],
+  "summary": "1985年頃に開発を始めた老舗。2013年から全幅探索＋ボナンザ法評価関数のみで、ほぼ同じソフトを同じハードで出し続けており、参加自体がベンチマークになるとしている。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "ボナンザ法で学習。評価項目は独自。利きデータを使用しビットボード不使用"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "全幅探索、山下さんの0.5手延長方式、並列PVS、null move、王手延長、静止探索"
+  },
+  "learning": "ボナンザ法",
+  "hardware": null,
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": "floodgateで約2300（2017年時点の追記）",
+  "ideas": [
+    {
+      "category": "探索",
+      "title": "0.5手延長方式の採用",
+      "description": "山下宏氏の0.5手延長方式を採用している。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "山下さんの 0.5手延長方式を採用"
+    },
+    {
+      "category": "開発手法・運用",
+      "title": "変更なしでのベンチマーク参加",
+      "description": "ほぼ同じソフトを同じハードで参加することが、ベンチマークになるとする。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "ほぼ同じソフトを同じハードで参加しているので、そういう意味のベンチマークはなるかと思います。"
+    }
+  ],
+  "character": null,
+  "notes": "2013年〜2019年の毎年のアピール文を添付。今年の変更点はフィッシャールールの時間対応のみ",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc29/team.html"
+}

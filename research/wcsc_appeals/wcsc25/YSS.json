@@ -1,0 +1,78 @@
+{
+  "wcsc": 25,
+  "year": 2015,
+  "dir": "YSS",
+  "team": "山下 宏",
+  "software": "YSS",
+  "sources": [
+    "wcsc25/appeal/YSS/yssappeal2015_2.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc25/appeal/YSS/yssappeal2015_2.txt"
+  ],
+  "summary": "NDFを見習い手番を評価関数に加えた。駒が取れるか・利きの勝ち負けなど特徴への手番追加は約+50Elo、進行度を単純加算にして約+30Elo、合計で前年から自己対戦+130Elo（Bona6相手+80Elo）。3駒関係を使わず3駒を超えることを目指し、評価関数は約38万個・760KBと小さい。EC2の16台でGPS風クラスタ探索。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": "Stockfishの探索を参考"
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "約38万個・760KB。3駒関係を使わず3駒を超えることを目指す。手番を特徴に追加"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "Stockfishの探索を参考。GPS風16台クラスタ"
+  },
+  "learning": "Bonaメソ。手番評価を入れると16000棋譜は必要",
+  "hardware": "Amazon EC2 c3.8xlarge×16（予選・256コア）、c4.8xlarge×16（決勝・288コア）、費用約78,000円",
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": "前年より自己対戦で+130Elo、Bona6相手で+80Elo。16→32台は+50Elo程度",
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "手番を特徴に加える",
+      "description": "NDFを見習い、王の安全度、駒が取れるか、歩の利きの状態に手番を加えた。特に駒が取れるかどうかの特徴は約+50Eloの効果。初期局面の手番の価値は+154と大きい。",
+      "originality": "再現・追従",
+      "evidence": "駒が取れるかで約+50Elo",
+      "quote": "特に駒が取れるかどうか"
+    },
+    {
+      "category": "評価関数",
+      "title": "進行度を手数に近い単純加算にする",
+      "description": "非線形だった進行度（歩切れで半分など）を、序盤は5手進めば+5%のようにほぼ手数と同じ単純加算にして約+30Elo。",
+      "originality": "独自",
+      "evidence": "約+30Elo",
+      "quote": "序盤は5手進めば+5%、"
+    },
+    {
+      "category": "評価関数",
+      "title": "3駒関係を使わない小さな評価関数",
+      "description": "3駒関係を使わずに3駒を超えることを目指す、約38万個・760KBの評価関数。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "3駒関係を使わずに3駒を超えることを目指しています。"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "クラスタ台数と強さの関係の測定",
+      "description": "16台から32台に増やしても自己対戦で約+50Elo（実質+30Elo程度？）しか上がらないと報告する。",
+      "originality": "独自",
+      "evidence": "16→32台で+50Elo（実質+30Elo程度？）",
+      "quote": "16台から32台に増やしたとしても自己対戦で+50Eloぐらい"
+    },
+    {
+      "category": "並列・分散",
+      "title": "EC2でのGPS風16台クラスタ",
+      "description": "Amazon EC2のc3.8xlarge/c4.8xlargeを16台借り、GPS風クラスタ探索を行う。かかった費用は367時間で約78,000円。",
+      "originality": "再現・追従",
+      "evidence": null,
+      "quote": "クラスタは昨年とまったく同じGPS風クラスタの16台探索です。"
+    }
+  ],
+  "character": null,
+  "notes": null,
+  "team_list_url": "http://www2.computer-shogi.org/wcsc25/team.html"
+}

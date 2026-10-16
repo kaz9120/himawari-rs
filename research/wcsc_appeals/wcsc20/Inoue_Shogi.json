@@ -1,0 +1,55 @@
+{
+  "wcsc": 20,
+  "year": 2010,
+  "dir": "Inoue_Shogi",
+  "team": "井上浩一",
+  "software": "井上将棋",
+  "sources": [
+    "wcsc20/appeal/Inoue_Shogi/Inoue_Shogi.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc20/appeal/Inoue_Shogi/Inoue_Shogi.txt"
+  ],
+  "summary": "前回版を並列化し2台で動かすことを狙う。第一目的は出場、第二はPCスキル向上、第三は最下位回避。Pythonのフロントエンドを新規に学ぶ。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "手作り",
+    "detail": "単純な評価関数。学習なし（非ボナンザ系統）"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "反復深化＋並列探索（開発中、バグあり）"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": [
+    "Python",
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "並列・分散",
+      "title": "2台連携の並列化に挑戦",
+      "description": "前回版を並列化し、さらに2台のPCで連携させる。並列化は動くがバグあり、2台連携は模索中で、うまくいかなければ1台で出場する。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "並列化および連携に挑戦いたします"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "プロ定跡をなるべく使わない",
+      "description": "前回はプロの定跡を使ったが、今回はできるだけ使わない。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "今回はプロの定跡をできるだけ使わないようにした"
+    }
+  ],
+  "character": "「私に勝てば最下位にならない」と自分に勝てないことを書く、控えめで率直な文書。目的を出場・スキル向上・最下位回避と明記。",
+  "notes": null,
+  "team_list_url": "http://www2.computer-shogi.org/wcsc20/team.html"
+}

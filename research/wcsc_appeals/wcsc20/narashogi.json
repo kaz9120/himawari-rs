@@ -1,0 +1,76 @@
+{
+  "wcsc": 20,
+  "year": 2010,
+  "dir": "narashogi",
+  "team": "奈良和文",
+  "software": "奈良将棋",
+  "sources": [
+    "wcsc20/appeal/narashogi/narashogi.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc20/appeal/narashogi/narashogi.txt"
+  ],
+  "summary": "実現確率探索とBonanza methodの評価関数学習を組み合わせる。自分が局面評価に使いそうな特徴を抽出して線形和にし、手番依存項目は弱くなるため外した。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "開発者自身が局面評価に使いそうな特徴を抽出した線形和。28特徴・400,013要素（非ゼロ182,963）"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "実現確率探索。手の確率でオーダリング。ルートでのウィンドウ探索、YBWC並列"
+  },
+  "learning": "Bonanza method。学習棋譜は14,000局余",
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "探索",
+      "title": "実現確率探索と手の確率オーダリング",
+      "description": "実現確率探索を行い、指し手の順序付けを手の確率で行う。期待ノードタイプ（All/Pv/Cut）を手生成順や再探索・延長に使う。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "実現確率探索。オーダーリングは手の確率で。"
+    },
+    {
+      "category": "並列・分散",
+      "title": "独自実装のYBWC並列探索",
+      "description": "YBWCを他の実装を参考にせず自前で実装しており、おそらく独自だと述べる。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "並列探索（YBWC、実装方法は他を参考にしていないため、おそらく独自なもの）"
+    },
+    {
+      "category": "評価関数",
+      "title": "手番依存の評価項目を外す",
+      "description": "最近、手番に依存する評価項目は使わないようにした。使うと弱くなるため。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "最近、手番に依存する評価項目は使わないようにした。（弱くなるため）"
+    },
+    {
+      "category": "開発手法・運用",
+      "title": "1手20秒の自己連続対戦と数十サンプル局面で強さ判定",
+      "description": "強さの判定を、1手20秒の自己連続対戦と、序中終盤を含む数十のサンプル局面で行う。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "１手２０秒の自己連続対戦。序中終盤を含む、数十のサンプル局面を使用。"
+    },
+    {
+      "category": "開発手法・運用",
+      "title": "開発経過のWeb公開",
+      "description": "開発の様子をWebページで公開している。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "開発の様子を示す情報"
+    }
+  ],
+  "character": null,
+  "notes": null,
+  "team_list_url": "http://www2.computer-shogi.org/wcsc20/team.html"
+}

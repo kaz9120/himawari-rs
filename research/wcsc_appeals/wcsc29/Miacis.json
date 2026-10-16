@@ -1,0 +1,54 @@
+{
+  "wcsc": 29,
+  "year": 2019,
+  "dir": "Miacis",
+  "team": "迫田 真太郎",
+  "software": "Miacis",
+  "sources": [
+    "wcsc29/appeal/Miacis/Miacis_appeal_v2.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc29/appeal/Miacis/Miacis_appeal_v2.pdf"
+  ],
+  "summary": "AlphaZero型のvalueを、評価値ではなく勝敗の確率分布（51分割のカテゴリカル分布）として出力する分布型強化学習の将棋ソフト。分布を使ってMCTSの選択を行い、従来のスカラ出力に対し大きくレートを上げたと報告する。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "AlphaZero型モデルのValueを複数ユニットに拡張し、報酬[-1,1]を51分割したカテゴリカル分布を出力（Categorical DQN参考）"
+  },
+  "search": {
+    "family": "MCTS",
+    "detail": "選択ステップで良い価値となる確率を考慮"
+  },
+  "learning": "自己対局による強化学習",
+  "hardware": "Amazon EC2",
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": "技巧2（深さ1、R1506）に1手1秒100局で、Scalar 10.0%に対しCategorical 72.0%。全体でR+545.8（評価精度でR+468.1、分布を考慮した探索でR+77.7）",
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "評価値を確率分布として出力",
+      "description": "状態価値を累積報酬の期待値ではなく分布そのものとして近似する分布型強化学習を将棋に適用。Valueを51ユニットにし、確率分布を出力する。「難解」「形勢不明」の局面では広い分布になる。",
+      "originality": "独自",
+      "evidence": "対技巧2: 勝率10.0%→72.0%、R+545.8",
+      "quote": "評価値を確率分布として出力"
+    },
+    {
+      "category": "探索",
+      "title": "分布を考慮したMCTS選択",
+      "description": "MCTSの選択ステップで、良い価値になる確率を考慮した探索を行う。",
+      "originality": "独自",
+      "evidence": "R+77.7",
+      "quote": "確率分布を用いた効率的な探索"
+    }
+  ],
+  "character": null,
+  "notes": "森村らの研究、Categorical DQN、Windfallを背景として挙げる",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc29/team.html"
+}

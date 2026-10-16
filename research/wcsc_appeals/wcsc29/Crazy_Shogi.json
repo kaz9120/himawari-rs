@@ -1,0 +1,46 @@
+{
+  "wcsc": 29,
+  "year": 2019,
+  "dir": "Crazy_Shogi",
+  "team": "Rémi Coulom（Kayufu）",
+  "software": "Crazy Shogi",
+  "sources": [
+    "wcsc29/appeal/Crazy_Shogi/wcsc29_crazy_shogi_characterization.txt"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc29/appeal/Crazy_Shogi/wcsc29_crazy_shogi_characterization.txt"
+  ],
+  "summary": "AlphaZeroアルゴリズムを、一から独自にC++で実装したソフト。ニューラルネット部はCUDNNでNvidia GPU上で動かす。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "AlphaZero型ニューラルネット（CUDNN）"
+  },
+  "search": {
+    "family": "MCTS",
+    "detail": null
+  },
+  "learning": null,
+  "hardware": "Amazon EC2 p3.8xlarge（4GPU）",
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "研究・実験的",
+      "title": "AlphaZeroの完全自前実装",
+      "description": "DeepMind公表のAlphaZeroアルゴリズムを、既存コードに頼らず一から実装した。",
+      "originality": "再現・追従",
+      "evidence": null,
+      "quote": "It is entirely original code developed from scratch, in C++."
+    }
+  ],
+  "character": null,
+  "notes": "文書は3行のみ",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc29/team.html"
+}

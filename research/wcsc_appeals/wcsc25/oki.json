@@ -1,0 +1,62 @@
+{
+  "wcsc": 25,
+  "year": 2015,
+  "dir": "oki",
+  "team": "隠岐 (tomonobu masumoto)",
+  "software": "隠岐",
+  "sources": [
+    "wcsc25/appeal/oki/bunshou.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc25/appeal/oki/bunshou.txt"
+  ],
+  "summary": "前年までと同じ内容の文書。思考部は約484万ステップで、ソース生成プログラムにコーディングさせたと主張する。序盤は定跡データの同一・類似局面検索、中盤以降は故・森田和郎氏に教わった2手読み。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": "ソース生成プログラムで思考部を作成"
+  },
+  "eval": {
+    "family": "手作り",
+    "detail": "if文の羅列"
+  },
+  "search": {
+    "family": "その他",
+    "detail": "中盤以降は2手読み"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "開発手法・運用",
+      "title": "ソースコードの自動生成",
+      "description": "ソースを作るプログラムに思考部をコーディングさせる。思考部約484万ステップで、374ファイル・約1.4億バイト。",
+      "originality": "独自",
+      "evidence": "思考部約484万ステップ",
+      "quote": "実はコンピュータにコーディングさせております。"
+    },
+    {
+      "category": "棋風・人間らしさ",
+      "title": "森田流の2手読み",
+      "description": "中盤以降は故・森田和郎氏に教わった2手読みを採用し、人間の感覚に近いとする。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "２手読みとは、森田将棋の故・森田和郎さんが教えてくれた手法"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "同一・類似局面検索の定跡",
+      "description": "序盤は棋譜ファイルの乱数検索による同一局面検索と、if文の羅列による類似局面検索。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "序盤は定跡データを使った同一局面検索と類似局面検索で"
+    }
+  ],
+  "character": "「アピールという言葉の意味がわからない」と野球に例えて語り、ソースファイル一覧を貼る独特の文書。第23・24回とほぼ同文（ステップ数のみ更新）。",
+  "notes": null,
+  "team_list_url": "http://www2.computer-shogi.org/wcsc25/team.html"
+}

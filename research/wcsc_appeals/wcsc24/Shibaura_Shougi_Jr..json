@@ -1,0 +1,70 @@
+{
+  "wcsc": 24,
+  "year": 2014,
+  "dir": "Shibaura_Shougi_Jr.",
+  "team": "芝浦工業大学（五十嵐 治一ほか）",
+  "software": "芝浦将棋Jr.",
+  "sources": [
+    "wcsc24/appeal/Shibaura_Shougi_Jr./appeal.pdf"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc24/appeal/Shibaura_Shougi_Jr./appeal.pdf"
+  ],
+  "summary": "前年から続く「専門知識に頼らず自己対局で学ぶ」コンセプトの学生チーム。探索エンジンは自作でBonanza 6.0の評価関数を借用し、縦3分割64bit×3のbitboard＋Magic bitboardが特徴。今年は置換表、キラー手、LMR、静止探索（SEE付き、20手まで）、残り時間の35分の1を上限とする時間制御、ponderを追加した。",
+  "base": {
+    "engine": "独自",
+    "eval_source": "Bonanza 6.0.0の評価関数",
+    "note": "探索エンジンは全面自作"
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "Bonanza 6.0.0をそのまま使用"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "置換表、キラー、LMR、静止探索（SEE、20手まで）"
+  },
+  "learning": "将来は方策勾配法による強化学習を予定",
+  "hardware": null,
+  "language": [
+    "C"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "実装・高速化",
+      "title": "縦3分割64bit×3のbitboardとMagic bitboard",
+      "description": "盤面を縦方向3領域に分け、64bit整数3つで表す。縦に動く駒が多い将棋の飛び駒の利きを1変数で計算でき、Magic bitboardの乗算は中央の変数だけで済む（前年から継続）。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "盤面は縦方向に３つの領域に分割されており"
+    },
+    {
+      "category": "時間管理",
+      "title": "残り持ち時間の35等分",
+      "description": "残りの持ち時間を35等分した時間を思考時間の上限にする。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "残りの持ち時間を 35 等分した時間を思考時間の上限とする"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "専門知識に頼らない自己学習",
+      "description": "人間の専門知識に頼らず、対局を通した試行錯誤で学び人間を超えることを目標にする。定跡DBは使わず、将来は方策勾配法で学習する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "人間の持っている将棋に関する専門知識に頼ることなく"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "定跡データベース不使用",
+      "description": "学習時にも対局時にも定跡DBを使わない。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "大会対局時には定跡データベースを"
+    }
+  ],
+  "character": "目標は前年と同じ「1次予選リーグでの初勝利」。メーリングリストや討論会で他チームとの交流にも触れ、学生・社会人を問わず共同研究者を歓迎する。",
+  "notes": "前年の文書に探索機能の追加分が加わった形。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc24/team.html"
+}

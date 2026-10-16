@@ -1,0 +1,37 @@
+{
+  "wcsc": 27,
+  "year": 2017,
+  "dir": "Garyu",
+  "team": "高田 淳一",
+  "software": "臥龍",
+  "sources": [
+    "wcsc27/appeal/Garyu/garyu27.html"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc27/appeal/Garyu/garyu27.html"
+  ],
+  "summary": "第3回から出場し続けるJava製の老舗ソフト。αβ・反復深化・Null move等の手作り評価関数の構成で、約750の評価パラメータを持つ。前回から変更なし。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "手作り",
+    "detail": "駒損得、成駒、当たり駒、絶対位置、玉の自由度、各枡の利き、駒の働き、囲い、ピン、手番など約750パラメータ"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "反復深化、置換表、null move pruning、王手延長、詰み探索は深さ優先探索。並列探索・df-pnは不採用"
+  },
+  "learning": null,
+  "hardware": "Core i7 4960HQ 1スレッド",
+  "language": [
+    "Java"
+  ],
+  "claimed_strength": "約30万nodes/s（シングルスレッド）。通算70勝108敗4分",
+  "ideas": [],
+  "character": null,
+  "notes": "「全く変更なし」。思考部20100行・UI部10971行。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc27/team.html"
+}

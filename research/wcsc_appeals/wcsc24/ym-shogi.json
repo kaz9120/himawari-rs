@@ -1,0 +1,78 @@
+{
+  "wcsc": 24,
+  "year": 2014,
+  "dir": "ym-shogi",
+  "team": "山田 雅之",
+  "software": "ym将棋",
+  "sources": [
+    "wcsc24/appeal/ym-shogi/ymshogi.pdf"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc24/appeal/ym-shogi/ymshogi.pdf"
+  ],
+  "summary": "前年とほぼ同じ文書（版が第4版に更新）。通常のαβ探索とUCT型MCTSを別スレッドで並走させ、結果と情報を共有して指し手を選ぶ。MCTSは子ノードの最善勝率を親の勝率とする修正、progressive widening、確定勝利優先、αβのハッシュ最善手によるUCB補正を持つ。評価関数はTreeStrapで他ソフトとの対戦から学習する。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "2駒関係と3駒関係の一部。駒割は固定値"
+  },
+  "search": {
+    "family": "αβ+MCTS",
+    "detail": "αβ（全幅＋2段階静止探索、df-pn）とUCTを別スレッドで並走"
+  },
+  "learning": "TreeStrap（αβ）で他プログラムとの対戦から学習",
+  "hardware": null,
+  "language": [
+    "Java"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "探索",
+      "title": "αβとMCTSの並走併用",
+      "description": "通常探索とMCTSを別スレッドで同時に走らせ、ハッシュを参照し合って詰み情報と最善手を共有し、条件によってどちらの手を指すか決める。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "通常探索の短所をモンテカルロ木探索で補うことを目指したのがym将棋である。"
+    },
+    {
+      "category": "探索",
+      "title": "子ノードの最善勝率を親の勝率とするMCTS",
+      "description": "ノード勝率を全playoutの平均でなく子ノードの最善勝率にして、相手が間違える前提で高く出る問題を避ける。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "あるノードでの勝率を計算する際、子ノードの中で最善の勝率を、そのノードの勝率とする。"
+    },
+    {
+      "category": "探索",
+      "title": "αβの最善手によるUCB補正",
+      "description": "通常探索のハッシュの最善手にUCBのプラス補正を行う。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "ハッシュの最善手であれば、UCBにプラスの補正を行う。"
+    },
+    {
+      "category": "探索",
+      "title": "擬似探索延長による水平線効果対策",
+      "description": "A→B→Cが最善手順のとき、水平線効果になりやすいA→Bなら、その2手を指さずCを指した評価値と比べて水平線効果と判断すれば大きくマイナス評価する。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "疑似探索延長[3]"
+    },
+    {
+      "category": "時間管理",
+      "title": "千日手を残り時間で変える",
+      "description": "千日手は基本評価値0とするが、残り時間が相手より少ないときはプラス評価にして歓迎する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "残り時間が相手より少ない場合は、プラス評価とする（千日手を歓迎する）"
+    }
+  ],
+  "character": null,
+  "notes": "第23回の文書とほぼ同一（前回からの変更点の節が「細々とした修正」のみに簡略化）。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc24/team.html"
+}

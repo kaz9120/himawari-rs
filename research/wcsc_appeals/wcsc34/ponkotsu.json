@@ -1,0 +1,71 @@
+{
+  "wcsc": 34,
+  "year": 2024,
+  "dir": "ponkotsu",
+  "team": "ponkotsu（竹内元気・儀同政伸・中川翔太・掛谷英紀）",
+  "software": "ponkotsu",
+  "sources": [
+    "wcsc34/appeal/ponkotsu/ponkotsu_appeal_2024.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc34/appeal/ponkotsu/ponkotsu_appeal_2024.pdf"
+  ],
+  "summary": "DenseNet型のネットを改良し、スキップ接続を結合から要素和へ変えて層が深くなるときのチャンネル膨張を避けた。さらに学習率スケジューラ、SAM最適化、学習データを更新し、ブロック数を10から15に増やす予定。",
+  "base": {
+    "engine": "dlshogi",
+    "eval_source": "『強い将棋ソフトの創りかた』付属データ（floodgate・水匠の棋譜を更新）",
+    "note": null
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "DenseNet10の改良版。スキップ接続を要素和（平均）に変更。ブロック数10→15予定"
+  },
+  "search": {
+    "family": "MCTS",
+    "detail": null
+  },
+  "learning": "DL将棋本付属の学習データを更新。floodgateは2019〜2024年3月のR3800以上、水匠は最新版の1手1000万ノード自己対局",
+  "hardware": "RunPod H100 PCIe ×4",
+  "language": [
+    "Python",
+    "C++"
+  ],
+  "claimed_strength": "DenseNet10→改良版で、Policy精度43.4→44.3%、Value精度72.2→72.9%（22epoch）",
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "DenseNetのスキップ接続を要素和に",
+      "description": "従来は全層とチャンネル方向に結合してチャンネル数が増えていたため、要素和を取る構造に改めた。オーバーフロー対策として和を取った後に平均を取る。",
+      "originality": "独自",
+      "evidence": "Policy精度43.4→44.3%、Value精度72.2→72.9%",
+      "quote": "スキップ接続をチャンネル方向に結合するのではなく要素和を取るようにした"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "SAM最適化の採用",
+      "description": "最適化関数をSAM（Sharpness-Aware Minimization）に変えた。SGD 22epochよりSAM 11epochのほうがPolicy・Valueとも高精度だった。",
+      "originality": "既存手法の応用",
+      "evidence": "Policy 43.4→44.0%、Value 72.2→72.7%（半分のepoch数）",
+      "quote": "最適化関数をSAM(Sharpness-Aware Minimization)に変更"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "ReduceLROnPlateau",
+      "description": "学習率スケジューラをReduceLROnPlateauに変え、lossが一定のepoch改善しなければ学習率を下げる。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "学習率スケジューラをReduceLROnPlateauに変更"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "高レート棋譜と最新水匠への更新",
+      "description": "floodgate棋譜を2019〜2024年3月・R3800以上に更新し、水匠の棋譜はたややん氏作成の最新版を1手1000万ノードで自己対局したものに変えた。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "floodgateの2019年〜2024年3月のレーティング3800以上のプレイヤーの棋譜"
+    }
+  ],
+  "character": null,
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc34/team.html"
+}

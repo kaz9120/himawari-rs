@@ -1,0 +1,94 @@
+{
+  "wcsc": 29,
+  "year": 2019,
+  "dir": "KatsudonShogi",
+  "team": "松本浩志、池田拓郎、羽生大輝（カツ丼将棋）",
+  "software": "カツ丼将棋",
+  "sources": [
+    "wcsc29/appeal/KatsudonShogi/wcsc29.docx"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc29/appeal/KatsudonShogi/wcsc29.docx"
+  ],
+  "summary": "簡易4駒（玉玉位置を3x3ブロックで81通りに圧縮したKKPP風）評価関数が特徴。ソフト強化より、将棋倶楽部24の自動対局システム「カツ丼坊」と悪手を即座に解析する「カツ丼神解析」、実況放送で大会を盛り上げる方向に力を入れる。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "簡易4駒関係＋手調整の加点（敵玉に迫る加点）。間に合わなければ2駒"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "Stockfish風探索に実現確率を取り入れようとして成功せず"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "玉玉を3x3ブロックに圧縮した簡易4駒",
+      "description": "玉玉の位置関係81x81を、盤を3x3ブロックで区切って81通りにし、ルートの玉玉位置で2駒テーブルを選ぶ。容量を現実的にしつつKKPPと称せる。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "将棋盤を3x3で1ブロックにしてやることで81通り。"
+    },
+    {
+      "category": "評価関数",
+      "title": "敵玉に迫る手調整の加点",
+      "description": "教師局面が少ないと敵玉に迫る価値が学習されないため、手調整で強制的に加点する。自己対戦では強くなった気がするという。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "我々は②の敵玉に迫れば勝利に近づくと知っているので、手調整で強制的に加点してやります。"
+    },
+    {
+      "category": "エンタメ・演出",
+      "title": "将棋倶楽部24自動対局システム「カツ丼坊」",
+      "description": "画像認識とマウス操縦で汎用USIエンジンを将棋倶楽部24に24時間自動対局させる。ソフトと人間のレート比較に使い、CSA会誌に詳細を掲載した。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "画像認識・マウス操縦を駆使して汎用将棋USIを将棋倶楽部24に24時間延々と自動対局ができるようにするシステム"
+    },
+    {
+      "category": "解説・人間支援",
+      "title": "カツ丼神解析",
+      "description": "対局中の最悪手・好手を即座にチャットで解説する機能。ソフト(t-1)手目と(t+1)手目の評価値の変化を勝率（1/(1+exp(-600*評価値))）に直した勝率インパクトの大きい順に表示し、ponderhitの手や-2000点台の大差局面を除く。MultiPV不使用で対局に影響しない。他ソフトにも実装された。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "評価値の変化を勝率の変化に計算しなおして、これを勝率インパクトとします。"
+    },
+    {
+      "category": "解説・人間支援",
+      "title": "評価値をつぶやく観戦用アカウント",
+      "description": "対局者はチャットできないため、別アカウントGutIshiatamaが現在の評価値をつぶやき、観戦者が見るだけで勉強できるようにする。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "GutIshiatamaというのが現在の評価値をつぶやいていますけども、これもカツ丼坊の機能です。"
+    },
+    {
+      "category": "エンタメ・演出",
+      "title": "高段youtuberとの実況放送",
+      "description": "将棋倶楽部24でR2800の高段youtuber・Sugarさんとカツ丼将棋席で実況し、開発者の苦労や工夫を深掘りして大会を盛り上げる。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "将棋倶楽部24の最高R2800の高段youtuberのSugarさんとカツ丼将棋席で実況放送します。"
+    },
+    {
+      "category": "エンタメ・演出",
+      "title": "将棋の演歌を作曲",
+      "description": "毎回恒例のおまけとして、将棋の演歌「千駄ヶ谷エレジー」を作曲し配信している。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "将棋の歌が少ないと思って将棋の演歌を作曲しました。"
+    }
+  ],
+  "character": "「永遠のネタ勢」。強さではなく大会の盛り上げとCSA貢献賞を狙う。年表も自虐ネタ（Libshogiに全駒ステイルメイトされた等）。",
+  "notes": "今回は育児でほぼ進化なしと明記",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc29/team.html"
+}

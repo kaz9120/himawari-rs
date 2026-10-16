@@ -1,0 +1,38 @@
+{
+  "wcsc": 32,
+  "year": 2022,
+  "dir": "Ayame",
+  "team": "渡辺 敬介",
+  "software": "あやめ",
+  "sources": [
+    "wcsc32/appeal/Ayame/WCSC32_220427.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc32/appeal/Ayame/WCSC32_220427.pdf"
+  ],
+  "summary": "前回大会からほとんど変わっておらず、詳細は前回のアピール文書を参照とする短い文書。",
+  "base": {
+    "engine": "不明",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "不明",
+    "detail": null
+  },
+  "search": {
+    "family": "不明",
+    "detail": null
+  },
+  "learning": null,
+  "hardware": null,
+  "language": [
+    "C++",
+    "Java"
+  ],
+  "claimed_strength": null,
+  "ideas": [],
+  "character": null,
+  "notes": "前回大会とほぼ同じ。具体的な内容は記載なし。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc32/team.html"
+}

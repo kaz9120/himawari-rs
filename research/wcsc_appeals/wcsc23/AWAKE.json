@@ -1,0 +1,62 @@
+{
+  "wcsc": 23,
+  "year": 2013,
+  "dir": "AWAKE",
+  "team": "巨瀬 亮一",
+  "software": "AWAKE",
+  "sources": [
+    "wcsc23/appeal/AWAKE/appeal.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc23/appeal/AWAKE/appeal.txt"
+  ],
+  "summary": "Bitboardとx64向けSSE最適化による高速な指し手生成と一手詰めが売りのソフト。今回は定跡、三手詰め、ボナンザメソッドによる評価関数学習、指し手の実現確率の機械学習を新たに搭載した。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "35000局の棋譜から探索深さ2〜3でボナンザメソッドにより学習、差分評価"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "BonanzaとStockFishの前向き枝刈りを参考。並列探索・ponderは実装予定"
+  },
+  "learning": "35000局の棋譜から探索深さ2〜3でボナンザメソッドによる機械学習。指し手の実現確率も機械学習",
+  "hardware": null,
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "実装・高速化",
+      "title": "SSE最適化の高速な指し手生成",
+      "description": "Bitboardとx64特化のSSE最適化で、Core i7 3.0GHzにて初期局面毎秒900万、指し手生成祭り局面で450万の指し手生成を実現する。",
+      "originality": "既存手法の応用",
+      "evidence": "初期局面9M/sec、指し手生成祭り局面4.5M/sec",
+      "quote": "高速な指し手生成ルーチン(Core i7 3.0GHzにおいて初期局面 9M/sec,指し手生成祭り局面 4.5M/sec)"
+    },
+    {
+      "category": "詰み・終盤",
+      "title": "高速な一手詰めルーチン",
+      "description": "有効王手のない局面で毎秒2000〜3000万、有効王手がある局面で平均800〜1000万の一手詰め判定を行う。今回は三手詰めも搭載した。",
+      "originality": "既存手法の応用",
+      "evidence": "有効王手なし20〜30M/sec、あり平均8〜10M/sec",
+      "quote": "高速な一手詰めルーチン (有効王手のない局面で 20～30M/sec"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "指し手の実現確率の学習",
+      "description": "指し手の実現確率を機械学習し、探索に利用する。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "指し手の実現確率の機械学習"
+    }
+  ],
+  "character": null,
+  "notes": "今後の予定としてDFPN、オンライン学習、教師なし学習、クラスタ並列探索を列挙。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc23/team.html"
+}

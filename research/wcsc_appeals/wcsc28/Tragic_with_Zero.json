@@ -1,0 +1,62 @@
+{
+  "wcsc": 28,
+  "year": 2018,
+  "dir": "Tragic_with_Zero",
+  "team": "岩崎 高宗",
+  "software": "悲劇的 with Zero",
+  "sources": [
+    "wcsc28/appeal/Tragic_with_Zero/wcsc28_appeal.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc28/appeal/Tragic_with_Zero/wcsc28_appeal.pdf"
+  ],
+  "summary": "Bonanza 6.0を母体に、駒の利き（飛・角・香とそれ以外を分けて保持）を評価に使うソフト。Stockfish風のRazoringとProbCutを足している。学習部に最新ライブラリを移植する計画は断念し、2年前の版に強化学習風の追加学習をした版で出場した。",
+  "base": {
+    "engine": "Bonanza",
+    "eval_source": "独自",
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "①KKP+PP+玉の位置と利き（飛・角・香とそれ以外で利きを分けて保持）。②は3駒のまま"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "Bonanza 6.0の探索にStockfish風のRazoringとProbCutを追加（棋力は若干向上）。スレッド分割方式は従来のまま"
+  },
+  "learning": "プラン②：2年前の選手権版に強化学習風の学習で追加学習。利きをBonanzaメソッドで学習したかったが時間が足りずオンライン学習を試行",
+  "hardware": "Xeon E5-2687W 3.1GHz、64GB",
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "飛・角・香の利きを分けて保持する評価",
+      "description": "評価関数にKKP+PPに加えて玉の位置と利きを使い、利きは飛・角・香とそれ以外を分けて保持する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "利きは飛・角・香とそれ以外を分けて保持しています。"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "棋書から手作りする定跡",
+      "description": "プロの棋書を購入し、354パターンの定跡ファイルを手で作成した。学習棋譜から作ると作者の棋力が投影されないため、地道な手作りにこだわる。実戦で使うには最低1,000ファイルが必要と見る。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "学習用の棋譜ファイルから作る方法だと、私の棋力が投影されないので、地道に今の方法でがんばりたい"
+    },
+    {
+      "category": "探索",
+      "title": "Bonanza 6.0にRazoringとProbCutを追加",
+      "description": "Bonanza 6.0の探索にStockfish風のRazoringとProbCutを加え、若干棋力が向上した。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "Bonanza 6.0 の探索に Stockfish 風の Razoring と ProbCut を加えています。"
+    }
+  ],
+  "character": "ソフト名はマーラーの交響曲第6番『悲劇的』から。作者の人生観が投影されている。将来像はリック・フレアーのように「箒が相手でも、相手がいなくても将棋が指せるソフト」で、日本人ではヒロ斎藤さんが目標（プロレスのたとえ）。5/4の追記で「結果は良くなかった。すべて監督である私の責任」と書き、謝辞に「私の母」を挙げる。",
+  "notes": "3/14版、4/8追記、5/4追記の3版が1つにまとまった文書。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc28/team.html"
+}

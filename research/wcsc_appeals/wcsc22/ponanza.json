@@ -1,0 +1,55 @@
+{
+  "wcsc": 22,
+  "year": 2012,
+  "dir": "ponanza",
+  "team": "山本一成",
+  "software": "Ponanza",
+  "sources": [
+    "wcsc22/appeal/ponanza/appeal.pdf"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc22/appeal/ponanza/appeal.pdf"
+  ],
+  "summary": "500万NPSでNPSはBonanzaの2〜5倍、将棋倶楽部24で最高Rを更新。BIGLOBEのクラウドと会場のマシンを組み合わせたクラスタ並列で、レーティングを約200点上げると主張する。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "Bonanza Method"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "PVS、YBWC、Magic Bitboard、Singular Extension、Futility Pruning、クラスタ並列"
+  },
+  "learning": null,
+  "hardware": "Corei7-990X EE（6コア）、BIGLOBEクラウド＋現地会場のクラスタ",
+  "language": [
+    "C++",
+    "C#"
+  ],
+  "claimed_strength": "500万NPS（前年の1.5倍）、初期局面で深さ30。floodgate1位（2012-04-22）。将棋倶楽部24で最高レートを更新。新バージョンでR約100向上、クラスタ化でさらに約100向上",
+  "ideas": [
+    {
+      "category": "並列・分散",
+      "title": "クラウドと現地会場をまたぐクラスタ並列",
+      "description": "BIGLOBEのクラウドホスティングを使い、現地会場のマシンと相互通信しながら協調して探索する。評価値や合法手数から、動的に各マシンへ仕事を割り振る。",
+      "originality": "独自",
+      "evidence": "クラスタ化でR約100向上",
+      "quote": "評価値や合法手数から動的に各マシンに仕事を割り振る"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "500万NPS・初期局面で深さ30",
+      "description": "前年の1.5倍の高速化で、NPSはBonanzaの2〜5倍、初期局面を短時間で深さ30手読む。",
+      "originality": "既存手法の応用",
+      "evidence": "500万NPS（Core i7-990X EE）",
+      "quote": "500万NPS Corei7-990xEE"
+    }
+  ],
+  "character": "名前を「POnanza is Not bonANZA」と説明し、「作者は新社会人」「24でR2400程度」と書く。ぽにゃんざボット（@ponanza_shogi）の宣伝で結ぶ。",
+  "notes": null,
+  "team_list_url": "http://www2.computer-shogi.org/wcsc22/team.html"
+}

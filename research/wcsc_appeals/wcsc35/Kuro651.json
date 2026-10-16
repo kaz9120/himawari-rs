@@ -1,0 +1,60 @@
+{
+  "wcsc": 35,
+  "year": 2025,
+  "dir": "Kuro651",
+  "team": "河原林 秀典",
+  "software": "Kuro651",
+  "sources": [
+    "wcsc35/appeal/Kuro651/WCSC35_KURO651_appeal.txt"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc35/appeal/Kuro651/WCSC35_KURO651_appeal.txt"
+  ],
+  "summary": "66歳で退職した元ソフト会社SEが、他のコードを一切参考にせずフルスクラッチで再開発した将棋ソフト。局面を序盤・中盤・終盤のモードに分け、モード別に検索と評価を切り替える構想で、機械学習は使わない。開発途中での参加で、70歳まで4年計画の機能追加を掲げる。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": "データ構造・検索・評価をすべて自作"
+  },
+  "eval": {
+    "family": "手作り",
+    "detail": "位置別駒価値＋玉安全度"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "全幅探索＋駒取り優先の選択探索。詰めろ判定以上では詰み探索（現状は局面モード決定・全幅・一部選択・詰み探索のみ実装）"
+  },
+  "learning": "機械学習は一切使わない",
+  "hardware": null,
+  "language": [],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "探索",
+      "title": "局面モード別の検索と評価",
+      "description": "局面を序盤・中盤・終盤のモードに分けて、モードごとに検索と評価を切り替える。序盤は自陣目標（攻め駒前進、玉囲い完成など）を設定して目標優先で検索する構想（未実装）。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "局面モード（序盤・中盤・終盤）により各モード別の選択検索、評価を行う。"
+    },
+    {
+      "category": "評価関数",
+      "title": "玉安全度と詰み危険度の分離",
+      "description": "玉の安全度は詰めろ未満の中終盤で使い、詰み危険度には使わない。詰みの判断は詰み探索に任せる。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "玉安全度は中・終盤（詰めろ未満）にて利用し、詰み危険度には使用しません。"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "定跡DBの完全一致・LIKE検索",
+      "description": "DB化した定跡データから完全一致検索と、類似局面のLIKE検索を行う予定（未実装）。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "完全一致検索及びLIKE検索を行う。（未実装）"
+    }
+  ],
+  "character": "1980年代から構想を温め、2001年の第11回に3手読みも不完全な状態で出場した過去がある。「PG能力の衰えとの闘い」と書き、2025年5月（66歳）から2028年5月（69歳）まで、機能追加を年ごとに並べた4年計画を掲げる。",
+  "notes": "実装済みの範囲は限られ、仕様の多くが未実装。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc35/team.html"
+}

@@ -1,0 +1,60 @@
+{
+  "wcsc": 23,
+  "year": 2013,
+  "dir": "narashogi",
+  "team": "奈良 和文",
+  "software": "奈良将棋",
+  "sources": [
+    "wcsc23/appeal/narashogi/appeal.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc23/appeal/narashogi/appeal.txt"
+  ],
+  "summary": "2010年版から開発が進んでいないとして、2010年版のアピールを再掲した文書。実現確率探索、expected node typeを使う手生成と再探索、独自とみられるYBWC並列探索、Bonanza method学習の線形評価関数が特徴。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "作者が局面評価に使いそうな特徴の線形和。Bonanza methodで学習（28 feature、400,013要素）"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "実現確率探索、expected node type、ルートのウィンドウ探索、YBWC並列、証明数探索の詰将棋"
+  },
+  "learning": "Bonanza method。学習棋譜14,000局余。手番依存の評価項目は弱くなるため使わない",
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "探索",
+      "title": "expected node typeの活用",
+      "description": "expected node type（All/Pv/Cut）を手生成の順序や再探索とその延長に使う。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "expected node type (All/Pv/Cut) を、手生成の順序、再探索とその延長などで使用"
+    },
+    {
+      "category": "並列・分散",
+      "title": "YBWC並列探索",
+      "description": "並列探索にYBWCを使う。実装は他を参考にしておらず、おそらく独自とする。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "並列探索（YBWC、実装方法は他を参考にしていないため、おそらく独自なもの）"
+    },
+    {
+      "category": "開発手法・運用",
+      "title": "自己対戦による強さの判定",
+      "description": "1手20秒の自己連続対戦で、序中終盤を含む数十のサンプル局面を使って強さを判定する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "１手２０秒の自己連続対戦。"
+    }
+  ],
+  "character": null,
+  "notes": "2010年版のアピールの再掲。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc23/team.html"
+}

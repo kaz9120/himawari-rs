@@ -1,0 +1,68 @@
+{
+  "wcsc": 26,
+  "year": 2016,
+  "dir": "SilverBullet",
+  "team": "手塚 規雄、山内 浩之",
+  "software": "SilverBullet",
+  "sources": [
+    "wcsc26/appeal/SilverBullet/appeal.pdf"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc26/appeal/SilverBullet/appeal.pdf"
+  ],
+  "summary": "コンピュータ将棋経験ゼロのIT技術者が、どこまで強くできるか挑戦しているソフト。本大会で唯一のC#のみ製作と主張し、やねうら王miniをC#に換装して使う。バグで序盤・中盤の評価値が狂ったと正直に報告する。振り飛車特化の定跡が売り。",
+  "base": {
+    "engine": "やねうら王",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "やねうら王miniのライブラリ（C#換装）で、非BitBoardで評価関数を作成"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": null
+  },
+  "learning": null,
+  "hardware": "Core i5 2500 3.3GHz",
+  "language": "C#",
+  "claimed_strength": "作者は将棋ウォーズ1〜2級程度",
+  "ideas": [
+    {
+      "category": "実装・高速化",
+      "title": "C#のみで作られた唯一の将棋ソフト",
+      "description": "部分的にC#を使うソフトは他にもあるが、C#のみで作られたのは本大会で唯一と主張する。やねうら王miniをC#に換装して使う。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "C#のみで作成された本大会唯一の将棋プログラムになりました。"
+    },
+    {
+      "category": "棋風・人間らしさ",
+      "title": "振り飛車党のソフト",
+      "description": "コンピュータ将棋では評価が低いが、将棋はまだ解明されておらず、未知の領域に振り飛車有利の宝があるかもしれないとして、振り飛車を指す。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "その未知の領域には振り飛車有利の銀の宝が隠されているかもしれません。"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "振り飛車特化・アマ初段二段視点の定跡",
+      "description": "振り飛車に特化し、人間視点（アマ初段、二段程度）で有効と思える変化に限定した定跡に編集した。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "振り飛車特化にした定跡に編集しました。"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "バグでの評価値の偏りの報告",
+      "description": "非BitBoardでやねうら王ライブラリを使って作った評価関数にバグが残り、序盤・中盤で美濃囲いの1七桂・9三桂のような悪形を指した。終盤は比較的正確だったと推定する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "美濃囲いにて先手なら１七桂、後手なら９三桂という悪形が一次予選にも現れていました。"
+    }
+  ],
+  "character": "名前の由来（銀の弾丸・ルパン三世の次元大介の44マグナム）を語り、弾薬をやねうら王miniに換えたと書く。「エンジョイ勢ですが、ガチ勢の列強に一矢報いたい」。開発者は居飛車党（天守閣美濃）、操作者は振り飛車党と棋風もチームで分かれる。",
+  "notes": "5/8追記あり",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc26/team.html"
+}

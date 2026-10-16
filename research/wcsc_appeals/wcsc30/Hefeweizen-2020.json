@@ -1,0 +1,63 @@
+{
+  "wcsc": 30,
+  "year": 2020,
+  "dir": "Hefeweizen-2020",
+  "team": "Barrel house（芝世弐、松下光則、但馬康宏）",
+  "software": "Hefeweizen-2020",
+  "sources": [
+    "wcsc30/appeal/Hefeweizen-2020/appeal_2020.docx"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc30/appeal/Hefeweizen-2020/appeal_2020.docx"
+  ],
+  "summary": "前年の評価関数Kristallweizen（フィルターでろ過した白ビール）の系譜で、評価関数を改良する予定。ノートPC＋クラウドのMulti Ponderクラスタ（Go再実装）と、未完成のため非公開の秘密兵器を準備している。",
+  "base": {
+    "engine": "やねうら王",
+    "eval_source": "Kristallweizen系（自作）",
+    "note": null
+  },
+  "eval": {
+    "family": "NNUE",
+    "detail": "昨年公開のKristallweizenに更なる改良を加える予定"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "Multi Ponderのクラスタリング"
+  },
+  "learning": null,
+  "hardware": "ノートPCを中継にクラウドを利用",
+  "language": [
+    "C++",
+    "Go"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "並列・分散",
+      "title": "Multi Ponderクラスタリング",
+      "description": "第5回電王トーナメントで披露したshotgunシステムの進化版。Go言語で再実装して非同期低遅延になったが、軽微なバグがあり、修正と機能追加を予定する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "shotgunシステムの進化版であるMulti Ponderのクラスタリングを一昨年昨年と行いましたが"
+    },
+    {
+      "category": "評価関数",
+      "title": "公開評価関数Kristallweizenの改良",
+      "description": "昨年公開した評価関数は多くのプロ・アマに使われ、「白ビールなら何点」という言い回しで知られる。千田翔太七段が棋風にコメントしており、今年も改良する。",
+      "originality": "独自",
+      "evidence": "ニコニコ将棋チャンネルの王位戦第3局初日で1000点以上差を付ける激辛採点で話題",
+      "quote": "「白ビールなら何点」とのフレーズで大変幅広く御愛用頂いているようです。"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "秘密兵器（ギャンブル的な試み）",
+      "description": "間に合えば投入するギャンブル的な試みを準備中。未完成で書くと失敗時に叩かれるので非公開にする。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "間に合えば投入とギャンブル的な試みも準備中です。"
+    }
+  ],
+  "character": "チーム名は岡山のビアバー「Barrel house」から借用。ソフト名もビールの名前（濁った白ビールのHefeweizen、ろ過したKristallweizen）に由来する。昨年の準優勝祝勝会でHefeweizenで乾杯した顛末に絡め、今年のKristallweizenの樽が入荷した話を「すれ違う愛のカタチ」と語る。「おっさんチーム」を自認する。",
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc30/team.html"
+}

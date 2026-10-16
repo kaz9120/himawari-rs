@@ -1,0 +1,62 @@
+{
+  "wcsc": 22,
+  "year": 2012,
+  "dir": "Apery",
+  "team": "平岡拓也",
+  "software": "Apery",
+  "sources": [
+    "wcsc22/appeal/Apery/appeal.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc22/appeal/Apery/appeal.txt"
+  ],
+  "summary": "「猿真似」を意味する名前で、オリジナリティの低さへの自戒を込めた初参加ソフト。Magic BitboardとSIMD、テンプレート展開で盤面操作を高速化し、評価関数はBonanzaのfv.binをそのまま使う。",
+  "base": {
+    "engine": "Bonanza",
+    "eval_source": "Bonanza fv.bin",
+    "note": "Bonanzaの評価関数をそのまま使用。来年は自作を目指す"
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "Bonanzaのfv.bin"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "PVS、futility、null move、move count based pruning、mate distance pruning、LMR"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": "指し手生成速度は指し手生成祭の局面で400万回/秒（Core i7 2700K 1コア）",
+  "ideas": [
+    {
+      "category": "実装・高速化",
+      "title": "Magic BitboardとSIMD、17個のBitboard表現",
+      "description": "Magic Bitboardで速度とコードの簡潔さを両立する。局面は駒種14・先後2・全体1の計17個のBitboardで表し、処理にSIMD命令を使う。",
+      "originality": "既存手法の応用",
+      "evidence": "指し手生成祭の局面で400万回/秒",
+      "quote": "Magic Bitboard を使用し、ある程度の速度と、かなりのコードのスッキリさを両立しています"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "C++テンプレートで実行時分岐を削減",
+      "description": "先手/後手、飛車/角、駒を取る/取らないなどをテンプレートパラメータにして展開し、実行時の条件分岐を削る。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "実行時の条件分岐を削減しています"
+    },
+    {
+      "category": "探索",
+      "title": "場面別の逐次指し手生成と短手数の詰み判定",
+      "description": "良さそうな手から逐次生成し、詰将棋探索・静止探索専用の指し手生成も持つ。短手数の詰み判定を高速に行う。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "指し手生成は、良さそうな手から逐次的に生成しています"
+    }
+  ],
+  "character": "名前は「猿真似」で、オリジナリティのなさへの自戒を込めたと説明。「来年はスーパー強くなって帰ってきたい」と結ぶ。",
+  "notes": null,
+  "team_list_url": "http://www2.computer-shogi.org/wcsc22/team.html"
+}

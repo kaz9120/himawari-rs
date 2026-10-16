@@ -1,0 +1,54 @@
+{
+  "wcsc": 32,
+  "year": 2022,
+  "dir": "shiny-dl",
+  "team": "TeamShiny（湯川 和雄、近藤 俊彦、田之畑 諒）",
+  "software": "shiny-dl",
+  "sources": [
+    "wcsc32/appeal/shiny-dl/appeal0331.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc32/appeal/shiny-dl/appeal0331.pdf"
+  ],
+  "summary": "就労移行支援施設チームシャイニーの初参加ソフト。『強い将棋ソフトの創り方』の手法をベースに、初手を7六歩・3四歩に固定し、振り飛車勝利の棋譜を多めに学習させた振り飛車DLソフト。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "『強い将棋ソフトの創り方』第5・6章のDL手法"
+  },
+  "search": {
+    "family": "MCTS",
+    "detail": "同書の探索手法"
+  },
+  "learning": "floodgate棋譜約100万件（うち振り飛車勝利約25万件）。時間があれば強化学習による棋譜生成・追加学習",
+  "hardware": "Core i7 + GTX 1050 Ti、学習はGoogle Colab Pro+",
+  "language": [
+    "Python"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "棋風・人間らしさ",
+      "title": "振り飛車に固定した序盤",
+      "description": "初手は先手なら7六歩、後手なら3四歩に決め、振り飛車の進行になるよう定跡も登録する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "初手に「先手なら７六歩」「後手なら３四歩」を着手するようにプログラムで決めています。"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "振り飛車勝利棋譜を多めに集めた学習",
+      "description": "floodgate棋譜の約100万件のうち、振り飛車が勝った棋譜約25万件を多めに集めて学習する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "floodgate 内の棋譜から振り飛車勝利の棋譜を多めに集めて学習しています。"
+    }
+  ],
+  "character": "就労移行支援のスタッフと利用者が参加した初参加チーム。開発者は第1回参加の森田将棋の森田さんに約15年前に将棋を教わった縁を語り、「夢が叶った」「楽しみたい」と抱負を述べる。将棋GUIや将棋アプリも自作している。",
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc32/team.html"
+}

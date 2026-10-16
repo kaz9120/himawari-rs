@@ -1,0 +1,52 @@
+{
+  "wcsc": 35,
+  "year": 2025,
+  "dir": "Mattari_Yuuchan_",
+  "team": "小谷 善行（東京農工大学旧小谷研究室）",
+  "software": "まったりゆうちゃん",
+  "sources": [
+    "wcsc35/appeal/Mattari_Yuuchan_/appeal2025.docx"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc35/appeal/Mattari_Yuuchan_/appeal2025.docx"
+  ],
+  "summary": "1990年過ぎから約四半世紀開発を続ける、完全独自開発のシステム。今年は昨年と同じで改良できなかった。進化論的計算など、パラメータ学習に頼らない方式や、ディープラーニングと多量パラメータ学習の中間的な仕組みを試す構想がある。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": "1990年頃からの独自コードで、他のシステムは参考にしていない（考え方は参考にしている）"
+  },
+  "eval": {
+    "family": "不明",
+    "detail": "進化論的計算などの非パラメータ学習方式を試行中（今年は未反映）"
+  },
+  "search": {
+    "family": "不明",
+    "detail": null
+  },
+  "learning": null,
+  "hardware": null,
+  "language": [],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "並列・分散",
+      "title": "複数システム間でデータをやり取りする並列方式",
+      "description": "複数のシステムを動作させ、その間でデータをやり取りして並列動作させる方法を検討している。そのためにコードを全面的に書き換えることを考えている。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "複数のシステムを動作させて、その間でデータをやり取りして並列動作をする方法を検討している。"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "進化論的計算とDLの中間の仕組み",
+      "description": "パラメータ学習が主流の今、進化論的計算など別方式を試し、ディープラーニングと多量パラメータ学習の中間的なメカニズムを考えたい。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "ディープラーニングと多量パラメータ学習の中間的なメカニズムを考えたい"
+    }
+  ],
+  "character": "「開発者の年齢がもっとも高いのではないか。コーディング能力がいつまで続くか試したい」と、可能な限り出場し続ける意思を語る。Kuro651の対抗相手でもある。",
+  "notes": "参加者一覧ではキャンセル欄に記載されている。内容は前回とほぼ同じ。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc35/team.html"
+}

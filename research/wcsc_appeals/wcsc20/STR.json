@@ -1,0 +1,52 @@
+{
+  "wcsc": 20,
+  "year": 2010,
+  "dir": "STR",
+  "team": "チームSTR（末廣大貴ほか）",
+  "software": "STR",
+  "sources": [
+    "wcsc20/appeal/STR/STR.pdf"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc20/appeal/STR/STR.pdf"
+  ],
+  "summary": "特徴ベクトルそのものを自動抽出するため、SVMとカーネル法で評価を学習する。1手読みで探索をせず、詰み探索以外は読まない。本人が「とっても弱い」と書く。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "その他",
+    "detail": "SVM＋多項式カーネル（d=5）。盤上の駒数・持ち駒・位置・利き・手の情報の単純な0/1特徴約6000要素"
+  },
+  "search": {
+    "family": "その他",
+    "detail": "詰み探索以外は1手先まで。定跡なし"
+  },
+  "learning": "プロ棋譜100局。棋譜の次局面を正例、他の合法手後の局面を負例としてSVM学習",
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "カーネル法で特徴の組み合わせを自動生成",
+      "description": "従来は特徴を人間が用意し手調整、ボナメソ以降は人間が用意して自動調整だった。STRは単純な特徴から、カーネル法で組み合わせ特徴を自動抽出し、パラメータも自動で学習する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "局面の単純な情報のみから、必要な特徴を自動的に作成し、かつパラメータの学習を行う"
+    },
+    {
+      "category": "探索",
+      "title": "カーネル法を探索の代替とする",
+      "description": "一瞬の駒得の6六角を指さないのは探索すれば分かるが、「6六角」×「6六に駒が利いている」のような特徴の内積でも表現できると考え、探索を行わない。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "探索を行うことで悪手だとわかるが，(6六角)×(6六に駒が利いている)という特徴の内積でも表現できる"
+    }
+  ],
+  "character": "「とっても弱い」と自己評価を明記する。",
+  "notes": "スライド形式。学習は計算時間とメモリの都合で100局が限界。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc20/team.html"
+}

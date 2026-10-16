@@ -1,0 +1,71 @@
+{
+  "wcsc": 30,
+  "year": 2020,
+  "dir": "tanuki-",
+  "team": "ザイオソフト コンピュータ将棋サークル（野田久順、岡部淳、鈴木崇啓、河野明男、安達瞭）",
+  "software": "究極幻想アルテマタヌポン",
+  "sources": [
+    "wcsc30/appeal/tanuki-/appeal.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc30/appeal/tanuki-/appeal.pdf"
+  ],
+  "summary": "やねうら王のテラショック定跡を拡張した「メガショック定跡」と、Tree Ponder・Lazy Cluster・詰将棋専用ノードを組み合わせたクラスタリングが売り。参加名はFFXIVのコンテンツ名に由来する。",
+  "base": {
+    "engine": "やねうら王+tanuki-",
+    "eval_source": "tanuki-（強化学習のもとの評価関数）。教師生成にApery",
+    "note": "やねうら王は改造しやすく高レート。Aperyはtanuki-wcsc28の開発時点で最強の評価関数だったので、ランダムスタートの学習用教師局面の生成に使用"
+  },
+  "eval": {
+    "family": "NNUE",
+    "detail": null
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "クラスタリング（Tree Ponder、Lazy Cluster、詰将棋専用ノード）"
+  },
+  "learning": null,
+  "hardware": "Core i7 + Amazon EC2（384GB×5〜8、8GB×6〜9の構成）",
+  "language": [
+    "C++",
+    "C#"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "定跡・序盤",
+      "title": "メガショック定跡",
+      "description": "テラショック定跡の拡張。用意した定跡DBをマージし、各手に探索評価値を付けてMin-Max伝播する。次に定跡のみで対局し、定跡が切れた局面でMultiPV探索をして登録、平手局面へ伝播する。この繰り返しで育てる。手動作成の定跡も組み込め、100万局面以上を収録する。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "メガショック定跡 やねうら王(WCSC29版)が採用した、「テラショック定跡」を元にしている"
+    },
+    {
+      "category": "並列・分散",
+      "title": "Tree Ponder",
+      "description": "GPS将棋風のクラスタにPonderを組み込む。Multi PonderとPre Ponderを一般化したもので、台数が増えるほどPonderできる指し手の幅と深さが増える。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "Multi PonderとPre Ponderを一般化もの"
+    },
+    {
+      "category": "並列・分散",
+      "title": "Lazy Cluster",
+      "description": "反復深化の各イテレーション終了時に、PV上の局面の探索結果のキャッシュを他のマシンへUDPで送る。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "反復深化の各イテレーション終了時に PV上の局面の探索結果のキャッシュを 他のマシンに送信する"
+    },
+    {
+      "category": "詰み・終盤",
+      "title": "詰将棋専用ノード",
+      "description": "分割したゲーム木の各root局面を詰将棋専用ノードで探索し、即詰みが見つかったらLazy Clusterで共有する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "分割したゲーム木の各Root局面に対し 詰将棋専用ノードで探索を行う"
+    }
+  ],
+  "character": "冒頭の漫才調の寸劇で、参加名「究極幻想アルテマタヌポン」を提案した野田に他のメンバーが無言になる様子を再現する。FFXIVの「究極幻想アルテマウェポン破壊作戦」が元ネタで、なんかすごそう感を出したくて付けたと語る。",
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc30/team.html"
+}

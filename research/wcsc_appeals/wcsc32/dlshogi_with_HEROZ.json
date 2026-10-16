@@ -1,0 +1,145 @@
+{
+  "wcsc": 32,
+  "year": 2022,
+  "dir": "dlshogi_with_HEROZ",
+  "team": "HEROZチーム（山岡 忠夫、加納 邦彦、山口 祐、大森 悠平）",
+  "software": "dlshogi with HEROZ",
+  "sources": [
+    "wcsc32/appeal/dlshogi_with_HEROZ/dlshogi_with_HEROZ_appeal_wcsc32_v2.pdf",
+    "wcsc32/appeal/dlshogi_with_HEROZ/dlshogi_with_HEROZ_appeal_detail_wcsc32.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc32/appeal/dlshogi_with_HEROZ/dlshogi_with_HEROZ_appeal_wcsc32_v2.pdf",
+    "https://www.apply.computer-shogi.org/wcsc32/appeal/dlshogi_with_HEROZ/dlshogi_with_HEROZ_appeal_detail_wcsc32.pdf"
+  ],
+  "summary": "AlphaGoに触発されて2017年に開発を始めたDL系の将棋AIで、policy+value+MCTS。終盤が弱いDL系の課題に、詰み探索の多層化（葉の5手詰、ルートのdf-pn、PV上の長手数詰探索、詰みのゲーム木への伝播）で対処する。今回はHEROZの計算資源（A100×8のサーバ9台）で大規模な強化学習とMulti Ponderを行った。",
+  "base": {
+    "engine": "dlshogi",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "ResNet 20ブロック256フィルタ（入力は駒配置・利き数・王手などドメイン知識も使用）。policyとvalueは出力層以外同構成"
+  },
+  "search": {
+    "family": "MCTS",
+    "detail": "PUCT、FPU reduction、バッチ処理に適した並列化、詰み探索（葉の5手、ルートのdf-pn、PV上）"
+  },
+  "learning": "elmoの自己対局データで事前学習し、自己対局の強化学習。既存プログラムを1/8の割合でリーグ戦に加える。ブートストラップ、確率分布学習、SWAなど",
+  "hardware": "A100×8台のサーバ9台クラスタ（EPYC 7742、128コア、2TB）",
+  "language": [
+    "C++",
+    "Python"
+  ],
+  "claimed_strength": "20ブロックは15ブロックに対し約+108 Elo（ordo、1GPU・3スレッド）。水匠5 32スレッド×4倍時間に対し+95程度",
+  "ideas": [
+    {
+      "category": "詰み・終盤",
+      "title": "詰み探索の多層化でDL系の終盤を補強",
+      "description": "MCTSの葉で5手詰、ルートでdf-pn（専用スレッド）、PV上の局面で長手数のdf-pn、詰みが見つかればゲーム木へ確実に伝播する。dlshogi以前にこれらを導入したDL系将棋AIはなかったと主張。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "dlshogi は、終盤の課題に対処するために、独自の工夫を行っている。"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "df-pnの結果を報酬にした強化学習",
+      "description": "自己対局を長引かせない対策として、df-pnによる長手数の詰み探索結果を報酬にする。要求をキューに溜め、専用スレッドで処理するので自己対局の速度は落ちない。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "強化学習時に df-pn により詰み探索を行い詰みを報酬とする"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "既存ソフトを1/8の割合で混ぜたリーグ戦強化学習",
+      "description": "自己対局だけでは戦略に弱点が生まれるため、オープンソースの既存将棋プログラムを1/8の割合でリーグに加えて強化学習し、計算資源を節約しつつリーグ戦の効果を得る。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "オープンソースで公開されている既存の将棋プログラムを 1/8 の割合でリーグに加えて強化学習を行うようにした。"
+    },
+    {
+      "category": "入玉",
+      "title": "水匠の入玉宣言勝ち棋譜を混ぜて学習",
+      "description": "dlshogiは入玉宣言勝ちを目指さない課題があったため、水匠の自己対局で入玉宣言勝ちの棋譜を生成し、自己対局データに混ぜて学習する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "既存将棋プログラム(水匠)の自己対局で、入玉宣言勝ちの棋譜を生成し、dlshogi の自己対局のデータに混ぜて学習した。"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "ブートストラップ・確率分布・同一局面の平均化",
+      "description": "valueの損失を勝敗と探索結果の評価値の2つの交差エントロピーの和にする。policyは探索のルート子ノード訪問回数の確率分布を学習し、重複する序盤局面は集約して平均化する。確率分布の学習は探索パラメータをOptunaで再調整して初めて強くなった。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "同一の局面を集約し、指し手の確率分布と勝敗を平均化し、1 サンプルとして学習した。"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "探索評価値の対局勝率への補正とSWA",
+      "description": "MCTSの探索勝率が実際の対局勝率と乖離していたため、勝率に合わせて評価値を補正する。さらに学習中に一定間隔で重みを平均化するSWAを導入した。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "評価値を実際の自己対局での勝率に合うように、補正を行った。"
+    },
+    {
+      "category": "探索",
+      "title": "Optunaによる探索パラメータの自動最適化",
+      "description": "PUCT定数と方策の温度パラメータを、連続対局の勝率を目的関数としてOptunaで最適化するスクリプトを開発。Optunaの枝刈りで少ない対局数で収束させる。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "将棋エンジン同士の連続対局の勝率を目的関数として、探索パラメータの最適化に使えるようにするスクリプトを開発した。"
+    },
+    {
+      "category": "並列・分散",
+      "title": "Stochastic Multi Ponder",
+      "description": "相手番で相手局面からMCTSを行う確率的ponderと、上位N手の予測手を別マシンに割り当てるMulti Ponderを組み合わせる。ルートの子ノードの訪問回数から予測手を取得でき、ほとんどの局面でponderhitして定跡を抜けた後も0秒指しが続いた。",
+      "originality": "独自",
+      "evidence": "大会ではほとんどの局面でponderhit（効果の単独測定はできていない）",
+      "quote": "次の相手の指し手を複数予測し、並列に分散して探索を行う Multi Ponder を組み合わせて使う。"
+    },
+    {
+      "category": "並列・分散",
+      "title": "1つのスレッドでバッチ処理し2スレッド交互にGPUを使う",
+      "description": "複数シミュレーションの末端をまとめてGPUでバッチ処理し、1スレッド内で処理することでGPU計算後のリソース競合を避け、GPU計算中にCPUが空くのでもう1スレッドを並列で走らせる。GPU1枚につき2探索スレッドで、4GPUまでほぼ線形に伸びる。",
+      "originality": "独自",
+      "evidence": "4GPUまでほぼ線形に探索速度が向上",
+      "quote": "マルチスレッドによる実装で課題となる GPU の計算後にスレッドが再開する際にリソース競合が起きる問題（大群の問題）を回避する"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "2値入力特徴量を1bit転送してNPS向上",
+      "description": "4GPU以上ではCPU-GPU間の帯域が詰まるため、2値の入力特徴量をfloatでなく1bitで転送し、GPU側のCUDAでfloatに戻す。",
+      "originality": "独自",
+      "evidence": "NPS +36.6%",
+      "quote": "2 値の入力特徴量を float の代わりに、1bit で表現し、GPU にビットで転送後"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "ツリー管理のノードGC（Leela Chess Zero方式）",
+      "description": "オープンアドレスのハッシュ管理でノード再利用に10秒以上かかる場合があったため、ゲーム木をツリーで管理し、ルートの兄弟ノードを削除する方式に変更。ノード合流は扱えなくなるが再利用が短時間になった。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "ルートの兄弟ノードをガベージコレクションする方式に変更した。"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "自分の手は最善手1手、相手の手は統計で選ぶ選択的定跡",
+      "description": "事前探索で、自分の手は局面ごとに最善手を1手（または数手）登録し、相手の応手は公開定跡やfloodgate棋譜の統計で確率的に選ぶ。頻度の高い局面は深く、低い局面は浅くなる。PUCTの方策にはpolicyとfloodgate統計の平均を使い、致命的な読み抜けを防ぐ。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "自分が指す手は、1 つ局面につき最善手を 1 手（または数手）登録し、それに対する応手は、公開されている定跡や棋譜の統計情報を使って確率的に選択する。"
+    },
+    {
+      "category": "評価関数",
+      "title": "ドメイン知識（利き数・王手）を入力特徴に使う",
+      "description": "AlphaGo Zeroのようにドメイン知識なしだと倍の層数が必要になるため、利き数と王手の情報を入力に加える。学習時間の短縮に有効であることを実験で確認。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "強い将棋ソフトを作るという目的であれば、積極的にドメイン知識を活用した方が計算リソースを省力化できる"
+    }
+  ],
+  "character": "AlphaGo対イ・セドル戦に衝撃を受けてクローンを作った経緯から、個人レベルの計算資源で強くする改良を続けてきた開発動機を語る。今大会はHEROZのA100×8サーバ9台でMulti Ponderを実現した。",
+  "notes": "文書の日付に2021年の記載があるが第32回（2022年）の文書。更新版（5/5）と詳細版（5/7）の2文書。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc32/team.html"
+}

@@ -1,0 +1,127 @@
+{
+  "wcsc": 35,
+  "year": 2025,
+  "dir": "Astra_Shogi",
+  "team": "あすねこ",
+  "software": "あすとら将棋",
+  "sources": [
+    "wcsc35/appeal/Astra_Shogi/wcsc35-appeal-20250505-1.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc35/appeal/Astra_Shogi/wcsc35-appeal-20250505-1.pdf"
+  ],
+  "summary": "dlshogi系のDL将棋で、RTX4090に最適化した独自ネットワークAstraNETが売り。学習後のモデルを加重平均したり乱数で揺らして強い派生モデルを探す「追加工」、UCB式の変更、定跡の二段階作成など、細かい工夫が多い。WCSC34から約R+120向上と主張する。",
+  "base": {
+    "engine": "dlshogi",
+    "eval_source": null,
+    "note": "WCSC34の延長線上。ReEvalは山岡氏のコードを利用"
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "AstraNET V318: (k=128x4,6b)+(k=128x3,4b)+(k=128x2,24b)の多段構造、計34ブロック"
+  },
+  "search": {
+    "family": "MCTS",
+    "detail": "dlshogiのUCBを改変。手数と評価値でNNUE系エンジンへ切り替える"
+  },
+  "learning": "自己生成棋譜約118万局（0.77億局面）とGCTのhcpeをマージし2.7億局面を学習。学習時の選別とReEvalで追加学習",
+  "hardware": "Ryzen 9 9950X + RTX4090",
+  "language": [
+    "Python",
+    "C++"
+  ],
+  "claimed_strength": "WCSC34からR+120程度向上（RTX4090、定跡あり、floodgate基準でR4500位と推測）",
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "AstraNET: GPUのSM数に合わせたkernel数",
+      "description": "ResNetの256 kernelの畳み込みを、RTX4090で効率のよい128 kernelの組へ分割し、チャネルを混ぜるシャッフル層を挟む。同じ計算量でフィルター数と非線形変換が2倍になり、k=256比で約1.7倍速い。kernel数をGPUのSM数に合わせるのはオリジナルと主張している。",
+      "originality": "独自",
+      "evidence": "RTX4090で同性能のResNet256に対し約70%高速",
+      "quote": "kernel数をGPUのSM数に限定して高速化するのはオリジナル"
+    },
+    {
+      "category": "評価関数",
+      "title": "多段構造のネットワークV318",
+      "description": "入力側のデータを多く（k=512相当）しつつ、各ResNetに異なるデータを渡す多段構造にして、計算量を増やさず層数を増やす。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "入力側は各ResNET毎に異なるデータを受け取り、総計で34blocksを持つ"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "学習済みモデルの加重平均と乱数揺らし",
+      "description": "学習終了時のモデルはloss盆地の端にいるとみなし、複数モデルの加重平均、定数倍（1.001〜1.004倍）、一様乱数の付加で近傍のモデルを作り、ベンチマークで良いものを選ぶ。乱数は正規分布より一様分布が良かった。",
+      "originality": "独自",
+      "evidence": "学習終了時のモデルからR+50程度の向上を期待",
+      "quote": "学習済modelを定数倍する"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "学習時の教師データ選別",
+      "description": "学習中のモデルと意見が合わない教師データを最大5%除外する。学習時間は約2倍になり、効果はあったが大きくなく、ReEvalのほうが良かった。",
+      "originality": "独自",
+      "evidence": "効果はあったがそれ程大きくはなかった",
+      "quote": "学習中のmodelと意見の合わない学習データの削除(～5%)"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "ReEvalによる追加学習",
+      "description": "山岡氏のコードで教師データの評価値を再評価して追加学習する。劇的ではないが効果があった。元モデルと学習中モデルの規模が近いこと、探索を行わないReEvalの限界が理由と考察している。",
+      "originality": "既存手法の応用",
+      "evidence": "効果あり（劇的という程ではない）",
+      "quote": "ReEvalによる追加学習"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "乱数初期値の複数試行と学習工程の工夫",
+      "description": "学習開始時に異なる乱数初期値で複数回試行して選別し、学習初期にネットワークのブロック順を入れ替え、学習末期に性質の異なる教師・条件を交互に使う。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "学習時のネットワークのブロック順序の入れ替え（学習初期）"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "複数の対戦相手で棋譜生成",
+      "description": "DLと4種類のNNUE系エンジンを戦わせて棋譜を作り、DL側の勝率が55〜60%になるようノード数とpo数を調整する。特定の相手だけで生成すると指し手がその相手に似てくるため、複数の相手が重要という知見を示す。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "特定の対戦相手のみで棋譜生成すると、指し手がその相手に似てくる"
+    },
+    {
+      "category": "並列・分散",
+      "title": "スレッド生成部の並列化",
+      "description": "dlshogiのGPU1枚設定でGPUID=1を指定するとスレッド生成部が並列化される性質を使い、計算ユニットのデータ待ちを減らす。RTX4090で最大30%高速化したが、npsの向上が10%未満なら探索初期の木の更新遅れで弱くなるため避ける。",
+      "originality": "独自",
+      "evidence": "RTX4090で30%高速化するモデルもあった",
+      "quote": "概ねnpsの向上が10％以上であれば試す価値がある"
+    },
+    {
+      "category": "探索",
+      "title": "UCB式の変更",
+      "description": "ルートの勝率項をqの2次式f(q)にし、ルート以外では係数kを掛ける。次の一手問題で実行ごとに結果が二分する不安定さを減らし、調整が必要な7つの探索パラメータを1〜2個に絞れる。",
+      "originality": "独自",
+      "evidence": "1手1秒程度の探索で勝率向上を確認",
+      "quote": "f(q) は q の２次式、または３次式"
+    },
+    {
+      "category": "探索",
+      "title": "手数と評価値による探索エンジンの切り替え",
+      "description": "手数と評価値に応じて探索エンジンを切り替える。Ponderと両立できなかったと書いている。",
+      "originality": "不明",
+      "evidence": null,
+      "quote": "手数＆評価値による探索エンジンの切り替え"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "二段階の定跡作成",
+      "description": "R4400以上の対局から先手が単調に勝った棋譜を集め、最頻手を候補にし、第2段階でその進行を検証する。後手も同様。後手番は相手により2種類の定跡を使い分ける予定で、合計約50万局面。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "最も多く選択された手は先手にとって悪い進行ではない可能性が高い"
+    }
+  ],
+  "character": null,
+  "notes": "スライド形式。「たどり来て未だ森林限界」のように将棋の神様の遠さを登山にたとえる一文がある。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc35/team.html"
+}

@@ -1,0 +1,76 @@
+{
+  "wcsc": 26,
+  "year": 2016,
+  "dir": "shogi686",
+  "team": "額賀 大輔",
+  "software": "shogi686",
+  "sources": [
+    "wcsc26/appeal/shogi686/appeal686.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc26/appeal/shogi686/appeal686.txt"
+  ],
+  "summary": "シンプルかつ高速を目指すが、最近はぐだぐだだと自嘲するソフト。探索はAperyをなるべく真似てLazy SMPで並列化し、評価関数は小さな二駒関係を自前で学習する。Razoring後に直前の手に関連する手だけ読む、詰めろ検出と延長、パス回避が工夫点。",
+  "base": {
+    "engine": "Apery",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "二駒関係（KK+KP+PP）に、玉の周囲9升の双方の駒と利きの有無の2升関係を加えたもの。次元下げは2駒相対のみ"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "Aperyの真似。Lazy SMP。Razoring、詰めろ検出と延長"
+  },
+  "learning": "floodgateの棋譜11902局で、約50分。L2正則化とASGD",
+  "hardware": null,
+  "language": "C++",
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "探索",
+      "title": "Razoring後に直前の手に関連する手だけ読む",
+      "description": "Razoringは強力だが駒を切る手が見えにくくなる。そこで直前の手に関連する手だけは読んで、βカットしないか確認する。",
+      "originality": "独自",
+      "evidence": "特定局面で強くなることだけ確認",
+      "quote": "Razoringは強力な枝刈りだが、駒を切る手が見えにくくなる。"
+    },
+    {
+      "category": "探索",
+      "title": "詰めろの検出と少しの延長",
+      "description": "Null Moveや負けになる手の数で詰めろっぽい局面を検出し、少し延長する。王手回避と同様、詰めろ回避も負けにならない手が少ないため。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "詰めろっぽい局面を、Null Moveや負けになる手の数で検出し、少し延長している。"
+    },
+    {
+      "category": "棋風・人間らしさ",
+      "title": "一手パスを強力に回避",
+      "description": "手番だけを相手に渡すような一手パスの手順を、読みの中でかなり強力に避ける。強さより趣味の問題と書く。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "一手パス（手番だけを相手に渡すような手順）を（読みの中で）かなり強力に回避している"
+    },
+    {
+      "category": "評価関数",
+      "title": "KPPより小さい評価関数",
+      "description": "KPPは大きすぎて嫌なので、二駒関係と玉周辺9升の2升関係による小さな評価関数を使う。学習時間は本番用で約50分。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "評価関数は、KPPは大きすぎて嫌なので小さいものを考えるつもりだ。"
+    },
+    {
+      "category": "並列・分散",
+      "title": "Lazy SMPで並列化",
+      "description": "元々シングルスレッド向けに作っていたため、Lazy SMPが都合がよい。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "Lazy SMPで並列化している（元々シングルスレッド向けに作っていたので都合がいい）。"
+    }
+  ],
+  "character": "「いい略称が見つからなくていまいち」と名前に自嘲し、「基本的には、工夫をすると弱くなる」と書く。",
+  "notes": "5/4追記あり",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc26/team.html"
+}

@@ -1,0 +1,62 @@
+{
+  "wcsc": 23,
+  "year": 2013,
+  "dir": "Apery",
+  "team": "平岡 拓也",
+  "software": "Apery",
+  "sources": [
+    "wcsc23/appeal/Apery/appeal_wcsc23.html"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc23/appeal/Apery/appeal_wcsc23.html"
+  ],
+  "summary": "Bonanza・ponanza・Stockfishを手本に、一人で2年半かけて作ったソフト。評価関数はBonanza 6.0のバイナリを借用し、探索の強化で前年から約700点のレートを稼いだ。名前の意味は「猿真似」で、他ソフトの良い点を素直に取り入れる姿勢が特徴。",
+  "base": {
+    "engine": "Bonanza",
+    "eval_source": "Bonanza Ver.6.0のfv.bin",
+    "note": "データ構造や一手詰めはBonanza、Magic Bitboardはponanza、枝刈りはStockfishを参考"
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "Bonanza 6.0の評価関数バイナリをそのまま使用"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "LMR・Futility Pruningによる積極的な枝刈り、静止探索は浅め、一手詰め"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": "前年版比でレーティング約700点向上。同一マシンならBonanza 6.0にも勝ち越す",
+  "ideas": [
+    {
+      "category": "探索",
+      "title": "積極的な枝刈り",
+      "description": "StockfishのLMRとFutility Pruningを取り入れ、かなり積極的に枝刈りする。静止探索は浅くし、三手詰めを廃して一手詰めにした。",
+      "originality": "再現・追従",
+      "evidence": "前年版に対しレーティング約700点向上",
+      "quote": "LMR, Futility Pruning でかなりアグレッシブに枝狩りを行います"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "Magic Bitboard採用",
+      "description": "ponanzaを手本にMagic Bitboardを使い、毎秒350〜550万手を読む。",
+      "originality": "再現・追従",
+      "evidence": null,
+      "quote": "1秒間に350~550万手くらいです。"
+    },
+    {
+      "category": "開発手法・運用",
+      "title": "素直な真似を名前にする",
+      "description": "名前を「猿真似」を意味するApery(えいぷりー)とし、他ソフトの良い所を素直に真似する方針を掲げる。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "意味は「猿真似」です。"
+    }
+  ],
+  "character": "名前の由来を「猿真似」とし、Bonanza・ponanza・Stockfishへの敬意を前面に出す。FAQ形式（「何て読むの？」「何手読むの？」）で書かれた親しみやすい文書。",
+  "notes": null,
+  "team_list_url": "http://www2.computer-shogi.org/wcsc23/team.html"
+}

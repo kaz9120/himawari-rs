@@ -1,0 +1,44 @@
+{
+  "wcsc": 26,
+  "year": 2016,
+  "dir": "Garyu",
+  "team": "高田 淳一",
+  "software": "臥龍",
+  "sources": [
+    "wcsc26/appeal/Garyu/garyu26.html"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc26/appeal/Garyu/garyu26.html"
+  ],
+  "summary": "第3回から参加する長寿のJava製ソフト。思考部約2万行で、約750の評価パラメータを手で設計している。今回の改良はフィッシャークロックへの対応。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "手作り",
+    "detail": "駒損得、成駒、当たり駒、駒の絶対位置、玉の自由度、各枡の利き、駒の働き、囲い、ピン、手番など約750"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "反復深化、置換表、null move pruning、王手延長、詰み探索は深さ優先探索"
+  },
+  "learning": null,
+  "hardware": "Core i7 4960HQ 2.6GHz（1スレッド）",
+  "language": "Java",
+  "claimed_strength": "約30万nodes/s",
+  "ideas": [
+    {
+      "category": "時間管理",
+      "title": "フィッシャークロック対応",
+      "description": "前回からの改良として、フィッシャークロックの持ち時間方式に対応した。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "フィッシャークロックに対応。"
+    }
+  ],
+  "character": "通算成績を67勝104敗4分と正直に載せている。思考部20100行とUI部10971行の規模も明記。",
+  "notes": "並列探索・進行度・学習・df-pnは不採用と明記",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc26/team.html"
+}

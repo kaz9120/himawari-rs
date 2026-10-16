@@ -1,0 +1,84 @@
+{
+  "wcsc": 31,
+  "year": 2021,
+  "dir": "MolQha-",
+  "team": "PuI PuI 将棋部",
+  "software": "モﾉﾚ力ー(MolQha-)",
+  "sources": [
+    "wcsc31/appeal/MolQha-/molqha_wcsc2021.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc31/appeal/MolQha-/molqha_wcsc2021.pdf"
+  ],
+  "summary": "「できるだけ簡単に変態将棋（AIが普段指さない戦型）を指して勝つ」を目指す。序列つき定跡で振り飛車などの戦型にまで誘導し、外れたら追加学習した弱い関数で指し、所望の戦型になったら強いAIに指し継ぐ。定跡は自動育成する。",
+  "base": {
+    "engine": "独自",
+    "eval_source": "illqha4.0（元の評価関数）",
+    "note": null
+  },
+  "eval": {
+    "family": "NNUE",
+    "detail": "特定戦型の勝率を都合よく書き換えて追加学習した評価関数。元の評価関数と1000:1で線形結合"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "戦型誘導用の定跡と評価関数、強いAIへの指し継ぎ"
+  },
+  "learning": "振り飛車の勝率を書き換えた追加学習（プロの振り飛車の棋譜の勝率を7割に調整、学習率0.01で1 iteration）。10局程度の棋譜で動く追加学習ルーチン",
+  "hardware": null,
+  "language": "C++, Python",
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "定跡・序盤",
+      "title": "序列つき定跡",
+      "description": "定跡でできる限りカバーし、外れたら追加学習した（弱くてよい）関数を使い、所望の戦型になったら適当な強いAIに指し継ぐ。定跡を充実させ、追加学習関数にはできるだけ仕事をさせない。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "序列つき定跡"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "変態定跡の自動育成",
+      "description": "追加学習関数と強い関数で戦わせ（2割ちょい勝てる）、勝った棋譜を定跡に組み込む。",
+      "originality": "独自",
+      "evidence": "追加学習関数は強い関数に2割ちょい勝てる",
+      "quote": "勝った棋譜を定跡に組み込む"
+    },
+    {
+      "category": "評価関数",
+      "title": "特定戦型向けの勝率書き換え学習",
+      "description": "振り飛車の勝率は3割に対して5割くらいと、勝率を都合よく書き換えた上で学習させる。大体は元より弱くなるため、混合比1000:1で線形結合して使う。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "勝率を都合よく 書き換えた上で 学習させる"
+    },
+    {
+      "category": "開発手法・運用",
+      "title": "徹底的な自動化",
+      "description": "棋譜を入れるだけで、定跡生成から勝率測定まで自動で行う。追加学習ルーチンは10局程度の棋譜で動くようにする。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "徹底的な自動化（棋譜を 入れただけで定跡生成か ら勝率測定まで行う）"
+    },
+    {
+      "category": "棋風・人間らしさ",
+      "title": "AIが指さない戦型（変態将棋）で勝つ",
+      "description": "鬼殺し・嬉野流・一間飛車など人間のプロにも稀な戦型や、AIが避ける一手損角換わり・横歩取り・振り飛車を指して勝つ。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "できるだけ簡単に 変態将棋を指して 勝つ"
+    },
+    {
+      "category": "エンタメ・演出",
+      "title": "PR動画の予告",
+      "description": "多分youtubeにPR動画が出るので、そちらもよろしくとの案内。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "多分youtubeにpr動画がでますので"
+    }
+  ],
+  "character": "「変態将棋で勝ちたい」というコンセプトのスライド型文書。「定跡を抜けたら既に不利だった被害者の会」など、ネットスラング混じりの軽い語り口。",
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc31/team.html"
+}

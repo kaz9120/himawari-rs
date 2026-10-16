@@ -1,0 +1,44 @@
+{
+  "wcsc": 21,
+  "year": 2011,
+  "dir": "KIRI",
+  "team": "佐藤佳州",
+  "software": "棋理",
+  "sources": [
+    "wcsc21/appeal/KIRI/memo.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc21/appeal/KIRI/memo.txt"
+  ],
+  "summary": "評価関数と探索パラメータの学習を工夫する予定、という暫定版の一文。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "不明",
+    "detail": null
+  },
+  "search": {
+    "family": "不明",
+    "detail": null
+  },
+  "learning": null,
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "評価関数と探索パラメータの学習",
+      "description": "評価関数と探索パラメータの学習を工夫する予定。",
+      "originality": "不明",
+      "evidence": null,
+      "quote": "評価関数、探索パラメータの学習を工夫する予定です"
+    }
+  ],
+  "character": null,
+  "notes": "暫定版。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc21/team.html"
+}

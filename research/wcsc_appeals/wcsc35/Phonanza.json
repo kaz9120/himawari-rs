@@ -1,0 +1,54 @@
+{
+  "wcsc": 35,
+  "year": 2025,
+  "dir": "Phonanza",
+  "team": "ペン ギンクミマヌ",
+  "software": "Phonanza",
+  "sources": [
+    "wcsc35/appeal/Phonanza/Phonanza_appeal_WCSC35.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc35/appeal/Phonanza/Phonanza_appeal_WCSC35.pdf"
+  ],
+  "summary": "WCSC34以降にNNUE評価関数を作り始めた個人開発で、nodchip氏のnnue-pytorch学習と、DL系モデルによる評価値の付け替えを全面的に取り入れる。振電3に勝率9割でも、floodgateではR3700にとどまり「振電3キラー」にすぎなかったと正直に書く。",
+  "base": {
+    "engine": "やねうら王",
+    "eval_source": null,
+    "note": "nnue-pytorch、cshogi、dlshogiを併用"
+  },
+  "eval": {
+    "family": "NNUE",
+    "detail": "nnue-pytorchで学習"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "やねうら王"
+  },
+  "learning": "DL系モデルによるNNUEの学習データの評価値付け替え",
+  "hardware": "Ryzen 7 3700X",
+  "language": [
+    "Python"
+  ],
+  "claimed_strength": "floodgateでR3700程度（アピール文書作成時点）",
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "DL系モデルによる評価値の付け替え",
+      "description": "NNUEの学習データの評価値を、DL系モデルが出す値に付け替えて学習する。nodchip氏の工夫を全面的に取り入れた。",
+      "originality": "再現・追従",
+      "evidence": "振電3に勝率9割以上。ただしfloodgateはR3700",
+      "quote": "DL系モデルによるNNUEの学習データの評価値付け替え"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "定跡を今大会から搭載",
+      "description": "WCSC34では定跡を生かせる評価関数がなく見送ったが、今大会は搭載する予定。",
+      "originality": "不明",
+      "evidence": null,
+      "quote": "今大会は定跡を搭載予定です。"
+    }
+  ],
+  "character": "名前は、歴史に名を刻んだ「あのソフト」(Ponanza) へのリスペクトで、将来的に四冠を目指す。「振電3キラーでしかなかったことが判明し」と、期待が外れた経緯を書く。",
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc35/team.html"
+}

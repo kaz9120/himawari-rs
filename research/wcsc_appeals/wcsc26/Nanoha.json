@@ -1,0 +1,84 @@
+{
+  "wcsc": 26,
+  "year": 2016,
+  "dir": "Nanoha",
+  "team": "川端 一之",
+  "software": "なのは",
+  "sources": [
+    "wcsc26/appeal/Nanoha/Nanoha_appeal2016.pdf"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc26/appeal/Nanoha/Nanoha_appeal2016.pdf"
+  ],
+  "summary": "Stockfishベースの探索に、なのは詰めと呼ぶ強力なdf-pn詰みルーチンを載せた、「魔法少女リリカルなのは」ネタのソフト。江戸時代の611手詰め「寿」を解き、常に詰みを狙う一発逆転を売りにする。今年は最大詰め手数の強化を優先し、カットインなど派手な演出を課題に挙げる。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "自前学習がうまくいけば三駒関係（KP+KKP+KPP）+α、うまくいかなければApery"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "Stockfish使用。Bitboard未使用（盤情報は配列）、歩・角・飛の不成も生成。詰めはdf-pn"
+  },
+  "learning": null,
+  "hardware": "AMD FX-8350、メモリ8GB",
+  "language": "C++",
+  "claimed_strength": "floodgateレート約2700（2015年3月時点）。第24・25回選手権でAMD CPUのシステム中1位",
+  "ideas": [
+    {
+      "category": "詰み・終盤",
+      "title": "なのは詰め（強力なdf-pn詰みルーチン）",
+      "description": "強力な詰みルーチンを搭載し、江戸時代の名作611手詰めの「寿」を解く。常に詰みを狙って一発逆転のポテンシャルを持つ。「なのは詰め」として公開している。",
+      "originality": "独自",
+      "evidence": "611手詰め「寿」を解く",
+      "quote": "江戸時代の名作 611手詰めの「寿」を解く"
+    },
+    {
+      "category": "詰み・終盤",
+      "title": "最大詰め手数を優先した詰め探索の強化",
+      "description": "詰め探索の速度向上より、最大詰め手数の強化を優先する。アニメの「チャージタイムを増やして威力を大幅アップ」の台詞になぞらえる。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "最大詰め手数の強化を最優先してみたの"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "Bitboard未使用の配列盤",
+      "description": "盤情報を配列で持ち、Bitboardは使わない。歩・角・飛の不成の手も生成する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "Bitboard未使用(盤情報は配列)"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "出現数と勝率を考慮した定跡",
+      "description": "定跡は実戦での出現数と勝率を考慮して手を選ぶ。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "定跡は実戦での出現数および勝率を考慮して手を選択"
+    },
+    {
+      "category": "エンタメ・演出",
+      "title": "カットインやエフェクトなど派手な演出",
+      "description": "今後の課題に「カットインやエフェクトなど派手な演出！！」を挙げ、最長の詰将棋「ミクロコスモス」（1525手詰め）を解くことも挙げる。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "カットインやエフェクトなど派手な演出！！"
+    },
+    {
+      "category": "開発手法・運用",
+      "title": "なのはminiとしての公開",
+      "description": "評価ベクトルを縮小し、詰めルーチンを削除したなのはminiを公開し、他チームが利用する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "評価ベクトル縮小、詰めルーチン(df-pn)削除したものを、なのはminiとして公開"
+    }
+  ],
+  "character": "アニメ「魔法少女リリカルなのは」を由来にした名前と、漫画の台詞の改変でアピール。「名前負けしている」と自虐し、意気込みは「全力全開、手加減なしで」。イラストはCOCOさん。",
+  "notes": null,
+  "team_list_url": "http://www2.computer-shogi.org/wcsc26/team.html"
+}

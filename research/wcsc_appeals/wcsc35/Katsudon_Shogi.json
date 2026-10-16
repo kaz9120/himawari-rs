@@ -1,0 +1,37 @@
+{
+  "wcsc": 35,
+  "year": 2025,
+  "dir": "Katsudon_Shogi",
+  "team": "カツ丼将棋",
+  "software": "カツ丼将棋",
+  "sources": [
+    "wcsc35/appeal/Katsudon_Shogi/appeal.txt"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc35/appeal/Katsudon_Shogi/appeal.txt"
+  ],
+  "summary": "昨年から変更なし。ストックフィッシュ風の探索と、2マス関係（2駒関係）の評価関数モデルで、将棋倶楽部24でR2400程度と見ている。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": "前年と同じ"
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "2マス関係の評価関数モデル"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "伝統的なストックフィッシュ風"
+  },
+  "learning": null,
+  "hardware": "Ryzen 9 5950",
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": "将棋倶楽部24でR2400くらい（本人の推測）",
+  "ideas": [],
+  "character": "「少なすぎるとリジェクトされるかもしれないので少し書くと」という、アピール文書の最低文字数を意識した書き出し。",
+  "notes": "昨年のアピール文書を参照とある",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc35/team.html"
+}

@@ -1,0 +1,62 @@
+{
+  "wcsc": 25,
+  "year": 2015,
+  "dir": "AWAKE",
+  "team": "巨瀬 亮一",
+  "software": "AWAKE",
+  "sources": [
+    "wcsc25/appeal/AWAKE/appeal.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc25/appeal/AWAKE/appeal.txt"
+  ],
+  "summary": "Stockfish系の多数の枝刈り・延長（Half Ply Extensionを追加）と三手詰め、Bonanza式KKP・KPP評価関数。約5万局をミニバッチ学習し、利きと相対位置による次元下げで学習する。手番を考慮した評価関数を実装予定。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": "Stockfishの探索をベース"
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "KKP・KPP。利きと相対位置による次元下げ"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "Stockfish系の枝刈りと延長（Singular、Half Ply、Check）、三手詰め"
+  },
+  "learning": "Bonanza Methodを約5万局の棋譜から、ミニバッチ学習で収束時間を削減",
+  "hardware": null,
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "ミニバッチ学習で収束を早める",
+      "description": "Bonanza Methodにミニバッチ学習を導入し、収束までの時間を削減する。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "ミニバッチ学習により収束までの時間を削減しています。"
+    },
+    {
+      "category": "評価関数",
+      "title": "利きと相対位置による次元下げ",
+      "description": "学習時に、利きと相対位置による次元下げをして学習する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "利きと相対位置による次元下げをして学習をしています。"
+    },
+    {
+      "category": "評価関数",
+      "title": "手番を考慮した評価関数（予定）",
+      "description": "手番を考慮した評価関数を実装する予定。",
+      "originality": "再現・追従",
+      "evidence": null,
+      "quote": "手番を考慮した評価関数を実装する予定です。"
+    }
+  ],
+  "character": null,
+  "notes": null,
+  "team_list_url": "http://www2.computer-shogi.org/wcsc25/team.html"
+}

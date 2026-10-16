@@ -1,0 +1,62 @@
+{
+  "wcsc": 29,
+  "year": 2019,
+  "dir": "Kifuwarabe",
+  "team": "高橋 智史",
+  "software": "きふわらべ",
+  "sources": [
+    "wcsc29/appeal/Kifuwarabe/appeal.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc29/appeal/Kifuwarabe/appeal.pdf"
+  ],
+  "summary": "Rustで一から作る個人エンジンで、第28回は指し手生成部のみでランダムムーブという状況。アピール文書は東方Projectのキャラの掛け合い形式で、「駒運び和」という将棋の局面と手を掛け算・足し算で扱う数式化の構想を、次元の呪いへの対抗策として語る。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "不明",
+    "detail": null
+  },
+  "search": {
+    "family": "不明",
+    "detail": null
+  },
+  "learning": null,
+  "hardware": "Threadripper搭載PC（箱になる可能性を自虐）",
+  "language": [
+    "Rust"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "研究・実験的",
+      "title": "駒運び和（将棋の代数化）",
+      "description": "局面を数、指し手を符号とみなし、局面に符号を掛けると次の局面になる「将棋積」を定義し、手を戻すのは割り算、空の局面を零元とする。局面を駒運びの足し算で近似する「駒運び和」で、探索空間の次元の呪いを避けることを狙う。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "将棋の数式を創造することにした☆"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "共役指し手（左右対称）の視点",
+      "description": "将棋の左右対称な局面を共役とみなし、2つの解を別々に研究する無駄を避ける視点を論じる。囲碁の8つの同型に対し将棋は2つのみ。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "左右対称は 将棋の コォンジュゲーション"
+    },
+    {
+      "category": "エンタメ・演出",
+      "title": "東方Projectキャラの掛け合い形式",
+      "description": "北白河ちゆりと岡崎夢美の会話形式で、Rustのコード片を交えて将棋のデータ構造を創世記風に解説する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "「 スレッドリッパーを買ったんだが、きふわらべ が将棋をルール通りに指せないので何も始まらない……☆」"
+    }
+  ],
+  "character": "「☆」を語尾にした独特の文体、東方二次創作キャラの掛け合い、将棋を『創造の7日間』のように語る哲学的ネタ文書。強さより一発ネタ重視を宣言。",
+  "notes": "アピール文書はA4で19ページ超の予定と書かれる。実際の探索・評価の実装は記載なし。前年のきふわらべはランダムムーブ",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc29/team.html"
+}

@@ -1,0 +1,46 @@
+{
+  "wcsc": 35,
+  "year": 2025,
+  "dir": "The・GreatUshizima",
+  "team": "有賀宏樹、三森大夢",
+  "software": "ザ・グレートウシジマ",
+  "sources": [
+    "wcsc35/appeal/The・GreatUshizima/appealr2.txt"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc35/appeal/The%E3%83%BBGreatUshizima/appealr2.txt"
+  ],
+  "summary": "『強い将棋ソフトの創り方』のpython-dlshogi2を土台に、探索を『ゲームで学ぶ探索アルゴリズム実践入門』のThunder探索を参考にして一部変更した。ランダムプレイアウトを使わず、ニューラルネットワークのvalue出力で盤面を評価する。",
+  "base": {
+    "engine": "dlshogi",
+    "eval_source": null,
+    "note": "python-dlshogi2をベースに探索部を改変"
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "ニューラルネットワークのvalue出力による盤面評価"
+  },
+  "search": {
+    "family": "MCTS",
+    "detail": "Thunder探索を参考に、モンテカルロツリー探索を一部変更"
+  },
+  "learning": null,
+  "hardware": "Ryzen 9 7945HX + RTX4060",
+  "language": [
+    "Python"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "探索",
+      "title": "Thunder探索を取り入れたMCTS",
+      "description": "python-dlshogi2のMCTSを、書籍『ゲームで学ぶ探索アルゴリズム実践入門』にあるThunder探索を参考に変更する。従来のランダムプレイアウトはやめ、ニューラルネットのvalue出力で評価する。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "ゲームで学ぶ探索アルゴリズム実践入門という書籍のThunder探索という手法を参考にモンテカルロツリー探索の方法を一部変更しました"
+    }
+  ],
+  "character": null,
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc35/team.html"
+}

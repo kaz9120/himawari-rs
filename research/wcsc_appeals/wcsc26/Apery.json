@@ -1,0 +1,68 @@
+{
+  "wcsc": 26,
+  "year": 2016,
+  "dir": "Apery",
+  "team": "Aperyチーム(大阪市立大学数理工学研究室)",
+  "software": "Apery",
+  "sources": [
+    "wcsc26/appeal/Apery/appeal_wcsc26.html"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc26/appeal/Apery/appeal_wcsc26.html"
+  ],
+  "summary": "Stockfishベースの探索と三駒関係の評価関数を持つオープンソース将棋ソフト。今回は評価関数に手番評価を加え、並列化をYBWCからLazy SMPへ変えて約150レート上げた。CSAライブラリとして公開され、14チームが改造して参加している。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "三駒関係（KPP/KKP）に手番の評価を加えたもの"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "Stockfishベース。並列化はYBWCからLazy SMPへ変更"
+  },
+  "learning": "大量の自己対局の棋譜による学習は試したが、なぜか弱くお蔵入りしそうと記載",
+  "hardware": "18コアマシン",
+  "language": "C++",
+  "claimed_strength": "Lazy SMP化で約150レート上昇（18コア）",
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "評価関数での手番の評価",
+      "description": "評価関数の中で手番の価値も評価する。第3回電王トーナメントから導入した。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "評価関数で手番も評価しています。"
+    },
+    {
+      "category": "並列・分散",
+      "title": "YBWCからLazy SMPへ",
+      "description": "並列化アルゴリズムをYBWCからLazy SMPに変更した。レーティング向上の主因だった。",
+      "originality": "既存手法の応用",
+      "evidence": "18コアマシンでレーティング150点程度の上昇",
+      "quote": "主にレーティング向上に寄与したのは並列化アルゴリズムをYBWCからLazy SMPに変更した事です。"
+    },
+    {
+      "category": "開発手法・運用",
+      "title": "CSAライブラリとしてのOSS公開",
+      "description": "GPL v3で公開し、CSAライブラリ登録により誰でも改造して出場できる。今回は14チームがApery系で参加し史上最多。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "今回はAperyチームを含め14チームがAperyライブラリを用いての参加のようです。"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "自己対局棋譜からの学習の失敗報告",
+      "description": "大量の自己対局棋譜で学習したがなぜか弱く、コツを募っている。効かなかった試行の公開。",
+      "originality": "不明",
+      "evidence": null,
+      "quote": "大量の自己対局の棋譜で学習してるのは何故か弱いのでお蔵入りしそう。"
+    }
+  ],
+  "character": "命名権をチャリティーオークションで販売した「大樹の枝」名義で電王トーナメントに出場した実績を紹介している。クラスタ化は結局書かなかったと正直に記す。",
+  "notes": "5月8日追記あり",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc26/team.html"
+}

@@ -1,0 +1,44 @@
+{
+  "wcsc": 20,
+  "year": 2010,
+  "dir": "oki",
+  "team": "tomonobu masumoto",
+  "software": "隠岐",
+  "sources": [
+    "wcsc20/appeal/oki/oki.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc20/appeal/oki/oki.txt"
+  ],
+  "summary": "思考部は個人制作で、BonanzaやうさぴょんのソースはCommentが少ない・英語・インタフェース違いのため使っていない。ライブラリ制限への不満をユーモアまじりに書いたもの。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "不明",
+    "detail": null
+  },
+  "search": {
+    "family": "不明",
+    "detail": null
+  },
+  "learning": null,
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "開発手法・運用",
+      "title": "ライブラリ不使用の自作思考部",
+      "description": "Bonanzaとうさぴょんのソースは調べたが、コメントが少なく英語で、インタフェースも違うため使わず、思考部を個人で作った。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "思考部はら個人が作成したソフトです"
+    }
+  ],
+  "character": "「知能指数が低い関係で何書けばいいかわからない」と卑下しつつ、「相手が何人がかりでやろうと別に構いません」と、ライブラリ勢への割り切った態度を示す。",
+  "notes": "技術的な記述は少ない。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc20/team.html"
+}

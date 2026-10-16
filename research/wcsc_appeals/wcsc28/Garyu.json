@@ -1,0 +1,37 @@
+{
+  "wcsc": 28,
+  "year": 2018,
+  "dir": "Garyu",
+  "team": "高田 淳一",
+  "software": "臥龍",
+  "sources": [
+    "wcsc28/appeal/Garyu/garyu28.html"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc28/appeal/Garyu/garyu28.html"
+  ],
+  "summary": "Javaで書かれた手作り評価のソフト。第3回から参加する長寿ソフトで、前回から変更なし。評価パラメータ約750個を手で設計する。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "手作り",
+    "detail": "駒損得・成駒・当たり駒・駒の絶対位置・玉の自由度・各枡の利き・駒の働き・囲い・ピン・手番。合計約750パラメータ"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "反復深化、置換表、null move pruning、王手延長。詰み探索は深さ優先"
+  },
+  "learning": null,
+  "hardware": "Core i7 4960HQ、約30万nodes/s（シングルスレッド）",
+  "language": [
+    "Java"
+  ],
+  "claimed_strength": "通算73勝112敗4分",
+  "ideas": [],
+  "character": "第3回大会から参加し続ける長寿ソフト。思考部20100行、UI部10971行と規模を示す。",
+  "notes": "前回から全く変更なしと書く。並列探索・進行度・学習・df-pnは未採用。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc28/team.html"
+}

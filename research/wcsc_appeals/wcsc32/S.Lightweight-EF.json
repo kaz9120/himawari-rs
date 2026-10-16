@@ -1,0 +1,81 @@
+{
+  "wcsc": 32,
+  "year": 2022,
+  "dir": "S.Lightweight-EF",
+  "team": "神田 剛志",
+  "software": "S.Lightweight-EF",
+  "sources": [
+    "wcsc32/appeal/S.Lightweight-EF/S.Lightweight-EF_appeal.pdf",
+    "wcsc32/appeal/S.Lightweight-EF/S.Lightweight-EF_appeal2.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc32/appeal/S.Lightweight-EF/S.Lightweight-EF_appeal.pdf",
+    "https://www.apply.computer-shogi.org/wcsc32/appeal/S.Lightweight-EF/S.Lightweight-EF_appeal2.pdf"
+  ],
+  "summary": "家庭用ローカルPCで上位ソフトに比肩する棋力を示すことを目的にした、軽く速いdlshogi系ソフト。ResNetをEfficientNet（入力部に7層Residual block）で再構築し、バッチサイズ1024やMultiStream、簡易枝刈りなどでNPSを上げる。",
+  "base": {
+    "engine": "dlshogi",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "EfficientNet（入力部に7層のResidual block）。第2回電竜戦モデルから6層追加"
+  },
+  "search": {
+    "family": "MCTS",
+    "detail": "PUCT。着手確率を使った簡易枝刈りでUCB最大の子ノード選択を高速化。KL情報量による時間制御"
+  },
+  "learning": "dlshogiチーム公開の学習データ（floodgate抽出、GCT電竜自己対局、水匠による入玉局面、書籍付属データ）とS.Lightweight-EF自身の自己対局データによる強化学習。バッチサイズを上げて安定化",
+  "hardware": "Ryzen 7 3700X、RTX 3070、RTX 3080（ローカルPC）",
+  "language": [
+    "C++",
+    "Python"
+  ],
+  "claimed_strength": "第2回電竜戦エキシビジョン版dlshogiモデルと1分1秒・100局で先手勝率82%/後手52%（相手48%/18%）。ベンチマーク平均NPS126,016",
+  "ideas": [
+    {
+      "category": "実装・高速化",
+      "title": "着手確率を使った簡易枝刈り",
+      "description": "PUCTで探索木を降りる際、各子ノードの着手確率を使って簡易的に枝刈りし、最大UCB子ノードの選択にかかる時間を短縮する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "各子ノードの着手確率を利用した簡易的な枝刈りを実施することで、最大UCB値の子ノード選択処理にかかる時間を短縮"
+    },
+    {
+      "category": "評価関数",
+      "title": "EfficientNetでResNetを置き換え",
+      "description": "本家のResNetをEfficientNetで再構築して1から学習し直した。入力部に7層のResidual blockを入れて接続する。",
+      "originality": "独自",
+      "evidence": "第2回電竜戦エキシビジョン版dlshogiモデルに100局で先手勝率82%・後手52%",
+      "quote": "本家のResNetをEfficientNetで再構築し、１から学習しなおしました。"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "バッチサイズ1024でローカルPCのNPS向上",
+      "description": "GPUに渡すバッチサイズを1024に上げ、軽量なモデルと組み合わせてローカルPCの平均NPSを上げる。",
+      "originality": "既存手法の応用",
+      "evidence": "平均NPS126,016、最大185,777",
+      "quote": "GPUに局面を渡す際のバッチサイズを1024に上げています。"
+    },
+    {
+      "category": "時間管理",
+      "title": "KL情報量による時間制御",
+      "description": "dlshogi本家に倣い、policyの確率分布と探索後の確率分布のKL情報量で時間制御する。",
+      "originality": "再現・追従",
+      "evidence": "時間不足で未計測。2次予選以降は不使用",
+      "quote": "Policyの確率分布と探索後の確率分布のKL情報量を用いた時間制御を導入"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "初期局面の事前探索結果の定跡",
+      "description": "初期局面の事前探索結果を利用して持ち時間を節約する。s-book_blackをS.Lightweight-EFのモデルで深掘りしたものと、モデルのみで作ったものの2種類を使い分ける。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "s-book_blackをベースに、S.Lightweight-EFのモデルを使ってさらに深掘したもの"
+    }
+  ],
+  "character": "「名前の通り軽く速く」を掲げ、つよつよインスタンス勢や高級スリッパと家庭用PCで戦うことをシリーズの目的としている。",
+  "notes": "3/31版と5/8版の2通を統合。5/8版は追試可と明記。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc32/team.html"
+}

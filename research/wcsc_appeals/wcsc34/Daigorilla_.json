@@ -1,0 +1,80 @@
+{
+  "wcsc": 34,
+  "year": 2024,
+  "dir": "Daigorilla_",
+  "team": "田中 大吾",
+  "software": "Daigorilla",
+  "sources": [
+    "wcsc34/appeal/Daigorilla_/Daigorilla_WCSC34_appeal.doc"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc34/appeal/Daigorilla_/Daigorilla_WCSC34_appeal.doc"
+  ],
+  "summary": "ふかうら王をCUDA12.3・TensorRT8.6で最適化し、後手番の勝率強化と定跡の自動生成に手間をかけた。後手は角換わりを避け雁木か力戦に誘導する。",
+  "base": {
+    "engine": "やねうら王（ふかうら王8.00）",
+    "eval_source": "Hao（NNUE）",
+    "note": null
+  },
+  "eval": {
+    "family": "DL+NNUE",
+    "detail": "20b_swishモデル。NNUE標準型「Hao」を併用"
+  },
+  "search": {
+    "family": "MCTS",
+    "detail": "ふかうら王"
+  },
+  "learning": "20b_swishで学習。手動と自動で調整した定跡からdepth14〜18、約5億局面をHaoに学習し、学習率を段階的に下げる",
+  "hardware": "Xeon E5 2683v4×2 + RTX3000番台×3",
+  "language": [
+    "Python",
+    "C++",
+    "java"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "棋風・人間らしさ",
+      "title": "後手番で角換わりを避ける",
+      "description": "後手は角換わりを避け、雁木か力戦になるようモデルのパラメータを調整した。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "後手は角換わりを避け、雁木もしくは力戦にさすようにmodelのパラメータを調整した"
+    },
+    {
+      "category": "探索",
+      "title": "後手勝率を疑似調整した棋譜で自動調整",
+      "description": "ふかうら王のパラメータを、後手の勝率を疑似的に調整した棋譜で自動調整した。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "後手の勝率を疑似調整した棋譜で自動調整を行った"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "CUDA12.3・TensorRT8.6への最適化",
+      "description": "ふかうら王をCUDA12.3、TensorRT8.6、cuDNN9.0へ最適化して高速化。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "ふかうら王をCUDA12.3　TensorRT8.6、cudnn9.0に最適化し"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "実現確率順の定跡生成",
+      "description": "無駄な局面を減らすため、実現確率が高いものから局面を誘導して定跡を作り、様々な評価関数に対応させる。詳細は決勝に残ったら書くとのこと。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "無駄な局面を減らすため実現確立が高いものから局面を誘導し"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "定跡局面でのNNUE学習",
+      "description": "手動・自動で調整した定跡の局面を使い、depth14〜18で約5億局面をNNUE（Hao）に学習させる。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "定跡を用いて標準型NNUE関数「Hao」を用いてdepth14～18、約5億局面を学習させている"
+    }
+  ],
+  "character": "急いで書いた旨を自嘲しつつ、やねうら王のスポンサーではないので8.00のまま、と書く軽い語り口。",
+  "notes": "定跡の詳細は秘密で、決勝進出時に書くとしている。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc34/team.html"
+}

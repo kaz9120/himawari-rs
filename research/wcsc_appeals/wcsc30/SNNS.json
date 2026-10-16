@@ -1,0 +1,62 @@
+{
+  "wcsc": 30,
+  "year": 2020,
+  "dir": "SNNS",
+  "team": "吉野 拓真",
+  "software": "SNNS",
+  "sources": [
+    "wcsc30/appeal/SNNS/wcsc30_appeal_0331.docx"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc30/appeal/SNNS/wcsc30_appeal_0331.docx"
+  ],
+  "summary": "山岡忠夫氏の書籍のMCTS+NNプログラムを土台に、探索をモンテカルロソフトマックス探索へ置き換えた初参加チーム。Policyを使う選択評価値と、子ノード一括評価に伴う差分での入力特徴作成が工夫。",
+  "base": {
+    "engine": "dlshogi系（『将棋AIで学ぶディープラーニング』のプログラム）",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "書籍のものをそのまま使用（policy+value）"
+  },
+  "search": {
+    "family": "MCTS",
+    "detail": "モンテカルロソフトマックス探索（確率的選択探索）"
+  },
+  "learning": null,
+  "hardware": "Core i9-9900K 8コア",
+  "language": [
+    "Python"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "探索",
+      "title": "モンテカルロソフトマックス探索",
+      "description": "選択・展開・評価・バックアップを繰り返すが、ノードを確率的に選択し、子ノードを先に展開してまとめて評価する点がMCTSと違う。GPUの並列計算と相性が良い。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "「ノードを確率的に選択する」、「子ノードの展開を先に行い、それらのノードをまとめて評価する」"
+    },
+    {
+      "category": "探索",
+      "title": "Policyを使う選択評価値",
+      "description": "モンテカルロソフトマックス探索でPolicy networkの出力を活かすため、子ノードの評価値にPUCT式の第2項と同様の項を足した選択評価値を作り、ノード選択の確率計算（温度付きsoftmax）にのみ使う。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "選択評価値"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "親ノードとの差分による入力特徴作成",
+      "description": "各子ノードの入力特徴を、親ノードとの差分で作成して効率化する。元のプログラムは1シミュレーションで1ノードだけ入力特徴を作る。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "親ノードとの差分を用いる事により入力特徴作成の効率化を図っています。"
+    }
+  ],
+  "character": null,
+  "notes": "先行研究は桐井・原・五十嵐・森岡・山本の「確率的選択探索の将棋への適用」（GPW2017）",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc30/team.html"
+}

@@ -1,0 +1,68 @@
+{
+  "wcsc": 22,
+  "year": 2012,
+  "dir": "Miyako_Shogi_System",
+  "team": "前田大和",
+  "software": "Miyako Shogi System",
+  "sources": [
+    "wcsc22/appeal/Miyako_Shogi_System/MiyakoShogiSystem.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc22/appeal/Miyako_Shogi_System/MiyakoShogiSystem.txt"
+  ],
+  "summary": "Bitboardを使わず利きデータを更新するクラシカルな構造で、GlaurungとStockfishを参考にする。Relative History HeuristicによるLMRと、評価関数のみの置換表が特徴。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "駒割、位置表（相手玉・自玉別）、攻め駒の動ける量、玉周囲の金銀・利き、ピン駒、桂頭・角頭の利きなど。終盤は玉の自由度・王への利きを追加"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "IDとAspiration Windows（歩1.5枚・桂1枚・∞）、Razoring、null move、IID、PVS、LMR（Relative History）、futility、One Reply・Recapture 0.5手延長・王手1手延長、静止探索最大12段"
+  },
+  "learning": "保木の方法で、プロ10年分1000対局の駒割学習のち、Bonanza対GPS・Bonanza対Bonanza・GPS対GPSの自動対戦11437局で評価関数を学習。負けた方の特徴の学習量は1/2",
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "探索",
+      "title": "Relative History HeuristicによるオーダリングとLMR",
+      "description": "成らない・取らない手の並べ替えと、Late Move ReductionにRelative History Heuristicを使う。王手を受ける手が3手以上のときは別の順序で並べる。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "成らない/取らない手はRelative History Heuristicによる並べ替え"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "評価関数のみのハッシュテーブル",
+      "description": "評価関数専用のハッシュテーブルを持ち、局面が一致すれば評価値を再計算しない。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "評価関数のみのハッシュテーブルを使っている"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "手数でペナルティを変える学習",
+      "description": "序盤は手数によりペナルティを強く、中盤は少し弱く、終盤は弱くする。負けた方の特徴の学習量は半分にする。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "序盤は手数によりペナルティを強くする"
+    },
+    {
+      "category": "評価関数",
+      "title": "探索前だけで進行度を求める",
+      "description": "進行度は探索前に一度だけ求め、15手以内は序盤、玉周り24マスの利き・敵陣の自駒で中盤、重み付き合計70以上で終盤と判定する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "探索の前だけで進行度を求める(探索中には進行度を求めなおさない)"
+    }
+  ],
+  "character": null,
+  "notes": "3/20に提出し4/28修正。詰め将棋は持たない。不利なときは千日手を選ぶことがある。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc22/team.html"
+}

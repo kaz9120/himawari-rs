@@ -1,0 +1,44 @@
+{
+  "wcsc": 27,
+  "year": 2017,
+  "dir": "AWAKE",
+  "team": "巨瀬 亮一",
+  "software": "AWAKE",
+  "sources": [
+    "wcsc27/appeal/AWAKE/appeal.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc27/appeal/AWAKE/appeal.txt"
+  ],
+  "summary": "人間の棋譜を一切使わず、駒割だけの初期値から自己対戦棋譜で評価関数を学習するソフト。探索はStockfishを参考にする。",
+  "base": {
+    "engine": "不明",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "特徴ベクトルは駒割以外ゼロから出発"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "最新Stockfishの探索部から将棋に有効な部分だけ取り入れ"
+  },
+  "learning": "自己対戦棋譜の評価値と勝敗を教師にして反復学習。人間の棋譜は参照しない",
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "駒割のみから自己対戦で学習",
+      "description": "特徴ベクトルを駒割以外ゼロにして出発し、自己対戦の棋譜の評価値と勝敗を教師にした学習を繰り返す。人間の棋譜の情報を一切参照しない。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "学習の過程で、人間の棋譜から得られる情報を一切参照していません。"
+    }
+  ],
+  "character": null,
+  "notes": "参加者一覧のキャンセル欄に記載。「野心的な取り組み」が多数あるが未反映とだけ書かれる。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc27/team.html"
+}

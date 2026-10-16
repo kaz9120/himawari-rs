@@ -1,0 +1,79 @@
+{
+  "wcsc": 36,
+  "year": 2026,
+  "dir": "478shogi",
+  "team": "四七八",
+  "software": "四七八将棋",
+  "sources": [
+    "wcsc36/appeal/478shogi/478shogi_WCSC36_2026-03-20.png"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc36/appeal/478shogi/478shogi_WCSC36_2026-03-20.png"
+  ],
+  "summary": "やねうら王の探索に、ゼロクリアのNNUE評価関数を載せた初参加の構成。画像形式のアピール文書を、棋譜解析ソフトの変化木の形で書いている点が目を引く。最大の特徴は、自作GUIで整理した角換わり定跡と、floodgate等の前例集計、独立管理した3種類の定跡を優先順に使い分ける定跡運用。",
+  "base": {
+    "engine": "やねうら王",
+    "eval_source": null,
+    "note": "探索部はやねうら王。評価関数はnnue-pytorchとやねうら王でゼロクリアから学習"
+  },
+  "eval": {
+    "family": "NNUE",
+    "detail": "標準NNUEの予定（3/20時点）。KP256などにする可能性もあるとしている。なるべくシンプルなアーキテクチャ"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "やねうら王を使用"
+  },
+  "learning": "ペンギンクミマヌさんの80億局面（Fuka2025Q2-40b）で学習。角換わり右玉中心の定跡で水匠10と対局した教師局面を、Fuka2026Q1-20bで付け替えた2000万局面でファインチューニング",
+  "hardware": "UM790 Pro（7940HS、メモリ32GB×1、ストレージ1TB）",
+  "language": [
+    "C++",
+    "Python"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "定跡・序盤",
+      "title": "3系統の定跡を優先順に併用",
+      "description": "エンジンの思考前に、手動整理の定跡、前例集計の定跡、新ペタショック定跡の順で採用する。マージせずそれぞれ独立管理するので、作戦の切り替えがしやすい。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "マージせずそれぞれを独立管理しているため、作戦の切り替えがしやすいです。"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "角換わりの手動整理定跡と専用GUI",
+      "description": "角換わり中心に数万局面を手動で整理した。ツリー表示できるGUIツールを自作し、同一局面のハイライトやコメント表示で整理を支えている。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "ツリー表示できるGUIツールを作成し、使い込みました。"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "先人を頼る前例集計定跡",
+      "description": "floodgate等の前例とローカル対局を数百万局面集計する。有利に持ち込んだときも、できる限り先人の手をなぞって逆転の可能性を減らすことが狙い。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "できる限り先人を頼り、逆転の可能性を減らすことが狙いです。"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "新ペタショック定跡",
+      "description": "自分で手をつけられていない戦型を補う役割の定跡として、ペタショック方式の定跡を使う。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "自分で手をつけられていない戦型を補う役割です。"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "定跡対局の局面を再評価して微調整",
+      "description": "角換わり右玉中心の定跡で水匠10と対局した教師局面を、Fuka2026Q1-20bで付け替えた2000万局面でファインチューニングに使う。",
+      "originality": "不明",
+      "evidence": null,
+      "quote": "Fuka2026Q1-20bで付け替えた2000万局面（ファインチューニングに使用）"
+    }
+  ],
+  "character": "アピール文書そのものを棋譜解析ソフトの変化木形式で書いている。見るに堪えないスパゲティコードのGUIをいつか公開したいとも書き、ライブラリやデータを公開した人々への感謝で結んでいる。",
+  "notes": "原本はPNG画像。Readで直接読んだ。目標は、問題なく対局を終えることと、気になる局面での強豪チームの定跡を知ること。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc36/team.html"
+}

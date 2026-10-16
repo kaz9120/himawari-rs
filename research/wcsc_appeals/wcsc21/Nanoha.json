@@ -1,0 +1,70 @@
+{
+  "wcsc": 21,
+  "year": 2011,
+  "dir": "Nanoha",
+  "team": "川端一之",
+  "software": "なのは",
+  "sources": [
+    "wcsc21/appeal/Nanoha/NanohaWCSC21.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc21/appeal/Nanoha/NanohaWCSC21.txt"
+  ],
+  "summary": "「魔法少女リリカルなのは」由来の名前で、萌えの導入やAMD応援まで野望に書く。詰将棋の速度（図巧100番「寿」をTACOS以上の速度で解く）を開発目標に置く。詰ルーチンはWPNSベースで、固定深さ探索併用と高速1手詰が新規。",
+  "base": {
+    "engine": "独自",
+    "eval_source": "Bonanza Ver.4.1.3のfv.bin",
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "駒割＋KKP＋KP＋KPPの位置評価。Bonanza 4.1.3のfv.binを使用"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "全幅探索＋静止探索、Null Move、LMR、Futility。単スレッド。詰はWPNS"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "詰み・終盤",
+      "title": "新規節点で固定深さ探索を併用するWPNSと高速1手詰",
+      "description": "詰ルーチンにWPNS・優越関係・最小距離法・証明駒／反証駒を実装し、新規節点で固定深さの探索を併用し、局面を更新しない高速1手詰を加えた。打ち歩詰め絡みでのみ歩角飛の不成を読む。",
+      "originality": "独自",
+      "evidence": "目標は実戦詰将棋の95%を2秒以内に解くこと",
+      "quote": "新規節点で固定深さの探索を併用[新規]"
+    },
+    {
+      "category": "詰み・終盤",
+      "title": "図巧100番「寿」をTACOS以上の速度で解く",
+      "description": "開発目標として、将棋図巧100番「寿」をTACOS以上の速度で解く。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "将棋図巧 100番「寿」を TACOS 以上の速度で解く"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "詰探索を定跡の次、思考の前に置く3段構成",
+      "description": "定跡DB（実戦数と勝率で着手選択、合流を考慮し局面キー構造）、詰探索、思考ルーチンの順で着手を決める。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "定跡DBを検索し、手が見つかれば採用する。次に、詰探索を行い"
+    },
+    {
+      "category": "エンタメ・演出",
+      "title": "コンピュータ将棋に萌えを導入",
+      "description": "キャラクター由来の名前をつけ、「コンピュータ将棋に萌えを導入する」、竜王との対局、AMD CPUでの活躍によるコンピュータ市場の活性化を野望に挙げる。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "コンピュータ将棋に萌えを導入する。"
+    }
+  ],
+  "character": "魔法少女アニメの主人公「高町なのは」にちなむ名前で、「さまざまな称号を冠する彼女のような強さを盤上で実現したい」。野望に「選手権で活躍して竜王と対局」「AMDを盛り上げる」「萌えを導入」を並べる。",
+  "notes": "ルール変更で、学習し直したfv.binもライブラリ使用扱いになったため、本家Bonanza 4.1.3のfv.binに戻した、と書く。（仮）の表記あり。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc21/team.html"
+}

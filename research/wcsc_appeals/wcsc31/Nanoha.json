@@ -1,0 +1,60 @@
+{
+  "wcsc": 31,
+  "year": 2021,
+  "dir": "Nanoha",
+  "team": "川端 一之",
+  "software": "なのは",
+  "sources": [
+    "wcsc31/appeal/Nanoha/Nanoha_appeal2021v0.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc31/appeal/Nanoha/Nanoha_appeal2021v0.pdf"
+  ],
+  "summary": "Stockfishベースの探索と3駒関係の評価という平凡な構成だが、強力な詰みルーチン「なのは詰め」（df-pn）を搭載し、江戸時代の611手詰め「寿」を解く。常に詰みを狙う一発逆転型。名前は魔法少女リリカルなのはに由来する。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "3駒関係。流布された棋譜データで学習予定"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "Stockfishベースの探索。df-pnの詰みルーチン搭載。歩・角・飛の不成も手生成"
+  },
+  "learning": "一般に流布された棋譜データで学習予定（リソース不足のため自前では用意しない）",
+  "hardware": "AMD R7 2700X, 32GB, Windows 10 Pro",
+  "language": "C++",
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "詰み・終盤",
+      "title": "強力な詰みルーチン「なのは詰め」",
+      "description": "df-pnベースの強力な詰みルーチンを搭載し、江戸時代の名作611手詰め「寿」を解く。常に詰みを狙い一発逆転する。評価ベクトル縮小・詰め削除版を「なのはmini」として公開。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "なのは詰めは江戸時代の名作 611手詰めの「寿」を解く"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "ビットボード不使用",
+      "description": "盤情報を配列で持ち、Bitboardは使わない。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "Bitboard未使用(盤情報は配列)"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "実戦での出現数と勝率を考慮した定跡選択",
+      "description": "定跡部は実戦での出現数および勝率を考慮して手を選択する。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "定跡部は実戦での出現数および勝率を考慮して手を選択"
+    }
+  ],
+  "character": "魔法少女リリカルなのはの高町なのはに由来し、「名前負けしている」ほど弱いと自虐する。イラストはCOCOさん。開発者は静岡県出身で、好きなアニメや食べ物も紹介する。目標は0次予選突破で、ゆるく参加。",
+  "notes": "スライド形式。参考文献・参考Webの長いリストがある。使用ライブラリはなのはmini（自作）。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc31/team.html"
+}

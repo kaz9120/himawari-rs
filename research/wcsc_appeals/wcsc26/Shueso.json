@@ -1,0 +1,76 @@
+{
+  "wcsc": 26,
+  "year": 2016,
+  "dir": "Shueso",
+  "team": "竹内 章",
+  "software": "習甦",
+  "sources": [
+    "wcsc26/appeal/Shueso/Shueso_wcsc26.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc26/appeal/Shueso/Shueso_wcsc26.txt"
+  ],
+  "summary": "玉の安全度に対応した非線形の駒の価値、玉を含む三駒関係のコンパクト化、玉の筋・段固定の相対位置による次元下げと、技巧の手法を多く採ったミニバッチ学習を行うソフト。教師は棋譜の指し手・勝敗・深い探索結果。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "駒の価値を、盤面全体の利きと持ち駒と手番から算出する玉の安全度に応じた非線形関数（第2回電王戦版+α）。玉の位置に対する各駒の近傍の利きの優劣。玉を含む3駒の関係（kppを部分的に同一視してコンパクト化）"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": null
+  },
+  "learning": "棋譜の指し手・勝敗と読みが深い探索結果を教師に、手数に応じて確率的に局面をサンプリングするミニバッチ学習（技巧の手法を多く採用）",
+  "hardware": null,
+  "language": "C++",
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "玉の安全度に対応した非線形の駒の価値",
+      "description": "駒の価値を、盤面全体の利き・持ち駒・手番から算出する玉の安全度に連動して変える非線形関数にする。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "駒の価値：盤面全体の利きと持駒および手番から算出する玉の安全度に対応した非線形関数"
+    },
+    {
+      "category": "評価関数",
+      "title": "kppを部分的に同一視してコンパクト化",
+      "description": "玉を含む3駒の位置関係を、kppの一部を同一視して小さくする。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "所謂kppを部分的に同一視してコンパクト化"
+    },
+    {
+      "category": "評価関数",
+      "title": "玉の位置に対する各駒近傍の利きの優劣",
+      "description": "玉の位置に対する各駒の近傍での利きの優劣を評価に入れる。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "玉の位置に対する各駒の近傍における利きの優劣"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "棋譜と深い探索結果を教師に",
+      "description": "棋譜の指し手と勝敗に加え、読みが深い探索結果を教師データにする。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "棋譜の指し手と勝敗および読みが深い探索結果を教師データとする"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "手数に応じた確率的サンプリングのミニバッチ学習",
+      "description": "手数に応じて確率的に局面をサンプリングするミニバッチ学習で、技巧の手法を多く採用している。玉の筋・段固定の相対位置で次元下げする。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "手数に応じて確率的に局面をサンプリングするミニバッチ学習（「技巧」の手法を多く採用）"
+    }
+  ],
+  "character": null,
+  "notes": null,
+  "team_list_url": "http://www2.computer-shogi.org/wcsc26/team.html"
+}

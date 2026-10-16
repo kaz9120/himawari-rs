@@ -1,0 +1,70 @@
+{
+  "wcsc": 36,
+  "year": 2026,
+  "dir": "Maijin_Cobra_and_Usagi_Shogi",
+  "team": "松山 洋章",
+  "software": "名人コブラとうさぎ将棋",
+  "sources": [
+    "wcsc36/appeal/Maijin_Cobra_and_Usagi_Shogi/meijin_cobra-wcsc36.txt"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc36/appeal/Maijin_Cobra_and_Usagi_Shogi/meijin_cobra-wcsc36.txt"
+  ],
+  "summary": "dlshogiの探索部をそのまま使い、思考部のネットワークを独自に設計した。ResNetの代わりに、InceptionNeXtを9x9盤面向けに改変した39ブロックと、末尾のTransformer1ブロックを組み合わせた約86M規模のモデル。",
+  "base": {
+    "engine": "dlshogi",
+    "eval_source": null,
+    "note": "探索部はdlshogiのMCTSをそのまま使用。学習はPyTorch Lightning、推論はtorch.compile + ONNX/TensorRT"
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "InceptionNeXtブロック×39 + Transformerブロック×1、512ch均一。約86.1Mパラメータ。LayerNorm + GELU"
+  },
+  "search": {
+    "family": "MCTS",
+    "detail": "dlshogiのMCTSをそのまま使用"
+  },
+  "learning": "たややん氏公開のデータセットを主に使用。bf16-mixed、勾配クリッピング1.0、AdamW、Cosine Annealing LR（warmup 1000 steps）",
+  "hardware": "Vast.ai RTX 5090 x8",
+  "language": [
+    "Python"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "InceptionNeXtを将棋の盤面向けに改変",
+      "description": "チャネルを4等分し、直通、3x3 depthwise、1x9 depthwise、9x1 depthwiseの4並列にする。9x9盤では長さ9のカーネルが1層で段・筋の全域を覆うため、飛車・香車などの走り駒の利きを構造的な事前知識として組み込める。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "カーネルサイズ9の畳み込みは1層で段・筋の全域をカバーします。"
+    },
+    {
+      "category": "評価関数",
+      "title": "末尾だけTransformerのハイブリッド",
+      "description": "39層のInceptionNeXtで局所・軸方向の特徴を抽出した後、末尾1ブロックだけをTransformer（8ヘッド、位置エンコーディングなし）に置き換えて大域的な駒の関係を捉える。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "位置エンコーディングは不要と判断しました。"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "DropPathの線形スケジュール",
+      "description": "全40ブロックの残差接続にDropPathを導入し、ドロップ確率を浅い層から深い層へ0から0.2まで線形に上げて、構造的な過学習を抑える。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "ドロップ確率は浅い層から深い層へ線形にスケジュールします（0 → 0.2）。"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "BF16で学習を安定化",
+      "description": "FP16ではattentionスコアが最大値65504を超えてオーバーフローしたため、指数部がFP32と同じBF16を採用した。勾配クリッピングでlossの崩壊も防ぐ。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "FP16ではattentionスコアがオーバーフロー（FP16最大値65504超過）する問題が発生したため、BF16（FP32と同じ指数部8bit）を採用"
+    }
+  ],
+  "character": "アピール文書は、作者の技術力も日本語力もニューラルネットワークの層数ほど深くないとして、Kiro IDE上でClaudeの支援を受けて作成したと明記している。",
+  "notes": "RyfamateのC-Layer（9x1/1x9カーネルを絶対位置依存で使う）との違いに言及している。本実装のdepthwise convは位置非依存。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc36/team.html"
+}

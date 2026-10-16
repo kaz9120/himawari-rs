@@ -1,0 +1,46 @@
+{
+  "wcsc": 27,
+  "year": 2017,
+  "dir": "dainomaruDNNc",
+  "team": "チームD（大坊和美、大坊功司、菊池雅彦、林茂）",
+  "software": "dainomaruDNNc",
+  "sources": [
+    "wcsc27/appeal/dainomaruDNNc/appeal.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc27/appeal/dainomaruDNNc/appeal.txt"
+  ],
+  "summary": "れっさ改（れさぴょん系）を元にし、判定条件の削除や変更で性能改善した。動作保持領域をビット配列化して高速化し、駒の値は並列化学習の文献を参考に変更した。",
+  "base": {
+    "engine": "れさぴょん（Lesserkai）",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "手作り",
+    "detail": "駒の値を「MPIまたはCUDAを用いた将棋評価関数学習プログラムの並列化」を参考に変更"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": null
+  },
+  "learning": null,
+  "hardware": null,
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "実装・高速化",
+      "title": "動作保持領域のビット配列化",
+      "description": "動作を保持する領域をビット配列にして高速化する。",
+      "originality": "不明",
+      "evidence": null,
+      "quote": "動作保持領域に、ビット配列化し高速化を行っております。"
+    }
+  ],
+  "character": null,
+  "notes": "短い文書。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc27/team.html"
+}

@@ -1,0 +1,37 @@
+{
+  "wcsc": 33,
+  "year": 2023,
+  "dir": "Katsudon_Shogi",
+  "team": "松本 浩志",
+  "software": "カツ丼将棋",
+  "sources": [
+    "wcsc33/appeal/Katsudon_Shogi/wcsc33appeal.txt"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc33/appeal/Katsudon_Shogi/wcsc33appeal.txt"
+  ],
+  "summary": "昨年と変わらず。第32回のアピール文書を参照とのみ記載。",
+  "base": {
+    "engine": "不明",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "不明",
+    "detail": null
+  },
+  "search": {
+    "family": "不明",
+    "detail": null
+  },
+  "learning": null,
+  "hardware": "Ryzen 9 5950X",
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [],
+  "character": null,
+  "notes": "本文は「昨年と変わらず」のみで、第32回の文書（KatsudonShogi）を参照とする。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc33/team.html"
+}

@@ -1,0 +1,46 @@
+{
+  "wcsc": 30,
+  "year": 2020,
+  "dir": "Argo",
+  "team": "アルゴレコード 魔法少女いちむら・ユタカ外伝（市村 豊）",
+  "software": "Argo",
+  "sources": [
+    "wcsc30/appeal/Argo/200331ArgoWCSC30v1.txt"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc30/appeal/Argo/200331ArgoWCSC30v1.txt"
+  ],
+  "summary": "やねうら王とKristallweizen評価関数を使い、水匠2019の「教師局面の事後的な変更」を追試した上で、排除の基準に評価値の幅を持たせる改良を試す。文書の大半は、ベーシックインカムや生活保護、ソシャゲを論じる長文のエッセイ。コロナで欠席の可能性があると断っている。",
+  "base": {
+    "engine": "やねうら王",
+    "eval_source": "Kristallweizen（教師データ作成用）",
+    "note": null
+  },
+  "eval": {
+    "family": "NNUE",
+    "detail": null
+  },
+  "search": {
+    "family": "αβ",
+    "detail": null
+  },
+  "learning": "水匠2019の方法の追試。教師局面の事後的な変更（勝敗と評価値の符号が食い違う局面を排除）を変更する予定",
+  "hardware": "Amazon EC2 m5.24xlarge",
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "符号の食い違い局面の排除に幅を持たせる",
+      "description": "水匠2019は、勝者側の手番なのに評価値が負、敗者側の手番なのに正の局面を、判断の誤りとして教師から排除した。これに、評価値が50や100程度までの幅を持たせる。最序盤は先手の評価値が少し高く出るため、先手負けの対局の最序盤の手まで排除するのは良くないという理由で、閾値は試行錯誤で決める。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "その評価値が100以下だったら排除しない、というふうにしたら良いんじゃないか"
+    }
+  ],
+  "character": "技術の記述は冒頭の1節だけ。残りの大半は、ベーシックインカム、生活保護を勧める話、HEROZ林社長の資産、ソシャゲ（プリンセスコネクト!Re:Dive）で一生暮らす幸福論など、将棋と無関係の私見を長大に書く。冒頭に、コロナで欠席する可能性が高く直前まで待つと断る。",
+  "notes": "技術的な内容は水匠2019の追試のみで、「追試で精一杯」と自己申告。全文を読み、将棋ソフトに関わる記述は最初の2節だけだった",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc30/team.html"
+}

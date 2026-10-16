@@ -1,0 +1,46 @@
+{
+  "wcsc": 35,
+  "year": 2025,
+  "dir": "ChocoBanana",
+  "team": "チータ",
+  "software": "チョコバナナ",
+  "sources": [
+    "wcsc35/appeal/ChocoBanana/choco_banana_v3.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc35/appeal/ChocoBanana/choco_banana_v3.pdf"
+  ],
+  "summary": "将スタ（ノーコードのAI開発環境）のモデルビルダーで設計・学習したCNN-Residualネットワークを評価に使う、将スタ製のDL将棋エンジン。floodgateの局面をGoogle Colabで10epoch学習した。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": "将スタ（モデルビルダー）で構築。USI準拠で大会サーバーへ接続"
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "CNN-Residualネットワーク"
+  },
+  "search": {
+    "family": "不明",
+    "detail": null
+  },
+  "learning": "floodgateの局面を使い、Google Colabで10epoch学習",
+  "hardware": null,
+  "language": [
+    "Python"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "開発手法・運用",
+      "title": "将スタのモデルビルダーでの開発",
+      "description": "コードを書かず、将スタのモデルビルダーでネットワークを設計・学習した。USI準拠でそのまま大会サーバーに接続する。",
+      "originality": "不明",
+      "evidence": null,
+      "quote": "評価関数は将スタの“モデルビルダー”で設計・学習した CNN-Residual ネットワーク"
+    }
+  ],
+  "character": null,
+  "notes": "文書は短い箇条書きのみ",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc35/team.html"
+}

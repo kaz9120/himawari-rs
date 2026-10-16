@@ -1,0 +1,54 @@
+{
+  "wcsc": 24,
+  "year": 2014,
+  "dir": "Himawari",
+  "team": "山本 一将、高木 厚成",
+  "software": "ひまわり",
+  "sources": [
+    "wcsc24/appeal/Himawari/appeal.pdf"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc24/appeal/Himawari/appeal.pdf"
+  ],
+  "summary": "Bonanza式の駒割＋KPP＋KKPを特徴に、学習をBonanza Methodでなく方策勾配法で行うのが特徴。報酬にプロの指し手との一致や自己対局の勝敗を使い、報酬設計次第でプロ棋譜なしでも強くなると信じ、新手を編み出すことを目標にする。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "駒割＋KPP＋KKP"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "Null Move、Killer、SEE、PVS、History、LMR、Futility"
+  },
+  "learning": "方策勾配法。報酬はプロ棋譜（最近の2万局）との一致、自己対局の勝敗（+1/−1）",
+  "hardware": null,
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "方策勾配法による評価関数学習",
+      "description": "強化学習の一手法である方策勾配法で学習する。報酬設定が柔軟で、勝敗、プロの棋譜との一致、入玉などに報酬を与えられる。激指の学習手法を一般化した式で、計算量は多い。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "学習を方策勾配法によって行っている点が特徴"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "プロ棋譜に頼らず新手を編み出す",
+      "description": "報酬の設定次第でプロの棋譜を使わずに良い評価関数を作れると考え、序盤・中盤・終盤ごとの学習を検討する。目標は新手を編み出すこと。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "目標は新手を編み出すこと！"
+    }
+  ],
+  "character": null,
+  "notes": null,
+  "team_list_url": "http://www2.computer-shogi.org/wcsc24/team.html"
+}

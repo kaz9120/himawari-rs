@@ -1,0 +1,46 @@
+{
+  "wcsc": 35,
+  "year": 2025,
+  "dir": "JHBR",
+  "team": "イ チヒョン",
+  "software": "JHBR",
+  "sources": [
+    "wcsc35/appeal/JHBR/appeal2025.txt"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc35/appeal/JHBR/appeal2025.txt"
+  ],
+  "summary": "cshogiライブラリを使い、駒得だけで評価するミニマックス法で探索する。昨年は量子コンピュータのライブラリ(Qiskit)を使っていたが、今年はQiskitなしのPythonで書いた。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": "cshogiを使用"
+  },
+  "eval": {
+    "family": "手作り",
+    "detail": "駒得のみ"
+  },
+  "search": {
+    "family": "その他",
+    "detail": "ミニマックス法"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": [
+    "Python"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "研究・実験的",
+      "title": "量子コンピュータライブラリの試用（昨年）",
+      "description": "昨年はQiskitで探索を書いていたが、今年は外した。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "去年は量子コンピュータのライブラリ(Qiskit)を使っておりましたが"
+    }
+  ],
+  "character": "探索に量子コンピュータライブラリを使う試みを昨年行った。",
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc35/team.html"
+}

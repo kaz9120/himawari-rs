@@ -1,0 +1,78 @@
+{
+  "wcsc": 36,
+  "year": 2026,
+  "dir": "etude12",
+  "team": "David Wada（アメリカ）",
+  "software": "etude12",
+  "sources": [
+    "wcsc36/appeal/etude12/appeal_2026_r2.txt"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc36/appeal/etude12/appeal_2026_r2.txt"
+  ],
+  "summary": "Java 25で書かれたαβ探索のNNUE将棋エンジン。開発とアピール文書の執筆にClaude Codeを全面使用した。評価関数のC++ DLLをJavaのPanama FFIで接続する構成と、進化的手法による37個の探索パラメータ調整が特徴。",
+  "base": {
+    "engine": "独自",
+    "eval_source": "水匠5（yane-suisho5-nn.bin）",
+    "note": "Javaによる自作エンジン。NNUE評価部のみオリジナルC++をDLL化。旧KPP/KKP（Apery WCSC30テーブル）も対応"
+  },
+  "eval": {
+    "family": "NNUE",
+    "detail": "水匠5のネットを、C++ DLLにしてJava Panama FFI（java.lang.foreign）で呼ぶ。玉以外の指し手で差分更新、スレッドごとにアキュムレータをcopy()"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "PVS、NMP、RFP、Futility、LMP、LMR、SEE枝刈り、IIR、王手・特異延長、Aspiration、Lazy SMP、DFPN詰み探索"
+  },
+  "learning": null,
+  "hardware": "24コア（P 8 + E 16）、探索は8スレッド、RAM 64GB、置換表16GB",
+  "language": [
+    "Java"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "開発手法・運用",
+      "title": "Claude Code全面使用",
+      "description": "開発にClaude Codeを全面使用し、アピール文書そのものもClaude Codeに書かせた（英語の構造化サマリ）。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "今回は claude code 全面使用しています。以下のアピール文章も claude code に書かせました。"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "JavaからC++ NNUEをPanama FFIで接続",
+      "description": "エンジン本体をJava 25で書き、評価関数はオリジナルC++をDLLに移植してPanama FFIで呼ぶ。ネットワークはスレッド間で共有し、アキュムレータはスレッドごとに持つ。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "評価関数はオリジナルの c++ を dll に移植し、 Panama FFI にて接続。"
+    },
+    {
+      "category": "開発手法・運用",
+      "title": "進化的パラメータチューナ",
+      "description": "総当たり戦を使う進化的チューナで、3階層に分けた37個の探索パラメータを調整する。NNUEの自己対局を並列で回し、第1階層のパラメータ（futility、RFP、LMR、NMP、aspiration）は収束済み。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "Evolutionary tuner with full round-robin tournaments."
+    },
+    {
+      "category": "探索",
+      "title": "バックグラウンド探索で置換表を温める",
+      "description": "bestmove送出後に予測局面の探索を、スレッド数の半分で続けて置換表を温め、次の探索でnewGeneration()を呼ばずに深いエントリを活かす。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "the engine starts a background search on the predicted position to warm the transposition table."
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "やねうら王定跡の独自バイナリ化",
+      "description": "やねうら王作者の定跡（225万局面、1600万候補手）を、独自のバイナリ形式に変換して約12秒で読み込む。選択はBEST・PROPORTIONAL・RANDOM。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "YaneuraOu creator's library: 2,252,118 positions, 16 million candidate moves."
+    }
+  ],
+  "character": "AI（Claude Code）が書いた文書をそのまま提出している点が個性的。",
+  "notes": "文書はClaude Code生成の英語サマリで、冒頭の日本語の補足のみ人間が書いている。目標持ち時間は15分+5秒。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc36/team.html"
+}

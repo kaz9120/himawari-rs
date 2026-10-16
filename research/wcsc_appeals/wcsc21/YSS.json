@@ -1,0 +1,60 @@
+{
+  "wcsc": 21,
+  "year": 2011,
+  "dir": "YSS",
+  "team": "山下宏",
+  "software": "YSS",
+  "sources": [
+    "wcsc21/appeal/YSS/appeal2011.html"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc21/appeal/YSS/appeal2011.html"
+  ],
+  "summary": "選択的探索に、Bonanza Methodで学習した評価関数（22万個）を組み合わせる。学習用に専用の全幅探索＋簡易静止探索を用意し、入玉は学習が失敗したため旧評価関数をそのまま組み込む。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "王との2駒の関係、味方金銀の絶対位置による上部5箇所の駒など、GPS風の多数の組み合わせ。22万個。進行度（序盤・終盤）は学習なし"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "選択的探索。手の生成の種類と数を残り深さで変更。前回最善手を0.5手延長"
+  },
+  "learning": "Bonanza Method。YSSの探索でなく専用の全幅探索＋簡易静止探索で学習",
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "学習専用の全幅探索＋簡易静止探索",
+      "description": "YSSの探索を2手読み程度で使うとほとんど手を生成せず、遠くに打った金が動く手を読まない等で学習がいびつになるため、学習専用に全幅探索と簡易静止探索を使う。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "専用の全幅探索＋簡易静止探索、で学習させています"
+    },
+    {
+      "category": "入玉",
+      "title": "入玉評価は旧評価関数を手作業で組み込む",
+      "description": "入玉は学習がうまくいかなかったため、YSSの旧評価関数をそのまま組み込む。先手玉が4段目に上がれば約+1500点、相手に入玉された場合は7段目から過激に加点する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "先手玉が4段目に上がれば＋1500点ぐらい加算して"
+    },
+    {
+      "category": "探索",
+      "title": "残り深さで指し手生成を絞る選択探索",
+      "description": "手の生成の種類と数を残り深さで変え、終盤はより少数にする。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "手の生成の種類、数を残りの探索深さによって変えています"
+    }
+  ],
+  "character": null,
+  "notes": null,
+  "team_list_url": "http://www2.computer-shogi.org/wcsc21/team.html"
+}

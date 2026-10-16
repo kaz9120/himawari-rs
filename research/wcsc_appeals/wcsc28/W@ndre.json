@@ -1,0 +1,88 @@
+{
+  "wcsc": 28,
+  "year": 2018,
+  "dir": "W@ndre",
+  "team": "櫻井 博光",
+  "software": "W@ndre",
+  "sources": [
+    "wcsc28/appeal/W@ndre/Wandre_appeal_20180509.txt"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc28/appeal/W%40ndre/Wandre_appeal_20180509.txt"
+  ],
+  "summary": "長期目標は「角頭歩戦法を指しこなす」こと。序盤用のDL（dlshogi）エンジンと、序中盤用・序盤用・中終盤用の3種の評価関数を局面の進行に応じて切り替える構成。一次予選8位、二次予選16位。5/9の追記で結果と反省を書いた。",
+  "base": {
+    "engine": "やねうら王+dlshogi",
+    "eval_source": "自作の3種の評価関数（やねうら王教師局面で再学習した181_0020Gなど）",
+    "note": null
+  },
+  "eval": {
+    "family": "DL+NNUE",
+    "detail": "KPPT型を3種類用意。①定跡で強化学習（序中盤）、②特定形に加減点（序盤、8手目以降は不使用）、③やねうら王配布の教師局面で再学習（中終盤、R4050相当）。序盤はdlshogiのモデル"
+  },
+  "search": {
+    "family": "αβ+MCTS",
+    "detail": "序盤はdlshogi、中終盤はやねうら王の探索部。Singular Extension閾値をSilentMajority並に戻した（効果不明）"
+  },
+  "learning": "定跡を使った教師局面でゼロベクトルから強化学習し、定跡改良と追加学習のサイクルを回した。③はやねうら王配布の教師局面を再学習",
+  "hardware": null,
+  "language": [
+    "C++",
+    "Python",
+    "Java"
+  ],
+  "claimed_strength": "一次予選8位、二次予選16位。③の評価関数はR4050相当",
+  "ideas": [
+    {
+      "category": "棋風・人間らしさ",
+      "title": "角頭歩戦法を指しこなす",
+      "description": "長期目標を角頭歩戦法とし、定跡と評価関数でそれを指させる。角頭歩ができない場面では阪田流向飛車・鬼殺し向飛車・ダイレクト向飛車・都成流などを指す。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "角頭歩を指します。角頭歩ができない（▲２６歩△３４歩▲２５歩のオープニング等）ときは阪田流向飛車"
+    },
+    {
+      "category": "探索",
+      "title": "一局の途中でエンジンを切り替える",
+      "description": "序盤はdlshogi、中終盤はやねうら王と、局面の進行に応じて探索エンジンを切り替える。切り替えのタイミングが掴めず、最序盤にひどい手が出た対局もあった。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "一局の途中でエンジンを切り替える案"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "定跡で教師局面を作る強化学習サイクル",
+      "description": "教師局面の作成時に定跡を使うと、定跡を指しこなす評価関数ができる。ゼロベクトルから強化学習し、評価関数を元に定跡を改良して追加学習するサイクルを回した。平手局面で浮かむ瀬相当、角頭歩定跡局面で技巧2相当になった。",
+      "originality": "既存手法の応用",
+      "evidence": "平手局面で浮かむ瀬相当、角頭歩定跡局面で技巧2相当",
+      "quote": "作成された評価関数を元に定跡を改良し、その定跡で評価関数の追加学習を行うというサイクルを回しました。"
+    },
+    {
+      "category": "評価関数",
+      "title": "特定形に強制的に加減点して作る評価関数",
+      "description": "HoneyWaffleの学習法を参考に、特定の形に強制的に減点・加点して角頭歩局面を評価する評価関数を作る。定跡なしで飛車を振る・角頭歩を突くようになったが序盤以外は弱く、8手目以降は使わない。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "特定の形に強制的に減点・加点することで角頭歩局面を評価する評価関数を作成しました。"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "探索結果を反映して不利な形に誘導されない定跡",
+      "description": "プロやfloodgateの棋譜で作った定跡には角頭歩側が不利になる変化が多かったため、自己対戦と手調整で特定局面の探索結果を反映し、不利な局面に持っていかれにくくする。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "簡単に不利な局面に持っていかれないよう工夫を試みています。"
+    },
+    {
+      "category": "開発手法・運用",
+      "title": "用途別のfloodgateアカウントでの検証",
+      "description": "定跡チェック用・評価関数テスト用・dlshogiモデルのテスト用・エンジン切り替えチェック用に別々のアカウントをfloodgateへ放流した。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "定跡チェック用 Ay_Yshjn"
+    }
+  ],
+  "character": "名前は「wanderでwonderな将棋を指してほしい」という意図から。開発はVirtual YouTuberにハマって進まなかったと書く。AlphaZeroを見て「序盤はディープラーニングだ！」と思い立った。",
+  "notes": "3/27初版、4/1、5/9（結果の追記は「→→→→」以降）の更新を重ねた文書。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc28/team.html"
+}

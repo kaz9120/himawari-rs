@@ -1,0 +1,68 @@
+{
+  "wcsc": 23,
+  "year": 2013,
+  "dir": "Kuma_Shogi",
+  "team": "上瀧 剛",
+  "software": "クマ将棋",
+  "sources": [
+    "wcsc23/appeal/Kuma_Shogi/appeal.pdf"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc23/appeal/Kuma_Shogi/appeal.pdf"
+  ],
+  "summary": "熊本から来たのでクマ将棋。ビットボードも利き情報も持たず、指し手生成コードを生成するコードで7百万行規模のswitch展開を作り、毎秒300万回の指し手生成を実現した。SEEや一手詰めも盤面走査で実装。オンライン学習で数日で学習が終わる。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "オンライン学習で自前の評価関数を作成。当時R2000程度"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "オーダリングはBonanza風、futility・reduction・静止探索はStockfish風"
+  },
+  "learning": "オンライン学習。局面をシャッフルし各局面で30手をランダムサンプリング、L1正則化とマージン打ち切り、末端で王手なら重みを大きく更新",
+  "hardware": null,
+  "language": null,
+  "claimed_strength": "Bonanza 6.0のfv.bin使用で floodgate R2600（1コア）",
+  "ideas": [
+    {
+      "category": "実装・高速化",
+      "title": "指し手生成コードの自動生成",
+      "description": "可能な移動パターンをswitch・ifで展開する指し手生成コードを、コード生成プログラムで作る。王手回避手生成だけで700万行になり、事前テーブル不要で毎秒300万回生成する。",
+      "originality": "独自",
+      "evidence": "指手生成祭ベンチマーク 65万回/秒から300万回/秒",
+      "quote": "指手を生成するコードを生成するコードを作成"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "盤面スキャンによるSEE",
+      "description": "ビットボードを持たないため、対象マス周囲をスキャンして直接利き・背後利きの交換リストを作りSEEを計算する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "盤配列スキャンによる駒交換リスト作成。これを使ってSEE計算。"
+    },
+    {
+      "category": "詰み・終盤",
+      "title": "盤面スキャンによる高速一手詰め",
+      "description": "玉周辺3×3マスを走査し、駒打ち王手・移動王手・玉の退避を判定する。桂馬の成り王手も生成でき、毎秒約70万回。",
+      "originality": "独自",
+      "evidence": "約70万回/秒",
+      "quote": "桂馬の成り王手も生成できる。70万回/秒程度の速度。"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "オンライン学習と王手局面の重み増",
+      "description": "局面をシャッフルしてオンライン学習し、数日で学習が終わる。末端が王手状態の局面は重みを大きく更新し、玉の危険度を優先して評価する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "末端局面で王手状態の場合は、重みを大きめに更新"
+    }
+  ],
+  "character": null,
+  "notes": "終盤が弱く思ったような成果が出ていないと自己評価。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc23/team.html"
+}

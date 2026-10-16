@@ -1,0 +1,35 @@
+{
+  "wcsc": 26,
+  "year": 2016,
+  "dir": "TMOQ",
+  "team": "山下 隆久",
+  "software": "TMOQ",
+  "sources": [
+    "wcsc26/appeal/TMOQ/appeal.pdf"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc26/appeal/TMOQ/appeal.pdf"
+  ],
+  "summary": "Aperyをベースにした初参加のソフト。特徴は「今はまだありません」と明記し、本番までにTMOQらしさを作り込むと書く。目標は、Aperyの作者との直接対決による恩返し。",
+  "base": {
+    "engine": "Apery",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "Aperyのもの"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "Aperyのまま"
+  },
+  "learning": null,
+  "hardware": "Core i7 3667U 2GHz",
+  "language": "C++",
+  "claimed_strength": null,
+  "ideas": [],
+  "character": "名前は「特大もっきゅ」と読み、作者の娘が考え、娘が描いたイメージキャラクターがいる。「目標は平岡さん（Apery作者）と直接対決して恩返しすること」。「お手柔らかにお願いいたします」と初参加のあいさつ。",
+  "notes": "テキスト化の文字化けが多かったが、読み取れる範囲で記入した。工夫は「今はまだない」と自己申告",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc26/team.html"
+}

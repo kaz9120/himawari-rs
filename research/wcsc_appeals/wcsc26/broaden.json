@@ -1,0 +1,44 @@
+{
+  "wcsc": 26,
+  "year": 2016,
+  "dir": "broaden",
+  "team": "中屋敷 太一",
+  "software": "broaden",
+  "sources": [
+    "wcsc26/appeal/broaden/appeal.pdf"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc26/appeal/broaden/appeal.pdf"
+  ],
+  "summary": "将棋ソフトで一般的な深さ優先探索ではなく、浅い深さ優先探索の評価値を元にchokudaiサーチで探索する予定の新規ソフト。探索部は未実装。ライブラリは使用していない。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "不明",
+    "detail": null
+  },
+  "search": {
+    "family": "その他",
+    "detail": "浅い深さ優先探索の評価値をもとにchokudaiサーチを行う予定（未実装）"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "探索",
+      "title": "chokudaiサーチによる幅優先探索",
+      "description": "浅い深さ優先探索の評価値を使い、幅優先のchokudaiサーチで探索する予定。将棋ソフトで一般的な深さ優先探索とは違う方向を試す。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "探索手法は将棋ソフトに一般的な深さ優先探索だけではなく幅優先探索を用いる予定です（探索部未実装）"
+    }
+  ],
+  "character": "名前は「Computer shogi broadened my knowledge」に由来し、自分の指し手が様々な将棋ソフトに影響されたことから付けた。",
+  "notes": "探索部は未実装と記載",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc26/team.html"
+}

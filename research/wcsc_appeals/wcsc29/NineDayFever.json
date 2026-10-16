@@ -1,0 +1,63 @@
+{
+  "wcsc": 29,
+  "year": 2019,
+  "dir": "NineDayFever",
+  "team": "金澤 裕治",
+  "software": "NineDayFever",
+  "sources": [
+    "wcsc29/appeal/NineDayFever/NDF-2019.txt"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc29/appeal/NineDayFever/NDF-2019.txt"
+  ],
+  "summary": "Bonanza 6.0にStockfishの手法を取り入れ、局面評価の追求（雑巾絞り）を続けるソフト。今年は雑巾絞り用の初期局面生成、movecount pruningとLazy SMPの相性仮説、ヘルパースレッドのヒストリにノイズを加える実験を挙げる。",
+  "base": {
+    "engine": "Bonanza",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "KPPT（手番考慮）。三駒関係を分解して共通要素を抽出して学習する次元落とし"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "Stockfishの手法（movecount pruning、Lazy SMP）"
+  },
+  "learning": "雑巾絞り。定跡から生成した局面の対戦結果を使う",
+  "hardware": "Amazon EC2 c5.18xlarge x 5",
+  "language": [
+    "C",
+    "Perl"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "雑巾絞り用の初期局面生成",
+      "description": "対局結果を使う雑巾絞りで、王以外の駒も違う場所に動かした局面から始めたいが候補が多すぎるため、動かす駒の選び方を実験中。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "王以外の駒でも、違う場所に動かした局面を作ってそこから始めたい"
+    },
+    {
+      "category": "探索",
+      "title": "movecount pruningとLazy SMPの相性仮説",
+      "description": "PVを置換表で共有しつつ2番目以降の枝を確率的に選ぶ「モンテカルロ指向αβ探索」になっているのでは、という仮説を立て、ヘルパースレッドのヒストリにノイズを入れて同じ効果を得る実装を実験中。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "ヘルパースレッドのヒストリにノイズを入れてやることで同じ効果が得られそうだ"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "自己対戦勝率で採用確率を決める定跡",
+      "description": "自己対戦結果から各局面の勝率の分布を推定して各手の採用確率を決める。末端の勝率ベースで更新するため、Qhapaqの定跡も取り込める（2018年の内容）。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "自己対戦結果から各局面の勝率の分布を推定して各手の採用確率を決めています。"
+    }
+  ],
+  "character": "「局面評価の極北を目指す」と言いつつ、「アムンゼン隊のそり跡を見つけたスコット隊」と自嘲する。",
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc29/team.html"
+}

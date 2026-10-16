@@ -1,0 +1,63 @@
+{
+  "wcsc": 32,
+  "year": 2022,
+  "dir": "prelude",
+  "team": "MTL（谷合 廣紀、中村 朋生）",
+  "software": "prelude",
+  "sources": [
+    "wcsc32/appeal/prelude/WCSC32_mtl_v2.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc32/appeal/prelude/WCSC32_mtl_v2.pdf"
+  ],
+  "summary": "dlshogi/ふかうら王と同じpolicy+value+MCTSだが、盤面を95字の文字列（81升目と先後持ち駒7種×2）にエンコードして埋め込み層に通す自然言語処理風の入力と、gMLPベースのモデル構造を使う。policyの出力から非合法手691通りを除いた1496クラスの分類とした。",
+  "base": {
+    "engine": "dlshogi",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "95個のトークン列入力（95×256埋め込み）、gMLP（層数12、d_model 256、d_ffn 512、LayerNormなし）"
+  },
+  "search": {
+    "family": "MCTS",
+    "detail": "ふかうら王のMCTS"
+  },
+  "learning": "『強い将棋ソフトの創り方』公開データ",
+  "hardware": "GCP a2-highgpu-4g",
+  "language": [
+    "C++",
+    "Python"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "盤面を95字の文字列にエンコード",
+      "description": "1一から9九の駒と先後持ち駒（7種×2）を並べた95トークンの数値列を、埋め込み層でベクトル化する。画像処理的なdlshogiの入力に対し、自然言語処理的なエンコードとしている。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "盤面を１一から順に見ていき、１一、１二・・・９九の駒と先後の持ち駒（7 種 x2）を並べた 95 字の文字列にエンコード"
+    },
+    {
+      "category": "評価関数",
+      "title": "TensorRTで速いgMLPをTransformerの代わりに採用",
+      "description": "TransformerはTensorRTでの高速化が難しいため、MLPベースのgMLP（LayerNormなし、12層）を採用する。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "prelude では gMLP と呼ばれる MLP ベースのモデルを採用しています。"
+    },
+    {
+      "category": "評価関数",
+      "title": "非合法手を除いたpolicy出力",
+      "description": "dlshogiの2187クラス（81マス×27方向）のうち、決して現れない非合法手691通り（約32%）を除いた1496クラスの分類にすると、policyの学習がうまくいくことを実験で確認した。",
+      "originality": "独自",
+      "evidence": "2187クラスより1496クラスの方が学習がうまくいく（数値の記載なし）",
+      "quote": "非合法手 691 通りを除いた 1496 のクラス分類問題として解いた方が、policy の学習がうまくいくことがわかりました"
+    }
+  ],
+  "character": null,
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc32/team.html"
+}

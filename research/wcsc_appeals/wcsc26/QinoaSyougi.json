@@ -1,0 +1,92 @@
+{
+  "wcsc": 26,
+  "year": 2016,
+  "dir": "QinoaSyougi",
+  "team": "山田 元気",
+  "software": "きのあ将棋",
+  "sources": [
+    "wcsc26/appeal/QinoaSyougi/appeal.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc26/appeal/QinoaSyougi/appeal.txt"
+  ],
+  "summary": "手作業で調整した評価関数の探索結果を、別モデルの評価関数が近づくように自動調整する構成と、機械学習による候補手生成を持つソフト。野心的な案として、反復深化で評価関数を増やしていくモデルなどを挙げる。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "その他",
+    "detail": "手調整の評価関数の探索結果の評価値に近づくように、別モデルの評価関数のパラメータを自動調整"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "機械学習による候補手リストで枝刈り精度を上げる"
+  },
+  "learning": "手作業で調整した評価関数の評価値と探索ルート局面をもとに、別モデルの評価関数を評価値同士が近づくよう自動調整",
+  "hardware": null,
+  "language": "C, C++（PHP, AS3）",
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "手調整の評価関数を教師に別モデルを自動調整",
+      "description": "手作業でチューニングした評価関数を使った探索結果の評価値を教師にし、探索ルート局面について別モデルの評価関数のパラメータを、評価値同士が近づくよう自動調整する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "その評価値と探索ルート局面を元に、別モデルの評価関数のパラメータを評価値同士が近くなるように自動調整。"
+    },
+    {
+      "category": "探索",
+      "title": "機械学習による候補手生成",
+      "description": "候補手の生成に機械学習を使い精度が向上したが、重要な手が上位リストから漏れる課題がある。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "候補手生成について 機械学習がある程度は機能するようになり"
+    },
+    {
+      "category": "評価関数",
+      "title": "反復深化ごとに評価関数を増やすモデル（構想）",
+      "description": "評価関数を複数用意し、反復深化で探索するたびに利用する評価関数を増やしていくモデルを試す。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "評価関数を複数用意し、反復進化で探索するたびに利用する評価関数を増やして行くモデル"
+    },
+    {
+      "category": "探索",
+      "title": "種類別ハッシュの連鎖参照で候補手を評価（構想）",
+      "description": "候補手について種類別にハッシュ値をとり、それを配列の連鎖参照で評価するモデルを試す。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "候補手の際に種類別にハッシュ値をとり、それを配列の連鎖参照し評価するモデル"
+    },
+    {
+      "category": "評価関数",
+      "title": "玉の周囲に仮想駒を置く（構想）",
+      "description": "評価関数で、王の周囲に仮想駒を配置して精度を上げる。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "評価関数にて、王の周囲に仮想駒を配置し"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "ディープラーニングの利用を検討",
+      "description": "2016年に向けた模索のひとつとして、ディープラーニングの利用を挙げる。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "ディープラーニングの利用。"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "自己対戦の局面別勝率で評価関数を再学習",
+      "description": "自己対戦から局面ごとの勝率を生成し、それをもとに評価関数を再学習する案を挙げる。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "自己対戦から局面ごとの勝率を生成し、それを元に評価関数の再学習。"
+    }
+  ],
+  "character": "「最近の反省点」として、研究に集中する時間が取れず試行錯誤が足りなかったと書く。検証を簡略化・高速化しても問題がないようにすべきだったと省みる。",
+  "notes": "取り組みの多くは「模索予定」",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc26/team.html"
+}

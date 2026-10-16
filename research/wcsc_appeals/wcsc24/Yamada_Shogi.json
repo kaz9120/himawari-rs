@@ -1,0 +1,54 @@
+{
+  "wcsc": 24,
+  "year": 2014,
+  "dir": "Yamada_Shogi",
+  "team": "山田 泰広",
+  "software": "山田将棋",
+  "sources": [
+    "wcsc24/appeal/Yamada_Shogi/yamadashogi_appeal_2014.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc24/appeal/Yamada_Shogi/yamadashogi_appeal_2014.txt"
+  ],
+  "summary": "前年とほぼ同じ文書。クラシカルな構造の手作り評価関数ソフトで、落とし穴表、玉からの距離評価表、簡易必死・一手詰め検出などが特徴。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "手作り",
+    "detail": "駒割、玉の安全度、囲い、利き、当たり、大駒の働き、そっぽ、ひも等"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "反復深化、延長、null move、LMR、YSS式指し手反復生成、Crafty方式並列、予測読み"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": [
+    "C"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "落とし穴表で囲いへ誘導",
+      "description": "駒組みを囲いへ誘導する落とし穴表と、玉位置からの距離に応じた評価値表を持つ。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "囲いへ誘導するための落とし穴表、"
+    },
+    {
+      "category": "詰み・終盤",
+      "title": "簡易必死・一手詰め検出",
+      "description": "rootで簡易必死検出、leaf付近で簡易一手詰み検出を行う。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "root ノードでの簡易必死検出、"
+    }
+  ],
+  "character": null,
+  "notes": "前年とほぼ同文。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc24/team.html"
+}

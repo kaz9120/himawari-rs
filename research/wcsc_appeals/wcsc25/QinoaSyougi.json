@@ -1,0 +1,60 @@
+{
+  "wcsc": 25,
+  "year": 2015,
+  "dir": "QinoaSyougi",
+  "team": "山田 元気",
+  "software": "きのあ将棋",
+  "sources": [
+    "wcsc25/appeal/QinoaSyougi/appeal.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc25/appeal/QinoaSyougi/appeal.txt"
+  ],
+  "summary": "人手で調整した評価関数の探索結果（評価値とルート局面）を教師に、別モデルの評価関数パラメータを評価値が近くなるよう自動調整する方法を試している。教師データの量・質・調整回数を段階的に増やして再作成した。また、寄せ特化パラメータなど意見の集計や、不特定多数の対局から定跡を動的に作る方法も試したい。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "その他",
+    "detail": "人手調整の評価関数の評価値を教師に、別モデルのパラメータを自動調整"
+  },
+  "search": {
+    "family": "不明",
+    "detail": null
+  },
+  "learning": "手調整した評価関数の探索評価値とルート局面を教師に自動調整",
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "手調整評価関数の評価値を教師にした蒸留的な学習",
+      "description": "人手で調整した評価関数で探索した評価値とルート局面を教師に、別モデルの評価関数パラメータを評価値が近くなるよう自動調整する。0クリア状態から意味のある数値になることを確認。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "評価値同士が近くなるように自動調整するモデルを試しています。"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "不特定多数の対局結果から定跡を動的作成",
+      "description": "囲碁で試した、不特定多数の対局結果を元に定跡（定石）データを動的に作る方法を将棋でも試したい。データが増えた時の処理が不完成。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "不特定多数の対局結果をもとに"
+    },
+    {
+      "category": "棋風・人間らしさ",
+      "title": "「寄せに特化」「読み幅重視」パラメータの意見集計",
+      "description": "長年やりたかったという、寄せに特化したパラメータや読み幅を重視したパラメータなどの意見を集計する方法に挑戦したい。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "「寄せに特化した」「読み幅を重視」パラメータなどの意見を"
+    }
+  ],
+  "character": null,
+  "notes": "試行錯誤の経緯と原因分析（教師データの不足など）を列挙する文書。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc25/team.html"
+}

@@ -1,0 +1,46 @@
+{
+  "wcsc": 35,
+  "year": 2025,
+  "dir": "16_Shiki_Iroha_KIRAMEKI",
+  "team": "日本工学院将棋AIチーム",
+  "software": "十六式いろは煌（きらめき）",
+  "sources": [
+    "wcsc35/appeal/16_Shiki_Iroha_KIRAMEKI/2025-05-03_16Shiki168KIRAMEKI.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc35/appeal/16_Shiki_Iroha_KIRAMEKI/2025-05-03_16Shiki168KIRAMEKI.pdf"
+  ],
+  "summary": "昨年のやねうら王NNUEベースから、独自のDeep Learningモデルへ切り替える予定だったが、時間が足りずMCTSのみを実装して参戦した。教師データのクラスタリングと勾配ブースティングによる予測を試みた過程を正直に書いている。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": "昨年(第34回)はやねうら王NNUEベース。今回は独自実装のMCTSのみ"
+  },
+  "eval": {
+    "family": "不明",
+    "detail": "独自モデルのDeep Learningを予定していたが未実装"
+  },
+  "search": {
+    "family": "MCTS",
+    "detail": "モンテカルロ木探索のみ実装"
+  },
+  "learning": "電竜戦ハードウェア統一戦用「いろは with MysteriousBook」の自己対局局面をMiniBatchKMeansでクラスタリングし、LightGBMで予測する構想（実データでの学習は未実施）",
+  "hardware": null,
+  "language": [
+    "Python"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "クラスタリング+勾配ブースティング評価",
+      "description": "局面をMiniBatchKMeansでクラスタリングし、その出力をLightGBMへの入力として勝敗を予測する評価を構想した。実データでの学習と結合は時間切れで未完。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "そのデータをもとにして勾配ブースティング（LightGBM等）で予測し"
+    }
+  ],
+  "character": "実装できなかった項目まで「ここまでしたかったなぁ」として列挙する率直なアピール。",
+  "notes": "原本PDFを直接読んだ（テキストはほぼ空）",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc35/team.html"
+}

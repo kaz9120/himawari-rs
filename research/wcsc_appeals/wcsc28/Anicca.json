@@ -1,0 +1,37 @@
+{
+  "wcsc": 28,
+  "year": 2018,
+  "dir": "Anicca",
+  "team": "魚木 賢輔",
+  "software": "Anicca",
+  "sources": [
+    "wcsc28/appeal/Anicca/anicca.txt"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc28/appeal/Anicca/anicca.txt"
+  ],
+  "summary": "ライブラリ不使用の個人ソフト。Rustの予定をGoに変更し、駒割と利きの手動調整評価とαβ探索を目標にするが、開発はほとんど進んでいない。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "手作り",
+    "detail": "駒割と利きを予定。手動調整"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "αβ法で枝刈り"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": [
+    "Go"
+  ],
+  "claimed_strength": null,
+  "ideas": [],
+  "character": "開発が3/30時点でほとんど進んでいないと正直に書く。名前は好きな曲名から拝借した。",
+  "notes": "独自の工夫の記述はない。定跡は使わない（手抜き）と書く。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc28/team.html"
+}

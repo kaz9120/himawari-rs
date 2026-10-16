@@ -1,0 +1,52 @@
+{
+  "wcsc": 20,
+  "year": 2010,
+  "dir": "Suzuki_Shogi",
+  "team": "鈴木康夫",
+  "software": "鈴木将棋",
+  "sources": [
+    "wcsc20/appeal/Suzuki_Shogi/suzukishogi.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc20/appeal/Suzuki_Shogi/suzukishogi.txt"
+  ],
+  "summary": "玉と他の1駒の3駒の絶対位置で評価し、左右対称性でパラメータを半分にする。終盤はαβと別スレッドのdf-pnを併走させる。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "双方の玉ともう1枚の駒の3駒の絶対位置。左右対称性でパラメータ数を半分に"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "終盤はαβと別スレッドdf-pnを併用"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "双方の玉＋1駒の絶対位置評価",
+      "description": "双方の玉ともう一枚の駒の3駒の絶対位置で評価し、左右対称性を使って実質パラメータ数を半分にする。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "双方の玉ともう一枚の駒の３駒の絶対位置による評価を行っている"
+    },
+    {
+      "category": "詰み・終盤",
+      "title": "αβとdf-pnの別スレッド併走",
+      "description": "終盤はαβ探索と別スレッドのdf-pn探索を同時に動かし、勝ち負けが判明した局面で探索を速やかに打ち切る。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "勝ち、負けが判別した局面で探索を速やかに打ち切れるようにしている"
+    }
+  ],
+  "character": null,
+  "notes": null,
+  "team_list_url": "http://www2.computer-shogi.org/wcsc20/team.html"
+}

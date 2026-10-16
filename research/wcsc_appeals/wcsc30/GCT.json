@@ -1,0 +1,87 @@
+{
+  "wcsc": 30,
+  "year": 2020,
+  "dir": "GCT",
+  "team": "加納 邦彦",
+  "software": "GCT将棋",
+  "sources": [
+    "wcsc30/appeal/GCT/GoogleColabTpuShogi.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc30/appeal/GCT/GoogleColabTpuShogi.pdf"
+  ],
+  "summary": "Google Colab TPU上でAlphaZero型のDLを学習する、Pythonフルスタックのソフト。TPUの挙動の不安定さ、elmo教師の限界、floodgate棋譜の年単位学習などを、感覚的な知見としてまとめている。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "policy+value、マルチタスク学習、ResNet。書籍『将棋AIで学ぶディープラーニング』に準拠"
+  },
+  "search": {
+    "family": "MCTS",
+    "detail": null
+  },
+  "learning": "elmo_for_learn教師5億局面で事前学習、floodgate棋譜（2011〜2019）で追加学習",
+  "hardware": "Core i7-9750H、Google Colab（TPU／GPU）",
+  "language": [
+    "Python",
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "ハードウェア",
+      "title": "Google Colab TPUでの学習",
+      "description": "AlphaZeroへのリスペクトとして、Google ColabのTPUで学習する。TPUが使えない場合はAMPを使う。TPUで学習したモデルの推論に不具合があるため、学習・推論にはローカルPCのGPUを使う。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "Google の AlphaZero の手法をリスペクトするため、Google Colab (GCP) の TPU を利用する。"
+    },
+    {
+      "category": "開発手法・運用",
+      "title": "Pythonでの実装とCythonでの高速化",
+      "description": "将棋以外にも活用するためPythonで書き、高速化が見込める所はCythonでビルドする。対局時の高速化にdlshogi（PyTorch）を使う。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "将棋以外にも活用するため、 Python を利用する。"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "floodgate棋譜を年単位に順次学習",
+      "description": "複数年の棋譜をシャッフルして学習するより、2011年から2019年まで年単位に順次学習するほうが強くなる感覚がある。レーティングで絞るより学習局面数を増やすほうが強くなり、epoch数を増やしても過学習する。",
+      "originality": "独自",
+      "evidence": "感覚的に強くなる（数値なし）",
+      "quote": "年単位に順次学習（2011年→2012年→ ... →2019年）した方が感覚的には強くなる。"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "評価値打ち切りのelmo教師は詰みを学べない",
+      "description": "elmo_for_learnの教師は評価値閾値3000で打ち切るので詰み手順が入らず、億単位を学習してもLesserkaiを詰み切れない。終局まで打つか、詰み探索の併用が必要と分析する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "評価値閾値（3000）で打ち切っているので詰み手順は入っていない。"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "別系統の教師を足すと一時的に弱くなる",
+      "description": "Aperyとの対局（1手3秒、約100局）を追加学習したところ悪手を指すようになり弱くなった。別系統の教師はノイズになるが、大量の教師を継続して学習すればノイズが平均化されるのでは、と考える。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "全く別系統の教師データを追加するとノイズが紛れ込むため、一時的に弱くなる可能性がある。"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "Pythonでの強化学習の見送り",
+      "description": "GILの制約とCythonでも24時間で約1000プレイアウトの見込みから、Pythonで強化学習するのは現実的でなく見送った。C++/Goによる並列化が今後の課題。",
+      "originality": "不明",
+      "evidence": null,
+      "quote": "Python で強化学習するのは現実的ではないため、今回は採用を見送った。"
+    }
+  ],
+  "character": "TPUの「そんなうまい話はなかった」など、無料のTPUで遊ぶ面白さを強調する。PFNや産総研の大規模GPUクラスタに個人が対抗する手段として使いたい。",
+  "notes": "技術メモ的な文書で、参考文献が多い（書籍・ブログ・TPU資料）",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc30/team.html"
+}

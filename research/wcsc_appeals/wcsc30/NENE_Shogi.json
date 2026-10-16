@@ -1,0 +1,63 @@
+{
+  "wcsc": 30,
+  "year": 2020,
+  "dir": "NENE_Shogi",
+  "team": "日髙 雅俊",
+  "software": "ねね将棋",
+  "sources": [
+    "wcsc30/appeal/NENE_Shogi/wcsc30_appeal_neneshogi_20200323.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc30/appeal/NENE_Shogi/wcsc30_appeal_neneshogi_20200323.pdf"
+  ],
+  "summary": "従来の三駒関係+αβに代わるアーキテクチャとして、CNNの評価関数とMCTSを使うソフト。USI通信と合法手生成はやねうら王ライブラリで、探索と評価は独自。前年からの変更は、評価関数の実行をTensorRTに変えて高速化した点。",
+  "base": {
+    "engine": "やねうら王",
+    "eval_source": null,
+    "note": "USI通信・合法手生成・標準定跡・教師局面にやねうら王を使用。探索部・評価関数は独自"
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "CNN（教師あり）。PyTorchで学習し、ONNX経由でTensorRTにより16bit浮動小数点で実行"
+  },
+  "search": {
+    "family": "MCTS",
+    "detail": "マルチスレッドの選択的探索。100〜1000局面を同時評価するキュー。末端局面で詰み探索"
+  },
+  "learning": "教師あり学習。やねうら王の教師局面を使用。前年のCNTKが開発終了のためPyTorchへ移行",
+  "hardware": "Amazon EC2 p3.16xlarge（Tesla V100×8）。確保できない場合はローカルで方策関数のみのモード",
+  "language": [
+    "Python",
+    "C++"
+  ],
+  "claimed_strength": "クラウド不使用時は方策のみでlesserkai並み",
+  "ideas": [
+    {
+      "category": "実装・高速化",
+      "title": "TensorRT＋16bit推論",
+      "description": "学習済みモデルをONNXで出力してTensorRTで読み込み、16bit浮動小数点（Tensor Core）で実行する。ダミーデータでPyTorchとの速度比較を載せ、ほとんどのバッチサイズでTensorRTが上回る。8GPU同時では入出力の転送で1GPUあたりの速度が下がる。",
+      "originality": "既存手法の応用",
+      "evidence": "TensorRTのほうがほとんどのバッチサイズで高い性能を示す",
+      "quote": "対局時の評価関数の実行には、NVIDIA 社から提供されている TensorRT を用います。"
+    },
+    {
+      "category": "並列・分散",
+      "title": "100〜1000局面の同時評価キュー",
+      "description": "GPUを効率よく動かすため、100〜1000局面を同時に評価できるキュー方式にし、マルチスレッドで探索する。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "100~1000 局面を同時に評価できるようキューを用いたシステムになっています。"
+    },
+    {
+      "category": "ハードウェア",
+      "title": "クラウド不使用時の方策のみモード",
+      "description": "クラウドのGPUが確保できない場合に備え、方策関数のみで指すモードをローカルで動かす。強さはlesserkaiと勝ったり負けたり。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "クラウド利用不能時は方策関数のみで指すモードをローカルマシンで動かします。"
+    }
+  ],
+  "character": null,
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc30/team.html"
+}

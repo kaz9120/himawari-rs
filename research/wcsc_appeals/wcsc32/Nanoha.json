@@ -1,0 +1,62 @@
+{
+  "wcsc": 32,
+  "year": 2022,
+  "dir": "Nanoha",
+  "team": "川端 一之",
+  "software": "なのは",
+  "sources": [
+    "wcsc32/appeal/Nanoha/Nanoha_appeal2022.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc32/appeal/Nanoha/Nanoha_appeal2022.pdf"
+  ],
+  "summary": "StockfishをベースにAI将棋化したNanoha miniの探索と、やねうらお公開の教師データ20億局面で学習した3駒関係評価を使う構成。「魔法少女リリカルなのは」にちなむ名前で、「名前負けしている」と自称し、特に主張する特徴はないとする。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "3駒関係の評価ベクトル。やねうらお氏の110億教師データのうち20億を使用"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "Stockfishをベースに将棋化したなのはminiの探索"
+  },
+  "learning": "評価ベクトルは直前に学習",
+  "hardware": "Lenovo ThinkPad T14、Ryzen 7 PRO 4750U（出場PC）",
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "探索",
+      "title": "歩・角・飛の不成も生成",
+      "description": "手生成で歩・角・飛の不成も生成する。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "手生成では歩、角、飛の不成も生成"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "実戦出現数と勝率を考慮した定跡選択",
+      "description": "定跡部は、実戦での出現数と勝率を考慮して指し手を選ぶ。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "定跡部は実戦での出現数および勝率を考慮して手を選択"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "Stockfishベースのなのはmini",
+      "description": "Stockfishをベースに独自に将棋化した「なのはmini」を使い、Bitboardは使わず盤情報は配列で持つ。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "なのはmini Stockfishをベースに独自に将棋化しました。"
+    }
+  ],
+  "character": "「魔法少女リリカルなのは」主人公に由来する名前で、作者はアニメ好き。「名前の割に強い」ではなく「名前負け」が妥当と自虐的に語り、イラストはCOCOさん。Wi-Fi回線が切れないよう祈っている。",
+  "notes": "詰めルーチンは今回未搭載。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc32/team.html"
+}

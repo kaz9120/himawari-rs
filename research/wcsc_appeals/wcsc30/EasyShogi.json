@@ -1,0 +1,62 @@
+{
+  "wcsc": 30,
+  "year": 2020,
+  "dir": "EasyShogi",
+  "team": "高原 順弥",
+  "software": "EasyShogi",
+  "sources": [
+    "wcsc30/appeal/EasyShogi/EasyShogi_appeal.txt"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc30/appeal/EasyShogi/EasyShogi_appeal.txt"
+  ],
+  "summary": "1手先のみ探索する簡易プログラムの初参加。深層学習で、合法手ごとの良い手・悪い手を二値分類し、悪い手を悪いと認識させる学習に重きを置く。CPUのみで開発している。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "全合法手に二値分類を行うNN。入力は盤面と持ち駒の1チャンネル（持ち駒を除く実験もあり）"
+  },
+  "search": {
+    "family": "その他",
+    "detail": "1手先のみ探索・評価"
+  },
+  "learning": "指し手以外の合法手もすべて対象にして良い手・悪い手の二値ラベルを付けた教師データ。事前学習の多くは悪い手を悪いと認識させることに使う",
+  "hardware": "ローカルPCのCPUのみ（Core i5-2520M）",
+  "language": [
+    "Python"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "合法手すべてを二値分類",
+      "description": "NNの出力を二値とし、局面の合法手すべてに良い手か悪い手かの二値分類を行って指し手を決める。教師データは指し手以外の合法手にもラベルを付ける。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "NNからの出力は二値とし、二値分類を局面の合法手全てに対し行い指し手を決める。"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "好きな戦型を学べる教師抽出",
+      "description": "定跡は使わないが、好きな戦型を学べるように教師データの抽出・作成に工夫をした。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "好きな戦型を学べるように教師データの抽出・作成には工夫を行った。"
+    },
+    {
+      "category": "評価関数",
+      "title": "持ち駒を除いた盤面のみの入力",
+      "description": "NNへの入力を局面と持ち駒の1行配列とし、持ち駒を除いて9×9の盤面だけにした実験も行っている。",
+      "originality": "不明",
+      "evidence": null,
+      "quote": "思い切って持ち駒の情報を除き、9×9の盤面情報のみに絞って学習実験も行っている。"
+    }
+  ],
+  "character": "GPUを使わずローカルPCのCPUだけで工夫を楽しむ。「今のところ本プログラムには簡易（Easy）に勝利することができます」と自己紹介する。",
+  "notes": "山岡忠夫『将棋AIで学ぶディープラーニング』への謝辞あり",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc30/team.html"
+}

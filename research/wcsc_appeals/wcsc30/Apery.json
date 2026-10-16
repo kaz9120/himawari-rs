@@ -1,0 +1,54 @@
+{
+  "wcsc": 30,
+  "year": 2020,
+  "dir": "Apery",
+  "team": "平岡 拓也",
+  "software": "Apery",
+  "sources": [
+    "wcsc30/appeal/Apery/apery_appeal_wcsc30.html"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc30/appeal/Apery/apery_appeal_wcsc30.html"
+  ],
+  "summary": "第22回から連続出場する、2014年優勝のソフト。2019年にC++からRustへ全面書き換えし、探索部の改善でC++版より強くなったがNPSは少し低い。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "KPP系（文書に評価関数の記述なし）"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": null
+  },
+  "learning": null,
+  "hardware": "AWS c5系（複数台の可能性あり）",
+  "language": [
+    "Rust"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "実装・高速化",
+      "title": "Rustへの全面移行",
+      "description": "開発言語をC++からRustに変えた。Rustは高速性と安全性を両立する。Rustに関心がある人向けの参考ソースになり、開発に参加してもらうことも期待する。",
+      "originality": "独自",
+      "evidence": "探索部の改善でC++版Aperyより強くなったが、NPSはC++版よりやや低い",
+      "quote": "Rustで全面的に書き直しました"
+    },
+    {
+      "category": "開発手法・運用",
+      "title": "オープンソースでの公開",
+      "description": "2015年にAperyをオープンソース化し、Rust版もGitHubで公開している。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "2015年 Aperyをオープンソース化"
+    }
+  ],
+  "character": null,
+  "notes": "評価関数や探索の詳細は書かれていない。運営へのコロナ下の開催への感謝を述べる。HTML（reveal.js）のスライドで、冒頭にスクリプトの文字列が混ざる",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc30/team.html"
+}

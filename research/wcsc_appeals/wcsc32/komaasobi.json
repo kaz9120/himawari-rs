@@ -1,0 +1,63 @@
+{
+  "wcsc": 32,
+  "year": 2022,
+  "dir": "komaasobi",
+  "team": "永吉 宏之",
+  "software": "こまあそび",
+  "sources": [
+    "wcsc32/appeal/komaasobi/appeal20220331.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc32/appeal/komaasobi/appeal20220331.pdf"
+  ],
+  "summary": "αβ探索と手チューニングの評価関数による古典的な自作ソフト。王手・取る手などの延長に先手番・後手番別の上限を持つ点と、囲いへ誘導する落とし穴方式が特徴。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "手作り",
+    "detail": "学習なし、手チューニング。駒組みは落とし穴方式"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "王手・王手回避・駒を取る手を延長。探索深さで読む幅を変える"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": [
+    "C",
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "探索",
+      "title": "手番別の延長上限",
+      "description": "延長の上限を先手番・後手番で別々に持つ。先手4手＋後手4手の計8手はOKだが、先手5手＋後手3手はNGとする。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "延長深さの制限を先手番、後手番別々に持っている。"
+    },
+    {
+      "category": "評価関数",
+      "title": "落とし穴方式の駒組み誘導",
+      "description": "評価関数で駒組み（囲い）の形へ導く部分を落とし穴方式で実現している。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "駒組みは落とし穴方式で行っている。"
+    },
+    {
+      "category": "評価関数",
+      "title": "駒種ごとの位置の手調整",
+      "description": "銀桂は敵陣に近い手を高く、金は上部へ出る点を低く、金は角と筋違いの位置を高く、中終盤は角と金をほぼ同価値、竜と飛車は高めに設定する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "中盤、終盤は角と金の価値がほぼ同じにしている。"
+    }
+  ],
+  "character": null,
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc32/team.html"
+}

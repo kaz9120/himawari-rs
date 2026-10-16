@@ -1,0 +1,70 @@
+{
+  "wcsc": 35,
+  "year": 2025,
+  "dir": "komadokun",
+  "team": "吉田 京平",
+  "software": "komadokun",
+  "sources": [
+    "wcsc35/appeal/komadokun/WCSC35_komadokun_v2.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc35/appeal/komadokun/WCSC35_komadokun_v2.pdf"
+  ],
+  "summary": "駒得だけの評価関数で、ミニマックス法と同じ結果を保証する厳密さを貫くエンジン。静止探索や延長を使わず、安全なβカットのみを使う。駒得評価の性質を使った枝刈りと、ルートの最善手を全部見つけてランダムに選ぶ工夫が特色。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "手作り",
+    "detail": "純粋な駒得のみ。手駒の加点なし"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "指定depthまで固定で読む。延長・静止探索なし。PV Splitで並列化"
+  },
+  "learning": null,
+  "hardware": "Ryzen 7 3700X（16スレッド）",
+  "language": [
+    "C"
+  ],
+  "claimed_strength": "floodgateでdepth1〜10を投入して測定（depth9で出場予定。表は画像のため数値は未確認）",
+  "ideas": [
+    {
+      "category": "探索",
+      "title": "ミニマックスと同じ結果を保証する探索",
+      "description": "枝刈りはβカットなど安全なものだけに限り、飛角歩の不成や2段目の香不成も生成する。探索の延長は行わず、常に指定depthと同じ深さを読む。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "ミニマックス法で探索した場合と同じ実行結果を保証すること"
+    },
+    {
+      "category": "棋風・人間らしさ",
+      "title": "ルートの最善手を全て見つけてランダムに指す",
+      "description": "ルートの子ノードを(max-1, ∞)のwindowで探索して、同値の最善手を全て見つける。bestmoveはそこからランダムに選ぶため、駒得のみの評価では序盤が毎回違う将棋になる。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "毎回違った将棋を指すことができます。"
+    },
+    {
+      "category": "探索",
+      "title": "駒得評価の性質を使った安全な枝刈り",
+      "description": "駒を打つ手は評価値が変わらない、成る手は成らない手以上、飛び駒は最も遠くへ動かす手が最良などの性質を使い、残り深さ3以下で枝刈りする。ミニマックスと同じ結果は保たれる。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "駒得のみの評価関数が持つ性質を利用して、残り探索深さが3以下のノードで、さまざまな枝刈りを採用しています"
+    },
+    {
+      "category": "並列・分散",
+      "title": "PV Splitの並列化",
+      "description": "PV Splitで並列化し、Ryzen 7 3700Xで8スレッドは1スレッドの約5.9倍、16スレッドは約6.6倍の速度で同じ最善手を見つける。物理コア数を超えても性能が上がるため16スレッドで出場する。",
+      "originality": "既存手法の応用",
+      "evidence": "8スレッドで約5.9倍、16スレッドで約6.6倍",
+      "quote": "16 スレッド探索の場合は 1 スレッド探索の約 6.6 倍"
+    }
+  ],
+  "character": "名前のとおり駒得のみ（手駒加点すらしない）という純粋さが売り。",
+  "notes": "棋力表は画像で、テキストからは数値を取得していない。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc35/team.html"
+}

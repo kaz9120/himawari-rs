@@ -1,0 +1,94 @@
+{
+  "wcsc": 27,
+  "year": 2017,
+  "dir": "Shibaura_Shougi_Jr",
+  "team": "芝浦工業大学（和田悠介、古根村光、桐井杏樹、岩間雄紀、内山正吏）",
+  "software": "芝浦将棋Jr.",
+  "sources": [
+    "wcsc27/appeal/Shibaura_Shougi_Jr/appeal_2017.pdf"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc27/appeal/Shibaura_Shougi_Jr/appeal_2017.pdf"
+  ],
+  "summary": "芝浦工業大学の五十嵐研究室による教育・研究のチーム。「人間の将棋の専門知識に頼らず、対局を通じた試行錯誤でコンピュータが自ら学ぶ」というコンセプトで、定跡不使用と強化学習を掲げる。探索エンジンはゼロから独自開発し、縦型の独自bitboardとMagic bitboard、評価関数の差分計算、Lazy SMPが特徴。",
+  "base": {
+    "engine": "独自",
+    "eval_source": "Bonanza Ver.6.0.0（特徴量をそのまま使用）",
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "Bonanza 6.0の特徴量に手番を追加。評価関数の差分計算を高速化"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "置換表、キラー手、LMR、Futility Pruning、静止探索（20手まで、SEE）、先読み。並列はYBWCからLazy SMPへ"
+  },
+  "learning": "方策勾配法ベースのPGLeaf法や方策勾配を用いた教師あり学習などを試行中。強化学習で、プロ棋譜を使わず対局から学ぶ方針",
+  "hardware": "Core i7 6700 4コア",
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": "差分計算で評価関数が約1/10の時間、探索速度2.3倍・勝率72%。Futility等で約1.2倍・勝率58%。手番値の追加で勝率約6割。Lazy SMPで約4倍の探索速度・勝率約80%",
+  "ideas": [
+    {
+      "category": "研究・実験的",
+      "title": "人間の知識に頼らない自己学習",
+      "description": "人間の棋譜に基づく教師付き学習や定跡に頼らず、コンピュータが対局を通して試行錯誤しながら将棋を学び、人間を超えることを目標にする。人間の定跡が再現されるか、新しい定跡や戦法が創発されるかに興味がある。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "人間の持っている将棋に関する専門知識に頼ることなく、コンピュータが対局を通して試行錯誤しながら、自ら将棋を学び"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "方策勾配法による強化学習（PGLeaf法）",
+      "description": "TD(λ)やTDLeaf(λ)ではなく方策勾配法による強化学習を評価関数に適用する。方策勾配とαβ探索を組み合わせたPGLeaf法の応用。シミュレーション方策や探索の遷移確率にも使える構想がある。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "方策勾配法と呼ばれる強化学習をベースに考案された PGLeaf 法[8]"
+    },
+    {
+      "category": "探索",
+      "title": "序盤定跡の不使用",
+      "description": "対局時に定跡データベースを一切使わない。従来の定跡にない新手が出れば成果になると期待している。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "大会対局時には定跡データベースを使用しません。"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "縦型3分割のbitboardとMagic bitboard",
+      "description": "盤面を縦方向に3つの64bit整数で表し、中央の変数P[1]だけにMagic numberを掛ければ飛び駒の利きがほぼ求まる。Ponanzaは上6段・下3段の2変数で、Magic numberも2つ必要になる。9x9でも8x8のチェスのように1変数で処理できる。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "図 1b のような bitboard 構造を採用することにより、盤面サイズが 9×9 の将棋であっても 8×8 のチェスの場合と同じように、1 変数についての処理で殆ど済ませる"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "評価関数の差分計算",
+      "description": "局面間の駒配置の差分から評価値の差分を独自の方式で計算し、評価関数の計算時間を約1/10にした。探索速度は約2.3倍、勝率は従来プログラムに対して約72%。",
+      "originality": "独自",
+      "evidence": "評価関数の計算時間が約1/10、探索速度2.3倍、勝率約72%",
+      "quote": "評価関数の計算時間は差分計算を行わない従来の芝浦将棋 Jr.と比べて約 10 分の 1 にまで減少しました。"
+    },
+    {
+      "category": "並列・分散",
+      "title": "YBWCからLazy SMPへ（Stockfish参考）",
+      "description": "Stockfishを参考にLazy SMPを実装した。評価関数の差分計算や前向き枝刈りをスレッド間で競合しないよう調整し、探索プログラムの約30%を書き換えた。並列化前の約4倍の探索速度で、勝率は約80%。",
+      "originality": "既存手法の応用",
+      "evidence": "探索速度約4倍、勝率約80%",
+      "quote": "現在，並列化前と比べて約 4 倍の探索速度を得て，勝率は 約80％と向上しました."
+    },
+    {
+      "category": "時間管理",
+      "title": "相手手番中の先読み強化",
+      "description": "相手手番中の先読み探索の時間・深さ制限を撤廃し、先読みがヒットしてもすぐに指さず、一定時間さらに探索する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "先読みがヒットした場合にもすぐに指すのではなく，一定の時間，さらに探索を行うようにしてあります。"
+    }
+  ],
+  "character": "大学の教育・研究プロジェクトとして、学生が参加するチーム。共同研究やチーム開発への参加を広く呼びかけ、メーリングリストや豊洲キャンパスでの討論など他チームとの交流にも力を入れている。",
+  "notes": null,
+  "team_list_url": "http://www2.computer-shogi.org/wcsc27/team.html"
+}

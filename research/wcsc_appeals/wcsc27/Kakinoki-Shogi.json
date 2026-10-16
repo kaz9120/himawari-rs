@@ -1,0 +1,54 @@
+{
+  "wcsc": 27,
+  "year": 2017,
+  "dir": "Kakinoki-Shogi",
+  "team": "柿木 義一",
+  "software": "柿木将棋",
+  "sources": [
+    "wcsc27/appeal/Kakinoki-Shogi/appeal.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc27/appeal/Kakinoki-Shogi/appeal.txt"
+  ],
+  "summary": "1985年頃から続く老舗。2013年以降は全幅探索のみで、ボナンザ法で学習した独自項目の評価関数と利きデータを使う。昨年からほとんど変わらず、floodgateレート約2300。過去の文書も合わせて添付している。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "ボナンザ法で学習。評価項目は独自"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "全幅探索、PVS並列化、Null move枝刈、王手延長、静止探索、山下さんの0.5手延長方式"
+  },
+  "learning": "ボナンザ法で学習",
+  "hardware": "Core i7 3960X EE 6コア 16GB",
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": "floodgateレート約2300（2017/4時点）",
+  "ideas": [
+    {
+      "category": "探索",
+      "title": "山下氏の0.5手延長方式",
+      "description": "山下宏氏の0.5手延長方式を探索に採用している。",
+      "originality": "再現・追従",
+      "evidence": null,
+      "quote": "山下さんの 0.5手延長方式を採用"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "bit-boardを使わず利きデータを使用",
+      "description": "Bonanzaの影響を受けた全幅探索ながら、bit-boardは使わず利きデータを使う。評価項目も独自。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "利きデータを使用し、bit-boardは使っていない。"
+    }
+  ],
+  "character": "1985年頃からの開発史を、年ごとの文書を並べて残している。毎年「昨年と殆ど変わりません」と報告する老舗らしい文書。",
+  "notes": "2013〜2016年の過去のアピール文章も添付されており、レート推移（2013年2089〜2184、2014年2178、2015年2234、2017年約2300）の記述がある。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc27/team.html"
+}

@@ -1,0 +1,54 @@
+{
+  "wcsc": 23,
+  "year": 2013,
+  "dir": "Mecha_Lady_Shogi",
+  "team": "メカ女子将棋部",
+  "software": "メカ女子将棋",
+  "sources": [
+    "wcsc23/appeal/Mecha_Lady_Shogi/appeal.pdf"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc23/appeal/Mecha_Lady_Shogi/appeal.pdf"
+  ],
+  "summary": "女流棋士2名を含む「女子部」が作った将棋ソフトで、世界初のJulia言語製を売りにする。評価関数は駒得のみ（Bonanzaのfv.bin導入を検討）、PVS・履歴ヒューリスティクスを使う標準的な構成。文書はゆるいノリで、メンバーをメカさゆりん等のあだ名で紹介する。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": "『Writing a chess program in 99 steps』を参考にし、指し手生成はメカウーサー将棋のmailbox実装を流用"
+  },
+  "eval": {
+    "family": "手作り",
+    "detail": "駒得だけ（Bonanzaのfv.bin導入を検討）"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "反復深化、PVS（逐次）、History heuristic、PVとhistoryによるmove ordering"
+  },
+  "learning": null,
+  "hardware": "Linux Ubuntu 12.04、mono+将棋所",
+  "language": [
+    "Julia"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "実装・高速化",
+      "title": "Julia言語による実装",
+      "description": "C/C++版を書き直したJulia版が既存のC/C++版を圧倒したため、Julia版で参加する。LLVMベースのJITで高速に動き、Immutable構文を指し手生成に活用する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "世界初Julia言語で動く将棋ソフトです"
+    },
+    {
+      "category": "エンタメ・演出",
+      "title": "女流棋士参加とキャラクター化",
+      "description": "女流三段・女流一級の2名と女子大学院生、実装責任者の木村氏で結成。各メンバーを「メカさゆりん」などの愛称で紹介し、ソフトの愛称は「メカジョさん」。公式Twitterアカウントも運用する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "私たちのモットーは、 「全力で甘える主義」ですw"
+    }
+  ],
+  "character": "女流棋士2名を含む女子部という体裁で、顔文字入りのゆるい文書。ソフトの愛称は「メカジョさん」、モットーは「全力で甘える主義」。元はメカウーサー将棋で、版権に配慮して名前を返しメカ女子将棋になった。",
+  "notes": "スライド形式の文書。技術的には標準的で比較的弱いと自己評価。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc23/team.html"
+}

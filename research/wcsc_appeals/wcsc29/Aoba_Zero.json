@@ -1,0 +1,62 @@
+{
+  "wcsc": 29,
+  "year": 2019,
+  "dir": "Aoba_Zero",
+  "team": "Team AobaZero（保木邦仁、山下宏、小林祐樹）",
+  "software": "Aoba Zero",
+  "sources": [
+    "wcsc29/appeal/Aoba_Zero/aobazero2019appeal.txt"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc29/appeal/Aoba_Zero/aobazero2019appeal.txt"
+  ],
+  "summary": "AlphaZeroの将棋実験の追試を目的としたゼロからの強化学習プロジェクト。Bonanzaの盤面構造とLeela Zeroのコードを使い、ユーザー参加型で棋譜生成を分散させる計画を持つ。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": "Bonanzaの盤面構造でMCTSを実装、Leela ZeroのOpenCLコードを改造"
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "ニューラルネット（AlphaZeroの約1/16の大きさ）"
+  },
+  "search": {
+    "family": "MCTS",
+    "detail": "モンテカルロ木探索"
+  },
+  "learning": "ゼロからの強化学習。棋譜生成aobaz、棋譜送信autousi、サーバ、学習部の4構成",
+  "hardware": "Xeon Gold 6154 + RTX 2080Ti",
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": "予備実験で初期段階にEloが毎日100以上上昇",
+  "ideas": [
+    {
+      "category": "並列・分散",
+      "title": "ユーザー参加型の棋譜生成",
+      "description": "Leela Zeroのように参加者が棋譜生成に計算資源を出す形で、実験規模を大きくする計画。棋譜・学習モデル・コード一式を公開する。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "Leela Zero (https://zero.sjeng.org) のようなユーザ参加型のコンテンツも作成して"
+    },
+    {
+      "category": "解説・人間支援",
+      "title": "強化学習の過程の公開",
+      "description": "将棋の知識を獲得していく過程が面白いとして、棋譜だけ先に公開。駒の動かし方→金銀の位置→駒得→取り返し、と学習段階を観察記録している。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "将棋の知識を獲得していく過程が面白いので棋譜だけ先に公開しました"
+    },
+    {
+      "category": "開発手法・運用",
+      "title": "全ソース公開",
+      "description": "ソース・実行ファイルをGitHubで公開。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "github でソース、実行ファイルを公開しています(2019/05/01)。"
+    }
+  ],
+  "character": "elmoを超える棋力を得る強化学習の過程を、観客と一緒に観察しようと呼びかける。",
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc29/team.html"
+}

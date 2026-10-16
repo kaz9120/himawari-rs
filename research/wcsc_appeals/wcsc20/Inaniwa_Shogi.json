@@ -1,0 +1,52 @@
+{
+  "wcsc": 20,
+  "year": 2010,
+  "dir": "Inaniwa_Shogi",
+  "team": "今野剛人",
+  "software": "稲庭将棋",
+  "sources": [
+    "wcsc20/appeal/Inaniwa_Shogi/inaniwa.pdf"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc20/appeal/Inaniwa_Shogi/inaniwa.pdf"
+  ],
+  "summary": "対局の勝ち方のうち「相手の時間切れ」を積極的に狙う将棋ソフト。丸山スペシャルを改良し、相手の指し手に応じて歩への利きを変える。",
+  "base": {
+    "engine": "れさぴょん",
+    "eval_source": null,
+    "note": "れさぴょん(v3)をライブラリとして使用"
+  },
+  "eval": {
+    "family": "不明",
+    "detail": null
+  },
+  "search": {
+    "family": "不明",
+    "detail": null
+  },
+  "learning": null,
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "棋風・人間らしさ",
+      "title": "時間切れ勝ちを狙う丸山スペシャル改",
+      "description": "歩を突かず、各歩に味方の利きを2つ以上つけて守り、相手に決め手を与えず時間切れ負けを狙う。丸山スペシャルが相手の手を見ずに一様に守るのに対し、相手の指し手に応じて各歩への利きを変え、場合により歩も突く。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "相手の指し手に応じて、各歩への味方の利きを変化させる"
+    },
+    {
+      "category": "エンタメ・演出",
+      "title": "時間切れ勝ちを目的化",
+      "description": "勝因を投了・詰み・入玉宣言・時間切れ等に分類し、「相手の時間切れ」による勝利を積極的に目指すと宣言する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "“d. 相手の時間切れ”による勝利を積極的に目指すものである"
+    }
+  ],
+  "character": "勝ち方の分類から「時間切れ勝ち」を狙うという、勝利の定義に踏み込んだコンセプト。",
+  "notes": null,
+  "team_list_url": "http://www2.computer-shogi.org/wcsc20/team.html"
+}

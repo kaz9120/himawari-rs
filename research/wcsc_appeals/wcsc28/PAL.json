@@ -1,0 +1,62 @@
+{
+  "wcsc": 28,
+  "year": 2018,
+  "dir": "PAL",
+  "team": "山口 祐",
+  "software": "PAL",
+  "sources": [
+    "wcsc28/appeal/PAL/wcsc28_pal.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc28/appeal/PAL/wcsc28_pal.pdf"
+  ],
+  "summary": "AQ（囲碁）の作者によるソフト。ディープラーニングを使わず、ゼロからの評価関数学習を強化学習と敵対的学習のハイブリッドで行い、クラウド上の高回転並列学習（「N連ガチャ」）と並列探索の最適化を売りにする。",
+  "base": {
+    "engine": "やねうら王",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "0ベースで学習した評価関数（DLは不使用）"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "やねうら王v4.80の並列探索を最適化"
+  },
+  "learning": "0ベースの評価関数学習。強化学習と敵対的学習のハイブリッド。クラウドサーバで高回転の並列学習を行う",
+  "hardware": "Xeon Platinum 8175 96コア、384GB（Amazon EC2）",
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "強化学習と敵対的学習のハイブリッド",
+      "description": "評価関数を0から、強化学習と敵対的学習を組み合わせて学習する。ディープラーニングは使わない。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "強化学習と 敵対的学習 のハイブリッド"
+    },
+    {
+      "category": "並列・分散",
+      "title": "クラウドでの高回転並列学習（N連ガチャ）",
+      "description": "クラウドサーバで学習を高回転で並列に回す。「N連ガチャ」と呼ぶ。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "クラウドサーバにおける高回転並列学習（N連ガチャ）"
+    },
+    {
+      "category": "並列・分散",
+      "title": "並列探索の最適化",
+      "description": "やねうら王の並列探索を最適化する。",
+      "originality": "不明",
+      "evidence": null,
+      "quote": "並列探索の最適化"
+    }
+  ],
+  "character": "「PAL（仲間・友だち）」と名付け、「ショーギはともだち こわくないよ!」と書く。開発者は囲碁AI「AQ」の作者でもある。",
+  "notes": "文書は5ページのスライドで、各項目の詳細は書かれていない。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc28/team.html"
+}

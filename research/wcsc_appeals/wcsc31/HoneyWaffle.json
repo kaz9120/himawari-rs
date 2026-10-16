@@ -1,0 +1,52 @@
+{
+  "wcsc": 31,
+  "year": 2021,
+  "dir": "HoneyWaffle",
+  "team": "渡辺 光彦",
+  "software": "HoneyWaffle",
+  "sources": [
+    "wcsc31/appeal/HoneyWaffle/HoneyWaffle_appeal_WCSC31_update.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc31/appeal/HoneyWaffle/HoneyWaffle_appeal_WCSC31_update.pdf"
+  ],
+  "summary": "「相居飛車に特化したソフトを、振り飛車でぶん殴る！」をコンセプトにする。やねうら王上の振り飛車定跡と、対抗型の棋譜で学習したNNUE型評価関数（Kristallweizen）を組み合わせ、dlshogiやふかうら王の導入を試みた。",
+  "base": {
+    "engine": "やねうら王",
+    "eval_source": "Kristallweizen（NNUE型）",
+    "note": null
+  },
+  "eval": {
+    "family": "NNUE",
+    "detail": "KristallweizenのNNUE型評価関数。対抗型の棋譜で学習"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "やねうら王。dlshogi/ふかうら王の導入を試行"
+  },
+  "learning": "対抗型の棋譜で学習し、対抗型での優位を築く狙い",
+  "hardware": "Amazon EC2 c5a.24xlarge",
+  "language": "C++, Python, Go",
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "棋風・人間らしさ",
+      "title": "振り飛車定跡で居飛車ソフトに挑む",
+      "description": "相居飛車に特化した相手に振り飛車でぶつける。第1回電竜戦でqhapaqさんが採用した振り飛車定跡を、やねうら王上で使う。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "「相居飛車に特化したソフトを、振り飛車でぶん殴る！」"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "対抗型の棋譜で学習",
+      "description": "対抗型の棋譜で評価関数を学習し、対抗型での戦いに優位を築く狙い。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "対抗型の棋譜で学習することで、対抗型での戦いで優位を築く狙い。"
+    }
+  ],
+  "character": "名前の由来は、四角いワッフルが将棋盤に似ていることとゆるふわスイーツの軽さ、振り飛車の軽い捌き。表紙やアイコンのワッフルは自宅で焼いたもの。note記事や文春オンラインのインタビューも紹介。",
+  "notes": "最終的にdlshogiの導入は間に合わず、前年と同じKristallweizenのNNUEだった。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc31/team.html"
+}

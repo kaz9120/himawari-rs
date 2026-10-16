@@ -1,0 +1,54 @@
+{
+  "wcsc": 32,
+  "year": 2022,
+  "dir": "Miacis",
+  "team": "迫田 真太郎",
+  "software": "Miacis",
+  "sources": [
+    "wcsc32/appeal/Miacis/WCSC32_Miacis_appeal.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc32/appeal/Miacis/WCSC32_Miacis_appeal.pdf"
+  ],
+  "summary": "DNN+MCTS構成で、今年はネットワークの巨大化をテーマにした。探索への依存を減らすため低NPSでも強い巨大ネットを目指すが、ViTも40ブロックResNetも単純な巨大化では大きな改善が得られず、NPS低下の方が痛いと報告している。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "ResNet20ブロック256ch、ViT12ブロック384chとの比較、40ブロックや倍chも試行"
+  },
+  "search": {
+    "family": "MCTS",
+    "detail": "DNN+MCTS"
+  },
+  "learning": null,
+  "hardware": "Core i7-7700",
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "研究・実験的",
+      "title": "ネットワーク巨大化で探索依存を脱する",
+      "description": "NPS増加による棋力の伸びが鈍化することを根拠に、低NPSでも強い巨大ネットを目指す。ViT、40ブロックResNet、チャンネル2倍を試した。",
+      "originality": "既存手法の応用",
+      "evidence": "ViT: policy損失1.740、value損失0.460、NPS5936、基準に勝率37.0%（ResNet20x256は1.760、0.462、11742、41.8%）",
+      "quote": "とにかくネットワークを巨大化する"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "Vision Transformerの導入",
+      "description": "ResNetに代えてViTを試し、損失は改善したがNPSが半減し、FP16でしか動かないなど難航している。",
+      "originality": "既存手法の応用",
+      "evidence": "ViTの損失は微改善、勝率は37.0%でResNetの41.8%を下回る",
+      "quote": "Transformer(Vision Transformer)"
+    }
+  ],
+  "character": null,
+  "notes": "結果は否定的。深いネットの学習失敗にDropPathやDeepNetを検討するとしている。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc32/team.html"
+}

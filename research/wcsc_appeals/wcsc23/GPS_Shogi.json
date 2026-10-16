@@ -1,0 +1,62 @@
+{
+  "wcsc": 23,
+  "year": 2013,
+  "dir": "GPS_Shogi",
+  "team": "Team GPS",
+  "software": "GPS将棋",
+  "sources": [
+    "wcsc23/appeal/GPS_Shogi/WCSC2013_appeal.pdf"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc23/appeal/GPS_Shogi/WCSC2013_appeal.pdf"
+  ],
+  "summary": "東京大学のゲームプログラミングセミナーによるソフト。疎結合並列探索システムで、iMac数百台などを使い3000コア超で探索する。実現確率探索、評価関数の自動学習、並列df-pn、局面ごとに4種の評価関数を切り替える。ソースコードを公開している。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "序盤、中盤1、中盤2、終盤の4種類"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "実現確率探索、df-pn（並列協調）、疎結合並列探索"
+  },
+  "learning": "評価関数の自動学習",
+  "hardware": "多種構成。2012年は東大のiMac端末788台を主力に3,224コア",
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": "2009年第19回優勝、2012年第22回優勝、第2回電王戦で三浦八段と対局予定",
+  "ideas": [
+    {
+      "category": "並列・分散",
+      "title": "疎結合並列探索システム",
+      "description": "家庭用PCクラスのマシンを多数ネットワークで結び、協調しながら並列に探索する。あから2010の4プログラム共通基盤にもなった。",
+      "originality": "独自",
+      "evidence": "2010年は総プロセッサ320・666コア、2012年は3,224コア",
+      "quote": "「疎結合並列探索システム」です"
+    },
+    {
+      "category": "評価関数",
+      "title": "局面に応じた4種の評価関数",
+      "description": "序盤、中盤1、中盤2、終盤の4種類の評価関数を使い分ける。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "評価関数は現在、序盤、中盤1、中盤2、終盤の4種類を"
+    },
+    {
+      "category": "詰み・終盤",
+      "title": "並列協調のdf-pn",
+      "description": "df-pnによる詰探索を並列に協調させて行う。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "df-pn（並列協調）"
+    }
+  ],
+  "character": null,
+  "notes": "ソースコードをフリーソフトとして公開。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc23/team.html"
+}

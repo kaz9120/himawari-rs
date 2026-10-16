@@ -1,0 +1,79 @@
+{
+  "wcsc": 34,
+  "year": 2024,
+  "dir": "TMOQ",
+  "team": "山下 隆久",
+  "software": "TMOQ（特大もっきゅ）",
+  "sources": [
+    "wcsc34/appeal/TMOQ/TMOQ_appeal_20240430.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc34/appeal/TMOQ/TMOQ_appeal_20240430.pdf"
+  ],
+  "summary": "戦いを避けて入玉宣言勝ちを狙う平和主義者。dlshogiベースの複数エンジン構成で、勝勢になると駒得エンジンに切替えて入玉を目指す。目標は少なくとも1回の入玉宣言勝ち。",
+  "base": {
+    "engine": "dlshogi+やねうら王",
+    "eval_source": "Lí（tanuki- 第33回版）",
+    "note": null
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "メイン思考部をLí（Ponderなし）に変更。昨年は独自ResNet 9b"
+  },
+  "search": {
+    "family": "MCTS",
+    "detail": "dlshogiベースに複数エンジン"
+  },
+  "learning": null,
+  "hardware": "Core i7-11700K + RTX 3080 16GB ノートPC",
+  "language": [
+    "C++",
+    "Python"
+  ],
+  "claimed_strength": "昨年のWCSC33版とのテスト対局で勝率約76%",
+  "ideas": [
+    {
+      "category": "入玉",
+      "title": "勝勢で駒得エンジンへ切替",
+      "description": "勝勢になったら駒得エンジンに切り替えて入玉を目指す。入玉可能性を増やすため昨年の駒得エンジンをチューニングした。",
+      "originality": "独自",
+      "evidence": "目標は1回以上の入玉宣言勝ち",
+      "quote": "勝勢になったら、駒得エンジンに切替えて入玉を目指す"
+    },
+    {
+      "category": "棋風・人間らしさ",
+      "title": "戦いを避ける平和主義",
+      "description": "戦いを避け、入玉宣言勝ちを狙う棋風。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "戦いを避ける平和主義者（入玉宣言勝ち狙い）"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "約2500万手の定跡",
+      "description": "昨年より約300万手増やした約2500万手の定跡ファイルを使う。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "約 2 千 5 百万手に近い定跡ファイル"
+    },
+    {
+      "category": "評価関数",
+      "title": "メイン思考部をLíへ変更",
+      "description": "二次予選で入玉宣言勝ちを狙う棋力のため、独自ResNet 9bからLíへ切替えた。",
+      "originality": "既存手法の応用",
+      "evidence": "WCSC33版とのテスト対局で約76%",
+      "quote": "テスト対局で約76%の勝率"
+    },
+    {
+      "category": "ハードウェア",
+      "title": "ノートPCでも楽しめる",
+      "description": "莫大な計算資源がなくても将棋ソフトは楽しめる、と主張してノートPCで参加する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "Note PC を使用、莫大な計算資源がなくてもコンピュータ将棋は楽しめる"
+    }
+  ],
+  "character": "名前は愛娘が命名・デザインした「特大もっきゅ」。目標は入玉宣言勝ちという、強さ以外の物語性がある。",
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc34/team.html"
+}

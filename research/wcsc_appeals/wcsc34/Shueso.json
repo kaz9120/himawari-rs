@@ -1,0 +1,78 @@
+{
+  "wcsc": 34,
+  "year": 2024,
+  "dir": "Shueso",
+  "team": "竹内 章",
+  "software": "習甦",
+  "sources": [
+    "wcsc34/appeal/Shueso/Shueso_wcsc34.txt"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc34/appeal/Shueso/Shueso_wcsc34.txt"
+  ],
+  "summary": "1スレッドがdf-pnで詰みを確認し、他スレッドはStockfishから取捨選択したシンプルなαβ探索を回す。玉位置に対する駒位置と利き数を特徴量とするNNを、飛車を振る手を混ぜた自己対戦で学習する。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "その他",
+    "detail": "玉の位置に対する各駒の位置と全升目の利き数（先後別3まで）を特徴量とするニューラルネットワーク"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "1スレッドはdf-pn、他はStockfishから取捨選択したシンプルなαβ"
+  },
+  "learning": "ゼロベースから自己対戦で学習。初手〜4手目にMultiPV24〜16で飛車を振る手を入れる。初期段階は入玉も考慮した駒割り関数値を報酬に加算",
+  "hardware": "Core i9-13980HX 24コア",
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "探索",
+      "title": "専用スレッドでdf-pn",
+      "description": "1スレッドをdf-pnによる詰み確認に専念させ、残りはαβ探索に使う。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "1スレッドはdf-pnにより詰みを確認"
+    },
+    {
+      "category": "探索",
+      "title": "Stockfishの要素の取捨選択",
+      "description": "Stockfishの探索技法から選んだものだけを使うシンプルなαβ探索。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "Stockfishから取捨選択したシンプルなα-β探索"
+    },
+    {
+      "category": "評価関数",
+      "title": "利き数を使う特徴量",
+      "description": "玉位置に対する各駒の位置と、全升目の利き数（先後別に3まで）を特徴量にしたNN。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "全升目の利き数（先後別3まで）を特徴量とするニューラルネットワーク"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "初手に飛車を振る手を強制",
+      "description": "自己対戦の初手〜4手目にMultiPV24〜16で飛車を振る手を入れ、オールラウンダーを目指す。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "飛車を振る手を入れることによりオールラウンダーをめざす"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "駒割り報酬の初期加算",
+      "description": "ゼロから効率良く学習するため、初期段階では入玉も考慮した駒割り関数の値を報酬に加算する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "初期段階では入玉も考慮した駒割り関数の値を報酬に加算"
+    }
+  ],
+  "character": null,
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc34/team.html"
+}

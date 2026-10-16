@@ -1,0 +1,60 @@
+{
+  "wcsc": 35,
+  "year": 2025,
+  "dir": "issen_shogi",
+  "team": "自堕落同好会",
+  "software": "一閃将棋",
+  "sources": [
+    "wcsc35/appeal/issen_shogi/appeal_250415.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc35/appeal/issen_shogi/appeal_250415.pdf"
+  ],
+  "summary": "将棋専用の論理回路をFPGA（Amazon EC2 F2）上に構築し、圧倒的な読みの速度を狙う。αβ探索とNNUE評価をハードウェアで実装する。4/15時点では指し手生成が毎秒約400万局面に達し、探索や置換表は実装中。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": "FPGA上の独自実装。オセロでFPGA実装の実績あり"
+  },
+  "eval": {
+    "family": "NNUE",
+    "detail": "halfKP_vm 256x2-32-32。FeatureTransformerを12bit幅にし、オンチップUltraRAM（約33.75MiB）に載せる"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "明示的スタックでFPGA上に再帰を実現。LazySMP並列化を予定"
+  },
+  "learning": null,
+  "hardware": "Amazon EC2 F2（VU47P FPGA）",
+  "language": [],
+  "claimed_strength": "指し手生成は毎秒約400万局面（4/15時点。3/31時点は約200万）",
+  "ideas": [
+    {
+      "category": "ハードウェア",
+      "title": "将棋専用論理回路をFPGAで実装",
+      "description": "CPU/GPUの代わりにFPGAに将棋専用の論理回路を構築し、指し手生成・探索・評価を物理的に並列に走らせる。複数FPGAは合議かponderに使う。",
+      "originality": "独自",
+      "evidence": "指し手生成は毎秒約400万局面",
+      "quote": "将棋専用アクセラレータの実装により、圧倒的な読みの速度を実現する"
+    },
+    {
+      "category": "評価関数",
+      "title": "オンチップRAMに載せるための評価関数の圧縮",
+      "description": "評価関数テーブルをUltraRAMに収めるため、玉の筋を左右反転したhalfKP_vm（HalfKPの5/9のサイズ）と、パラメータの12bit化（16bitの3/4）を組み合わせる。12bitはUltraRAMの72bit幅の1/6で回路が単純になる。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "FPGA ではロジック回路のデータ幅を 1bit 単位で自由に決めることができるため、12bit 幅にすることで"
+    },
+    {
+      "category": "探索",
+      "title": "枝刈りの処理を裏で並列実行",
+      "description": "FPGAでは処理を物理的に並列に走らせられるため、枝刈りを他の処理の裏で実行して時間コストを隠蔽できる。CPUでは有用でなかった枝刈りが有用になる可能性がある。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "CPU 実装では有用でなかった枝刈り手法も有用な可能性がある"
+    }
+  ],
+  "character": "ソフト名「一閃」とチーム名「自堕落同好会」。ハードウェアで将棋を指すというロマン性。",
+  "notes": "未実装: 打ち歩詰め判定、連続王手の千日手、静止探索・詰探索用の指し手生成。実際に出場したかは文書から不明（キャンセルチーム分にも含まれる）。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc35/team.html"
+}

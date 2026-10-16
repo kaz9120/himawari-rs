@@ -1,0 +1,118 @@
+{
+  "wcsc": 35,
+  "year": 2025,
+  "dir": "Ari_Shogi_and_Friends",
+  "team": "兵頭 優空",
+  "software": "Ari Shogi and Friends",
+  "sources": [
+    "wcsc35/appeal/Ari_Shogi_and_Friends/Ari_Shogi_and_Friends_WCSC35_appeal_0.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc35/appeal/Ari_Shogi_and_Friends/Ari_Shogi_and_Friends_WCSC35_appeal_0.pdf"
+  ],
+  "summary": "DL系AIとNNUE系AIを合議させるハイブリッド型。「DL系で優位を作りNNUE系で押し切る」役割分担が特徴で、電竜戦HWT3で準優勝した。今回はDL系評価関数の改良（SAM、独自optimizerの進化的探索、Transformer、蒸留）に注力する。定跡は搭載しない。",
+  "base": {
+    "engine": "やねうら王+dlshogi",
+    "eval_source": "Hao/tanuki-wcsc28/BLOSSOM/水匠5（NNUE側のベース）",
+    "note": "DL側はpython-dlshogi2またはふかうら王の探索部に自前学習のResNetを搭載"
+  },
+  "eval": {
+    "family": "DL+NNUE",
+    "detail": "DL側はResNet15ブロックを2つアンサンブル（20ブロック以上へ拡大予定）。NNUE側は標準NNUEの追加学習"
+  },
+  "search": {
+    "family": "αβ+MCTS",
+    "detail": "DL系とNNUE系の2エンジンを並走させ、合議で指し手を選ぶ"
+  },
+  "learning": "公開教師データ中心（Aoba系、たややん氏、GCT、強い将棋ソフトの創りかた、Qhapaq等）。今回は空きCPUで生成した少量の教師と、floodgate・WCSC・電竜戦の上位対局の序盤局面から作ったファインチューニング用データも使う",
+  "hardware": "Core i5-13400F + GeForce RTX 4060Ti",
+  "language": [
+    "Python"
+  ],
+  "claimed_strength": "第3回電竜戦ハードウェア統一戦で準優勝（異常勝ち1局がなければ3位）。DL評価関数の精度はdlshogi dr2 exhiにアンサンブルで並ぶ程度",
+  "ideas": [
+    {
+      "category": "探索",
+      "title": "DLで優位を作りNNUEで押し切る合議",
+      "description": "DL系とNNUE系に同時に局面を送って思考させる。DL系の手が出たらNNUE系を止め、NNUE系の評価値が規定値を超えるか、NNUE系の最善手がDL系の最善手より規定値以上良い場合にNNUE系の手を採用する。",
+      "originality": "独自",
+      "evidence": "HWT3で準優勝",
+      "quote": "「DL系で優位を作りNNUE系で押し切る」という作戦が割と上手くいった"
+    },
+    {
+      "category": "探索",
+      "title": "DL最善手をNNUEに短時間検証",
+      "description": "現局面にDL系の最善手を指した局面をNNUE系に1秒以下で思考させて評価値を得て、NNUE系の最善手の評価値と比較して採用手を決める。入玉模様や序盤は閾値を大きめにする。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "「現在の局面にDL系AIの最善手を適用した局面」を送って短時間( 1秒以下。条件によって変動 )思考させ"
+    },
+    {
+      "category": "評価関数",
+      "title": "ニューロン単位の混ぜ合わせ比率の進化探索",
+      "description": "Haojianシリーズ、tanuki-wcsc28、BLOSSOM、水匠5とその派生のNNUE評価関数を、ニューロンごとの混合比率を進化的アルゴリズムで探して合成する。目的は連続対局の成績向上である。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "ニューロンごとの混ぜ合わせ比率を進化的アルゴリズムで探したものを採用した"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "SAMによる平坦な解の学習",
+      "description": "Sharpness-Aware Minimizationを導入する。周辺で損失が最も悪化するパラメータで勾配を求めて更新することで、汎化や量子化に強い平坦な解を狙う。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "SAM( Sharpness-Aware Minimization )の導入"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "進化的に作る将棋用optimizer",
+      "description": "Adam、Santa、Lionなど既存optimizerの集団から、進化アルゴリズムで将棋AIの学習に適したoptimizerを作る。簡単なタスクで選別し、実運用に近い条件で軽く学習して評価し、上位から次世代を作る。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "「将棋AIの学習に適するように進化したoptimizer」はロマンに溢れている"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "アンサンブル蒸留・Transformer・左右反転拡張",
+      "description": "アンサンブルモデルからの蒸留、Transformerを取り入れたネットワーク、左右反転のデータ拡張を使い、20ブロック以上の新しい評価関数を学習する。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "アンサンブルモデルを使った蒸留"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "将棋81万を起点にした事前学習データ",
+      "description": "技巧チームが昨年使った「将棋81万」を参考にした開始局面から、標準NNUEのdepth9で事前学習用の教師を生成する。上位対局の序盤局面からはファインチューニング用の高品質データを作る。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "「将棋81万」を参考にした開始局面から、標準NNUEのdepth9で事前学習用の教師データを生成している"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "定跡を搭載しない方針",
+      "description": "定跡だけで決着がつくのが好きでないこと、半端な定跡は評価関数との相性が悪いことを理由に、定跡を作る資源を評価関数の強化へ回す。トラップのような変化を避けられる利点もあると分析している。",
+      "originality": "独自",
+      "evidence": "HWT3で定跡なしのまま準優勝",
+      "quote": "定跡だけで決着がつくのは好きではない"
+    },
+    {
+      "category": "棋風・人間らしさ",
+      "title": "MultiPVによる序盤の意図的な手の分散",
+      "description": "ふかうら王のMultiPVを使って序盤の手を意図的に散らす。ただしランダム性が強すぎてHWT3では普段指さない振り飛車で先手千日手になったため、調整する予定。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "MultiPVを使って意図的に手を散らす機能を追加"
+    },
+    {
+      "category": "解説・人間支援",
+      "title": "評価値の偶数・奇数による出所の区別",
+      "description": "合議の出力評価値を、DL系は偶数、NNUE系は奇数になるよう細工する。終盤に評価値グラフがガタガタする理由は、スケールの異なるDL系の評価値が混ざるためだと説明している。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "DL系の評価値は偶数になるように、NNUE系の評価値は奇数になるように細工している"
+    }
+  ],
+  "character": "「ロマン溢れるカスタムoptimizer」や、運のよい勝ちを正直に書く文体が特徴。振り飛車で千日手になった失敗事例も、棋譜リンク付きで載せている。",
+  "notes": "文書は仮版で後日差し替え予定と明記されている。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc35/team.html"
+}

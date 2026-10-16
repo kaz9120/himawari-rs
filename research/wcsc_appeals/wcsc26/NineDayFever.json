@@ -1,0 +1,100 @@
+{
+  "wcsc": 26,
+  "year": 2016,
+  "dir": "NineDayFever",
+  "team": "金澤 裕治",
+  "software": "NineDayFever",
+  "sources": [
+    "wcsc26/appeal/NineDayFever/NDF-2016.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc26/appeal/NineDayFever/NDF-2016.txt"
+  ],
+  "summary": "局面評価の極北を目指すBonanza改造ソフト。対戦中・探索中に現れた局面から学習の欠陥を探して修正し、三駒関係を共通パラメータに分解して2次の正則化で未知の局面に対応する。move count based pruningをStockfishから移すのに苦労した話と、レーティング的な履歴更新の発見を書く。",
+  "base": {
+    "engine": "Bonanza",
+    "eval_source": "Bonanza 6.0を改造",
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "三駒関係を共通パラメータに分解し、2次の正則化。手番の考慮と、飛角香の働きのパラメータを追加"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "Bonanzaを改造し、Stockfishを参考に探索を更新。move count based pruning。スレッド数が多いときの探索木スケジューリング"
+  },
+  "learning": "学習済みの部分を動かさず、これまでの学習データに新規局面を加えて学習する。対戦中・探索中に現れた局面から機械学習結果の欠陥を探して修正",
+  "hardware": "",
+  "language": "C",
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "探索中に現れた局面から学習の欠陥を修正",
+      "description": "対戦中や探索中に現れた局面を調べ、機械学習結果の欠陥を探して修正する。学習済みの部分は動かさず、新規局面だけで追加学習する形に変えて高速化した。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "対戦中や探索中に現れた局面を調べ、機械学習結果の欠陥を探して修正しています。"
+    },
+    {
+      "category": "評価関数",
+      "title": "三駒関係を共通パラメータに分解し2次正則化",
+      "description": "未知の局面への対応力を増すため、三駒関係を共通するパラメータに分解し、2次の正則化項を使う。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "3駒関係を共通するパラメータに分解し、2次の正則化項を使っています。"
+    },
+    {
+      "category": "評価関数",
+      "title": "飛角香の働きのパラメータ",
+      "description": "従来の三駒関係では考慮しにくかった飛・角・香の働きを考慮するパラメータを導入した。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "従来の3駒関係では考慮しにくかった飛角香の働きを考慮するパラメータを導入しています。"
+    },
+    {
+      "category": "評価関数",
+      "title": "評価値計算で手番を考慮",
+      "description": "評価値の計算で手番を考慮する。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "評価値の計算で手番を考慮しています。"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "自己対戦結果でbook.binから手を削る",
+      "description": "自己対戦の結果に基づいて、Bonanzaのbook.binから一部の手を削る。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "自己対戦結果に基づいて bonanza の book.bin から一部の手を削っています。"
+    },
+    {
+      "category": "探索",
+      "title": "move count based pruningの調査とElo式の履歴更新",
+      "description": "Stockfishのmove count based pruningを入れても効果が出なかったが、評価値を減らすのを最初の63手だけにすると効いた。これを、ベータカットした手が他の手に勝ったとみなす簡易レーティング更新（勝った側を12+差/32だけ増減）と解釈して試し、一応効果があるっぽいが誤差と報告する。",
+      "originality": "独自",
+      "evidence": "ほとんど誤差",
+      "quote": "最初の63手だけ評価値を減らすと効果がある理由がわかっただけでも良しとするか。"
+    },
+    {
+      "category": "並列・分散",
+      "title": "探索木のスケジューリング機能",
+      "description": "スレッド数が多いときの並列効率の低下を防ぐため、探索木をスケジューリングする。クラスタ並列時は、1ノードに2つの候補手を投げてCPUが遊ばないようにする構想。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "スレッド数が多いときの並列処理効率低下を防ぐため、探索ツリーのスケジューリング機能を入れました。"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "kppの3次元配列化と持ち駒0の添字削減",
+      "description": "kpp(pc_on_sq)を3次元配列にし、持ち駒数0に対応する添字を削って少し高速化する。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "kpp(pc_on_sq) を3次元配列にしています。"
+    }
+  ],
+  "character": "「局面評価の極北を目指す」と宣言し、「あまり目玉がないので」としてmove count based pruningの苦労と発見を読み物として書く。",
+  "notes": null,
+  "team_list_url": "http://www2.computer-shogi.org/wcsc26/team.html"
+}

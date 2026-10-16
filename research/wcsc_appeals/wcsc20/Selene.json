@@ -1,0 +1,60 @@
+{
+  "wcsc": 20,
+  "year": 2010,
+  "dir": "Selene",
+  "team": "西海枝昌彦",
+  "software": "Selene",
+  "sources": [
+    "wcsc20/appeal/Selene/Selene.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc20/appeal/Selene/Selene.txt"
+  ],
+  "summary": "探索アルゴリズムをコンポーネント化して選択でき、評価項目値は遺伝的アルゴリズムで調整し、中盤〜終盤の局面状況で思考時間を延ばす。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "手作り",
+    "detail": "評価項目値を遺伝的アルゴリズムでチューニング"
+  },
+  "search": {
+    "family": "不明",
+    "detail": "コンポーネント化された探索アルゴリズムを選択"
+  },
+  "learning": "遺伝的アルゴリズムで評価項目値を調整",
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "探索",
+      "title": "コンポーネント化した探索アルゴリズムの選択",
+      "description": "探索アルゴリズムを部品化し、選んで組み合わせられるようにする。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "コンポーネント化された探索アルゴリズム選択"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "遺伝的アルゴリズムによる評価値調整",
+      "description": "評価項目の値を遺伝的アルゴリズムでチューニングする。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "遺伝的アルゴリズムによる評価項目値チューニング"
+    },
+    {
+      "category": "時間管理",
+      "title": "局面状況による思考時間拡張",
+      "description": "中盤〜終盤の局面状況に応じて思考時間を延ばす。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "中盤～終盤の局面状況による思考時間拡張"
+    }
+  ],
+  "character": null,
+  "notes": "開発日記のURLのみ。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc20/team.html"
+}

@@ -1,0 +1,78 @@
+{
+  "wcsc": 25,
+  "year": 2015,
+  "dir": "Shibaura_Shougi_Jr.",
+  "team": "芝浦工業大学（五十嵐 治一ほか）",
+  "software": "芝浦将棋Jr.",
+  "sources": [
+    "wcsc25/appeal/Shibaura_Shougi_Jr./appeal.pdf"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc25/appeal/Shibaura_Shougi_Jr./appeal.pdf"
+  ],
+  "summary": "自作探索エンジン、縦3分割64bit×3のbitboardとMagic bitboard、芝浦将棋時代のTDLeaf(λ)で強化した評価関数の重みを使う学生チーム。今年は評価関数の差分計算（計算時間約10分の1、探索速度約2.3倍、勝率約72%）、Futility Pruning（約1.2倍、勝率約58%）、先読み強化を追加。2014年は13位で2次予選シード獲得。",
+  "base": {
+    "engine": "独自",
+    "eval_source": "Bonanza 6.0の特徴量、重みは2012年の芝浦将棋が最急降下TDLeaf(λ)で強化したもの（駒の重みはBonanza）",
+    "note": "探索エンジンは全面自作"
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "Bonanza 6.0の特徴量。重みはTDLeaf(λ)で強化"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "置換表、キラー、LMR、Futility Pruning、静止探索（SEE、20手まで）、先読み強化"
+  },
+  "learning": "将来は方策勾配法による強化学習を予定（現状は2012年のTDLeaf(λ)で強化した重み）",
+  "hardware": null,
+  "language": [
+    "C"
+  ],
+  "claimed_strength": "2014年大会13位。10〜11手の深さまで精度良く読めるようになったと説明",
+  "ideas": [
+    {
+      "category": "実装・高速化",
+      "title": "評価関数の差分計算",
+      "description": "局面間の駒配置の差分から評価値の差分を計算して高速化する。評価関数の計算時間が約10分の1、全体の探索速度が約2.3倍、従来プログラムに勝率約72%。",
+      "originality": "既存手法の応用",
+      "evidence": "評価計算約1/10、探索速度約2.3倍、勝率約72%",
+      "quote": "評価関数の計算時間は差分計算を行わない従来の芝浦将棋 Jr."
+    },
+    {
+      "category": "探索",
+      "title": "Futility Pruning（マージン手動調整）",
+      "description": "Bonanzaの実装法を参考にしたFutility Pruningを導入し、マージンの定数を手動調整した。探索が約1.2倍高速化し、導入前に対して勝率約58%。",
+      "originality": "既存手法の応用",
+      "evidence": "探索約1.2倍、勝率約58%",
+      "quote": "マージンの定数を手"
+    },
+    {
+      "category": "時間管理",
+      "title": "先読みの制限撤廃",
+      "description": "相手手番中の先読みから時間・深さの制限を外し、先読みがヒットしても直ちに指さず一定時間さらに探索する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "先読みがヒットした場合にもすぐに指すのではなく，一定の時間，さらに探索を行うようにしてあります．"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "縦3分割64bit×3のbitboardとMagic bitboard",
+      "description": "盤面を縦方向3領域に分けた64bit整数3つで表し、飛び駒の利きを1変数で計算できる。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "盤面は縦方向に３つの領域に分割されており"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "専門知識に頼らない自己学習",
+      "description": "人間の専門知識に頼らず、対局を通して学び人間を超えることを目標にし、将来は方策勾配法で学習する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "人間の持っている将棋に関する専門知識に頼ることなく"
+    }
+  ],
+  "character": "学生チームで、開発メンバーの変遷（2012年から4年生が引継ぎ）を紹介する。目標は「2次予選リーグで1勝」。",
+  "notes": null,
+  "team_list_url": "http://www2.computer-shogi.org/wcsc25/team.html"
+}

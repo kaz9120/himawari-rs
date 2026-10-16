@@ -1,0 +1,79 @@
+{
+  "wcsc": 33,
+  "year": 2023,
+  "dir": "Tids's_Furibisha_Feels_too_good!",
+  "team": "ヤマダ寺院将棋部（Ryoto Sawada ほか）",
+  "software": "ティー○の振り飛車気持ちよすぎだろ！",
+  "sources": [
+    "wcsc33/appeal/Tids's_Furibisha_Feels_too_good!/appeal.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc33/appeal/Tids%27s_Furibisha_Feels_too_good%21/appeal.pdf"
+  ],
+  "summary": "ふかうら王からやねうら王へリレーする形式で飛車を振る振り飛車専用ソフト。第3回電竜戦のJust Stop 26歩と同形式。振り飛車の戦型別勝率データで勝ちやすい序盤戦略を選ぶことを予定している。",
+  "base": {
+    "engine": "ふかうら王+やねうら王",
+    "eval_source": null,
+    "note": "Just Stop 26歩と同じ、ふかうら王からやねうら王へリレー形式。棋力向上エンジンをOSSで公開"
+  },
+  "eval": {
+    "family": "DL+NNUE",
+    "detail": "DL系モデルを再学習中。序盤互角局面でjs26比約+50 Elo（本番までにあと+50を目標）"
+  },
+  "search": {
+    "family": "αβ+MCTS",
+    "detail": "ふかうら王（序盤）からやねうら王へリレー"
+  },
+  "learning": "深層学習モデルを再学習。dlshogiチーム公開の教師データを活用",
+  "hardware": "Ryzen 9 5900HS + RTX 3060 Mobile（リモート）",
+  "language": [
+    "Python",
+    "C++"
+  ],
+  "claimed_strength": "js26比で序盤互角局面にて約+50 Elo。「棋力向上エンジン」で+200 Eloと主張",
+  "ideas": [
+    {
+      "category": "棋風・人間らしさ",
+      "title": "ふかうら王→やねうら王のリレーで振り飛車を貫く",
+      "description": "序盤戦略の質が上がり、定跡から外れても飛車を振る確率が高いメリット。戦型別の勝率データで勝ちやすい序盤戦略を選ぶ予定。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "序盤戦略の質が上がる、定跡から外れても飛車を振る確率が高いなどのメリットがあります"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "振り飛車の戦型別勝率に基づく序盤戦略選択",
+      "description": "各種振り飛車の戦型別の勝率データを使って、より勝ちやすい序盤戦略を選べるようにする予定。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "各種振り飛車の戦型別の勝率のデータを駆使してより勝ちやすい序盤戦略を選べるようにする予定"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "dlshogiチーム比5%以下の計算資源でのやりくり",
+      "description": "dlshogiチームの5%以下の計算資源で、公開された教師データを活用してやりくりしている。「20倍効果的な開発」ではないと断る。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "dlshogiチーム比較で 5%以下の計算資源でなんとかやりくりしてます"
+    },
+    {
+      "category": "開発手法・運用",
+      "title": "棋力向上エンジンのOSS公開",
+      "description": "棋力向上エンジンをオープンソースで公開。中の人は、これでEloを約200向上させたと主張する。",
+      "originality": "独自",
+      "evidence": "約+200 Elo",
+      "quote": "中の人はこれで棋力を eloレーティングで 200ぐらい向上させました"
+    },
+    {
+      "category": "エンタメ・演出",
+      "title": "投げ銭課金評価関数とElectron将棋対局",
+      "description": "「課金評価関数」に投げ銭してもらえるとやる気が出る、大会はElectron将棋で連続対局が快適、クラッシュは中の人が離席していたからの可能性が高い、などのPR。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "課金評価関数に投げ銭 してもらえるとやる気がでます"
+    }
+  ],
+  "character": "チーム名は「ティー○の振り飛車気持ちよすぎだろ！」。PR文章をChatGPTに考えさせ、キャラクターイラストをNovelAIで描かせ、掲示板風のツッコミコメントを添えたネタ満載の文書。「今年も飛車を振ります」。",
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc33/team.html"
+}

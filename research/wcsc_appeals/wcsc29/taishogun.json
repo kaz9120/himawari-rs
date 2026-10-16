@@ -1,0 +1,62 @@
+{
+  "wcsc": 29,
+  "year": 2019,
+  "dir": "taishogun",
+  "team": "横内 健一、横内 靖尚",
+  "software": "大将軍",
+  "sources": [
+    "wcsc29/appeal/taishogun/appeal.txt"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc29/appeal/taishogun/appeal.txt"
+  ],
+  "summary": "評価関数に主眼を置いた個人開発。過去は4駒関係（KPPP、KKPP）を使い、現在は3駒関係（KKPT型）。プロ棋譜のBonanzaメソッド学習の後に、浅い探索と深い探索の評価値の不整合を修正する強化学習を行う。",
+  "base": {
+    "engine": "やねうら王",
+    "eval_source": "elmo",
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "3駒関係。KKPT型（KPPT型より計算が小さく探索速度が約10%向上）"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": null
+  },
+  "learning": "プロ棋譜のBonanzaメソッド（手番評価とミニバッチ）で学習後、浅い探索と深い探索の評価値の不整合を修正する強化学習",
+  "hardware": "Amazon EC2 m5.24xlarge",
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "KKPT型の手番付き3駒関係",
+      "description": "3駒にKKPT型の手番を加えた評価関数を使う。KPPT型より計算コストが小さく、探索速度が約10%向上する。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "KPPT型よりも計算コストが小さいため、10%程度探索速度が向上します。"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "浅い探索と深い探索の評価値の不整合修正",
+      "description": "プロ棋譜からの学習で勝率が飽和したところで、浅い探索と深い探索の評価値の食い違いを修正する強化学習を行う。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "浅い探索結果と深い探索結果の評価値を用いて、評価値の不整合を修正していきます。"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "従来手法の学習結果を活かす（ウナギ屋のタレ）",
+      "description": "プロ棋譜なしでも評価関数を作れる時代だが、従来手法の学習結果を「ウナギ屋のタレ」のように受け継いで活用する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "従来手法の学習結果（ウナギ屋のタレ）を活用していきます。"
+    }
+  ],
+  "character": null,
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc29/team.html"
+}

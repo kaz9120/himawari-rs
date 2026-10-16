@@ -1,0 +1,145 @@
+{
+  "wcsc": 35,
+  "year": 2025,
+  "dir": "dlshogi_with_HEROZ",
+  "team": "HEROZチーム",
+  "software": "dlshogi with HEROZ",
+  "sources": [
+    "wcsc35/appeal/dlshogi_with_HEROZ/dlshogi_with_HEROZ_appeal_wcsc35_v2.pdf",
+    "wcsc35/appeal/dlshogi_with_HEROZ/dlshogi_with_HEROZ_appeal_detail_wcsc35.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc35/appeal/dlshogi_with_HEROZ/dlshogi_with_HEROZ_appeal_wcsc35_v2.pdf",
+    "https://www.apply.computer-shogi.org/wcsc35/appeal/dlshogi_with_HEROZ/dlshogi_with_HEROZ_appeal_detail_wcsc35.pdf"
+  ],
+  "summary": "DNNとMCTSによる将棋AIの代表格で、αβや3駒関係を使わない。今回はResNetの後ろにTransformerを接続した構造、9x1/1x9/1x1のラージカーネル、入玉特徴量、40ブロック512フィルタ（約2億パラメータ）へのモデル拡大が差分。累積的な特徴32項目も列挙している。",
+  "base": {
+    "engine": "dlshogi",
+    "eval_source": null,
+    "note": "局面管理と合法手生成にApery(WCSC28)を使用。dlshogiのソースはGitHub公開"
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "ResNet36ブロック+Transformer2ブロック、フィルタ512。5ブロック間隔で9x1・1x9・1x1の並列カーネルへ置換。policy/value、sigmoidで勝率出力"
+  },
+  "search": {
+    "family": "MCTS",
+    "detail": "PUCT、FPU reduction、バッチ並列、ルートでdf-pn詰み探索、末端5手詰め、確率的Ponder・Multi Ponder"
+  },
+  "learning": "elmoの自己対局で事前学習し、自己対局の強化学習。既存プログラムを1/8の割合でリーグに入れる。水匠の入玉宣言勝ち棋譜を混ぜる。SWA、ブートストラップ、同一局面の平均化など",
+  "hardware": "Amazon EC2 p5en.48xlarge（H200 8枚）",
+  "language": [
+    "C++",
+    "Python"
+  ],
+  "claimed_strength": "前大会の30b384fから40b512でレーティング+37.9 Elo（訓練データは同一ではない）",
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "ResNetの後ろにTransformerを接続",
+      "description": "ResNetは局所特徴の学習効率がよく、Transformerは大域特徴を捉えるがデータ量を要する。ResNetの出力にTransformerを繋ぎ、局所特徴を使って大域特徴を効率よく掴む構成にした。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "Transformer を ResNet の後ろに接続することで"
+    },
+    {
+      "category": "評価関数",
+      "title": "Ryfamate Cross Network型ラージカーネル",
+      "description": "Ryfamateの9x9を9x1と1x9に分解する構造を取り入れ、7x7より効率よく高精度を得た。置換層を増やすと位置情報が失われて精度が落ちるため、1x1を並列に加えて解決し、5ブロック間隔で置換する。",
+      "originality": "既存手法の応用",
+      "evidence": "層を増やしても精度が劣化しないことを確認",
+      "quote": "通常の ResNet ブロックを 5 ブロック間隔で 9x1、1x9、1x1 のカーネルに置き換える"
+    },
+    {
+      "category": "入玉",
+      "title": "宣言勝ちまでの残りを逆算する入玉特徴量",
+      "description": "27点法は先後で宣言勝ちの条件が違う。手番を直接入力すると対称性が失われるため、入玉しているか、敵陣の玉以外の枚数の残り、先手28点・後手27点までの残り点数をone-hotで入力する。",
+      "originality": "独自",
+      "evidence": "同じ訓練データで入玉特徴量ありのほうが強い。宣言勝ちの回数は増えず、入玉の見極めが上手くなったと考察",
+      "quote": "あとどれくらいで入玉宣言勝ちできるかを逆算した特徴量として与える"
+    },
+    {
+      "category": "評価関数",
+      "title": "モデルのスケーリング限界の検証",
+      "description": "40b512（約2億パラメータ）は強くなったが、50b640（約4億）は精度が上がっても探索速度が53%になり、同一持ち時間では弱くなった（H100 PCIe）。パラメータを増やすほど強くなる則は50b640付近で成り立たなくなる。精度の高いモデルは蒸留で活用できる。",
+      "originality": "独自",
+      "evidence": "40b512は+37.9 Elo。50b640は探索速度53%で弱くなる",
+      "quote": "スケーリング則は、50 ブロック 640 フィルタあたりで、成り立たなくなることがわかった"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "有望手を選ぶ自動定跡生成",
+      "description": "自分の手は最善手を1〜数手だけ登録し、相手の応手は公開定跡や棋譜の統計から確率的に選ぶ。頻出局面は深く、まれな局面は浅い定跡になる。約300万局面を登録済みで、PUCTにfloodgateの棋譜統計を混ぜて読み抜けを防ぐ。定跡は訓練データ生成と棋力測定にも活用する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "有望な手順を選択的に定跡に追加する方が良い"
+    },
+    {
+      "category": "詰み・終盤",
+      "title": "MCTSに組み込んだ多層の詰み探索",
+      "description": "末端での5手詰め、ルートでのdf-pn長手数詰め、PV上の局面へのdf-pn、詰み結果のAND/OR木としての確実な伝播を組み合わせる。GPU計算待ちのCPU空き時間で行うため速度は落ちない。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "PV 上の局面に対して、df-pn による長手数の詰み探索を行い"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "詰み探索結果を報酬にした自己対局",
+      "description": "自己対局の詰み探索の要求をキューに溜め、専用スレッドで処理する。エージェントのGPU待ちの間に完了するため、自己対局の速度を落とさず長手数詰みを使える。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "詰み探索の要求をキューに溜めて、詰み探索専用スレッドで処理する"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "既存プログラムを1/8混ぜるリーグ学習",
+      "description": "オープンソースの既存将棋プログラムを1/8の割合でリーグに加えて強化学習し、計算資源を節約しつつ戦略の弱点を埋める。入玉宣言勝ちの不足は水匠の自己対局棋譜を混ぜて補う。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "既存の将棋プログラムを 1/8 の割合でリーグに加えて強化学習を行うようにした"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "同一局面の集約・評価値補正・SWA",
+      "description": "序盤の重複局面を集約し指し手分布と勝敗を平均して1サンプルにする。記録した評価値を実際の勝率に合わせて補正し、SWAで重みを平均する。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "同一の局面を集約し、指し手の確率分布と勝敗を平均化し、1 サンプルとして学習した"
+    },
+    {
+      "category": "探索",
+      "title": "Stochastic Multi Ponder",
+      "description": "確率的Ponderと、相手の次の手を複数予測して並列探索するMulti Ponderを組み合わせる。予測手は相手局面の木のルート子ノードの訪問回数から得る。ponderhit時は第一候補を担当したエンジンに結果を引き継ぐ。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "ルートの子ノードの訪問回数を参照することで、有望な予測手を N 手取得することができる"
+    },
+    {
+      "category": "探索",
+      "title": "Optunaによる探索パラメータ最適化",
+      "description": "Optunaの枝刈りを使い、エンジン同士の連続対局の勝率を目的関数にしてPUCT定数や方策温度を最適化する。方策を確率分布で学習するとき必要になる再調整も、これで行う。",
+      "originality": "既存手法の応用",
+      "evidence": "確率分布学習後の再調整で、指し手のみ学習のモデルより強くなった",
+      "quote": "将棋エンジン同士の連続対局の勝率を目的関数として、探索パラメータの最適化に使えるようにするスクリプト"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "2値入力を1bitで転送",
+      "description": "4GPU以上ではCPU-GPU間の帯域がボトルネックになるため、2値の入力特徴量を1bitで転送し、GPU側のCUDAでfloatへ戻す。",
+      "originality": "独自",
+      "evidence": "NPS 36.6%向上",
+      "quote": "2 値の入力特徴量を float の代わりに、1bit で表現し"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "ノード再利用のツリー管理化",
+      "description": "オンライン大会でノード再利用に10秒以上かかった反省から、ハッシュ全走査をやめ、Leela Chess Zero方式のツリー管理でルートの兄弟ノードをガベージコレクションする。ノードの合流処理はできなくなる。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "ルートの兄弟ノードをガベージコレクションする方式に変更した"
+    }
+  ],
+  "character": null,
+  "notes": "v2（3/20）が要約版、detailが5/12の詳細版。累積的な特徴のうち、特に今回の差分と独自性が高いものを抽出した。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc35/team.html"
+}

@@ -1,0 +1,46 @@
+{
+  "wcsc": 34,
+  "year": 2024,
+  "dir": "Haruka",
+  "team": "小林 航太",
+  "software": "はるか",
+  "sources": [
+    "wcsc34/appeal/Haruka/wcsc34_appeal.txt"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc34/appeal/Haruka/wcsc34_appeal.txt"
+  ],
+  "summary": "ライブラリを使わず自作する初出場のプログラム。評価は手調整、探索はαβ法の予定。楽しんで参加することが目標。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "手作り",
+    "detail": "手調整"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "不明"
+  },
+  "learning": null,
+  "hardware": "Ryzen 7 5825U",
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "開発手法・運用",
+      "title": "ライブラリ不使用の自作",
+      "description": "興味から将棋プログラムを自作するため、ライブラリを使わずに作成している。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "そのためライブラリは使用せずにプログラムを作成しています"
+    }
+  ],
+  "character": null,
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc34/team.html"
+}

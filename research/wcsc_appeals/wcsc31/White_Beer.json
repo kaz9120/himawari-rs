@@ -1,0 +1,70 @@
+{
+  "wcsc": 31,
+  "year": 2021,
+  "dir": "White_Beer",
+  "team": "Barrel house",
+  "software": "白ビール",
+  "sources": [
+    "wcsc31/appeal/White_Beer/appeal.txt",
+    "wcsc31/appeal/White_Beer/appeal2021.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc31/appeal/White_Beer/appeal.txt",
+    "https://www.apply.computer-shogi.org/wcsc31/appeal/White_Beer/appeal2021.pdf"
+  ],
+  "summary": "第29回準優勝のNNUE評価関数Kristallweizen（最新のやねうら王V6.02と組み合わせ）で、DL勢を迎え撃つ「NNUEの旗頭」の壁役を演出するコンセプト。floodgateのR4000以上同士の勝者側の手だけを30分おきに自動で追加する定跡と、Multi Ponderクラスタ（AWS c5.metal 5台）で6位。",
+  "base": {
+    "engine": "やねうら王",
+    "eval_source": "Kristallweizen",
+    "note": null
+  },
+  "eval": {
+    "family": "NNUE",
+    "detail": "Kristallweizen（第29回準優勝のNNUE評価関数）"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "やねうら王V6.02。Multi Ponderのクラスタリング"
+  },
+  "learning": "評価関数は据え置き",
+  "hardware": "AWS EC2 c5.metal 5〜6台＋Windows10 PC（USI制御・マルチポンダー）",
+  "language": "C++, Go",
+  "claimed_strength": "第31回6位",
+  "ideas": [
+    {
+      "category": "探索",
+      "title": "Multi Ponderのクラスタリング",
+      "description": "第5回電王トーナメントで披露したshotgunシステムの進化版であるMulti Ponderをクラスタ化し、USI制御・マルチポンダーをWindows PCが、ポンダー部をAWS C5.metalが担う。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "第５回電王トーナメントで御披露目をした shotgun システムの進化版である Multi Ponder のクラスタリングを用います。"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "floodgate自動追加の勝者手定跡",
+      "description": "floodgateのR4000以上同士の対局から、先手・後手それぞれ勝った側の指し手だけを抽出して定跡にし、30分おきに自動で取得・追加する。DL勢の読み筋が一本道になりやすいことを知り、手を散らす処置も施した。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "R4000 以上同士の対局から、先手、後手それぞれ勝った方の指し手のみを抽出し、そのまま定跡化しています。"
+    },
+    {
+      "category": "エンタメ・演出",
+      "title": "NNUEの旗頭として引導を渡される演出",
+      "description": "DLが台頭する中、白ビールは前回準優勝のNNUE最上位として、DL勢を迎え撃つ壁になり、しかと引導を渡される演出も必要というコンセプトで、評価関数を据え置く。善戦したら「俺たちの2年間はなんだったんだろう」というネタも仕込んだ。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "負けるにしても NNUE の旗頭としてしっかり立ち塞がり、しかと引導を渡されるという演出も必要だよね？"
+    },
+    {
+      "category": "開発手法・運用",
+      "title": "二番絞りチームとのシード権の引き継ぎ",
+      "description": "DL勢の芝さんが二番絞りで別チーム参加するため、白ビールのシード権を引き継いで出場した経緯。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "せっかくのシード権はもったいないよねということで、こちらは私が引き継ぐ形で出場することになりました。"
+    }
+  ],
+  "character": "チーム名はメンバーが集まった岡山のビアバー。白ビールの命名由来（濁った白ビール→フィルターで濾過した白ビール）や、おっさんチームを自認する語りなど、ユーモラスな文体。決勝リーグで6位、二次予選は8勝0敗1分で1位通過。",
+  "notes": "2版を統合。5月版は決勝後の追記つき。追記にはDL勢と対局できず残念との感想あり。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc31/team.html"
+}

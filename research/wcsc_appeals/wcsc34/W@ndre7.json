@@ -1,0 +1,55 @@
+{
+  "wcsc": 34,
+  "year": 2024,
+  "dir": "W@ndre7",
+  "team": "櫻井 博光",
+  "software": "W@ndre7",
+  "sources": [
+    "wcsc34/appeal/W@ndre7/wandre7-appeal_wcsc34_230504.html"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc34/appeal/W%40ndre7/wandre7-appeal_wcsc34_230504.html"
+  ],
+  "summary": "dlshogi/ふかうら王ベースで、ResNet内の一部のConvolutionを3x3から7x7に変えて受容野を9x9に広げた。定跡にはペタショック定跡2400万局面を使い、序盤のDLの強みを考えて定跡パラメータを大会中に調整する可能性がある。",
+  "base": {
+    "engine": "dlshogi（ふかうら王V8.00）",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "ResNetの一部ConvolutionのカーネルをSwishのまま3x3から7x7に変更"
+  },
+  "search": {
+    "family": "MCTS",
+    "detail": "ふかうら王"
+  },
+  "learning": "強い将棋ソフトの創りかた付属データと、たややん氏公開の教師データ",
+  "hardware": "Core i5-11400H, RTX 3050",
+  "language": [
+    "Python",
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "7x7カーネルで受容野拡大",
+      "description": "ResNet中の一部のConvを3x3から7x7に変え、7x7と3x3の組合せで受容野を9x9にして盤面を広く認識させる狙い。学習のAccuracy・Lossは目に見えて良くならなかったと正直に書く。",
+      "originality": "独自",
+      "evidence": "付録のモデルと比べ目に見えた改善なし",
+      "quote": "ここまでの学習のAccuracyやLossは、強い将棋ソフトの創りかた付録のものと比べても目に見えて良くなった感触は得られていません"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "定跡で中盤へワープする損の可能性",
+      "description": "ペタショック定跡2400万局面を使うが、Deep系は序盤が強いため定跡で中盤へ飛ぶのは損かもと考え、対局中にパラメータを微調整する可能性がある。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "定跡を使って中盤付近までワープするのは損の可能性もあるため"
+    }
+  ],
+  "character": null,
+  "notes": "TanhExpも試したがSwishから変えるほどではなかった。2/7版の文書は更新前の記述として併記されている。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc34/team.html"
+}

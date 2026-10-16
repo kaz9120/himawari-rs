@@ -1,0 +1,76 @@
+{
+  "wcsc": 26,
+  "year": 2016,
+  "dir": "Yomita",
+  "team": "塚本 隆三",
+  "software": "読み太",
+  "sources": [
+    "wcsc26/appeal/Yomita/appeal.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc26/appeal/Yomita/appeal.txt"
+  ],
+  "summary": "既存技術を理解し、現代のコンピュータ将棋のスタートラインに立つことを目標とするソフト。Redundant Bitboardによる高速な指し手生成、Stockfish7ベースの探索、やねうら王の評価関数バイナリ、Lazy SMP、floodgateの敗着から人手で直す定跡が特徴。",
+  "base": {
+    "engine": "やねうら王",
+    "eval_source": "やねうら王（KKP, KPPの評価バイナリ）",
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "やねうら王のKKP/KPPをそのまま利用。VPGATHERDDで高速化"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "Stockfish7の探索部を将棋向けに調整。Lazy SMP。futilityマージンを動的に決定"
+  },
+  "learning": null,
+  "hardware": "Core i7 6700HQ",
+  "language": "C++",
+  "claimed_strength": "指し手生成祭りの局面で約400万回/秒",
+  "ideas": [
+    {
+      "category": "実装・高速化",
+      "title": "Redundant Bitboardの採用",
+      "description": "縦型bitboardが主流だが、指し手生成が速くなるとしてRedundant Bitboard（RBB）を採用する。飛車の利きテーブルを縦と横で別々に持ち、テーブルを小さくする。RBBで近接王手の1手詰め判定と王手生成も実装した。",
+      "originality": "独自",
+      "evidence": "指し手生成祭りの局面で約400万回/秒",
+      "quote": "飛車の利きのテーブルは縦横合わせたものではなく、縦と横で別々に持つようにしています。"
+    },
+    {
+      "category": "探索",
+      "title": "futilityマージンの動的決定",
+      "description": "futilityマージンを動的に決める。独自の枝刈りも入れたが効果が薄く、4/30に外した。Stockfish7のバグもいくつか見つけて直した。",
+      "originality": "独自",
+      "evidence": "棋力向上はわずか",
+      "quote": "futilityマージンを動的に決定するようにしています"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "VPGATHERDD命令で評価関数を高速化",
+      "description": "評価関数の計算にAVX2のVPGATHERDD命令を使い、高速化した。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "VPGATHERDD命令を使って高速化しました。"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "floodgateの敗着から人手で定跡を直す",
+      "description": "floodgateに常駐させて棋譜を集め、負けた将棋の定跡の敗着を探して正しい対応を登録し直す。やねうら王の定跡フォーマットからbestmove以外を除外し、手入力で追加できる形にした。自動化は未達成。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "負けた将棋に対して定跡に敗着がないか探し、正しい対応を登録しなおすことが目的です。"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "定跡に詳しい人の協力で作成",
+      "description": "定跡に詳しい人の協力で、危険な変化や最新定跡を教えてもらって作る。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "定跡に詳しい人の力を借りて作りました（予定）。"
+    }
+  ],
+  "character": "「技術的な工夫はそれほどありませんが、作者自身が既存の技術を理解し、スタートラインに立つことが目標」と書く。名前は友人が考えた。やねうら王の作者からたくさんのアドバイスを得たと感謝する。",
+  "notes": "3/24付、4/30追記あり",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc26/team.html"
+}

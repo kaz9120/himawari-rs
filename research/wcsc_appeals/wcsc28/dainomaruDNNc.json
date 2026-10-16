@@ -1,0 +1,46 @@
+{
+  "wcsc": 28,
+  "year": 2018,
+  "dir": "dainomaruDNNc",
+  "team": "チームD（大坊和美、大坊功司、菊池雅彦）",
+  "software": "dainomaruDNNc",
+  "sources": [
+    "wcsc28/appeal/dainomaruDNNc/appeal.txt"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc28/appeal/dainomaruDNNc/appeal.txt"
+  ],
+  "summary": "前年のライブラリから変えてdlshogiを使用。dlshogiの強化学習の最適化手法をMomentumSGDからRMSpropGravesに変えた1点のみが変更点。",
+  "base": {
+    "engine": "dlshogi",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "dlshogiのネット"
+  },
+  "search": {
+    "family": "MCTS",
+    "detail": "dlshogi"
+  },
+  "learning": "elmo_for_learnの教師データ（17.6GB、約5億局面）で学習。RMSpropGraves(lr=0.001)、batch256、2エポック、val_lambda=0.5",
+  "hardware": null,
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "最適化手法をRMSpropGravesへ変更",
+      "description": "dlshogiの学習の最適化手法をMomentumSGDからRMSpropGravesに変えた。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "強化学習における最適化手法をMomentumSGDからRMSpropGravesに変更した１点のみ"
+    }
+  ],
+  "character": null,
+  "notes": "elmoの教師データを使った学習と読める。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc28/team.html"
+}

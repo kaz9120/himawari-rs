@@ -1,0 +1,79 @@
+{
+  "wcsc": 28,
+  "year": 2018,
+  "dir": "HoneyWaffle",
+  "team": "渡辺 光彦",
+  "software": "HoneyWaffle",
+  "sources": [
+    "wcsc28/appeal/HoneyWaffle/appeal.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc28/appeal/HoneyWaffle/appeal.pdf"
+  ],
+  "summary": "やねうら王を改造した、最強の振り飛車党ソフトを目指すソフト。三駒関係に加えて玉の堅さの評価を別に持ち、堅く囲って鋭く攻める振り飛車を目指す。AWS接続兼時間攻めモジュールは自作。",
+  "base": {
+    "engine": "やねうら王",
+    "eval_source": "Apery（教師局面の評価値を改変して追加学習）",
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "Aperyの評価関数をベースに、教師局面生成で評価値を意図的に改変して追加学習。三駒関係に加え玉の堅さを別評価"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "やねうら王"
+  },
+  "learning": "教師局面生成時に評価値を意図的に改変して追加学習",
+  "hardware": "AWS EC2インスタンス1台",
+  "language": [
+    "C++",
+    "Go"
+  ],
+  "claimed_strength": "第27回決勝リーグ7位、第5回電王トーナメント決勝トーナメント初戦敗退",
+  "ideas": [
+    {
+      "category": "棋風・人間らしさ",
+      "title": "最強の振り飛車党ソフト",
+      "description": "三駒関係では攻めの速さが重視され玉の堅さが薄いとみて、堅さの評価を別に足し、堅く囲ってから鋭く攻める振り飛車を目指す。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "「公開されている技術を最大限に活用し、最強の振り飛車党ソフトを目指す」"
+    },
+    {
+      "category": "評価関数",
+      "title": "玉の堅さを別評価として追加",
+      "description": "やねうら王を改造し、既存の三駒評価に加えて堅さを別に評価する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "既存の3駒での評価に加え、別に堅さ評価する等"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "教師局面の評価値を意図的に改変",
+      "description": "教師局面生成時に評価値を意図的に書き換えて追加学習し、評価関数を調整する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "教師局面生成にて評価値を意図的に改変し追加学習する等で調整"
+    },
+    {
+      "category": "時間管理",
+      "title": "AWS接続兼時間攻めモジュール",
+      "description": "ローカルで動くAWS接続と時間攻めのモジュールを自作する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "AWS接続兼時間攻めモジュール（ローカルにて使用）は自作"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "持久戦寄りに調整した定跡",
+      "description": "第5回電王トーナメントの定跡をベースに、より持久戦を目指す方針で調整する。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "より持久戦を目指す方針で調整"
+    }
+  ],
+  "character": "将棋ウォーズ3級の振り飛車党の開発者。名前の由来は四角いワッフルが将棋盤に似ること、軽さ。表紙のワッフルは自宅で焼いたもの。「将棋とは何か」を問うポエム4編で、先に攻めるのが有利なら振り飛車は不利という潮流に対抗する、受けの強い振り飛車ソフトの構想を語る。",
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc28/team.html"
+}

@@ -1,0 +1,44 @@
+{
+  "wcsc": 30,
+  "year": 2020,
+  "dir": "Scherzo",
+  "team": "氏家 一朗",
+  "software": "Scherzo",
+  "sources": [
+    "wcsc30/appeal/Scherzo/scherzo_appeal_2020.pptx"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc30/appeal/Scherzo/scherzo_appeal_2020.pptx"
+  ],
+  "summary": "数手先の詰みを静的評価関数に反映する、単純なαβ探索のソフト。",
+  "base": {
+    "engine": "不明",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "手作り",
+    "detail": "数手先の詰みを静的評価関数に反映"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "単純なαβ法"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "詰みの静的評価への反映",
+      "description": "数手先の詰みを静的評価関数に反映している。",
+      "originality": "不明",
+      "evidence": null,
+      "quote": "数手先の詰みを静的評価関数に反映しています。"
+    }
+  ],
+  "character": null,
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc30/team.html"
+}

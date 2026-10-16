@@ -1,0 +1,70 @@
+{
+  "wcsc": 25,
+  "year": 2015,
+  "dir": "Mecha_Lady_Shogi",
+  "team": "メカ女子将棋部",
+  "software": "メカ女子将棋",
+  "sources": [
+    "wcsc25/appeal/Mecha_Lady_Shogi/WCSC25Mechajyo0331.pdf"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc25/appeal/Mecha_Lady_Shogi/WCSC25Mechajyo0331.pdf"
+  ],
+  "summary": "6回目の出場。文書は電王戦の資料に毛が生えた程度と断り、「全力で甘える主義♡」をテーマにJulia言語、Win/Mac/Linux対応、思考エンジンをサーバにして将棋所の環境と分離、女子部という4点をハイライトにする。評価関数はBonanzaのfv.bin（Julia実装側にバグがありそう）、探索は独自でNPSは遅い。メンバーをサイエンス・将棋・その他の才能の3軸のスコアで紹介する。",
+  "base": {
+    "engine": "独自",
+    "eval_source": "Bonanza 6.0のfv.bin",
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "Bonanzaのfv.bin（Julia実装側にバグがありそうと自己申告）"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "独自探索。sliding piecesはMailbox、他はBitBoard"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": [
+    "Julia"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "実装・高速化",
+      "title": "Julia言語製の将棋エンジン",
+      "description": "思考エンジンをほぼJulia言語で書く。Win/Mac/Linuxで動作し、複数プラットフォーム対応。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "思考エンジンはほぼJulia言語で書かれていま"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "思考エンジンのサーバ化",
+      "description": "思考エンジンをサーバにして、将棋所の動作する環境とエンジンの動作する環境の分離に成功している。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "将棋所の動作する環境とエンジンの動作する環境"
+    },
+    {
+      "category": "エンタメ・演出",
+      "title": "女子部によるかわいいコンピュータ将棋",
+      "description": "コンピュータ将棋界で唯一（自称を含む）の女子部によるソフトで、「かわいいコンピュータ将棋ソフトが一つくらいあってもいいのではないか。弱いですけどね、てへっ」と明言する。女流棋士2名が将棋監修、アート担当がお裁縫やアートディレクションを担当。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "一つくらいそんなコンピュータ将棋ソフトがあってもいいのではないでしょうか。弱いですけどね、てへっ"
+    },
+    {
+      "category": "エンタメ・演出",
+      "title": "メンバーをパラメータで紹介",
+      "description": "メンバーをサイエンス・将棋・その他の才能の3軸のスコア（100点満点）のレーダー風に紹介する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "サイエンス    将棋      その他の才能"
+    }
+  ],
+  "character": "テーマは「全力で甘える主義♡」。「明後日の方向にコンピュータ将棋界をリードしてきた」「戦国時代」「We Deliver Dream」といった自称コンサル風スライド体裁で、ソフトを「メカジョさん」と愛称で呼ぶ。出場回の戦歴（第20回42位〜第24回35位）もタイムラインで示す。",
+  "notes": "締切のため暫定の3/31版で、一部のスライドは『続きはのちに更新します』と未完。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc25/team.html"
+}

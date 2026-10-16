@@ -1,0 +1,70 @@
+{
+  "wcsc": 23,
+  "year": 2013,
+  "dir": "YSS",
+  "team": "山下 宏",
+  "software": "YSS",
+  "sources": [
+    "wcsc23/appeal/YSS/20130512appeal.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc23/appeal/YSS/20130512appeal.txt"
+  ],
+  "summary": "Bonanza Methodで学習した評価関数に切り替え、Stockfishの探索を参考にしたYssFishとして参加した。学習では専用の全幅探索＋簡易静止探索を使い、入玉だけは旧評価関数をそのまま組み込む。2台の楽観合議（歩の価値に正規分布の乱数を振る）を使う。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": "Stockfishの探索を参考にしたYssFish。GPSFISHのソースも参考"
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "Bonanza Methodで学習。王との2駒関係、金銀の絶対位置など22万項目。進行度は学習なし"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "Stockfish流の探索。0.5手延長"
+  },
+  "learning": "Bonanza Method。学習専用に全幅探索＋簡易静止探索を用いる",
+  "hardware": "2台による楽観合議",
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": "Bona6に対し1手1秒で勝率0.53、4秒で0.58、10秒で0.64程度（400局）。楽観合議で約+40Elo（推定）",
+  "ideas": [
+    {
+      "category": "並列・分散",
+      "title": "歩の価値に乱数を振る楽観合議",
+      "description": "2台のマシンの楽観合議で、歩の価値100（交換200）に標準偏差15の正規分布乱数を振る。乱数表サイズは16384。",
+      "originality": "独自",
+      "evidence": "合議の効果はおそらく+40Elo程度（未計測）",
+      "quote": "歩の価値100(交換200)で標準偏差15の正規分布乱数を振ってます。"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "学習用の専用探索",
+      "description": "YSSの探索そのままだと深さ2では手をほとんど生成せず学習が歪むため、専用の全幅探索＋簡易静止探索で学習させる。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "専用の全幅探索＋簡易静止探索、で学習させています。"
+    },
+    {
+      "category": "入玉",
+      "title": "入玉は旧評価関数をそのまま使用",
+      "description": "入玉の学習がうまくいかないため旧評価関数を組み込む。先手玉が4段目に上がれば約+1500点、相手入玉時は7段目から過激に加点する。",
+      "originality": "独自",
+      "evidence": "先手玉4段目で+1500点程度",
+      "quote": "先手玉が4段目に上がれば＋1500点ぐらい加算して"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "EC2での並列化の断念と知見",
+      "description": "Amazon EC2の32スレッド機でGPS風クラスタ並列を試したが、16スレッドでほぼNPSが上がらず断念。囲碁のAyaでは伸びたため、YSSの並列化の問題と推測する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "16スレッド動作ではほとんどnpsが上がらず"
+    }
+  ],
+  "character": null,
+  "notes": null,
+  "team_list_url": "http://www2.computer-shogi.org/wcsc23/team.html"
+}

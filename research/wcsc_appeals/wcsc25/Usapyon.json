@@ -1,0 +1,54 @@
+{
+  "wcsc": 25,
+  "year": 2015,
+  "dir": "Usapyon",
+  "team": "うさぴょんの育ての親",
+  "software": "うさぴょん",
+  "sources": [
+    "wcsc25/appeal/Usapyon/appeal.pdf"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc25/appeal/Usapyon/appeal.pdf"
+  ],
+  "summary": "1999年に鈴木将棋をベースに開発を始めた古参ソフト。ほぼ単純なαβに手チューニング評価、局面を戻す関数がなく（「進める」関数が異常に複雑）スタックに局面を積む構造が特徴。自陣9×5・5×5升目の一致で定跡手順にボーナスを与える。今大会を最後に、次はうさぴょん2を予告する。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": "1999年に鈴木将棋をベースに開発開始（現在は無関係）"
+  },
+  "eval": {
+    "family": "手作り",
+    "detail": "手でチューニング"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "ほぼ単純なαβ、YBWC8並列、LMR。「進める」関数で交換値を再計算し仮評価で手を並べる"
+  },
+  "learning": null,
+  "hardware": "AMD FX 9590 4.7GHz",
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": "将棋倶楽部24でR1600〜1800と推測",
+  "ideas": [
+    {
+      "category": "定跡・序盤",
+      "title": "自陣一部の一致で定跡手順にボーナス",
+      "description": "盤面全体が定跡から外れても、自陣のみ9×5升目や5×5升目が一致していれば、定跡の手順にボーナスを与えて選びやすくする。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "「自陣のみ９×５枡」「自陣のみ５×５枡」一致してい"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "「戻す」関数を持たない局面管理",
+      "description": "局面を進める関数はあるが戻す関数はなく、スタックに局面を積む。進める関数が異常に複雑で、盤面全体の交換値を再計算し、指し手の仮評価も一手進めて求める。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "局面を「進める」関数は持っているが、局面を「戻す」関数は持っていない"
+    }
+  ],
+  "character": "「実力は一次予選を突破できるくらい → 突破できなかった（爆）」と自虐を交えた来歴紹介。「何故か強いプログラムに一発入れ、格下に一発もらう」など。今大会を最後に「うさぴょん2」を予告する。",
+  "notes": null,
+  "team_list_url": "http://www2.computer-shogi.org/wcsc25/team.html"
+}

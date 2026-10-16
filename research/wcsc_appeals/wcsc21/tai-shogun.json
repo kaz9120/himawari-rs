@@ -1,0 +1,62 @@
+{
+  "wcsc": 21,
+  "year": 2011,
+  "dir": "tai-shogun",
+  "team": "横内健一",
+  "software": "大将軍",
+  "sources": [
+    "wcsc21/appeal/tai-shogun/taishogun.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc21/appeal/tai-shogun/taishogun.txt"
+  ],
+  "summary": "Visual C++ 2010 64bitで、Bitboardの論理計算にSSEを使う。局面の巻き戻し（Unmove）を行わず、駒位置4点間の学習と差分計算の評価関数を持つ。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "駒位置4点間の学習。差分計算"
+  },
+  "search": {
+    "family": "不明",
+    "detail": null
+  },
+  "learning": null,
+  "hardware": null,
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "実装・高速化",
+      "title": "SSEによるBitboard論理計算",
+      "description": "Bitboardの論理計算にSSE（SIMD）を使い、合法手を計算する。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "Bitboardの論理計算にSSE(SIMD)を利用"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "局面の巻き戻しを行わない",
+      "description": "局面を戻す（Unmove）処理を行わない構造にする。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "局面の巻き戻し(Unmove)は行わない"
+    },
+    {
+      "category": "評価関数",
+      "title": "駒位置4点間の学習",
+      "description": "駒の位置4点間の関係を評価関数の学習対象にする。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "駒位置4点間の学習"
+    }
+  ],
+  "character": null,
+  "notes": "一覧ではキャンセル欄。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc21/team.html"
+}

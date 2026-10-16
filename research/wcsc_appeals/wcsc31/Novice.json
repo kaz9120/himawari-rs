@@ -1,0 +1,52 @@
+{
+  "wcsc": 31,
+  "year": 2021,
+  "dir": "Novice",
+  "team": "Team Novice",
+  "software": "Novice",
+  "sources": [
+    "wcsc31/appeal/Novice/wcsc31.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc31/appeal/Novice/wcsc31.pdf"
+  ],
+  "summary": "2015年から開発し、2018年からインテルコラボレーションセンターの協力でチーム開発に移行。第29回で独創賞を受賞し、2020年からAlphaZeroを参考にした実装に移った。TensorRTで最適化し、V100×8のHPE Apollo 6500で動かす。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "AlphaZeroを参考にしたDL"
+  },
+  "search": {
+    "family": "MCTS",
+    "detail": "AlphaZero型"
+  },
+  "learning": null,
+  "hardware": "HPE Apollo 6500 Gen10、第2世代Xeon、NVIDIA V100 x8",
+  "language": "C++, Python",
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "実装・高速化",
+      "title": "TensorRTによる推論最適化",
+      "description": "AlphaZeroを参考にした実装をTensorRTで最適化する。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "TensorRTによる最適化"
+    },
+    {
+      "category": "開発手法・運用",
+      "title": "役割分担のチーム開発",
+      "description": "代表、主任開発者、ハードウェア、最適化・プロファイル、棋力、機械学習の6人が役割を分担するチーム開発。インテルのコラボレーションセンターが協力。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "2018年からインテル®コラボレーションセンターの協力を得て、チーム開発に移行"
+    }
+  ],
+  "character": null,
+  "notes": "第29回の独創賞受賞に言及。主任開発者は中屋敷太一。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc31/team.html"
+}

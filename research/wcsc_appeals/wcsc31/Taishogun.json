@@ -1,0 +1,70 @@
+{
+  "wcsc": 31,
+  "year": 2021,
+  "dir": "Taishogun",
+  "team": "横内 健一、横内 靖尚",
+  "software": "大将軍",
+  "sources": [
+    "wcsc31/appeal/Taishogun/Taishogun_appeal.pdf",
+    "wcsc31/appeal/Taishogun/Taishogun_appeal_detail.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc31/appeal/Taishogun/Taishogun_appeal.pdf",
+    "https://www.apply.computer-shogi.org/wcsc31/appeal/Taishogun/Taishogun_appeal_detail.pdf"
+  ],
+  "summary": "今あえて3駒関係（15年前の技術）の評価関数で参加し、最新の探索アルゴリズムと組み合わせてどこまで戦えるかを試す。評価関数は従来から使うkkpt-kpp型で、評価値の差分計算をいち早く取り入れた。やねうら王をベースにし、水匠2の棋譜で学習。",
+  "base": {
+    "engine": "やねうら王",
+    "eval_source": "水匠2（学習棋譜の生成）",
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "kkpt-kpp型の3駒関係。手番をkkp（自玉・敵玉・その他の駒）で評価"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "やねうら王"
+  },
+  "learning": "水匠2で生成した棋譜（探索深さ6または10、投了スコア5000または詰み）で学習。深さ10・詰みまで指す棋譜のほうが勝率が高い評価関数になる",
+  "hardware": "Ryzen Thread Ripper 3990X, 64GB",
+  "language": "C++",
+  "claimed_strength": "対水匠2（4スレッド・4sec・500局）で100勝363敗37分（勝率0.216）",
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "kkpt-kpp型の3駒関係",
+      "description": "手番をkkp（自玉・敵玉・その他の駒）で評価するkkpt-kpp型を採用し、計算量が少ない利点がある。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "大将軍では従来から kkpt-kpp 型を採用している。"
+    },
+    {
+      "category": "評価関数",
+      "title": "評価値の差分計算をいち早く導入",
+      "description": "動いた駒のみの評価値を更新する差分評価を早くから採用。4駒関係の計算で、全駒の組み合わせの計算が膨大になる経験から、差分で3駒分の計算量で済むことを利用。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "評価関数の差分評価（動いた駒のみの評価値を更新）をいち早く取り入れて採用している"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "3駒+αの特徴追加は計算コストで負けた",
+      "description": "3駒関係にさらに特徴αを足すと、同じNPSなら強い評価関数ができたが、計算コスト増で結果として弱くなったため、従来の3駒関係に戻した。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "特徴の追加により評価値の計算コストが高くなるため、結果としては 3 駒のみの モデルよりも弱くなってしまった"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "4駒関係は将棋に不向きという経験則",
+      "description": "以前のN4/N4Sは4駒関係の評価関数を使ったが、中盤以降に深い読みができず負けが多かった。詰む・詰まないを読み切るには軽い評価関数が向くと考える。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "将棋では 4 駒関係のような重い評価関数は不向きとの考え"
+    }
+  ],
+  "character": null,
+  "notes": "概要版はスライド画像でテキスト化は題名のみだったため原本PDFを確認した。内容は評価関数中心、3駒関係のkkpt-kpp型、やねうら王と水匠2の利用。追試は教師局面のシャッフルで再現困難と明記。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc31/team.html"
+}

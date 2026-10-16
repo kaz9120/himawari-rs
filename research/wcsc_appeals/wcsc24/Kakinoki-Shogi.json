@@ -1,0 +1,35 @@
+{
+  "wcsc": 24,
+  "year": 2014,
+  "dir": "Kakinoki-Shogi",
+  "team": "柿木 義一",
+  "software": "柿木将棋",
+  "sources": [
+    "wcsc24/appeal/Kakinoki-Shogi/appeal.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc24/appeal/Kakinoki-Shogi/appeal.txt"
+  ],
+  "summary": "前年とほぼ同じで、バグ修正と評価関数の少しの改良のみ。floodgateレート2178。前年のアピール（全幅探索のみに統一、0.5手延長、並列化）も添付。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "Bonanza法で学習、評価項目は独自"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "全幅探索、0.5手延長、並列化"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": null,
+  "claimed_strength": "floodgate 2178（2014-03-26時点）",
+  "ideas": [],
+  "character": null,
+  "notes": "2013年の文書も添付。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc24/team.html"
+}

@@ -1,0 +1,54 @@
+{
+  "wcsc": 28,
+  "year": 2018,
+  "dir": "Kakinoki-Shogi",
+  "team": "柿木 義一",
+  "software": "柿木将棋",
+  "sources": [
+    "wcsc28/appeal/Kakinoki-Shogi/appeal.txt"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc28/appeal/Kakinoki-Shogi/appeal.txt"
+  ],
+  "summary": "1985年頃開発開始の老舗。手作業評価の選択探索から、2007年にボナンザの影響で全幅探索+ボナンザ法の評価関数に移行。ほぼ同じソフトを同じハードで出し続けており、ベンチマークになると書く。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "ボナンザ法で学習。利きデータを使い、bit-boardは使わない。評価項目は独自"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "全幅探索、山下さんの0.5手延長方式、並列化PVS、NULL move枝刈、王手延長、静止探索"
+  },
+  "learning": null,
+  "hardware": "Core i7 3960X EE",
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": "floodgateレーティング約2300（2017年追記）",
+  "ideas": [
+    {
+      "category": "探索",
+      "title": "0.5手延長方式の採用",
+      "description": "山下宏さんの0.5手延長方式を探索に採用する。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "山下さんの 0.5手延長方式を採用"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "bit-boardを使わず利きデータを使う",
+      "description": "bit-boardを使わず、利きデータを持って評価項目を独自に作る。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "利きデータを使用し、bit-boardは使っていない。"
+    }
+  ],
+  "character": "「参加する意味はあまりありませんが、ほぼ同じソフトを同じハードで参加しているので、ベンチマークにはなる」と書く。",
+  "notes": "2013〜2018年の毎年のアピール文を連ねた文書。今年は昨年とほとんど変わらない。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc28/team.html"
+}

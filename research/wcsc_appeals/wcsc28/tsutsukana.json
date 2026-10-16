@@ -1,0 +1,62 @@
+{
+  "wcsc": 28,
+  "year": 2018,
+  "dir": "tsutsukana",
+  "team": "一丸 貴則",
+  "software": "ツツカナ",
+  "sources": [
+    "wcsc28/appeal/tsutsukana/WCSC28_tsutsukana_20180331.txt"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc28/appeal/tsutsukana/WCSC28_tsutsukana_20180331.txt"
+  ],
+  "summary": "指し手を読む深さを機械学習で決めることが一番の特徴（詳細は第21回の文書を参照）。二駒関係・玉の安全度・8つの進行度を使うコンパクトな評価関数と、Kindergarten Bitboardsの利きデータを使う。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "二駒の位置関係、玉の安全度、8つの進行度を使うコンパクトで表現力の高い評価関数"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "読む深さ（reduction）を機械学習とハンドチューニング（探索中の動的情報）で決める"
+  },
+  "learning": "自己対戦の結果を利用した評価関数の学習",
+  "hardware": "Core i9 7980XE 18コア",
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "探索",
+      "title": "読む深さを機械学習で決定する",
+      "description": "指し手を読む深さ（reduction）を、機械学習と探索中の動的情報によるハンドチューニングで決める。ツツカナの一番の特徴。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "ツツカナの一番の特徴は指し手を読む深さを機械学習によって決定していることです。"
+    },
+    {
+      "category": "評価関数",
+      "title": "8つの進行度と玉の安全度を使うコンパクトな評価",
+      "description": "二駒の位置関係、玉の安全度、8つの進行度を使い、コンパクトで表現力の高い評価関数にする。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "二駒の位置関係や玉の安全度、8つの進行度を駆使したコンパクトで表現力の高い評価関数"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "Kindergarten Bitboardsによる利きデータ",
+      "description": "シンプルで移植性に優れたKindergarten Bitboardsを使って利きデータを作る。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "Kindergarten Bitboardsを使用したシンプルで移植性に優れた利きデータ"
+    }
+  ],
+  "character": null,
+  "notes": "詳細は第21回選手権のアピール文書を参照とする。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc28/team.html"
+}

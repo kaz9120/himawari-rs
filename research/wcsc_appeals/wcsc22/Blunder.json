@@ -1,0 +1,62 @@
+{
+  "wcsc": 22,
+  "year": 2012,
+  "dir": "Blunder",
+  "team": "下山晃",
+  "software": "Blunder",
+  "sources": [
+    "wcsc22/appeal/Blunder/Blunder-WCSC22.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc22/appeal/Blunder/Blunder-WCSC22.txt"
+  ],
+  "summary": "昨年と主要なアルゴリズムは同じで、新しい試みは言語をC#からC++へ変更、実現確率探索風の深さ制御、学習の調整の3点。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": null
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "実現確率探索風の探索深さ制御を導入"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "探索",
+      "title": "実現確率探索風の探索深さ制御",
+      "description": "実現確率探索のような探索深さ制御を新たに導入した。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "実現確率探索風の探索深さ制御の導入"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "評価関数・オーダリング・枝刈りの学習調整",
+      "description": "評価関数、オーダリング、枝刈りの学習を調整した。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "評価関数、オーダリング、枝刈りの学習の調整"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "C#からC++へ移行",
+      "description": "使用言語をC#からC++に変更した。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "使用言語変更（C# → C++）"
+    }
+  ],
+  "character": null,
+  "notes": "前年（第21回）のアピール文書を参照とする。前年の内容はwcsc20のBlunderと同系統。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc22/team.html"
+}

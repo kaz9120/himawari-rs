@@ -1,0 +1,78 @@
+{
+  "wcsc": 28,
+  "year": 2018,
+  "dir": "Gasyou!!!!!!!!!",
+  "team": "森岡 祐一",
+  "software": "GA将!!!!!!!!!",
+  "sources": [
+    "wcsc28/appeal/Gasyou!!!!!!!!!/Gasyou9_Appeal_for_WCSC28.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc28/appeal/Gasyou%21%21%21%21%21%21%21%21%21/Gasyou9_Appeal_for_WCSC28.pdf"
+  ],
+  "summary": "プロや強豪ソフトの棋譜を使わずにどこまで強くなれるかを追う個人ソフト。自己対局の強化学習で評価関数を調整し、損失関数を複数項の和にした「PGLeaf Zwei」で学習する。並列化はDropoutで評価関数を壊した多数決合議。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "駒割+三駒関係+α"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "αβ。並列化は並列αβではなく多数決合議（クライアント8並列）。ABC探索ベースの詰将棋ルーチン"
+  },
+  "learning": "評価関数パラメータをランダム初期化し、自己対局とパラメータ修正を繰り返す。損失=PGLeaf項+TDLeaf(λ)項+交差エントロピー項+L2正則化項（PGLeaf Zwei）",
+  "hardware": null,
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "棋譜を使わない自己対局のみの強化学習",
+      "description": "エキスパートの棋譜を使わず、GA将同士の自己対局だけで評価関数を学習するコンセプト。2007年から強化学習を採用した最古参だと主張。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "「エキスパート（≒プロ棋士、強豪プログラム）の棋譜を用いずに、どこまで強くなれるかを追求する」"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "PGLeaf Zwei（複合損失）",
+      "description": "AlphaGo Zeroに触発され、勝率最大化（PGLeaf）・評価精度（TDLeaf）・浅い探索と深い探索の一致率（交差エントロピー）・過学習抑制（L2）の4項を足した損失で学習する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "損失関数＝PGLeaf項＋TDLeaf(λ)項＋交差エントロピー項＋L2正則化項"
+    },
+    {
+      "category": "並列・分散",
+      "title": "Dropoutで多様化した多数決合議",
+      "description": "並列αβ探索ではなく、シングルスレッドのクライアント8個による多数決合議。各クライアントは評価関数パラメータの一部をランダムに0クリアして多様性を出す（文殊やBonanza Felizと異なる）。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "Dropout を用いて一部の評価関数パラメータをランダムに 0 クリアする方式です。"
+    },
+    {
+      "category": "エンタメ・演出",
+      "title": "名前の「！」の数がメジャーバージョン",
+      "description": "ソフト名のビックリマークの数がメジャーバージョンを表す（Ver.9で9個）。名称は初期にGAを使っていたことに由来。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "“GA将!!!!!!!!!”の‘!’の数はメジャーバージョンです。"
+    },
+    {
+      "category": "エンタメ・演出",
+      "title": "独創的で面白い将棋を見せる",
+      "description": "一次予選突破は難しいと見て、「独創的で面白い将棋を観てもらう」ことを目標にする。",
+      "originality": "不明",
+      "evidence": null,
+      "quote": "「独創的で面白い将棋を観てもらう事」を目標にして開発中です。"
+    }
+  ],
+  "character": "ライブラリ勢全盛の中で独創性を目標に掲げる。5五将棋にも同一の学習ルーチンで対応し、GPW杯5五将棋大会で優勝経験がある。Bonanzaと同期のデビュー（2006年）。",
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc28/team.html"
+}

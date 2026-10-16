@@ -1,0 +1,46 @@
+{
+  "wcsc": 35,
+  "year": 2025,
+  "dir": "Mebae_Shogi",
+  "team": "藤原 正人",
+  "software": "芽生将棋",
+  "sources": [
+    "wcsc35/appeal/Mebae_Shogi/appeal_250503.txt"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc35/appeal/Mebae_Shogi/appeal_250503.txt"
+  ],
+  "summary": "NNUEの最先端の学習に興味を持った開発者が、「棋譜は量より質」という仮説のもと、公開ライブラリと高品質な棋譜でマシンが高性能でなくても強い評価関数を作る構成に取り組んだ。",
+  "base": {
+    "engine": "やねうら王",
+    "eval_source": null,
+    "note": "YaneuraOu_NNUE_halfKP256-V830Git_AVX2"
+  },
+  "eval": {
+    "family": "NNUE",
+    "detail": "nnue-pytorchのhalfkp_1024x2-8-64ブランチで学習"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "やねうら王"
+  },
+  "learning": "たややん氏のPSV 1.5億局面を、epoch-size 1Mでlossが逓減するまで300epoch",
+  "hardware": "Core i7-10750",
+  "language": [
+    "Python"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "質重視の教師データ仮説",
+      "description": "棋譜データは量より質と言われることから、高品質な棋譜を使えばマシンが高性能でなくても強い評価関数を作れるという仮説を立てて取り組んだ。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "高品質な棋譜からならマシンが高性能でなくても、より強い評価関数が作れるという仮説を立てて"
+    }
+  ],
+  "character": null,
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc35/team.html"
+}

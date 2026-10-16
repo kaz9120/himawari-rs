@@ -1,0 +1,46 @@
+{
+  "wcsc": 30,
+  "year": 2020,
+  "dir": "nozomi",
+  "team": "大森 悠平",
+  "software": "nozomi",
+  "sources": [
+    "wcsc30/appeal/nozomi/nozomi_appeal_2020.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc30/appeal/nozomi/nozomi_appeal_2020.pdf"
+  ],
+  "summary": "Stockfishをベースに、非線形（NNUE同構造のNN）と線形の評価関数を混ぜるハイブリッド評価関数を使うソフト。時間がなく安易な道しか選べず、昨年や一昨年版にも勝てない状況だと自己申告している。",
+  "base": {
+    "engine": "Stockfish",
+    "eval_source": "Kristallweizen（非線形部分の初期値）",
+    "note": "Stockfishベース、Aperyを初期に参考、NNUE部はやねうら王がベース"
+  },
+  "eval": {
+    "family": "NNUE",
+    "detail": "NNUEと同構造のNN（非線形）と線形評価関数のハイブリッド"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": null
+  },
+  "learning": null,
+  "hardware": "Amazon EC2 c5.24xlarge",
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": "昨年どころか一昨年版にもほとんど勝てない（本人申告）",
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "非線形と線形のハイブリッド評価関数",
+      "description": "NNUEと同構造のNN（非線形）と、従来の線形評価関数を組み合わせる。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "非線形評価関数と線形評価関数のハイブリッド評価関数です"
+    }
+  ],
+  "character": null,
+  "notes": "他者データ・プログラムの使用理由を詳しく書く（Kristallweizenは旧ライブラリ登録で選手権で安全に使えるため選定）",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc30/team.html"
+}

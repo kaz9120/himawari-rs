@@ -1,0 +1,54 @@
+{
+  "wcsc": 22,
+  "year": 2012,
+  "dir": "AWAKE",
+  "team": "巨瀬亮一",
+  "software": "AWAKE",
+  "sources": [
+    "wcsc22/appeal/AWAKE/appeal.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc22/appeal/AWAKE/appeal.txt"
+  ],
+  "summary": "128bitのbitboardと配列で盤面を持ち、飛角香の利きにrotated bitboardを使う。指し手を分類ごとに逐次生成し、SSEとC++テンプレートで高速化する。評価関数は学習が不調で手調整の予定。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "手作り",
+    "detail": "学習がうまくいっていないため手調整のパラメータを使う予定"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "PVS＋反復深化、null move、LMR、hash move・SEE・killer・historyでオーダリング。並列化なし"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": "指し手生成は初期局面で約1000万回/秒、指し手生成祭局面で約500万回/秒（Core i7 2620M）",
+  "ideas": [
+    {
+      "category": "実装・高速化",
+      "title": "指し手分類ごとの逐次生成",
+      "description": "駒を取る手と銀以外の成る手、取らない手と銀の成り、打つ手、不成の手に分け、不成は通常探索では生成しない。",
+      "originality": "既存手法の応用",
+      "evidence": "初期局面で約1000万回/秒",
+      "quote": "指し手生成は指し手の分類ごとに"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "128bit Bitboard＋SSE＋テンプレート",
+      "description": "64bit変数2つの128bit bitboardと配列を持ち、飛角香にrotated bitboardを使う。bitboard演算にSSE、先手後手関数にC++テンプレートを使う。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "bitboardの論理演算にSSEを使用して高速化を図っています"
+    }
+  ],
+  "character": null,
+  "notes": null,
+  "team_list_url": "http://www2.computer-shogi.org/wcsc22/team.html"
+}

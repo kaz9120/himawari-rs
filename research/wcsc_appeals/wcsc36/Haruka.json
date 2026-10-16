@@ -1,0 +1,62 @@
+{
+  "wcsc": 36,
+  "year": 2026,
+  "dir": "Haruka",
+  "team": "小林 航太",
+  "software": "はるか",
+  "sources": [
+    "wcsc36/appeal/Haruka/Haruka_wcsc36_appeal_v2.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc36/appeal/Haruka/Haruka_wcsc36_appeal_v2.pdf"
+  ],
+  "summary": "チェスのAlphaGateau（GNNベースのAlphaZero）を将棋に応用する。局面をマスのノードと駒の動きのエッジからなるグラフとして表現し、10層のResGATEAUブロックで処理する。ルール部分と学習にnshogiを使う。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": "nshogiをルールと学習に利用。モデルはAlphaGateau論文（arXiv:2410.23753）を将棋に応用"
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "GNN（AlphaGateau）。ResGATEAUブロック10層に、value headとpolicy headが分岐。policyは4548エッジの多クラス分類"
+  },
+  "search": {
+    "family": "MCTS",
+    "detail": "記載なし（AlphaZero系）"
+  },
+  "learning": "nshogiの自己対戦棋譜（将棋81万初期局面）を教師局面に使用",
+  "hardware": "RTX4090（Runpod）",
+  "language": [
+    "Python"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "将棋局面をグラフ化してGNNで処理",
+      "description": "駒の動きをエッジ、各マスをノードとして局面をグラフにし、GNNで処理する。ノード139（盤面81と持ち駒29×2）、エッジ4548、ノード特徴30次元、エッジ特徴19次元。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "駒の動きをグラフのエッジ、各マスをグラフのノードとして、将棋の局面をグラフとして表現し、GNN で処理を行います。"
+    },
+    {
+      "category": "評価関数",
+      "title": "持ち駒のノードとエッジ設計",
+      "description": "持ち駒の1枚目のノードは盤面の全マスへ、2枚目以降は1つ前のノードへエッジを張り、持ち駒の枚数を伝播させる。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "2 枚目以降に対応するノードは 1 つ前のノードへとエッジを張るようにしています。"
+    },
+    {
+      "category": "評価関数",
+      "title": "エッジ特徴量を明示的に更新",
+      "description": "GATEAUレイヤーではエッジ特徴量をノードと同等に扱って明示的に更新し、policyをエッジ（4548通り）の分類として出力する。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "エッジ特徴量をノードと同等に扱い、明示的に更新します。"
+    }
+  ],
+  "character": null,
+  "notes": "元論文の構造を使っており、将棋への応用が主な新規性。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc36/team.html"
+}

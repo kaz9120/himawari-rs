@@ -1,0 +1,44 @@
+{
+  "wcsc": 23,
+  "year": 2013,
+  "dir": "Shogi_Boy",
+  "team": "不明（Shogi Boy）",
+  "software": "Shogi Boy",
+  "sources": [
+    "wcsc23/appeal/Shogi_Boy/CS23-apeal-sboy.docx"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc23/appeal/Shogi_Boy/CS23-apeal-sboy.docx"
+  ],
+  "summary": "達人一人の棋譜だけから、その達人の棋風に近い評価関数を学習するのが目標。学習時は一人の達人が指した手のみを教師にする。",
+  "base": {
+    "engine": "不明",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "不明",
+    "detail": "特定の達人の棋風を学習した評価関数"
+  },
+  "search": {
+    "family": "不明",
+    "detail": null
+  },
+  "learning": "一人の達人の棋譜のみ、その達人が指した手のみを学習",
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "棋風・人間らしさ",
+      "title": "達人別の棋風を学習する評価関数",
+      "description": "達人ごとに棋風が違うことに着目し、一人の達人の棋譜だけを使い、その達人が指した手のみを学習して、棋風に近い評価関数を作る。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "達人が何に重点をおいて指し手を決定しているか、すなわち棋風を"
+    }
+  ],
+  "character": null,
+  "notes": "短い文書。開発者名は不明。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc23/team.html"
+}

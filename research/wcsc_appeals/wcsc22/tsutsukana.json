@@ -1,0 +1,60 @@
+{
+  "wcsc": 22,
+  "year": 2012,
+  "dir": "tsutsukana",
+  "team": "一丸貴則",
+  "software": "ツツカナ",
+  "sources": [
+    "wcsc22/appeal/tsutsukana/WCSC22_tsutsukana_20120330.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc22/appeal/tsutsukana/WCSC22_tsutsukana_20120330.txt"
+  ],
+  "summary": "読む深さを機械学習で決める手法を引き継ぎ、20手前後の先読みを行う。テスト棋譜での正解手と他の手の読み深さの差は約1.6手。末端付近は前向き枝刈りを多用し、kindergarten bitboardsでコードを簡潔に保つ。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "不明",
+    "detail": null
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "指し手の絶対消費深さの学習による探索。末端付近はrazoring、futility pruning、move count based pruning"
+  },
+  "learning": "プロ棋譜から指し手の絶対消費深さを学習（前年のアピール文書を参照）",
+  "hardware": null,
+  "language": null,
+  "claimed_strength": "20手前後の先読み",
+  "ideas": [
+    {
+      "category": "探索",
+      "title": "学習した消費深さで読む深さを決める探索",
+      "description": "前年の「指し手の相対消費深さを利用した探索」を継続。テスト棋譜の正解手とその他の手のreduction深さの平均差は約1.6手。",
+      "originality": "独自",
+      "evidence": "正解手とその他の手の読み深さの差は約1.6手",
+      "quote": "ツツカナの一番の特徴は、指し手を読む深さを機械学習によって決定していることです"
+    },
+    {
+      "category": "探索",
+      "title": "末端付近は前向き枝刈りに切り替え",
+      "description": "探索の末端付近は費用対効果の問題で学習手法を使わず、razoring、futility pruning、move count based pruning、経験的に不要な手の除外を行う。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "探索の末端付近ではコストパフォーマンスの問題で上記の手法は使用しておらず"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "kindergarten bitboardsでコードを簡潔に",
+      "description": "データ構造にkindergarten bitboardsを採用し、ソースを簡潔に保ちながらbitboardを各所で使えるようにする。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "データ構造ではkindergarten bitboardsを採用し"
+    }
+  ],
+  "character": null,
+  "notes": "詳細は第21回の文書を参照。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc22/team.html"
+}

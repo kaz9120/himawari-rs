@@ -1,0 +1,44 @@
+{
+  "wcsc": 24,
+  "year": 2014,
+  "dir": "Selene",
+  "team": "西海枝 昌彦",
+  "software": "Selene",
+  "sources": [
+    "wcsc24/appeal/Selene/Selene.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc24/appeal/Selene/Selene.txt"
+  ],
+  "summary": "アルゴリズムの使用可否と固定値をランダムに変えたプログラム同士を対局させ、勝ち残ったものを採用する。静止探索は複数種類を用意して丸ごと採否を決める。評価値はプロ棋譜約5万局から機械学習する。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "プロ棋譜約5万局から機械学習"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "静止探索を複数種類から選ぶ"
+  },
+  "learning": "プロ棋士の棋譜約5万局",
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "研究・実験的",
+      "title": "アルゴリズムと定数を対局で選ぶ",
+      "description": "アルゴリズムの使用可否や固定値をランダムに変えたプログラム同士を対局させ、勝ち残ったものを採用する。静止探索も複数種類から丸ごと採否を決める。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "勝ち残ったものを採用しています。"
+    }
+  ],
+  "character": null,
+  "notes": "前年から強化学習をやめ、プロ棋譜学習に移った。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc24/team.html"
+}

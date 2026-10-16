@@ -1,0 +1,70 @@
+{
+  "wcsc": 27,
+  "year": 2017,
+  "dir": "Shueso",
+  "team": "竹内 章",
+  "software": "習甦",
+  "sources": [
+    "wcsc27/appeal/Shueso/Shueso_wcsc27.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc27/appeal/Shueso/Shueso_wcsc27.txt"
+  ],
+  "summary": "玉の安全度に対応した非線形の駒の価値と、玉の筋・手番に対する2駒の相対位置関係を評価項目にするソフト。教師あり学習の後、フィッシャーランダムチェスに準じた2494800通りの初期局面で自己対戦する強化学習を行う。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "その他",
+    "detail": "駒の価値（駒の利き・持駒・手番から算出する玉の安全度に対応した非線形関数）と駒の働き（玉の筋と手番に対する玉以外の2駒の相対位置関係）"
+  },
+  "search": {
+    "family": "不明",
+    "detail": null
+  },
+  "learning": "1. 棋譜の指し手と勝敗、読みを入れた評価値を教師にしたミニバッチ学習。2. 強化学習: 2494800通りの初期局面から自己対戦、割引報酬は評価値の推移をフィードバックして推定した勝率、古い世代の棋譜も割合を減らして再利用",
+  "hardware": "AWS EC2 c3.8xlarge",
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "フィッシャーランダム風の2494800初期局面で自己対戦",
+      "description": "フィッシャーランダムチェスに準じた2494800通りのユニークな初期局面から自己対戦して強化学習する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "フィッシャーランダムチェスに準じたユニークな初期局面2494800からの自己対戦"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "評価値の推移から推定した勝率を割引報酬に",
+      "description": "自己対戦棋譜での評価値の推移をフィードバックして勝率を推定し、割引報酬とする。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "割引報酬は自己対戦棋譜における評価値の推移をフィードバックして推定された勝率"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "古い世代の棋譜をサンプリング割合を下げて再利用",
+      "description": "古い世代の棋譜も、ミニバッチ学習でのサンプリング割合を減らしながら再利用する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "古い世代の棋譜もミニバッチ学習におけるサンプリングの割合を減らしながら再利用"
+    },
+    {
+      "category": "評価関数",
+      "title": "玉の安全度に応じた非線形の駒価値",
+      "description": "駒の価値を、盤面全体の駒の利きと持駒および手番から算出した玉の安全度に対応した非線形関数にする。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "玉の安全度に対応した非線形関数"
+    }
+  ],
+  "character": null,
+  "notes": null,
+  "team_list_url": "http://www2.computer-shogi.org/wcsc27/team.html"
+}

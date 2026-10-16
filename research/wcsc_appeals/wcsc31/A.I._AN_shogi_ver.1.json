@@ -1,0 +1,78 @@
+{
+  "wcsc": 31,
+  "year": 2021,
+  "dir": "A.I._AN_shogi_ver.1",
+  "team": "兵頭 優空",
+  "software": "A.I. AN shogi ver.1",
+  "sources": [
+    "wcsc31/appeal/A.I._AN_shogi_ver.1/appealWCSC31.rtf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc31/appeal/A.I._AN_shogi_ver.1/appealWCSC31.rtf"
+  ],
+  "summary": "中学生が作るPython製のAI。ニューラルネットを遺伝的アルゴリズムで学習し、残り時間や手数の条件で簡易モンテカルロ探索と切り替えて指す。将棋のルール以外を教えない状態から学ぶ。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "その他",
+    "detail": "自前のニューラルネット（Kerasなど不使用）。着手の価値を出力し、python-shogiの合法手のみ指す"
+  },
+  "search": {
+    "family": "その他",
+    "detail": "劣化版の原始モンテカルロ探索（MCS）。終局までプレイアウト。ニューラルネットとMCSを残り時間や手数で切り替える"
+  },
+  "learning": "ニューラルネットを遺伝的アルゴリズムで学習。個体ごとに対ランダム・後手番・平手で3局ずつ対局して適応度を測り、上位2個体を親に交叉と突然変異を行う",
+  "hardware": null,
+  "language": [
+    "Python"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "遺伝的アルゴリズムでNNを学習",
+      "description": "3局ずつの対局で勝ち+1000・負け-100・手数ごと-0.1点の適応度を付け、父2/3・母1/3で値を選び乱数を足す。全個体が同点なら全パラメータを再乱数化する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "ニューラルネットの学習(パラメーター更新)に遺伝的アルゴリズムを使用している。"
+    },
+    {
+      "category": "評価関数",
+      "title": "方策出力から着手価値出力へ改造",
+      "description": "方策出力だと合法手を指すことから学習する必要があり非合法手が多かったため、出力を着手の価値に改造した。学習済みパラメータはそのまま流用でき、合法手のみ指すようになった。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "ニューラルネットに方策ではなく価値を出力させることにした。"
+    },
+    {
+      "category": "探索",
+      "title": "NNとMCSの切り替え",
+      "description": "ニューラルネットが非合法手を出した場合や残り時間・手数の条件で、ランダムかMCSが代わりに指す。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "残り持ち時間やターン数等の条件で上記の異なる2つのA.I.を切り替えながら戦う"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "ルール以外の知識なしで学習",
+      "description": "棋譜や定跡を使わず、将棋のルール以外を知らない状態から学ぶ。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "将棋についてルール以外知らない状態からニューラルネットは学習していくこと。"
+    },
+    {
+      "category": "ハードウェア",
+      "title": "少ない計算資源で動く設計",
+      "description": "中学生で財力がないため、小さなリソースでも力を出せるように設計。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "少ないリソースでもなるべく力を発揮できるように設計されていること。"
+    }
+  ],
+  "character": "中学生開発者。目標は「相手に瞬殺されないこと」で、勝つのは願い事に近いという控えめな姿勢。友達がいないから開発者が1人、などの自虐も交える。",
+  "notes": "python-shogiライブラリで合法手生成と通信を処理。学習がうまくいかなければ小さいモデルで出場する保険に言及。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc31/team.html"
+}

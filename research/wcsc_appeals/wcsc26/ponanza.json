@@ -1,0 +1,76 @@
+{
+  "wcsc": 26,
+  "year": 2016,
+  "dir": "ponanza",
+  "team": "山本 一成、下山 晃",
+  "software": "ponanza",
+  "sources": [
+    "wcsc26/appeal/ponanza/WSCS.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc26/appeal/ponanza/WSCS.txt"
+  ],
+  "summary": "Magic BitboardとMakeListの38固定化で高速化し、序盤の定跡を多腕バンディット問題として学習する。評価関数はプロ棋士の棋譜によるボナンザメソッドに、深い探索結果を浅い探索へフィードバックする手法を重ね、約80億局面の深い探索結果で学習する。クラスタは楽観合議。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "まずプロ棋士の棋譜でボナンザメソッド、次に深い探索結果を浅い探索にフィードバックする形で作る"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "Lazy SMP。クラスタは楽観合議"
+  },
+  "learning": "約80億局面前後の深い探索結果を用いて学習",
+  "hardware": null,
+  "language": "C++, C#",
+  "claimed_strength": "第25回選手権優勝を前提に優勝を目指す",
+  "ideas": [
+    {
+      "category": "定跡・序盤",
+      "title": "序盤を多腕バンディット問題として学習",
+      "description": "序盤の局面を強化学習の多腕バンディット問題と捉え、プロ棋士に頼らずより良い手を探す。従来のプロの体系を外れる手で勝つことを狙い、見たことのない戦いを見せたいとする。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "序盤の局面を強化学習の世界で見られる多腕バンディット問題と捉えてより良い手を探すようにしている。"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "深い探索結果を浅い探索にフィードバック",
+      "description": "プロ棋士の棋譜でボナンザメソッドを使ったのち、自身の深い探索結果を浅い探索結果にフィードバックして評価の精度を上げる。現在は80億局面前後の深い探索結果で学習する。",
+      "originality": "独自",
+      "evidence": "80億局面前後",
+      "quote": "自身の深い探索結果を浅い探索結果にフィードバックするようにして作成している。"
+    },
+    {
+      "category": "並列・分散",
+      "title": "楽観合議のクラスタ",
+      "description": "クラスタ部分は例年通り楽観合議で行う。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "クラスター部分は例年通り楽観合議をする予定である。"
+    },
+    {
+      "category": "並列・分散",
+      "title": "Lazy SMPの採用",
+      "description": "Lazy SMPがいいと聞いて試したところ良い結果だった。",
+      "originality": "再現・追従",
+      "evidence": null,
+      "quote": "LazySMPという手法がいいと伺ったのでやってみたら良い結果となった。"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "Magic BitboardとMakeList 38固定化",
+      "description": "高速化のため、Magic BitboardとMakeListの38固定化などの工夫をした。多くのソフトに広まったと述べる。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "MagicBitboard 及び MakeList の 38 固定化などがある。"
+    }
+  ],
+  "character": "「年を追うごとに厳しさが増している」と述べ、観客に見たことのない戦いを見せたいと書く。",
+  "notes": null,
+  "team_list_url": "http://www2.computer-shogi.org/wcsc26/team.html"
+}

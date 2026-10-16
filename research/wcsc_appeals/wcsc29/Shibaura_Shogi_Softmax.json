@@ -1,0 +1,70 @@
+{
+  "wcsc": 29,
+  "year": 2019,
+  "dir": "Shibaura_Shogi_Softmax",
+  "team": "芝浦工業大学（五十嵐治一、横田直之、吉野拓真、岩本裕大）",
+  "software": "芝浦将棋Softmax",
+  "sources": [
+    "wcsc29/appeal/Shibaura_Shogi_Softmax/appeal-4.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc29/appeal/Shibaura_Shogi_Softmax/appeal-4.pdf"
+  ],
+  "summary": "αβ探索ではなく、ボルツマン分布による確率的なノード選択を使うMonte Carlo Softmax探索を研究するチーム。プレイアウトなしで内部ノードの評価値を子の選択確率による期待値として更新し、方策勾配による評価関数の教師付き学習も提案する。",
+  "base": {
+    "engine": "Bonanza",
+    "eval_source": null,
+    "note": "合法手生成に芝浦将棋Jr.（Magic bitboard）、評価関数の特徴量はBonanza 6.0.0をそのまま使用"
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "Bonanza 6.0.0の特徴量。方策勾配を用いた教師付き学習"
+  },
+  "search": {
+    "family": "その他",
+    "detail": "MC Softmax探索。ボルツマン分布で確率的に選択、末端で1段展開、期待値を逆向きにバックアップ。末端評価は静止探索（αβ）"
+  },
+  "learning": "Bonanzaメソッドを一般化した方策勾配による教師付き学習。正解手以外の評価値も利用",
+  "hardware": "Core i9-9900K（会場）、36コア72スレッドWS予定",
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "探索",
+      "title": "MC Softmax探索",
+      "description": "min-maxの代わりに、指し手の良さを使ったボルツマン分布π(a|s)=exp(E/T)/Σexp(E/T)で確率的にノードを選んで末端まで降り、末端で1段展開してバックアップする。内部ノードの評価値は子の選択確率による期待値で、温度を下げるとmin-maxに近づく。プレイアウトなしでMCTSと異なり確率的選択である。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "ノード評価値の min-max 演算ではなく，確率分布に基づく選択（Softmax 探索）を使用しています。"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "方策勾配による教師付き学習",
+      "description": "Bonanzaメソッドを一般化し、正解手だけでなく正解手以外の評価値も学習データに使う。さらにモンテカルロ・サンプリングとバックアップだけで探索木の全leafの特徴量を学習する案がある。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "本学習法では，正解手以外の手の評価値も学習データとして利用することが可能です。"
+    },
+    {
+      "category": "探索",
+      "title": "同一局面のノード共有（合流点管理）",
+      "description": "同一局面に1つのノードを割り当て、専用ハッシュテーブルで複数親を管理して、同じ局面の展開の繰り返しを避ける（動作が不安定で未完成）。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "同じ局面には一つのノードを割り当てる処理を追加しました。"
+    },
+    {
+      "category": "並列・分散",
+      "title": "スレッドごとに温度を変える構想",
+      "description": "各スレッドが探索木を共有し、温度の高いスレッドは広く浅く、低いスレッドは狭く深く探索するバリエーションを持たせる。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "選択時に温度の高いスレッドや低いスレッドがあって、広く浅く探索するスレッドや狭く深く読むスレッドなどのバリエーションを持たせることも可能"
+    }
+  ],
+  "character": "Stockfish系が主流の中、確率的探索で新しい探索・学習方式を研究する面白さを強調。最終目標は、プロ棋譜なしの自己対局で人類を超え、新しい定跡や戦法を創出すること。",
+  "notes": "大学研究室のチーム。コンピュータ将棋協会のゲーム・プログラミングワークショップの論文を多数引用",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc29/team.html"
+}

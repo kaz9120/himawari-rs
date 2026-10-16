@@ -1,0 +1,54 @@
+{
+  "wcsc": 23,
+  "year": 2013,
+  "dir": "Sunfish",
+  "team": "久保 亮介",
+  "software": "Sunfish",
+  "sources": [
+    "wcsc23/appeal/Sunfish/appeal2013.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc23/appeal/Sunfish/appeal2013.txt"
+  ],
+  "summary": "ビットボードをやめて駒番号の配列表現にし、各マスに短い利き12方向・長い利き8方向・玉からの仮想の利き8方向を持つ。玉との位置関係で引くテーブルで王手の可否を高速判定する。C++のtemplateを多用。探索はSunfish 2.0相当で、実装が追いつかず劣化版と述べる。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": "Sunfish 2.0系"
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "Bonanza 6.0の評価関数（一覧より）"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "Sunfish 2.0とほぼ同じ"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "実装・高速化",
+      "title": "玉からの仮想の利きによる王手判定",
+      "description": "各マスに玉からの仮想の利き8方向を持たせ、玉との位置関係をインデックスにしたテーブルで「ある駒が動くと王手になりうるか」を高速に判定する。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "「ある駒が移動することで王手しうるかどうか」を"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "配列表現への回帰とtemplate多用",
+      "description": "bitboardとの併用をやめて駒番号の配列表現にし、C++のtemplate関数を多用する。効果は未評価。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "去年と異なり今年は C++ の template 関数を多用しています。"
+    }
+  ],
+  "character": null,
+  "notes": "ソースコードはsourceforge.jpで公開。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc23/team.html"
+}

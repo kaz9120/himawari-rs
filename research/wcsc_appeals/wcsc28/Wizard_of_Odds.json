@@ -1,0 +1,46 @@
+{
+  "wcsc": 28,
+  "year": 2018,
+  "dir": "Wizard_of_Odds",
+  "team": "David Wada（アメリカ）",
+  "software": "オッズの魔法使い",
+  "sources": [
+    "wcsc28/appeal/Wizard_of_Odds/2018_appeal.txt"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc28/appeal/Wizard_of_Odds/2018_appeal.txt"
+  ],
+  "summary": "流行りのモンテカルロ探索に手を出し、既存パーツ（Bonanza 6の評価関数・詰将棋探索）を組み合わせたソフト。プレイアウトは終局まで指さず途中で打ち切り、優勢な方を勝ちとする。実装は「モンテカルロ付きの並列最良優先探索」のようになった。",
+  "base": {
+    "engine": "Bonanza",
+    "eval_source": "Bonanza 6の評価関数",
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "Bonanza 6から拝借"
+  },
+  "search": {
+    "family": "MCTS",
+    "detail": "終局まで指さず途中で打ち切り、優勢側を勝ちとするプレイアウト。深さ優先にバイアスを掛けた、モンテカルロ付き並列最良優先探索。静的探索なし。詰将棋探索を併用"
+  },
+  "learning": null,
+  "hardware": "Core i7 5960X 4.2GHz（OC）",
+  "language": [
+    "Java"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "探索",
+      "title": "打ち切りプレイアウトと深さ優先バイアスのモンテカルロ探索",
+      "description": "プレイアウトを終局まで指さず数手で打ち切り、評価の優勢な方を勝ちとする。深さ優先にバイアスを掛け、結果としてモンテカルロ付きの並列最良優先探索になった。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "プレイアウトは終局まで指さない － ？？手程度で打ち切り、優勢な方を 勝ち とします"
+    }
+  ],
+  "character": "「絶賛社畜労働中なので、出来合いのパーツを組み合わせてみましょう」「単に我が怠け者なだけです」と、軽い自虐を交える。",
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc28/team.html"
+}

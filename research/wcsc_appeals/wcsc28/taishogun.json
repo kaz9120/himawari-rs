@@ -1,0 +1,70 @@
+{
+  "wcsc": 28,
+  "year": 2018,
+  "dir": "taishogun",
+  "team": "横内 健一、横内 靖尚",
+  "software": "大将軍",
+  "sources": [
+    "wcsc28/appeal/taishogun/appeal.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc28/appeal/taishogun/appeal.pdf"
+  ],
+  "summary": "評価関数に主眼を置く。プロの棋譜によるBonanzaメソッド（手番付きKKPT、ミニバッチ）に、浅い探索と深い探索の評価値の不整合を直す強化学習を重ねる2段階学習。探索はやねうら王。",
+  "base": {
+    "engine": "やねうら王",
+    "eval_source": "elmo（定跡や追加学習用に使用申請のみ）",
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "3駒関係（手番付きKKPT型）。過去は4駒関係（KPPP、KKPP）"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "やねうら王のライブラリ"
+  },
+  "learning": "1. プロの棋譜でBonanzaメソッド（ミニバッチ・手番評価）。2. 勝率が飽和したら、浅い探索と深い探索の評価値の不整合を修正する強化学習",
+  "hardware": "Xeon E5-2687W v4 x2、128GB",
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "ミニバッチを使ったBonanzaメソッド",
+      "description": "Bonanzaメソッドにミニバッチを取り入れ、学習を安定させて短時間で成果を確認できるようにする。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "ミニバッチを用いることで、学習が安定し、短時間で学習の成果を確認することができます。"
+    },
+    {
+      "category": "評価関数",
+      "title": "手番付きKKPT型",
+      "description": "3駒に手番を加えたKKPT型を採用する。KPPT型より計算コストが小さく、探索速度が10%程度向上する。",
+      "originality": "既存手法の応用",
+      "evidence": "探索速度10%向上（KPPT比）",
+      "quote": "KPPT 型よりも計算コストが小さいため、10%程度探索速度が向上します。"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "浅い探索と深い探索の評価値の不整合を修正",
+      "description": "プロ棋譜からの学習で勝率が飽和したあと、浅い探索結果と深い探索結果の評価値の不整合を修正する強化学習をする。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "浅い探索結果と深い探索結果の評価値を用いて、評価値の不整合を修正していきます。"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "従来手法の学習結果を「ウナギ屋のタレ」として混ぜる",
+      "description": "プロの棋譜を使わなくても評価関数を作れる時代だが、従来手法の学習結果を「ウナギ屋のタレ」のように継ぎ足してミックスして使う。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "従来手法の学習結果（ウナギ屋のタレ）とミックスして活用していきます。"
+    }
+  ],
+  "character": null,
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc28/team.html"
+}

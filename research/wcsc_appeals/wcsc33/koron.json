@@ -1,0 +1,46 @@
+{
+  "wcsc": 33,
+  "year": 2023,
+  "dir": "koron",
+  "team": "野田 煌介",
+  "software": "koron",
+  "sources": [
+    "wcsc33/appeal/koron/appeal.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc33/appeal/koron/appeal.pdf"
+  ],
+  "summary": "やねうら王とtanuki-の評価関数を使い、序盤向けと終盤向けの2つのNNUEを手数で切り替える。切替の最適な手数を調査中。",
+  "base": {
+    "engine": "やねうら王",
+    "eval_source": "tanuki-",
+    "note": "水匠は棋譜生成に使用"
+  },
+  "eval": {
+    "family": "NNUE",
+    "detail": "halfkp-256x2-32-32-1と、halfkp_1024x2-8-32の2つを使い分け"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "やねうら王"
+  },
+  "learning": null,
+  "hardware": "Amazon EC2 c6a.24xlarge",
+  "language": [
+    "Python"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "手数で2つのNNUEを切り替え",
+      "description": "通常のhalfkp（256x2-32-32）と大きなhalfkp_1024x2-8-32を用意し、一定の手数で評価関数を入れ替えて、序盤が得意な評価関数と終盤が得意な評価関数を両立させる。最適な切替手数を調査中。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "一定の手数で評価関数を入れ替え、序盤が得意な評価関数と終盤が得意な評価関数の両立を目指しています。"
+    }
+  ],
+  "character": null,
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc33/team.html"
+}

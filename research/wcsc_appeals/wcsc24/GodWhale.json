@@ -1,0 +1,47 @@
+{
+  "wcsc": 24,
+  "year": 2014,
+  "dir": "GodWhale",
+  "team": "鈴木 雅博",
+  "software": "大合神クジラちゃん",
+  "sources": [
+    "wcsc24/appeal/GodWhale/appeal.html"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc24/appeal/GodWhale/appeal.html"
+  ],
+  "summary": "Bonanza 6.0を元に、ニコニコ生放送のリスナーPCをクラスタ化して動かす。PC性能で優先順位を変える。ソースは後日公開。",
+  "base": {
+    "engine": "Bonanza",
+    "eval_source": null,
+    "note": "ボナンザ6.0を元に開発"
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "Bonanza 6.0"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "Bonanza 6.0"
+  },
+  "learning": null,
+  "hardware": "ニコニコ生放送リスナーのPC",
+  "language": [
+    "C",
+    "Perl"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "並列・分散",
+      "title": "視聴者PCのクラスタ化",
+      "description": "ニコニコ生放送のリスナーのPCでクラスタリングし、PC性能に応じて優先順位を変える。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "ニコニコ生放送のリスナーＰＣでクラスタリングを行う"
+    }
+  ],
+  "character": "視聴者のPCが計算資源になる参加型。",
+  "notes": null,
+  "team_list_url": "http://www2.computer-shogi.org/wcsc24/team.html"
+}

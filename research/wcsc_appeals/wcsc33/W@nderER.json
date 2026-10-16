@@ -1,0 +1,81 @@
+{
+  "wcsc": 33,
+  "year": 2023,
+  "dir": "W@nderER",
+  "team": "櫻井 博光",
+  "software": "W@nderER",
+  "sources": [
+    "wcsc33/appeal/W@nderER/wanderer_p-appeal_wcsc33_230502.html",
+    "wcsc33/appeal/W@nderER/WanderER_wcsc33_appeal2 WanderER.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc33/appeal/W%40nderER/wanderer_p-appeal_wcsc33_230502.html",
+    "https://www.apply.computer-shogi.org/wcsc33/appeal/W%40nderER/WanderER_wcsc33_appeal2%20WanderER.pdf"
+  ],
+  "summary": "入玉宣言勝ちを積極的に目指すソフト。評価関数は、第3回電竜戦で使ったHalfKP-KingSafety Distinguish Golds（HKPKSDG）アーキテクチャで、水匠5を同型に移して追加学習した。",
+  "base": {
+    "engine": "やねうら王",
+    "eval_source": "HKPKSDG型の水匠5（水匠5の中身をコピーして追加学習）",
+    "note": "定跡はFloodgate上位棋譜を手調整したもの"
+  },
+  "eval": {
+    "family": "NNUE",
+    "detail": "HalfKP-KingSafety Distinguish Golds型NNUE（NPSは標準型の約2/3）"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "やねうら王"
+  },
+  "learning": "やねうら王V5.33にGaussian_Lambdaを組み込んだ学習部で、水匠のSuishopsv-150mや書籍付録データなどを使い学習。候補A〜Dを対水匠5の勝率で比較し、Cを採用",
+  "hardware": "Amazon EC2 c6a.metal",
+  "language": [
+    "C++",
+    "Python"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "入玉",
+      "title": "詰みよりも入玉宣言勝ちを目指す",
+      "description": "入玉して点数も十分なのに、相手の玉を寄せに行って手数制限で勝負が紛れる将棋ソフトを見かけたことが開発の動機。詰みよりも宣言勝ちを狙うエンジンを作る。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "詰みよりも宣言勝ちを目指すエンジンがあれば面白いのではないか"
+    },
+    {
+      "category": "評価関数",
+      "title": "玉の位置を考慮したNNUEアーキテクチャ",
+      "description": "標準NNUE（HalfKP 256x2-32-32-1）を拡張し、玉の位置を考慮したアーキテクチャを試す。HKPKSDG型は標準型の約2/3のNPS。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "玉の位置を考慮したネットワークアーキテクチャ型の NNUE を試している。"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "標準型水匠5のHKPKSDG化と追加学習",
+      "description": "水匠5の中身をコピーしたHKPKSDG型を作り、KingSafety部のWeightを0埋めした状態から学習で値が付いても強さを損なわないことを目標に追加学習した。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "KingSafety 部分の Weight が 0 埋めされており、学習でこの領域に値が付いた上で強さも損なわないことを目標とした。"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "Gaussian_Lambdaを組み込んだ学習",
+      "description": "やねうら王V5.33にBontaさんのGaussian_Lambdaを組み込んだ学習部で、パラメータ候補を比較した。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "やねうら王 V5.33 に Bonta さんの Gaussian_Lambda を組みこんだ学習部を作成し"
+    },
+    {
+      "category": "開発手法・運用",
+      "title": "対水匠5勝率とロスの両面で候補選定",
+      "description": "候補A〜Dを、各種ロスと、ノード数固定・秒数固定、平手と互角局面集での対水匠5勝率で比べた。Dはmove accuracyが上がったが秒数固定で劣り、Cを採用。ロスが良くても強さに直結しないことを報告。",
+      "originality": "既存手法の応用",
+      "evidence": "Cが対水匠5で50%前後（ノード固定で46-8-46）",
+      "quote": "最終的に選手権では C の評価関数を使用した。"
+    }
+  ],
+  "character": "「入玉宣言勝ちを積極的に目指す」を貫く。AobaZeroやTMOQ、爆裂駒拾太郎など入玉志向の後継が現れる中、自身の宣言勝ちが達成できていないことへの「もどかしさ」を述べる。",
+  "notes": "事前のHTML（5月2日更新）と詳細PDF（5月19日）の2本。表の数値の一部（hirate eval等）は抜き出しが崩れていて読み取りにやや曖昧。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc33/team.html"
+}

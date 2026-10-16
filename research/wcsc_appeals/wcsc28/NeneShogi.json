@@ -1,0 +1,79 @@
+{
+  "wcsc": 28,
+  "year": 2018,
+  "dir": "NeneShogi",
+  "team": "日髙 雅俊",
+  "software": "ねね将棋",
+  "sources": [
+    "wcsc28/appeal/NeneShogi/wcsc28_appeal_20180430.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc28/appeal/NeneShogi/wcsc28_appeal_20180430.pdf"
+  ],
+  "summary": "深層学習の評価関数（Policy+Value）とMCTSで指す、AlphaZero型のソフト。探索をPythonからC++に移し、AWSのV100 8枚をプロセス間キューでつないで約3万NPSを出す。floodgateレートはSDT5から1000以上上がった。",
+  "base": {
+    "engine": "やねうら王（USI・合法手）",
+    "eval_source": "やねうら王配布のdepth10・110億局面の教師データ",
+    "note": null
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "14層のResidual CNN、中間層192ch。入力86ch（Ponanza資料参考）、出力139ch（AlphaZero資料参考）。勝率と指し手の事前確率を出力"
+  },
+  "search": {
+    "family": "MCTS",
+    "detail": "AlphaZero型MCTS（シングルスレッド）。別スレッドでルートから詰将棋探索"
+  },
+  "learning": "やねうら王の教師棋譜で教師あり学習（指し手と勝敗を回帰、評価値は不使用）、Momentum SGD。探索なしの指し手一致率約40%、floodgateレート約1700。自己対戦強化学習は未実施",
+  "hardware": "AWS上のNVIDIA Tesla V100 x 8（Amazon EC2 p3.16xlarge）",
+  "language": [
+    "Python",
+    "C++"
+  ],
+  "claimed_strength": "標準30,000NPS、最大60,000NPS。SDT5からfloodgateレートが1000以上上昇",
+  "ideas": [
+    {
+      "category": "定跡・序盤",
+      "title": "置換表のプリロードで定跡を代用",
+      "description": "floodgate2017年の棋譜に100回以上出た局面それぞれを100万回読ませた置換表を初期値としてロードし、定跡の代わりにする。定跡を外れても浅い読みの結果が残る。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "100 回以上登場した局面それぞれを 100 万回ずつ読ませた状態の置換表を初期値としてロードすることで代用します。"
+    },
+    {
+      "category": "並列・分散",
+      "title": "Chainerの評価プロセスを複数立てる自作キュー",
+      "description": "Chainerがマルチスレッドに向かないため、評価プロセスを複数立て、C++のメインエンジンと自作のプロセス間キューでつなぎ、GPU8枚を活かす。512局面のミニバッチを非同期で評価する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "Chainer を用いた評価プロセスを複数立てて、C++ で書かれたメインのエンジンプロセスとプロセス間キュー（自作）で接続しました。"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "float16とTensor Coreで高速化",
+      "description": "モデルをfloat16にしTensor Coreを有効にして、V100でランダム入力に対し約9,000NPSを得た。",
+      "originality": "既存手法の応用",
+      "evidence": "9,000NPS（GPU1枚、評価のみ）",
+      "quote": "float16（半精度浮動小数点数）にし、Tensor Core を有効にすることで"
+    },
+    {
+      "category": "詰み・終盤",
+      "title": "ルートからの別スレッド詰将棋探索",
+      "description": "通常探索とは別のスレッドでルート局面から詰将棋探索を行い、詰みなら通常探索の結果を上書きして詰ませる。末端での浅い詰み探索は、NPSが下がるため見送った。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "この結果が詰みの場合、通常探索の結果を上書きして詰ませに行きます。"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "MCTSの見えない変化",
+      "description": "MCTSは前向き枝刈りと似た性質があり、NPSが上がっても見えない変化がある。意外な手を指されて評価が一気に悪化する事象に有効な対策がまだないと報告する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "MCTS は前向き枝刈りと同様の性質があり、NPS が向上しても見えない変化があるようです。"
+    }
+  ],
+  "character": null,
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc28/team.html"
+}

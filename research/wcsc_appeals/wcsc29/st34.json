@@ -1,0 +1,54 @@
+{
+  "wcsc": 29,
+  "year": 2019,
+  "dir": "st34",
+  "team": "田中 智",
+  "software": "st34",
+  "sources": [
+    "wcsc29/appeal/st34/appeal.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc29/appeal/st34/appeal.pdf"
+  ],
+  "summary": "初参加。Pythonでライブラリを使わず、ニューラルネットワーク評価関数を使う。局面評価と詰み評価で別の評価関数を使い、読みが深くなると幅を狭める予定。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "NN評価関数。局面の評価と詰みの評価で異なる評価関数を使用予定"
+  },
+  "search": {
+    "family": "不明",
+    "detail": "読みが深くなると読みの幅を小さくする"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": [
+    "python"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "局面評価と詰み評価で評価関数を分ける",
+      "description": "局面の評価と詰みの評価に、異なるニューラルネットワーク評価関数を使う予定。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "局面の評価と詰みの評価で，異なる評価関数を使用予定"
+    },
+    {
+      "category": "探索",
+      "title": "読みが深くなると幅を小さくする",
+      "description": "探索が深くなるほど読みの幅を小さくする。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "読みが深くなると，読みの幅を小さくする"
+    }
+  ],
+  "character": null,
+  "notes": "文書は短い箇条書きのみ",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc29/team.html"
+}

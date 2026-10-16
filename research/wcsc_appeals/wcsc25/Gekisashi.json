@@ -1,0 +1,52 @@
+{
+  "wcsc": 25,
+  "year": 2015,
+  "dir": "Gekisashi",
+  "team": "激指チーム",
+  "software": "激指",
+  "sources": [
+    "wcsc25/appeal/Gekisashi/appeal.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc25/appeal/Gekisashi/appeal.txt"
+  ],
+  "summary": "前年と同一内容。実現確率による狭く深い探索と、平均化パーセプトロンの高速学習。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "平均化パーセプトロン"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "実現確率探索、ロジスティック回帰による遷移確率"
+  },
+  "learning": "平均化パーセプトロン、学習時の基本深さ8",
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "探索",
+      "title": "実現確率による狭く深い探索",
+      "description": "局面の実現確率を打ち切りに使い、有効分岐数約2〜2.5で20手以上先を読める。",
+      "originality": "独自",
+      "evidence": "有効分岐数約2〜2.5",
+      "quote": "人間のエキスパートの思考法と似た狭くて深い探索を実現しています。"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "深い探索を伴う高速学習",
+      "description": "平均化パーセプトロンで、基本深さ8の探索をしながらパラメータを最適化する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "比較的深い探索（現在は基本深さ８）を行いながらパラメータの最適化を行うことが可"
+    }
+  ],
+  "character": null,
+  "notes": "前年と同一。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc25/team.html"
+}

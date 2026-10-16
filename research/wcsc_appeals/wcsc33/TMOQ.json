@@ -1,0 +1,63 @@
+{
+  "wcsc": 33,
+  "year": 2023,
+  "dir": "TMOQ",
+  "team": "山下 隆久",
+  "software": "TMOQ（特大もっきゅ）",
+  "sources": [
+    "wcsc33/appeal/TMOQ/TMOQ_appeal_20230429.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc33/appeal/TMOQ/TMOQ_appeal_20230429.pdf"
+  ],
+  "summary": "dlshogiベース（WCSC29から継続）で、ResNet 9ブロックの軽量モデルをノートPCで動かす。今年はMCTSの結果が拮抗したとき、水匠5を「審判」として呼び、定跡の採否と同点候補の選択を任せる点が新しい。",
+  "base": {
+    "engine": "dlshogi",
+    "eval_source": "GCT学習データセット+過去のTMOQ棋譜",
+    "note": "DeepLearningShogi Commit 790e2f4（GPL）をベース、審判に水匠5を使用"
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "ResNet 9ブロック（昨年と同じ）"
+  },
+  "search": {
+    "family": "MCTS",
+    "detail": "dlshogi。拮抗時に水匠5が審判"
+  },
+  "learning": "GCTの学習に使われたデータセット+過去のTMOQ棋譜（昨年から追加学習なし）",
+  "hardware": "Core i7-11700K + RTX3080 16GB（Note PC）",
+  "language": [
+    "C++",
+    "Python"
+  ],
+  "claimed_strength": "昨年WCSC32版との対局で約65%の勝率",
+  "ideas": [
+    {
+      "category": "探索",
+      "title": "水匠5を審判にする拮抗手の選択",
+      "description": "MCTSの結果が拮抗した手の中から、水匠5が一手を選んで指す。拮抗しなければMCTSの結果をそのまま指す。",
+      "originality": "独自",
+      "evidence": "昨年版との対局で約65%の勝率",
+      "quote": "拮抗した手の中から『審判』が一手を選んで指す"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "審判が許可した定跡だけ使う",
+      "description": "定跡があれば審判（水匠5）が定跡を評価し、許可した場合のみ定跡通りに指す。約2200万手の定跡（昨年から約10%増）。",
+      "originality": "独自",
+      "evidence": "同上",
+      "quote": "『審判』が定跡を評価 『審判』が許可した場合、定跡通り指す"
+    },
+    {
+      "category": "ハードウェア",
+      "title": "ノートPCでの参加",
+      "description": "莫大な計算資源がなくてもコンピュータ将棋は楽しめる、というメッセージでNote PCを使う。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "Note PC を使用、莫大な計算資源がなくてもコンピュータ将棋は楽しめる！"
+    }
+  ],
+  "character": "名前の「TMOQ」は「特大もっきゅ」と読み、愛娘が命名とデザインを行った。2016年のWCSC26以降ほぼ全大会に出場している。",
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc33/team.html"
+}

@@ -1,0 +1,46 @@
+{
+  "wcsc": 36,
+  "year": 2026,
+  "dir": "Kuro651",
+  "team": "Kuro651",
+  "software": "Kuro651",
+  "sources": [
+    "wcsc36/appeal/Kuro651/2026WCSC_appeal.txt"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc36/appeal/Kuro651/2026WCSC_appeal.txt"
+  ],
+  "summary": "コンピュータ将棋に40年以上関心を持つ開発者が、定年退職を機に再開したフルスクラッチ。ビットボードと差分局面作成による全幅探索ができた段階で、評価・定跡・ハッシュテーブルは未整備。1勝を目標に第11回以来の参加。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": "データ構造からフルスクラッチ"
+  },
+  "eval": {
+    "family": "手作り",
+    "detail": "「評価もボロボロ」と自己申告。内容は記載なし"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "ビットボード使用と差分局面作成による全幅探索。ハッシュテーブル未使用"
+  },
+  "learning": null,
+  "hardware": "Core i7-13650HX（一覧ページ）",
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "開発手法・運用",
+      "title": "コンピュータ将棋の歴史をなぞる開発",
+      "description": "データ構造から全くのフルスクラッチで、コンピュータ将棋45年の歴史を一歩ずつ辿るように開発している。現在は25年前くらいの段階とのこと。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "コンピュータ将棋の45年の歴史を一歩ずつ辿って開発を行っているような状況です。"
+    }
+  ],
+  "character": "定年退職を機にアプリ作りを再開した。構想の機能の完成まで数年かかるが、気力の続く限り続ける。25年前の第11回大会には未完成ながら参加した。",
+  "notes": "文書は数行のみで技術工夫はほぼ記載なし。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc36/team.html"
+}

@@ -1,0 +1,55 @@
+{
+  "wcsc": 32,
+  "year": 2022,
+  "dir": "Genki_Morimori_Ninniku_Power",
+  "team": "都賀町 えいだ",
+  "software": "元気もりもりニンニクパワー",
+  "sources": [
+    "wcsc32/appeal/Genki_Morimori_Ninniku_Power/appeal_ver2.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc32/appeal/Genki_Morimori_Ninniku_Power/appeal_ver2.pdf"
+  ],
+  "summary": "VTuber都賀町えいだが書籍『強い将棋ソフトの創りかた』をもとにC#で作ったソフト。名前は公募とアンケートで決めた。提出時点では合法手生成が未完成で動かない状態だった。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "書籍『強い将棋ソフトの創りかた』ベースの実装（C#、一部Python）"
+  },
+  "search": {
+    "family": "不明",
+    "detail": "不明"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": [
+    "C#",
+    "Python"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "開発手法・運用",
+      "title": "C#で書籍の実装を再現",
+      "description": "Python・C++が分からない開発者向けに、書籍『強い将棋ソフトの創りかた』の内容をC#で実装する。cshogiは使わず合法手生成を自作する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "C#なら分かる人向けに作成してみたかった"
+    },
+    {
+      "category": "エンタメ・演出",
+      "title": "公募とアンケートで命名",
+      "description": "ソフト名を公募とアンケートで決め、名付け親はTwitterユーザーの牛車さん。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "名前は公募＋アンケートによって命名"
+    }
+  ],
+  "character": "VTuber作のソフト。名前を視聴者から公募で決め、動画版のアピールも用意した。「フロムスクラッチ申請はしません」と正直に表明。",
+  "notes": "2022/03/31時点で合法手生成が未完成で動かない。第2回電竜戦版とは別物。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc32/team.html"
+}

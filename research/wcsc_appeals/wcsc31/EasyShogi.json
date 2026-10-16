@@ -1,0 +1,68 @@
+{
+  "wcsc": 31,
+  "year": 2021,
+  "dir": "EasyShogi",
+  "team": "高原 順弥",
+  "software": "EasyShogi",
+  "sources": [
+    "wcsc31/appeal/EasyShogi/EasyShogi_appeal_2021.txt"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc31/appeal/EasyShogi/EasyShogi_appeal_2021.txt"
+  ],
+  "summary": "強化学習の実験として、OpenAI Gym対応のcshogiでDQN学習したモデルを使う案と、Jetson NANOで動くCNNの簡易モデルの案のどちらかで出場予定。強化学習やGPUを気軽に体験する個人の実験色が強い。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "案1はDQNの行動価値。案2は計88チャネルの簡易特徴量によるCNNで移動後の座標を学習"
+  },
+  "search": {
+    "family": "その他",
+    "detail": "案1は行動価値最大またはMCTS。案2は移動後の座標から1手先の評価値で指し手を決める"
+  },
+  "learning": "DQNを自己対局で学習。報酬を得やすいよう詰みあり局面からの学習を織り交ぜた。ローカルCPUのみ",
+  "hardware": "Jetson NANO",
+  "language": "Python",
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "DQNで将棋を強化学習",
+      "description": "OpenAI Gym対応のcshogiでDQNを学習する。自己対局で報酬を得やすいよう、詰みあり局面からの学習を混ぜた。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "DQNアルゴリズムを用いて学習を行ったモデルを使用。"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "受け手ランダムの詰将棋学習の実験",
+      "description": "受け手を環境でランダムに指させ、攻め手だけで詰将棋を学べるか試したが、報酬が少なく学習が進まず、エージェント同士の自己対局に戻した。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "報酬を得る機会が少なく学習が進まないためエージェント同士の自己対局に戻した。"
+    },
+    {
+      "category": "ハードウェア",
+      "title": "Jetson NANOとエッジデバイス志向",
+      "description": "安価なGPUのJetson NANOを購入し、88チャネルの簡易特徴量とCNNを作成中。オフライン大会ではエッジデバイスを持ち込みたいという。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "安価にGPUが試せるNVIIA製のJETSON NANO を購入。"
+    },
+    {
+      "category": "評価関数",
+      "title": "移動後座標のみを学習するCNN",
+      "description": "玉位置・駒の利き・遠くに及ぶ利き・持ち駒などの88チャネルから、移動後の座標だけを学習し、1手先の評価値で指し手を一意に決める。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "CNNによる移動後の座標のみを学習するモデルを作成中。"
+    }
+  ],
+  "character": "強化学習を自分で体験できて「とても楽しかった」と語る、実験を楽しむ姿勢。",
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc31/team.html"
+}

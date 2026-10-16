@@ -1,0 +1,62 @@
+{
+  "wcsc": 32,
+  "year": 2022,
+  "dir": "EasyShogi",
+  "team": "高原 順弥",
+  "software": "Easy Shogi",
+  "sources": [
+    "wcsc32/appeal/EasyShogi/wcsc32_EasyShogi.txt"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc32/appeal/EasyShogi/wcsc32_EasyShogi.txt"
+  ],
+  "summary": "自然言語処理のTransformerを将棋に適用する。policyは初手から現局面までの棋譜符号を単語列として、valueは盤面の升目と持ち駒を95単語の文として入力する。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "Transformer（self-attention）。valueは盤面の升目・持ち駒の95語の文を入力しスカラー回帰"
+  },
+  "search": {
+    "family": "その他",
+    "detail": "policyの最大値が閾値以上ならそのまま指し、未満なら2手先局面をvalue networkで評価。2ネットのMCTSも検討"
+  },
+  "learning": "cshogiで学習データを作成",
+  "hardware": "Core i7-3770 + GTX 1050",
+  "language": [
+    "Python"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "棋譜符号を単語列とするpolicyネット",
+      "description": "プロ棋士が棋譜用紙で対局の流れを読むという仮説から、初手から現局面までの棋譜符号を単語の時系列として入力する。256長に前方ゼロ埋めし、次の指し手を分類問題として推論する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "ニューラルネットワークへの入力は初手から現局面までの棋譜符号を用います"
+    },
+    {
+      "category": "評価関数",
+      "title": "盤面を95単語の文にするvalueネット",
+      "description": "盤面の各升目の駒と持ち駒を単語とみなし、1局面を95単語の文として扱って、Transformerでスカラー値を回帰する。bert-mctsに触発された。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "1つの局面を95個の単語からなる文章として扱います"
+    },
+    {
+      "category": "探索",
+      "title": "policy確信度でvalue評価を省略",
+      "description": "policyの最大出力が設定値以上なら、valueを使わず即その手を採用する。未満のときは2手先の局面をvalueで評価して決める。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "policy networkの出力の最大値が、設定値以上なら、即採用しvalue networkを用いず指し手を決定します。"
+    }
+  ],
+  "character": "「まだまだ弱いですが楽しみます！」と、ロマンを仮説に掲げて楽しむ姿勢。",
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc32/team.html"
+}

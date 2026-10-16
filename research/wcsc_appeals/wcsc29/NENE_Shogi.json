@@ -1,0 +1,71 @@
+{
+  "wcsc": 29,
+  "year": 2019,
+  "dir": "NENE_Shogi",
+  "team": "日髙 雅俊",
+  "software": "ねね将棋",
+  "sources": [
+    "wcsc29/appeal/NENE_Shogi/wcsc29_appeal_neneshogi_20190501.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc29/appeal/NENE_Shogi/wcsc29_appeal_neneshogi_20190501.pdf"
+  ],
+  "summary": "CNNのpolicy/value評価関数とMCTSで、従来の3駒関係＋αβに代わる構成を目指す。今回はCNTKへ移行してPython環境を不要にし、MCTSの訪問回数比から手が変わる確率を統計モデルで推定して早期に指す時間管理を実装した。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": "USI通信・合法手生成にやねうら王ライブラリを利用"
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "3x3 conv 2層のresidual、192ch、19ブロック（前年は192ch・16層から42層相当）。入力119ch。出力はpolicy 27chとvalue 2ch"
+  },
+  "search": {
+    "family": "MCTS",
+    "detail": "選択的探索。評価をキューで100〜1000局面同時に処理。末端で詰み探索"
+  },
+  "learning": "教師あり学習。policyは棋譜の指し手のsoftmax cross entropy、valueはelmoと同様に評価値をsigmoidで勝率化したものと勝敗の和",
+  "hardware": "Amazon EC2 p3.16xlarge（V100 x8、約30,000nps）",
+  "language": [
+    "Python",
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "時間管理",
+      "title": "指し手変更確率モデルによる早期打ち切り",
+      "description": "MCTSのルート訪問回数比から、残り思考時間内に最善手が逆転する確率を、トップの指し手確率・ノード数・残り時間内に評価できるノード数の線形モデルで推定し、一定以下になれば指す。パラメータは実際の思考結果へのフィッティングで決める。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "「現在トップの指し手確率」×-5.326＋log2(「現在までのゲーム木のノード数」/1024)×-0.306＋log2(「予定残り思考時間内に評価できるノード数」/1024)×0.377＋0.798"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "CNTK移行で配布を容易に",
+      "description": "前年のChainerではPython環境が必要だったが、C++から直接呼べるCNTKに変え、Python環境不要で配布しやすくした。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "C++ から直接呼び出せる CNTK に変更したことで、python 環境が不要となり配布が容易となりました。"
+    },
+    {
+      "category": "詰み・終盤",
+      "title": "MCTS末端での詰み探索とマルチスレッド化",
+      "description": "前年シングルスレッドだった探索をマルチスレッド化し、末端局面での詰み探索を追加した。優勢になってから勝ち切れるようになった印象とする。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "優勢になってからちゃんと勝ち切れるようになった印象があります。"
+    },
+    {
+      "category": "ハードウェア",
+      "title": "クラウド不可時のpolicyのみモード",
+      "description": "クラウドが確保できないときのため、方策関数のみで指すモードをローカルで動かす（lesserkaiと勝ったり負けたり）。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "クラウド利用不能時は方策関数のみで指すモードをローカルマシンで動かします。"
+    }
+  ],
+  "character": null,
+  "notes": "選手権で計算量を増やすと精度向上よりnps低下の影響が大きいと報告。16bit演算は実装上の問題で実現せず",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc29/team.html"
+}

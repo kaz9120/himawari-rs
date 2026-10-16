@@ -1,0 +1,70 @@
+{
+  "wcsc": 27,
+  "year": 2017,
+  "dir": "16shiki-iroha-kai",
+  "team": "末吉 竜介",
+  "software": "十六式いろは改",
+  "sources": [
+    "wcsc27/appeal/16shiki-iroha-kai/99-16irohakai_pr-27wcsc2017.pdf"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc27/appeal/16shiki-iroha-kai/99-16irohakai_pr-27wcsc2017.pdf"
+  ],
+  "summary": "8インチのWindowsタブレット上で、Luaで一から書き直した完全なエンジョイ勢のソフト。評価・探索の実装が間に合わず、実際は合法手からランダムに指す。大会を楽しみ「記録より記憶に残る」ことを狙う。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "手作り",
+    "detail": "駒の損得・効率・玉の硬さ・利き・ひも付き・厚み・位取りを手入力で調整する予定だったが未搭載"
+  },
+  "search": {
+    "family": "その他",
+    "detail": "予定は反復深化とαβだが、実際は合法手ランダム指し"
+  },
+  "learning": null,
+  "hardware": "Acer Iconia Tab 8 W（Atom Z3735G、8インチWindowsタブレット）",
+  "language": [
+    "Lua"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "ハードウェア",
+      "title": "8インチタブレットでの参戦",
+      "description": "8インチのWindowsタブレットで出場する。「タブレットで勝てたらかっこいい」という動機で、大会で最もコンパクトな参加機材になった。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "使用するハードは、8 インチの Windows タブレット。"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "LuaJIT入りluviで実行形式を出力",
+      "description": "開発言語にLuaを選び、LuaJITを含むluviで実行形式を出力して速度の弱点を補う。ソース量はC言語より20〜30%減ったという。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "さらに LuaJIT を含む luvi（発音は、らび？）を利用して"
+    },
+    {
+      "category": "探索",
+      "title": "局地深読み・暴走モード（構想）",
+      "description": "相手の指した位置を中心に3x4マスだけ探索してひも付きで王手する「局地深読みモード」、4x4マスでランダムに指す「局地暴走モード」、全合法手からランダムに指す「広域暴走モード」を構想した。実際に動いたのは広域暴走モードのみ。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "局地深読みモード：相手の指した位置を中心に「３ｘ４」マスを探索し、できればひも付きで王手する。"
+    },
+    {
+      "category": "棋風・人間らしさ",
+      "title": "箱入り娘を目指す居飛車（構想）",
+      "description": "序盤は居飛車で「箱入り娘」の形を目指す方針で、ソフトを「娘」と位置づけた。開発が間に合わず未搭載。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "序盤は居飛車党で「箱入り娘」を一心不乱に目指し"
+    }
+  ],
+  "character": "「完全にエンジョイ勢」「記念参加勢」を自称し、「記録よりも記憶に残りたい！」と掲げる。王手放置の「天然娘」を自虐的に楽しむ語り口で、名前の由来も技名風。",
+  "notes": "3/29初版と5/4追記の2段構成。追記で、評価・探索・王手回避が未実装でランダム指しだったと報告。大会で1勝した。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc27/team.html"
+}

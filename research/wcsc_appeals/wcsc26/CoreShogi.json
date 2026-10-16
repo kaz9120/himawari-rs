@@ -1,0 +1,84 @@
+{
+  "wcsc": 26,
+  "year": 2016,
+  "dir": "CoreShogi",
+  "team": "村田 敦",
+  "software": "こあ将棋",
+  "sources": [
+    "wcsc26/appeal/CoreShogi/appeal.pdf"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc26/appeal/CoreShogi/appeal.pdf"
+  ],
+  "summary": "他のソフトやライブラリを参考にせず、探索も評価も全て自前で実装した新規ソフト。駒の価値を使わず攻撃力と守備力の2パラメータで評価する。オリジナルGUIや対戦プラットフォーム、数十万台規模のグリッド化を目指している。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "手作り",
+    "detail": "駒の価値ではなく、攻撃力と守備力の2つのパラメータで評価値を計算"
+  },
+  "search": {
+    "family": "その他",
+    "detail": "MinMaxを独自に拡張。αβ的なものは導入予定"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": null,
+  "claimed_strength": "自己申告でかなり弱い",
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "駒価値でなく攻撃力・守備力で評価",
+      "description": "駒の価値を使わず、駒ごとに攻撃力と守備力の2つを割り当てて評価値を計算する。設定パターンが膨大で苦労している。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "基本パラメータとして駒の価値ではなく、攻撃力と守備力の２つのパラメータを割り当て評価値を計算"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "テーブル化による分岐回避",
+      "description": "できる限りの処理をテーブル化し、分岐を避けて高速化する。",
+      "originality": "不明",
+      "evidence": null,
+      "quote": "できる限りの部分でテーブル化し、極力分岐を避けるようにして高速化"
+    },
+    {
+      "category": "開発手法・運用",
+      "title": "ユーザー側で簡単にAI調整",
+      "description": "ユーザーがAIのパラメータ調整を簡単にできるようにする予定。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "AI パラメータ調整がユーザー側で簡単に行える！ …予定です（実装中）"
+    },
+    {
+      "category": "エンタメ・演出",
+      "title": "ユーザー同士のAI対戦プラットフォーム",
+      "description": "ユーザー同士がAIを戦わせられる対戦プラットフォームを搭載する予定。オリジナルGUIとサービスも開発中。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "ユーザー同士が戦える AI 対戦プラットフォーム搭載！ …予定です。"
+    },
+    {
+      "category": "並列・分散",
+      "title": "ユーザーPCを繋ぐグリッド化",
+      "description": "来年の選手権に向け、ユーザーのPC数十万台を繋ぐグリッド化を計画している。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "ユーザー様の PC を数十万台繋げて…、なんて夢を見ています。"
+    },
+    {
+      "category": "その他",
+      "title": "オリジナル通信プロトコル",
+      "description": "USI拡張では厳しいとして、独自の通信プロトコルを搭載する予定。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "オリジナルの通信プロトコル搭載！ …予定です（USI 拡張では厳しい）"
+    }
+  ],
+  "character": "棋力より、GUIやネットワーク周りのプラットフォーム構想が先行している。自虐的に「棋力はゴミレベル」と書き、ユーザーに期待すると笑う。名称は作者の「Core○○」シリーズから。",
+  "notes": "多くが「予定」",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc26/team.html"
+}

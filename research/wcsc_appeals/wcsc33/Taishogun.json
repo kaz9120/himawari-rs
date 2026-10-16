@@ -1,0 +1,80 @@
+{
+  "wcsc": 33,
+  "year": 2023,
+  "dir": "Taishogun",
+  "team": "横内 健一・横内 靖尚",
+  "software": "大将軍",
+  "sources": [
+    "wcsc33/appeal/Taishogun/Taishogun_appeal.pdf",
+    "wcsc33/appeal/Taishogun/Taishogun_appeal_detail.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc33/appeal/Taishogun/Taishogun_appeal.pdf",
+    "https://www.apply.computer-shogi.org/wcsc33/appeal/Taishogun/Taishogun_appeal_detail.pdf"
+  ],
+  "summary": "評価関数に主眼を置き、3駒関係（kppt型）という15年以上前の技術をあえてベースに、最新のStockfish探索（やねうら王）と組み合わせる。学習対象局面を浅い探索の末端局面と現局面で混ぜ、局面ごとの学習量に係数を設ける新しい試みを行った。",
+  "base": {
+    "engine": "やねうら王",
+    "eval_source": "3駒関係（kppt型）。教師データは水匠2〜4改で生成",
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "3駒関係（kppt型）、手番を考慮"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "やねうら王（最新のStockfish探索）"
+  },
+  "learning": "プロ棋譜からの学習でミニバッチ方式を採用。教師データは3駒系とNNUE系の棋譜をミックス。学習対象は浅い探索（静止探索）の末端局面と現局面をミックス",
+  "hardware": "Ryzen Threadripper 3990X",
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "あえて軽い3駒関係を最新探索と組み合わせる",
+      "description": "4駒関係では中盤以降の深い読みが弱い経験から、重い評価関数は将棋に不向きと考え、軽い3駒関係（15年以上前の技術）と最新の探索で、大会でどこまで戦えるかを試す。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "あえて比較的軽い 3 駒関係の評価関数と最新の探索アルゴリズムを組み合わせた場合、どの程度大会で戦うことができるか"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "深い探索・浅い探索の進行一致時の学習量調整",
+      "description": "深い探索と浅い探索の進行が一致すると同じ局面を複数回学習するため、探索が深いほど学習量を減らす係数（式1）を導入した。進行が一致しない場合は学習量に係数qを掛ける。qは1未満が良いと予想したが、1より大きい条件が有利で不安定だった。",
+      "originality": "独自",
+      "evidence": "1000局対戦で勝率を測定（図3・4）。qは1より大きい条件で有利、ただし不安定",
+      "quote": "学習量に係数を設けパラメータとし、調整を試みた。"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "静止探索の末端局面で学習",
+      "description": "学習対象を現局面でなく、現局面から浅い探索（静止探索）を行った末端の局面とし、現局面とミックスして使う。強くなる理由は未解明。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "現局面ではなく、静止探索の末端局面に対して学習させると強くなる理由は解明されておらず"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "3駒関係の差分評価",
+      "description": "評価関数の差分評価（動いた駒のみの評価値を更新）をいち早く取り入れた。4駒関係の経験から、差分計算で3駒分の計算量で済む。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "評価関数の差分評価（動いた駒のみの評価値を更新）をいち早く取り入れて採用している"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "手番を考慮した3駒関係",
+      "description": "4駒関係や旧モデルでは手番が評価に含まれず同一局面で評価値が0になる課題があった。手番付き3駒関係（kppt型）に変更した。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "一般的な手番を考慮した 3 駒のモデル（kppt 型）とした。"
+    }
+  ],
+  "character": "過去にN4・N4Sの名で参加した4駒関係から、「今更ながら」の3駒関係へ戻る回帰の開発方針。",
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc33/team.html"
+}

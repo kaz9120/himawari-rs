@@ -1,0 +1,54 @@
+{
+  "wcsc": 21,
+  "year": 2011,
+  "dir": "haskellshogi",
+  "team": "（Haskell将棋）",
+  "software": "Haskell将棋",
+  "sources": [
+    "wcsc21/appeal/haskellshogi/hsShogiAppeal.htm"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc21/appeal/haskellshogi/hsShogiAppeal.htm"
+  ],
+  "summary": "純粋関数型言語Haskellで書いた、339行のUSI対応将棋プログラム。Bonanzaのfv.binを評価関数に使う。副作用の扱いが課題で、STモナド版は遅くなったため不採用。",
+  "base": {
+    "engine": "独自",
+    "eval_source": "Bonanza fv.bin",
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": null
+  },
+  "search": {
+    "family": "不明",
+    "detail": null
+  },
+  "learning": null,
+  "hardware": null,
+  "language": [
+    "Haskell"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "実装・高速化",
+      "title": "339行のHaskell実装",
+      "description": "型推論、遅延評価、モナド、パターンマッチなどを使い、339行・1280単語で、USI対局とBonanza fv.bin評価関数を備えるまで簡潔に書く。",
+      "originality": "独自",
+      "evidence": "339行1280単語12452文字",
+      "quote": "339 行1280単語12452文字(空白込み)という極めて小規模"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "STモナドによる盤面更新の実験",
+      "description": "変数を直接操作できないHaskellで、STモナドを使いコピーなしに盤面更新するプログラムも作ったが、純粋関数版よりやや遅く不採用とした。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "結果として純粋関数のみで作成したプログラムよりやや遅くなってしまったため、STモナドは現在利用していません"
+    }
+  ],
+  "character": null,
+  "notes": null,
+  "team_list_url": "http://www2.computer-shogi.org/wcsc21/team.html"
+}

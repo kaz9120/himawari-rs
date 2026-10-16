@@ -1,0 +1,44 @@
+{
+  "wcsc": 32,
+  "year": 2022,
+  "dir": "narikinshougi",
+  "team": "村山 正樹",
+  "software": "なり金将棋",
+  "sources": [
+    "wcsc32/appeal/narikinshougi/appeal.txt"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc32/appeal/narikinshougi/appeal.txt"
+  ],
+  "summary": "初回参加時から使い回す基本構造（αβ法、ハッシュテーブル、null move）に、3駒間評価値を教師あり学習で組み合わせたソフト。学習棋譜にプロ棋譜と上位ソフト棋譜、旧なり金との対戦棋譜を使う。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "3駒間評価値"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "ハッシュテーブル・null moveなど一般的手法"
+  },
+  "learning": "プロ棋譜約2600、コンピュータ将棋選手権上位の棋譜、強いプログラムと旧なり金との対戦棋譜で教師あり学習",
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "旧自分との対戦棋譜を教師に使う",
+      "description": "プロ棋譜約2600と選手権上位の棋譜に加え、強い将棋プログラムと旧なり金との対戦棋譜を3駒間評価値の教師あり学習に使う。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "強い将棋プログラムと旧なり金との対戦棋譜を使い教師あり学習させています。"
+    }
+  ],
+  "character": null,
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc32/team.html"
+}

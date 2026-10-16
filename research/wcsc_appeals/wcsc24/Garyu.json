@@ -1,0 +1,37 @@
+{
+  "wcsc": 24,
+  "year": 2014,
+  "dir": "Garyu",
+  "team": "高田 淳一",
+  "software": "臥龍",
+  "sources": [
+    "wcsc24/appeal/Garyu/garyu24.html"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc24/appeal/Garyu/garyu24.html"
+  ],
+  "summary": "前年とまったく同じプログラムでマシンのみ更新。Java製、手作り評価（約750パラメータ）、αβ探索。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "手作り",
+    "detail": "約750パラメータ"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "反復深化、置換表、null move、王手延長"
+  },
+  "learning": null,
+  "hardware": "Core 2 Duo T7700 2.4GHz、約10万nodes/s",
+  "language": [
+    "Java"
+  ],
+  "claimed_strength": "通算成績60勝97敗4分",
+  "ideas": [],
+  "character": null,
+  "notes": "前回から変更なし。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc24/team.html"
+}

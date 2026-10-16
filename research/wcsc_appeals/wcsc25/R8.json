@@ -1,0 +1,68 @@
+{
+  "wcsc": 25,
+  "year": 2015,
+  "dir": "R8",
+  "team": "不明（R8）",
+  "software": "R8",
+  "sources": [
+    "wcsc25/appeal/R8/appeal.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc25/appeal/R8/appeal.txt"
+  ],
+  "summary": "MTD(f)と反復深化の組み合わせが特徴。並列探索に向くという思いつきから採用し、Depth-preferredでlock-freeの置換表と履歴別ハッシュ（千日手対策）、Fail-soft化、行き詰まり時のNull-window位置ずらしなどで安定させる。序盤は対戦プログラムの勝った側の指し手頻度から作る。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "不明",
+    "detail": null
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "MTD(f)×反復深化、Fail-Soft、Killer、Scout確認、静止探索"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "探索",
+      "title": "MTD(f)の採用と行き詰まり検出",
+      "description": "並列探索に向くのではという思いつきでMTD(f)を採用。Fail-softにして、探索の挙動統計で行き詰まりを検出したらNull-windowの位置をずらしてリトライする。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "MTD(f)は実は並列探索向きなのではないか、と思いMTD(f)にしました。"
+    },
+    {
+      "category": "探索",
+      "title": "履歴別ハッシュで千日手を扱う",
+      "description": "千日手など履歴依存の評価を置換表で扱うため、履歴別にハッシュ値が分かれるよう工夫し、ノードごとに初手からの局面出現回数を常に計算する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "履歴別にハッシュ値が分かれるように工夫してしのぎました。"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "対戦結果から作る頻度ベースの定跡",
+      "description": "対戦プログラムが勝った側の(局面, 指した手)を出力して蓄積し、観測回数が閾値以上のものだけを定跡ファイルにして最頻手を指す。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "局面xで最も多く指された手を指す"
+    },
+    {
+      "category": "時間管理",
+      "title": "反復深化の所要時間の統計",
+      "description": "反復深化1回の所要時間を深さ別に統計し、平均が目標時刻を超えるなら中断する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "反復深化のIteration1回の時間の統計を深さ毎にとり、"
+    }
+  ],
+  "character": null,
+  "notes": "開発者名は文書から特定できなかった。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc25/team.html"
+}

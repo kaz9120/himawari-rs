@@ -1,0 +1,62 @@
+{
+  "wcsc": 25,
+  "year": 2015,
+  "dir": "libshogi",
+  "team": "藤井 宏行、荻田 稔真、高田 浩生",
+  "software": "libshogi",
+  "sources": [
+    "wcsc25/appeal/libshogi/libshogi150326.pdf"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc25/appeal/libshogi/libshogi150326.pdf"
+  ],
+  "summary": "香川高専藤井研による教材向けの将棋ライブラリ。前年からの改良点はハッシュ木を二分木から平衡木（赤黒木）にしたこと（単純な二分木では手の広い局面でメモリが10GB超）。同時に実用性確認のため将棋プログラムも開発し、KKP・KPPの評価関数をパーセプトロンのオンライン学習で作り、疎結合クラスタ探索も検証する。",
+  "base": {
+    "engine": "れさぴょん",
+    "eval_source": null,
+    "note": "Game層の合法手生成にれさぴょん"
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "Bonanza型KKP・KPP。パーセプトロンとオンライン学習"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "Null Move Pruning等、スレッド並列、疎結合クラスタ探索の検証"
+  },
+  "learning": "パーセプトロンのオンライン学習（少ない教師例である程度の一致率を達成）",
+  "hardware": null,
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "並列・分散",
+      "title": "HashTreeを平衡木（赤黒木）に変更",
+      "description": "単純な二分木だと手が広い局面でメモリ使用量が10GBを超えて実用的でないと分かり、ハッシュ木を平衡木（赤黒木）に変えた。",
+      "originality": "独自",
+      "evidence": "メモリ使用量10GB超の問題を解消",
+      "quote": "ハッシュ木を平衡木"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "パーセプトロンとオンライン学習",
+      "description": "Bonanzaと異なり、パーセプトロンとオンライン学習を試す。少ない教師例と学習である程度の一致率を達成できる点が利点。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "オンライン学習を試しています"
+    },
+    {
+      "category": "開発手法・運用",
+      "title": "教材としての将棋ライブラリ",
+      "description": "Boost・STLを使わず、速度より簡明さを優先したプリミティブなライブラリ。目標は第一に分かりやすさ。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "libshogi が目標とするのは第一に分かり易い"
+    }
+  ],
+  "character": null,
+  "notes": "前年の文書に将棋プログラムの特徴の節が加わった。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc25/team.html"
+}

@@ -1,0 +1,63 @@
+{
+  "wcsc": 30,
+  "year": 2020,
+  "dir": "Sylwi",
+  "team": "八重樫 敏一",
+  "software": "Sylwi",
+  "sources": [
+    "wcsc30/appeal/Sylwi/sylwi-wcsc30_md.txt"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc30/appeal/Sylwi/sylwi-wcsc30_md.txt"
+  ],
+  "summary": "Threadripper 3970Xを機に、教師局面生成用の浅く広い定跡170万局面と、depth12の評価関数教師25.8億局面を生成した初参加チーム。やねうら王とKristallweizen、HalfKPE9型の評価関数を使う。",
+  "base": {
+    "engine": "やねうら王",
+    "eval_source": "Kristallweizen（定跡・教師生成の元）、HalfKPE9型（採用を検討）",
+    "note": null
+  },
+  "eval": {
+    "family": "NNUE",
+    "detail": "HalfKPE9型の採用を検討。HalfKPより探索速度約20%低下、ファイルは約9倍の551MB"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": null
+  },
+  "learning": "170万局面の浅く広い定跡（Depth20、MultiPV∞）から、Depth12で25.8億局面の教師を生成（30億のうち4.2億はHDD障害で喪失）",
+  "hardware": "Ryzen Threadripper 3970X 32コア、256GB",
+  "language": [
+    "Rust",
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "浅く広い定跡からの教師生成",
+      "description": "幅広い教師局面を作るため、Depth20・MultiPV∞で浅く広い定跡170万局面を作り、それを使って評価関数の教師を生成する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "幅広い教師局面の生成を試みる目的で浅く広い定跡を生成"
+    },
+    {
+      "category": "評価関数",
+      "title": "HalfKPE9型の採用検討",
+      "description": "NNUEのHalfKPより探索速度が約20%落ちるが、精度上昇で補えると期待して使う。",
+      "originality": "再現・追従",
+      "evidence": null,
+      "quote": "評価関数の精度上昇による探索速度の低下を補う勝率の上昇に期待して利用を検討しています。"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "Rustへの移植検討",
+      "description": "apery_rustを参考にRustへの移植を検討している。今回は間に合わない見込み。",
+      "originality": "不明",
+      "evidence": null,
+      "quote": "今回は間に合わないと思われますがRustへの移植も検討中で"
+    }
+  ],
+  "character": "名称は、ウェールズ語で「観察」「気付き」の意。もともと将棋GUI制作を目指していた名称の流用。",
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc30/team.html"
+}

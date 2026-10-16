@@ -1,0 +1,63 @@
+{
+  "wcsc": 34,
+  "year": 2024,
+  "dir": "HoneyWaffle",
+  "team": "渡辺 光彦",
+  "software": "HoneyWaffle",
+  "sources": [
+    "wcsc34/appeal/HoneyWaffle/HoneyWaffle-appeal-WCSC34-20240428.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc34/appeal/HoneyWaffle/HoneyWaffle-appeal-WCSC34-20240428.pdf"
+  ],
+  "summary": "「毎日練り続けた振り飛車定跡でいい将棋を見せたい」がコンセプト。floodgateの実戦譜をもとに毎日約4時間かけて振り飛車定跡を作り、評価関数BLOSSOMとやねうら王7.61を使う。",
+  "base": {
+    "engine": "やねうら王",
+    "eval_source": "BLOSSOM",
+    "note": null
+  },
+  "eval": {
+    "family": "NNUE",
+    "detail": "BLOSSOM（無償で使える最高クラスの評価関数）"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "やねうら王7.61"
+  },
+  "learning": null,
+  "hardware": "Amazon EC2 m6a.48xlarge 1台（定跡作成と共用）",
+  "language": [
+    "C++",
+    "Python"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "定跡・序盤",
+      "title": "毎日作る振り飛車定跡",
+      "description": "ほぼ毎日4時間、floodgateの実戦譜をもとに定跡を作る。1日約60局を検討し、昨年8月からの費用は月10万円以上。先手は三間飛車中心に初手56歩系、後手は四間飛車中心に角交換系を追加した。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "毎日毎日練り続けた振り飛車定跡でいい将棋をお見せしたい"
+    },
+    {
+      "category": "棋風・人間らしさ",
+      "title": "振り飛車で相居飛車の研究を回避",
+      "description": "評価値が低く出る振り飛車でも、下がった評価値を保つのは見た目ほど難しくない。相居飛車の深い研究（先手必勝に近い戦型）を必ず避け、こちらの研究に誘導できるメタ的な利点があると主張する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "相居飛車の深い研究（特に先手が必勝に近い戦型）を必ず回避でき"
+    },
+    {
+      "category": "開発手法・運用",
+      "title": "クラウド検討機で定跡を作る",
+      "description": "複数のミニPCで参戦しつつ、検討にはAWS EC2のm6a.48xlargeを使う。高価な機械を買うのと同程度の出費と書く。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "検討にはAWS EC2のm6a.48xlargeを使用しています"
+    }
+  ],
+  "character": "将棋ウォーズ2級の振り飛車党プログラマーが、名前の由来（ワッフル=将棋盤、光彦→Honey）や、実戦で振り飛車を指す定跡作りを語る親しみやすい文書。",
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc34/team.html"
+}

@@ -1,0 +1,73 @@
+{
+  "wcsc": 35,
+  "year": 2025,
+  "dir": "Serenade",
+  "team": "谷合 廣紀",
+  "software": "Serenade",
+  "sources": [
+    "wcsc35/appeal/Serenade/WCSC35.pdf",
+    "wcsc35/appeal/Serenade/Serenade_detail.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc35/appeal/Serenade/WCSC35.pdf",
+    "https://www.apply.computer-shogi.org/wcsc35/appeal/Serenade/Serenade_detail.pdf"
+  ],
+  "summary": "やねうら王にStockfishの評価関数アーキテクチャ（SFNNv6相当、PSQTなし）と探索部をマージした。学習データはnodchip氏のデータの評価値をDL水匠のvalue出力で上書きし、学習コードはnnue-pytorchをkeras3+tensorflowで書き直した。水匠10betaに対して約+R120。",
+  "base": {
+    "engine": "やねうら王",
+    "eval_source": null,
+    "note": "Stockfishの探索部を一部マージ。Stockfishの全探索部のマージは未完"
+  },
+  "eval": {
+    "family": "NNUE",
+    "detail": "StockfishのSFNNv6相当（PSQTなし）。最新SFNNv8相当やPSQTは未実装"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "やねうら王にStockfish由来の探索をマージ"
+  },
+  "learning": "nodchip公開データ（tanuki-.nnue-pytorch-2024-07-30.1、shogi_hao_depth9）の評価値をDL水匠のvalue出力で上書き。keras3+tensorflowの自前学習コード",
+  "hardware": "GCP c3d-highcpu-360",
+  "language": [
+    "C++",
+    "Python"
+  ],
+  "claimed_strength": "水匠10betaに対して+R120程度",
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "Stockfish型NNUEアーキテクチャの移植",
+      "description": "「氷彗」の成功を背景に、StockfishのSFNNv6相当のアーキテクチャ（PSQTなし）をやねうら王にマージした。最新のSFNNv8相当は、モデルが大きく学習データも多く要るため未実験。",
+      "originality": "既存手法の応用",
+      "evidence": "水匠10betaに+R120程度",
+      "quote": "Stockfish を参考にした評価関数アーキテクチャと探索部をマージしました"
+    },
+    {
+      "category": "開発手法・運用",
+      "title": "実験管理を軽くする学習基盤の作り直し",
+      "description": "nnue-pytorchの代わりにkeras3+tensorflowで学習コードを書き直し、Google Cloud StorageやAWS S3から直接ロードする。設定はconfigファイル指定のみで実行でき、WandBで実験管理し、自己対局システムでレーティング管理を自動化する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "複数の実験設定をコンフィグファイルの指定のみで実行できるようにしたことで、WandB による実験管理が容易になりました"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "教師データのDB管理による選別と定跡作成",
+      "description": "教師データをデータベースで管理して選別し、定跡作成にも使う。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "教師データのデータベース管理による、教師データの選別と定跡作成"
+    },
+    {
+      "category": "探索",
+      "title": "LLMによる複数エンジンのオーケストレーション",
+      "description": "LLMを主体にして複数のエンジンを束ねる構想。AobaZeroの感想によれば、NNUE単体でなくDL系とのLLMを用いた融合を考えていた。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "LLM を主体とした、複数エンジンのオーケストレーション"
+    }
+  ],
+  "character": null,
+  "notes": "5/14の詳細版ではLLM融合には触れていない。3/30版の項目から外れた可能性があるが、実装有無は文書から不明。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc35/team.html"
+}

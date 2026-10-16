@@ -1,0 +1,76 @@
+{
+  "wcsc": 31,
+  "year": 2021,
+  "dir": "sakura",
+  "team": "大森 悠平",
+  "software": "sakura",
+  "sources": [
+    "wcsc31/appeal/sakura/sakura_appeal_2021.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc31/appeal/sakura/sakura_appeal_2021.pdf"
+  ],
+  "summary": "dlshogiのクローンで、独自の工夫はほぼ学習部分。NNUEとKPPTのdepth 8/12/20で作った局面で教師あり学習を主に行い、GPU資源がないため強化学習は最後の手段にする。",
+  "base": {
+    "engine": "dlshogi",
+    "eval_source": "dlshogiチーム公開の教師局面、電竜戦のnozomi（水匠2ベースの追加学習）",
+    "note": null
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "SE-ResNet 20ブロックの予定。学習が進まなければResNet+Swish 10ブロック（GCTと同じモデル）"
+  },
+  "search": {
+    "family": "MCTS",
+    "detail": "dlshogiの探索部（未改造）"
+  },
+  "learning": "NNUEとKPPTのdepth8/12/20で作った局面で教師あり学習。初期局面はfloodgate・AobaZero・NNUE自己対局の局面。Policyは教師の指し手を単純に学習し、label smoothingを適用",
+  "hardware": "Amazon EC2 p4d.24xlarge",
+  "language": "C++, Python",
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "教師あり学習中心のdlshogi",
+      "description": "GPUリソースがないのでギリギリまで教師あり学習で強くし、強くならなくなったら強化学習をやる予定。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "GPUリソースを持っていないのでギリギリまで教師ありで強くし"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "Policyを単純な教師指し手の学習にし、label smoothingを適用",
+      "description": "Actor-Criticを使わずPolicyは教師の指し手を単純に学習し（Policy損失の結果が良かったため）、ラベルは1/0でなくlabel smoothingする。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "dlshogiで使用しているActor-Criticは使用しておらず、Policyは単純に教師の指し手を学習しています"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "進行度によるValue損失の重み付け",
+      "description": "教師局面が終盤に偏っているため、学習序盤のdepth8の教師データのみ、Value損失に進行度で重みをかけた。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "教師局面が終盤に偏っているため、Value損失に進行度によりweightをかけました"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "左右反転のData Augmentation",
+      "description": "ランダムに局面を左右反転して学習する。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "Data Augmentationとしてランダムで局面を左右反転しています"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "多段depthのNNUE・KPPT教師",
+      "description": "NNUEとKPPTでdepth 8/12/20の複数の深さで教師局面を作り、初期局面にfloodgate・AobaZero・NNUE自己対局の局面を使う。いろいろな工夫は意味が薄く、良い教師を作ることに注力したほうがよいと結論。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "いかに良い教師を作るかを注力したほうが良さそうだと今の所思っています"
+    }
+  ],
+  "character": null,
+  "notes": "学習はほとんど進んでいないとの記述あり。dlshogiチーム、2番絞りチームの芝さんらのブログを参考にしたと明記。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc31/team.html"
+}

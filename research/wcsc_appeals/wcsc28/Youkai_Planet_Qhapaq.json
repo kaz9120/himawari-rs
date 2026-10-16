@@ -1,0 +1,78 @@
+{
+  "wcsc": 28,
+  "year": 2018,
+  "dir": "Youkai_Planet_Qhapaq",
+  "team": "ITに強い将棋部（Sawada Ryoto, Ito Yuki, Shirakawa Toshihiro）",
+  "software": "妖怪惑星Qhapaq",
+  "sources": [
+    "wcsc28/appeal/Youkai_Planet_Qhapaq/youkaiwakuseiqhapaq.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc28/appeal/Youkai_Planet_Qhapaq/youkaiwakuseiqhapaq.pdf"
+  ],
+  "summary": "数理解析を駆使して、ご家庭レベルのPCで行える強化学習と高速化を売りにするソフト。floodgateの深い読みの局面を教師に、そこから浅い読みで作った局面も教師にして勝敗・評価値を他データから類推する（Virtual Adversarial Training風）。棋力解析ソフトELQや、藤井六段の棋風分析も行う。ネタ満載のアピール文の後半は、大会後の「再放送」。",
+  "base": {
+    "engine": "やねうら王",
+    "eval_source": "Apery（初期値）+独自のQhapaq評価関数",
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "KPPT。Apery-Qhapaq関数。KPPTを強くするほか新規評価関数も開拓"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "やねうら王の探索部。進行度の扱いは技巧を参考"
+  },
+  "learning": "floodgateなどで得られる深い読みの局面を教師にし、そこから浅い読みで作った局面も教師にする。その勝敗・評価値は他データから類推（Virtual Adversarial Trainingに近い）。elmo絞りの問題点（短い持ち時間で強くならない、一度しか出ないKPPTの値が大きくなる）も分析",
+  "hardware": "Core i7 4710MQ + GCE n1-highcpu-96 x 3（Amazon EC2, Ryzenも使用）",
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": "第27回10位、第5回電王トーナメント5位。「現在最強の公開関数Apery-Qhapaq関数」と自称",
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "深い読みの局面から浅い読みの教師を増やして類推",
+      "description": "floodgateなどの深い読みの局面（教師精度は最上位）を使い、教師が少ないのでそこから浅い読みで作った局面も教師にする。勝敗や評価値は他データから類推する（Virtual Adversarial Trainingに近い）。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "教師データが少ないのでその局面から浅い読みで作られた局面も教師にする"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "既存定跡にノイズを入れた「量子アニーリング」定跡",
+      "description": "複数の既存定跡に、一定確率で定跡を無視するノイズを加えて自己対局し、勝った棋譜を集めることを繰り返す。未知の定跡に対してロバストな定跡を作る。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "複数の既存定跡にノイズ（具体的には一定確率で定跡を無視する）を加えたものと自己対局を行い、勝った棋譜を収集することを繰り返す"
+    },
+    {
+      "category": "解説・人間支援",
+      "title": "棋力解析ソフトELQ",
+      "description": "評価値ごとの悪手率を、対局者（藤井六段とその対局相手のソフト）について解析し、強さを予想する。-600〜600のイーブンな局面が一番ミスが出やすく、藤井六段は有利な局面でのミスが少ない。",
+      "originality": "独自",
+      "evidence": "藤井六段は有利な局面でのミスが少ない",
+      "quote": "藤井六段、対局相手の双方とも、-600〜600ぐらいのイーブンな局面が一番ミスが出やすい"
+    },
+    {
+      "category": "評価関数",
+      "title": "評価関数の合成の分析",
+      "description": "評価関数合成では、合議制で強くなる関数が合成では強くならないことがあり、どの成分の変化がレート変化に結びつくかを分析する必要がある。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "合議制では強くなるような関数でも強くならない (ことがある)"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "メンバーによる高速化",
+      "description": "チームメンバーのItoさんが高速化を担当する。",
+      "originality": "不明",
+      "evidence": null,
+      "quote": "高速化もやってる（チームメンバーのItoさんが）"
+    }
+  ],
+  "character": "大会前（4/8）の文書は将棋界・AI将棋界の話題で固め、大会後の「再放送」は一転してネタ集になる。「主なやらかし」として被り物でニコ動出演、振り駒に中指、通信器具を会場に忘れる、電王トーナメントでのサイリウム配布テロなどを自己申告。チーム名をルイズコピペにして360RTされた、ハイテク株で溶かしたなどの小ネタが多い。ソフト名・SDT5の名前の元ネタはゲーム「妖怪惑星クラリス」「Lostorage conflated WIXOSS」で、後者のサービス終了で締める（「ｳｷﾞｬｱｱｱｱｱｱ」）。",
+  "notes": "文書は前半（4/8更新）と後半（再放送）の2部構成。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc28/team.html"
+}

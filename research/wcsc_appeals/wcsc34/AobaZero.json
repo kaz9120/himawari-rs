@@ -1,0 +1,110 @@
+{
+  "wcsc": 34,
+  "year": 2024,
+  "dir": "AobaZero",
+  "team": "山下 宏（Team AobaZero）",
+  "software": "AobaZero",
+  "sources": [
+    "wcsc34/appeal/AobaZero/2024csa_appeal.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc34/appeal/AobaZero/2024csa_appeal.pdf"
+  ],
+  "summary": "BonanzaとLeela Zeroのコードを土台にした、ユーザー協力の分散強化学習によるAlphaZero追試。追試を2021年に終えた後も棋譜生成を続け、今回はdlshogi互換モデルを使って出場する。人間の知識を使わない方針を継続している。",
+  "base": {
+    "engine": "Bonanza+LeelaZero",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "20ブロック256フィルタのResNet、約2340万パラメータ。今回はAobaZeroの棋譜で作ったdlshogi互換モデルで出場予定"
+  },
+  "search": {
+    "family": "MCTS",
+    "detail": "MCTS+KL情報量による探索の打ち切り（最小400、最大12800）"
+  },
+  "learning": "ユーザー協力の分散強化学習。2024-03-29時点で6746万棋譜。平均playoutを1600から3200へ",
+  "hardware": "Ryzen Threadripper PRO 5995WX 64コア + RTX 4090（RunPod、GPU12基）",
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": "追試終了後から+260 Elo、昨年の選手権から+30 Elo。dlshogi互換モデルはAobaZero本体より約+40 Elo（RTX 3090）",
+  "ideas": [
+    {
+      "category": "並列・分散",
+      "title": "ユーザー協力の分散強化学習",
+      "description": "ユーザーが棋譜生成に協力するオープンソースのAlphaZero追試。2019年3月から5年で6700万棋譜を作った。",
+      "originality": "独自",
+      "evidence": "追試終了後から+260 Elo",
+      "quote": "棋譜生成をユーザの皆様と協力して行う分散強化学習です"
+    },
+    {
+      "category": "探索",
+      "title": "KL情報量による探索量の打ち切り",
+      "description": "400playoutごとにルートの訪問数分布の変化を見て、変化がなければ打ち切る。最小400、最大12800で、1手3200固定より約+100 Elo。",
+      "originality": "既存手法の応用",
+      "evidence": "1手3200固定より約+100 Elo",
+      "quote": "変化がないなら打ち切る、という手法です。最小 400、最大 12800 です"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "先手勝ち局面の学習確率を減らす",
+      "description": "生成棋譜の先手勝率が0.724と偏ったため、先手勝ち局面の学習確率を減らして初期局面の勝率が5割になる重みを作った。棋力は約+14 Elo、先手勝率は0.632に下がった。",
+      "originality": "独自",
+      "evidence": "棋力約+14 Elo",
+      "quote": "先手が勝った局面の学習確率を減らして初期局面の勝率が 5 割になる重みを再学習で作ってみたところ"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "平均playoutを倍にした棋譜生成",
+      "description": "棋力の停滞を受けて、学習棋譜の平均playoutを1600から3200にした。floodgateでの棋譜の棋力は3630から3740へ約+110 Elo。",
+      "originality": "独自",
+      "evidence": "約+110 Elo",
+      "quote": "学習棋譜の平均 playout 数を 1600 から 3200 に変更"
+    },
+    {
+      "category": "評価関数",
+      "title": "dlshogi互換モデルでの出場",
+      "description": "AobaZeroの棋譜でdlshogiのモデルを作った。同じ20ブロック・256フィルタで学習速度5.7倍、NPS約3倍。TensorRT未対応や複数GPUの弱さがあるため、選手権はこちらで出る。",
+      "originality": "独自",
+      "evidence": "学習速度5.7倍、NPS約3倍、AobaZero本体より約+40 Elo",
+      "quote": "AobaZero の棋譜で dlshogi のモデルを作ってみました"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "局面選択をValueの精度に効かせる",
+      "description": "序盤の学習確率を減らす、勝率80%程度の手を8倍程度学習しやすくする、先手勝ち局面を5割に揃えるなど。全局面の約50%を選択する。選択なしだと1手100playoutで251差で弱い。",
+      "originality": "独自",
+      "evidence": "選択なしより1手100playoutで251差強い",
+      "quote": "先手勝率を 5 割になるように先手勝ち局面の選択割合を減らす、序盤の学習確率を減らす"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "floodgateのAobaZero棋譜から定跡",
+      "description": "floodgateで走らせたAobaZeroの棋譜の局面を30万局面ほど探索させて定跡を作る予定。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "定跡は floodgate で走らせている AobaZero の棋譜の局面を 30 万局面ほど探索させて作成する予定です"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "対振り飛車の弱さを課題として明記",
+      "description": "学習棋譜の振り飛車は2%で、囲いの知識もなく多様性に欠ける。HoneyWaffleの棋譜では相手が飛車を振っただけで評価値+400と出る。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "対振り飛車の弱さが課題"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "人間の知識を使わない方針の継続",
+      "description": "利き情報、3手詰、df-pn詰などでAlphaZeroから離れつつあるが、全体としては人間の知識は使っていないと考える。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "まだ全体としては「人間の知識は使っていない」を継続していると考えています"
+    }
+  ],
+  "character": "5年にわたる6700万棋譜と、協力者への感謝、課題の率直な公開が特徴。",
+  "notes": "NVIDIAドライバ更新でOpenCLの動的コンパイルが失敗する不具合を修正した記録も載せる。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc34/team.html"
+}

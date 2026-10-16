@@ -1,0 +1,54 @@
+{
+  "wcsc": 32,
+  "year": 2022,
+  "dir": "auau_shogi",
+  "team": "氏家 一朗",
+  "software": "あうあう将棋",
+  "sources": [
+    "wcsc32/appeal/auau_shogi/appeal-2022.txt"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc32/appeal/auau_shogi/appeal-2022.txt"
+  ],
+  "summary": "αβ探索で9手程度を読む自作ソフト。数手で勝敗が決まる局面を静的に評価することを目指し、その「数手」を伸ばす方針。画面表示がOpenGLの3D画面という点が毎年の特徴。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "手作り",
+    "detail": "数手で勝ち負けが決まる局面の静的評価を目指す"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "約9手読み"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "静的評価で数手先の勝敗を読む",
+      "description": "数手で勝ち・負けが決まる局面を静的に評価できるようにし、その「数手」の長さを大会までに伸ばす。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "数手で勝ち/負けという局面を静的に評価することを目指しています。"
+    },
+    {
+      "category": "エンタメ・演出",
+      "title": "OpenGLの3D対局画面",
+      "description": "強さとは無関係だが、例年どおり対局画面をOpenGLによる3D表示にしている。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "例年のように画面はOpenGLによる3D画面です。"
+    }
+  ],
+  "character": "強さと無関係に、毎年OpenGLの3D画面でエンタメ性を出している。",
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc32/team.html"
+}

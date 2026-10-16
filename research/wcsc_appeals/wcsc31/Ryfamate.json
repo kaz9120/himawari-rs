@@ -1,0 +1,78 @@
+{
+  "wcsc": 31,
+  "year": 2021,
+  "dir": "Ryfamate",
+  "team": "水無瀬 香澄（Ryfamateチーム1）",
+  "software": "Ryfamate",
+  "sources": [
+    "wcsc31/appeal/Ryfamate/Ryfamate_appeal_20210330.html",
+    "wcsc31/appeal/Ryfamate/wcsc31_ryfamate_20210517.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc31/appeal/Ryfamate/Ryfamate_appeal_20210330.html",
+    "https://www.apply.computer-shogi.org/wcsc31/appeal/Ryfamate/wcsc31_ryfamate_20210517.pdf"
+  ],
+  "summary": "NNUEのαβ探索（やねうら王）とdlshogiのMCTSを組み合わせた合議制エンジン。名前は結核治療薬Rifamate（耐性を遅らせる2剤併用）に由来し、2つの方式が互いの弱点を補う。定跡は評価値でなく、プレイアウト数が示す的中率で選ぶ。",
+  "base": {
+    "engine": "やねうら王+dlshogi",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "DL+NNUE",
+    "detail": "NNUE（やねうら王）とDL（dlshogi）の評価関数を併用。自作の評価関数も一部"
+  },
+  "search": {
+    "family": "αβ+MCTS",
+    "detail": "DLとNNUEを1つずつ思考させ、最善手が異なる場合のみ第3のプロセスに意見を聞く合議"
+  },
+  "learning": null,
+  "hardware": "2950X（定跡で3950Xに対抗する想定）",
+  "language": "C++",
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "探索",
+      "title": "DLとNNUEの合議制（異なるときだけ第3者）",
+      "description": "最初はDLとNNUEが各1プロセスで思考し、最善手が異なるときだけ第3のプロセスに聞く。序盤・最終盤を除く6〜7割の局面でDLとNNUEの最善手が一致する。",
+      "originality": "独自",
+      "evidence": "2つのNNUE（各4スレッド）+DL（2スレッド）の多数決は、4スレッドのNNUE単独に有意に勝つ",
+      "quote": "最善手が異なる場合のみ第 3 のプロセスに意見を聞くことを原則とするエンジン"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "定跡を的中率（プレイアウト数）で選ぶ",
+      "description": "最善評価値ではなく、プレイアウト数に基づく的中率が最大の定跡手を選ぶ。手の確信度が上がり、思考時間も節約でき、特定の戦型へ誘導できる。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "Ryfamate selects book moves with the highest hit rates based on the number of playouts"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "定跡で出やすい戦型に絞った評価関数学習",
+      "description": "定跡で出やすい戦型に絞って学習した評価関数を使い、計算資源の多い相手にも対抗する狙い。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "定跡で出てきやすい戦型に絞って学習させたら、二世代新しい5950Xや3090にも勝てるかも。"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "DLとNNUEの手数切り替えの検証",
+      "description": "DLはNNUEより勝率が低いが序盤で有利になる頻度が高い、NNUE内にも序盤型・終盤（入玉）型がある、と計測した。DLに思考時間2.5倍で釣り合うため、単純な手数切り替えでは有意に強くならなかった。",
+      "originality": "独自",
+      "evidence": "DLに思考時間2.5倍を与えて勝率が釣り合う",
+      "quote": "DL と NNUE のエンジンを単純に手数で切り替えることの難しさを示している"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "弱い評価関数を加える多数決の効果",
+      "description": "同じ条件のもとで、弱い評価関数を多数決に加えても効果が出ることを確認した（フェアでない比較と自認）。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "同じ条件（時間）のもとでは弱い評価関数を多数決に加えても効果が見られたことに、本実験の意義がある"
+    }
+  ],
+  "character": "薬の耐性の比喩による命名と、日本語版の「あたいったら天才ね！」「あたいったら最強ね！」という、ツンデレ風のネタ文体。開発者は病気から回復して機械学習の進歩を学ぶために参加。",
+  "notes": "2本の文書（3月30日版と5月17日版）。5月版には、計測中に動画再生しただけでも結果に影響する、Zoom対局室に入るな、といった注意あり。協力は杉村達也・磯崎元洋。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc31/team.html"
+}

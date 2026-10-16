@@ -1,0 +1,80 @@
+{
+  "wcsc": 30,
+  "year": 2020,
+  "dir": "HoneyWaffle",
+  "team": "渡辺 光彦",
+  "software": "HoneyWaffle",
+  "sources": [
+    "wcsc30/appeal/HoneyWaffle/HoneyWaffle_appeal_WCSC30.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc30/appeal/HoneyWaffle/HoneyWaffle_appeal_WCSC30.pdf"
+  ],
+  "summary": "Apery系KPPTの振り飛車仕様と、やねうら王ライブラリを使うソフト。今年は定跡の強化に注力し、コンテナ技術でマルチ構成を試みる。",
+  "base": {
+    "engine": "やねうら王+Apery",
+    "eval_source": "Apery（KPPT、振り飛車仕様）",
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "前年と同じKPPT。振り飛車の勝ち局から定跡生成し、評価関数と定跡を振り飛車仕様にする"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": null
+  },
+  "learning": null,
+  "hardware": "Amazon EC2 m5.24xlarge",
+  "language": [
+    "C++",
+    "Go",
+    "Python"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "棋風・人間らしさ",
+      "title": "振り飛車をテーマにした方針",
+      "description": "対抗形でじわじわした展開にして手数を伸ばし、時間を温存して最後に時間攻めする戦略。振り飛車をひいきした教師局面を学習した評価関数を通常の評価関数とブレンドして、振り飛車評価関数を作る（2017年）。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "振り飛車をひいきした教師局面生成を行い、それを学習した評価関数を通常の評価関数とブレンドすることで振り飛車評価関数を作成。"
+    },
+    {
+      "category": "評価関数",
+      "title": "美濃囲いの落とし穴（28玉型加点）",
+      "description": "玉の美濃囲いの落とし穴方式を採用し、28玉型にボーナス加点する（2018年）。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "玉の美濃囲い落とし穴（ 28玉型にボーナス加点）を採用。"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "振り飛車の勝ち局から半自動で定跡生成",
+      "description": "ノード数を高めにした検証対局→振り飛車の勝ち局から定跡生成→元の定跡にマージ→検証対局のループを半自動で回した。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "ノード数高めで検証対局 →振り飛車の勝ち局から定跡生成 →元の定跡にマージ →検証対局…のループをひたすら半自動で回していました。"
+    },
+    {
+      "category": "並列・分散",
+      "title": "コンテナ技術による複数台構成",
+      "description": "マシンパワーで競り負けたくないため複数台構成にするが、マシンを並列にするのではなくコンテナ技術を使う。",
+      "originality": "不明",
+      "evidence": null,
+      "quote": "マシンを並列にするのではなくてコンテナ技術を使ってみたいなと思っています。"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "盤面データを複素数平面で表現（2016年）",
+      "description": "2016年のGo言語のオリジナル版は、盤面データを複素数平面で表現した。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "盤面データを複素数平面で表現しているのが特徴。"
+    }
+  ],
+  "character": "四角いワッフルは将棋盤と似ているという由来で、ゆるふわスイーツ的な軽さを表現する。タブレット向けに開発したので物理的に軽く、振り飛車の軽い捌きを目指す。表紙のワッフルは自宅で焼いたもの。noteで自戦記を公開し、文春オンラインのインタビューもある。",
+  "notes": "評価関数について「NNUE型の振り飛車評価関数の劣化版を作る意味を感じない」と書き、新規の評価関数は作らない方針。コロナ禍と燃え尽き感で相当しんどいとの近況あり",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc30/team.html"
+}

@@ -1,0 +1,79 @@
+{
+  "wcsc": 30,
+  "year": 2020,
+  "dir": "Fluke",
+  "team": "井本 康宏",
+  "software": "Fluke",
+  "sources": [
+    "wcsc30/appeal/Fluke/appeal_Fluke.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc30/appeal/Fluke/appeal_Fluke.pdf"
+  ],
+  "summary": "前年のDLソフトWindfallから一時的にNNUE系へ鞍替えし、名前をFlukeに改めた。NNUEのネットワーク構造を試行錯誤し、整数演算で動く「なんちゃってHighway Network」で挑む予定。失敗に終わった試行の残骸を詳細に公開している。",
+  "base": {
+    "engine": "やねうら王",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "NNUE",
+    "detail": "NNUE。Highway Networkの発想を取り込んだ「なんちゃってHighway Network」（間に合わなければ標準NNUEに自前で学習したパラメータ）"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": null
+  },
+  "learning": "標準NNUEのクロスエントロピー損失でSGD系optimizerが良いと判断。大量の教師データ（数億程度が覚えられる限界）",
+  "hardware": "Amazon EC2 c5.24xlarge",
+  "language": [
+    "Python",
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "なんちゃってHighway Network",
+      "description": "Highway Networkの y=T(x)⊗H(x)+(1-T(x))⊗x を、NNUEの整数演算で使える形に変える。入力と出力の次元が違うので x の代わりに H2(x) を置き、シグモイドの代わりにclipped reluで正規化する U(x) を使って y=U(x)⊗H1(x)+(1-U(x))⊗H2(x) とする。計算量が増える副作用は全結合層をブロック対角にして抑える。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "Highway NetworkのアイディアをNNUEに取り込む"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "試して駄目だった工夫の公開",
+      "description": "clipped reluの範囲拡大、全結合層の入力と行列の符号入れ替え、標準NNUEを通常の強化学習で学習、optimizerの比較、大量教師の暗記、勝率±0.1の誤差許容、softmax省略のAttention風機構などを試し、いずれも大きな成果なしと報告する。",
+      "originality": "独自",
+      "evidence": "標準NNUEのクロスエントロピー損失と同程度かそれより悪いことが多い",
+      "quote": "何の成果も得られませんでした！"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "NNUEにはSGDが良い",
+      "description": "適応的なoptimizerでは、勾配が0になりやすく入力が疎なNNUEのembedding層が学習できない。SGDが最良と判断した。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "SGDが一番良さそう"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "順方向と逆方向で別の活性化関数",
+      "description": "順方向はclipped relu、逆方向（勾配）はsigmoidにして、勾配消失を気にしなくてよくする案。効果は不明。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "順方向と逆方向で活性化関数が同じである必要はない"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "勝率に変換して誤差を許容する学習",
+      "description": "評価値を勝率にして±0.1の誤差を許容して学習したが、変わらないか悪化した。学習を続けると誤差のヒストグラムが+0.1と-0.1の2か所に山を作る。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "評価値を勝率にして±0.1の誤差を許容して学習"
+    }
+  ],
+  "character": "ソフト名は、Windfall（棚ぼた）からFluke（まぐれ当たり）へ。「忙しい人のためのチートシート」から始め、「何の成果も得られませんでした！」の1枚を設け、試行錯誤の残骸を公開する。",
+  "notes": "文書の作成日は2019/3/29と誤記されているが、第30回の文書。自己申告の棋力は「すごく弱い」",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc30/team.html"
+}

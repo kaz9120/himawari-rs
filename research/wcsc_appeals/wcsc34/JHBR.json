@@ -1,0 +1,54 @@
+{
+  "wcsc": 34,
+  "year": 2024,
+  "dir": "JHBR",
+  "team": "イ・チヒョン",
+  "software": "JHBR",
+  "sources": [
+    "wcsc34/appeal/JHBR/appealv2.txt"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc34/appeal/JHBR/appealv2.txt"
+  ],
+  "summary": "cshogiを使い、駒得評価のミニマックス探索を量子コンピュータ用ライブラリQiskitで実行する。うまく動けば1局は実機を使いたい。",
+  "base": {
+    "engine": "cshogi",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "手作り",
+    "detail": "駒得のみ"
+  },
+  "search": {
+    "family": "その他",
+    "detail": "ミニマックス法。探索部をQiskitで量子回路として実装"
+  },
+  "learning": null,
+  "hardware": "Ryzen 9 5900X",
+  "language": [
+    "Python"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "研究・実験的",
+      "title": "量子コンピュータで探索",
+      "description": "ミニマックス探索を量子コンピュータ用ライブラリQiskitで行う。動けば1局は量子実機を使う意向。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "ミニマックスによる探索は、量子コンピュータのライブラリ(Qiskit)を使って行なっています"
+    },
+    {
+      "category": "評価関数",
+      "title": "駒得だけの評価",
+      "description": "ノードの評価を駒得のみで行う。",
+      "originality": "不明",
+      "evidence": null,
+      "quote": "ノードの評価は駒得で行います"
+    }
+  ],
+  "character": "量子コンピュータで将棋を指すという挑戦的なコンセプト。",
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc34/team.html"
+}

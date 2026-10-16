@@ -1,0 +1,52 @@
+{
+  "wcsc": 20,
+  "year": 2010,
+  "dir": "TACOS",
+  "team": "TACOSチーム（橋本剛ほか）",
+  "software": "TACOS",
+  "sources": [
+    "wcsc20/appeal/TACOS/TACOS.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc20/appeal/TACOS/TACOS.txt"
+  ],
+  "summary": "基本は「コンピュータ将棋の進歩5」の記述と同じ。大きな変更点は、Bonanza Methodによる評価関数学習と、Craftyを参考にした並列計算。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "三駒関係の評価を取り入れ中"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": null
+  },
+  "learning": "Bonanza Methodで評価関数を学習",
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "Bonanza Methodの導入と三駒関係",
+      "description": "評価関数をBonanza Methodで学習し、選手権までに三駒関係の評価をうまく取り入れたい。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "Bonanza Methodで学習を行っている"
+    },
+    {
+      "category": "並列・分散",
+      "title": "Craftyを参考にした並列計算",
+      "description": "Craftyを参考に並列計算をできるようにした。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "Craftyを参考に並列計算をできるようにした"
+    }
+  ],
+  "character": null,
+  "notes": "前年までの内容は書籍「コンピュータ将棋の進歩5」を参照。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc20/team.html"
+}

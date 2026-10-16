@@ -1,0 +1,46 @@
+{
+  "wcsc": 25,
+  "year": 2015,
+  "dir": "sawanyan",
+  "team": "宇賀神 拓也",
+  "software": "さわにゃん",
+  "sources": [
+    "wcsc25/appeal/sawanyan/appeal.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc25/appeal/sawanyan/appeal.txt"
+  ],
+  "summary": "Stockfishを大いに参考にした探索と、Magic bitboard、KKP・KPPの評価関数。Bonanza 6.0のfv.binを初期値にして少し学習した。",
+  "base": {
+    "engine": "独自",
+    "eval_source": "Bonanza 6.0のfv.bin（少し追加学習）",
+    "note": "fv.bin以外は自作"
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "KKP・KPP"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "Stockfish参考。PVS、LMR、各種枝刈り、1手詰め"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "fv.binを初期値にした追加学習",
+      "description": "Bonanzaのfv.binを初期値にして少しだけ学習した。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "ボナンザのfv.binを初期値にちょっとだけ学習してみました。"
+    }
+  ],
+  "character": null,
+  "notes": "特徴が少ないと本人が述べる。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc25/team.html"
+}

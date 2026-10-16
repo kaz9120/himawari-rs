@@ -1,0 +1,86 @@
+{
+  "wcsc": 34,
+  "year": 2024,
+  "dir": "Kifuwarabe_using_cshogi",
+  "team": "高橋 智史",
+  "software": "きふわらべ using cshogi",
+  "sources": [
+    "wcsc34/appeal/Kifuwarabe_using_cshogi/WCSC34_PR_AfterGame.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc34/appeal/Kifuwarabe_using_cshogi/WCSC34_PR_AfterGame.pdf"
+  ],
+  "summary": "cshogiで合法手生成だけを任せ、探索せずに「2つの指し手の関係」を表にした予測モデルで着手を選ぶ異色のエンジン。大会後に差し替えた文書で、8戦0勝8敗の最下位をネタにし、漫画風の掛け合いで仕組みと反省を解説する。",
+  "base": {
+    "engine": "cshogi（合法手生成のみ）",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "その他",
+    "detail": "評価値テーブル。着手と応手の2指し手関係（KK・KP・PK・PP）を0/1のビットで持ち、相手の合法手の票数を着手のポリシー値とする"
+  },
+  "search": {
+    "family": "その他",
+    "detail": "探索なし。ポリシー値が最大の手からランダムに1手選ぶ"
+  },
+  "learning": "負けたらアクセスした評価値テーブルのセルをランダムに書き換え、勝ったら保存する「落書き」。将棋所の連続対局で6つ×2人分のテーブルを回す",
+  "hardware": "Ryzen 7 5700U（実際はノートPC1台で出場。Threadripper 7960Xも用意）",
+  "language": [
+    "Python"
+  ],
+  "claimed_strength": "一次予選8戦0勝8敗、45チーム中最下位",
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "2指し手関係による予測モデル",
+      "description": "自分の着手と相手の応手のUSI符号（例 7g7f_3c3d）が成立するかを0/1で表に持つ。玉と玉以外の区別だけをして、KK・KP・PK・PPの4種類のテーブルとする。",
+      "originality": "独自",
+      "evidence": "8戦全敗（最下位）",
+      "quote": "予測モデルは ２指し手関係のＫＫ、ＫＰ、ＰＫ、ＰＰだぜ。"
+    },
+    {
+      "category": "探索",
+      "title": "相手の合法手数を票とするポリシー値",
+      "description": "着手のポリシー値を、その着手に対して「関係あり」とされる相手の合法手数（1票ずつの選挙）とし、最大の手からランダムに選ぶ（I'm feeling luckey）。探索はしない。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "相手の合法手が １票を持ってる選挙だと思ってくれだぜ"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "負けたら書き換える「落書き」",
+      "description": "負けている間は参照したセルを覚えておき、乱数で0/1を上書きし、勝ったらテーブルを保存して忘れる。千日手を避けるため、評価値テーブルを6つずつ（計12個）持たせて将棋所の連続対局で回す。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "学習ではないが 学習のふりをしている行為"
+    },
+    {
+      "category": "探索",
+      "title": "コウ式の同形反復回避",
+      "description": "金が左右に往復して千日手になるのを避けるため、2手前に指した手を指さない（他に手がなければ指す）。囲碁のコウと同じ実装だと説明する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "自分が２つ前に指した手は指さない、とプログラムしてるぜ"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "失敗の知見を共有する",
+      "description": "予測モデルが欠陥を持つことを承知で、ちゃんと実装すればダメだったという知見が出せると考える。範囲外アクセスなど未解決の不具合も明記する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "ちゃんと実装すればダメだったという結果を得て どうダメだったかという知見を発表できるのに"
+    },
+    {
+      "category": "エンタメ・演出",
+      "title": "キャラクターの掛け合いで説明",
+      "description": "開発者、きふわらべちゃん、ひよ子の3者が全文カタカナ・ローマ字の見出しの付いた会話形式で、仕組みと失敗談を解説するスライド文書。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "どうやって弱くすることができるか ひまつぶしに きふわらべのＰＲ文章を読みたいという需要もあるのよ"
+    }
+  ],
+  "character": "全敗最下位を自虐する会話劇形式の長文PR。初参加のはるかの開発者に「長いPR文章が読みたい」と言われて書いた、というノリで書かれている。関数型言語（SKIコンビネーター）の習得を断念してcshogiに切り替えた顛末、Threadripperを買ったがノートPCで出場した話など、エンタメ要素が強い。",
+  "notes": "大会後（5/9）に差し替えた文書。ライブラリ使用宣言で、思考部に大きな影響を与える他者のプログラム（cshogi）を利用すると明記。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc34/team.html"
+}

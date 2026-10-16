@@ -1,0 +1,62 @@
+{
+  "wcsc": 36,
+  "year": 2026,
+  "dir": "tiger",
+  "team": "チームUSIAgent（大野 晃）",
+  "software": "tiger",
+  "sources": [
+    "wcsc36/appeal/tiger/PR.md"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc36/appeal/tiger/PR.md"
+  ],
+  "summary": "Rustで書いた将棋AI。USI処理・差し手生成・並び替えのUSIAgentと、深層学習フレームワークnncombinatorという2つの自作基盤で、対局・探索・学習を一貫して設計している。疎な0/1特徴量向けの特徴量変換層を、CPUではportable SIMD、GPUでは独自CUDAカーネルで高速・省メモリに実装した。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": "自作フレームワークUSIAgent（対局基盤）とnncombinator（深層学習）の上に構築"
+  },
+  "eval": {
+    "family": "NNUE",
+    "detail": "疎な二値特徴量を扱う独自の特徴量変換層を持つネットワーク。具体的な構造・規模は書かれていない"
+  },
+  "search": {
+    "family": "不明",
+    "detail": "記載なし（高速な差し手生成と並び替え器が基盤）"
+  },
+  "learning": "nncombinatorで学習。教師局面ファイルの読み込みとデータローダも自作",
+  "hardware": "Amazon EC2 c7g.4xlarge（16vCPU、Arm）（一覧ページ）",
+  "language": [
+    "Rust"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "実装・高速化",
+      "title": "CPU推論の疎な特徴量変換のSIMD化",
+      "description": "入力が0か1なので乗算せず、アクティブな入力位置のインデックスのリストを受けて、対応する重み行を加算するだけにする。出力側の加算にportable SIMDを使う。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "アクティブな特徴については、対応する重み行を単純に加算するだけでよい"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "独自CUDAカーネルで高速・省メモリ学習",
+      "description": "順伝播ではアクティブ位置のインデックス列をカーネルに渡し、warp shuffleリダクションで総和を取る。重み更新量の計算では、入力をビットベクタにして転送し、カーネル内で逐次部分行列に展開してWMMA APIで計算する。GPUメモリと転送量を削減し、バッチサイズを大きくできる。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "入力をビット表現に圧縮して転送することで、GPU メモリ使用量と転送量を大幅に削減しています。"
+    },
+    {
+      "category": "開発手法・運用",
+      "title": "自作フレームワークでの一貫した設計",
+      "description": "USI処理の自動化、差し手生成、並び替え器を持つUSIAgentと、レイヤを積み上げる記法でネットワークを構築できるnncombinatorを自作し、教師局面の読み込みやデータローダまで含めて一貫して設計する。ボトルネックを見つけやすい。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "対局基盤・探索基盤・学習基盤を自作ライブラリ群によって一貫して設計している点"
+    }
+  ],
+  "character": null,
+  "notes": "文書は技術基盤の解説が中心で、探索アルゴリズム、評価関数の規模、棋力の記述はない。nncombinatorの例コードはMNIST風の28x28入力のサンプル。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc36/team.html"
+}

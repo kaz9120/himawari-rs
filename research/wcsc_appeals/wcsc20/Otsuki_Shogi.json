@@ -1,0 +1,76 @@
+{
+  "wcsc": 20,
+  "year": 2010,
+  "dir": "Otsuki_Shogi",
+  "team": "大槻知史",
+  "software": "大槻将棋",
+  "sources": [
+    "wcsc20/appeal/Otsuki_Shogi/Otsuki_Shogi.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc20/appeal/Otsuki_Shogi/Otsuki_Shogi.txt"
+  ],
+  "summary": "PVS型αβに0.5手延長と前向き枝刈りを組み合わせる選択的探索。評価関数は駒位置関係20万項目の線形和と、固定値の玉安全度の和で、進行度で重みを補間する。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "駒の位置関係の約20万項目の線形和（序盤w0・終盤w100・中盤は進行度で補間）＋玉の安全度（24近傍の利き、玉の自由度、前進度）"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "PVS型αβ、0.5手延長、futility、null move、LMR、多重反復深化。history・singular extensionは不使用。詰みはPDS"
+  },
+  "learning": "強い人間の棋譜から機械学習。正則化項の重みでw0・w100の大きさを調整",
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "進行度で補間する2点パラメータ",
+      "description": "各評価項目のパラメータを序盤w0、終盤w100の2点で持ち、中盤は進行度に応じた重み付き和で表す。正則化項の重み調整でw0・w100の大きさを制御する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "中盤は進行度に応じてw0とw100との重み付き和で表す"
+    },
+    {
+      "category": "評価関数",
+      "title": "玉の安全度は固定値",
+      "description": "玉の24近傍の利き、玉の自由度、玉の前進度は経験的な固定値で、機械学習では調整しない。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "これらの値は、経験的に得た固定値を使用し、機械学習による調整はしない"
+    },
+    {
+      "category": "探索",
+      "title": "多重反復深化で前回最善手を補う",
+      "description": "前回最善手がハッシュにない場合に、多重反復深化で最善手を得る。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "多重反復深化により最善手を得ている"
+    },
+    {
+      "category": "探索",
+      "title": "状況に応じた延長",
+      "description": "取り返し、長い手数の手筋、唯一手の直後などで探索深さを延長する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "取り返し、長い手数の手筋、唯一手の直後の場合などの場合、探索深さを延長している"
+    },
+    {
+      "category": "詰み・終盤",
+      "title": "王手・逃げ手の生成順の工夫",
+      "description": "PDSで、取られない王手と上に逃げる手を先に生成する。中合と不成は基本的に生成しない。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "取られない王手を先に、上に逃げる手を先に生成する"
+    }
+  ],
+  "character": null,
+  "notes": null,
+  "team_list_url": "http://www2.computer-shogi.org/wcsc20/team.html"
+}

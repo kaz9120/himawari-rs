@@ -1,0 +1,55 @@
+{
+  "wcsc": 29,
+  "year": 2019,
+  "dir": "TMOQ",
+  "team": "山下 隆久",
+  "software": "TMOQ（特大もっきゅ）",
+  "sources": [
+    "wcsc29/appeal/TMOQ/TMOQ_appeal_20190502.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc29/appeal/TMOQ/TMOQ_appeal_20190502.pdf"
+  ],
+  "summary": "『将棋AIで学ぶディープラーニング』のサンプルをベースに、深層学習を学ぶ趣旨で作るソフト。100万手超の定跡ファイルを用意し、強化学習・序盤定跡・詰め探索を足すことを目指す。",
+  "base": {
+    "engine": "dlshogi",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "山岡忠夫氏の書籍のサンプル（dlshogi系）"
+  },
+  "search": {
+    "family": "MCTS",
+    "detail": null
+  },
+  "learning": "平岡氏の初期局面ファイルにfloodgate（2015〜2017年）の上位棋譜をマージし、elmo_for_learnで教師を生成して学習",
+  "hardware": null,
+  "language": [
+    "C++",
+    "Python"
+  ],
+  "claimed_strength": "WCSC28は40チーム中16位",
+  "ideas": [
+    {
+      "category": "定跡・序盤",
+      "title": "マージした100万手超の定跡",
+      "description": "棒銀を指す「まふ定跡」、千田先生のC-Book、floodgate上位棋譜、やねうら王の100テラショック定跡をマージし100万手超にした。強くするためではなく、序盤で変な手を指して30手前後で終わるのを避けるため。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "序盤で変な手を指して 30 手前後で終るのを避けるためです。"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "評価関数で指し手を絞って強化学習を加速（構想）",
+      "description": "強化学習でApery/やねうら王の評価関数を使って指し手を絞れば加速できるのではという構想。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "強化学習において Apery/やねうら王の評価関数を利用して指し手を絞ることで強化学習を加速できるのではないかと妄想し"
+    }
+  ],
+  "character": "名前は「特大もっきゅ」。愛娘が命名しキャラクターデザインした。作者は宮崎出身の5級程度、10年開発から離れていた。「学習が進むにつれFloodgateのRatingが上がり興奮した」。",
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc29/team.html"
+}

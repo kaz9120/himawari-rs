@@ -1,0 +1,46 @@
+{
+  "wcsc": 23,
+  "year": 2013,
+  "dir": "uMEIJIN",
+  "team": "北舛 和博",
+  "software": "uMEIJIN",
+  "sources": [
+    "wcsc23/appeal/uMEIJIN/csa-appeal-umeijin-20130331.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc23/appeal/uMEIJIN/csa-appeal-umeijin-20130331.txt"
+  ],
+  "summary": "読みを行わず、駒割と駒の利き・位置パターンだけで局面評価する。駒割は固定定義せず、詰み探索は行う。Visual C++で64bit×2のビットボード。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "手作り",
+    "detail": "駒割と駒の利き、位置パターン。駒割は固定定義しない"
+  },
+  "search": {
+    "family": "その他",
+    "detail": "局面評価に読みを行わない。詰み探索のみ"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "探索",
+      "title": "読まずに評価する",
+      "description": "局面評価には読みを行わず、駒割と利き・位置パターンだけで指す。駒割は固定の値を定義しない。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "局面評価には読みを行わない"
+    }
+  ],
+  "character": null,
+  "notes": "短い文書。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc23/team.html"
+}

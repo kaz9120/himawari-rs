@@ -1,0 +1,44 @@
+{
+  "wcsc": 22,
+  "year": 2012,
+  "dir": "Fu",
+  "team": "森下貴之",
+  "software": "歩",
+  "sources": [
+    "wcsc22/appeal/Fu/appeal.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc22/appeal/Fu/appeal.txt"
+  ],
+  "summary": "MiniMax法を予定し、「構想力」を持たせようと奮闘中の初参加ソフト。「かなり弱いです」。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "不明",
+    "detail": null
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "MiniMax法（予定）"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "研究・実験的",
+      "title": "構想力を持たせる試み",
+      "description": "探索に加えて、構想力を持たせようと奮闘している。具体的な方法は書かれていない。",
+      "originality": "不明",
+      "evidence": null,
+      "quote": "構想力を持たせようと現在奮闘中です"
+    }
+  ],
+  "character": null,
+  "notes": "一覧ではキャンセル欄。文書は3行。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc22/team.html"
+}

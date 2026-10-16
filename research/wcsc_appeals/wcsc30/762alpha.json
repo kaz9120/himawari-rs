@@ -1,0 +1,80 @@
+{
+  "wcsc": 30,
+  "year": 2020,
+  "dir": "762alpha",
+  "team": "天野 史斎",
+  "software": "762alpha",
+  "sources": [
+    "wcsc30/appeal/762alpha/762alpha_20200331.txt"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc30/appeal/762alpha/762alpha_20200331.txt"
+  ],
+  "summary": "学習の自動化を目的とし、計算資源を投入するほど完全解析に近づく構造を目指す。新機軸は、局面の順序ベースの評価関数と、ベイジアンフィルタによる自動定跡獲得。探索部はad-hocな要素を排除している。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "その他",
+    "detail": "局面の良し悪しの順序を記憶する順序ベース評価関数。プロトタイプ法・線形分離・比較二分木を使用"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "全合法手を展開、全interior nodeで千日手判定、探索に透過的な置換表、置換表共有の並列探索（InterlockedCompareExchange）"
+  },
+  "learning": "学習の自動化。決定木系の学習アルゴリズムで、サンプル数に応じてパラメータ数をスケールさせる",
+  "hardware": "Core i7-6700／i7-7700HQ。NPSはCore i7-860で1スレッド約22万",
+  "language": [
+    "C++",
+    "Perl",
+    "バッチファイル"
+  ],
+  "claimed_strength": "NPSはトップソフトと3桁差",
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "局面の順序ベース評価関数",
+      "description": "局面の良し悪しの順序を記憶することで完全解析の結果を表現する。KD木のような素朴な方法では汎化しないため、プロトタイプ法・線形分離・比較二分木で汎化を得る。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "局面の順序ベースの評価関数"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "ベイジアンフィルタによる自動定跡獲得",
+      "description": "ベイジアンフィルタをベースに、定跡を自動で獲得する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "ベイジアンフィルタベースの自動定跡獲得"
+    },
+    {
+      "category": "探索",
+      "title": "ad-hocな要素を排除した探索部",
+      "description": "interior nodeで全合法手を展開し、全interior nodeで千日手判定を行う。履歴依存の評価値を置換表に書かず、深さの異なる探索結果の直接比較が起きないようにして、探索に透過的な置換表にする。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "探索部からad-hocな要素を排除"
+    },
+    {
+      "category": "並列・分散",
+      "title": "置換表共有の並列探索",
+      "description": "InterlockedCompareExchangeで置換表エントリごとに高速な排他をかけて並列化する。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "InterlockedCompareExchangeで置換表エントリ毎の高速な排他を実現"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "FlowBoardによるオーダリング付き指し手生成",
+      "description": "前回と同じ、FlowBoardを使ったオーダリング付き指し手生成。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "FlowBoardによるオーダリング付き指し手生成: 前回と同じです。"
+    }
+  ],
+  "character": "「コードの手直しなしで、資源を入れるほど完全解析に近づく」という学習自動化の理想を掲げる。新機軸も「私が勝手に思いこんでいるブツ」と自虐する。",
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc30/team.html"
+}

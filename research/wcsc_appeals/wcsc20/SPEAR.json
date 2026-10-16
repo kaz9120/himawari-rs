@@ -1,0 +1,46 @@
+{
+  "wcsc": 20,
+  "year": 2010,
+  "dir": "SPEAR",
+  "team": "ライエル グリムベルゲン",
+  "software": "SPEAR",
+  "sources": [
+    "wcsc20/appeal/SPEAR/SPEAR.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc20/appeal/SPEAR/SPEAR.txt"
+  ],
+  "summary": "2006年にCraftyを土台にゼロから書き直した全幅探索型。Bonanza Methodで評価関数を調整するが、評価関数自体はBonanzaと全く違い、df-pn詰みソルバも持つ。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": "Craftyのビットボードと探索木表現を使用。Bonanzaライブラリは不使用"
+  },
+  "eval": {
+    "family": "線形",
+    "detail": null
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "全幅探索、futility pruningなど。df-pn詰みソルバ"
+  },
+  "learning": "Bonanza Methodで評価関数の特徴を調整",
+  "hardware": null,
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "詰み・終盤",
+      "title": "df-pn詰みソルバの併用",
+      "description": "Bonanzaにはない探索ツールとして、df-pn詰みソルバを持つ。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "Spear has also some extra search tools that are not in Bonanza, like a df-pn tsume solver"
+    }
+  ],
+  "character": null,
+  "notes": "英語の文書。Bonanzaとの構造の類似は、Bonanza公開前に決まっていたと説明する。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc20/team.html"
+}

@@ -1,0 +1,44 @@
+{
+  "wcsc": 26,
+  "year": 2016,
+  "dir": "tanuki-no-mori",
+  "team": "たぬきのもり製作委員会（野田久順、岡部淳、鈴木崇啓、日高雅俊）",
+  "software": "たぬきのもり",
+  "sources": [
+    "wcsc26/appeal/tanuki-no-mori/tanuki-_0316_light.pdf"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc26/appeal/tanuki-no-mori/tanuki-_0316_light.pdf"
+  ],
+  "summary": "技術的な記載がなく、ひらがなだけの絵本風の文章で、遠くの友達とも一緒に考える（分散で考える）様子を描く。一覧ページではAperyを使用し、複数OS・複数マシン（AWS含む）の構成と書かれている。",
+  "base": {
+    "engine": "Apery",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "不明",
+    "detail": null
+  },
+  "search": {
+    "family": "不明",
+    "detail": null
+  },
+  "learning": null,
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "並列・分散",
+      "title": "遠くの友達とも一緒に考える分散構成",
+      "description": "文書は絵本風のたとえで、将棋を友達と一緒に、遠くの友達とも一緒に考えると述べるだけ。分散構成を示唆するが技術的説明はない。",
+      "originality": "不明",
+      "evidence": null,
+      "quote": "とおくのおともだちとも かんがえることにしました"
+    }
+  ],
+  "character": "「あるひのこと たぬきさんはおさるさんから しょうぎをおしえてもらいました…」と、ひらがなの絵本形式で書いた文書。「たぬきさんはゆめのなかでも しょうぎをかんがえているようです」「かてるといいなあ」で終わる。",
+  "notes": "技術情報は文書にない。ハードウェア・言語は一覧ページ（Xeon・複数OS、C++・C#・Python、AWS m4.10xlarge等）による",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc26/team.html"
+}

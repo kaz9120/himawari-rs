@@ -1,0 +1,71 @@
+{
+  "wcsc": 32,
+  "year": 2022,
+  "dir": "Suisho",
+  "team": "杉村 達也",
+  "software": "水匠",
+  "sources": [
+    "wcsc32/appeal/Suisho/WCSC32_appeal.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc32/appeal/Suisho/WCSC32_appeal.pdf"
+  ],
+  "summary": "やねうら王とdlshogiの探索部・学習部を使い、NNUE評価関数とdlshogi型評価関数の両方を学習する。NNUEはFV_SCALEを調整しlambda=0で追加学習し、最終的に両者を楽観合議で使う予定。",
+  "base": {
+    "engine": "やねうら王+dlshogi",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "DL+NNUE",
+    "detail": "NNUE（水匠）とdlshogi型15ブロック224フィルタ"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "最新Stockfishの強化部分をマージ。NNUEとdlshogi評価の楽観合議を予定"
+  },
+  "learning": "教師は水匠/やねうら王で1手約200万ノード探索した対局棋譜（約3億局面）。dlshogi型はNNUE用教師とdlshogi教師をepoch毎に交互に学習",
+  "hardware": "Ryzen Threadripper 3990X + Amazon EC2",
+  "language": [
+    "Python",
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "FV_SCALE調整とlambda=0の追加学習",
+      "description": "NNUE追加学習では勝率項を見ずlambdaを0にして勝敗項だけで学習し、FV_SCALEを調整してlossの減り方を変える。なぜうまくいくかは分かっていないとしている。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "lambdaを0、すなわち勝率項を見ずに勝敗項だけで学習させているので、FV_SCALEをいい感じに変更して学習させることが大切です"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "2種類の教師局面をepoch毎に交互学習",
+      "description": "dlshogi型モデルに、水匠で作った教師局面とdlshogiで作った教師局面をepoch毎に交互に学習させると、徐々に強くなる。半年前から継続中。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "水匠で作成した教師局面と、dlshogiで作成した教師局面をepoch毎に交互に学習させると徐々に強くなる"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "連続対局の勝率伝播による定跡作成",
+      "description": "任意局面からの連続対局を行い、対局数が閾値（例100）を超えた枝局面を開始局面として繰り返す。最終的にリーフから根へ勝率をmin-max的に伝播して定跡にする。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "特定の局面からの対局数が一定数(例:>100)を超えたら枝局面を開始局面として以下同様に繰り返す"
+    },
+    {
+      "category": "探索",
+      "title": "NNUEとdlshogi型の楽観合議",
+      "description": "両評価関数の評価値スケールを調整した上で、楽観合議させる予定。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "評価値のスケールをいい感じに調整した上で、楽観合議をさせる予定です。"
+    }
+  ],
+  "character": null,
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc32/team.html"
+}

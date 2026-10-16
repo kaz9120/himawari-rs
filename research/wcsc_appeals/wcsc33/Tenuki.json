@@ -1,0 +1,62 @@
+{
+  "wcsc": 33,
+  "year": 2023,
+  "dir": "Tenuki",
+  "team": "手抜きチーム（鈴木 太朗・玉川 直樹）",
+  "software": "手抜き",
+  "sources": [
+    "wcsc33/appeal/Tenuki/tenuki33.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc33/appeal/Tenuki/tenuki33.pdf"
+  ],
+  "summary": "開発者らが将棋プログラムの仕組みを理解するために作るD言語製のNNUE+αβ探索ソフト。文書の大半は、D言語を選んだ理由のQ&Aと、Minimax・Negamax・αβ・fail-soft・PVSの解説、関数についての考察で占められる。",
+  "base": {
+    "engine": "独自",
+    "eval_source": "どうたぬき（tanuki- 第1回電竜戦版）のnn.bin",
+    "note": "D言語で自作（リポジトリ公開）"
+  },
+  "eval": {
+    "family": "NNUE",
+    "detail": "どうたぬきの評価関数ファイルnn.binを使用"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "Negamax、αβ、PVSなどを自前実装"
+  },
+  "learning": null,
+  "hardware": "Amazon EC2 c6a.metal",
+  "language": [
+    "D"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "開発手法・運用",
+      "title": "D言語での実装",
+      "description": "関数プロトタイプ不要、配列をスタック領域に置ける、ガベージコレクションがある、メモリ安全（境界チェック）、ldc2でclangのCと同等の速さが期待できる、の5点を理由にD言語を選んだ。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "関数プロトタイプがいらない 2. 配列をスタック領域に置ける 3. ガベージコレクションがある 4. メモリ安全である 5. 速い"
+    },
+    {
+      "category": "解説・人間支援",
+      "title": "Minimaxからの探索アルゴリズム入門",
+      "description": "「私のためのMinimax入門」として、Minimax・Negamax・αβ枝刈り・fail-soft・PVSを、Rubyのコードと図で段階的に解説する付録を載せる。実行できる疑似コードとしてRubyを使う。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "本章では私にむけて Minimax の解説をします。"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "高階関数・関数の古典的/近代的定義の考察",
+      "description": "付録2で、関数の古典的定義（数）と近代的定義（対応関係）の違いを整理し、λ式で高階関数を説明する。将棋と直接関係しない内容。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "本章では関数について考察する。"
+    }
+  ],
+  "character": "アピール文書の本体が将棋ではなくアルゴリズム入門と関数論で、「手抜き」というチーム名にそぐわない力作の付録を作っている。付録タイトルは「私のためのMinimax入門」。",
+  "notes": "強さに関する主張はなく、技術的な工夫は少ない。D言語の採用理由が主な独自点。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc33/team.html"
+}

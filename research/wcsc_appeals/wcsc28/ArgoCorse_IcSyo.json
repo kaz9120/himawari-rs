@@ -1,0 +1,70 @@
+{
+  "wcsc": 28,
+  "year": 2018,
+  "dir": "ArgoCorse_IcSyo",
+  "team": "市村 豊",
+  "software": "ArgoCorse_IcSyo",
+  "sources": [
+    "wcsc28/appeal/ArgoCorse_IcSyo/appeal.txt"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc28/appeal/ArgoCorse_IcSyo/appeal.txt"
+  ],
+  "summary": "やねうら王を改造した個人ソフト。評価関数のキメラ化（複数の評価関数を1:1で混ぜる）と、定跡の複数候補を2手先読みの評価値で選ぶ手法が独自点。文書の大半は、大会参加の感想とゲームの目的論、アニメ感想で占める。",
+  "base": {
+    "engine": "やねうら王",
+    "eval_source": "elmo, tanuki-, Apery, Qhapaq（混合）",
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "やねうら王の評価関数をキメラ化（elmo・tanuki-・Apery・Qhapaqを混ぜる）"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "やねうら王の探索"
+  },
+  "learning": null,
+  "hardware": "Lenovo X220、Windows10（AWSの高性能インスタンス利用を検討）",
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "評価関数のキメラ化",
+      "description": "elmo・tanuki-・Apery・Qhapaqの評価関数を1:1で混ぜた評価関数を試す。51局の自己対戦でApery単体に対しtanuki-とAperyの混合が27-6-18など。",
+      "originality": "独自",
+      "evidence": "tanuki-(sdt5)＆Apery(sdt5) VS Apery(sdt5) 27-6-18（51局）",
+      "quote": "評価関数のキメラ化というのをやってみたくなったので"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "定跡の複数候補を2手先読みで選ぶ",
+      "description": "定跡に候補が複数あるとき、2手先読みして評価値が最も高くなる手の1手目を採用する。コンピュータ囲碁のモンテカルロ法（10手先の評価値が元より高ければ勝ち）から着想した。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "定跡に候補が複数ある場合に二手先読みをしてその時の評価値が一番高い手の一手目を採用する"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "floodgate棋譜から31手目までの定跡",
+      "description": "floodgate2009〜2017の棋譜を31手目までそのまま定跡化した（約650MB）。元の局面より評価値が下がる手は採用しない処理を足した。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "元局面を評価関数で評価して、それよりも評価値が低くなる手は採用しない"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "定跡選択を研究テーマに据える",
+      "description": "SDTのような持ち時間が限られる場面では序盤を定跡でノータイムで指して時間を節約できるため、定跡の良い選択方法は研究に値すると考える。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "「定跡を選択するときのよりよい方法を考える」というのは研究テーマとして十分に成立しうる"
+    }
+  ],
+  "character": "文書の大半が個人の随想。ゲームの目的は勝つことではなく楽しむことだという持論、スーパーアグリF1の例えを使った「参戦権の獲得が最大の難関」論、やねうら王改造のオリジナリティを航空機の比較で自問する話、振り飛車は本当に不利かを研究するためのソフト開発という展望、アニメ「りゅうおうのおしごと！」の毎話レビューなど。AWSの使い方が分からないと嘆く自虐も交える。",
+  "notes": "評価関数混合の自己対戦表が多数ある。やねうら王最新版への移植が間に合わなければ旧版で出場するとも書く。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc28/team.html"
+}

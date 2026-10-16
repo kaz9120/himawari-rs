@@ -1,0 +1,55 @@
+{
+  "wcsc": 33,
+  "year": 2023,
+  "dir": "baron",
+  "team": "湯川 和雄",
+  "software": "baron",
+  "sources": [
+    "wcsc33/appeal/baron/wscs33_baron_appeal_20230508.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc33/appeal/baron/wscs33_baron_appeal_20230508.pdf"
+  ],
+  "summary": "python-dlshogi2をベースにしたDL系。Google Colabで約15.5〜16億局面を学習した。floodgateの高レート棋譜から作った独自のランダム性つき定跡を搭載。",
+  "base": {
+    "engine": "python-dlshogi2",
+    "eval_source": null,
+    "note": "『将棋AIで学ぶディープラーニング』『強い将棋ソフトの創り方』を参考"
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "ResNet 10ブロック192チャネル、約740万パラメータ"
+  },
+  "search": {
+    "family": "MCTS",
+    "detail": "python-dlshogi2のMCTS"
+  },
+  "learning": "山岡氏公開データセット+floodgate・大会棋譜。全約15.5〜16億局面、バッチ1024・学習率0.01固定。前回電竜戦のチェックポイントに1億追加",
+  "hardware": "Google Colab Pro/Pro+（主にV100）",
+  "language": [
+    "Python",
+    "C++"
+  ],
+  "claimed_strength": "floodgateで昨年2000前後、今年3200前後と思われる",
+  "ideas": [
+    {
+      "category": "定跡・序盤",
+      "title": "高レート棋譜の着手列マッチ定跡",
+      "description": "floodgateのR3800以上と過去大会の棋譜を着手列だけにして保存し、対局中に同じ進行があれば次の手を返す。複数候補はランダムに選ぶ。約4万局・600万手。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "対局時に保存したデータと同じ進行があれば、次の一手を返す。 複数候補があった場合は、一致している中からランダムで次の一手を返す。"
+    },
+    {
+      "category": "開発手法・運用",
+      "title": "基準ソフトに勝てるかでチェックポイント選定",
+      "description": "強さの判断が難しいため、floodgateのgikou2_1c（R3300）に勝ったことを確認してチェックポイントを採用した。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "floodgateのgikou2_1c（レート3300）に勝利したのを確認して採用した。"
+    }
+  ],
+  "character": "名前の由来は「馬の狼」で馬狼（ばろん）。馬の強さにちなむ。昨年は会場参加、今年は個人でオンライン参加。",
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc33/team.html"
+}

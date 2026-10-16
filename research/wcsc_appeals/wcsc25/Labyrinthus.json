@@ -1,0 +1,68 @@
+{
+  "wcsc": 25,
+  "year": 2015,
+  "dir": "Labyrinthus",
+  "team": "細羽 英貴",
+  "software": "Labyrinthus",
+  "sources": [
+    "wcsc25/appeal/Labyrinthus/appeal.pdf"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc25/appeal/Labyrinthus/appeal.pdf"
+  ],
+  "summary": "個人が約1年半、ライブラリなしで全自作した新規参加ソフト。序盤は定跡から少し外れた手を指して思考ロジック勝負に持ち込み、筋違い角をメイン戦術にする世界初の将棋ソフトを目指す（振り飛車の筋違い角も調整）。投了しない相手には「辱め詰み」機能が発動する。名前はCeuiさんのアルバム名から借用し、擬人化キャラ「武市らびゅりん子ちゃん」とボイスもある。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": "ライブラリを使わず全自作"
+  },
+  "eval": {
+    "family": "不明",
+    "detail": null
+  },
+  "search": {
+    "family": "不明",
+    "detail": null
+  },
+  "learning": null,
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "棋風・人間らしさ",
+      "title": "筋違い角をメイン戦術にする",
+      "description": "筋違い角を主戦術とし、振り飛車の筋違い角も指せるよう調整する。おそらく世界初とする。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "筋違い角をメイン戦術とする将棋ソフト"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "定跡から外す序盤",
+      "description": "序盤に定跡から少し外れた手を指し、定跡データの力でなく思考ロジックの戦いに持ち込む。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "定跡とは少し外れた手を指し"
+    },
+    {
+      "category": "エンタメ・演出",
+      "title": "辱め詰み機能",
+      "description": "明らかに詰む状態で投了しない相手に対し、条件に応じて投了図を恥ずかしい形にする「Labyrinthus辱め詰み（シャングリラ様モード）」機能を持つ。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "指了図を恥ずかしいものとする Labyrinthus 辱め詰み"
+    },
+    {
+      "category": "エンタメ・演出",
+      "title": "擬人化キャラとボイス",
+      "description": "有志による擬人化キャラ「武市らびゅりん子ちゃん」のイラストとボイスがある。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "有志による擬人化キャラ：武市らびゅりん子ちゃん"
+    }
+  ],
+  "character": "将棋の迷宮に迷い込む印象から、Ceuiさんのアルバム名にちなむ名前を付けた。擬人化キャラ・ボイス・辱め詰みなどキャラクター性の強いアピール。",
+  "notes": null,
+  "team_list_url": "http://www2.computer-shogi.org/wcsc25/team.html"
+}

@@ -1,0 +1,60 @@
+{
+  "wcsc": 31,
+  "year": 2021,
+  "dir": "Tom_Nook",
+  "team": "野田久順 ほか（ザイオソフト コンピュータ将棋サークル）",
+  "software": "たぬきち",
+  "sources": [
+    "wcsc31/appeal/Tom_Nook/Tom_Nook_appeal.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc31/appeal/Tom_Nook/Tom_Nook_appeal.pdf"
+  ],
+  "summary": "やねうら王を元に改造した思考部とNNUE評価関数 halfkp_256x2-32-32を使うチーム。ランダムパラメータからの学習と強化学習で進捗度を用いたWeighted Lossを使い、評価値のスケールを過去より小さくしている。名前はどうぶつの森のキャラ。",
+  "base": {
+    "engine": "やねうら王",
+    "eval_source": "水匠2・tanuki-（学習データ生成に使用）",
+    "note": null
+  },
+  "eval": {
+    "family": "NNUE",
+    "detail": "halfkp_256x2-32-32のNNUE"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "やねうら王を改造した思考部"
+  },
+  "learning": "ランダムパラメータからの学習および強化学習で、進捗度を用いたWeighted Lossを使用",
+  "hardware": "Ryzen Thread Ripper 3990X, 128GB",
+  "language": "C++, C#",
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "進捗度によるWeighted Loss",
+      "description": "ランダムパラメータからの学習時と強化学習時に、進捗度に応じた重みをつけた損失を使う。評価値のスケールも過去より小さくしている。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "進捗度を用いた Weighted Loss を使用しています"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "勝率と評価値を両方見る定跡生成",
+      "description": "floodgateの棋譜と自己対戦の棋譜から定跡を生成し、勝率と評価値の両方を考慮して取捨選択する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "勝率と評価値の両方を考慮し、取捨選択しています"
+    },
+    {
+      "category": "開発手法・運用",
+      "title": "富豪的プログラミング",
+      "description": "名前の元ネタはどうぶつの森のたぬきち。富豪的プログラミングを意識していると述べる。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "富豪的プログラミングを意識しています"
+    }
+  ],
+  "character": "どうぶつの森のたぬきちが元ネタ。",
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc31/team.html"
+}

@@ -1,0 +1,73 @@
+{
+  "wcsc": 29,
+  "year": 2019,
+  "dir": "Meijin_Cobra",
+  "team": "松山 洋章",
+  "software": "名人コブラ",
+  "sources": [
+    "wcsc29/appeal/Meijin_Cobra/appeal.pdf",
+    "wcsc29/appeal/Meijin_Cobra/MeijinCobra_20190511.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc29/appeal/Meijin_Cobra/appeal.pdf",
+    "https://www.apply.computer-shogi.org/wcsc29/appeal/Meijin_Cobra/MeijinCobra_20190511.pdf"
+  ],
+  "summary": "やねうら王の前後にPythonのブローカーを挟んでMulti Ponderを実現したのが最大の独自点。当初予定したMCTSによる定跡・教師生成は間に合わず、決勝進出ソフトで唯一KPPT型の評価関数（Apery・elmo・名人コブラの3種ブレンド）で戦った。",
+  "base": {
+    "engine": "やねうら王",
+    "eval_source": "Apery・elmo・名人コブラ（WCSC28版）の3種ブレンド",
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "KPPT型。3つの評価関数をブレンド"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "やねうら王の探索部。Multi Ponderをブローカーで実装"
+  },
+  "learning": null,
+  "hardware": "GCP 二次: 96vCPU、決勝: 160vCPU（二次予選5台、決勝10台）",
+  "language": [
+    "C++",
+    "Python"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "並列・分散",
+      "title": "ブローカーによるMulti Ponder",
+      "description": "GUI（将棋所）とやねうら王の間に挟むPythonスクリプトのブローカーでMulti Ponderを実装し、クラウド上の複数台エンジンを使う。実装は手軽だが、置換表を共有できない。ローカルでは強くなる確信は得られなかった。",
+      "originality": "独自",
+      "evidence": "弱くはならないが有意に強くなったとは言えない",
+      "quote": "主な改造点はマルチポンダー機能の追加です。"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "MCTSによる定跡作成（構想）",
+      "description": "有力変化がより深く探索されると考え、定跡作成にMCTSを使う予定だった。スケジュール遅れで実戦投入できなかった。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "定跡の作成にMCTSを利用する理由は、より効率よく探索が可能ではないかという予想からです。"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "MCTSで学習用棋譜を作る（構想）",
+      "description": "Aperyやねうら王のようにランダムな手をランダムなタイミングで挿入する方式を不自然とし、MCTSで局面分布をより実戦的にする構想。実戦投入は間に合わず。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "ランダムに選んだ手を、ランダムなタイミングで挿入するという方法がとても不自然に感じられるためです。"
+    },
+    {
+      "category": "開発手法・運用",
+      "title": "localhost SSHで複数エンジンを疑似的に動かして検証",
+      "description": "クラウドを何台も借りる費用がないため、localhostにSSH接続して複数エンジンを起動してMulti Ponderをテストした。ブローカーと評価関数は公開している。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "localhostにSSHでつないで複数のエンジンを起動してテストをしました。"
+    }
+  ],
+  "character": "動機は「電王トーナメントに参加して女流棋士のインタビューを受けたい」というよこしまさと負けず嫌い。",
+  "notes": "初版（MCTS構想）と5/11の最終版の2ファイルを統合。MCTSの構想は最終版で未実装と明記",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc29/team.html"
+}

@@ -1,0 +1,104 @@
+{
+  "wcsc": 36,
+  "year": 2026,
+  "dir": "AobaZero",
+  "team": "山下宏、保木邦仁、小林祐樹",
+  "software": "AobaZero",
+  "sources": [
+    "wcsc36/appeal/AobaZero/2026csa_appeal.pdf",
+    "wcsc36/appeal/AobaZero/2026csa_appeal2.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc36/appeal/AobaZero/2026csa_appeal.pdf",
+    "https://www.apply.computer-shogi.org/wcsc36/appeal/AobaZero/2026csa_appeal2.pdf"
+  ],
+  "summary": "AlphaZeroの追試として始まった、ユーザー参加型の分散強化学習プロジェクト。今年はAobaZeroの局面評価で野田氏の80億局面を上書きして学習したNNUE（AobaNNUE）で参加し、人間の知識を一切使わない評価値が最大の特徴。MCTSで深く読んだ局面ほどNNUEの教師として悪い、という失敗の報告も詳しい。",
+  "base": {
+    "engine": "やねうら王",
+    "eval_source": "AobaNNUE（自作、AobaZeroの評価値で学習）",
+    "note": "探索はやねうら王9.00 GitHub版。AobaZero本体はBonanza・LeelaZeroのコードが土台のMCTS+ResNet"
+  },
+  "eval": {
+    "family": "NNUE",
+    "detail": "768x2-16-64のNNUE。2025年までは20ブロックのResNet（2024・2025年はdlshogi互換に近いNN）"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "やねうら王。AobaZero本体はMCTS"
+  },
+  "learning": "tanuki-野田氏公開の80億局面（shogi hao depth9）を、2025年選手権のAobaZeroのNN（384x30b）の0手読み評価で上書きして学習。AobaZeroの棋譜は7600万棋譜超",
+  "hardware": "vast.ai EPYC 9754 x2、256コア512スレッド。NPSは2.1億局面/秒、1日$40",
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": "AobaNNUEは振電3より約+30 Elo。追試終了後から+310 Elo、去年の選手権から+50 Elo",
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "人間の知識ゼロのNNUE",
+      "description": "教師の局面も評価値もAobaZeroの自己対局由来のもので、人間の棋譜に由来しない評価値を出力するNNUEを作った。無料で最強と思われる評価関数として公開している。",
+      "originality": "独自",
+      "evidence": "振電3より約+30 Elo",
+      "quote": "人間の知識を一切使ってない評価値を出力する NNUE、が最大の特徴かと思います。"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "指定局面からの棋譜生成",
+      "description": "初手からの棋譜生成をやめ、AobaZeroと振り飛車版の棋譜から選んだ指定局面から生成する。開始手数も30手目までにランダム化した。振り飛車の割合は0.3%から28%に上がった。",
+      "originality": "独自",
+      "evidence": "+20 Elo",
+      "quote": "初手からの棋譜生成をやめ、指定局面から棋譜を作るようにしたことです"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "Aoba振り飛車の別系統学習",
+      "description": "強くなると振り飛車を指さなくなるので、無理やり飛車を振らせるAoba振り飛車を別にゼロから作り、その棋譜を局面生成に混ぜている。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "無理やり飛車を振らせる Aoba 振り飛車、を別にゼロから作成しました。"
+    },
+    {
+      "category": "探索",
+      "title": "手順前後を同一局面として扱う",
+      "description": "MCTSで手順前後により同一局面になるものを別局面扱いにするのをやめた。AlphaZeroがNN入力に過去8手を入れていたための区別が不要だった。",
+      "originality": "独自",
+      "evidence": "水匠5相手で+29 Elo、自己対戦で+81 Elo",
+      "quote": "手順前後で同一局面になるのは別局面扱いになるのをやめました"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "探索visit数別のNNUE教師の比較",
+      "description": "AobaZeroが探索中に訪れた局面を訪問回数別に分けてNNUEに学習させた。0〜1 visitが最強で、深く読んだ局面ほどNNUEは弱くなる、という失敗の記録。",
+      "originality": "独自",
+      "evidence": "探索visit数が多いほどNNUEは弱くなる（図1）",
+      "quote": "0 visit(探索なし) か 1 visit が一番強く、探索 visit 数が多いほど、NNUE は弱くなる"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "PackedSfenのcrc32ハッシュ",
+      "description": "256bitのPackedSfenを32bitへXORで畳むとオープンアドレス法の再ハッシュに失敗したが、crc32にすると98.7%で成功した。重複局面の除去に使っている。",
+      "originality": "独自",
+      "evidence": "表の16%使用でXORは失敗、crc32は98.7%で成功",
+      "quote": "PackedSfen のハッシュキーは crc32 でも OK"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "AobaNNUEの対局棋譜から定跡",
+      "description": "floodgateでAobaZeroと指す際に出やすい700局面を、500億ノード探索させて定跡にした。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "ﬂoodgate での AobaZero の対戦で出現しやすい 700 局面を 500 億ノード探索させたものを使いました。"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "穴熊発見までの棋譜数の記録",
+      "description": "ゼロからの強化学習で、美濃囲いは約50万棋譜、居飛車穴熊は1200万棋譜、振り飛車穴熊は1900万棋譜で見つかったと報告している。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "居飛車穴熊は 1200 万棋譜、振り飛車穴熊は 1900 万棋譜かかりました。"
+    }
+  ],
+  "character": "AlphaZeroの追試を、一人では無理なのでみんなで協力しようという趣旨で始めた。棋譜生成に協力するユーザーとの分散強化学習で、OSS公開。決勝の後手番で2手目に何を指しても角換わり定跡で負けた体験談も率直に書いている。",
+  "notes": "概要版と詳細版の2文書。概要版は2段組のため一部の語順は推定。NNUEに探索結果を使う追加案（6ノード以上の120億局面）は予定として記載。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc36/team.html"
+}

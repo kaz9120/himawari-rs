@@ -1,0 +1,55 @@
+{
+  "wcsc": 28,
+  "year": 2018,
+  "dir": "Meijin_Cobra",
+  "team": "松山 洋章",
+  "software": "名人コブラ",
+  "sources": [
+    "wcsc28/appeal/Meijin_Cobra/WCSC28_meijin-cobra.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc28/appeal/Meijin_Cobra/WCSC28_meijin-cobra.pdf"
+  ],
+  "summary": "生粋のライブラリ勢。探索部・評価部は改造せず学習部だけを改造し、20個以上の評価関数を作って混ぜる評価関数のキメラ化（アンサンブル）にこだわる。",
+  "base": {
+    "engine": "Apery+やねうら王",
+    "eval_source": "Apery・elmo・人造棋士18号などの評価関数（キメラの素）",
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "複数の評価関数をブレンドしたキメラ評価関数"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "やねうら王の探索部"
+  },
+  "learning": "Aperyで生成した教師局面とやねうら王作者配布の教師局面で、バリエーション付きの評価関数を複数学習",
+  "hardware": "GCE n1-highcpu-96",
+  "language": [
+    "C++",
+    "Python"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "20個以上の評価関数のキメラ化（アンサンブル）",
+      "description": "少なくとも20個の評価関数を作って混ぜる。ライブラリの評価関数に加え、ゼロから学習したものを素材にする。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "少なくとも 20 個の評価関数を作って、それを混ぜたいと思います。"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "教師局面の復元抽出と特徴のランダム部分空間",
+      "description": "同じ評価関数を混ぜても効果がないので、教師局面の復元抽出（ブートストラップ）と特徴の部分的使用（ランダム部分空間）でバリエーションを作る。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "教師局面の復元抽出 特徴の部分的使用（ランダム部分空間）"
+    }
+  ],
+  "character": "「ポンコツプログラマ」が改造すると低速化するので、探索・評価には手を付けず学習部だけを触る、と割り切る。「アンサンブル学習という言葉やコンセプトがなぜか大好き」とも書く。",
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc28/team.html"
+}

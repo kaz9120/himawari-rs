@@ -1,0 +1,44 @@
+{
+  "wcsc": 22,
+  "year": 2012,
+  "dir": "sawanyanRL",
+  "team": "宇賀神拓也",
+  "software": "さわにゃんRL",
+  "sources": [
+    "wcsc22/appeal/sawanyanRL/sawa.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc22/appeal/sawanyanRL/sawa.txt"
+  ],
+  "summary": "強化学習で評価関数の学習を行う、との一文のみ。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": null
+  },
+  "search": {
+    "family": "不明",
+    "detail": null
+  },
+  "learning": "強化学習",
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "強化学習による評価関数の学習",
+      "description": "評価関数を強化学習で学習する。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "さわにゃんRLは強化学習で評価関数の学習を行っています"
+    }
+  ],
+  "character": null,
+  "notes": "一文のみ。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc22/team.html"
+}

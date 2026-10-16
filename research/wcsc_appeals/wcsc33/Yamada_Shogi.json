@@ -1,0 +1,62 @@
+{
+  "wcsc": 33,
+  "year": 2023,
+  "dir": "Yamada_Shogi",
+  "team": "山田 泰広",
+  "software": "山田将棋",
+  "sources": [
+    "wcsc33/appeal/Yamada_Shogi/yamadashogi_appeal_2023.txt"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc33/appeal/Yamada_Shogi/yamadashogi_appeal_2023.txt"
+  ],
+  "summary": "クラシカルな構造・アルゴリズムの手作り評価関数のソフト。駒背番号制、落とし穴表、pinnedとcoverの概念、Crafty方式の並列探索などを持つ。評価関数の学習・実現確率探索・bitboardは未採用。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "手作り",
+    "detail": "駒割、玉の安全度、囲い、盤上の利き、駒への当たり、大駒の働き、そっぽ、金駒へのひもなどの手調整した線形和"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "αβ、反復深化、静止探索延長、null move、LMR、killer move、pass move、YSS式指し手反復生成、Crafty方式の並列探索、予測読み、反復深化の詰め将棋ルーチン"
+  },
+  "learning": null,
+  "hardware": "Xeon E5-2687W v4 x2（FreeBSD）",
+  "language": [
+    "C"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "実装・高速化",
+      "title": "落とし穴表で囲いへ誘導",
+      "description": "囲いへ誘導するための落とし穴表を持ち、評価に使う。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "囲いへ誘導するための落とし穴表"
+    },
+    {
+      "category": "探索",
+      "title": "予測読みとフィッシャークロック対応",
+      "description": "予測読み（ponder）やフィッシャークロックに対応する。root付近で簡易必死検出、leaf付近で簡易一手詰み検出を行う。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "root ノードでの簡易必死検出、 leaf ノード付近での簡易一手詰み検出、 予測読み、フィッシャークロック対応"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "駒背番号制と利き数などのデータ構造",
+      "description": "配列による盤駒表現、駒背番号制、利き数、飛び利き方向ビットのOR値、玉位置からの距離に応じた評価表などで、クラシカルな高速化を図る。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "配列による盤駒表現、駒背番号制、利き数"
+    }
+  ],
+  "character": null,
+  "notes": "未採用の項目（多重反復深化、影の利き、SEE、bitboard、実現確率探索、評価関数の学習など）も明記している。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc33/team.html"
+}

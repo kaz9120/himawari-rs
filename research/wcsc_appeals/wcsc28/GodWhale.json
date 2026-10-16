@@ -1,0 +1,78 @@
+{
+  "wcsc": 28,
+  "year": 2018,
+  "dir": "GodWhale",
+  "team": "鈴木雅博、大賀一貴（宇宙将棋連合 タイでエビを釣る支部）",
+  "software": "大合神クジラちゃん２",
+  "sources": [
+    "wcsc28/appeal/GodWhale/appeal.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc28/appeal/GodWhale/appeal.pdf"
+  ],
+  "summary": "マスタ/スレーブ構成のクラスタ探索ソフト。ニコニコ生放送やYouTubeの視聴者のパソコンをスレーブにする。末端以外の全ノードでも探索させ、評価値と深さが食い違う指し手の比較問題を解いた。",
+  "base": {
+    "engine": "やねうら王（スレーブ）+Apery（マスタの合法手生成）",
+    "eval_source": "既存評価関数を追加学習したもの",
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "やねうら王用の評価関数（既存を追加学習）"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "クラスタ探索（GPS将棋の手法を参考）。マスタが各指し手をスレーブに展開、冗長性のため同じ手を2スレーブに探索させる"
+  },
+  "learning": null,
+  "hardware": "視聴者のパソコン（前回は400台以上のクラスタ）",
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": "第27回4位",
+  "ideas": [
+    {
+      "category": "並列・分散",
+      "title": "視聴者のPCを使うクラスタ探索",
+      "description": "マスタがスレーブを管理するクラスタ探索で、スレーブはニコニコ生放送・YouTubeの視聴者のパソコンを使う。前回は400台以上で動かした。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "スレーブを動かすのは主にニコニコ生放送や YouTube 視聴者のパソコンを考えています。"
+    },
+    {
+      "category": "探索",
+      "title": "全ノードで探索して評価値を統合",
+      "description": "末端ノードだけでなく親ノードでも探索させ、結果を統合する。評価値1000・深さ14の手と評価値900・深さ20の手のように探索量が違う手の優劣判断の不安定性を減らす。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "探索を探索ツリーの末端ノードだけでなくすべてのノードで行うことで"
+    },
+    {
+      "category": "並列・分散",
+      "title": "同一指し手の2重化",
+      "description": "冗長性のため、同じ手を2つのスレーブに探索させる。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "冗長性を持たせるため同じ手を 2 つのスレーブに探索させています。"
+    },
+    {
+      "category": "エンタメ・演出",
+      "title": "擬人化キャラが入る自作GUI",
+      "description": "クラスタ操作用のGUIを自作し、「クジラちゃん」を擬人化してGUIに取り込んだ。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "クジラちゃんを擬人化し、GUI内に取り込みました。"
+    },
+    {
+      "category": "探索",
+      "title": "DLによる初期探索（予定）",
+      "description": "間に合えばクラスタの指し手の初期探索部分をディープラーニングで行う。4/11時点で手つかず。",
+      "originality": "不明",
+      "evidence": null,
+      "quote": "クラスタの指し手の初期探索部分を DL で行いたい"
+    }
+  ],
+  "character": "ニコニコ生放送・YouTubeの視聴者参加型で、擬人化キャラ「クジラちゃん」やニコニココミュニティを持つ。システムは「ビンゴマスターさん」のアドバイスから作られたと謝意を記す。",
+  "notes": "PDFのテキスト層は文字化けしていたため原本を画像で読んだ。非公開協力者の「まふ」さんが定跡ファイルを作る予定。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc28/team.html"
+}

@@ -1,0 +1,44 @@
+{
+  "wcsc": 20,
+  "year": 2010,
+  "dir": "Gekisashi",
+  "team": "激指チーム（鶴岡慶雅ほか）",
+  "software": "激指",
+  "sources": [
+    "wcsc20/appeal/Gekisashi/Gekisashi.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc20/appeal/Gekisashi/Gekisashi.txt"
+  ],
+  "summary": "局面の実現確率を打ち切り条件に使い、人間のエキスパートに似た狭くて深い探索を行う。有効分岐数は約2〜2.5。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "不明",
+    "detail": null
+  },
+  "search": {
+    "family": "その他",
+    "detail": "実現確率打ち切り探索。有効分岐数約2〜2.5、20手以上先まで読む"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "探索",
+      "title": "実現確率による狭く深い探索",
+      "description": "局面の実現確率を探索の打ち切り条件にすることで、人間の思考に似た狭くて深い探索を実現する。有効分岐数が約2〜2.5に収まり、短時間でも20手以上先を読める。",
+      "originality": "独自",
+      "evidence": "有効分岐数2〜2.5、20手以上先",
+      "quote": "実現確率を打ち切り条件に利用することで、人間のエキスパートの思考法と似た狭くて深い探索を実現"
+    }
+  ],
+  "character": null,
+  "notes": null,
+  "team_list_url": "http://www2.computer-shogi.org/wcsc20/team.html"
+}

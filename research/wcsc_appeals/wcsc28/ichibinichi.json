@@ -1,0 +1,37 @@
+{
+  "wcsc": 28,
+  "year": 2018,
+  "dir": "ichibinichi",
+  "team": "花井 祐",
+  "software": "ichibinichi",
+  "sources": [
+    "wcsc28/appeal/ichibinichi/ichibinichi_appeal_report.txt"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc28/appeal/ichibinichi/ichibinichi_appeal_report.txt"
+  ],
+  "summary": "Linuxの興味とJava学習のために参加する、全部オリジナルの素朴なソフト。評価関数は第21回にボナンザメソッドで作ったものを流用する。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "第21回にボナンザメソッドで作成した評価関数を流用"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "基本に忠実でシンプル"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": [
+    "Java"
+  ],
+  "claimed_strength": null,
+  "ideas": [],
+  "character": "動機はLinuxとJavaの勉強で、「一次予選敗退は確実」と書くが複数回の勝利を目指す。",
+  "notes": "並列・Ponder・機械学習は間に合わないと書く。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc28/team.html"
+}

@@ -1,0 +1,97 @@
+{
+  "wcsc": 35,
+  "year": 2025,
+  "dir": "Suisho",
+  "team": "水匠チーム",
+  "software": "水匠",
+  "sources": [
+    "wcsc35/appeal/Suisho/Suisho_appeal250519.pdf",
+    "wcsc35/appeal/Suisho/Suisho_Promote.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc35/appeal/Suisho/Suisho_appeal250519.pdf",
+    "https://www.apply.computer-shogi.org/wcsc35/appeal/Suisho/Suisho_Promote.pdf"
+  ],
+  "summary": "NNUE(HalfKP512x2-8-64)の評価関数を、DL水匠とRyfamateモデルの勝率を平均して評価値化する知識蒸留で学習した。前回から+200以上のレーティング上昇で、その大半は蒸留による。やねうら王開発版v8.60にStockfishの最新変更をマージした。別資料で、LLMを使った将棋初心者向けの局面解説システムを提案している。",
+  "base": {
+    "engine": "やねうら王",
+    "eval_source": "水匠",
+    "note": "やねうら王開発版v8.60に最新Stockfishの変更をマージし、探索パラメータを調整"
+  },
+  "eval": {
+    "family": "NNUE",
+    "detail": "HalfKP512x2-8-64。教師は評価値をDL水匠とRyfamateの勝率平均で付け替えたもの"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "やねうら王開発版v8.60+Stockfish最新変更"
+  },
+  "learning": "tanuki-.nnue-pytorch-2024-07-30.1、floodgate R3600以上の棋譜、水匠教師データ（1手1000万ノード1億局面、1手200万ノード1.5億局面）。静止探索・シャッフル・重複排除。nnue-pytorch、SGD+nesterov momentum",
+  "hardware": "Amazon EC2 c7a.metal + AMD Radeon RX 7600M XT",
+  "language": [
+    "C++",
+    "Python"
+  ],
+  "claimed_strength": "WCSC34の水匠から200以上レーティング上昇。上昇への貢献は知識蒸留が最大",
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "DL水匠とRyfamateの勝率平均による知識蒸留",
+      "description": "教師局面の評価値を、DL水匠モデル（やねうら王Sponsorsで公開）の勝率と、非公開のRyfamateモデルの勝率の平均をponanza係数600で評価値化したものに置き換えて学習する。Ryfamateモデルは非公開のため、その部分だけ追試が難しい。",
+      "originality": "既存手法の応用",
+      "evidence": "前回比+200以上のうち最も寄与が大きい",
+      "quote": "DL水匠モデル（やねうら王Sponsorsにて公開中）の勝率と、Ryfamateモデル（非公開）の勝率の平均を評価値化したもの"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "lambda=1.0と重複局面の排除",
+      "description": "勝敗項を考慮しないlambda=1.0で学習し、局面データを重複排除してuniqueにすることで棋力を上げた。",
+      "originality": "既存手法の応用",
+      "evidence": "いずれも棋力向上",
+      "quote": "Lambda = 1.0（勝敗項を考慮しない）で学習することで棋力向上。"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "後手番定跡を先手勝ちの棋譜から作る",
+      "description": "連続対局定跡アルゴリズムで作る。後手番の定跡は、floodgateでR4200以上のソフトが負けている棋譜のうち先手番が勝った棋譜を指定して作成した。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "floodgateにてR4200以上のソフトが負けている棋譜データのうち、先手番が勝利したデータを指定して作成した"
+    },
+    {
+      "category": "探索",
+      "title": "Stockfishの最新変更をマージして調整",
+      "description": "やねうら王開発版v8.60に最新のStockfishの変更をマージし、探索パラメータを調整した。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "最新のStockfishの変更をマージし、探索パラメータ調整をしたものを使用"
+    },
+    {
+      "category": "解説・人間支援",
+      "title": "知識DB+ChatGPTによる序盤解説（手法A）",
+      "description": "約170の戦法と40の囲いの部分局面・タグ・説明をDBに蓄積し、ユーザーの局面に似た知識を検索してChatGPT-4oに渡し、100字程度の平易な解説を生成する。「ヒントボタン」で呼び出す。",
+      "originality": "独自",
+      "evidence": "約170の戦法と40の囲いを出力可能",
+      "quote": "将棋初心者に向けて局面の解説を生成することができれば、支援者不足を補いつつ、将棋の難解さを緩和できる"
+    },
+    {
+      "category": "解説・人間支援",
+      "title": "棋力差のある2つのAIの対局による中終盤解説（手法B）",
+      "description": "DL水匠に段位者の棋譜と級位者の棋譜をそれぞれ追加学習した2種のAIを対局させ、級位者AIが初心者にありがちなミスで駒損や成り込まれを許す手順を探す。段位者AIがその咎め方を示し、Policy（推定選択率）を加味して文章テンプレートに当てはめる。",
+      "originality": "独自",
+      "evidence": "定跡書のような手順と説明を出力可能になった",
+      "quote": "級位者AIが初心者にありがちなミスを発見し、段位者AIが人間に理解可能な手筋で咎める"
+    },
+    {
+      "category": "エンタメ・演出",
+      "title": "VTuberを含む知識DB作成協力と多言語対応",
+      "description": "将棋系VTuberら7名が知識DB作成に協力した。LLMなので多言語化も即座にできる。将来はプロの対局中継の解説に使う構想がある。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "知識DB作成に尽力してくださった皆さん。どうもありがとう！！"
+    }
+  ],
+  "character": "チームは熊田ゴウ（VTuberでアマチュア四段）、たややん（弁護士）、shimojolno（3手詰めが精一杯）、アイシア＝ソリッド（ウォーズ5級）。キーワードは「わかりやすさ」で、強さの追求から取り残される初心者に目を向ける姿勢。",
+  "notes": "Suisho_Promoteは約44枚のスライド（初心者支援の背景、先行研究との比較、手法、結果、展望）。決勝用アピール(250519)はエンジン本体の改良点を1ページにまとめている。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc35/team.html"
+}

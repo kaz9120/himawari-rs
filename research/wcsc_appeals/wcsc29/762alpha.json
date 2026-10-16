@@ -1,0 +1,84 @@
+{
+  "wcsc": 29,
+  "year": 2019,
+  "dir": "762alpha",
+  "team": "天野 史斎",
+  "software": "762alpha",
+  "sources": [
+    "wcsc29/appeal/762alpha/762alpha_20190330.txt"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc29/appeal/762alpha/762alpha_20190330.txt"
+  ],
+  "summary": "学習の自動化を目的とするKPPベースのソフト。局面をFlow（移動先と方位）の集合で持つFlowBoard、ベイジアンフィルタを対戦相手にする壁打ち式学習、ダイナミックアスピレーションなど、独自の新機軸を多数挙げる。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "KPPの荷重和。KPPにこだわる理由を文書内で論じている"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "超シンプルなαβ、Futility pruning閾値の動的調整、ダイナミックアスピレーション"
+  },
+  "learning": "ベイジアンフィルタを相手役にした壁打ち式学習＋ベイジアンフィルタによるKPP高速調整",
+  "hardware": null,
+  "language": null,
+  "claimed_strength": "指し手生成は24万NPS（Core i7-860、シンプルなαβ）",
+  "ideas": [
+    {
+      "category": "実装・高速化",
+      "title": "FlowBoard局面表現",
+      "description": "局面を（駒の移動先dst、移動方位bn）の集まり（Flow）で表現する。手番を無視して移動可能性のみ抽象化し、dstの駒価値降順に保つ。利きの書き換え最小化と理想的な指し手オーダリング、分割生成が容易になる。",
+      "originality": "独自",
+      "evidence": "24万NPS（Core i7-860、シンプルなαβ）",
+      "quote": "局面を(駒の移動先dst, 移動方位bn)の集まりとして表現します。"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "壁打ち式学習法",
+      "description": "評価関数の健全性を試すため、KPPの単語を認識するベイジアンフィルタを対戦相手役に、評価関数側の評価値を下げる手を繰り出させて学習する。履歴を全部憶える学習器を騙し続けるのは難しい、という発想。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "評価関数サイドの評価値を下げる手を学習しつつ繰り出します。"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "ベイジアンフィルタによるKPP高速調整",
+      "description": "29万種のKPPのうちどれを上げ下げするかの選択にもベイジアンフィルタ（縮小型）を使う。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "その選択にもベイジアンフィルタを使います。"
+    },
+    {
+      "category": "探索",
+      "title": "ダイナミックアスピレーションサーチ",
+      "description": "反復深化でPV先頭手が変化したときの評価値変化量のヒストグラムを取り続け、上下x%境界点を初回探索の窓の上下端にする。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "評価値の変化量のヒストグラムをとり続け、上側と/下側のx %境界点を"
+    },
+    {
+      "category": "探索",
+      "title": "Futility pruning閾値の動的調整",
+      "description": "前回に続き、枝刈りのしきい値を動的に調整する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "Futility purningしきい値の動的調整は今回もやります。"
+    },
+    {
+      "category": "評価関数",
+      "title": "KPPを使い続ける理由の考察",
+      "description": "KPPは関数近似能力は無いが、1回の探索で比較される局面の順序を学習するには十分で、順序さえ合えばよいので緩い条件だと論じる。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "局面の順序を学習するには十分なのではないかという印象をもっています。"
+    }
+  ],
+  "character": null,
+  "notes": "文書日付は2018年3月30日と誤記されている（V0.1）",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc29/team.html"
+}

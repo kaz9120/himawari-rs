@@ -1,0 +1,89 @@
+{
+  "wcsc": 34,
+  "year": 2024,
+  "dir": "Gikou",
+  "team": "出村 洋介",
+  "software": "技巧",
+  "sources": [
+    "wcsc34/appeal/Gikou/gikou_appeal.pdf",
+    "wcsc34/appeal/Gikou/gikou_appeal_detail.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc34/appeal/Gikou/gikou_appeal.pdf",
+    "https://www.apply.computer-shogi.org/wcsc34/appeal/Gikou/gikou_appeal_detail.pdf"
+  ],
+  "summary": "2016年のC++版をRustとPythonでフルスクラッチ書き直しし、既存の棋譜・将棋ライブラリを使わず、Gumbel AlphaZeroでゼロから強化学習した。初期局面の多様化（将棋81万）が目玉。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "Gumbel AlphaZero論文のbottleneck blocksをベースに独自改良（詳細は後日発表）。入力に将棋独自の特徴量を追加"
+  },
+  "search": {
+    "family": "MCTS",
+    "detail": "Gumbel AlphaZero"
+  },
+  "learning": "乱数初期化から約5000万対局の自己対局で学習（約1週間、RTX 2080 Ti〜4090級GPU 約20台）。シミュレーション数は32→64→128へ段階的に増加",
+  "hardware": "EC2 p4d.24xlarge（A100×8）",
+  "language": [
+    "Rust",
+    "Python"
+  ],
+  "claimed_strength": "技巧（100ノード）対水匠5（40,000ノード）+202 Elo、技巧（800ノード）対水匠5（250,000ノード）+127 Elo。初期局面で100,153局面/秒（RTX 4090）",
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "Gumbel AlphaZeroでの軽量な強化学習",
+      "description": "1手16〜64シミュレーション程度の軽い条件でも安定して学習でき、計算資源が小さく済む。棋譜を使わずゼロから学習する。",
+      "originality": "既存手法の応用",
+      "evidence": "約1週間、約5000万対局で学習",
+      "quote": "オリジナルの AlphaZero では難しかったような軽量な実験条件"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "初期局面の多様化「将棋81万」",
+      "description": "強化学習の初期局面を、2手ランダム局面や、駒配置を一定制約で並べ替えた局面（左右対称を除き約81万通り。チェス960にならい「将棋81万」）にする。平手のみより同一対局数で勝率が上がり、将棋81万から2手ランダムへの順が効果的だった。",
+      "originality": "独自",
+      "evidence": "平手のみの強化学習より同一対局数で勝率向上",
+      "quote": "将棋 81 万: 強化学習のための多様性を持った将棋初期局面集"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "128bit整数のBitboardと利き数",
+      "description": "Rust組込みの128bit整数でBitboardを作り、利き数を保持するデータ構造を持つ。利き情報を使った高速な1手詰関数も実装する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "Rust 組込みの 128 bit 整数型を⽤いた Bitboard"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "混合精度学習とTorch-TensorRT推論",
+      "description": "学習はPyTorch Lightningの混合精度で高速化し、推論はTorch-TensorRTで高速化する。Python側とRust側のデータはNumPy形式で受け渡す。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "PyTorch Lightning の混合精度学習による学習の⾼速化"
+    },
+    {
+      "category": "評価関数",
+      "title": "将棋独自の入力特徴量とネットワーク改良",
+      "description": "Gumbel AlphaZero論文のbottleneck blocksをベースに独自改良した。入力に将棋独自の特徴量を加える。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "ニューラルネットワークへの⼊⼒に将棋独⾃の特徴量を追加"
+    },
+    {
+      "category": "開発手法・運用",
+      "title": "計算コストを抑えた実験で開発サイクルを短縮",
+      "description": "棋譜1000万局程度、チャンネル数・ブロック数を減らし、教師あり学習なら1GPU約1日、強化学習なら10GPU約1日で1実験が終わる規模に抑えた。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "計算コストを下げた実験を多数⾏い開発サイクルを速くして各種改良点を地道に探しました"
+    }
+  ],
+  "character": "「深層強化学習の将棋AIに大規模な計算資源が必要」という状況を改善したい、また計算機の自己対局のみで学習したらどんな将棋を指すのか見てみたい、という動機を語る。",
+  "notes": "ネットワーク改良の詳細は別の機会に発表するとしている。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc34/team.html"
+}

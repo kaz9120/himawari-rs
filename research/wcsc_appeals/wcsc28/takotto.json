@@ -1,0 +1,62 @@
+{
+  "wcsc": 28,
+  "year": 2018,
+  "dir": "takotto",
+  "team": "杓子将棋（瀧川正史、内宮大志、大場寿仁）",
+  "software": "たこっと",
+  "sources": [
+    "wcsc28/appeal/takotto/appeal.html"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc28/appeal/takotto/appeal.html"
+  ],
+  "summary": "電王戦を見て始めた人たちによる、AVX2命令を活かす非ビットボードのフルスクラッチ将棋ソフト。elmo方式を含む近代的な学習機能を一通り実装し、学習で棋力が伸びる新モデルの開発に取り組んだが、結果が出ていない。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "KPPT型の三駒関係"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "Stockfish風"
+  },
+  "learning": "SGD、オンライン学習、ミニバッチ、複数の損失関数と最適化手法、正則化、elmo方式を実装。Aperyの評価関数バイナリを教師データ生成・強化学習の初期値に使う",
+  "hardware": "Xeon 2.2GHz 64コア、240GB",
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "実装・高速化",
+      "title": "AVX2向けの非ビットボードとAVX2での各種処理",
+      "description": "各種処理をAVX2命令で実装し、AVX2を適用しやすいデータ構造（非ビットボード）を採る。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "AVX2 命令を適用しやすいデータ構造 (非ビットボード)"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "近代的な機械学習機能の一通りの実装",
+      "description": "確率的勾配降下法・オンライン学習・ミニバッチ・複数の損失関数・複数の最適化手法・正則化を実装し、第5回電王トーナメントでelmo方式も実装した。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "近代的な機械学習の機能を一通り実装してあります。"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "学習で棋力向上が望める新モデルの開発",
+      "description": "KPPT型は強化学習しても伸びが微々たるものになったため、学習で棋力向上が望める新モデルの開発に取り組んだが、結果が出ていない。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "今のところ結果がついてきません。"
+    }
+  ],
+  "character": "「貧乏プログラマー」として計算資源の確保に苦慮していることを書く。",
+  "notes": "以前の特徴は過去のアピール文書を参照とする。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc28/team.html"
+}

@@ -1,0 +1,72 @@
+{
+  "wcsc": 25,
+  "year": 2015,
+  "dir": "Nanoha",
+  "team": "川端 一之",
+  "software": "なのは",
+  "sources": [
+    "wcsc25/appeal/Nanoha/なのは25appeal.pdf",
+    "wcsc25/appeal/Nanoha/なのは25appeal正誤表.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc25/appeal/Nanoha/%E3%81%AA%E3%81%AE%E3%81%AF25appeal.pdf",
+    "http://www2.computer-shogi.org/wcsc25/appeal/Nanoha/%E3%81%AA%E3%81%AE%E3%81%AF25appeal%E6%AD%A3%E8%AA%A4%E8%A1%A8.txt"
+  ],
+  "summary": "前年の第24回でAMD CPU構成の中で1位（総合17位）、詰ルーチン（なのは詰め）で江戸時代の611手詰め「寿」を解く強みを持つ。探索はStockfishを使用し、評価ベクトルを縮小して詰めルーチンを削除した「なのはmini」を公開。次の目標は特徴ある序盤、1525手詰め「ミクロコスモス」を解くこと、カットインやエフェクトの派手な演出。作者紹介や「名前の割に弱すぎる」という自虐もある。",
+  "base": {
+    "engine": "独自",
+    "eval_source": "Bonanza 6.0（三駒関係KP+KKP+KPP）",
+    "note": "Stockfishの探索を使用"
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "三駒関係（KP+KKP+KPP）"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "Stockfish。df-pn詰めルーチン搭載、不成も生成。定跡は実戦での出現数・勝率で選ぶ"
+  },
+  "learning": null,
+  "hardware": "AMD FX 8350（AMD機）",
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": "floodgateレーティング約2700（2015年3月）。第24回でAMD CPU構成の中で1位、総合17位。第2回電王トーナメント9位",
+  "ideas": [
+    {
+      "category": "詰み・終盤",
+      "title": "強力な詰ルーチン（なのは詰め）",
+      "description": "df-pnの強力な詰ルーチンを公開し、江戸時代の名作611手詰め「寿」を解く。常に詰みを狙い、一発逆転のポテンシャルを持つと主張する。",
+      "originality": "独自",
+      "evidence": "611手詰め「寿」を解く",
+      "quote": "江戸時代の名作 611手詰めの「寿」を解く"
+    },
+    {
+      "category": "エンタメ・演出",
+      "title": "派手な演出（カットイン・エフェクト）",
+      "description": "次に向けた目標として、カットインやエフェクトなどの派手な演出を挙げる。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "カットインやエフェクトなど派手な演出！！"
+    },
+    {
+      "category": "詰み・終盤",
+      "title": "最長詰め手数のミクロコスモスを解く",
+      "description": "次の目標に、最長詰め手数（1525手）の詰将棋「ミクロコスモス」を解くことを掲げる。",
+      "originality": "独自",
+      "evidence": "1525手詰め（目標）",
+      "quote": "最長詰め手数(1525手)の詰将棋の「ミクロコスモス」を解く"
+    },
+    {
+      "category": "開発手法・運用",
+      "title": "なのはminiの公開",
+      "description": "評価ベクトルを縮小し、df-pn詰めルーチンを削除したものを「なのはmini」として公開した。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "評価ベクトル縮小、詰めルーチン(df-pn)削除したものを、なのはminiとして公開"
+    }
+  ],
+  "character": "アニメ『魔法少女リリカルなのは』が名前の由来。「名前の割に強い」は的外れで「名前の割に弱すぎる」が妥当と自虐し、「全力全開、手加減なしで！！」と意気込む。作者の趣味紹介やCOCOさんのイラスト入りの親しみやすいスライド。",
+  "notes": "正誤表で「Bitboardを使用」「Rotated bitboardをAVXで演算」は誤りで、実際は駒番号の盤面データと配列スキャンによる利き演算と訂正。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc25/team.html"
+}

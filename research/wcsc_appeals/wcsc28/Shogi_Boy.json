@@ -1,0 +1,44 @@
+{
+  "wcsc": 28,
+  "year": 2018,
+  "dir": "Shogi_Boy",
+  "team": "長谷川 雅也",
+  "software": "Shogi Boy",
+  "sources": [
+    "wcsc28/appeal/Shogi_Boy/appeal.txt"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc28/appeal/Shogi_Boy/appeal.txt"
+  ],
+  "summary": "自己対戦を繰り返して得た局面ごとのデータから、勝つ確率が最も高い手を選ぶ評価関数の作成を目指すソフト。文書は2文のみ。",
+  "base": {
+    "engine": "不明",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "不明",
+    "detail": "自己対戦のデータから勝つ確率が最も高い手を選ぶ評価関数を目指す"
+  },
+  "search": {
+    "family": "不明",
+    "detail": null
+  },
+  "learning": "自己対戦を繰り返して得られる局面ごとのデータ",
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "自己対戦データから勝率最大の手を選ぶ評価関数",
+      "description": "自己対戦を繰り返して得られる局面ごとのデータから、勝つ確率が最も高い手を選択する評価関数を作る。",
+      "originality": "不明",
+      "evidence": null,
+      "quote": "勝つ確率が最も高い手を選択する評価関数の作成をめざしています。"
+    }
+  ],
+  "character": null,
+  "notes": "文書は2文のみ。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc28/team.html"
+}

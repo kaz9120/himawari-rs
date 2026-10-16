@@ -1,0 +1,72 @@
+{
+  "wcsc": 29,
+  "year": 2019,
+  "dir": "Usapyon_Extra",
+  "team": "うさぴょん外伝開発チーム（池泰弘、塩崎太朗）",
+  "software": "うさぴょん外伝",
+  "sources": [
+    "wcsc29/appeal/Usapyon_Extra/usapyon-gaiden-appeal-2019-04-16-3.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc29/appeal/Usapyon_Extra/usapyon-gaiden-appeal-2019-04-16-3.pdf"
+  ],
+  "summary": "1回のforwardで全合法手の評価値を出すネットワークが特徴。出力を合法手のOne Hotから学習した分散ベクトル（Magic Vec）との内積で解凍し、従来の100倍以上の評価速度を狙う。入力特徴は成り・先後・持ち駒を統合した少次元表現を精査。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": "合法手生成と詰将棋は「うさぴょん」から流用"
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "CNN。Policyなしで全合法手の評価値を圧縮した分散ベクトルとして出力（mEssiah方式の新版）"
+  },
+  "search": {
+    "family": "その他",
+    "detail": "Policyがないため、UCB1などの多腕バンディット、またはαβを試行中"
+  },
+  "learning": "やねうら王教師局面でPre Training後、DQN with Q(λ)の独自版（mEssiah DQN Stage3）で強化学習",
+  "hardware": "Ryzen 7 2700X + GTX 1050Ti x2",
+  "language": [
+    "C++",
+    "Java",
+    "C#"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "全合法手評価値を1回のforwardで出力するMagic Vec",
+      "description": "出力を1次元の評価値ではなく合法手全部の評価値を圧縮した分散ベクトルとし、合法手のOne Hot Vector（移動元88x移動先81x成り2）から学習した300次元のEmbedding（mEssiah Magic Vec）との内積で各手の評価値を得る。局面によって従来の100倍以上の評価速度になり、合法手数に関わらずほぼ一定時間で出力できる。",
+      "originality": "独自",
+      "evidence": "局面によっては従来の100倍速以上の評価速度",
+      "quote": "評価値として使用する時には後述する「学習」で作成した、合法手 One Hot Vector を分散ベクトル化したものとの内積をとることにより、その合法手の評価値とする。"
+    },
+    {
+      "category": "評価関数",
+      "title": "入力特徴の精査（学習1万iterationの一致率で比較）",
+      "description": "1万iteration時の一致率と最終一致率に相関があることを利用し、入力の次元を半分に減らす表現（先後の駒を符号で統合、成りフラグ、駒台要素）で約2%向上、利き・方向別利き・ひもと当たりで各1〜2%向上と確認した。",
+      "originality": "独自",
+      "evidence": "基本形に対し一致率が約2%向上、利き数で約2%、方向別利きで約2%、ひも・当たりで約1%",
+      "quote": "学習 Iteration1 万程度の一致率をどれだけあげられるか？というコンセプトで特徴入力の精査を行いました。"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "軽いPre Trainingから始めるDQN強化学習",
+      "description": "最初から強化学習のみだと自己対局の9割前後が手数MAXの引き分けになるため、軽くPre Trainingして値をつけてからDQNにする。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "Magic Vec が初期値に近い状態だと学習中の自己対局の 9 割前後が手数 MAX の引き分けとなってしまう。"
+    },
+    {
+      "category": "探索",
+      "title": "うさぴょんの手の評価をPolicyの代わりに使う",
+      "description": "Policyがないため、駒打ち以外は正確だった旧うさぴょんの手の評価、または評価関数の全合法手出力をPolicyの代わりに使う案を試す。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "元々、うさぴょんの手の評価は（駒打ち以外は）相当正確でしたので、これを Policy の代わりに用いる事を試みています。"
+    }
+  ],
+  "character": "HDD故障で探索部が3週間分ロストした顛末を「（爆）」で記す。「今のままだと探索部がイモい」と自己評価しつつ、評価関数単体の1手読みはそれなりに強いと強調。",
+  "notes": "4/16追記を含む。一覧では「うさぴょん」シリーズ",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc29/team.html"
+}

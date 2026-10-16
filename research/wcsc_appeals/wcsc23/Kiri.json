@@ -1,0 +1,44 @@
+{
+  "wcsc": 23,
+  "year": 2013,
+  "dir": "Kiri",
+  "team": "佐藤 佳州",
+  "software": "棋理",
+  "sources": [
+    "wcsc23/appeal/Kiri/kiri.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc23/appeal/Kiri/kiri.txt"
+  ],
+  "summary": "実現確率探索を使い、棋譜から学習した評価関数を持つ。特徴は三駒関係と利きが関わる2駒以上の関係。学習棋譜の重要度も学習し、目的関数自体の学習も予定する。暫定版。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "3駒の関係、利きが関連する2駒以上の関係"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "実現確率探索、history等の探索中の情報を利用"
+  },
+  "learning": "棋譜から学習。学習棋譜の重要度も学習",
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "学習棋譜の重要度を学習",
+      "description": "学習に使う棋譜ごとの重要度も学習する。目的関数自体の学習も予定する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "学習棋譜の重要度を学習しています。"
+    }
+  ],
+  "character": null,
+  "notes": "暫定版の文書。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc23/team.html"
+}

@@ -1,0 +1,60 @@
+{
+  "wcsc": 26,
+  "year": 2016,
+  "dir": "narikinshogi",
+  "team": "村山 正樹",
+  "software": "なり金将棋",
+  "sources": [
+    "wcsc26/appeal/narikinshogi/appeal.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc26/appeal/narikinshogi/appeal.txt"
+  ],
+  "summary": "2011〜2016年のアピール文を重ねた文書。2016年は、55将棋で実装して手応えがあった強化学習とGAを組み合わせた学習を使う。探索はPVS・null move・futility・ビットボードという一般的な構成。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "ボナンザ学習を作り込み。2016年は強化学習とGAの組み合わせの学習"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "PVS、nullmove、futility、ビットボード"
+  },
+  "learning": "2016年は強化学習とGAを組み合わせた学習（55将棋で実装し手応えあり）",
+  "hardware": null,
+  "language": "C++",
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "強化学習とGAを組み合わせた学習",
+      "description": "前年に55将棋で実装して手応えがあった、強化学習と遺伝的アルゴリズム（GA）を組み合わせた学習を使う。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "強化学習とGAを組み合わせた学習を利用します。"
+    },
+    {
+      "category": "並列・分散",
+      "title": "PVSとSSSのハイブリッド（2012年の構想）",
+      "description": "2012年に、1スレッドでメインのPVS、他のスレッドでおまけのSSS探索を行い、SSSの結果でPVSのα・β値を絞る方式を考えた。バグが多く効果は感覚的に小さかった。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "pvs+sss(名称はたぶんあっていると思う)のハイブリッドです。"
+    },
+    {
+      "category": "探索",
+      "title": "UCT/MCの併用（2013年）",
+      "description": "2013年に、コンピュータ囲碁の手法UCT/MCを取り入れ、1スレッドはαβ法のまま、UCT/MCは補助とした。ソースが複雑になり作り込めなかったと翌年に書く。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "コンピュータ囲碁で爆発的人気の手法であるUCT/MCを取り入れることにしました。"
+    }
+  ],
+  "character": "2012年に「アピール文書を出さない選択も考えたが、迷惑がかかるので出す」と書くなど、過去の文書も添えて失敗を率直に書く。",
+  "notes": "2011〜2016年の6年分の文書が合本。主に2016年分を見た",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc26/team.html"
+}

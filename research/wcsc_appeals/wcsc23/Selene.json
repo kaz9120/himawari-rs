@@ -1,0 +1,70 @@
+{
+  "wcsc": 23,
+  "year": 2013,
+  "dir": "Selene",
+  "team": "西海枝 昌彦",
+  "software": "Selene",
+  "sources": [
+    "wcsc23/appeal/Selene/Selene.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc23/appeal/Selene/Selene.txt"
+  ],
+  "summary": "プロ棋譜を使わない強化学習（自己対戦で勝った側を学習）で、探索アルゴリズムの有効性や定数も自己対戦リーグで機械に決めさせる。穴熊や中飛車を発見できないなど強化学習の限界も率直に書き、定跡データの併用など「封印開放度」の段階を並列で試す。目標は人間のように学習し人間のように探索すること。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "不明",
+    "detail": "強化学習"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "探索アルゴリズムの有効・無効と定数を自己対戦リーグで決める"
+  },
+  "learning": "自己対戦で勝った方の棋譜を学習する強化学習。序盤・中盤に定跡データを使う案などを並列で試す",
+  "hardware": null,
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "自己対戦の強化学習",
+      "description": "自己対戦で勝った側の棋譜を学習し、「指せば指すほど強くなる」。数万局単位で学習し、棒銀・腰掛銀・美濃囲いを発見できたと報告する。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "指せば指すほど強くなる（！）学習方式。"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "探索アルゴリズムを自己対戦で決める",
+      "description": "探索手法をON/OFFスイッチ化し、数値も変更可能にして、ランダムに構成したプログラム群をリーグ戦で戦わせ勝ち残った組み合わせを採用する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "ランダムにON/OFF、各種数値を決定したプログラム達を"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "封印開放度で人間の知識を段階導入",
+      "description": "強化学習だけで見つけられない戦法（穴熊・中飛車）に対し、定跡データ使用（S）、他ソフトとの対局学習（A）、戦型誘導（B）の段階を並列で試す。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "封印開放度:S　序盤・中盤に関しては定跡データを使用して学習する！！！"
+    },
+    {
+      "category": "棋風・人間らしさ",
+      "title": "人間のように学習し探索する",
+      "description": "強化学習の方が人間らしいと考え、NHK将棋対局の解説を観て評価観点を取り入れようと試している。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "人間のように学習して、人間のように探索したい！"
+    }
+  ],
+  "character": "「封印開放度S/A/B」のようなネタ表現で、強化学習と人間の知識導入の葛藤をユーモラスに語る。「選手権前なのに今後の目標（反省会）という、斬新な感じ」と自虐も。",
+  "notes": null,
+  "team_list_url": "http://www2.computer-shogi.org/wcsc23/team.html"
+}

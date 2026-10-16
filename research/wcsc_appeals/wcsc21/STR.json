@@ -1,0 +1,52 @@
+{
+  "wcsc": 21,
+  "year": 2011,
+  "dir": "STR",
+  "team": "チームSTR",
+  "software": "STR",
+  "sources": [
+    "wcsc21/appeal/STR/appeal.pdf"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc21/appeal/STR/appeal.pdf"
+  ],
+  "summary": "前年と同じ、SVMとカーネル法で特徴を自動抽出し1手読みで指す構想。カーネルをグラフカーネルか多項式カーネルかで検討中で、先読みはするかもしれないが「やはりとっても弱い」。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "その他",
+    "detail": "SVM＋カーネル法（グラフカーネルか多項式カーネルを検討）。単純な0/1特徴約6000要素"
+  },
+  "search": {
+    "family": "その他",
+    "detail": "1手読み（先読みは検討中）"
+  },
+  "learning": "プロ棋譜で、次局面を正例・他の合法手後を負例としてSVM学習",
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "カーネル法で特徴を自動抽出",
+      "description": "人間が特徴を用意する従来手法に対し、単純な特徴からカーネル法で組み合わせ特徴を自動で作り、パラメータも自動学習する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "局面の単純な情報のみから、必要な特徴を自動的に作成し、かつパラメータの学習を行う"
+    },
+    {
+      "category": "探索",
+      "title": "カーネル法による探索の代替",
+      "description": "探索で分かる悪手を、特徴の内積で表現することで探索を代替しようとする。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "探索を行うことで悪手だとわかるが，(6六角)×(6六に駒が利いている)という特徴の内積でも表現できる"
+    }
+  ],
+  "character": "「やはりとっても弱い」と書く。",
+  "notes": "第20回の文書をほぼ継承。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc21/team.html"
+}

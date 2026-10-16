@@ -1,0 +1,44 @@
+{
+  "wcsc": 21,
+  "year": 2011,
+  "dir": "Hikaku",
+  "team": "甲村実",
+  "software": "飛角",
+  "sources": [
+    "wcsc21/appeal/Hikaku/Hikaku.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc21/appeal/Hikaku/Hikaku.txt"
+  ],
+  "summary": "ライブラリを使わず、棋譜を積極的に活用する将棋ソフト。終盤の形を大量に登録して検索する構想で、メモリ不足が課題。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "不明",
+    "detail": null
+  },
+  "search": {
+    "family": "不明",
+    "detail": null
+  },
+  "learning": null,
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "定跡・序盤",
+      "title": "終盤の形データベースの検索",
+      "description": "終盤の形を沢山登録したファイルを巨大メモリに読み出して検索し、形にはまった攻防で強くなる。序盤でも3手の深さの手筋に注目すれば新手を生めるかも、という案もある。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "終盤の形を沢山登録したファイルを用意して、巨大なメモリに読み出して、検索すれば"
+    }
+  ],
+  "character": null,
+  "notes": "構想段階。ノートPCではメモリ不足と記載。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc21/team.html"
+}

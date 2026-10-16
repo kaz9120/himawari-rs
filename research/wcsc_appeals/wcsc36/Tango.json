@@ -1,0 +1,63 @@
+{
+  "wcsc": 36,
+  "year": 2026,
+  "dir": "Tango",
+  "team": "渡辺 敬介",
+  "software": "タンゴ",
+  "sources": [
+    "wcsc36/appeal/Tango/tango_appeal.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc36/appeal/Tango/tango_appeal.pdf"
+  ],
+  "summary": "実現確率探索による深い読みと、機械学習で最適化した評価関数を組み合わせる。局面評価と実現確率用の着手確率の両方にFactorization Machinesを使うのが大きな特徴。2023年以前にこの手法を使ったチームは自分のチーム以外に知らないとしている。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": "独自のFactorization Machines評価関数"
+  },
+  "eval": {
+    "family": "その他",
+    "detail": "Factorization Machines。2駒関係（KP+PP+KK）、自玉周辺25マスの双方の利き、手番を特徴量に使う。先手視点と後手視点それぞれでスコアを出し、その差と駒の損得を合算"
+  },
+  "search": {
+    "family": "その他",
+    "detail": "実現確率探索。着手確率はFactorization Bradley-Terryモデル（通常モデルと小規模の簡易モデル）"
+  },
+  "learning": "機械学習で評価関数を最適化（詳細は記載なし）",
+  "hardware": "GCP c4-highcpu-24（一覧ページ）",
+  "language": [
+    "C++",
+    "Java"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "Factorization Machinesの評価関数",
+      "description": "入力特徴の組み合わせ特徴を取り込む。例えば2駒関係同士の組み合わせは、KKPP・KPPP・PPPPに相当する4駒関係になる。先後の対称性を保つため、先手視点と後手視点それぞれでFMを計算してその差を使う。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "2駒の位置関係同士の組み合わせは4駒の位置関係(俗に言うKKPP + KPPP + PPPP)に相当します。"
+    },
+    {
+      "category": "探索",
+      "title": "Factorization Bradley-Terryによる実現確率探索",
+      "description": "囲碁の着手予測（Xiao & Müller）で使われたFactorization Bradley-Terryモデルで着手確率を出し、実現確率探索に使う。探索末端付近では小規模で高速な簡易モデルに切り替える。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "通常のモデルと小規模で高速な簡易計算用モデルの2種類を用意し、探索中の末端付近ではこの簡易計算モデルを使用することで高速化を図っています。"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "着手スコア計算の共通特徴量の再利用",
+      "description": "全着手のスコアをソフトマックスに通す必要があるので、駒の位置や王手がかかっているなどの盤面共通の特徴量を先に計算して各着手で再利用する。簡易モデルの駒の位置特徴量は差分計算する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "盤面共通の特徴量を最初に計算し、各着手のスコア計算で再利用できるようにしています。"
+    }
+  ],
+  "character": null,
+  "notes": "学習の方法、データ、ハードウェアの詳細は書かれていない。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc36/team.html"
+}

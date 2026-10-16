@@ -1,0 +1,70 @@
+{
+  "wcsc": 25,
+  "year": 2015,
+  "dir": "GodWhale",
+  "team": "鈴木 雅博、近藤 直希、野村 晋也",
+  "software": "大合神クジラちゃん",
+  "sources": [
+    "wcsc25/appeal/GodWhale/appeal.pdf"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc25/appeal/GodWhale/appeal.pdf"
+  ],
+  "summary": "ニコニコ生放送リスナーのPCをクラスタに使うサーバー／クライアント構成のソフト。クラスタ化の基本手法にPuella αの2段同時実行アルゴリズムを使い、クライアントはなのはminiベースでBonanza 6.0由来の評価関数を追加学習したもの。自作GUIとクジラちゃんの擬人化キャラも売り。",
+  "base": {
+    "engine": "Bonanza",
+    "eval_source": "Bonanza 6.0由来を追加学習",
+    "note": "クライアントはなのはminiをベースに改良"
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "Bonanza 6.0由来の38要素に追加学習"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "サーバー／クライアントでクラスタリング。Puella αの2段同時実行アルゴリズム"
+  },
+  "learning": "Bonanza 6.0の元の値に近づく正則化で追加学習。プロ棋譜約1万局、floodgate高レート棋譜約2万局、将棋倶楽部24高レート棋譜約12000局",
+  "hardware": "ニコニコ生放送リスナーのPC（前回は200台以上）",
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": "第23回27位（独創賞）、第24回16位",
+  "ideas": [
+    {
+      "category": "並列・分散",
+      "title": "視聴者PCによるボランティア・コンピューティング",
+      "description": "サーバーがクライアントを管理しながら探索をクラスタ化する。クライアントは主にニコニコ生放送リスナーのPCで、前回は200台以上。基本手法はPuella αの2段同時実行。",
+      "originality": "独自",
+      "evidence": "前回はPC200台以上のクラスタ",
+      "quote": "クライアントを動かすのは主にニコニコ生放送リスナーのパソコンを考えています。"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "元の値に近づける正則化での追加学習",
+      "description": "正則化で値を0に近づける代わりに、Bonanza 6.0の元の値に近づける変更をして追加学習し、棋力を上げる。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "Bonanza6.0 の元の値に近づくような変更を行っている。"
+    },
+    {
+      "category": "エンタメ・演出",
+      "title": "クジラちゃんの擬人化GUI",
+      "description": "コンピュータ将棋を動かすGUIも自作し、クジラちゃんを擬人化してGUIに取り込んだ。クライアントもこのGUIで動かせる。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "クジラちゃんを擬人化し、GUI内に取り込みました。"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "Apery参考の定跡ファイル更新",
+      "description": "定跡ファイルをAperyを参考にバージョンアップした。",
+      "originality": "再現・追従",
+      "evidence": null,
+      "quote": "定跡ファイルは Apery を参考にバージョンアップ"
+    }
+  ],
+  "character": "放送リスナーと一緒に開発する視聴者参加型で、リスナーが開発メンバーに加わった経緯（将棋電王戦をきっかけにクジラちゃんと出会い、棋力が上がらないことに苛立ち自分もプログラミングを始めた等）が開発者プロフィールに綴られる。第23回で独創賞を獲得。",
+  "notes": "PDFのテキスト層が壊れていたため、原本PDFを画像として直接読んだ。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc25/team.html"
+}

@@ -1,0 +1,76 @@
+{
+  "wcsc": 31,
+  "year": 2021,
+  "dir": "AobaZero",
+  "team": "Team AobaZero",
+  "software": "AobaZero",
+  "sources": [
+    "wcsc31/appeal/AobaZero/20210322aoba_appeal.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc31/appeal/AobaZero/20210322aoba_appeal.pdf"
+  ],
+  "summary": "AlphaZeroの将棋実験を市販GPUで再現するプロジェクト。世界中のユーザーの計算資源で棋譜を生成し、棋譜生成数は3600万局に達してAlphaZeroの実験の2400万局を超えた。ソースを公開している。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "20ブロック・256チャネルのResNet、policy+value"
+  },
+  "search": {
+    "family": "MCTS",
+    "detail": "AlphaZero流のモンテカルロ木探索"
+  },
+  "learning": "将棋のルールだけを与えた自己対戦の強化学習。世界中のボランティアが棋譜を生成",
+  "hardware": "Xeon Gold 6154 x2 + RTX 2080Ti x6",
+  "language": "C++",
+  "claimed_strength": "floodgateでシミュレーション数800のとき3150点程度（昨年3000点）。AlphaZeroの10秒相当で後手50・先手320のレーティング差まで迫ると推定",
+  "ideas": [
+    {
+      "category": "並列・分散",
+      "title": "ボランティア計算で棋譜を生成",
+      "description": "世界中のユーザーに計算資源の提供を依頼して自己対戦棋譜を生成する分散プロジェクト。",
+      "originality": "既存手法の応用",
+      "evidence": "棋譜生成数3600万（昨年730万程度）",
+      "quote": "計算資源の提供を世界中のユーザにお願いして棋譜を生成しています。"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "9x9盤面専用のNN推論コード",
+      "description": "cuDNNなど汎用ライブラリを使わず、9x9の盤面に特化した順伝播コードを独自実装。OpenCL1.2で内蔵GPUでも動き、CUDAのWMMAでTensor Coreも使える。",
+      "originality": "独自",
+      "evidence": "RTX 2080 Tiでバッチ28あたりでピーク、毎秒推論1万2千回超",
+      "quote": "大きさ 9×9 の盤面に特化したコードも独自に実装しました"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "AlphaZeroとのレート差の推定",
+      "description": "シミュレーション数を制限してAlphaZero実験の10秒相当を模倣し、Eloで棋力を推定した。",
+      "originality": "独自",
+      "evidence": "後手で50、先手で320程度まで迫ると予想",
+      "quote": "AlphaZero に、レーティング差にして後手番で 50、先手番で 320 程度まで迫っているのではないか"
+    },
+    {
+      "category": "棋風・人間らしさ",
+      "title": "自己対戦で定跡・囲いを再発見",
+      "description": "ルールだけから学んだAIが、雁木・矢倉・美濃・相掛かり・角換わり等をほぼ再発見したと報告。振飛車や一目散の穴熊は見つけていない。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "一般的に指されている戦型や囲いはほぼ再発見できたように思えます。"
+    },
+    {
+      "category": "入玉",
+      "title": "宣言勝ちが得意",
+      "description": "先手番で宣言率が高く、対elmo(WCSC27)で持ち時間が長いと勝ちの99%が宣言勝ち。先手により厳しい点法にすべきかと考察。",
+      "originality": "独自",
+      "evidence": "対elmoで勝ち将棋の99%が宣言勝ち",
+      "quote": "他のソフトに対して宣言勝ちをするのが上手いです。"
+    }
+  ],
+  "character": "棋風はすぐ殴り掛かる居飛車党で相掛かり・角換わりを好む。弱点は終盤の読み抜けと飛角の両取りのうっかり。",
+  "notes": "棋風や強み弱みの分析は付録に記載。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc31/team.html"
+}

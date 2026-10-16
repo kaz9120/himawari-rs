@@ -1,0 +1,70 @@
+{
+  "wcsc": 30,
+  "year": 2020,
+  "dir": "ichibinichi",
+  "team": "花井 祐",
+  "software": "ichibinichi",
+  "sources": [
+    "wcsc30/appeal/ichibinichi/appeal.txt"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc30/appeal/ichibinichi/appeal.txt"
+  ],
+  "summary": "第28・29回のJava自作から、第30回はC++でやねうら王V4.86を出発点にした。qsearchのevaluateに自作の思考部分を移植して、評価関数は自作KPを無理やりKPPTに変換してから強化学習した。詳細な1年の日記形式の文書。",
+  "base": {
+    "engine": "やねうら王",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "第29回の自作KP（利きを含む）を、無理やりKPPTに変換してから強化学習。NNUEの強化学習にも取り組む"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": null
+  },
+  "learning": "KPPTは強化学習。floodgateに300万ノードで投入しGikouに勝率2割。NNUEも試行錯誤中。統計的に浅い読みの変な評価値を排除する選別を試す",
+  "hardware": "Core i9 9900T 8コア",
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "KPを無理やりKPPTに変換",
+      "description": "自作のKP評価関数を、独立した2つのKPとして、やねうら王のKPPに代入し、2で割る。さらにコピーしてKPPTへ拡張し、KKとKKPはゼロにする。やねうら王のライブラリに整合するKPPTを得る。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "元のKPとコピーしたKPを独立した評価関数とみて、やねうら型KPPにそれぞれを無理やり代入し、２で割って、いいかげんながらできあがり。"
+    },
+    {
+      "category": "詰み・終盤",
+      "title": "利き情報を使ったdf-pnの初期値",
+      "description": "詰めルーチンで、未展開局面の pn=1, dn=1 を、利き情報から pn=max(1, 王の自由度), dn=1 にする。内藤国男の詰将棋の第1〜80問を、サイクルで解けなかった問題も含め、1問500ms以内で全問解けた。",
+      "originality": "独自",
+      "evidence": "内藤国男の問題第1〜80問を1問500msで全問解けた",
+      "quote": "pn =max(1,王の自由度)　; dn= 1にしてみる。これは結構な効果があり"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "やねうら王の駒割りへ自作の思考部を移植",
+      "description": "やねうら王のqsearchのevaluateに、自作ichibinichiの思考部分を差し込む。駒割りのみのやねうら王V4.86に260勝22敗（勝率92%）。",
+      "originality": "独自",
+      "evidence": "対やねうら王（駒割りのみ）260勝22敗、勝率92%",
+      "quote": "qsearchのevaluateに、ichibinichiの思考部分をぶちこんでみようかと考え始める。"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "統計的な悪手排除",
+      "description": "浅い読みで出る変な評価値を、統計的な方法で教師データから選別して排除する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "浅い読みによるおかしな評価値を排除する方法が何とかならないかと考えて、統計的な方法で選別することを試しています。"
+    }
+  ],
+  "character": "名前は、「イッヒビンイッヒ（私は私）」と読むドイツ語。「ドイツ語跳訳：じゃがわしい、俺は俺だ」と洒落る。後半は1年の月ごとの日記（「ミジンコ脳が世界一の筋肉脚を操る」「やる気がなくなる」「ベトナム旅行」）で、人柄が伝わる読み物にしている。「既存の優良評価関数に追加学習するのは富士山にヘリコプターで登山するようなもの」と、他者評価関数を使わない矜持を語る。",
+  "notes": "第29回までライブラリ不使用だったが、大会ルール改訂を機に方針転換し、やねうら王を出発点にした。書いてある開発の経緯が多い",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc30/team.html"
+}

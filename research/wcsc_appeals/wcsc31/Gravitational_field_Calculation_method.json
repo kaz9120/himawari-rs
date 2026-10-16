@@ -1,0 +1,60 @@
+{
+  "wcsc": 31,
+  "year": 2021,
+  "dir": "Gravitational_field_Calculation_method",
+  "team": "北川博隆（HN:雨宮一也）",
+  "software": "重力場計算法",
+  "sources": [
+    "wcsc31/appeal/Gravitational_field_Calculation_method/gravity.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc31/appeal/Gravitational_field_Calculation_method/gravity.pdf"
+  ],
+  "summary": "深い読みも定跡・棋譜も使わず、ルールと評価設定だけを入力して簡易版の重力場理論で盤面評価を計算する。最高精度の盤面評価で最善手が特定できるという独自理論のプログラム。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "その他",
+    "detail": "重力場理論（簡易版）で盤面を計算し、上昇値の合計を比較する"
+  },
+  "search": {
+    "family": "その他",
+    "detail": "深い読みを行わず、最小手数範囲の盤面評価のみ"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "重力場理論による盤面評価",
+      "description": "異なる単位の評価設定でも、重力場理論（簡易版）で計測し、上昇値の合計を比較することで最高精度の盤面評価を得るとする。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "盤面判断は重力場理論（簡易版）を使用して計算を行う。"
+    },
+    {
+      "category": "探索",
+      "title": "深い読みを行わない設計",
+      "description": "手番・非手番の条件は毎回同じで、最小手数範囲の計算で足りるとして、根拠のない深い読みをしない。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "通常の「深い読み」を行わない。"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "棋譜・定跡・解析データを一切使わない",
+      "description": "将棋のルールと評価設定のみを入力し、定跡や棋譜、解析データは使わない。人間の知恵や歴史を使わないことが独自性という主張。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "「定跡・棋譜」を一切利用しない。解析データも利用しない。"
+    }
+  ],
+  "character": "「神の一手」「将棋の数学的解明」「究極AI産業革命」など壮大な主張を、淡々と「将棋を鏡に映しただけ」と語る。",
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc31/team.html"
+}

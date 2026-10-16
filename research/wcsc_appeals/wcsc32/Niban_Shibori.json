@@ -1,0 +1,73 @@
+{
+  "wcsc": 32,
+  "year": 2022,
+  "dir": "Niban_Shibori",
+  "team": "ビール工房HFT支店（曽根 壮大、芝 世弐）",
+  "software": "二番絞り",
+  "sources": [
+    "wcsc32/appeal/Niban_Shibori/appeal2022_detail.pdf",
+    "wcsc32/appeal/Niban_Shibori/appeal2022_v2.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc32/appeal/Niban_Shibori/appeal2022_detail.pdf",
+    "https://www.apply.computer-shogi.org/wcsc32/appeal/Niban_Shibori/appeal2022_v2.pdf"
+  ],
+  "summary": "dlshogi系の巨大なResNet（最終的に40ブロック）を強化学習で鍛え、「最高精度の局面評価」を狙う。電竜戦予行と共に生まれた経緯を詳しく振り返る詳細版を併せて提出。本番では前年モデルに追加の強化学習と、書籍配布データの極小学習率学習を加えたものを使い、探索部の工夫は学術的な場で発表する予定。",
+  "base": {
+    "engine": "dlshogi",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "ResNet。5・10・20・30・40ブロックを比較し、最終的に40ブロックを使用。ポリシー/バリューヘッドの部分変更も試行"
+  },
+  "search": {
+    "family": "MCTS",
+    "detail": "dlshogi"
+  },
+  "learning": "選手権用強化学習モデルの副産物の数十億局面→AobaZero教師データ1474万棋譜→自己対局による強化学習（1億〜1.2億局面を生成、2エポック）",
+  "hardware": "GCP a2-megagpu-16g（96vCPU、1360GB）。予行ではV100×4",
+  "language": [
+    "C++",
+    "Python"
+  ],
+  "claimed_strength": "予行でfloodgate R3900程度。選手権予選1位通過",
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "AobaZero教師データの全棋譜学習",
+      "description": "公開されているAobaZeroの教師データ1474万棋譜を、予行のモデルに全て追加学習させたものが最も強かった。AobaZero教師はfloodgateレート3000程度の探索に相当する。",
+      "originality": "独自",
+      "evidence": "floodgateでR3900程度",
+      "quote": "AobaZero 教師データを 1474 万棋譜全て学習させたもの"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "2エポック学習の採用",
+      "description": "自己対局による強化学習で、1エポックと2エポックを紅白戦で比べ、2エポックを採用した。指し手一致率が7割近くになる極度の過学習に見える現象があったが、対戦で勝った方を採用した。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "教師データを 1 エポック学習したものと 2 エポック学習したものを比較"
+    },
+    {
+      "category": "評価関数",
+      "title": "巨大モデル（40ブロック）の最高精度評価",
+      "description": "GPU性能が上がり探索速度が桁違いになったことを背景に、巨大な深層学習モデルで静的な評価の精度を最大にする。選手権本番の対局では悪手が1手のみと評価している。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "昨年同様巨大な深層学習モデルで最高精度の局面評価を誇ります"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "探索部の工夫を学術発表予定",
+      "description": "探索部の工夫は学術的な場で発表する予定とし、参考として「将棋のPV-MCTSに向けた深層学習モデルの最適化」と「探索アルゴリズムに適した時間利用に関する研究」を挙げる。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "探索部の工夫に関しては学術的な場で発表するつもりにしております。"
+    }
+  ],
+  "character": "電竜戦の予行演習で生まれ、搾りカスの教師データを学習させる行為になぞらえて「二番絞り」と命名された由来を語る。第28回優勝・第29回準優勝の芝世弐とHave Fun Tech代表曽根壮大のチーム。",
+  "notes": "詳細版は電竜戦予行から本大会までの開発経緯の記録。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc32/team.html"
+}

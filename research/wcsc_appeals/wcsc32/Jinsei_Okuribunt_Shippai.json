@@ -1,0 +1,62 @@
+{
+  "wcsc": 32,
+  "year": 2022,
+  "dir": "Jinsei_Okuribunt_Shippai",
+  "team": "築地 毅",
+  "software": "人生送りバント失敗",
+  "sources": [
+    "wcsc32/appeal/Jinsei_Okuribunt_Shippai/appeal2022.txt"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc32/appeal/Jinsei_Okuribunt_Shippai/appeal2022.txt"
+  ],
+  "summary": "「動いていることが奇跡」と称する、αβ（LMR・Futility）とボナンザメソッドによる自作ソフト。技術的な工夫は過去文書のコピペと断った上で、2020年版から探索を作り直し評価関数も再学習してわずかに強くなったと報告する。文書の大半は大会の思い出話と開発の失敗談。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "ボナンザメソッド（機械学習）。評価関数を学習し直した"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "LMR、Futilityなど一般的な技術。探索を2020年版から作り直し"
+  },
+  "learning": "ボナンザメソッド。オンライン学習として平均化パーセプトロンを試したが怪しいためやめた",
+  "hardware": "Core i7",
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "研究・実験的",
+      "title": "平均化パーセプトロンの試行と撤回",
+      "description": "オンライン学習を学ぶため平均化パーセプトロンを試したが、本当にそうなのか怪しいとして2019年にやめた。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "オンライン学習を勉強してみたかったので、平均化パーセプトロンを試しています"
+    },
+    {
+      "category": "開発手法・運用",
+      "title": "探索の作り直しと評価関数の再学習",
+      "description": "2020年版から探索を全面的に作り直し、評価関数も学習し直してわずかに強くなったが、もっと強くなると思ったのに同程度に収束したと振り返る。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "2020年バージョンから探索を丸っと作り直し、評価関数も学習しなおしたら、ちょっとだけ強くなりました。"
+    },
+    {
+      "category": "エンタメ・演出",
+      "title": "解説記事の生成で独創賞",
+      "description": "2012年に「解説記事の生成」で独創賞を受賞した。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "独創賞受賞（解説記事の生成）"
+    }
+  ],
+  "character": "「アピール文書リジェクトを2015年に実証した」「プログラム名「(´・ω・`)」を読めないとリジェクトされた」など、大会史上初の事例を自虐ネタとして語る。マクドナルド定跡を毎年試し、2016年には罰ゲームで「うまるちゃん」のコスプレ、2日目は川崎家でラーメンを食べる等の旅行記風。師匠のまったりゆうちゃんを倒すことが目標。",
+  "notes": "技術部分は過去のアピール文書のコピー。それ以外は思い出話と参考URL。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc32/team.html"
+}

@@ -1,0 +1,52 @@
+{
+  "wcsc": 32,
+  "year": 2022,
+  "dir": "Mattari_Yuuchan_",
+  "team": "東京農工大学旧小谷研究室（小谷善行、柴原一友）",
+  "software": "まったりゆうちゃん",
+  "sources": [
+    "wcsc32/appeal/Mattari_Yuuchan_/appeal2022.docx"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc32/appeal/Mattari_Yuuchan_/appeal2022.docx"
+  ],
+  "summary": "1990年過ぎから開発を続ける完全独自開発のシステム。新マシンで約4倍速くなった。ディープラーニング主流の中で、進化論的計算などパラメータ学習以外の方式や、DLと多量パラメータ学習の中間的な仕組みを試そうとしている。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "手作り",
+    "detail": null
+  },
+  "search": {
+    "family": "不明",
+    "detail": null
+  },
+  "learning": "進化論的計算など、ディープラーニング以外の方式を試す構想",
+  "hardware": null,
+  "language": null,
+  "claimed_strength": "新マシンで前回の約4倍高速",
+  "ideas": [
+    {
+      "category": "研究・実験的",
+      "title": "進化論的計算など非DLの学習の試み",
+      "description": "駒価値学習やDLが主流の中で、進化論的計算などパラメータ学習によらない方式を試す。DLと多量パラメータ学習の中間的なメカニズムも考えたいとしている。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "進化論的計算などの方式を試そうとしている。またディープラーニングと多量パラメータ学習の中間的なメカニズムを考えたい"
+    },
+    {
+      "category": "並列・分散",
+      "title": "複数システム間でデータをやり取りする並列方式",
+      "description": "複数のシステムを動かし、その間でデータをやり取りして並列動作する方法を検討している。全面書き換えで新しい並列方式を実現する構想。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "複数のシステムを動作させて、その間でデータをやり取りして並列動作をする方法を検討している。"
+    }
+  ],
+  "character": "1990年頃から4半世紀以上開発し続ける。開発者の年齢が最高齢ではないかとし、コーディング能力がいつまで続くか試したいと語る。完全独自開発で他システムを参考にしていない。",
+  "notes": "前回とほぼ同様の説明を含む。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc32/team.html"
+}

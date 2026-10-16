@@ -1,0 +1,68 @@
+{
+  "wcsc": 36,
+  "year": 2026,
+  "dir": "Gokaku",
+  "team": "武田 敦志",
+  "software": "Gokaku",
+  "sources": [
+    "wcsc36/appeal/Gokaku/Gokaku_20260428.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc36/appeal/Gokaku/Gokaku_20260428.pdf"
+  ],
+  "summary": "ランダム生成の棋譜から始めた強化学習だけで作った、完全フロムスクラッチのDL将棋。独自のSkipResNet構造（ResNetの差分構造にAttentionを導入）が売りで、定跡も他ソフトの棋譜も使わない。今年は合法手生成・ビットボード・PN探索まで自作し直した。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": "WCSC35まで使っていたcshogiを排し、合法手生成・詰み探索まですべて自作。GitHubで公開"
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "SkipResNet構造に、KataGo由来のNested Bottleneck、Multi-Head Attention、Gated Attention、SEを採用"
+  },
+  "search": {
+    "family": "MCTS",
+    "detail": "AlphaGo Zeroのアルゴリズムがベース。PN探索による詰み探索"
+  },
+  "learning": "ランダム生成の棋譜から始めた強化学習。自己対戦約800万対局のうち最新約180万対局（約4500万局面）で学習。他のプログラムや人間の棋譜は不使用",
+  "hardware": null,
+  "language": [],
+  "claimed_strength": "WCSC35のversion 1.2から+500 Elo以上、第6回電竜戦本戦時点から+100 Elo以上",
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "SkipResNet構造",
+      "description": "ResNetの差分構造にAttention機構を導入した独自構造。同じ計算量でResNetより高い推論精度が出る。他の将棋・囲碁・チェスプログラムでは使われていないと考えている。",
+      "originality": "独自",
+      "evidence": "WCSC35版から+500 Elo以上（構造再設計と再学習の合計）",
+      "quote": "同じ計算量であれば ResNet モデルよりも高い推論精度を実現します。"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "完全ゼロからの強化学習",
+      "description": "ランダム生成の棋譜から強化学習を始め、他のプログラムの影響を一切受けない。数千万局面程度の少ない学習データでも精度の高い評価モデルを作れるとしている。定跡データベースも搭載しない。",
+      "originality": "独自",
+      "evidence": "約4500万局面で学習",
+      "quote": "数千万局面程度の学習データであっても精度の高い盤面評価モデルを構築できる"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "合法手生成と詰み探索の全面自作",
+      "description": "cshogiを外してビットボードとPN探索を自作し、プログラムとデータがすべてオリジナルのフロムスクラッチにした。実行速度は一部低下した。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "ビットボードや詰み探索アルゴリズム（PN 探索）も気力を振り絞って実装しました。"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "アーキテクチャ要素の採否一覧",
+      "description": "Nested Bottleneck、Multi-Head Attention、Pre-Activation、Pre-Norm、Gated Attentionは効果あり。SwiGLU/GeGLU、位置エンコード、ラージカーネル、グループ畳込みは効果なしで不採用。SwiGLUはGated AttentionやSEのゲート機能と重複するためと推測している。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "SwiGLU/GeGLU 活性化関数：効果なし（不採用）"
+    }
+  ],
+  "character": "協会誌の記事のバグ（千日手発生率が異常に高かった、詰将棋の解析結果が間違っていた）を「なんてこった」と自己申告する。SwiGLUへの疑念を数式つきで書く落書きが読み物として面白い。",
+  "notes": "version 2.2。WCSC35は1次予選敗退で、今回は決勝進出が目標。詳細は協会誌Vol. 37。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc36/team.html"
+}

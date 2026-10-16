@@ -1,0 +1,78 @@
+{
+  "wcsc": 23,
+  "year": 2013,
+  "dir": "Blunder",
+  "team": "下山 晃",
+  "software": "Blunder",
+  "sources": [
+    "wcsc23/appeal/Blunder/Blunder.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc23/appeal/Blunder/Blunder.txt"
+  ],
+  "summary": "Bonanzaのパチモノという意味でBlunder（大悪手）と名付けた、遊び心のあるソフト。1億規模の独自特徴を使うBonanzaメソッド評価関数、実現確率探索、学習による時間制御と枝刈りで低NPSを補う。文書は弱点を「ハラハラ感」として売りにしている。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "1億程度の独自特徴を使うBonanzaメソッドの評価関数"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "Stockfish風の枝刈り、実現確率探索、df-pn、学習によるオーダリングと枝刈り"
+  },
+  "learning": "Bonanzaメソッドで評価関数を学習。オーダリング・枝刈り・時間制御も学習",
+  "hardware": "Core i7 3960X",
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "時間管理",
+      "title": "学習による時間制御",
+      "description": "探索を続けるかを統計的に判定する。25分の持ち時間で最大約2分まで探索するが、大丈夫と判断すれば1秒で指す。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "探索を続けるか否かを統計的に判定しています。"
+    },
+    {
+      "category": "探索",
+      "title": "学習によるオーダリングと枝刈り",
+      "description": "指し手の並べ替えと枝刈りに学習結果を使う。低NPSを実現確率探索と合わせて補う。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "学習によるオーダリングと枝刈り"
+    },
+    {
+      "category": "評価関数",
+      "title": "1億規模の独自特徴",
+      "description": "Bonanzaメソッドの評価関数に、独自の複雑な特徴を1億程度使う。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "Bonanzaメソッドによる評価関数 (特徴は独自のもので1億程度)"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "評価値付き定跡DB",
+      "description": "評価値を考慮した定跡データベースを使う。",
+      "originality": "不明",
+      "evidence": null,
+      "quote": "評価値を考慮した定跡DB"
+    },
+    {
+      "category": "エンタメ・演出",
+      "title": "弱点をハラハラ感として提示",
+      "description": "低NPS、時間制御、作者の低棋力を、いつ悪手を指すか分からないハラハラ感として楽しむよう見どころに挙げる。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "いつ短過ぎる時間で探索を打ち切って悪手を指してしまうか分からないハラハラ感が楽しめます。"
+    }
+  ],
+  "character": "名前は「大悪手」の意で、強ければ皮肉が利くと思って付けた。作者は「ルールしか知らないレベル」と自称し、低NPS・時間制御・作者の低棋力を『いつ悪手を指すか分からないハラハラ感』として見どころにする。",
+  "notes": "NPSは1コアあたり序盤100k・終盤50k程度と述べ、参加ソフト中トップクラスの遅さとする。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc23/team.html"
+}

@@ -1,0 +1,97 @@
+{
+  "wcsc": 29,
+  "year": 2019,
+  "dir": "Qhapaq_di_molto",
+  "team": "パッショーネ将棋チーム（Ryoto Sawada、Yuki Ito、Toshihiro Shirakawa）",
+  "software": "Qhapaq di molto (QDM)",
+  "sources": [
+    "wcsc29/appeal/Qhapaq_di_molto/qdm_appeal.pdf",
+    "wcsc29/appeal/Qhapaq_di_molto/Qhapaq_di_molto_appeal.docx"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc29/appeal/Qhapaq_di_molto/qdm_appeal.pdf",
+    "https://www.apply.computer-shogi.org/wcsc29/appeal/Qhapaq_di_molto/Qhapaq_di_molto_appeal.docx"
+  ],
+  "summary": "計算資源の乏しい「無課金」環境で強くする工夫が特徴。評価値に応じて学習率を変える動的学習率、ponderを2手先まで先回りさせるPreponder付きMultiponder、将棋の統計を可視化するサイト運営による集合知の活用などを挙げる。",
+  "base": {
+    "engine": "やねうら王",
+    "eval_source": "tanuki-のNNUE実装（やねうら王にマージ済み）を、独自に学習",
+    "note": null
+  },
+  "eval": {
+    "family": "NNUE",
+    "detail": "NNUE型。評価値に応じた動的な学習率で学習"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "やねうら王の探索部。Preponder付きMultiponder"
+  },
+  "learning": "レート測定用の自己対局（4コア8スレッド1手1秒、互角局面集）とレーティングサイト投稿棋譜の約1000万局。評価値に応じて学習率にボーナスを付与",
+  "hardware": "GCP highcpu-96 + 会場用Core i7-4710",
+  "language": [
+    "C++",
+    "Python"
+  ],
+  "claimed_strength": "orqha1018・QDMの評価関数は学習元のillqhaやtnkより強いと主張",
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "評価値に応じた動的な学習率",
+      "description": "人間もソフトも評価値1000前後で最も悪手を指しやすいと分析し、重要な局面を効率的に学習させるため、教師の評価値に応じて学習率に d^2/dv (1/(1+exp(-v/600))) のボーナスを与える。",
+      "originality": "独自",
+      "evidence": "学習元のillqhaやtnkより強い評価関数が得られた",
+      "quote": "評価値に応じた動的な学習率の調整"
+    },
+    {
+      "category": "並列・分散",
+      "title": "Preponder付きMultiponder",
+      "description": "Multiponderに加え、自分の手番中に2手先の展開を他ノードに先読みさせ、自分の思考時間もponderに使う。3ノードのPreponder対通常ponderの自己対局で、実効持ち時間を増やせたと確認。",
+      "originality": "独自",
+      "evidence": "ponder hit内訳を分類して実効持ち時間の増加を確認",
+      "quote": "自分の手番中に、２手先の展開について予め他のノードに計算を行わせることで、自分の思考時間もponderに用いようとするものである。"
+    },
+    {
+      "category": "開発手法・運用",
+      "title": "集合知で計算資源不足を補う（まとめサイト運営）",
+      "description": "コンピュータ将棋の纏めサイトを運営し、棋譜解析やレーティング測定を有志（Rotaさん等）の協力に頼る。同人誌やイベントで大会用クラスタの資金を調達した。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "webサービスを開発して巨人の肩を増やす コンピュータ将棋の纏めサイトを運営し、集合知の力に頼る"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "人力Gaussian Process",
+      "description": "学習回数に対する勝率は単調増加・単調減少・単峰の凸関数のいずれかと仮定する事前確率モデルを立て、ノイズの大きい勝率データから少ない対局数で学習の良し悪しを推測する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "解決策：人力 Gaussian Process"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "学習の質を測る追加指標",
+      "description": "通常のlossに加え、棋譜解析に基づく複数の指標（大会中は秘密）で学習や評価関数の質を見積もる。女流棋士のレート上昇を評価値解析から推定した例を挙げる。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "通常のloss functionに加え、幾つかの指標（少なくとも大会中は秘密にする予定です）を用いることで学習や評価関数の質を見積もる"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "端歩を突く定跡と戦型抽出",
+      "description": "角換わりに飽きたとして、序盤に端歩を突く自前の定跡を作る。棋譜ビッグデータから角換わり以外の使いやすい戦型を抽出・検品する構想。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "角換わりに飽きた"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "合法手列挙のソート高速化",
+      "description": "合法手列挙におけるソートを高速化したSuperSortを公開（5/5に相当速くなった）。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "合法手列挙におけるソートの高速化"
+    }
+  ],
+  "character": "冒頭に無限ループのアラート、「勝ちたい、でも金は掛けたくない」「計算資源への無課金プレイ」「ご家庭用ゲームノートPCで強いソフトを作りたい」と資源制約をネタ化。物理屋・最適化職人・ゴルファーというメンバー紹介。",
+  "notes": "概要スライドと詳細技術文書の2ファイルを統合。開発動機に「賞金で参加費の元を取りたい」と記載",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc29/team.html"
+}

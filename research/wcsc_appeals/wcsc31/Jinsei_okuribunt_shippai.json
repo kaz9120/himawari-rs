@@ -1,0 +1,76 @@
+{
+  "wcsc": 31,
+  "year": 2021,
+  "dir": "Jinsei_okuribunt_shippai",
+  "team": "築地 毅",
+  "software": "人生送りバント失敗",
+  "sources": [
+    "wcsc31/appeal/Jinsei_okuribunt_shippai/appeal2021.txt"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc31/appeal/Jinsei_okuribunt_shippai/appeal2021.txt"
+  ],
+  "summary": "αβ探索にLMR・Futilityなどの普通の技術を使い、ボナンザメソッドで学習する。今年は何も手を入れていない。文書の大半は大会の思い出話と、マクドナルド定跡・川崎家のラーメン・うまるちゃんの罰ゲームなどのネタ。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "ボナンザメソッド（評価関数の詳細は記載なし）"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "LMR・Futilityなど一般的な技術"
+  },
+  "learning": "ボナンザメソッド。オンライン学習として平均化パーセプトロンを試したが怪しく中止",
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "エンタメ・演出",
+      "title": "アピールがないときの技術コピペ",
+      "description": "アピール箇所がないとアピール文書がリジェクトされると2015年に実証したため、前回までの技術記述に日付つきのぼやきを足し続けている。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "アピール箇所がないとアピール文書リジェクトとなることを（確か）2015年に実証しておりまして"
+    },
+    {
+      "category": "エンタメ・演出",
+      "title": "マクドナルド定跡",
+      "description": "会場近くのマクドナルドに行くマクドナルド定跡を毎年試している。勝ち星はあまり増えないため効果は未確認という自虐ネタ。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "有名なマクドナルド定跡(関東人の意地としてマクド定跡とはよばない)について、毎年試している"
+    },
+    {
+      "category": "エンタメ・演出",
+      "title": "大会中の遊び歩きとコスプレ",
+      "description": "2016年の罰ゲームでうまるちゃんのコスプレをし、会場近くで家系ラーメンの川崎家などを楽しむ。コスプレ一式は貸出可能とする。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "2016年には罰ゲームでうまるちゃんやりました。"
+    },
+    {
+      "category": "解説・人間支援",
+      "title": "解説記事の生成で独創賞",
+      "description": "2012年に、解説記事を生成する機能で独創賞を受賞した。",
+      "originality": "独自",
+      "evidence": "独創賞（2012年）",
+      "quote": "独創賞受賞（解説記事の生成）"
+    },
+    {
+      "category": "探索",
+      "title": "評価関数変更後のLMR不調の修正",
+      "description": "評価関数をいじるとLMRが効かなくなり、バグを取ったら効いた、という試行錯誤を記録している。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "バグをとったら効いたので入ってます(2018大会時点)"
+    }
+  ],
+  "character": "プログラム名は元は「(´・ω・`)」だったが、読めないと運営にリジェクトされ、大会史上初のプログラム名リジェクトという逸話を披露する。名前の由来の送りバントの話や、まったりゆうちゃん（師匠）を倒す目標も語る。",
+  "notes": "前回までのアピール文書の技術記述のコピーが中心。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc31/team.html"
+}

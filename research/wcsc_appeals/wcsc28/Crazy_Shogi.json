@@ -1,0 +1,46 @@
+{
+  "wcsc": 28,
+  "year": 2018,
+  "dir": "Crazy_Shogi",
+  "team": "Rémi Coulom（フランス）",
+  "software": "Crazy Shogi",
+  "sources": [
+    "wcsc28/appeal/Crazy_Shogi/wcsc28_characterization.txt"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc28/appeal/Crazy_Shogi/wcsc28_characterization.txt"
+  ],
+  "summary": "AlphaZeroアルゴリズムをC++でフルスクラッチ実装したソフト。ニューラルネットはcuDNNでNvidia GPU上で動かす。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "AlphaZero型のニューラルネット（cuDNN）"
+  },
+  "search": {
+    "family": "MCTS",
+    "detail": "AlphaZero"
+  },
+  "learning": "AlphaZero方式（詳細は文書になし）",
+  "hardware": "Tesla V100 x 8 + Amazon EC2 p3.16xlarge（参加者一覧より）",
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "研究・実験的",
+      "title": "AlphaZeroのフルスクラッチ実装",
+      "description": "DeepMindのAlphaZeroを元コードなしでC++実装する。ニューラルネットはcuDNNで動かす。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "It is entirely original code developed from scratch, in C++."
+    }
+  ],
+  "character": null,
+  "notes": "文書は2文のみ。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc28/team.html"
+}

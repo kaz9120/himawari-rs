@@ -1,0 +1,44 @@
+{
+  "wcsc": 22,
+  "year": 2012,
+  "dir": "narikinshogi",
+  "team": "村山正樹",
+  "software": "なり金将棋",
+  "sources": [
+    "wcsc22/appeal/narikinshogi/appeal.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc22/appeal/narikinshogi/appeal.txt"
+  ],
+  "summary": "進展が少ないが、運営に迷惑がかからないよう前年文書に追記して提出する。マルチコア対応として、メインのPVS探索に別スレッドでSSS*探索を走らせ、その結果でα・β値を絞るハイブリッドを試す。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "手作り",
+    "detail": null
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "PVS、null move、futility、一部ビットボード。追加でマルチコア（PVS＋SSS*）"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "並列・分散",
+      "title": "PVSとSSS*のハイブリッド並列探索",
+      "description": "1スレッドでメインのPVS探索、他のスレッドでおまけのSSS*探索を行い、SSS*の結果でメインPVSのα・β値を絞る。1手目のマルチコア化は速度に貢献しないと聞いて採用せず、2年前に実装したがバグ満載でデータを取っていない。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "１スレッドでメインとなるpvs探索、他のスレッドでオマケのsss探索を行い"
+    }
+  ],
+  "character": "「アピール文書を出さない選択をしようと思ったが、運営に迷惑が掛かっても悪いので出す」「3年前バージョンでの参加では面白くないのでマルチコア対応を入れる」と率直に書く。",
+  "notes": "前年（第21回）文書を後半に付す。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc22/team.html"
+}

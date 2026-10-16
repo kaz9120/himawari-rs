@@ -1,0 +1,52 @@
+{
+  "wcsc": 20,
+  "year": 2010,
+  "dir": "KinoaSyougi",
+  "team": "きのあ",
+  "software": "きのあ将棋",
+  "sources": [
+    "wcsc20/appeal/KinoaSyougi/KinoaSyougi.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc20/appeal/KinoaSyougi/KinoaSyougi.txt"
+  ],
+  "summary": "コードネームEXSyougi_XXXで着手し、きのあ将棋の理念を引き継ぎつつシステムの大半を新設計した。きのあ囲碁と分析・統計・進化システムを共通化する構想。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "不明",
+    "detail": null
+  },
+  "search": {
+    "family": "不明",
+    "detail": null
+  },
+  "learning": null,
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "研究・実験的",
+      "title": "将棋・囲碁共通の汎用基盤",
+      "description": "分析、統計、進化システム、基本ライブラリを、きのあ囲碁と共通化し、将棋・囲碁を超えた汎用的な枠組みの基礎にすることを目指す。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "研究成果を将棋・囲碁だけでなく、より汎用的な枠組みの基礎となることを目指しています"
+    },
+    {
+      "category": "その他",
+      "title": "ノウハウの投資システムへの転用",
+      "description": "きのあ将棋で得たノウハウを、アレンジして某社の投資システムの研究・商品提供に使っている。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "某社の投資システムの研究・商品提供をする上で役に立っています"
+    }
+  ],
+  "character": null,
+  "notes": "文書に探索・評価関数の具体的な記述はない。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc20/team.html"
+}

@@ -1,0 +1,47 @@
+{
+  "wcsc": 35,
+  "year": 2025,
+  "dir": "Shueso",
+  "team": "竹内 章",
+  "software": "習甦",
+  "sources": [
+    "wcsc35/appeal/Shueso/Shueso_wcsc35.txt"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc35/appeal/Shueso/Shueso_wcsc35.txt"
+  ],
+  "summary": "MCTSをメインエンジンとし、αβ探索のハッシュテーブルを共有して性能を上げる独自の合議的な設計。αβが終盤で出した評価値をMCTSの末端評価へ反映する。AobaZeroの感想では「今までにないタイプのMCTSとαβの共存利用」と評された。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "公開棋譜（AobaZero、dlshogi、水匠、floodgate）で学習"
+  },
+  "search": {
+    "family": "αβ+MCTS",
+    "detail": "MCTSがメイン。αβ探索のハッシュテーブルを利用してPolicyとValueを調整"
+  },
+  "learning": "AobaZero、dlshogi、水匠、floodgateの公開棋譜データ",
+  "hardware": "Ryzen 7 + RTX4070Ti",
+  "language": [
+    "C++",
+    "Python"
+  ],
+  "claimed_strength": "一次予選を7勝1敗の1位で通過（AobaZeroの記録による）",
+  "ideas": [
+    {
+      "category": "探索",
+      "title": "MCTSとαβのハッシュテーブル共有",
+      "description": "MCTSをメインにしつつ、αβ探索のハッシュテーブルを使ってPolicyとValueを調整する。最善手はPUCTのパラメータを大きくして訪問回数を増やす。格納された値が閾値を超えている場合は、確率的にリーフノードとして扱い、終盤の確定的な値をMCTSに返す。",
+      "originality": "独自",
+      "evidence": "一次予選7勝1敗の1位",
+      "quote": "α-β探索とMCTSにおけるデータ共有による性能改善"
+    }
+  ],
+  "character": null,
+  "notes": "アピール文書は4行で、AobaZeroの山下氏の記述によれば、αβが+1000と付けた局面をハッシュに覚え、MCTSが末端でその局面に来たとき、勝率0.55程度の評価を+0.70程度に補正して返す仕組み。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc35/team.html"
+}

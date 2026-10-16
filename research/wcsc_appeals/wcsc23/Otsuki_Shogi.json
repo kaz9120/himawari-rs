@@ -1,0 +1,71 @@
+{
+  "wcsc": 23,
+  "year": 2013,
+  "dir": "Otsuki_Shogi",
+  "team": "大槻 知史",
+  "software": "大槻将棋",
+  "sources": [
+    "wcsc23/appeal/Otsuki_Shogi/2013appeal.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc23/appeal/Otsuki_Shogi/2013appeal.txt"
+  ],
+  "summary": "PVS型αβに0.5手延長、各種前向き枝刈りを使う構成。評価関数は駒の位置関係20万項目の線形和と玉の安全度の和で、進行度に応じてw0とw100を重み付けする。詰将棋はPDSで、王手と逃げ手の生成順を工夫する。今年は4台程度の合議並列化を検討する。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "位置関係約20万項目（序盤w0固定、終盤w100固定、中盤は進行度で重み付け）と玉の安全度"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "PVS、0.5手延長、futility、null move、LMR、多重反復深化、PDS詰め"
+  },
+  "learning": "強い人間の棋譜から機械学習。正則化項の重みでw0・w100の大きさを調整",
+  "hardware": "Xeon X5680 2基",
+  "language": [
+    "C",
+    "Python"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "進行度でw0とw100を補間",
+      "description": "各評価項目のパラメータを序盤はw0一定、終盤はw100一定とし、中盤は進行度に応じて両者の重み付き和にする。正則化項の重みでw0・w100の大きさを調整する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "中盤は進行度に応じてw0とw100との重み付き和で表す。"
+    },
+    {
+      "category": "評価関数",
+      "title": "玉の安全度は固定値",
+      "description": "玉の24近傍の利き、玉の自由度、前進度で玉の安全度を表し、機械学習せず経験的な固定値を使う。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "経験的に得た固定値を使用し、機械学習による調整はしない。"
+    },
+    {
+      "category": "並列・分散",
+      "title": "数台のマシンによる合議",
+      "description": "可能なら4台程度のマシンによる合議などの並列化を試みる。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "4台程度のマシンによる「合議」などの並列化"
+    },
+    {
+      "category": "詰み・終盤",
+      "title": "王手・逃げ手の生成順の工夫",
+      "description": "PDSの詰将棋で、取られない王手を先に、上に逃げる手を先に生成する。中合や不成は基本生成しない。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "取られない王手を先に、上に逃げる手を先に生成するなど"
+    }
+  ],
+  "character": null,
+  "notes": null,
+  "team_list_url": "http://www2.computer-shogi.org/wcsc23/team.html"
+}

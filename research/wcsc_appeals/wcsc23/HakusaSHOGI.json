@@ -1,0 +1,62 @@
+{
+  "wcsc": 23,
+  "year": 2013,
+  "dir": "HakusaSHOGI",
+  "team": "白砂 青松",
+  "software": "白砂将棋",
+  "sources": [
+    "wcsc23/appeal/HakusaSHOGI/appeal.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc23/appeal/HakusaSHOGI/appeal.txt"
+  ],
+  "summary": "作者愛用の「7七桂戦法」を指しこなすことを目標にしたソフト。約1万手の自作定跡と、7七桂戦法側に有利と判断する評価関数の調整が売り。れさぴょんを土台にする。",
+  "base": {
+    "engine": "れさぴょん",
+    "eval_source": null,
+    "note": "れさぴょんライブラリを使用"
+  },
+  "eval": {
+    "family": "手作り",
+    "detail": "駒損でも7七桂戦法側を有利と判断するよう調整、穴熊評価は低め"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "NegaScout、反復深化、null move、futility cut"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "棋風・人間らしさ",
+      "title": "7七桂戦法の指しこなし",
+      "description": "作者愛用の「7七桂戦法」を指しこなすことを目標にする。定跡を外れても7七桂戦法から外れないよう指し継ぐ。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "自身の愛用戦法である「７七桂戦法」を指しこなすこと。"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "作者の実戦譜による約1万手の定跡",
+      "description": "自身の実戦譜と研究から約10,000手を定跡に登録する。",
+      "originality": "独自",
+      "evidence": "約10,000手",
+      "quote": "自身の実戦譜・研究を元に約10,000手を登録。"
+    },
+    {
+      "category": "評価関数",
+      "title": "駒損でも指しやすい局面の評価",
+      "description": "7七桂戦法で生じる「駒は損しているが指しやすい」局面を7七桂戦法側有利と判断させる。穴熊などの評価はやや低め。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "「駒は損しているが指しやすい」という、"
+    }
+  ],
+  "character": "作者が好きな7七桂戦法をソフトに指させることを目標にしている。",
+  "notes": null,
+  "team_list_url": "http://www2.computer-shogi.org/wcsc23/team.html"
+}

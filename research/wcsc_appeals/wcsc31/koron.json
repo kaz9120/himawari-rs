@@ -1,0 +1,44 @@
+{
+  "wcsc": 31,
+  "year": 2021,
+  "dir": "koron",
+  "team": "野田 煌介",
+  "software": "koron",
+  "sources": [
+    "wcsc31/appeal/koron/koron.txt"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc31/appeal/koron/koron.txt"
+  ],
+  "summary": "NNUEのレート上昇が頭打ちで表現力が低いことを課題として、1〜64手担当と64手〜終局担当の2つの評価関数をリレーして補う。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "NNUE",
+    "detail": "手数で分けた2つのNNUE評価関数（1〜64手用、64手〜終局用）"
+  },
+  "search": {
+    "family": "不明",
+    "detail": "記述なし"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "手数別の2つの評価関数をリレー",
+      "description": "NNUEの表現力の低さを補うため、1〜64手と64手〜終局で別々の評価関数を使う。64手はキリがよいだけで、最適な分割手数は後で検証する予定。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "1手～64手担当の評価関数と64手～終局まで担当の評価関数の二つをリレーして表現力の低さを補おうとした。"
+    }
+  ],
+  "character": null,
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc31/team.html"
+}

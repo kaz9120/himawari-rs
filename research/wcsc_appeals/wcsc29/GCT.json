@@ -1,0 +1,71 @@
+{
+  "wcsc": 29,
+  "year": 2019,
+  "dir": "GCT",
+  "team": "加納 邦彦",
+  "software": "GCT (Google Colab TPU) 将棋",
+  "sources": [
+    "wcsc29/appeal/GCT/GoogleColabTpuShogi.md"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc29/appeal/GCT/GoogleColabTpuShogi.md"
+  ],
+  "summary": "Google Colab の無料TPUで、AlphaZero/dlshogi流のpolicy/value+MCTSを Python（Tensorflow/Keras）で作る試み。TPUの不具合、教師データの質、強化学習のPython実装の限界など、試行錯誤の知見を詳しく残した実験記録。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": "python-shogi（Cython版）、elmo教師生成、dlshogi・Aperyは移植の参考"
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "Residual Networkのpolicy/value、マルチタスク学習（Tensorflow/Keras）"
+  },
+  "search": {
+    "family": "MCTS",
+    "detail": null
+  },
+  "learning": "elmo_for_learn生成の約5億局面で事前学習、floodgate棋譜（2011〜2019年）で年単位の順次学習",
+  "hardware": "Google Colab TPUで学習、推論はローカルGTX 1080",
+  "language": [
+    "C++",
+    "Python"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "ハードウェア",
+      "title": "Google Colab TPUで学習",
+      "description": "AlphaZeroへのリスペクトとして無料のGoogle Colab TPUを学習に使い、TPUで学習したモデルの推論に不具合があるためローカルGPUで推論する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "Google の AlphaZero の手法をリスペクトするため、Google Colab (GCP) の TPU を利用する。"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "floodgate棋譜を年単位に順次学習",
+      "description": "2011年→2019年と年単位に順次学習するほうが、まとめてシャッフルするより感覚的に強くなる。年ごとのレート向上を追体験するためと推測。レートで絞るより局面数を増やすほうが有効。",
+      "originality": "独自",
+      "evidence": "感覚的に強くなる（数値なし）",
+      "quote": "年単位に順次学習（2011年→2012年→ ... →2019年）した方が感覚的には強くなる。"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "評価値打ち切り教師の詰み能力の欠落",
+      "description": "評価値3000で打ち切った教師では、億単位を学習してもLesserkaiを詰み切れない。終局まで打つか詰み探索の併用が必要と分析した。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "億単位の局面を学習しても、Lesserkai を詰み切れない。"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "Pythonでの強化学習を断念した記録",
+      "description": "GILがボトルネックで、Cython使用でも24時間で1000プレイアウト程度。Aperyとの100局を追加学習したところ弱くなり、別系統の教師はノイズになると考察した。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "Python で強化学習するのは現実的ではないため、今回は採用を見送った。"
+    }
+  ],
+  "character": "「TPUパワーで手軽に強くなるんじゃね？と思ったら、そんなうまい話はなかった」と失敗も含めて正直に書く。PFNや産総研の大規模GPUクラスタに個人が対抗する手段としてTPUを活用したいという動機。",
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc29/team.html"
+}

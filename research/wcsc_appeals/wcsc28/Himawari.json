@@ -1,0 +1,54 @@
+{
+  "wcsc": 28,
+  "year": 2018,
+  "dir": "Himawari",
+  "team": "山本 一将、永塚 拓、高木 厚成",
+  "software": "ひまわり",
+  "sources": [
+    "wcsc28/appeal/Himawari/appeal.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc28/appeal/Himawari/appeal.pdf"
+  ],
+  "summary": "2012年頃から開発する独自ソフト。Bonanzaメソッドを使わず、方策勾配による教師あり学習のあと自己対局で強化学習する。AlphaZero方式での新規作成は間に合わず、ほぼ前回のプログラムで出場。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "不明（Bonanzaメソッド不使用の学習済み評価関数）"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "不明"
+  },
+  "learning": "方策勾配を用いた教師あり学習の後、自己対局の結果（勝敗など）で強化学習",
+  "hardware": null,
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": "第27回22位、第3回電王トーナメントベスト8",
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "Bonanzaメソッドを使わず方策勾配で教師あり学習",
+      "description": "Bonanzaメソッドではなく、方策勾配を用いた教師あり学習をする。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "Bonanzaメソッドを使用していない 方策勾配を用いた教師有り学習"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "教師あり学習後の自己対局強化学習",
+      "description": "教師あり学習のあと、自己対局の勝ち負けなどから強化学習する。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "教師付学習後に強化学習している 自己対局の結果（勝ち負けなど）から学習"
+    }
+  ],
+  "character": "「38時間かけて△２八角を回避した事で有名?」とネタにする。メイン開発者は2012年まで芝浦将棋の開発者。",
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc28/team.html"
+}

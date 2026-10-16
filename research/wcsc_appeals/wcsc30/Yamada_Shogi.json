@@ -1,0 +1,70 @@
+{
+  "wcsc": 30,
+  "year": 2020,
+  "dir": "Yamada_Shogi",
+  "team": "山田 泰広",
+  "software": "山田将棋",
+  "sources": [
+    "wcsc30/appeal/Yamada_Shogi/yamadashogi_appeal_2020.txt"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc30/appeal/Yamada_Shogi/yamadashogi_appeal_2020.txt"
+  ],
+  "summary": "配列による盤駒表現や駒背番号制、落とし穴表など、クラシカルなデータ構造とアルゴリズムの将棋。評価関数は駒割・玉の安全度・囲いなどを手調整した線形和で、学習は使わない。未採用の手法も列挙している。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "手作り",
+    "detail": "駒割、玉の安全度、囲い、盤上の利き、駒への当たり、大駒の働き、そっぽ、金駒へのひもなどの手調整評価値の線形和"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "反復深化、静止探索的な延長、null move、LMR、killer、パス手、YSS式指し手反復生成、Crafty方式の並列探索"
+  },
+  "learning": null,
+  "hardware": "Xeon E5-2687W v4 2基（24コア）、FreeBSD",
+  "language": [
+    "C"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "実装・高速化",
+      "title": "駒背番号制と利き数のOR値",
+      "description": "駒背番号制、利き数、飛び利き方向ビットのOR値、利いている駒背番号ビットのOR値で盤面情報を持つ。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "駒背番号制、利き数、飛び利き方向ビットの OR 値、利いている駒背番号ビットの OR 値"
+    },
+    {
+      "category": "評価関数",
+      "title": "囲い誘導の落とし穴表",
+      "description": "囲いへ誘導するための落とし穴表と、玉位置からの距離に応じた評価値の表を持つ。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "囲いへ誘導するための落とし穴表、玉位置からの距離に応じた評価値を納めた表"
+    },
+    {
+      "category": "探索",
+      "title": "簡易必死検出と1手詰み検出",
+      "description": "rootノードで簡易必死検出、leafノード付近で簡易1手詰み検出を行い、反復深化の詰めルーチンを持つ。",
+      "originality": "不明",
+      "evidence": null,
+      "quote": "root ノードでの簡易必死検出、leaf ノード付近での簡易一手詰み検出"
+    },
+    {
+      "category": "探索",
+      "title": "手調整評価による前向き枝狩り",
+      "description": "手調整した仮評価で手を並べ、前向き枝狩りを行う。YSS式の指し手反復生成、Crafty方式の並列探索も使う。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "手調整した仮評価による手のオーダリングと前向き枝狩り"
+    }
+  ],
+  "character": null,
+  "notes": "多重反復深化、影の利き、SEE、持ち駒の優劣表現、bitboard、実現確率探索、評価値の学習を未採用と明記",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc30/team.html"
+}

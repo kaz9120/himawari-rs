@@ -1,0 +1,60 @@
+{
+  "wcsc": 34,
+  "year": 2024,
+  "dir": "ichibin",
+  "team": "花井 祐",
+  "software": "いちびん",
+  "sources": [
+    "wcsc34/appeal/ichibin/appeal.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc34/appeal/ichibin/appeal.pdf"
+  ],
+  "summary": "NNUE路線を守り、自作の教師データで学習する。やねうら王の探索を改造し、時間管理に工夫がある。定跡は1年間機械を動かし続けて作った。",
+  "base": {
+    "engine": "やねうら王",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "NNUE",
+    "detail": "自作の教師データで学習したNNUE"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "やねうら王のソースを改造し時間管理を書き換え"
+  },
+  "learning": "自己対戦で数年前に作成した深さ12〜14の教師データ数億局面",
+  "hardware": "Core i7-8565U",
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "時間管理",
+      "title": "評価値-600以下で山場を前倒し",
+      "description": "評価値が-600点より悪化したら「ほとんど負け」とみなし、思考時間の山場をそれ以前に置く。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "局面の評価点がマイナス６００点より悪化した場合には、「ほとんど負け」として"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "1年間の定跡作成",
+      "description": "WCSC33終了の翌日から約1年、前回版に1手あたり10億局面を読ませ続けて定跡を作った。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "「いちびん WCSC33 参加バージョン」を１手あたり１０憶局面読ませる作業"
+    },
+    {
+      "category": "評価関数",
+      "title": "手作り系NNUEの継続",
+      "description": "DLを検討したが費用を考えて断念し、NNUE路線を守る。1年努力したがWCSC33版を上回れなかった。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "今では少々時代遅れになってしまった NNUE 路線を守っています"
+    }
+  ],
+  "character": null,
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc34/team.html"
+}

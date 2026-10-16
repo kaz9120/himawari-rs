@@ -1,0 +1,104 @@
+{
+  "wcsc": 35,
+  "year": 2025,
+  "dir": "AobaZero",
+  "team": "山下宏、保木邦仁、小林祐樹",
+  "software": "AobaZero",
+  "sources": [
+    "wcsc35/appeal/AobaZero/2025csa_appeal.pdf",
+    "wcsc35/appeal/AobaZero/2025csa_appeal2.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc35/appeal/AobaZero/2025csa_appeal.pdf",
+    "https://www.apply.computer-shogi.org/wcsc35/appeal/AobaZero/2025csa_appeal2.pdf"
+  ],
+  "summary": "AlphaZeroの追試として始まった、将棋の知識を使わないゼロからの分散強化学習。今回は振り飛車をゼロから強化学習したAoba振り飛車の棋譜を混ぜ、手数入力と宣言勝ち対策を加えたdlshogi互換モデルで出場し、初めて決勝へ進んだ。詳細版は大会後の各対局の振り返りを含む。",
+  "base": {
+    "engine": "dlshogi",
+    "eval_source": null,
+    "note": "ベースはBonanza・LeelaZero。大会ではdlshogi互換のエンジンに自前の重みを載せる"
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "384x30bのResNet。入力に手番・手数を追加し、歩の枚数上限を8から18へ"
+  },
+  "search": {
+    "family": "MCTS",
+    "detail": "dlshogiのMCTS。Draw Valueで引き分けの価値を調整"
+  },
+  "learning": "人間の知識なしの分散強化学習。7100万棋譜以上。AobaZero棋譜に振り飛車の棋譜を20〜25%混ぜ、持将棋・宣言勝ち向けに勝率を補正して3.3億局面を学習",
+  "hardware": "vast.ai RTX4090 x12（予選）、x14（決勝）",
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": "floodgateで3090 1枚、ponderありで約R4070（詳細版）。追試終了後から+260 Elo、昨年の選手権から+0 Elo",
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "人間の知識を使わない評価関数",
+      "description": "将棋のルールと勝ちやすさだけから学習し、矢倉・角換わりなどほとんどの戦型を自力で見つけて指しこなす。AlphaZeroの追試として約7100万棋譜を6年かけて生成した。",
+      "originality": "独自",
+      "evidence": "AlphaZeroを約+110 Elo超えた可能性",
+      "quote": "評価関数に人間の知識を一切使っていないこと、が最大の特徴かと思います"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "Aoba振り飛車の棋譜の混合",
+      "description": "振り飛車をゼロから強化学習したAoba振り飛車の棋譜を20〜25%混ぜる。自己対戦では振り飛車の棋譜が2%程度しか生成されず、相手が飛車を振るだけで勝率評価が70%に跳ね上がる偏りがあった。混ぜると60%程度に下がり、対振り飛車が上手くなる。",
+      "originality": "独自",
+      "evidence": "384x30bで対水匠5+50 Elo、小さな128x10bで約+50 Elo",
+      "quote": "AobaZero の棋譜に 20 ％から 25 ％ほど混ぜると"
+    },
+    {
+      "category": "入玉",
+      "title": "宣言勝ち・持将棋向けの勝率補正",
+      "description": "400手以降で敵陣に入った駒が0枚なら勝率0.50、9枚なら0.95に補正するなど、学習局面の探索勝率を調整する。250手以降・300手以降も勝率が上がり過ぎないよう小さく補正し、dlshogiで勝敗結果と混ぜる割合も0.333から0.500に上げた。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "400 手以降で敵玉に入ってる枚数が 0 枚なら勝率を 0.50 に、9 枚で 0.95 に、する補正"
+    },
+    {
+      "category": "評価関数",
+      "title": "手数をネットワーク入力にする",
+      "description": "手数を190手から40手ごとに区切って9面（0〜8）の入力にする。選手権の321手引き分けに合わせ、160手を200手、321手を513手に対応させるsigmoid変換も使う。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "手数で 8 面"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "floodgateの棋譜から作る定跡",
+      "description": "floodgateで走らせたAobaZeroの対局の自手番の局面を、1手500万ノードで探索して約3800局面を登録する。大会の速度だと17秒相当で、1000万ノードで作ればよかったかもしれないと振り返る。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "AobaZero の手番で出てきた局面のみを 1 手 500 万ノード考えさせて"
+    },
+    {
+      "category": "時間管理",
+      "title": "引き分け狙いのDraw Value設定",
+      "description": "9回戦で、引き分けなら決勝進出の見込みが高いと判断し、Draw Value Black=100, White=900で引き分けを勝率90%相当に設定して引き分けを狙い、成功した。",
+      "originality": "独自",
+      "evidence": "引き分けで8位となり決勝進出",
+      "quote": "Draw Value Black=100,Draw Value White=900 で引き分けなら 90 ％で勝ち"
+    },
+    {
+      "category": "開発手法・運用",
+      "title": "vast.aiのGPU選定の知見",
+      "description": "vast.aiで4090を12〜14枚借りる際の失敗（電力制限385W、GPU lost）を記録し、Reliabilityが99%未満の機材は避けるという知見を共有する。参加者同士で良い機材の取り合いがあった。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "「Reliability」という項目があり、これが 99 ％未満のは借りない方が良さそうです"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "追試可能性の公開",
+      "description": "学習に使った棋譜、大会で使ったソースと重みをすべて公開し、追試可能にしている。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "追試可能です。"
+    }
+  ],
+  "character": "AlphaZeroの追試を「みんなで協力しよう」と始めたボランティア分散学習プロジェクト。詳細版は他チームの工夫（習甦のMCTSとαβの共存、もふ将棋のiPhone30台、名人コブラの解説生成など）への感想も書いている。",
+  "notes": "詳細版は決勝まで終えた後の振り返り（5/17時点）で、アピール文書の域を超えた大会記録になっている。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc35/team.html"
+}

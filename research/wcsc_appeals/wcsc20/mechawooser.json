@@ -1,0 +1,65 @@
+{
+  "wcsc": 20,
+  "year": 2010,
+  "dir": "mechawooser",
+  "team": "木村健",
+  "software": "メカウーサー",
+  "sources": [
+    "wcsc20/appeal/mechawooser/mechawooser.pdf"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc20/appeal/mechawooser/mechawooser.pdf"
+  ],
+  "summary": "Twitterボットから生まれたネタ寄りの名前で、CUDAによるGPU上のYBWC風並列探索を実験するプロトタイプ。実装は指し手生成まで。「出場できたら奇跡」と書く。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "不明",
+    "detail": null
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "CUDA上でYBWCを参考にした並列探索"
+  },
+  "learning": null,
+  "hardware": "GeForce GTX 285（30SM・240コア）",
+  "language": [
+    "C",
+    "C++",
+    "CUDA",
+    "Python"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "ハードウェア",
+      "title": "CUDAの超並列で将棋を探索",
+      "description": "グラボ1枚で数万スレッドを動かす環境を探索に使う。単純なx86ソフトの移植では非力になるため、並列探索を一から設計する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "CUDA技術の採用"
+    },
+    {
+      "category": "並列・分散",
+      "title": "Managed／Workingスレッドの2階層YBWC",
+      "description": "Managed threadsが複数のWorking threadsを管理し（16に1つ）、他のManaged threadへ仕事をランダムに依頼する。principalなノードから順に依頼し、結果が返ってから次を割り振る。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "Managed threadsとWorking threadsという二種類の実行スレッドを用意する"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "全幅探索のGPUメモリ限界の見積もり",
+      "description": "キューを使った全幅探索は5手先でグラボ全メモリを使い切ると卓上計算で判断し、並列探索の勉強に進んだ。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "５手先の探索でグラボのメモリ全体をキューとして使いきってしまうことが判明"
+    }
+  ],
+  "character": "名前は創作された架空のモビルスーツと、それを元にしたすーぱーtwitterぼっとに由来する。「萌えって何ですか」のスライドを誤って挟んだというネタを入れ、「出場できたら奇跡」「来世^H^H来年会場で」と砕けた書きぶり。",
+  "notes": "PowerPoint文書。実装は指し手生成まで。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc20/team.html"
+}

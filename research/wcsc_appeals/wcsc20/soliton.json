@@ -1,0 +1,35 @@
+{
+  "wcsc": 20,
+  "year": 2010,
+  "dir": "soliton",
+  "team": "チーム西元",
+  "software": "Soliton",
+  "sources": [
+    "wcsc20/appeal/soliton/soliton.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc20/appeal/soliton/soliton.txt"
+  ],
+  "summary": "3月から作り始めた、基本的な探索技法のみの簡単なプログラム。評価関数はこれから。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "不明",
+    "detail": null
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "αβ、反復深化、置換表"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [],
+  "character": null,
+  "notes": "工夫の記述なし。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc20/team.html"
+}

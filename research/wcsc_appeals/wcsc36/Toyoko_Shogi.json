@@ -1,0 +1,54 @@
+{
+  "wcsc": 36,
+  "year": 2026,
+  "dir": "Toyoko_Shogi",
+  "team": "東横コンピュータ将棋部（Kimihiro Goto, Masaki Yamagami）",
+  "software": "東横将棋",
+  "sources": [
+    "wcsc36/appeal/Toyoko_Shogi/appeal20260426.txt"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc36/appeal/Toyoko_Shogi/appeal20260426.txt"
+  ],
+  "summary": "定跡とNNUE評価関数の極北を目指す。手作業による相掛かりと角換わりの定跡と、nnue-pytorch等に加えた独自のNNUE評価関数の強化が柱。探索部は最新のやねうら王。アピール文書の大半は、奨励会三段との対局で定跡を掘り尽くす短編小説である。",
+  "base": {
+    "engine": "やねうら王",
+    "eval_source": null,
+    "note": "探索部は最新のやねうら王を予定（やねうら王チルドレン）"
+  },
+  "eval": {
+    "family": "NNUE",
+    "detail": "従来の学習手法（nnue-pytorch等）に加え、独自のNNUE評価関数の強化"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "やねうら王"
+  },
+  "learning": "nnue-pytorch等に独自の強化を加える（詳細は書かれていない）",
+  "hardware": "Ryzen Threadripper 3990X（一覧ページ）",
+  "language": [
+    "Python"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "定跡・序盤",
+      "title": "手作業の相掛かり・角換わり定跡",
+      "description": "手作業による定跡作成で、今回は相掛かりと角換わりに主眼を置く。AIに時間を与え、同じ局面を何度も掘って、候補手が入れ替わらなくなるまで沈める。小説では、類似局面を三百以上掘り、特定の相手が嫌がる順だけを残す。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "手作業による定跡の作成。今回は相掛かりと角換わりの定跡に主眼を置いています。"
+    },
+    {
+      "category": "評価関数",
+      "title": "独自のNNUE評価関数の強化",
+      "description": "従来の学習手法に加えて、独自のNNUE評価関数の強化を行う。具体的な方法は書かれていない。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "従来の学習手法（nnue-pytorch等）に加え独自のNNUE評価関数の強化"
+    }
+  ],
+  "character": "アピール文書の第1話として、「相掛かりで、君の将棋を終わらせる」という短編小説を載せている。奨励会三段の相掛かりを夜通しAIで掘り尽くして倒し、将棋を終わらせるためにプロ棋士になる、と締める暗い青春小説調。将棋AIの定跡準備の怖さと人間側の感情を、物語で表現するエンタメ色の強い文書。",
+  "notes": "文書中の宮野蒼は、小説の登場人物（架空）と思われる。技術的な記述は冒頭の数行のみで、残りは物語。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc36/team.html"
+}

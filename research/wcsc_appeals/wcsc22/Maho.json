@@ -1,0 +1,54 @@
+{
+  "wcsc": 22,
+  "year": 2012,
+  "dir": "Maho",
+  "team": "井銅三有",
+  "software": "馬歩",
+  "sources": [
+    "wcsc22/appeal/Maho/maho_appeal.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc22/appeal/Maho/maho_appeal.txt"
+  ],
+  "summary": "2011年9月から開発した、Webや書籍から良さそうな手法を組み合わせた自作コードのプログラム。ビットボードと、マスに利く駒を64bit変数で持つ利き管理を使い分ける点を工夫に挙げる。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "手作り",
+    "detail": "人間の将棋の知識に基づく評価パラメータを試行錯誤で手調整"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "αβ、静止探索、置換表、各種リダクション・前向き枝刈り"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": [
+    "C"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "実装・高速化",
+      "title": "ビットボードと利き管理ビットの使い分け",
+      "description": "「ここに動ける」はMagic Bitboard、「このマスに利いている」は駒番号を割り当てた64bit変数の利き管理ビットから取り出す。盤面更新は遅くなるが、両者を使い分けて全体の性能向上を狙う。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "両者を適切に使い分けることで、トータル的なパフォーマンス向上を目指しています"
+    },
+    {
+      "category": "評価関数",
+      "title": "作者自身の将棋の知識による手調整",
+      "description": "人間の知識に基づき評価パラメータを考案して手調整する。独自と言えるが、完成度はとても低いと自己評価する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "作者自身の将棋の知識が主なベースになっているため、独自といえそうです"
+    }
+  ],
+  "character": null,
+  "notes": "一般的な技術の集まりだが、ソースは自作と説明する。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc22/team.html"
+}

@@ -1,0 +1,35 @@
+{
+  "wcsc": 24,
+  "year": 2014,
+  "dir": "hinemos_notari",
+  "team": "福田 太志",
+  "software": "ひねもすのたり",
+  "sources": [
+    "wcsc24/appeal/hinemos_notari/appeal.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc24/appeal/hinemos_notari/appeal.txt"
+  ],
+  "summary": "前年とほぼ同じでバグ修正のみ。脱ボナンザライブラリを考えたが時間が取れず、定跡の選択部分と学習部分でBonanza 6.0を流用。パラメータをボナメソで一から作る試みは未成功。",
+  "base": {
+    "engine": "Bonanza",
+    "eval_source": null,
+    "note": "定跡選択と学習部分を流用"
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "Bonanza 6.0（独自学習は途上）"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "前年同様"
+  },
+  "learning": "ボナメソで一から作成を試みるが未成功",
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [],
+  "character": null,
+  "notes": "前年と同一でバグ修正程度。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc24/team.html"
+}

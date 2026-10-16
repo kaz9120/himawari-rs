@@ -1,0 +1,78 @@
+{
+  "wcsc": 28,
+  "year": 2018,
+  "dir": "Shibaura_Shogi_Softmax",
+  "team": "五十嵐 治一ほか（芝浦工業大学II）",
+  "software": "芝浦将棋Softmax",
+  "sources": [
+    "wcsc28/appeal/Shibaura_Shogi_Softmax/appeal.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc28/appeal/Shibaura_Shogi_Softmax/appeal.pdf"
+  ],
+  "summary": "αβ探索（Min-max）でなく、ボルツマン分布で確率的にノードを選ぶ「MCSoftmax探索」を使う独自探索のソフト。プレイアウトなしで、探索木をサイコロで降りるモンテカルロ・サンプリングとバックアップで評価値を求める。評価特徴量はBonanza 6.0。",
+  "base": {
+    "engine": "Bonanza（評価特徴量）+芝浦将棋Jr.（合法手生成）",
+    "eval_source": "Bonanza 6.0の評価関数パラメータ",
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "Bonanza 6.0の特徴量をそのまま使用。方策勾配を用いた教師付き学習で自前学習する予定"
+  },
+  "search": {
+    "family": "その他",
+    "detail": "MCSoftmax探索。ボルツマン分布で選択確率を決めて木を降り、末端の子をすべて展開して期待値をバックアップ。末端評価は静止探索（αβ）"
+  },
+  "learning": "方策勾配を用いた教師付き学習（Bonanzaメソッドの一般化）を提案。モンテカルロ・サンプリングで生成した探索木の全leaf特徴量の重みを学習する方式も今後実装予定",
+  "hardware": "36コア（72スレッド）のワークステーション（Xeon E5-2695 v4 x2）",
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "探索",
+      "title": "MCSoftmax探索（ボルツマン分布による確率的ノード選択）",
+      "description": "各ノードで指し手の選択確率をボルツマン分布（温度T）で決め、サイコロを振りながら探索木を降りる。内部ノードの評価値は子の評価値の選択確率による期待値で定義。UCTのような決定論的選択と一線を画す。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "ノード評価値の min-max 演算ではなく，確率分布に基づく選択（Softmax 探索）を使用しています。"
+    },
+    {
+      "category": "並列・分散",
+      "title": "スレッドごとに温度を変える並列化（構想）",
+      "description": "各スレッドが探索木を共有して独立に降りる。スレッドごとに温度を変えて、広く浅く探すスレッドと狭く深く読むスレッドを持たせる構想。親ノードと下の探索木をスレッドに動的に分散割当てする案もある。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "選択時に温度の高いスレッドや低いスレッドがあって、広く浅く探索するスレッドや狭く深く読むスレッドなどのバリエーションを持たせることも可能"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "方策勾配による教師付き学習",
+      "description": "正解手以外の手の評価値も学習データとして使える、Bonanzaメソッドの一般化「方策勾配を用いた教師付学習」を提案する。静止探索の導入とAdaGradを適用した。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "正解手以外の手の評価値も学習データとして利用することが可能です。"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "Magic bitboardの合法手生成プログラム",
+      "description": "芝浦将棋Jr.の独自Magic bitboardによる合法手生成を、選手権公式ライブラリとして登録して使う。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "独自の Magic bitboard を用いて駒の利き場所での駒の配置状況などを計算しています"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "選択確率の積を実現確率として深さ制御する方式との比較",
+      "description": "選択確率の積を実現確率とみなして反復深化する決定論的な方式も試したが、確率的サンプリングの方が棋力が高く並列化の効果も高かった。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "選択確率に基づく確率的なサンプリング方式の棋力が上で、並列処理の効果も高かった"
+    }
+  ],
+  "character": "「プロ棋士の棋譜を用いることなく、コンピュータ自身が自己対局を通して探索法や局面評価関数を学習し、人類の棋力を超えて新しい定跡や戦法を創出し、棋士や将棋ファンを大いに楽しませてほしい」という目標を掲げる。大学の教員・卒業生・学部4年生のチーム。",
+  "notes": "第5回電王トーナメントでmEssiahがこの探索方式を採用したと紹介する。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc28/team.html"
+}

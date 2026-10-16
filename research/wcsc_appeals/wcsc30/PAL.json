@@ -1,0 +1,63 @@
+{
+  "wcsc": 30,
+  "year": 2020,
+  "dir": "PAL",
+  "team": "山口 祐",
+  "software": "PAL",
+  "sources": [
+    "wcsc30/appeal/PAL/pal_wcsc30.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc30/appeal/PAL/pal_wcsc30.pdf"
+  ],
+  "summary": "前年の工夫（PBTのマルチエージェント、評価・探索・定跡の同時学習、MCTS）を土台に、PAL生成済みの評価値・候補手データをDeep Learningで学習し、KPPTとのアンサンブルで推論する予定。技巧を探索部以外で使う。",
+  "base": {
+    "engine": "技巧",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "前年のPALが生成した評価値・候補手データで学習。推論はKPPTとのアンサンブルを予定"
+  },
+  "search": {
+    "family": "不明",
+    "detail": null
+  },
+  "learning": "前年のPALで生成済みの評価値・候補手データを学習",
+  "hardware": "Amazon EC2 p3.16xlarge",
+  "language": [
+    "C++",
+    "Python"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "Trinity Learning",
+      "description": "評価・探索・定跡を同時に学習する。前回大会時の工夫として挙げる。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "評価/探索/定跡を同時に学習 Trinity Learning"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "PBTによるマルチエージェント",
+      "description": "Population Based Trainingを使ったマルチエージェント学習。前回大会時の工夫。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "マルチエージェント（Population Based Training）"
+    },
+    {
+      "category": "評価関数",
+      "title": "DLとKPPTのアンサンブル推論",
+      "description": "Deep Learningの推論をKPPTとのアンサンブルで行う予定。",
+      "originality": "不明",
+      "evidence": null,
+      "quote": "推論はKPPTとのアンサンブルを予定"
+    }
+  ],
+  "character": null,
+  "notes": "探索の方式は文書に明記なし（前回大会時にMCTS探索の実装と検証と記載）。技巧を探索部以外の大部分で使用",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc30/team.html"
+}

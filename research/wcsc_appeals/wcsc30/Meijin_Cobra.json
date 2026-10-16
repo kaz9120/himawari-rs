@@ -1,0 +1,63 @@
+{
+  "wcsc": 30,
+  "year": 2020,
+  "dir": "Meijin_Cobra",
+  "team": "松山 洋章",
+  "software": "名人コブラ",
+  "sources": [
+    "wcsc30/appeal/Meijin_Cobra/appeal_WCSC30.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc30/appeal/Meijin_Cobra/appeal_WCSC30.pdf"
+  ],
+  "summary": "やねうら王の定跡と評価関数の学習部を改造したソフト。コブラショック定跡、評価関数のキメラ化（weight averaging）、NNUE下位層固定のファインチューニングが改良点。",
+  "base": {
+    "engine": "やねうら王",
+    "eval_source": "Kristallweizen+elmo（パラメータのベース）",
+    "note": null
+  },
+  "eval": {
+    "family": "NNUE",
+    "detail": "Kristallweizenとelmoをベースにした評価関数パラメータ。キメラ化とファインチューニング"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "探索部はやねうら王をそのまま使用"
+  },
+  "learning": "NNUE下位レイヤーのパラメータを固定した追加学習",
+  "hardware": "Google Compute Engine n2d-highcpu-64（256コア相当）",
+  "language": [
+    "C++",
+    "Python"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "定跡・序盤",
+      "title": "コブラショック定跡",
+      "description": "やねうら王の100テラショック定跡と同じく、従来手法の定跡作成後にネガマックスで評価値を更新する。従来手法の作成部を改良して検討対象局面の指定を不要にし、評価値が大きく検討回数が少ない局面を1手ずつ延長して検討する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "評価値が大きく、検討回数が少ない局面を1手ずつ延長（検討）するようにします。"
+    },
+    {
+      "category": "評価関数",
+      "title": "評価関数のキメラ化",
+      "description": "評価関数パラメータをweight averagingで混ぜる「キメラ化」を行い、汎化性能の高い評価関数を目指す。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "評価関数パラメータの「キメラ化」（weight averaging）を行って、汎化性能の高い評価関数を目指します"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "NNUE下位層固定のファインチューニング",
+      "description": "NNUE下位レイヤーのパラメータを固定して学習し、少ない良質な学習データで追加学習する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "NNUE下位レイヤーのパラメータを固定し学習を行うことで、少ない良質の学習データで追加学習することを目指します"
+    }
+  ],
+  "character": null,
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc30/team.html"
+}

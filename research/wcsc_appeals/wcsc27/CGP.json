@@ -1,0 +1,70 @@
+{
+  "wcsc": 27,
+  "year": 2017,
+  "dir": "CGP",
+  "team": "大熊 三晴",
+  "software": "CGP",
+  "sources": [
+    "wcsc27/appeal/CGP/CGP2017.pdf"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc27/appeal/CGP/CGP2017.pdf"
+  ],
+  "summary": "強さより高NPSを狙って一から自作した非ビットボード型ソフト。局面構造体に利きや評価関数の途中結果を保持し、SIMD・ラージページで高速化する。評価関数はBonanza系で、駒割のみの初期値から自力学習中。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "Bonanza＋α。駒割と入玉時の位置評価のみの初期値から自力で機械学習中（次元下げのコードで、大規模学習は未実施）"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "LazySMP（YBWCの名残が一部残る）"
+  },
+  "learning": "駒割＋入玉時位置評価の初期値から機械学習中",
+  "hardware": "Core i7 6900K 8コア 128GB",
+  "language": [
+    "C"
+  ],
+  "claimed_strength": "6〜10Mnps（Core i7 6700K 4コア8スレッド）",
+  "ideas": [
+    {
+      "category": "実装・高速化",
+      "title": "局面構造体に利きと途中結果を保持",
+      "description": "局面構造体に各マスへの利きの状態を持ち、評価関数の演算途中結果のうち変化の少ないものも保持する。ビット位置まで含めて構造体の配置を工夫する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "局面構造体に各マスへの利きの状態を保持"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "メモリ待ちの間に演算を回す",
+      "description": "演算途中のデータを保持し、メモリアクセスの待ち時間に演算を回して高速化を狙う。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "メモリアクセス待ち時に演算を回す事により高速化を狙っております"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "SIMDで指し手オーダリング",
+      "description": "評価値算出・オーダリング・構造体コピーにSIMDを使う。次に試す手の抽出にVPMAX命令を使い、条件分岐なしで複数手を比較して挿入ソートより速くする。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "オーダリングの一部は VPMAX 命令で次に試す手を抜き出す方式"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "置換表にラージページ",
+      "description": "置換表と評価値テーブルのページテーブルにラージページ（Huge Page）を使う。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "置換表や評価値テーブルのページテーブルにラージページ"
+    }
+  ],
+  "character": "「無駄に一から作成」と冒頭で掲げ、高NPSへのこだわりを前面に出す。",
+  "notes": null,
+  "team_list_url": "http://www2.computer-shogi.org/wcsc27/team.html"
+}

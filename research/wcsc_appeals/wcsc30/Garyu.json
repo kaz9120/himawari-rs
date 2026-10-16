@@ -1,0 +1,55 @@
+{
+  "wcsc": 30,
+  "year": 2020,
+  "dir": "Garyu",
+  "team": "高田 淳一",
+  "software": "臥龍",
+  "sources": [
+    "wcsc30/appeal/Garyu/garyu30.html"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc30/appeal/Garyu/garyu30.html"
+  ],
+  "summary": "第3回から参加する長寿ソフト。評価関数をValue Network型のNNに変え、1手読みで着手を決める。詰み探索のみ深さ優先探索で行う。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "Value Network。入力38チャンネル、パラメータ約200万"
+  },
+  "search": {
+    "family": "その他",
+    "detail": "1手読みで着手決定。詰み探索は深さ優先探索（df-pnや並列探索は不採用）"
+  },
+  "learning": "floodgate 2016年の棋譜のうちレート2500以上のプレイヤの評価値・局面 約80万",
+  "hardware": "Arm Cortex-A57 1.43GHz 4コア、メモリ4GB",
+  "language": [
+    "Java",
+    "Python"
+  ],
+  "claimed_strength": "通算80勝121敗4分",
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "Value Networkのみで1手読み",
+      "description": "評価関数をNNのValue Networkに変更し、探索せず1手読みで着手を決める。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "評価関数をニューラルネットワークに変更しディープラーニングで学習。1手読みで着手決定。"
+    },
+    {
+      "category": "ハードウェア",
+      "title": "Arm組込みボードでの参加",
+      "description": "Cortex-A57 1.43GHzの4GBメモリ機で動かす。",
+      "originality": "不明",
+      "evidence": null,
+      "quote": "Arm Cortex-A57 1.43GHz 1 4 4GB Linux"
+    }
+  ],
+  "character": null,
+  "notes": "Java思考部7000行、UI部10000行、Python学習部・推論部各200行と規模を明示。ハードの記述は一覧ページから",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc30/team.html"
+}

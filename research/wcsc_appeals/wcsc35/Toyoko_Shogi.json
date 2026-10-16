@@ -1,0 +1,62 @@
+{
+  "wcsc": 35,
+  "year": 2025,
+  "dir": "Toyoko_Shogi",
+  "team": "東横コンピュータ将棋部",
+  "software": "東横将棋",
+  "sources": [
+    "wcsc35/appeal/Toyoko_Shogi/appeal20250331.txt"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc35/appeal/Toyoko_Shogi/appeal20250331.txt"
+  ],
+  "summary": "「定跡とNNUE評価関数の極北」を掲げ、自前のNNUE強化と、角換わりに主眼を置いた手作業の定跡生成を行う「やねうら王チルドレン」。アピール文書の大半はネットスラング調の長い語りで、戦型の先手必勝論や「必然力」の設定が笑いを誘う。",
+  "base": {
+    "engine": "やねうら王",
+    "eval_source": null,
+    "note": "強いNNUE評価関数をベースに独自学習で強化する予定。具体名は伏せ字"
+  },
+  "eval": {
+    "family": "NNUE",
+    "detail": "nnue-pytorch等の従来手法に加え独自の強化。標準NNUEは水匠5・Hao・BLOSSOMより強くなければ話にならないと評する"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "やねうら王"
+  },
+  "learning": "強いNNUE評価関数をベースに独自に学習",
+  "hardware": "Ryzen Threadripper 3990X",
+  "language": [
+    "Python"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "定跡・序盤",
+      "title": "手作業の角換わり定跡",
+      "description": "手作業で調整修正した居飛車定跡を使う。今回は角換わりに主眼を置く。通称「姉弟子定跡」。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "手作業による定跡の生成。今回は角換わり定跡に主眼を置いています。"
+    },
+    {
+      "category": "エンタメ・演出",
+      "title": "役割論理と必然力",
+      "description": "「しょぼい定跡とNNUE評価関数の強化と火力の微妙な高級スリッパで評価値ダメージレースを制する」戦術を「役割論理」と呼び、「強豪に絶対に先手を引く」「後手番での当たりが良い」運を「必然力」と名付けて、ヤーティ神への信仰による加護とする。",
+      "originality": "独自",
+      "evidence": "WCSC34で第3位（賞金5000円）",
+      "quote": "論者を圧倒的勝利に押し上げる力ですなｗｗｗ"
+    },
+    {
+      "category": "エンタメ・演出",
+      "title": "戦型別の先手必勝論",
+      "description": "角換わり・相掛かりは先手必勝、横歩取りは青野流で必勝、一手損角換わりは先手必勝（藤井聡太は苦手らしい）、振り飛車は先後とも必敗、筋違い角は後手の振り飛車党への精神攻撃など、戦型ごとの評価を冗談交じりに語る。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "角換わり、相掛かり共に先手必勝が確定しましたなｗｗｗ"
+    }
+  ],
+  "character": "冒頭に数百行の空行を置いてから、ネットスラング調の語り口で長文を始める文書構成。「我は『結果』だけを求めてはいない」と述べ、「真実に向かおうとする意志」を大切にする。「東横将棋はGrampusですか？」「違いますなｗｗｗ」というQ&Aで終わる。",
+  "notes": "技術的な内容は冒頭3行と評価関数の節のみで、大半は冗談の語り。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc35/team.html"
+}

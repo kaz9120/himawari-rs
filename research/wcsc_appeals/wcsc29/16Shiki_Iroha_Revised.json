@@ -1,0 +1,78 @@
+{
+  "wcsc": 29,
+  "year": 2019,
+  "dir": "16Shiki_Iroha_Revised",
+  "team": "末吉 竜介",
+  "software": "十六式いろは改",
+  "sources": [
+    "wcsc29/appeal/16Shiki_Iroha_Revised/99-16iroha_pr-wcsc29.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc29/appeal/16Shiki_Iroha_Revised/99-16iroha_pr-wcsc29.pdf"
+  ],
+  "summary": "Luaで一から作り直した、機械学習なしの超軽量エンジン。箱入り娘を目指す序盤、ランダム性の強い探索、びっくりして投了するなど、あえて弱さと不思議な挙動を売りにするエンジョイ勢。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "手作り",
+    "detail": "駒の損得・効率・玉の硬さ・利き・ひも付き・手の強さ・厚み・位取りを手作業で重み調整"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "反復深化＋ミニマックス、浅く狭い探索（3手先程度）が基本。ランダム性が強い"
+  },
+  "learning": "機械学習なし",
+  "hardware": null,
+  "language": [
+    "Lua"
+  ],
+  "claimed_strength": "棋力は初心者に優しい弱さ。実力で1勝が目標",
+  "ideas": [
+    {
+      "category": "探索",
+      "title": "局地深読み・暴走モード",
+      "description": "相手の打った位置を中心に9〜16マスのみ深く探索して王手する局地深読みモード、同9マスにランダムに指す局地暴走モード、合法手からランダムに指す広域暴走モード（悪あがきモード）を搭載する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "局地深読みモード：相手の打った位置を中心に 9～16 マスのみを深く探索し、できるだけ王手す"
+    },
+    {
+      "category": "棋風・人間らしさ",
+      "title": "箱入り娘を目指す序盤",
+      "description": "序盤は居飛車党で「箱入り娘」を一心不乱に目指す。娘（女の子）という設定のキャラ付けにもなっている。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "序盤は居飛車党で 「箱入り娘」 を一心不乱に目指し"
+    },
+    {
+      "category": "棋風・人間らしさ",
+      "title": "王手されるとびっくりして投了",
+      "description": "王手されると回避せずびっくりして投了したり、相手の利きに指して投了したりする。終盤は王手したがらず自由気ままに指す。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "王手されると何とかしようと回避せず、びっくりして投了するかもしれません。"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "Lua+luviでの実装",
+      "description": "LuaJITを含むluviで実行形式を簡単に出力し、スクリプト言語の遅さをある程度克服。C言語よりソース量が2〜3割減ったという。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "ソースの量も C 言語よりも 20～30％くらい減りました"
+    },
+    {
+      "category": "エンタメ・演出",
+      "title": "初心者に優しい弱さ",
+      "description": "将棋所対応エンジンで最も初心者に優しい弱さをうたい、初めて将棋を指した人3名に負けたと自己申告。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "もっとも初心者にとって優しい弱さです。"
+    }
+  ],
+  "character": "完全にエンジョイ勢・ネタ勢を自称。目標は「実力で1勝」と「記録よりも記憶に残る」こと。「世界で一番強いLua製将棋エンジン」を名乗る。",
+  "notes": "前年のPR文とほぼ同じ。一部機能（駒得を探索に活かす）は間に合わなかった",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc29/team.html"
+}

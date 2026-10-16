@@ -1,0 +1,71 @@
+{
+  "wcsc": 34,
+  "year": 2024,
+  "dir": "Tango",
+  "team": "渡邊 敬介",
+  "software": "タンゴ",
+  "sources": [
+    "wcsc34/appeal/Tango/wcsc34_tango.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc34/appeal/Tango/wcsc34_tango.pdf"
+  ],
+  "summary": "実現確率探索による深い読みと、機械学習で最適化した評価関数を組む。評価関数と実現確率用の着手確率にFactorization Machines系のモデルを使うのが、作者の知る限り他に例のない特徴。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "その他",
+    "detail": "Factorization Machines。2駒の位置関係（KP+PP+KK）、自玉周辺25マスの双方の利き、手番を特徴量とし、先後のスコア差と駒損得を合算"
+  },
+  "search": {
+    "family": "その他",
+    "detail": "実現確率探索。着手予測にFactorization Bradley-Terryモデル"
+  },
+  "learning": null,
+  "hardware": "GCP c3-highcpu-88",
+  "language": [
+    "C++",
+    "Java"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "Factorization Machinesによる評価",
+      "description": "2駒の位置関係、玉周辺25マスの利き、手番を入力にFMで先後別にスコアを出し、差と駒損得を足す。組合せ特徴で4駒関係に相当する表現力を得る。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "局面評価関数および実現確率用の着手確率にFactorization Machinesを使用している点です"
+    },
+    {
+      "category": "探索",
+      "title": "Factorization Bradley-Terryの着手予測",
+      "description": "実現確率探索の着手確率にFactorization Bradley-Terryモデルを使う。末端付近では小型の簡易モデルに切替えて高速化する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "Factorization Bradley-Terry モデル[1]を使用しています"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "盤面共通特徴の再利用と差分計算",
+      "description": "着手ごとのスコア計算で、駒の位置や王手などの盤面共通特徴を最初に1回計算して再利用し、簡易モデルの駒位置特徴は差分計算する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "盤面共通の特徴量を最初に計算し、各着手のスコア計算で再利用できるようにしています"
+    },
+    {
+      "category": "開発手法・運用",
+      "title": "学習データセットの1年間保管",
+      "description": "再現実験のため、対局プログラムに加えて学習データセットも大会後1年間保管する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "学習に使用したデータセットも大会後1年間保管する予定です"
+    }
+  ],
+  "character": null,
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc34/team.html"
+}

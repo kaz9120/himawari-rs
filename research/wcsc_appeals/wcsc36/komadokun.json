@@ -1,0 +1,70 @@
+{
+  "wcsc": 36,
+  "year": 2026,
+  "dir": "komadokun",
+  "team": "吉田 京平",
+  "software": "komadokun",
+  "sources": [
+    "wcsc36/appeal/komadokun/WCSC36_komadokun_20260404.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc36/appeal/komadokun/WCSC36_komadokun_20260404.pdf"
+  ],
+  "summary": "駒得のみの評価関数と、ミニマックス法と同じ結果を保証する固定深さ探索だけで、どこまで棋力が上がるかを試すフルスクラッチのエンジン。静止探索も延長もせず、エンジン設定のdepthと同じ深さだけ読む。今年は高速化でdepth9からdepth10に上げて出場する。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": "フルスクラッチ"
+  },
+  "eval": {
+    "family": "手作り",
+    "detail": "駒得のみ。歩100、香390、桂391、銀500、金590、角794、飛895、馬994、龍1116など。持ち駒への加点もしない"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "ミニマックス法と同じ実行結果を保証。βカットのみで不確実な枝刈りなし。静止探索・延長・時間制御なし、常に固定depth"
+  },
+  "learning": null,
+  "hardware": "Ryzen 7 7700（一覧ページ）",
+  "language": [
+    "C"
+  ],
+  "claimed_strength": "floodgateレートをdepthごとに表で掲載（図表のためテキスト化されていない）。1次予選の目標は昨年と同じ3勝",
+  "ideas": [
+    {
+      "category": "探索",
+      "title": "ミニマックスと同じ結果を保証する探索",
+      "description": "ミニマックス法と異なる結果になりうる枝刈りは採用せず、飛角歩の不成や2段目の香不成まで読む。βカットのみを使い、深さ3以下では駒得のみの評価関数に依存した、結果を保証する独自の枝刈りを入れている。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "②ミニマックス法と同じ実行結果を保証する"
+    },
+    {
+      "category": "評価関数",
+      "title": "純粋な駒得のみの評価関数",
+      "description": "手駒への加点すらしない、純粋な駒得のみの評価関数。評価関数は最小限として、探索のみでどこまで棋力を上げられるかを探る。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "探索のみでどこまで棋力を上げられるかに関心があり、高速化を目指して開発を続けています。"
+    },
+    {
+      "category": "探索",
+      "title": "常にdepthぴったりだけ読む",
+      "description": "静止探索や王手延長による延長をせず、時間制御も入れない。depthが大きすぎると時間切れ負けになるため、depthを選んで出場する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "常に、エンジン設定でのdepthと同じ深さだけ読む"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "高速化で読みを1手深く",
+      "description": "PC新調で約1.54倍、プログラム改良で約1.41倍、合わせて平均約2.18倍に高速化した。時間切れ負けの発生率の関係で、昨年のdepth9から今年はdepth10に上げる。",
+      "originality": "独自",
+      "evidence": "昨年比で平均約2.18倍高速",
+      "quote": "平均で約2.18倍、高速になりました。"
+    }
+  ],
+  "character": "駒得のみというミニマリスト路線で、過去に出場した各バージョンの実行ファイルを公開している。",
+  "notes": "floodgateのレート表は図でテキスト化されておらず、数値は取得していない。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc36/team.html"
+}

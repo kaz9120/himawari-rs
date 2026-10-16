@@ -1,0 +1,89 @@
+{
+  "wcsc": 32,
+  "year": 2022,
+  "dir": "Novice",
+  "team": "Team Novice（熊谷 啓孝、矢内 洋祐、幅野 莞佑、笹井 雄貴、堀越 将司、中屋敷 太一）",
+  "software": "Novice",
+  "sources": [
+    "wcsc32/appeal/Novice/v1.1.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc32/appeal/Novice/v1.1.pdf"
+  ],
+  "summary": "AlphaZeroに倣った自己対戦強化学習のソフト。自己対戦で生じた引き分け過多・勝ち切りの長手数化・戦型の偏りの3問題に、引き分け率の自動調整、最大手数の振り分け、約100局面の初期局面集で対処する。入力・出力に引き分け点数や手数を加えたネットワークと、PV MateによるPNS詰み探索が特徴。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "SE blockつきResNet（12ブロック×256フィルタ）、入力85チャネル。出力はp・v・d（宣言勝ち）・z（利き）の4種"
+  },
+  "search": {
+    "family": "MCTS",
+    "detail": "AlphaZero型MCTS＋PV Mate（PV上でPNS）＋全局面で深さ5のDFS詰み探索"
+  },
+  "learning": "自己対戦（MCTS約800シミュレーション）の棋譜から学習。ロスはp・v＋0.1×d＋0.1×z＋0.01×エントロピー正則化",
+  "hardware": "Core i9-12900K、RTX 3090、RTX 3080 Ti",
+  "language": [
+    "C++",
+    "C#",
+    "Python",
+    "JavaScript"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "引き分け率を2%に保つ自己対戦設定の自動切替",
+      "description": "教師データ内の引き分け率が2%を超えたら、次の自己対戦では引き分けを先手勝ちか後手勝ち扱いにする（先手勝率が50%超なら後手勝ち、逆なら先手勝ち）。引き分けの点数をNNの入力にも与え、引き分け率を約2%に保てた。",
+      "originality": "独自",
+      "evidence": "教師データ内の引き分け率を常に約2%に維持",
+      "quote": "教師データ内で引き分け率が 2% を超えている場合には，その次に行う自己対戦の設定を，引き分けを先手勝ちまたは後手勝ちの設定で行うようにした"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "最大手数を振った自己対戦",
+      "description": "最大手数を変えて自己対戦し、最大手数に達したら即引き分けとする。勝勢で早く勝つ手と、劣勢で最大手数まで粘る手を学ばせる。現在手数と最大手数を入力特徴量に加える。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "様々な最大手数設定の対局"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "約100局面の初期局面集",
+      "description": "初期配置のみからの学習は評価値が不安定で良い手を見落とすため、選んだ約100局面からランダムに開始する。やねうら王・dlshogiの先行事例を参考にした。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "初期局面集を用いるという工夫はやねうら王や dlshogi に既に用いられており"
+    },
+    {
+      "category": "評価関数",
+      "title": "宣言勝ちと利きの補助出力",
+      "description": "NNに、次の一手p、勝敗v、先手/後手の宣言勝ちd、各マスの先後の利きzの4つを出力させて多目的学習する。入力に王手・各列の歩の存在も追加。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "p(s), v(s), d(s), z(s) = f (s; θ)"
+    },
+    {
+      "category": "評価関数",
+      "title": "Leela Zero式の2チャネル手番表現",
+      "description": "手番を先手用・後手用の2チャネルに分け、後手番で盤端の見え方が不利になる問題を避ける。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "Novice も Leela Zero と同様の手法で 2 チャネル使用した"
+    },
+    {
+      "category": "詰み・終盤",
+      "title": "PV上のPNSと全局面DFSの別スレッド詰み探索",
+      "description": "最も現れそうな進行（PV）上の局面ではPNS（df-pnは未使用）、MCTSの全局面では深さ5のDFSによる詰み探索を、それぞれ専用キューを持つ独立スレッドで行う。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "PV 上の局面では PNS による詰み探索を行う。加えて，全ての局面で DFS による詰み探索を行う。"
+    }
+  ],
+  "character": null,
+  "notes": "文書日付2022年2月15日。AlphaZeroの再現実験は計算資源の面で容易でないため、実践的な工夫を述べる論文形式。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc32/team.html"
+}

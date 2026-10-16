@@ -1,0 +1,62 @@
+{
+  "wcsc": 21,
+  "year": 2011,
+  "dir": "Jinsei_Okuri_bunt_Shippai",
+  "team": "築地毅",
+  "software": "人生送りバント失敗",
+  "sources": [
+    "wcsc21/appeal/Jinsei_Okuri_bunt_Shippai/appeal.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc21/appeal/Jinsei_Okuri_bunt_Shippai/appeal.txt"
+  ],
+  "summary": "小谷研OBが後輩にそそのかされて出場した、控えめな目標を並べる文書。目標は「出場すること」から始まり、究極の目標は「まったりゆうちゃんに勝つ」。評価関数はBonanza methodのオンライン学習で、L1正則化の偏りを抑える工夫がある。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "Bonanza method"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "αβ、0.5手延長、move ordering、LMR。定跡・詰探索なし"
+  },
+  "learning": "100棋譜ずつのオンライン学習で5000棋譜分。100棋譜中に出なかった特徴にはL1正則化のペナルティをかけない",
+  "hardware": null,
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "出現しなかった特徴へのL1ペナルティを免除",
+      "description": "100棋譜ごとのオンライン学習だと、L1正則化で重みのほとんどが0に偏る。そこで100棋譜中に登場しなかった特徴にはペナルティをかけず、極端な0への偏りを抑える。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "100棋譜中に登場しなかった特徴にはL1正則化によるペナルティをかけないインチキをすることで"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "重ね合わせによる評価関数（構想）",
+      "description": "「重ね合わせによる評価関数」を今後考えてみたいと述べる。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "「重ね合わせによる評価関数」について、もうちょっと考えてみたいです"
+    },
+    {
+      "category": "エンタメ・演出",
+      "title": "定跡・詰探索を持たない割り切り",
+      "description": "定跡は「ない方がAIぽくて素敵」、詰探索は「面倒くさいから」なしにする。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "なし！（ない方がAIぽくて素敵だとぼくは思います）"
+    }
+  ],
+  "character": "「作成者の将棋の実力は関係者の中で最弱」「弱い！」と書き、小谷研クラスタの「中ボス」「大ボス」を順位で超えることを段階目標にするネタ調の文書。",
+  "notes": "参考にしたプログラムとして、まったりゆうちゃん・がっかりゆうちゃん・YSS・Bonanza・lesserkaiを挙げる。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc21/team.html"
+}

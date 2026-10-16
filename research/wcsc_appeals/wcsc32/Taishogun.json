@@ -1,0 +1,62 @@
+{
+  "wcsc": 32,
+  "year": 2022,
+  "dir": "Taishogun",
+  "team": "横内 健一、横内 靖尚",
+  "software": "大将軍",
+  "sources": [
+    "wcsc32/appeal/Taishogun/appeal.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc32/appeal/Taishogun/appeal.pdf"
+  ],
+  "summary": "評価関数に主眼を置く3駒関係（KPPT型）のプログラム。やねうら王経由で最新Stockfishの探索を使い、水匠2〜4で作った教師データで学習する。学習局面は浅い探索の末端局面と現局面のミックス、教師棋譜は3駒系とNNUE系のミックス。",
+  "base": {
+    "engine": "やねうら王",
+    "eval_source": "水匠（教師データ生成に使用）",
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "3駒の位置関係（KPPT型）。過去には4駒関係で参加したが3駒に落ち着いた。手番も学習"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "やねうら王経由の最新Stockfishの探索ルーチン"
+  },
+  "learning": "水匠2〜4で教師データ（棋譜）を作成。学習対象局面は浅い探索の末端局面と現局面を混ぜ、教師棋譜は3駒系とNNUE系を混ぜて使う",
+  "hardware": "Ryzen Threadripper 3990X",
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "探索末端局面と現局面を混ぜて学習",
+      "description": "3駒関係の評価関数の学習で、浅い探索の末端局面と現局面をミックスして学習対象にする。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "学習対象とする局面は浅い探索の末端局面と現局面をミックスし学習するよう調整"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "3駒系とNNUE系の棋譜を混ぜた教師",
+      "description": "教師データに、3駒系エンジンの棋譜とNNUE系エンジンの棋譜をミックスして使う。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "教師データも3駒系とNNUE系の棋譜をミックスして利用"
+    },
+    {
+      "category": "評価関数",
+      "title": "手番の学習",
+      "description": "駒の位置関係の相対位置による評価に加えて、手番の評価も学習する。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "手番の学習"
+    }
+  ],
+  "character": null,
+  "notes": "テキスト化がほぼ空だったため原本PDF（スライド4枚）を直接読んだ。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc32/team.html"
+}

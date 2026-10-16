@@ -1,0 +1,70 @@
+{
+  "wcsc": 32,
+  "year": 2022,
+  "dir": "Shibaura_Shogi_Softmax",
+  "team": "芝浦工業大学（粂川 叶、岩本 裕大、五十嵐 治一、湯浅 翔太、鳥居 昭吾）",
+  "software": "芝浦将棋Softmax",
+  "sources": [
+    "wcsc32/appeal/Shibaura_Shogi_Softmax/2022appeal_20220519.docx"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc32/appeal/Shibaura_Shogi_Softmax/2022appeal_20220519.docx"
+  ],
+  "summary": "αβ探索ではなく、独自考案の「MC Softmax探索」を使う6回目の出場。木を降りる際にボルツマン分布で指し手を確率的に選び、子ノードの評価値を選択確率で重み付けした期待値で更新する。評価関数はAperyのKPPT型をベースに、MC Softmax探索を用いた学習法で追加学習した。",
+  "base": {
+    "engine": "Apery",
+    "eval_source": "Aperyの KPPT型評価関数（追加学習）",
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "KPPT型（Apery）。MC Softmax探索を使った学習で追加学習"
+  },
+  "search": {
+    "family": "その他",
+    "detail": "MC Softmax探索（ボルツマン分布による確率的ノード選択、期待値バックアップ、探索深さ指標による補正）。末端は静止探索（αβ）"
+  },
+  "learning": "MC Softmax探索のサンプリングで勾配ベクトルを近似し、複数の学習則を同時に適用。5五将棋で棋力向上を確認した方策勾配ベースの教師付き学習を今年から使用",
+  "hardware": "Ryzen Threadripper 3990X（64コア128スレッド）",
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": "探索深さ指標により静止探索なしなど低精度評価関数でレート約300向上",
+  "ideas": [
+    {
+      "category": "探索",
+      "title": "MC Softmax探索",
+      "description": "探索木をルートから降りる際、各指し手をボルツマン分布で確率的に選んで末端まで進み、子ノードを1段階全展開して評価し、期待値でバックアップする。プレイアウトを行わず、UCTのような決定論的選択でもない選択探索で、並列化とNN評価との相性が良い。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "本チームが独自考案した「MC Softmax探索」を使用しています。"
+    },
+    {
+      "category": "探索",
+      "title": "探索深さ指標による評価値補正",
+      "description": "末端を0とし、内部ノードの深さを子の選択確率で重み付けして再帰的に求める「探索深さ指標」を定義し、ノード選択時の評価値に補正をかけて深さを考慮する。",
+      "originality": "独自",
+      "evidence": "静止探索なしなどの低精度評価関数でレートが約300向上",
+      "quote": "探索深さ指標をSoftmax探索のための深さの指標として新たに定義し"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "探索木のサンプリングによる評価関数の学習",
+      "description": "MC Softmax探索のサンプリングとバックアップだけで、全leafの特徴量重みを学習する。教師付学習・TD・方策勾配・Bootstrapを同じ枠組みで実行でき、次善手の評価値も学習に使える。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "サンプリングを用いて勾配ベクトルを近似的に計算し，同時に複数の学習則を適用することが可能です"
+    },
+    {
+      "category": "並列・分散",
+      "title": "探索木とスレッドの動的分割",
+      "description": "各スレッドが探索木を共有して処理する現状に加え、親ノードと下位の探索木をスレッドに動的に割り当てる並列分散化を課題にする。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "最善応手手順や有力手順の近傍を中心に，スレッドと探索木を探索途中で動的に割り当てることを考えています。"
+    }
+  ],
+  "character": "将棋の主流であるStockfish由来のαβ探索に対抗し、確率的選択探索という別路線で研究する大学チーム。プロ棋士の棋譜を使わずコンピュータ自身が自己対局で新しい定跡や戦法を創出することを最終目標に掲げる。",
+  "notes": "チームの原型は2016年まで出場の芝浦将棋Jr.。GPWなど多数の学会発表を参照文献に挙げる。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc32/team.html"
+}

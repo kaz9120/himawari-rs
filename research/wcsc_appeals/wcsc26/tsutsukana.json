@@ -1,0 +1,52 @@
+{
+  "wcsc": 26,
+  "year": 2016,
+  "dir": "tsutsukana",
+  "team": "一丸 貴則",
+  "software": "ツツカナ",
+  "sources": [
+    "wcsc26/appeal/tsutsukana/WCSC26_tsutsukana_20160331.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc26/appeal/tsutsukana/WCSC26_tsutsukana_20160331.txt"
+  ],
+  "summary": "指し手を読む深さ（reduction）を、棋譜からの機械学習で決めることが最大の特徴のソフト。extensionは学習しない設計で、水平線効果の抑制など棋譜に出ない要素を考える必要があるためと説明する。詳細は第21回の文書を参照。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "不明",
+    "detail": null
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "reductionを機械学習で決める。extensionは学習しない"
+  },
+  "learning": "棋譜から、指し手を読む深さ（reduction）を機械学習する",
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "探索",
+      "title": "reductionの機械学習",
+      "description": "指し手を読む深さを、機械学習で決める。「LMRのようなreduction+再探索」だけを学習の対象とする。目的関数と指し手の評価関数の形は第21回から改良している。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "ツツカナの一番の特徴は、指し手を読む深さを機械学習によって決定していることです。"
+    },
+    {
+      "category": "探索",
+      "title": "extensionは学習しない設計",
+      "description": "reductionは棋譜から学習するが、extensionは水平線効果の抑制や動的な情報など棋譜に現れない要素を考慮する必要があるとして、学習しない。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "extensionは棋譜に現れない要素(水平線効果の抑制や動的な情報等)を考慮する必要があると考えている"
+    }
+  ],
+  "character": null,
+  "notes": "詳細は第21回選手権のアピール文書を参照とのみ記載。一覧ページではキャンセル扱い",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc26/team.html"
+}

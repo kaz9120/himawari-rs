@@ -1,0 +1,55 @@
+{
+  "wcsc": 35,
+  "year": 2025,
+  "dir": "W@nderER",
+  "team": "櫻井 博光",
+  "software": "W@nderER",
+  "sources": [
+    "wcsc35/appeal/W@nderER/wanderer_appeal_wcsc35.html"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc35/appeal/W%40nderER/wanderer_appeal_wcsc35.html"
+  ],
+  "summary": "これまで通り入玉宣言による勝利を積極的に目指すDL系。昨年の試行錯誤を受け、7x7のラージカーネルをRyfcNet風の非対称分解畳み込み（1x9と9x1）に変更し、入玉特徴量を導入、floodgateの入玉棋譜から教師を作った。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "1x9と9x1の疑似ラージカーネル（RyfcNetのC-layer風）。入玉特徴量を追加"
+  },
+  "search": {
+    "family": "不明",
+    "detail": null
+  },
+  "learning": "floodgateで入玉が発生した棋譜をベースに教師を生成",
+  "hardware": "Core i5 + RTX3050",
+  "language": [
+    "Python",
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "入玉",
+      "title": "入玉宣言勝ちを積極的に狙う",
+      "description": "入玉宣言による勝利を積極的に目指す方針を継続し、入玉特徴量と、floodgateの入玉棋譜から作った教師で強化する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "入玉宣言による勝利を積極的に目指します。"
+    },
+    {
+      "category": "評価関数",
+      "title": "非対称分解畳み込みの疑似ラージカーネル",
+      "description": "7x7のラージカーネルを、RyfcNetのC-layer風のAsymmetry factorized畳み込みに置き換え、1x9と9x1のカーネルにした。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "1x9 と 9x1 のカーネルに変更"
+    }
+  ],
+  "character": "名前は文字を装飾した表記（𝕎𝛥𝔼ℝ）。",
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc35/team.html"
+}

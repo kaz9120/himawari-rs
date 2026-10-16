@@ -1,0 +1,55 @@
+{
+  "wcsc": 35,
+  "year": 2025,
+  "dir": "HoneyWaffle",
+  "team": "渡辺 光彦",
+  "software": "HoneyWaffle",
+  "sources": [
+    "wcsc35/appeal/HoneyWaffle/HoneyWaffle_appeal_WCSC35.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc35/appeal/HoneyWaffle/HoneyWaffle_appeal_WCSC35.pdf"
+  ],
+  "summary": "「振り飛車で戦い続ける」をコンセプトに、やねうら王の最新版を魔改造し、水匠10beta2に振り飛車（対向形）の棋譜を追加学習した評価関数を使う。先後とも複数の振り飛車戦法を用意し、狙いを絞らせない。",
+  "base": {
+    "engine": "やねうら王",
+    "eval_source": "水匠10beta2",
+    "note": "振り飛車評価関数「振電3」は自分が使うわけにはいかないとして不使用"
+  },
+  "eval": {
+    "family": "NNUE",
+    "detail": "水匠10beta2に対向形の棋譜から追加学習"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "やねうら王の最新版の改造。振り飛車の評価値が理不尽に低い点の修正に挑戦"
+  },
+  "learning": "公開された最強クラスの評価関数に、対向形の棋譜を追加学習",
+  "hardware": "Amazon EC2 m7a.metal-48xl シングルインスタンス",
+  "language": [
+    "C++",
+    "Python"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "棋風・人間らしさ",
+      "title": "振り飛車で戦い続ける",
+      "description": "先後ともに複数の振り飛車戦法を用意して狙いを絞らせない。コンピュータ将棋で少数派の振り飛車を貫き、振り飛車の棋譜を増やすことを大事にする。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "「振り飛車で戦い続ける」"
+    },
+    {
+      "category": "評価関数",
+      "title": "振り飛車の評価値の補正",
+      "description": "やねうら王を改造し、振り飛車の評価値が理不尽に低くなる問題を修正する。評価関数は対向形の棋譜で追加学習する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "振り飛車の評価値が理不尽に低い点の修正に改めて挑戦します"
+    }
+  ],
+  "character": "将棋ウォーズ2級・振り飛車党のプログラマー。名前の由来は「渡辺→光彦→みつ→Honey」と、ワッフルの形が将棋盤に似ること（「いい命名じゃないですか？すごくないですか？」）。文春オンライン・朝日新聞のインタビュー、教材に載ったことを紹介。振り飛車対策で飛車を振らせない相手を「本気で軽蔑」し、後手番で面白い工夫をしてほしいと呼びかけるなど、観る側の将棋文化への意見が多い。",
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc35/team.html"
+}

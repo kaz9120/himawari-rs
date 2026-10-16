@@ -1,0 +1,62 @@
+{
+  "wcsc": 32,
+  "year": 2022,
+  "dir": "Gravitational_field_Calculation_method",
+  "team": "重力団（北川 博隆、黒木 光寿）",
+  "software": "重力場計算法",
+  "sources": [
+    "wcsc32/appeal/Gravitational_field_Calculation_method/gravity.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc32/appeal/Gravitational_field_Calculation_method/gravity.pdf"
+  ],
+  "summary": "盤面評価を重力場理論（簡易版）で計算するソフト。深い読み、定跡・棋譜・解析データを使わず、将棋のルールと評価設定だけを入力にして「最高精度の盤面評価」で最善手を特定すると主張する。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "その他",
+    "detail": "重力場理論（簡易版）で異なる単位の設定を計測し、上昇値の合計を比較する"
+  },
+  "search": {
+    "family": "その他",
+    "detail": "通常の深い読みは行わない"
+  },
+  "learning": null,
+  "hardware": "Ryzen 7 1700",
+  "language": [
+    "Rust"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "重力場理論による盤面評価",
+      "description": "将棋のルールと評価設定のみを入力し、異なる単位の設定を重力場理論（簡易版）で計測して上昇値の合計を比べ、盤面を評価する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "盤面判断は重力場理論（簡易版）を使用して計算を行う。"
+    },
+    {
+      "category": "探索",
+      "title": "深い読みを行わない",
+      "description": "手番・非手番の条件は毎回同じで、最小手数範囲を計算できれば足りるとして、根拠のない深い読みを意識的に行わない。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "通常の「深い読み」を行わない。"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "定跡・棋譜・解析データを一切使わない",
+      "description": "将棋のルールに棋譜・定跡の使用義務はないとして、一切入力しない。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "「定跡・棋譜」を一切利用しない。解析データも利用しない。"
+    }
+  ],
+  "character": "将棋の数学的解明を謳うPV動画（ニコニコ動画・YouTube）を用意。人間の知恵と技術と歴史を皆無にすることが独自性と語り、「究極AI産業革命」「神の一手」と大言壮語する世界観。",
+  "notes": "文書の後半は第31回提出分の再掲。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc32/team.html"
+}

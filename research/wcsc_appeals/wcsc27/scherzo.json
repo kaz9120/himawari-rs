@@ -1,0 +1,54 @@
+{
+  "wcsc": 27,
+  "year": 2017,
+  "dir": "scherzo",
+  "team": "氏家 一朗",
+  "software": "scherzo",
+  "sources": [
+    "wcsc27/appeal/scherzo/appeal.pdf"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc27/appeal/scherzo/appeal.pdf"
+  ],
+  "summary": "ニューラルネットワークで評価関数を学習するソフト。floodgateの棋譜を使い、盤面全体をそのまま入力して、重いのでルート付近だけに使い、末端は単純な特徴量を使う。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "盤面全体を入力とするニューラルネットワーク（ルート付近のみ）。末端は単純な特徴量"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "αβ法。評価値に応じて読む深さを少し制御する予定"
+  },
+  "learning": "floodgateの棋譜で学習。間に合えば棋譜を使わない強化学習版",
+  "hardware": "Core i5 480M 2コア 4GB",
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "ルート付近だけNN評価、末端は単純な特徴量",
+      "description": "特徴量を人間が決めず盤面全体をNNへ入力する。重いので評価をルート付近に限り、末端はもっと単純な特徴量を使う。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "ルート付近だけこの評価を行い、末端はもっと単純な特徴量を用いています。"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "棋譜を使わない強化学習版（予定）",
+      "description": "floodgateの棋譜を使う版のほかに、間に合えば棋譜を全く使わない強化学習バージョンを使いたい。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "棋譜を全く使わない強化学習バージョンを使いたいと考えています。"
+    }
+  ],
+  "character": null,
+  "notes": null,
+  "team_list_url": "http://www2.computer-shogi.org/wcsc27/team.html"
+}

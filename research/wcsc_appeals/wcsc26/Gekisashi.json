@@ -1,0 +1,68 @@
+{
+  "wcsc": 26,
+  "year": 2016,
+  "dir": "Gekisashi",
+  "team": "激指チーム",
+  "software": "激指",
+  "sources": [
+    "wcsc26/appeal/Gekisashi/appeal.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc26/appeal/Gekisashi/appeal.txt"
+  ],
+  "summary": "実現確率を打ち切り条件に使う狭くて深い探索が持ち味の老舗ソフト。今回は、浅い自己対戦棋譜から勝敗を予測するロジスティック回帰をLogistello・AlphaGo風に学習する方式を試した。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "特徴ベクトルからのロジスティック回帰で勝敗を予測する評価関数"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "実現確率を打ち切り条件にする探索。有効分岐数は約2〜2.5で20手以上先を読む"
+  },
+  "learning": "1. 一局数秒〜数十秒の浅い探索で自己対戦棋譜を多数作る。2. 各棋譜から約10局面をランダムに選ぶ。3. 勝敗を予測するロジスティック回帰をSGD（バッチ1000）で学習する",
+  "hardware": null,
+  "language": null,
+  "claimed_strength": "自己対戦棋譜100万局程度で、従来のボナンザメソッドとほぼ互角",
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "自己対戦棋譜でのロジスティック回帰学習",
+      "description": "浅い探索の自己対戦棋譜を作り、各棋譜から約10局面を取って勝敗を予測するモデルを学習する。Logistello・AlphaGo風。学習時の探索の効果は小さい。",
+      "originality": "既存手法の応用",
+      "evidence": "自己対戦100万局程度で比較学習（ボナンザメソッド）とほぼ互角",
+      "quote": "Logistello や AlphaGo 風に、自己対戦によって評価関数の学習を行ってみました。"
+    },
+    {
+      "category": "探索",
+      "title": "局面の実現確率による打ち切り",
+      "description": "ロジスティック回帰で遷移確率を推定し、実現確率を探索の打ち切り条件に使う。人間のエキスパートに似た狭くて深い探索になる。",
+      "originality": "独自",
+      "evidence": "有効分岐数約2〜2.5、20手以上先を読める",
+      "quote": "局面の実現確率を打ち切り条件に利用することで、人間のエキスパートの思考法と似た狭くて深い探索を実現"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "平均化パーセプトロンによる比較学習",
+      "description": "平均化パーセプトロンをベースにした手法で高速に学習し、学習中に深さ8程度の探索も行う。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "評価関数の学習には、平均化パーセプトロンをベースにした手法を用いており"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "自己対戦学習の序盤の癖の指摘",
+      "description": "学習後は、一般に損とされる角換わりの早繰り銀を多用するなど、序盤の指し方に問題があるかもしれないと自己観察している。",
+      "originality": "不明",
+      "evidence": null,
+      "quote": "角換わりでの早繰り銀を多用するようになるなど、序盤の指し方については問題があるかもしれません"
+    }
+  ],
+  "character": null,
+  "notes": "5/12追記が先頭。文献4件を挙げる",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc26/team.html"
+}

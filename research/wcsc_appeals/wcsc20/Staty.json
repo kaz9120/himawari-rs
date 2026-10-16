@@ -1,0 +1,52 @@
+{
+  "wcsc": 20,
+  "year": 2010,
+  "dir": "Staty",
+  "team": "中村政義",
+  "software": "Staty",
+  "sources": [
+    "wcsc20/appeal/Staty/appeal_Staty_ver2.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc20/appeal/Staty/appeal_Staty_ver2.txt"
+  ],
+  "summary": "gpsshogi-for-csa 0.6の評価関数パラメータを、順位学習（RankSVM）で学習し直したもの。次の一手の予測精度は94.4%と本家を上回るが、対局では0勝10敗だったと正直に報告する。",
+  "base": {
+    "engine": "GPS将棋",
+    "eval_source": "gpsshogi-for-csa 0.6の特徴ベクトル",
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "gpsshogi-for-csa 0.6のパラメータ構成を踏襲"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "ライブラリの探索を基本的に改変しない"
+  },
+  "learning": "評価を順位学習（Learning to Rank）に帰着。勝者局面>敗者局面、棋譜の手>合法手の順序から訓練データを作り、RankSVMをsofia-mlの確率的勾配降下で学習。プロ棋譜31,000局",
+  "hardware": null,
+  "language": null,
+  "claimed_strength": "gpsshogi-for-csa 0.6の標準パラメータに3分0勝10敗（1手読みどうしでは10勝0敗）",
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "順位学習（RankSVM）による評価関数",
+      "description": "評価を順位学習問題に帰着し、勝者局面>敗者局面、棋譜の手>合法手の大小関係から訓練データを作り、RankSVMで評価値予測器を作る。確率的勾配降下とランダムサンプリングで高速に学習し、31,000局を5時間（1コア）で学習する。",
+      "originality": "独自",
+      "evidence": "棋譜の手の正答率94.4%（本家88.9%）、平均順位6.10（本家10.2）",
+      "quote": "局面の評価関数を，機械学習の検索の分野などで用いられる順位学習(Learning to Rank)の問題に帰着させ求めた"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "予測精度と棋力が一致しない事実の報告",
+      "description": "棋譜の次の一手の予測は本家より高精度だが、3分の対局は0勝10敗。1手読みなら10勝0敗。予測精度が棋力に直結しないことを実験で示した。",
+      "originality": "独自",
+      "evidence": "対局0勝10敗、1手読みどうしで10勝0敗",
+      "quote": "この予測精度が高いことが実力につながるわけではないことを次の章の対局結果に示す"
+    }
+  ],
+  "character": "将棋経験がなく、中学時代にオセロのAIを自作した、という自己紹介を添える。弱いという結果も隠さず書く。",
+  "notes": null,
+  "team_list_url": "http://www2.computer-shogi.org/wcsc20/team.html"
+}

@@ -1,0 +1,79 @@
+{
+  "wcsc": 32,
+  "year": 2022,
+  "dir": "KatsudonShogi",
+  "team": "カツ丼将棋（松本 浩志）",
+  "software": "カツ丼将棋",
+  "sources": [
+    "wcsc32/appeal/KatsudonShogi/katsudonshogi_apeal_wcsc32_v2.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc32/appeal/KatsudonShogi/katsudonshogi_apeal_wcsc32_v2.pdf"
+  ],
+  "summary": "今回は完全フロムスクラッチではなく、公開ソフト（やねうら王v6.0.0+水匠3）をカツ丼将棋exeで包んで出場する。multiponderで全局ノータイム指しにし、穴角や不成の活用で相手の読み筋を外す。育児多忙で去年とほぼ同じ。",
+  "base": {
+    "engine": "やねうら王",
+    "eval_source": "水匠3",
+    "note": null
+  },
+  "eval": {
+    "family": "NNUE",
+    "detail": "公開ソフトの評価関数（水匠3）"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "やねうら王v6.0.0。multiponderによる複数候補先読み"
+  },
+  "learning": null,
+  "hardware": "Ryzen 9 5950X",
+  "language": [
+    "C++",
+    "VBA"
+  ],
+  "claimed_strength": "自作部分は奨励会入門レベル",
+  "ideas": [
+    {
+      "category": "時間管理",
+      "title": "multiponderでノータイム指し",
+      "description": "相手の手番中に複数の候補手を先読みし、相手の応手が候補にあれば即座に指す。候補になければ0.2秒考えた手を指す。自分の手番で考えると公開ソフトの代理出しになってしまうためとしている。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "カツ丼将棋exeにmultiponder(複数候補先読み)を実装し、予選から決勝まですべてノータイムで指します。"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "公開ソフトをexeで包んで中身を入れ替え",
+      "description": "やねうら王+水匠3をカツ丼将棋exeが包み、通信も自作する。中身を丸ごと入れ替えられる利点がある。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "公開ソフトをカツ丼将棋exeが包むことで、中身を知らないという馬鹿を輩出すると同時に、中身をまるっと入れ替えられるメリットもある"
+    },
+    {
+      "category": "棋風・人間らしさ",
+      "title": "相手の強さに応じた穴角",
+      "description": "相手の強さを見て穴角を目指す場合がある。駒得だけの評価にしたところ、探索順の関係で9八香、9九角、6九の金の反復横跳びという穴角戦法が偶然できた。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "6九の金が7九と6九を反復横跳びする穴角戦法が偶然にもできてしまった"
+    },
+    {
+      "category": "棋風・人間らしさ",
+      "title": "不成の積極活用",
+      "description": "不成を積極的に使い、相手の読み筋を外して時間を使わせる。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "不成を積極的に活用し、相手の読み筋を外して時間を使わせます。"
+    },
+    {
+      "category": "エンタメ・演出",
+      "title": "将棋倶楽部24を自動操縦するカツ丼坊",
+      "description": "画像認識（UWSC）で将棋倶楽部24を自動操縦するシステムを作り、HTML5化後はPython+Seleniumと通信ログで高速に指し手を認識して、光速で指す非人間的なソフトとして放流している。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "現在24で光の速さで指す非人間的なソフトとして放流している。"
+    }
+  ],
+  "character": "将棋倶楽部24で光速指しの「友達のなくなるソフト」を放流する活動をネタにする。作者はNPO法人AI電竜戦プロジェクトの理事長で、ポエムで経緯を語る。",
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc32/team.html"
+}

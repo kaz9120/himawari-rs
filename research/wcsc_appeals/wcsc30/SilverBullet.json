@@ -1,0 +1,56 @@
+{
+  "wcsc": 30,
+  "year": 2020,
+  "dir": "SilverBullet",
+  "team": "手塚規雄、山内浩之",
+  "software": "SilverBullet",
+  "sources": [
+    "wcsc30/appeal/SilverBullet/WCSC30_silver_bullet_appeal.txt"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc30/appeal/SilverBullet/WCSC30_silver_bullet_appeal.txt"
+  ],
+  "summary": "『将棋AIで学ぶディープラーニング』を参考にした深層学習ソフト。「誰かがやったかも、無駄かも」と思える入力特徴の追加を試す。",
+  "base": {
+    "engine": "不明",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "書籍『将棋AIで学ぶディープラーニング』準拠"
+  },
+  "search": {
+    "family": "不明",
+    "detail": null
+  },
+  "learning": null,
+  "hardware": null,
+  "language": [
+    "C++",
+    "Python",
+    "C#"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "変わった入力特徴の追加",
+      "description": "持ち駒位置の固定、盤外まで配置に入れる、駒の利き、玉の動ける部分、KKP的な特徴を学習に取り込む。",
+      "originality": "不明",
+      "evidence": null,
+      "quote": "・持ち駒位置の固定 ・動けない場所（盤外）まで配置として入れる ・駒の利き ・玉が動ける部分"
+    },
+    {
+      "category": "棋風・人間らしさ",
+      "title": "振り飛車を自然に指す",
+      "description": "振り飛車を自然に指せるようにしたいが、今回は間に合わない見込みと述べる。",
+      "originality": "不明",
+      "evidence": null,
+      "quote": "「振り飛車を自然に指す」までやってみたい"
+    }
+  ],
+  "character": null,
+  "notes": "一次予選当日に完全版を提出する予定と記載",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc30/team.html"
+}

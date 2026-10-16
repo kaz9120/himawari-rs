@@ -1,0 +1,70 @@
+{
+  "wcsc": 32,
+  "year": 2022,
+  "dir": "Yamada_Shogi",
+  "team": "山田 泰広",
+  "software": "山田将棋",
+  "sources": [
+    "wcsc32/appeal/Yamada_Shogi/yamadashogi_appeal_2022.txt"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc32/appeal/Yamada_Shogi/yamadashogi_appeal_2022.txt"
+  ],
+  "summary": "クラシカルな構造・アルゴリズムで作る自作ソフト。αβ・反復深化・null move・LMR・killer moveなど一般的な探索に加え、囲いへ誘導する落とし穴表や、YSS式の指し手反復生成、Crafty方式の並列探索を使う。評価は手調整した評価値の線形和。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "手作り",
+    "detail": "駒割・玉の安全度・囲い・盤上の利き・駒への当たり・大駒の働き・そっぽ・金駒へのひもなどの手調整した線形和"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "反復深化、null move、LMR、killer move、pass move、Crafty方式並列探索"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": [
+    "C"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "囲いへ誘導する落とし穴表",
+      "description": "囲いの形へ導くための落とし穴表と、玉位置からの距離に応じた評価値表を持つ。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "囲いへ誘導するための落とし穴表"
+    },
+    {
+      "category": "探索",
+      "title": "YSS式の指し手反復生成",
+      "description": "指し手の生成にYSS式の反復生成を用いる。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "YSS 式指し手の反復生成、Crafty 方式の並列探索"
+    },
+    {
+      "category": "詰み・終盤",
+      "title": "簡易必死・一手詰みの検出",
+      "description": "root ノードで簡易必死検出、leaf ノード付近で簡易一手詰み検出を行い、反復深化による詰め将棋ルーチンも持つ。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "root ノードでの簡易必死検出、leaf ノード付近での簡易一手詰み検出"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "駒背番号制と利き管理テーブル",
+      "description": "配列の盤駒表現、駒背番号制、飛び利き方向ビットのOR値、利いている駒背番号ビットのOR値、8近傍利き・合法移動先テーブルなどのデータ構造で利きを管理する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "配列による盤駒表現、駒背番号制、利き数、飛び利き方向ビットの OR 値"
+    }
+  ],
+  "character": null,
+  "notes": null,
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc32/team.html"
+}

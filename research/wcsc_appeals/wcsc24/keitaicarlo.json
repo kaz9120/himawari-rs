@@ -1,0 +1,52 @@
+{
+  "wcsc": 24,
+  "year": 2014,
+  "dir": "keitaicarlo",
+  "team": "不明（ケータイカルロ）",
+  "software": "ケータイカルロ",
+  "sources": [
+    "wcsc24/appeal/keitaicarlo/appeal.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc24/appeal/keitaicarlo/appeal.txt"
+  ],
+  "summary": "複数の携帯端末で乱数自己対局による探索を行い、結果を集計PCに送って指し手を決める。他者の定跡・棋譜は使わず、局面評価は勝敗の2値のみ。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "その他",
+    "detail": "勝敗の2値のみ"
+  },
+  "search": {
+    "family": "MCTS",
+    "detail": "携帯端末での乱数自己対局（プレイアウト）を集計"
+  },
+  "learning": null,
+  "hardware": "複数の携帯端末＋集計PC",
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "並列・分散",
+      "title": "携帯端末でのプレイアウト集計",
+      "description": "複数の携帯端末で乱数自己対局による探索を行い、結果を対局用PCに送って集計し指し手を決める。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "複数の携帯端末で乱数自己対局による探索を行いその結果を"
+    },
+    {
+      "category": "評価関数",
+      "title": "勝敗の2値のみの評価",
+      "description": "他者の定跡・棋譜を使わず、局面評価は勝ち負けの2値だけで行う。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "局面の評価は勝ち負けのみの２値で行う。"
+    }
+  ],
+  "character": "携帯端末を計算資源にする遊び心のある構成。",
+  "notes": null,
+  "team_list_url": "http://www2.computer-shogi.org/wcsc24/team.html"
+}

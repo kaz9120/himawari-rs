@@ -1,0 +1,62 @@
+{
+  "wcsc": 33,
+  "year": 2023,
+  "dir": "Jinsei_Okuribunt_Shippai",
+  "team": "築地 毅",
+  "software": "人生送りバント失敗",
+  "sources": [
+    "wcsc33/appeal/Jinsei_Okuribunt_Shippai/appeal2023.txt"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc33/appeal/Jinsei_Okuribunt_Shippai/appeal2023.txt"
+  ],
+  "summary": "αβ中心でLMR・Futilityなど普通の技術を使い、ボナンザメソッドで学習するソフト。技術的な新規点は書かず、過去のアピールのコピペと思い出話、ネタで構成された文書。今回は誤差レベルでしか強くなっていないと認める。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "ボナンザメソッド。オンライン学習に平均化パーセプトロンを試したが止めた"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "αβ中心。LMR、Futility等"
+  },
+  "learning": null,
+  "hardware": "Core i7（Windows）",
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": "今回は誤差レベルでしか強くなっておらず、まったく強くなっていないと思う",
+  "ideas": [
+    {
+      "category": "探索",
+      "title": "LMR・Futility等の標準的なαβ",
+      "description": "探索はαβ中心で、LMRやFutilityなどのごく普通の技術を使う。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "探索はαβ中心で、LMRとかFutilityとかの至って普通の技術を使ってます"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "平均化パーセプトロンの試行",
+      "description": "オンライン学習を勉強するため平均化パーセプトロンを試したが、怪しかったので試すのをやめた。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "オンライン学習を勉強してみたかったので、平均化パーセプトロンを試しています"
+    },
+    {
+      "category": "エンタメ・演出",
+      "title": "マクド定跡の毎年の検証",
+      "description": "有名なマクドナルド定跡を毎年試しているが、勝ち星が増えず効果がないのではと思い始めている。試行回数が足りないのでまた試す。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "毎年試している割には全然勝ち星が増えないので、もしかすると効果がないのではないかと最近思い始めました。"
+    }
+  ],
+  "character": "「動いていることが奇跡」で「特段アピールすることなんてない」と書き、2015年にアピール文書リジェクトを実証したため過去文書から技術をコピペした、と自虐。過去には独創賞（2012年、解説記事の生成）を受賞し、プログラム名「(´・ω・`)」を読めないとリジェクトされた経緯、罰ゲームのコスプレ、大会二日目のラーメン（家系）などの思い出話を披露。名前は送りバント好きから。",
+  "notes": "2012年の独創賞（解説記事の生成）は過去の話で、今回の工夫ではない。技術部分は過去文書の再掲で年ごとの一言が連なる。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc33/team.html"
+}

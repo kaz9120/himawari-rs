@@ -1,0 +1,60 @@
+{
+  "wcsc": 26,
+  "year": 2016,
+  "dir": "libshogi",
+  "team": "藤井宏行、瀧川健太、高田浩生（香川高専詫間キャンパス藤井研究室＆ティーソフトウェア）",
+  "software": "libshogi",
+  "sources": [
+    "wcsc26/appeal/libshogi/libshogi160325.pdf"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc26/appeal/libshogi/libshogi160325.pdf"
+  ],
+  "summary": "将棋ソフトの開発を学ぶ学生向けの教育用ライブラリ。BoostやSTLを使わずプリミティブなAPIだけで実装し、速度より分かりやすさを優先する。今回は合法手生成までを実装し、探索・定跡・学習は学習者が書く前提。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "手作り",
+    "detail": "合法手生成までで、評価は持たない"
+  },
+  "search": {
+    "family": "その他",
+    "detail": "Strategy層（探索・定跡・学習）は利用者が実装する"
+  },
+  "learning": null,
+  "hardware": "Celeron N2840 2.16GHz、メモリ4GB",
+  "language": "C++",
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "開発手法・運用",
+      "title": "学習用の将棋ライブラリ",
+      "description": "C++の基本文法を知る学生が短期間で将棋プログラムを書き始められることを目標に、基本構造・CSA通信・合法手生成を提供する。Foundation層はコメント込みで約2000行。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "C++ の基本的な文法を知っている学生が短期間で将棋プログラムを書き始めるところまで到達できることを目標に"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "外部ライブラリに頼らない階層モデル",
+      "description": "Boost・STLを使わず、Foundation層（Atomic・SpinLock・Semaphore・Thread）とGame層（Shogi・Communication）の階層で作り、速度より簡明さを優先する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "libshogi は Boost や STL などを使用せずプリミティブなライブラリ API のみで実装しています"
+    },
+    {
+      "category": "並列・分散",
+      "title": "アトミック操作とスピンロックの基盤",
+      "description": "ロックの粒度を小さくするためアトミック操作を使い、glibcのNPTLスピンロックで軽量な排他を提供する。物理コア数だけスレッドを回す想定。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "アトミック操作で対応可能な処理はそれを使用することによりロックを回避することができます"
+    }
+  ],
+  "character": "競技用ではなく、将棋を素材にAIの学習をする教材。大会後にソースを公開する予定。",
+  "notes": "棋力の主張はなし。ソフト本体としての探索・評価は持たない",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc26/team.html"
+}

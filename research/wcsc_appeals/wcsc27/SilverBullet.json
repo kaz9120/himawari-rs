@@ -1,0 +1,55 @@
+{
+  "wcsc": 27,
+  "year": 2017,
+  "dir": "SilverBullet",
+  "team": "手塚規雄、山内浩之",
+  "software": "SilverBullet",
+  "sources": [
+    "wcsc27/appeal/SilverBullet/WCSC27_SilverBullet_update.pdf"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc27/appeal/SilverBullet/WCSC27_SilverBullet_update.pdf"
+  ],
+  "summary": "やねうら王ライブラリを使い、稲庭将棋のように通常発生しない局面へ誘導して相手の評価値を崩す「アンチコンピュータ将棋戦略」に挑んだソフト。急戦では遅く持久戦では早すぎ、時間切れや相手の反則に助けられた2勝にとどまった。独自性のなさを自省し、次回はルールを守って参加すると書く。",
+  "base": {
+    "engine": "やねうら王",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "やねうら王のまま"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "36手目以降はやねうら王"
+  },
+  "learning": null,
+  "hardware": "Core i5 2500 4コア 8GB",
+  "language": [
+    "C++",
+    "C#"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "研究・実験的",
+      "title": "稲庭将棋によるアンチコンピュータ戦略",
+      "description": "最初は稲庭将棋を指して通常発生しない局面を作り、相手の評価値を崩す。16手目以降は先手なら6〜9段目だけ、後手なら1〜4段目だけの駒を動かして棒銀を防ぎ、36手目以降はやねうら王が指す。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "稲庭将棋のように通常発生しない局面にして元に相手の評価値を崩す戦法"
+    },
+    {
+      "category": "棋風・人間らしさ",
+      "title": "局面や評価値で切り替える構想（反省）",
+      "description": "急戦では遅く、持久戦では早すぎたため、局面や評価値を元に戦略の切替えをすべきだったと振り返る。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "局面や評価値を元に切り替えるべきでした。"
+    }
+  ],
+  "character": "「No Silver Bullet（銀の弾丸はない）」論文に反抗して「銀の弾丸はある」と挑む無謀な挑戦、というコンセプト。結果と反省（独自性のなさ、ルール違反との声）を5/6付で正直に記している。",
+  "notes": "アピール文書は大会後の5/6付に更新されている。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc27/team.html"
+}

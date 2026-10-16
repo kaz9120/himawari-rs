@@ -1,0 +1,52 @@
+{
+  "wcsc": 36,
+  "year": 2026,
+  "dir": "ichibin",
+  "team": "花井 祐",
+  "software": "いちびん",
+  "sources": [
+    "wcsc36/appeal/ichibin/ichibin_2026appeal.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc36/appeal/ichibin/ichibin_2026appeal.pdf"
+  ],
+  "summary": "NNUEを基本とし、前年の大会参加版で数億局面の教師データを作って学習した評価関数を、2026年版の思考部とする。探索はやねうら王。手書きスキャンの短い文書。",
+  "base": {
+    "engine": "やねうら王",
+    "eval_source": null,
+    "note": "探索はやねうら王。評価関数は2025年版の自作NNUE"
+  },
+  "eval": {
+    "family": "NNUE",
+    "detail": "教師データを元に各種パラメータを手動調整し、数十の評価関数を作成する"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "やねうら王を使用"
+  },
+  "learning": "2025年の大会参加バージョンで数億局面の教師データを作成して学習",
+  "hardware": null,
+  "language": [],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "数十の評価関数から選抜",
+      "description": "パラメータを手動で調整して数十の評価関数を作り、その中で一番強そうなバージョンを参加版にする。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "数十の評価関数を作成し、その中で一番強そうなバージョンを2026年の参加バージョンとします"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "前年版による世代更新",
+      "description": "前年の大会参加版を使って数億局面の教師データを作り、それを学習して次年版の思考部とする。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "二〇二五年の大会参加バージョンを使って数億局面の教師データを作成しました"
+    }
+  ],
+  "character": null,
+  "notes": "手書き画像PDFで、Readで直接読んだ。定跡は昨年のものを利用。手書きのため一部の字は推読。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc36/team.html"
+}

@@ -1,0 +1,52 @@
+{
+  "wcsc": 31,
+  "year": 2021,
+  "dir": "wizard_of_odds_2021",
+  "team": "David Wada",
+  "software": "オッズの魔法使い（wizard of odds 2021）",
+  "sources": [
+    "wcsc31/appeal/wizard_of_odds_2021/appeal_2021.txt"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc31/appeal/wizard_of_odds_2021/appeal_2021.txt"
+  ],
+  "summary": "「Random Forest Continues」の副題で、並列の最良優先探索を続ける。評価関数はBonanzaかAperyのどちらか。前回は浅すぎたため、ノードあたりの探索を深くする。定跡はQhapaq定跡（二代目）、AWS EC2を4台程度使う予定。",
+  "base": {
+    "engine": "独自",
+    "eval_source": "Bonanza/Aperyのいずれか",
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "BonanzaかAperyの評価関数"
+  },
+  "search": {
+    "family": "その他",
+    "detail": "並列の最良優先探索（parallel best first search）。ノードごとの探索を深くする"
+  },
+  "learning": null,
+  "hardware": "AWS EC2 4台程度",
+  "language": "不明",
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "探索",
+      "title": "並列の最良優先探索",
+      "description": "前回に続き、並列の最良優先探索（Random Forestと称する）を使う。前回はノードあたりの探索が浅すぎたため、深くする。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "parallel best first search continues"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "Qhapaq定跡（二代目）",
+      "description": "qhapaq氏公開のQhapaq定跡（二代目）を使う。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "opening book - Qhapaq定跡（二代目）"
+    }
+  ],
+  "character": "副題「Random Forest Continues」のように、英語混じりの簡潔な文体。",
+  "notes": "文書見出しは「第29回」とあるが、ファイル名・内容は2021年版。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc31/team.html"
+}

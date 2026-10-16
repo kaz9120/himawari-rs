@@ -1,0 +1,52 @@
+{
+  "wcsc": 24,
+  "year": 2014,
+  "dir": "scherzo",
+  "team": "氏家 一朗",
+  "software": "scherzo",
+  "sources": [
+    "wcsc24/appeal/scherzo/scherzo-2014.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc24/appeal/scherzo/scherzo-2014.txt"
+  ],
+  "summary": "評価関数にニューラルネットを使う予定で、駒価値・王との位置関係以外の特徴を学習で自動抽出する。探索は単純な全幅探索。定跡は自プログラムで時間をかけて考えた手を登録する。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "その他",
+    "detail": "ニューラルネットワーク（予定）"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "単純な全幅探索"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "ニューラルネットによる特徴の自動抽出",
+      "description": "評価関数にニューラルネットを使い、駒の価値や王との位置関係のほかの特徴を学習で自動的に抽出する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "特徴量を学習により自動的に抽出できます。"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "自プログラム思考の定跡",
+      "description": "一般の定跡でなく、長い時間をかけて自分のプログラムで考えた手を登録して使う。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "自分のプログラムで考えた手を登録して使っています。"
+    }
+  ],
+  "character": null,
+  "notes": null,
+  "team_list_url": "http://www2.computer-shogi.org/wcsc24/team.html"
+}

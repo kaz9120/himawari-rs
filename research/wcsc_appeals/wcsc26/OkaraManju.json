@@ -1,0 +1,68 @@
+{
+  "wcsc": 26,
+  "year": 2016,
+  "dir": "OkaraManju",
+  "team": "渡辺 敬介",
+  "software": "おから饅頭",
+  "sources": [
+    "wcsc26/appeal/OkaraManju/okara_manju_wcsc26.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc26/appeal/OkaraManju/okara_manju_wcsc26.txt"
+  ],
+  "summary": "KFEnd・大槻将棋・OSLなどの解説を参考にした高速な指し手生成と更新可能な盤を持つソフト。探索速度は毎秒300〜400万局面。評価は駒割りにBonanza 6.0を使い、他の特徴は激指と同様の手法で調整する。今回は評価項目の見直し、YBWC並列化、実現確率探索の導入、定跡生成の変更を行った。",
+  "base": {
+    "engine": "独自",
+    "eval_source": "Bonanza 6.0（駒割り）",
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "駒割りはBonanza 6.0そのまま、他の特徴は激指と同様の手法で調整"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "YBWCによる並列化、実現確率探索"
+  },
+  "learning": "激指と同様の手法で特徴の重みを調整",
+  "hardware": null,
+  "language": "C++",
+  "claimed_strength": "毎秒300〜400万局面（Core i5 4690, 4スレッド）、指し手生成は約450万回/秒（1スレッド）",
+  "ideas": [
+    {
+      "category": "実装・高速化",
+      "title": "高速な指し手生成と更新可能な盤",
+      "description": "KFEnd・大槻将棋・OSLの解説を参考に、高速な指し手生成と更新可能な将棋盤を実現する。指し手生成祭りの局面で約450万回/秒。",
+      "originality": "既存手法の応用",
+      "evidence": "指し手生成約450万回/秒、探索毎秒300〜400万局面",
+      "quote": "高速な指し手生成や更新の可能な将棋盤を実現しています"
+    },
+    {
+      "category": "探索",
+      "title": "実現確率探索の導入",
+      "description": "激指由来の実現確率探索を新たに導入した。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "実現確率探索の導入"
+    },
+    {
+      "category": "並列・分散",
+      "title": "YBWCによる並列化",
+      "description": "YBWCで並列化する。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "YBWCによる並列化"
+    },
+    {
+      "category": "評価関数",
+      "title": "激指と同様の手法での調整",
+      "description": "駒割り以外の特徴を、激指と同様の手法で調整する。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "それ以外の特徴は激指と同様の手法で調整しています"
+    }
+  ],
+  "character": null,
+  "notes": null,
+  "team_list_url": "http://www2.computer-shogi.org/wcsc26/team.html"
+}

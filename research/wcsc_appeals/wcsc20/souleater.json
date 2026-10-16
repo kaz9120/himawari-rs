@@ -1,0 +1,52 @@
+{
+  "wcsc": 20,
+  "year": 2010,
+  "dir": "souleater",
+  "team": "安武和宏",
+  "software": "souleater",
+  "sources": [
+    "wcsc20/appeal/souleater/souleater.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc20/appeal/souleater/souleater.txt"
+  ],
+  "summary": "「misaki」の後継で、Bonanza 4.1.3を土台に評価関数の高速化と探索制御を改良した。手の特徴からロジスティック回帰でalpha更新確率を求め、そのlog2を探索深さに使う実現確率探索が特徴。",
+  "base": {
+    "engine": "Bonanza",
+    "eval_source": "Bonanza 4.1.3",
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": null
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "実現確率探索。alpha更新確率のlog2を探索深さとして使用"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "探索",
+      "title": "alpha更新確率による実現確率探索",
+      "description": "探索中にalphaを更新する場合としない場合の2種について、手の特徴でロジスティック回帰を行い、alphaを更新する確率を求める。その確率のlog2を探索深さとして使って実現確率探索を行う。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "求めた確率のlog2を探索深さとして利用し、実現確率探索を行っております"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "評価関数の高速化",
+      "description": "Bonanzaの評価関数を高速化した。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "評価関数の高速化および探索制御の改良を行っております"
+    }
+  ],
+  "character": null,
+  "notes": null,
+  "team_list_url": "http://www2.computer-shogi.org/wcsc20/team.html"
+}

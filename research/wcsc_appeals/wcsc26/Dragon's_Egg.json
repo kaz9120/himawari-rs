@@ -1,0 +1,44 @@
+{
+  "wcsc": 26,
+  "year": 2016,
+  "dir": "Dragon's_Egg",
+  "team": "中谷 裕一",
+  "software": "竜の卵",
+  "sources": [
+    "wcsc26/appeal/Dragon's_Egg/WCSC26_appeal.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc26/appeal/Dragon%27s_Egg/WCSC26_appeal.txt"
+  ],
+  "summary": "何年も前のソースを部分的に改変して使うαβ探索ソフト。自己対戦や棋譜から情報を取り出して評価関数や手の選択に使う。約110万nodes/s。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "不明",
+    "detail": "進行度、評価関数の学習を採用"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "反復深化、置換表、null move pruning、並列探索、df-pn"
+  },
+  "learning": "自己対戦や棋譜から情報を取り出して評価関数や手の選択に使用",
+  "hardware": null,
+  "language": "VisualC++",
+  "claimed_strength": "約110万nodes/s",
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "自己対戦・棋譜の情報を手の選択にも使用",
+      "description": "自己対戦や棋譜から取り出した情報を、評価関数だけでなく手の選択にも使う。詳細は書かれていない。",
+      "originality": "不明",
+      "evidence": null,
+      "quote": "自己対戦や棋譜から情報を取り出して評価関数や手の選択に使用しております。"
+    }
+  ],
+  "character": null,
+  "notes": "一覧ページではキャンセル扱い。ハードウェアの記載なし",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc26/team.html"
+}

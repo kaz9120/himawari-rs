@@ -1,0 +1,71 @@
+{
+  "wcsc": 29,
+  "year": 2019,
+  "dir": "Windfall",
+  "team": "井本 康宏",
+  "software": "Windfall",
+  "sources": [
+    "wcsc29/appeal/Windfall/Windfall.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc29/appeal/Windfall/Windfall.pdf"
+  ],
+  "summary": "合法手からランダムに指す（間に合えば評価値最良手）という状況の中で、長い利き方向ごとに1x9カーネルで畳み込む独自のDNN評価関数に取り組む。ライブラリはPyTorchに移行し、一緒に開発する仲間も募集。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": "局面遷移・合法手計算はやねうら王を参考に実装"
+  },
+  "eval": {
+    "family": "DL",
+    "detail": "Residual Network。持ち駒を畳み込み後のバイアス項に入力。長い利き方向ごとの畳み込み。浅いネットワークから徐々に深く学習"
+  },
+  "search": {
+    "family": "その他",
+    "detail": "今回は合法手からランダム、または評価値最良手を選ぶのみ"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": [
+    "python",
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "長い利き方向ごとの畳み込み",
+      "description": "飛・角・香の長い利きを考慮するため、縦方向なら1x9のカーネル（実質全結合）などライン別に別カーネルで畳み込む。gatherで集め、1x1→1x9→1x1の畳み込み後にscatterで9x9に並べ直す。PyTorchのextensionでカスタムレイヤーを自作した。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "長い利きの方向ごとに畳み込みを計算(例えば1x9のカーネルで畳み込み)"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "浅いネットワークから徐々に深くする学習",
+      "description": "浅いネットワークで大雑把な出力から始め、徐々に深くしながら出力を精緻にしていく段階学習。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "浅いネットワークから徐々に深くして学習 同時に出力も大雑把なものから精緻なものへ段階的に学習"
+    },
+    {
+      "category": "評価関数",
+      "title": "状態行動価値から状態価値への変更",
+      "description": "DQNは行動の種類が多すぎて無理と判断し、状態行動価値関数から状態価値関数に変更した。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "DQNは行動の種類が多過ぎて無理"
+    },
+    {
+      "category": "研究・実験的",
+      "title": "NNUEの本質は3駒以上の特徴量との考察",
+      "description": "動かなければNNUEを改良する方針で、NNUEの本質は非線形性ではなく3駒以上の特徴量を得たことだと考える。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "NNUEの本質は3駒以上の特徴量を手に入れたことで、非線形性ではないと思う"
+    }
+  ],
+  "character": "「忙しい人のためのチートシート」から始まり「なぜか去年よりさらに後退した進捗」「去年より-3歩前進」と自虐。棋力は「すごく弱い」、「学生時代に囲碁・将棋部だったなんて言えない」。",
+  "notes": "本命の探索アルゴリズムは未実装。論文は過去のアピール文書を参照とのみ",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc29/team.html"
+}

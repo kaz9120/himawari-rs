@@ -1,0 +1,79 @@
+{
+  "wcsc": 20,
+  "year": 2010,
+  "dir": "Ponanza",
+  "team": "山本一成",
+  "software": "Ponanza",
+  "sources": [
+    "wcsc20/appeal/Ponanza/Ponanza.pdf"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc20/appeal/Ponanza/Ponanza.pdf"
+  ],
+  "summary": "Bonanzaの名前をもじったギャグ的な名前。4億個のパラメータ、MapReduceによる1000cpu学習、3000行、TPLによる並列化の4点を訴える。評価要素は玉を含む任意3駒の関係と手番のみ。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "玉を含む任意の3駒の関係と手番。パラメータ総数約4億（Bonanzaの約2倍）"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "全幅探索（PVS、LMR）＋静止探索。チェスのfruit構造に影響。詰将棋ルーチンなし。ビットボード不使用"
+  },
+  "learning": "Bonanza Method。MapReduceで1000cpuを使って学習に挑戦中",
+  "hardware": null,
+  "language": [
+    "C#",
+    "Python"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "任意3駒関係で約4億パラメータ",
+      "description": "評価要素を玉を含む任意の3駒の関係と手番の1種類にし、パラメータ総数を約4億（Bonanzaの約2倍）とする。世界一多いはずと述べるが、Bonanzaより強くはない。",
+      "originality": "独自",
+      "evidence": "パラメータ約4億個",
+      "quote": "パラメタ総数は４億個"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "MapReduceによるBonanza Method",
+      "description": "膨大なパラメータの学習に必要な計算量を、MapReduceモデルで巨大計算機環境に載せて解決する。現在1000cpuでの学習に挑戦中。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "巨大な計算機環境をMapReduceモデルで学習を走らせることにより解決"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "プログラム総行数3000行",
+      "description": "C#でGC・ラムダ式・LINQ・コルーチンを使い、総行数3000行で、1月からの開発でほぼ完成した。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "プログラム総行数わずか3000行"
+    },
+    {
+      "category": "並列・分散",
+      "title": "Task Parallel Libraryによるαβ並列化",
+      "description": "スレッドを明示的に使わず、TPLでαβ探索の並列化に成功した。開発効率が大幅に上がった。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "スレッドを明示的に使用せずアルファベータ探索を並列化することに成功"
+    },
+    {
+      "category": "エンタメ・演出",
+      "title": "Bonanzaをもじった名前",
+      "description": "「どう見てもBonanzaをもじっただけ」「ギャグみたいに弱いのでこの命名」。保木氏の許可は取っている。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "どう見てもBonanzaをもじっただけです"
+    }
+  ],
+  "character": "スライド全体がネタ調で、名前の由来を笑いにしている。末尾で将棋世界の連載「コンピュータは七冠の夢を見るか？」を宣伝する。",
+  "notes": null,
+  "team_list_url": "http://www2.computer-shogi.org/wcsc20/team.html"
+}

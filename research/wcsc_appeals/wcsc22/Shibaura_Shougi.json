@@ -1,0 +1,68 @@
+{
+  "wcsc": 22,
+  "year": 2012,
+  "dir": "Shibaura_Shougi",
+  "team": "芝浦工業大学（五十嵐治一ほか）",
+  "software": "芝浦将棋",
+  "sources": [
+    "wcsc22/appeal/Shibaura_Shougi/appeal.pdf"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc22/appeal/Shibaura_Shougi/appeal.pdf"
+  ],
+  "summary": "Bonanza 6.0.0の評価関数を初期値に、TD(λ)の発展版TDleaf(λ)で強化学習する。定跡を使わず、学習時の相手にはノイズを加えた評価関数のBonanzaを使って過学習を防ぐ。探索エンジンをBonanza 6.0.0を参考にゼロから書いている。",
+  "base": {
+    "engine": "Bonanza",
+    "eval_source": "Bonanza 6.0.0",
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "Bonanza 6.0.0の形式。駒の価値は初期値のまま"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "Bonanza 6.0.0を参考にゼロから書き直し中（間に合わなければBonanza 6.0.0の探索）"
+  },
+  "learning": "Bonanza 6.0.0同士の対局で、最急降下TDleaf(λ)法による予測勝利確率の学習。25分切れ負けで学習予定",
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "学習・教師データ",
+      "title": "TDleaf(λ)による評価関数の強化学習",
+      "description": "従来のTD(λ)が学習時の出現局面を使うのに対し、TDleaf(λ)は最善応手手順（PV）の末端局面を使うので、予測勝利確率のより正確な近似が期待できる。先行研究（Beal and Smith）は読みの深さが不要と結論したが、駒の価値のみ・深さ4までの実験なので、深い探索が有効と考える。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "TDleaf(λ)法では最善応手手順（principal variation）の末端局面（leaf または principal position）を利用する"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "学習時の対戦相手に評価値ノイズを加える",
+      "description": "学習の対戦相手のBonanza 6.0.0に、評価値に正規分布のランダムノイズを加えて、相手の着手傾向の偏りを減らし、特定の相手だけに強くなる過学習を防ぐ。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "評価関数の値に正規分布に従うランダムノイズを加えています"
+    },
+    {
+      "category": "定跡・序盤",
+      "title": "定跡を使わず序盤も学習に貢献させる",
+      "description": "学習時も大会対局時も定跡データベースを使わず、定跡局面以外も積極的に学習させる。新手らしきものが得られれば成果と期待する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "序盤定跡の不使用"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "探索エンジンをゼロから書く",
+      "description": "Bonanza 6.0.0を参考に探索エンジンをゼロから書いている。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "ゼロから探索エンジンのプログラムを書き上げているところです"
+    }
+  ],
+  "character": null,
+  "notes": "第20回大会から継続する芝浦将棋チームの強化学習路線。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc22/team.html"
+}

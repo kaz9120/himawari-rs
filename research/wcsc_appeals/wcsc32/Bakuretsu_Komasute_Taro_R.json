@@ -1,0 +1,55 @@
+{
+  "wcsc": 32,
+  "year": 2022,
+  "dir": "Bakuretsu_Komasute_Taro_R",
+  "team": "Yoltsプロジェクト（森田 翔治）",
+  "software": "爆裂駒捨太郎R",
+  "sources": [
+    "wcsc32/appeal/Bakuretsu_Komasute_Taro_R/20220505_appeal.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc32/appeal/Bakuretsu_Komasute_Taro_R/20220505_appeal.pdf"
+  ],
+  "summary": "詰将棋問題集500万問の出現率統計から、機械学習を使わずに評価関数を作るRust製エンジン。「詰将棋はすべてを解決します」を掲げる。Yoltsは You only look tume-shogi の略。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "手作り",
+    "detail": "1駒関係（どのマスにいるか）と持ち駒枚数を特徴量とし、詰将棋問題集の特徴量出現率のlog2から手作りで値を決める"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "反復深化・ムーブオーダリング（各深さで評価の良かった着手位置の手を先に）・Mate Distance Pruning"
+  },
+  "learning": "機械学習は使わない。やねうら王公開の詰将棋500万問の盤面・持ち駒の特徴量出現率を正規化しlog2を取り、勝ちが多い特徴量を正、負けが多いものを負とする",
+  "hardware": null,
+  "language": [
+    "Rust",
+    "Python"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "詰将棋問題集の出現率から評価関数を作る",
+      "description": "詰将棋500万問から盤面・持ち駒の特徴量の出現率を数え、0〜1に正規化してlog2を取り、盤面は14/81倍する。勝ちが多い特徴は正、負けが多い特徴は負の値にし、機械学習を使わずに評価関数を作る。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "出現率の低い特徴量は価値が高いと仮定して評価関数を作成する"
+    },
+    {
+      "category": "探索",
+      "title": "着手位置ベースのムーブオーダリング",
+      "description": "各探索深さで評価値の良かった着手位置（マス）の手から先に探索する。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "各探索深さで評価値の良かった着手位置の手から探索する"
+    }
+  ],
+  "character": "スライドで「みなさん、詰将棋やってますか？」「詰将棋はすべてを解決します」「爆裂駒捨太郎Rが証明しましょう」と問いかける煽り調の構成。作者は将棋ウォーズ3段で詰将棋は全くやっていないと自己紹介。",
+  "notes": "テキスト化が空だったため原本PDF（スライド）を直接読んだ。定跡部は作成予定で、2022/03/29時点では未作成。",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc32/team.html"
+}

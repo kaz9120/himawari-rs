@@ -1,0 +1,46 @@
+{
+  "wcsc": 29,
+  "year": 2019,
+  "dir": "Garyu",
+  "team": "高田 淳一",
+  "software": "臥龍",
+  "sources": [
+    "wcsc29/appeal/Garyu/garyu29.html"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc29/appeal/Garyu/garyu29.html"
+  ],
+  "summary": "第3回から出場を続けるJava製の手作り評価関数エンジン。評価項目は約750で、今回の変更は時間制御のみ。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "手作り",
+    "detail": "駒損得・成駒・当たり駒・絶対位置・玉の自由度・利き・駒の働き・囲い・ピン・手番など約750パラメータ"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "反復深化、置換表、null move pruning、王手延長、深さ優先の詰み探索"
+  },
+  "learning": null,
+  "hardware": "約30万nodes/s（Core i7 4960HQ、シングルスレッド）",
+  "language": [
+    "Java"
+  ],
+  "claimed_strength": "通算77勝116敗4分",
+  "ideas": [
+    {
+      "category": "時間管理",
+      "title": "時間制御の変更",
+      "description": "前回から時間制御を変更した。詳細は書かれていない。",
+      "originality": "不明",
+      "evidence": null,
+      "quote": "時間制御を変更。"
+    }
+  ],
+  "character": null,
+  "notes": "並列探索・進行度・評価関数の学習・df-pnは未採用と明記。思考部約2万行、UI部約1.1万行",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc29/team.html"
+}

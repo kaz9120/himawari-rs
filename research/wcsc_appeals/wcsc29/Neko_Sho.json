@@ -1,0 +1,46 @@
+{
+  "wcsc": 29,
+  "year": 2019,
+  "dir": "Neko_Sho",
+  "team": "安賀 裕子",
+  "software": "猫将",
+  "sources": [
+    "wcsc29/appeal/Neko_Sho/appeal_190331.pdf"
+  ],
+  "source_urls": [
+    "https://www.apply.computer-shogi.org/wcsc29/appeal/Neko_Sho/appeal_190331.pdf"
+  ],
+  "summary": "JavaScriptの勉強として作る、合法手をランダムに指すだけのシンプルなプログラム。ネコのように自由な棋風というテイ。大会はキャンセル。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "不明",
+    "detail": null
+  },
+  "search": {
+    "family": "その他",
+    "detail": "合法手のランダム生成"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": [
+    "JavaScript"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "棋風・人間らしさ",
+      "title": "猫のように自由な棋風",
+      "description": "合法手をランダム生成することを「ネコのように自由な棋風」と称する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "ネコのように自由な棋風！…というテイで、合法手をランダム生成する"
+    }
+  ],
+  "character": "作者はブックデザイナー。応援要員は19歳の片耳の黒猫クロちゃん（作業中に飯や添い寝を要求して休憩を取らせる役）。",
+  "notes": "一覧では「キャンセル」",
+  "team_list_url": "https://www.apply.computer-shogi.org/wcsc29/team.html"
+}

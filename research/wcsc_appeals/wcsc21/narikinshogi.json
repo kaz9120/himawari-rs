@@ -1,0 +1,35 @@
+{
+  "wcsc": 21,
+  "year": 2011,
+  "dir": "narikinshogi",
+  "team": "村山正樹",
+  "software": "なり金将棋",
+  "sources": [
+    "wcsc21/appeal/narikinshogi/appeal.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc21/appeal/narikinshogi/appeal.txt"
+  ],
+  "summary": "今年は評価関数の学習追加を試みたが動作せず、うまくいかなければ一昨年版とほぼ同じ状態で出場する。αβ・null move・futility・一部ビットボードの一般的な構成。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "手作り",
+    "detail": null
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "αβ（PVS）、null move、futility、一部ビットボード"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [],
+  "character": null,
+  "notes": "工夫は書かれていない。",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc21/team.html"
+}

@@ -1,0 +1,60 @@
+{
+  "wcsc": 26,
+  "year": 2016,
+  "dir": "Meijin_Cobra",
+  "team": "松山洋章、川名亮、高橋依里",
+  "software": "名人コブラ",
+  "sources": [
+    "wcsc26/appeal/Meijin_Cobra/WCSC26_Meijin_Cobra.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc26/appeal/Meijin_Cobra/WCSC26_Meijin_Cobra.txt"
+  ],
+  "summary": "Aperyをベースに、出場資格を得るためにやむを得ず評価関数を改造したソフト。絶対Pの次元下げを加え、序中盤・終盤用の評価関数の使い分けと高次元特徴量の削除を試した。ロマンを捨て、一次予選通過を目指す。",
+  "base": {
+    "engine": "Apery",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "KPP/KKP系。次元下げに絶対Pを追加。終盤用評価関数は不採用、過適応を避けるため絶対KPPやKKP等を削除"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "Aperyの探索には手をつけていない"
+  },
+  "learning": "Aperyの学習系に、絶対Pの次元下げを追加",
+  "hardware": null,
+  "language": "C++",
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "評価関数",
+      "title": "次元下げに絶対Pを追加",
+      "description": "Aperyの次元下げに絶対P（コンピュータチェスのpiece-square相当）がなかったため追加した。実装が簡単で、基本的な特徴量とされている。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "元のAperyでも次元下げは行われているのですが、なぜか絶対Pが存在しませんでした。"
+    },
+    {
+      "category": "評価関数",
+      "title": "序中盤用・終盤用評価関数の加重平均",
+      "description": "序中盤用と終盤用の評価関数を別に用意し、敵陣と駒台の駒数で算出する進行度で加重平均する。5/2追記で、実装したが棋力が上がらず不採用となり、学習棋譜への過適応を疑う。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "局面の進行度に応じて加重平均をとります。"
+    },
+    {
+      "category": "評価関数",
+      "title": "高次元特徴量の削除",
+      "description": "過適応を避けるため、絶対KPPやKKP等の高次元特徴量を削除した。絶対Pの追加である程度カバーできると考えている。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "過適応を避けるために、絶対KPPやKKP等を削除しました。"
+    }
+  ],
+  "character": "ソフト名は、阿佐ヶ谷の小劇場で観た劇団鋼鉄村松の「二手目8七飛車成り戦法」の登場人物名から拝借した。3人は将棋教室の仲間で、高橋依里（監督）・川名亮（定跡担当）・松山洋章（評価関数担当）という役割分担。「改造すると弱くなるので、いじりたくない」と本音を書く。",
+  "notes": "5/2追記あり",
+  "team_list_url": "http://www2.computer-shogi.org/wcsc26/team.html"
+}

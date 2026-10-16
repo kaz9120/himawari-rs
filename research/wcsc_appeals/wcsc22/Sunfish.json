@@ -1,0 +1,62 @@
+{
+  "wcsc": 22,
+  "year": 2012,
+  "dir": "Sunfish",
+  "team": "久保亮介",
+  "software": "Sunfish",
+  "sources": [
+    "wcsc22/appeal/Sunfish/appeal.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc22/appeal/Sunfish/appeal.txt"
+  ],
+  "summary": "バージョン2.0。評価項目を変更して差分計算を入れ、チェスのStockfishを参考に新たな前向き枝刈りを導入した。配列・bitboard・利き情報を全て使う。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "玉との相対位置・駒種・利き・ピン・桂馬の位置などの多数の項目（駒割・玉との相対位置などは差分計算）"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "Stockfishを参考に新たな前向き枝刈り、並列探索"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": [
+    "C++"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "探索",
+      "title": "Stockfish由来の前向き枝刈り",
+      "description": "チェスプログラムStockfishを参考に、新たな前向き枝刈り手法を導入した。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "主にチェスプログラムStockfishを参考にしつつ"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "評価関数の差分計算",
+      "description": "駒割・玉との相対位置×駒種などの項目を差分計算にした。",
+      "originality": "既存手法の応用",
+      "evidence": null,
+      "quote": "局面評価の差分計算"
+    },
+    {
+      "category": "実装・高速化",
+      "title": "配列とbitboardの併用の改良",
+      "description": "前回はbitboardを生かせていなかったが、改良で速くなった。それでも、どちらかによく調整されたプログラムには及ばないと正直に書く。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "それでも、bitboard, 配列いずれかのよくチューニングされたプログラムには及ばないのが現状です"
+    }
+  ],
+  "character": null,
+  "notes": null,
+  "team_list_url": "http://www2.computer-shogi.org/wcsc22/team.html"
+}

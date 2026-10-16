@@ -1,0 +1,52 @@
+{
+  "wcsc": 20,
+  "year": 2010,
+  "dir": "Bonanza_Feliz",
+  "team": "Team Bonanza（保木邦仁ほか）",
+  "software": "Bonanza Feliz",
+  "sources": [
+    "wcsc20/appeal/Bonanza_Feliz/Bonanza_Feliz.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc20/appeal/Bonanza_Feliz/Bonanza_Feliz.txt"
+  ],
+  "summary": "Bonanzaの後継。合議法による疎結合並列思考、静的評価関数の大規模機械学習、チェス由来の探索と盤データ構造の3点で、全て自チームのオリジナルと主張する。",
+  "base": {
+    "engine": "Bonanza",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "線形",
+    "detail": "静的評価関数の大規模機械学習"
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "コンピュータチェスの探索と盤データ構造を応用"
+  },
+  "learning": "大規模機械学習（Bonanza Method）",
+  "hardware": null,
+  "language": null,
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "並列・分散",
+      "title": "合議法による疎結合並列思考",
+      "description": "複数の思考を合議させる疎結合な並列思考で並列化する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "合議法による疎結合並列思考"
+    },
+    {
+      "category": "学習・教師データ",
+      "title": "静的評価関数の大規模機械学習",
+      "description": "棋譜から評価関数を大規模に機械学習する。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "静的評価関数の大規模な機械学習"
+    }
+  ],
+  "character": null,
+  "notes": null,
+  "team_list_url": "http://www2.computer-shogi.org/wcsc20/team.html"
+}

@@ -1,0 +1,46 @@
+{
+  "wcsc": 21,
+  "year": 2011,
+  "dir": "inoue_shogi",
+  "team": "井上浩一",
+  "software": "井上将棋",
+  "sources": [
+    "wcsc21/appeal/inoue_shogi/appeal_inoueshogi2011.txt"
+  ],
+  "source_urls": [
+    "http://www2.computer-shogi.org/wcsc21/appeal/inoue_shogi/appeal_inoueshogi2011.txt"
+  ],
+  "summary": "前回版をObjective-Cに書き換えた。αβ反復深化で、独自戦形を指し、定跡は極力使わない。",
+  "base": {
+    "engine": "独自",
+    "eval_source": null,
+    "note": null
+  },
+  "eval": {
+    "family": "手作り",
+    "detail": null
+  },
+  "search": {
+    "family": "αβ",
+    "detail": "αβの反復深化"
+  },
+  "learning": null,
+  "hardware": null,
+  "language": [
+    "Objective-C"
+  ],
+  "claimed_strength": null,
+  "ideas": [
+    {
+      "category": "棋風・人間らしさ",
+      "title": "独自戦形で定跡を使わない",
+      "description": "独自の戦形で指し、定跡は極力使用しない。",
+      "originality": "独自",
+      "evidence": null,
+      "quote": "戦略：独自戦形（定跡は極力使用しない）"
+    }
+  ],
+  "character": null,
+  "notes": null,
+  "team_list_url": "http://www2.computer-shogi.org/wcsc21/team.html"
+}
