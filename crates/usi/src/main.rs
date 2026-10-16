@@ -79,7 +79,7 @@ fn open_log_writer(path: &str) -> Result<std::io::BufWriter<std::fs::File>, Stri
         .create(true)
         .append(true)
         .open(path)
-        .map_err(|e| format!("{path} を開けない: {e}"))?;
+        .map_err(|e| format!("cannot open {path}: {e}"))?;
     Ok(std::io::BufWriter::new(f))
 }
 
@@ -95,7 +95,7 @@ fn now_millis() -> i64 {
 fn log_open(path: &str) -> Result<String, String> {
     let mut guard = LOG_FILE
         .lock()
-        .map_err(|_| "ログの排他に失敗".to_string())?;
+        .map_err(|_| "failed to lock the debug log".to_string())?;
     if path.is_empty() {
         LOG_ON.store(false, Ordering::Relaxed);
         *guard = None;
@@ -139,7 +139,41 @@ fn log_line(dir: char, s: &str) {
     }
 }
 
+/// USIへ出す行をASCIIに揃える（issue #745）。
+///
+/// Windowsの将棋所はエンジンの出力をcp932として読むので、UTF-8の日本語は
+/// 化ける。固定の文言は英語で書くが、パスやOSのエラー文のように外から来る
+/// 文字列は選べない（Windowsのio::Errorは日本語の文言を返す）。非ASCIIの
+/// 文字は `\u{5c06}` の形へ置き換え、読み手が元の文字を辿れるようにする。
+fn usi_ascii(s: &str) -> std::borrow::Cow<'_, str> {
+    if s.is_ascii() {
+        return std::borrow::Cow::Borrowed(s);
+    }
+    let mut out = String::with_capacity(s.len() * 2);
+    for c in s.chars() {
+        if c.is_ascii() {
+            out.push(c);
+        } else {
+            out.extend(c.escape_unicode());
+        }
+    }
+    std::borrow::Cow::Owned(out)
+}
+
+/// 受信した1行を文字列にする。改行（`\n` と `\r\n`）を落とす。
+///
+/// UTF-8でないバイト列も捨てない。将棋所が日本語のパスをcp932で送ると、
+/// `BufRead::lines` はErrを返し、読み取りループを抜けてエンジンが終わって
+/// いた。不正なバイトはU+FFFDに置き換えて、その行のコマンドとして扱う。
+fn decode_line(buf: &[u8]) -> String {
+    let buf = buf.strip_suffix(b"\n").unwrap_or(buf);
+    let buf = buf.strip_suffix(b"\r").unwrap_or(buf);
+    String::from_utf8_lossy(buf).into_owned()
+}
+
 fn print_line(s: &str) {
+    let s = usi_ascii(s);
+    let s = s.as_ref();
     log_line('>', s);
     let stdout = std::io::stdout();
     let mut lock = stdout.lock();
@@ -418,13 +452,13 @@ fn load_book(path: &str) -> Option<Book> {
     match Book::load(path) {
         Ok(b) => {
             print_line(&format!(
-                "info string BookFile loaded: {path} ({}局面)",
+                "info string BookFile loaded: {path} ({} positions)",
                 b.positions()
             ));
             Some(b)
         }
         Err(e) => {
-            print_line(&format!("info string warning: BookFileを読めません: {e}"));
+            print_line(&format!("info string warning: cannot read BookFile: {e}"));
             print_line(&format!("info string   path = {path:?}"));
             print_line(&format!(
                 "info string   cwd  = {:?}",
@@ -439,8 +473,8 @@ fn load_book(path: &str) -> Option<Book> {
 /// フォールバックはしない。気づかず弱いまま対局する事故を防ぐ）。
 fn load_eval(path: &str) -> Option<(String, std::sync::Arc<NnueNetwork>)> {
     if path.is_empty() {
-        print_line("info string error: EvalFileが未設定です");
-        print_line("info string   isreadyの前に setoption name EvalFile value <パス> を送る");
+        print_line("info string error: EvalFile is not set");
+        print_line("info string   send setoption name EvalFile value <path> before isready");
         std::process::exit(1);
     }
     let mut f = match std::fs::File::open(path) {
@@ -448,9 +482,9 @@ fn load_eval(path: &str) -> Option<(String, std::sync::Arc<NnueNetwork>)> {
         Err(e) => {
             // パスはデバッグ表示で出す。制御文字や全角空白が混入していても
             // エスケープされて見えるため、原因の切り分けができる
-            print_line(&format!("info string error: EvalFileを開けません: {e}"));
+            print_line(&format!("info string error: cannot open EvalFile: {e}"));
             print_line(&format!(
-                "info string   path = {path:?} ({}文字 {}バイト)",
+                "info string   path = {path:?} ({} chars, {} bytes)",
                 path.chars().count(),
                 path.len()
             ));
@@ -467,7 +501,7 @@ fn load_eval(path: &str) -> Option<(String, std::sync::Arc<NnueNetwork>)> {
             Some((path.to_string(), std::sync::Arc::new(net)))
         }
         Err(e) => {
-            print_line(&format!("info string error: EvalFile読み込み失敗: {e}"));
+            print_line(&format!("info string error: failed to load EvalFile: {e}"));
             std::process::exit(1);
         }
     }
@@ -494,14 +528,20 @@ fn main() {
     let (tx, rx) = mpsc::channel::<String>();
     std::thread::spawn(move || {
         let stdin = std::io::stdin();
-        for line in std::io::BufRead::lines(stdin.lock()) {
-            match line {
-                Ok(l) => {
+        let mut reader = stdin.lock();
+        let mut buf = Vec::new();
+        loop {
+            buf.clear();
+            match std::io::BufRead::read_until(&mut reader, b'\n', &mut buf) {
+                Ok(0) => break,
+                Ok(_) => {
+                    let l = decode_line(&buf);
                     log_line('<', &l);
                     if tx.send(l).is_err() {
                         return;
                     }
                 }
+                Err(e) if e.kind() == std::io::ErrorKind::Interrupted => continue,
                 Err(_) => break,
             }
         }
@@ -671,6 +711,27 @@ mod tests {
         // 1970より前は通日が負になる
         assert_eq!(date_string(-1), "1969-12-31");
         assert_eq!(date_string(-25_508), "1900-03-01");
+    }
+
+    #[test]
+    fn usi_ascii_escapes_non_ascii() {
+        assert_eq!(usi_ascii("readyok"), "readyok");
+        assert_eq!(
+            usi_ascii("info string path = C:\\将棋\\a.db"),
+            "info string path = C:\\\\u{5c06}\\u{68cb}\\a.db"
+        );
+        assert!(usi_ascii("全角\u{3000}空白").is_ascii());
+    }
+
+    #[test]
+    fn decode_line_keeps_non_utf8_bytes_as_a_line() {
+        assert_eq!(decode_line(b"isready\n"), "isready");
+        assert_eq!(decode_line(b"isready\r\n"), "isready");
+        assert_eq!(decode_line(b"quit"), "quit");
+        // cp932の「将棋」。UTF-8として不正でも行として残す
+        let line = decode_line(b"setoption name EvalFile value C:\\\x8f\xab\x8a\xfb\\a\r\n");
+        assert!(line.starts_with("setoption name EvalFile value C:\\"));
+        assert!(line.ends_with("\\a"));
     }
 
     #[test]

@@ -122,12 +122,15 @@ hmwr threadtune --eval <評価関数> --current 6 --hours 8
 併記して終了するので、手元のファイルと突き合わせる。
 
 ```
-info string error: EvalFileを開けません: No such file or directory (os error 2)
-info string   path = "/tmp/net.hmwr" (14文字 14バイト)
+info string error: cannot open EvalFile: No such file or directory (os error 2)
+info string   path = "/tmp/net.hmwr" (14 chars, 14 bytes)
 info string   cwd  = "/home/user/shogi"
 ```
 
-`EvalFile読み込み失敗` で終了するときは、エンジンと評価関数の組が合っていない。
+エンジンはASCIIだけを出力する。パスに含まれる日本語は `\u{5c06}` の形で出るので、
+Unicodeの番号から元の文字を辿る。将棋所での文字化けを避けるためである。
+
+`failed to load EvalFile` で終了するときは、エンジンと評価関数の組が合っていない。
 両方を最新にすると直る。
 
 短い持ち時間で時間を使いすぎるときは、`MinimumThinkingTime` を小さくする。
