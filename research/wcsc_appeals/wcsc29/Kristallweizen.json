@@ -12,7 +12,7 @@
     "https://www.apply.computer-shogi.org/wcsc29/appeal/Kristallweizen/appeal2019_2.pdf",
     "https://www.apply.computer-shogi.org/wcsc29/appeal/Kristallweizen/appeal2019.pdf"
   ],
-  "summary": "前年優勝のHefeweizenの棋風（中盤の難解局面で最善手をあえて外して相手のPonderhitを避ける）を、教師局面を通じてNNUEへ引き継いだ評価関数が柱。学習の初期化ガチャをやり直すシード学習や、引き分けも0.5勝として学習する工夫、AWS 5台のMulti Ponderクラスタを使う。",
+  "summary": "前年優勝のHefeweizenの棋風（中盤の難解局面で最善手をあえて外して相手のPonderhitを避ける）を、教師局面を通じてNNUEへ引き継いだ評価関数が中心。学習の初期化ガチャをやり直すシード学習や、引き分けも0.5勝として学習する工夫、AWS 5台のMulti Ponderクラスタを使う。",
   "base": {
     "engine": "やねうら王",
     "eval_source": "tanuki-のNNUE（HalfKP-256x2-32-32）に、Hefeweizen教師で追加学習",

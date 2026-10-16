@@ -1,6 +1,6 @@
 # 0213: 評価関数の構造を凍結し、「焦点」を学習側で掘る
 
-- Status: proposed
+- Status: superseded（[0229](0229-roadmap-visible-focus.md)で凍結を解いた）
 - Date: 2026-09-18
 - 関連ADR: [0067](0067-ft-dimension-512.md), [0129](0129-auxiliary-heads.md), [0133](0133-effect-pretraining.md), [0157](0157-king-mirror-buckets.md), [0158](0158-mirror-factorizer.md), [0171](0171-ft-pairwise-product.md), [0185](0185-sibling-ranking-loss.md), [0191](0191-blindspot-benchmark.md), [0207](0207-roadmap-focus-eval.md), [0214](0214-epochs-bench.md)
 
@@ -329,3 +329,10 @@ both9が10、splitが11あり、1手に10行以上触る手が0.6〜1.2%ある�
   価値がある。probeの結果にかかわらず、ネットの昇格ごとに測れる形で残す
 - 見直しのトリガーは、ADR-0214で「最適化律速」と出た場合である。その
   ときは本学習の2周が先で、焦点の介入はその後になる
+
+## 追記（2026-10-16）: 凍結を解く
+
+[0229](0229-roadmap-visible-focus.md)で、ROADMAPの注力を「焦点が見える評価関数」に引き直した。評価関数に焦点と
+難しさを出させるには、出力と入力の構造を変える必要がある。そのため本ADRの凍結を解き、
+supersededにする。凍結を理由に取り下げた案はrejectedのまま残し、要るものは新しいADRで
+起こし直す。

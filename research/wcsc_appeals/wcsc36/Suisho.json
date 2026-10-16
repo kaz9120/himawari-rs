@@ -12,7 +12,7 @@
     "https://www.apply.computer-shogi.org/wcsc36/appeal/Suisho/appeal.pdf",
     "https://www.apply.computer-shogi.org/wcsc36/appeal/Suisho/appeal2.pdf"
   ],
-  "summary": "SFNNwithoutPSQT（HalfKAv2-1024_8_64）のNNUEを、Ryfamateの最新DLモデル、DL水匠、AobaZeroの3モデルのアンサンブル評価値で蒸留して学習する。評価値の極端な勝率データによる出力クリッピングを、Ponanza定数の調整で解消した。もう一つの柱は、LLMで観戦向けの解説文を生成する仕組みと、MultiPV用のスレッド数を制限するMultiPV_Threadsである。",
+  "summary": "SFNNwithoutPSQT（HalfKAv2-1024_8_64）のNNUEを、Ryfamateの最新DLモデル、DL水匠、AobaZeroの3モデルのアンサンブル評価値で蒸留して学習する。評価値の極端な勝率データによる出力クリッピングを、Ponanza定数の調整で解消した。もう一つの取り組みは、LLMで観戦向けの解説文を生成する仕組みと、MultiPV用のスレッド数を制限するMultiPV_Threadsである。",
   "base": {
     "engine": "やねうら王",
     "eval_source": null,

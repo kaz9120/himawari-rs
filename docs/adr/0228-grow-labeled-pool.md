@@ -1,6 +1,6 @@
 # 0228: dlshogiで点数を付けた局面の母集団を、重複なく足して増やし続ける
 
-- Status: accepted（入玉5億を重複なく足した母集団の2周が現行に+5.9 Elo。2回目以降の回は続く）
+- Status: accepted（入玉5億を重複なく足した母集団の2周が現行に+5.9 Elo。2回目以降の回は[0229](0229-roadmap-visible-focus.md)で止めた）
 - Date: 2026-10-08
 - 関連ADR: [0206](0206-entering-king-mix.md), [0210](0210-teacher-mix-control.md), [0219](0219-relabel-2b-in-place.md), [0224](0224-selection-bench.md), [0225](0225-dedup-20b.md), [0227](0227-cell-dataset.md)
 
@@ -325,3 +325,9 @@ specは `experiments/adr0228-tanuki-20b-26b.toml` である。
 点数の絶対値の平均を残す。台帳にある局面の割合は、母集団が増えるほど上がるはずである。
 先頭20億の中の重複は14.5%で、今回の標本で台帳にあった局面は17.1%だった。この割合の推移は、tanukiの残りから
 何局面を足せるかの見積もりになる。
+
+## 追記（2026-10-16）: 2回目以降の回を止める
+
+[0229](0229-roadmap-visible-focus.md)で、ROADMAPの注力を引き直した。母集団を増やす回は止め、保留していた3件
+（#716・#718・#720）を閉じる。いまの母集団 `pool1` で注力の方向が決まったら、
+この型で再開する。specは `experiments/adr0228-*.toml` に残してある。

@@ -12,7 +12,7 @@
     "https://www.apply.computer-shogi.org/wcsc36/appeal/sojo/sojo_WCSC36_appeal.pdf",
     "https://www.apply.computer-shogi.org/wcsc36/appeal/sojo/sojo_WCSC36_appeal_detail.pdf"
   ],
-  "summary": "計算資源不足を解決するため、決勝リーグ級のDLモデルを作るふうっぴ氏に声をかけ、ネットで協力者を募って多人数チームに発展させた。DL水匠からの知識蒸留、重複局面の削減、bullet-shogiへの学習移行、KP絶対の進行度でLayerStackを切り替えるSFNNwoP1536_V2が柱。実験結果をていねいに公開している。",
+  "summary": "計算資源不足を解決するため、決勝リーグ級のDLモデルを作るふうっぴ氏に声をかけ、ネットで協力者を募って多人数チームに発展させた。DL水匠からの知識蒸留、重複局面の削減、bullet-shogiへの学習移行、KP絶対の進行度でLayerStackを切り替えるSFNNwoP1536_V2が中心。実験結果をていねいに公開している。",
   "base": {
     "engine": "やねうら王",
     "eval_source": "DL水匠（知識蒸留の教師）",
