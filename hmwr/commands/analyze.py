@@ -39,8 +39,12 @@ def add_parser(sub: argparse._SubParsersAction) -> None:
 
     t = ss.add_parser("record", help="プロファイルを取る")
     t.add_argument("binary", metavar="バイナリ")
-    t.add_argument("--depth", type=int, metavar="N", help="探索の深さ")
-    t.add_argument("--out", metavar="ファイル", help="出力先")
+    t.add_argument("--depth", type=int, metavar="N", help="探索の深さ（既定 25）")
+    t.add_argument("--threads", type=int, metavar="N", help="探索スレッド数（既定 1）")
+    t.add_argument("--positions", metavar="パス", help="局面リスト。既定は組み込みの4局面")
+    t.add_argument(
+        "--out", metavar="ファイル", help="出力先（既定 data/profile/profile.json.gz）"
+    )
     t.set_defaults(func=profile_record)
 
     t = ss.add_parser(
@@ -52,6 +56,11 @@ def add_parser(sub: argparse._SubParsersAction) -> None:
     t.add_argument("profile", metavar="プロファイル")
     t.add_argument("binary", nargs="?", metavar="バイナリ", help="デバッグ情報付き")
     t.add_argument("--top", type=int, default=20, metavar="N", help="上位何件")
+    t.add_argument(
+        "--categories",
+        action="store_true",
+        help="探索時間を処理の種類ごとに分けた表も出す。バイナリが要る",
+    )
     t.set_defaults(func=profile_report)
 
 
@@ -79,16 +88,23 @@ def league_summary(args: argparse.Namespace) -> int:
 
 
 def profile_record(args: argparse.Namespace) -> int:
-    extra: list[str] = []
+    out = args.out or str(paths.PROFILE / "profile.json.gz")
+    extra: list[str] = ["--out", out]
     if args.depth:
         extra += ["--depth", str(args.depth)]
-    if args.out:
-        extra += ["--out", args.out]
-    return proc.run(
+    if args.threads:
+        extra += ["--threads", str(args.threads)]
+    if args.positions:
+        extra += ["--positions", args.positions]
+    code = proc.run(
         proc.cargo_tool("profile", [args.binary, *extra]),
         dry_run=args.dry_run,
         env=config.measure_env(),
     )
+    if args.dry_run:
+        return code
+    print()
+    return profile_tool.main([out, args.binary])
 
 
 def profile_report(args: argparse.Namespace) -> int:
@@ -96,6 +112,8 @@ def profile_report(args: argparse.Namespace) -> int:
     if args.binary:
         argv.append(args.binary)
     argv += ["--top", str(args.top)]
+    if args.categories:
+        argv.append("--categories")
     if args.dry_run:
         print(f"[dry-run] プロファイルを集計する: {args.profile}")
         return proc.OK

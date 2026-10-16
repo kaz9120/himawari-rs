@@ -424,11 +424,15 @@ READMEの画像はこれで、ワークフロー `rate-graph.yml` が毎日作�
 ### 速度の内訳とリーグ戦
 
 ```
-hmwr profile record <バイナリ>       プロファイルを取る
-hmwr profile report <プロファイル>   self時間の上位を出す
+hmwr profile record <バイナリ> --threads 8 --positions <局面リスト>   プロファイルを取る
+hmwr profile report <プロファイル> <バイナリ> --categories   処理の種類ごとの割合も出す
 hmwr league run <バイナリ>...        総当たり戦を回す
 hmwr league summary <棋譜>           相対Eloを集計する
 ```
+
+`--categories` は、インライン展開まで遡った呼び出し連鎖で探索時間を分ける
+（ADR-0230）。盤面操作・NNUE・指し手の順序付けの割合が出る。バイナリは
+`CARGO_PROFILE_RELEASE_DEBUG=1` でビルドしたものを渡す。
 
 ### CIを待つ
 

@@ -5,6 +5,10 @@
 （CARGO_PROFILE_RELEASE_DEBUG=1 でビルドする）。ソース行の解決には
 atos を使うため、macOS上でしか行番号は出ない。
 
+`--categories` を付けると、探索時間を処理の種類ごとに分けた表を出す
+（ADR-0230）。インライン展開された関数まで呼び出し連鎖を復元して数えるので、
+self時間の表では呼び出し元へ溶けて見えない処理も拾える。
+
 終了コード: 0=成功、2=引数エラー、3=実行時エラー（ADR-0122）。
 """
 
@@ -18,6 +22,7 @@ import shutil
 import subprocess
 import sys
 from collections import defaultdict
+from pathlib import Path
 
 # Mach-Oの既定のロードアドレス。atosへ渡すRVAの基準
 MACHO_VM_BASE = 0x100000000
@@ -52,6 +57,11 @@ def build_parser():
     )
     parser.add_argument(
         "--top", type=int, default=20, help="上位何件を表示するか（既定20）"
+    )
+    parser.add_argument(
+        "--categories",
+        action="store_true",
+        help="探索時間を処理の種類ごとに分けた表を出す。バイナリが要る",
     )
     return parser
 
@@ -212,6 +222,211 @@ def report(profile, binary, topn):
     return 0
 
 
+# --- 処理の種類ごとの内訳（ADR-0230） ---
+
+# (表示名, 盤面操作か, 優先の型, 関数名の正規表現)
+# 呼び出し連鎖を葉から根へ辿り、最初に当たった種類へサンプルを数える
+# （優先の型 "inner"）。"outer" の種類は、連鎖のどこかに現れたら内側より
+# 先に取る。1手詰めの中のis_legalや、do_moveの中の王手の更新を、呼び出し元の
+# 処理として数えるためである。"fallback" は利きを引く下請けの関数で、
+# 連鎖のどこにもほかの種類が無いときだけ取る。
+CATEGORIES = [
+    ("1手詰め", True, "outer", r"himawari_engine::mate::"),
+    ("do_move・undo_move", True, "outer", r"Position>::(do_move|undo_move|do_null_move|undo_null_move)$"),
+    ("SEE", True, "inner", r"Position>::(see_ge|least_valuable_attacker)$"),
+    (
+        "王手判定",
+        True,
+        "inner",
+        r"Position>::(gives_check|gives_direct_check_slow|check_squares|compute_check_squares"
+        r"|check_info|slider_blockers|blockers_for_king|pinners|update_checkers)$",
+    ),
+    ("合法性判定", True, "inner", r"Position>::(is_legal|pseudo_legal|is_pawn_drop_mate|to_move)$"),
+    ("指し手生成", True, "inner", r"himawari_core::movegen::"),
+    ("利きの計算（上記の外から）", True, "fallback", r"(Position>::attackers_to$|himawari_core::attacks::)"),
+    ("千日手・宣言勝ち", False, "inner", r"Position>::(scan_repetition|repetition_state\w*|can_declare_win)$"),
+    (
+        "NNUEの差分更新",
+        False,
+        "inner",
+        r"(NnueState>::(push|pop|ensure_both|apply_range\w*|refresh_top|computed_ancestor)$"
+        r"|nnue_acc::(apply_rows|diff_rows|hand_delta_of))",
+    ),
+    ("NNUEの推論", False, "inner", r"(himawari_engine::nnue_simd::|NnueState>::evaluate$)"),
+    ("指し手の順序付け", False, "inner", r"himawari_engine::movepick::"),
+    ("置換表", False, "inner", r"(Worker>::probe_tt$|himawari_engine::tt::)"),
+]
+OTHER = "探索のその他"
+# このいずれかを連鎖に含むサンプルだけを探索時間として数える
+SEARCH_FRAME = re.compile(r"himawari_engine::search::Worker>::")
+_COMPILED = [(name, board, kind, re.compile(pat)) for name, board, kind, pat in CATEGORIES]
+
+
+def clean_name(name):
+    """関数名からジェネリクスの実引数とハッシュを落とす。"""
+    name = re.sub(r"::<[^<>]*>$", "", name)
+    return re.sub(r"::h[0-9a-f]{16}$", "", name)
+
+
+def classify(chain):
+    """論理フレームの連鎖（葉が先頭）を種類の名前へ落とす。"""
+    names = [clean_name(n) for n in chain]
+    for kind in ("outer", "inner", "fallback"):
+        rules = [(name, pat) for name, _, k, pat in _COMPILED if k == kind]
+        if kind == "outer":
+            hit = next((name for name, pat in rules if any(pat.search(n) for n in names)), None)
+        else:
+            hit = next((name for n in names for name, pat in rules if pat.search(n)), None)
+        if hit:
+            return hit
+    return OTHER
+
+
+def demangle(names):
+    """c++filtでRustの記号名を戻す。無ければそのまま返す。"""
+    if not names or shutil.which("c++filt") is None:
+        return list(names)
+    out = subprocess.run(
+        ["c++filt"], input="\n".join(names), capture_output=True, text=True, check=False
+    ).stdout.splitlines()
+    return out if len(out) == len(names) else list(names)
+
+
+def resolve_inline(binary, addrs):
+    """アドレス -> インライン展開を含む関数名の連鎖（内側が先頭）をatosで引く。"""
+    reason = None
+    if platform.system() != "Darwin":
+        reason = f"atosはmacOS専用。{platform.system()}では実行できない"
+    elif shutil.which("atos") is None:
+        reason = "atosが見つからない（Xcodeコマンドラインツールが要る）"
+    if reason:
+        return {}, reason
+    raw = {}
+    arch = platform.machine()
+    addrs = sorted(addrs)
+    for i in range(0, len(addrs), 2000):
+        chunk = addrs[i : i + 2000]
+        out = subprocess.run(
+            ["atos", "-i", "-o", binary, "-arch", arch, "-l", hex(MACHO_VM_BASE)]
+            + [hex(MACHO_VM_BASE + a) for a in chunk],
+            capture_output=True,
+            text=True,
+            check=False,
+        ).stdout
+        # 1アドレスぶんの連鎖は空行で区切られる
+        blocks = [b for b in out.split("\n\n") if b.strip()]
+        for a, block in zip(chunk, blocks):
+            raw[a] = [re.sub(r" \(in [^)]*\).*$", "", ln) for ln in block.splitlines()]
+    flat = sorted({n for chain in raw.values() for n in chain})
+    table = dict(zip(flat, demangle(flat)))
+    return {a: [table[n] for n in chain] for a, chain in raw.items()}, None
+
+
+def category_report(data, binary):
+    """全スレッドの探索中のサンプルを、処理の種類ごとに数えて表にする。"""
+    if not binary:
+        print("（種類ごとの内訳は出せない。デバッグ情報付きのバイナリの指定が要る）")
+        return
+    libs = data["libs"]
+    own = {i for i, lib in enumerate(libs) if lib["debugName"] == Path(binary).name}
+    if not own:
+        # 記録した後でバイナリを改名した場合。システムの外にあるライブラリを本体とみなす
+        own = {
+            i
+            for i, lib in enumerate(libs)
+            if not lib["path"].startswith(("/usr/lib/", "/System/"))
+        }
+    # (スレッド番号, スタック番号) -> 物理フレームの列（葉が先頭）
+    per_thread = []
+    addrs = set()
+    for thread in data["threads"]:
+        stacks, frames = thread["stackTable"], thread["frameTable"]
+        funcs, resources = thread["funcTable"], thread["resourceTable"]
+        strings = thread["stringArray"]
+
+        def frame_key(fi, leaf, funcs=funcs, frames=frames, resources=resources, strings=strings):
+            func, addr = frames["func"][fi], frames["address"][fi]
+            ri = funcs["resource"][func]
+            if ri is not None and ri >= 0 and resources["lib"][ri] in own and addr is not None:
+                # 葉でないフレームは戻り先を指すので、1引いて呼び出し命令へ寄せる
+                a = addr if leaf else addr - 1
+                addrs.add(a)
+                return ("own", a)
+            return ("name", strings[funcs["name"][func]])
+
+        cache = {}
+
+        def stack_frames(si, stacks=stacks, cache=cache, frame_key=frame_key):
+            if si in cache:
+                return cache[si]
+            out, cur, leaf = [], si, True
+            while cur is not None:
+                out.append(frame_key(stacks["frame"][cur], leaf))
+                leaf = False
+                cur = stacks["prefix"][cur]
+            cache[si] = out
+            return out
+
+        samples = thread["samples"]
+        weights = samples.get("weight") or [1] * len(samples["stack"])
+        for si, w in zip(samples["stack"], weights):
+            if si is not None:
+                per_thread.append((stack_frames(si), w or 1))
+
+    chains, reason = resolve_inline(binary, addrs)
+    if reason:
+        print(f"（種類ごとの内訳は出せない。{reason}）")
+        return
+
+    helper = next(pat for _, _, k, pat in _COMPILED if k == "fallback")
+    counts = defaultdict(int)
+    total = 0
+    in_helper = defaultdict(int)
+    memo = {}
+    for frames, w in per_thread:
+        key = id(frames)
+        if key not in memo:
+            chain = []
+            for kind, v in frames:
+                chain.extend(chains.get(v, [f"0x{v:x}"]) if kind == "own" else [v])
+            if any(SEARCH_FRAME.search(n) for n in chain):
+                names = [clean_name(n) for n in chain]
+                memo[key] = (classify(chain), any(helper.search(n) for n in names))
+            else:
+                memo[key] = None
+        if memo[key] is None:
+            continue
+        cat, uses_helper = memo[key]
+        counts[cat] += w
+        total += w
+        if uses_helper:
+            in_helper[cat] += w
+    if total == 0:
+        print("（探索中のサンプルがない）")
+        return
+
+    print(f"--- 探索時間の内訳（全スレッド、探索中のサンプル {total}） ---")
+    # 「うち利き」は、その種類の時間のうち利きを引く関数（attackers_to・
+    # attacks）の中にいた分。利きを差分で持つと安くなる見込みの上限に当たる
+    print("| 処理 | 盤面操作 | 割合 | うち利き |")
+    print("|---|---|---|---|")
+    board_total = 0
+    board_helper = 0
+    for name, board, _, _ in CATEGORIES + [(OTHER, False, "", "")]:
+        v = counts.get(name, 0)
+        h = in_helper.get(name, 0)
+        if board:
+            board_total += v
+            board_helper += h
+        print(
+            f"| {name} | {'○' if board else ''} | {v * 100 / total:.1f}% | {h * 100 / total:.1f}% |"
+        )
+    print(
+        f"| 盤面操作の合計 | ○ | {board_total * 100 / total:.1f}% "
+        f"| {board_helper * 100 / total:.1f}% |"
+    )
+
+
 def main(argv=None):
     parser = build_parser()
     args = parser.parse_args(argv)
@@ -225,7 +440,11 @@ def main(argv=None):
         return 3
 
     try:
-        return report({"data": data, "syms_path": syms_path}, args.binary, args.top)
+        code = report({"data": data, "syms_path": syms_path}, args.binary, args.top)
+        if args.categories:
+            print()
+            category_report(data, args.binary)
+        return code
     except (OSError, json.JSONDecodeError, KeyError) as e:
         error(f"プロファイルの解析に失敗した: {e}")
         return 3
