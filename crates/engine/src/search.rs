@@ -7,7 +7,7 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicI64, AtomicU64, Ordering};
 
 use himawari_core::{
-    Color, Move, MoveList, Piece, PieceType, Position, Repetition, Square, generate_legal,
+    Bitboard, Color, Move, MoveList, Piece, PieceType, Position, Repetition, Square, generate_legal,
 };
 
 use crate::eval::Evaluator;
@@ -1894,13 +1894,13 @@ impl Worker {
                 // singular側を採る（多段化した延長量を王手延長で潰さない）。
                 // 参照実装は延長をムーブループの枝刈りの後で加えるので、枝刈りの
                 // 尺度（lmr_depth）はこの値でなく `depth - 1` を基準にする
-                let (extension, base_depth) = match singular_ext {
+                let (mut extension, base_depth, check_ext) = match singular_ext {
                     // singularの判定が付いたTT手。参照実装はムーブループの中で
                     // `newDepth = depth - 1` を先に決め、そのあとdepthを増やすので、
                     // 増えた1手はTT手自身には乗らない
                     // （yaneuraou-search.cpp:3556, 3788）
-                    Some(e) if m == tt.mv => (e, depth_pre_singular),
-                    _ => (i32::from(gives_check), depth as i32),
+                    Some(e) if m == tt.mv => (e, depth_pre_singular, false),
+                    _ => (i32::from(gives_check), depth as i32, gives_check),
                 };
                 let mut new_depth = base_depth - 1 + extension;
 
@@ -1937,6 +1937,12 @@ impl Worker {
 
                 self.set_current_move(ply, m, is_capture);
                 self.make_move(m);
+                // 取られるだけの王手は延長しない（ADR-0233）。判定は進めた後の
+                // 局面で行う。延長量はここより前の枝刈りの尺度に入らない
+                if check_ext && is_hanging_check(&self.pos, m.to()) {
+                    extension -= 1;
+                    new_depth -= 1;
+                }
 
                 let mut value = -VALUE_INFINITE;
                 if depth >= 2 && count > 1 {
@@ -3204,6 +3210,21 @@ impl Worker {
     }
 }
 
+/// 直前の手が「取られるだけの王手」かを、進めた後の局面で判定する（ADR-0233）。
+///
+/// 王手している駒が `to` の駒1枚だけ（直接王手。開き王手と両王手は含めない）で、
+/// `to` に相手の利きがあり、自分の利きが無いときに真を返す。ピンと交換の損得は
+/// 見ない。`to` の駒は自分の升に利かないので、自分の利きから除く手間は要らない。
+#[inline]
+fn is_hanging_check(pos: &Position, to: Square) -> bool {
+    if pos.checkers() != Bitboard::from_square(to) {
+        return false;
+    }
+    let them = pos.side_to_move();
+    let occ = pos.occupied();
+    !pos.attackers_to(them, to, occ).is_empty() && pos.attackers_to(them.flip(), to, occ).is_empty()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -3252,6 +3273,27 @@ mod tests {
         );
         let result = worker.iterate(&mut |_| {});
         (worker.nodes, result.best)
+    }
+
+    /// 進めた後の局面で、取られるだけの王手かを判定する（ADR-0233）。
+    fn hanging_after(sfen: &str, usi: &str) -> bool {
+        let mut pos = Position::from_sfen(sfen).unwrap();
+        let m = pos.move_from_usi(usi).unwrap();
+        pos.do_move(m);
+        assert!(pos.in_check(), "{usi} は王手でない");
+        is_hanging_check(&pos, m.to())
+    }
+
+    #[test]
+    fn hanging_check_needs_support_and_attacker() {
+        // 玉の頭への金打ち。支えが無いので玉に取られるだけ
+        assert!(hanging_after("4k4/9/9/9/9/9/9/9/4K4 b G 1", "G*5b"));
+        // 歩で支えた金打ちは取られるだけではない
+        assert!(!hanging_after("4k4/9/4P4/9/9/9/9/9/4K4 b G 1", "G*5b"));
+        // 離れた升からの飛車打ちは、相手の利きが無いので外さない
+        assert!(!hanging_after("4k4/9/9/9/9/9/9/9/K8 b R 1", "R*5e"));
+        // 開き王手は直接王手でないので外さない
+        assert!(!hanging_after("4k4/9/9/9/4S4/9/9/4R4/K8 b - 1", "5e6d"));
     }
 
     /// 機能検証（ADR-0049）: eval hashは探索を変えないはずである。
