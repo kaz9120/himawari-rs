@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.55.2](https://github.com/kaz9120/himawari-rs/compare/v0.55.1...v0.55.2) (2026-10-16)
+
+
+### その他の変更
+
+* hmwrの終了コードとdry-runの副作用を規約に揃える ([#774](https://github.com/kaz9120/himawari-rs/issues/774)) ([0e264cb](https://github.com/kaz9120/himawari-rs/commit/0e264cb411887d67a22099d5d7e59841c4e4aa8a)), closes [#756](https://github.com/kaz9120/himawari-rs/issues/756)
+
 ## [0.55.1](https://github.com/kaz9120/himawari-rs/compare/v0.55.0...v0.55.1) (2026-10-16)
 
 
