@@ -28,6 +28,17 @@ QUEUE = REPO / "data" / "queue"
 SCRIPTS = REPO / "scripts"
 CHECKPOINTS = REPO / "training" / "checkpoints"
 
+# 書き込みのある置き場の名前。テストはこの全部を一時ディレクトリへ移す
+# （tests/conftest.py）。置き場を足したらここにも足す
+PLACES = (
+    "BIN", "LOGS", "NETS", "SPRT", "SPSA", "BOOK", "TRAIN", "STATUS",
+    "PROFILE", "LEDGER", "RAW", "QUEUE", "CHECKPOINTS",
+)  # fmt: skip
+
+# 上の置き場の根。本番ではリポジトリそのもので、テストでだけ一時ディレクトリになる。
+# 表示（rel）はここからの相対にするので、移しても表示は変わらない
+WORK = REPO
+
 # 実験名。ファイル名になるので、パス区切りと空白を弾く。ネット名は
 # アンダースコアを含むため（pairprod_2990M_q1）、そこは許す
 NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
@@ -87,8 +98,11 @@ def release_bin(name: str) -> Path:
 def rel(path: str | Path) -> str:
     """リポジトリの中のパスは相対で見せる。表示が長いと読み飛ばされる。"""
     s = str(path)
-    prefix = f"{REPO}/"
-    return s[len(prefix) :] if s.startswith(prefix) else s
+    for root in (WORK, REPO):
+        prefix = f"{root}/"
+        if s.startswith(prefix):
+            return s[len(prefix) :]
+    return s
 
 
 def display_width(text: str) -> int:

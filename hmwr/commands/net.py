@@ -335,7 +335,7 @@ def train(args: argparse.Namespace) -> int:
         argv += args.extra.split()
 
     if not args.dry_run:
-        for directory in (paths.NETS, paths.REPO / RUNS, paths.CHECKPOINTS / name):
+        for directory in (paths.NETS, paths.WORK / RUNS, paths.CHECKPOINTS / name):
             directory.mkdir(parents=True, exist_ok=True)
 
     # 備考は学習の記録のメモで、学習の条件ではない
@@ -516,10 +516,10 @@ def probe(args: argparse.Namespace) -> int:
     if args.lr:
         argv += ["--peak-lr", args.lr]
 
-    (paths.REPO / RUNS).mkdir(parents=True, exist_ok=True)
     if args.dry_run:
         argv += ["--out", "<一時ファイル>"]
         return proc.run(argv, dry_run=True, log=paths.log("probe", name))
+    (paths.WORK / RUNS).mkdir(parents=True, exist_ok=True)
     # 学習器は必ずネットを書き出すが、probeのそれは捨てるものである。
     # FTは凍結していて1ビットも変わらず、学習した焦点ヘッドは載らない。
     # data/nets/ へ置くと128MBの使い道のないファイルが実行ごとに増える
