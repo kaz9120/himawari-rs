@@ -57,8 +57,12 @@ hmwr match run <名前> --build <ビルド名> --base-net <ネット名> --cand-
   --stop pairs:1000                   固定ペア数を指し切り、Eloを推定する
 hmwr match run <名前> --cand-opt Threads=8 --cand-odds 0.5   片側だけ条件を変える
 hmwr match run <名前> --opt Threads=4 --concurrency 2        並列度を下げる
+hmwr match run <名前> --nodes 300000                        1手のノード数を固定する
 hmwr match show <名前>                途中経過・結果（sprt show と同じ）
 ```
+
+`--nodes N` はノード数固定で指し、`--tc` と時間オッズとは併用できない。
+評価関数の質を速度と切り分けて測るときに使う（ADR-0127・ADR-0157の型）。
 
 対局者はビルド・評価関数・USIオプション・時間オッズの組で表す。ビルドは
 `data/bin/<名前>`、評価関数は `data/nets/<名前>.hmwr`、開始局面集は

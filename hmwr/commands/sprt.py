@@ -278,6 +278,7 @@ def _read_result(result: Path) -> dict[str, str]:
 # 条件の記録にある、測定条件の鍵へ畳むフラグ
 _ENV_FLAGS = {
     "--tc": "SPRT_TC",
+    "--nodes": "SPRT_NODES",
     "--concurrency": "SPRT_CONCURRENCY",
     "--adjudicate": "SPRT_ADJUDICATE",
     "--elo0": "SPRT_ELO0",

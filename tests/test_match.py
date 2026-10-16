@@ -96,6 +96,33 @@ def test_per_side_options_and_odds(capsys):
     assert "--openings openings/start_sfens_ply32.txt" in play
 
 
+def test_fixed_nodes_replace_the_time_control(capsys):
+    """`--nodes N` はノード数固定で指す。持ち時間は渡さない（issue #832）。"""
+    _, lines = dry(capsys, ["match", "run", "x", "--nodes", "300000"])
+    play = play_line(lines)
+    assert "--nodes 300000 --concurrency " in play
+    assert "--tc" not in play
+
+
+def test_fixed_nodes_match_the_environment_variable(capsys, monkeypatch):
+    """`--nodes N` は SPRT_NODES=N と同じ条件を組み立てる。"""
+    _, by_flag = dry(capsys, ["match", "run", "x", "--nodes", "300000"])
+    monkeypatch.setenv("SPRT_NODES", "300000")
+    _, by_env = dry(capsys, ["match", "run", "x"])
+    assert play_line(by_flag) == play_line(by_env)
+
+
+@pytest.mark.parametrize("argv", [
+    ["--nodes", "300000", "--tc", "60+0.6"],
+    ["--nodes", "300000", "--set", "SPRT_TC=60+0.6"],
+    ["--nodes", "0"],
+    ["--nodes", "300000", "--cand-odds", "0.5"],
+])  # fmt: skip
+def test_fixed_nodes_refuse_what_they_cannot_use(argv):
+    """持ち時間と時間オッズは、ノード数固定では黙って無視させない。"""
+    assert cli.main(["--dry-run", "match", "run", "x", *argv]) == proc.USAGE
+
+
 def test_builds_default_to_the_pair(capsys, empty_dirs):
     """ビルドを省くと build pair の出力を使う。sprt run と同じ対局になる。"""
     for side in ("base", "cand"):

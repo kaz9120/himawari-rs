@@ -101,6 +101,13 @@ def add_parser(sub: argparse._SubParsersAction) -> None:
     t.add_argument("--openings", metavar="名前", help="開始局面集。openings/<名前>.txt")
     t.add_argument("--tc", metavar="持ち時間", help="例 60+0.6（既定 10+0.1）")
     t.add_argument(
+        "--nodes",
+        type=int,
+        metavar="N",
+        help="1手のノード数を固定して指す。--tc と時間オッズとは併用できない。"
+        "評価関数の質を速度と切り分けて測るときに使う",
+    )
+    t.add_argument(
         "--concurrency",
         type=int,
         metavar="N",
@@ -205,6 +212,11 @@ def settings(args: argparse.Namespace) -> dict[str, str]:
         env["SPRT_ELO1"] = "0"
     if getattr(args, "tc", None):
         env["SPRT_TC"] = args.tc
+    nodes = getattr(args, "nodes", None)
+    if nodes is not None:
+        if nodes < 1:
+            raise proc.Fail(f"--nodes は1以上で書く: {nodes}", proc.USAGE)
+        env["SPRT_NODES"] = str(nodes)
     concurrency = getattr(args, "concurrency", None)
     if concurrency is not None:
         if concurrency < 1:
@@ -217,7 +229,7 @@ def settings(args: argparse.Namespace) -> dict[str, str]:
     # 並列度は既定の一覧になく（マシンのコア数から決まる）、鍵の一覧にも
     # 載らなかった。sprtは畳んだ条件を --set で子へ渡し直すので、ここで
     # 許していないと `--concurrency` を付けた実行が子で落ちる
-    allowed = set(config.DEFAULTS) | {"SPRT_MAX_PAIRS", "SPRT_CONCURRENCY"}
+    allowed = set(config.DEFAULTS) | {"SPRT_MAX_PAIRS", "SPRT_CONCURRENCY", "SPRT_NODES"}
     for item in getattr(args, "set", None) or []:
         if "=" not in item:
             raise proc.Fail(f"--set はKEY=VALUEで書く: {item}", proc.USAGE)
@@ -228,6 +240,13 @@ def settings(args: argparse.Namespace) -> dict[str, str]:
                 proc.USAGE,
             )
         env[key] = value
+    # ノード数固定と持ち時間は、どちらが効くかを実装依存にしない。両方を
+    # 明示した実行は、条件の記録を読んでも意図が分からなくなるので止める
+    if "SPRT_NODES" in env and "SPRT_TC" in env:
+        raise proc.Fail(
+            "--nodes と --tc は同時に指定できない（ノード数固定は持ち時間を使わない）",
+            proc.USAGE,
+        )
     return env
 
 
@@ -253,6 +272,16 @@ def spec_from(args: argparse.Namespace) -> Spec:
     if stop_pairs and (args.max_pairs or args.noninferiority):
         raise proc.Fail("--max-pairs と --noninferiority は --stop sprt の指定である", proc.USAGE)
 
+    env = settings(args)
+    # 時間オッズは初期時間と加算に掛かる。ノード数固定では掛ける先がなく、
+    # 黙って無視される組み合わせになるので止める
+    if "SPRT_NODES" in env and (args.base_odds or args.cand_odds):
+        raise proc.Fail(
+            "--nodes と時間オッズ（--base-odds・--cand-odds）は併用できない"
+            "（ノード数固定では持ち時間に効かない）",
+            proc.USAGE,
+        )
+
     return Spec(
         name=args.name,
         base=Player(
@@ -272,7 +301,7 @@ def spec_from(args: argparse.Namespace) -> Spec:
         openings=_named(args.openings, paths.REPO / "openings", ".txt") if args.openings else "",
         hash_mb=args.hash or "",
         max_moves=args.max_moves or "",
-        env=settings(args),
+        env=env,
         adopt=args.adopt,
     )
 
@@ -508,9 +537,12 @@ def play_command(spec: Spec) -> list[str]:
     if spec.cand.odds:
         argv += ["--codds", spec.cand.odds]
 
+    argv += ["--openings", spec.openings or setting("OPENINGS")]
+    # 1手の持ち時間の決め方は1つだけ渡す。環境変数で両方が立っていたら
+    # ノード数固定を採る（フラグで両方を書いた実行は settings が止める）
+    nodes = setting("SPRT_NODES")
+    argv += ["--nodes", nodes] if nodes else ["--tc", setting("SPRT_TC", "10+0.1")]
     argv += [
-        "--openings", spec.openings or setting("OPENINGS"),
-        "--tc", setting("SPRT_TC", "10+0.1"),
         "--concurrency", setting("SPRT_CONCURRENCY", "8"),
         "--hash", spec.hash_mb or config.MATCH_HASH,
         "--max-moves", spec.max_moves or config.MATCH_MAX_MOVES,
