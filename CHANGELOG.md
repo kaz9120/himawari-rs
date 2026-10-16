@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.55.10](https://github.com/kaz9120/himawari-rs/compare/v0.55.9...v0.55.10) (2026-10-16)
+
+
+### その他の変更
+
+* hmwr match run にノード数固定（--nodes）の口を足す ([#834](https://github.com/kaz9120/himawari-rs/issues/834)) ([0d165ec](https://github.com/kaz9120/himawari-rs/commit/0d165ec9f5ccbf601260baade6553d563de01d44)), closes [#832](https://github.com/kaz9120/himawari-rs/issues/832)
+
 ## [0.55.9](https://github.com/kaz9120/himawari-rs/compare/v0.55.8...v0.55.9) (2026-10-16)
 
 
