@@ -38,7 +38,7 @@ def artifacts(tmp_path, monkeypatch):
         (tmp_path / area.lower()).mkdir()
         monkeypatch.setattr(paths, area, tmp_path / area.lower())
     monkeypatch.setattr(paths, "REPO", tmp_path)
-    (tmp_path / "training" / "runs").mkdir(parents=True)
+    paths.RUNS.mkdir(parents=True)
     return tmp_path
 
 
@@ -65,7 +65,7 @@ def test_training_is_read_from_the_registry_and_the_last_row_wins(artifacts):
         "t\tn\tdata/train/old.psv\t1000\t1\t16384\t0.001\t1e-06\t100\t0.7\t10\t0.6\t0.6\t20\t36\tmemo",
         "t\tn\tdata/train/m.psv\t360000000\t1\t16384\t0.001\t1e-06\t100\t0.7\t20000\t0.49123\t0.49117\t21973\t7532\tmemo",
     ]
-    (artifacts / report.REGISTRY).write_text(REGISTRY_HEAD + "\n".join(rows) + "\n", encoding="utf-8")
+    paths.registry().write_text(REGISTRY_HEAD + "\n".join(rows) + "\n", encoding="utf-8")
     assert report.train_row("n") == [
         "n", "data/train/m.psv", "360,000,000", "21973", "0.49123（step 20000）", "0.49117", "2.1時間",
     ]  # fmt: skip

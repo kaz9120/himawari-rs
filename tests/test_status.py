@@ -67,6 +67,20 @@ def test_read_all_marks_dead_and_stale_runs(home):
     assert "alive" not in {b["name"]: b for b in heartbeat.read_all()}["alive"]
 
 
+def test_read_all_reads_by_schema_and_reports_what_it_skips(home, capsys):
+    heartbeat.Heartbeat("match", "now").finish("done")
+    assert json.loads((home / "status" / "match-now.json").read_text())["schema"] == heartbeat.SCHEMA
+    # 版を付ける前に書いた状態ファイルは版1として読む
+    legacy = {"kind": "net", "name": "old", "state": "done", "updated": "2026-10-01T00:00:00+0900"}
+    (home / "status" / "net-old.json").write_text(json.dumps(legacy))
+    (home / "status" / "net-future.json").write_text(json.dumps({**legacy, "schema": 99}))
+    (home / "status" / "net-broken.json").write_text("{")
+    names = {b["name"] for b in heartbeat.read_all()}
+    assert names == {"now", "old"}
+    err = capsys.readouterr().err
+    assert "net-future.json" in err and "net-broken.json" in err
+
+
 def test_keepalive_rewrites_the_file_while_the_block_runs(home):
     hb = heartbeat.Heartbeat("exp", "long", interval=0.01)
     path = home / "status" / "exp-long.json"

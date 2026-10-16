@@ -25,7 +25,6 @@ PSV_BYTES = 40
 SCORE_OFFSET = 32  # i16、リトルエンディアン
 SCORE_LIMIT = 30000  # mateの飽和。psv relabel（ADR-0205）と揃える
 DEFAULT_SCALE = 600.0  # training/model.py の SIGMOID_SCALE
-DEFAULT_MODEL = "data/models/dlshogi/model-dr2_exhi.onnx"
 EPS = 1e-6
 
 

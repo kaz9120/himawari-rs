@@ -17,8 +17,9 @@ from .. import release as release_mod
 from ..tools import focus_labels, ft_reorder
 
 TRAINER = "training/train.py"
-REGISTRY = "training/runs/registry.tsv"
-RUNS = "training/runs/net_shape"
+
+# 学習曲線のTSVの置き場。paths.RUNS の下に置く
+CURVES = "net_shape"
 
 # 1局面40バイト固定（ADR-0038）
 BYTES_PER_POSITION = 40
@@ -77,11 +78,6 @@ def add_parser(sub: argparse._SubParsersAction) -> None:
         "--extra",
         metavar="引数",
         help="学習器へ素通しする追加引数。ハイフンで始まる値は --extra=--flag と書く",
-    )
-    t.add_argument(
-        "--halfka",
-        action="store_true",
-        help="HalfKA拡張のwheelで学習する。省くとHalfKPを検査して使う",
     )
     t.add_argument("--force", action="store_true", help="同じ名前のネットがあっても最初から学習し直す")
     t.add_argument(
@@ -242,40 +238,29 @@ def positions(psv: Path) -> int:
     return psv.stat().st_size // BYTES_PER_POSITION
 
 
-def _ensure_extension(*, halfka: bool, dry_run: bool) -> None:
-    """py拡張の入力次元を要求と揃える。
+def _ensure_extension(*, dry_run: bool) -> None:
+    """py拡張が入っていなければ作って入れる。
 
-    wheelはインストールされた状態が残るので、halfkaの学習の後に
-    そのままHalfKPを学習すると次元が黙ってずれる。毎回検査し、
-    ずれていれば作り直して入れ替える。
+    入力次元は拡張が持つ `himawari.FT_IN` を正とし、ここでは数を持たない。
     """
     if dry_run:
-        if halfka:
-            print("[dry-run] py拡張の入力次元を検査し、必要ならHalfKAで作り直す")
         return
-    want = 81 * (1629 if halfka else 1548)
     got = proc.capture(
         ["python3", "-c", "import himawari; print(himawari.FT_IN)"]
     ).strip()
-    if got == str(want):
+    if got:
         return
-    label = "HalfKA" if halfka else "HalfKP"
-    print(f"py拡張を{label}で作り直す（今の入力次元: {got or '未導入'}）")
-    wheels = paths.REPO / "target" / ("wheels-halfka" if halfka else "wheels")
-    argv = [
-        "maturin", "build", "--release", "--quiet",
-        "-m", "crates/py/Cargo.toml",
-        "--out", str(wheels),
-    ]
-    if halfka:
-        argv += ["--features", "halfka"]
+    print("py拡張が入っていないので作る")
+    wheels = paths.REPO / "target" / "wheels"
     proc.run(
-        argv,
+        [
+            "maturin", "build", "--release", "--quiet",
+            "-m", "crates/py/Cargo.toml",
+            "--out", str(wheels),
+        ],
         dry_run=dry_run,
-        env={"CARGO_TARGET_DIR": f"target/py-{'ka' if halfka else 'kp'}"},
+        env={"CARGO_TARGET_DIR": "target/py-kp"},
     )
-    if dry_run:
-        return
     built = sorted(wheels.glob("*.whl"), key=lambda w: w.stat().st_mtime, reverse=True)
     if not built:
         raise proc.Fail(f"拡張が作られていない: {paths.rel(wheels)}")
@@ -294,7 +279,7 @@ def train(args: argparse.Namespace) -> int:
             if path is not None and not path.is_file():
                 raise proc.Fail(f"{label}がない: {path}")
 
-    _ensure_extension(halfka=args.halfka, dry_run=args.dry_run)
+    _ensure_extension(dry_run=args.dry_run)
 
     out = paths.NETS / f"{name}.hmwr"
     argv = [
@@ -311,8 +296,8 @@ def train(args: argparse.Namespace) -> int:
         "--device", args.device or "mps",
         "--seed", str(args.seed),
         "--checkpoint-dir", f"training/checkpoints/{name}",
-        "--log-file", f"{RUNS}/{name}.tsv",
-        "--registry", REGISTRY,
+        "--log-file", _curve(name),
+        "--registry", paths.rel(paths.registry()),
         "--name", name,
         "--notes", args.notes or f"{data} で学習",
     ]
@@ -335,7 +320,7 @@ def train(args: argparse.Namespace) -> int:
         argv += args.extra.split()
 
     if not args.dry_run:
-        for directory in (paths.NETS, paths.WORK / RUNS, paths.CHECKPOINTS / name):
+        for directory in (paths.NETS, paths.RUNS / CURVES, paths.CHECKPOINTS / name):
             directory.mkdir(parents=True, exist_ok=True)
 
     # 備考は学習の記録のメモで、学習の条件ではない
@@ -393,6 +378,11 @@ def train_progress(beat):
             beat.set_total(int(m.group(1)))
 
     return on_line
+
+
+def _curve(name: str) -> str:
+    """学習曲線のTSV。学習器へはリポジトリからの相対パスで渡す。"""
+    return paths.rel(paths.RUNS / CURVES / f"{name}.tsv")
 
 
 def _train_file(value: str, suffix: str) -> Path:
@@ -457,7 +447,7 @@ def probe(args: argparse.Namespace) -> int:
         if init is not None and not Path(init).is_file():
             raise proc.Fail(f"初期値のネットがない: {init}")
 
-    _ensure_extension(halfka=False, dry_run=args.dry_run)
+    _ensure_extension(dry_run=args.dry_run)
 
     rows = (
         data.stat().st_size // focus_labels.RECORD_BYTES if data.is_file() else 0
@@ -505,8 +495,8 @@ def probe(args: argparse.Namespace) -> int:
         "--log-interval", str(interval),
         "--device", args.device or "mps",
         "--seed", str(args.seed),
-        "--log-file", f"{RUNS}/probe-{name}.tsv",
-        "--registry", REGISTRY,
+        "--log-file", _curve(f"probe-{name}"),
+        "--registry", paths.rel(paths.registry()),
         "--name", f"probe_{name}",
         "--notes",
         f"焦点probe: {paths.rel(data)}、FT={paths.rel(init) if init else '乱数'}",
@@ -519,7 +509,7 @@ def probe(args: argparse.Namespace) -> int:
     if args.dry_run:
         argv += ["--out", "<一時ファイル>"]
         return proc.run(argv, dry_run=True, log=paths.log("probe", name))
-    (paths.WORK / RUNS).mkdir(parents=True, exist_ok=True)
+    (paths.RUNS / CURVES).mkdir(parents=True, exist_ok=True)
     # 学習器は必ずネットを書き出すが、probeのそれは捨てるものである。
     # FTは凍結していて1ビットも変わらず、学習した焦点ヘッドは載らない。
     # data/nets/ へ置くと128MBの使い道のないファイルが実行ごとに増える
@@ -569,8 +559,8 @@ def shapes(args: argparse.Namespace) -> int:
                 *BASE_FLAGS,
                 "--device", args.device,
                 "--seed", str(args.seed),
-                "--log-file", f"{RUNS}/{name}.tsv",
-                "--registry", REGISTRY,
+                "--log-file", _curve(name),
+                "--registry", paths.rel(paths.registry()),
                 "--name", f"{args.tag}_{spec}_s{args.seed}",
                 "--notes", f"構成の比較: {spec}、種 {args.seed}、{source}",
             ],
@@ -579,7 +569,7 @@ def shapes(args: argparse.Namespace) -> int:
         )
 
     print()
-    print(f"検証損失を比べる: column -t -s $'\\t' {REGISTRY} | grep '{args.tag}_'")
+    print(f"検証損失を比べる: column -t -s $'\\t' {paths.rel(paths.registry())} | grep '{args.tag}_'")
     return proc.OK
 
 

@@ -52,10 +52,12 @@ def test_a_spec_is_a_list_of_hmwr_commands():
         'adr = "210"\n[[step]]\nid = "s"\nrun = "hmwr env"\n',
         'adr = "0209"\n',
         with_step("hmwr env") + '[[step]]\nid = "s"\nrun = "hmwr env"\n',
+        'adr = "0209"\nnote = "x"\n[[step]]\nid = "s"\nrun = "hmwr env"\n',
+        'adr = "0209"\n[[step]]\nid = "s"\nrun = "hmwr env"\ntimeout = "1h"\n',
     ],
     ids=[
         "hmwr以外", "シェルのコマンド", "dry-run", "切り離す対局", "切り離すSPRT",
-        "idの文字", "adrの桁", "ステップなし", "idの重複",
+        "idの文字", "adrの桁", "ステップなし", "idの重複", "知らないキー", "ステップの知らないキー",
     ],
 )  # fmt: skip
 def test_specs_that_break_the_rules_are_refused(text):

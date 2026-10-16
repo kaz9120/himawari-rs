@@ -2898,12 +2898,14 @@ impl Worker {
             }
             // stand pat（ADR-0024。yaneuraou-search.cpp:4813-4823）
             if best >= beta {
-                // 決着スコアでなければ、返す値をβへ半分寄せる
-                // （yaneuraou-search.cpp:4815-4817）。βを大きく超えた
-                // stand patをそのまま返さず、見積りの甘さを削る
-                if best.abs() < VALUE_MATE_IN_MAX_PLY {
-                    best = (best + beta) / 2;
-                }
+                // 返す値をβへ半分寄せる（yaneuraou-search.cpp:4815-4817）。
+                // βを大きく超えたstand patをそのまま返さず、見積りの甘さを削る。
+                // 参照実装はここで決着スコアかを確かめるが、本エンジンでは
+                // bestが詰み圏に入らない。補正後の評価値はクランプ済みで、
+                // TTの値も詰み圏の外のものしか採らない。詰みは1手詰め判定が
+                // 手前で返す（Issue #698）
+                debug_assert!(best.abs() < VALUE_MATE_IN_MAX_PLY);
+                best = (best + beta) / 2;
                 // TTにヒットしていなければ、探索を伴わない値として書き出す。
                 // depthはDEPTH_UNSEARCHEDなのでTTカットには使われない
                 if tt_hit.is_none() {
@@ -3032,7 +3034,8 @@ impl Worker {
             }
 
             // 決着スコアでなければ、返す値をβへ半分寄せる
-            // （yaneuraou-search.cpp:5093-5094）。stand patと同じ扱いである
+            // （yaneuraou-search.cpp:5093-5094）。stand patと違い、ここの
+            // bestは子の静止探索の戻り値なので詰みスコアを取りうる
             if best.abs() < VALUE_MATE_IN_MAX_PLY && best > beta {
                 best = (best + beta) / 2;
             }

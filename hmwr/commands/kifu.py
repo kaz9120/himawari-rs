@@ -9,10 +9,11 @@ from __future__ import annotations
 
 import argparse
 import datetime
+import json
 from pathlib import Path
 
 from .. import config, paths, proc, rating
-from ..tools import floodgate
+from ..tools import floodgate, usilog
 from . import book as book_cmd
 
 
@@ -55,7 +56,12 @@ def add_parser(sub: argparse._SubParsersAction) -> None:
         description="実戦の評価値の系列から、崩壊のきっかけになった局面を"
         "拾う。再解析より安い診断材料になる。",
     )
-    t.add_argument("games", nargs="?", metavar="ディレクトリ", help="棋譜の置き場")
+    t.add_argument(
+        "games",
+        nargs="*",
+        metavar="ディレクトリ",
+        help=f"棋譜の置き場（既定 data/raw/floodgate/ の{floodgate.FIRST_YEAR}年から今年まで）",
+    )
     t.add_argument("--out", metavar="ファイル", help="レポートの出力先")
     t.set_defaults(func=report)
 
@@ -65,7 +71,12 @@ def add_parser(sub: argparse._SubParsersAction) -> None:
         description="定期実行の手順を固定する。定跡追加は1局面あたり"
         "深さ28で約34秒かかるので、1回の追加数を絞って残りは次回へ回す。",
     )
-    t.add_argument("--year", type=int, default=2026, metavar="年", help="対象年")
+    t.add_argument(
+        "--year",
+        type=int,
+        metavar="年",
+        help=f"対象年。省くと{floodgate.FIRST_YEAR}年から今年までを読む",
+    )
     t.add_argument("--seed-max", type=int, default=50, metavar="N", help="1回の定跡追加数")
     t.set_defaults(func=cycle)
 
@@ -92,9 +103,24 @@ def add_parser(sub: argparse._SubParsersAction) -> None:
     t.add_argument("--gap-floor", type=float, metavar="X", help="ベンチに入れる下限（measure）")
     t.set_defaults(func=blindspot)
 
+    t = ss.add_parser(
+        "usilog",
+        help="USIログを1局ごとに区切り、手ごとの時間と読みをJSONにする",
+        description="DebugLogFileのログを1局ごとに区切る。手ごとの思考時間・"
+        "時間の計画・反復の深さと評価値・待ちの行を拾い、1局1行の表を出す。"
+        "日毎に分けたファイルは複数渡せば時刻でつなぐ（issue #748）。",
+    )
+    t.add_argument("logs", nargs="+", metavar="ログ", help="DebugLogFileのファイル")
+    t.add_argument("--out", metavar="ディレクトリ", help="1局1ファイルのJSONを書く置き場")
+    t.set_defaults(func=usilog_split)
 
-def _games_dir(year: int) -> Path:
-    return paths.RAW / "floodgate" / str(year)
+
+def _games_dirs(year: int | None = None) -> list[Path]:
+    """棋譜の置き場。yearを渡せばその年だけ、省けば回収と同じ年の範囲を読む。"""
+    root = paths.RAW / "floodgate"
+    if year is not None:
+        return [root / str(year)]
+    return floodgate.games_dirs(root)
 
 
 def fetch(args: argparse.Namespace) -> int:
@@ -111,7 +137,7 @@ def fetch(args: argparse.Namespace) -> int:
 
 
 def report(args: argparse.Namespace) -> int:
-    games = Path(args.games) if args.games else _games_dir(2026)
+    games = [Path(g) for g in args.games] if args.games else _games_dirs()
     out = Path(args.out) if args.out else _default_report()
     binary = paths.release_bin("kifu")
     if not binary.is_file() and not args.dry_run:
@@ -120,7 +146,7 @@ def report(args: argparse.Namespace) -> int:
         [
             str(binary),
             str(paths.release_bin("himawari")),
-            str(games),
+            *map(str, games),
             "--eval-file", config.get("EVAL_FILE", "（未設定）"),
             "--out", str(out),
         ],
@@ -136,16 +162,19 @@ def _default_report() -> Path:
 
 def cycle(args: argparse.Namespace) -> int:
     """回収・分析・定跡追加・網羅率の4段を順に回す。"""
-    games = _games_dir(args.year)
     report_path = _default_report()
+    shown = f"{args.year}年" if args.year is not None else f"{floodgate.FIRST_YEAR}年から今年まで"
 
-    print(f"=== 実戦棋譜のサイクル: {args.year}年 ===")
+    print(f"=== 実戦棋譜のサイクル: {shown} ===")
 
     print("1/4: 回収")
     fetch(argparse.Namespace(player_url=None, out=None, max_files=None, dry_run=args.dry_run))
 
-    if not games.is_dir() and not args.dry_run:
-        raise proc.Fail(f"棋譜がない: {paths.rel(games)}")
+    # 回収で今年の置き場ができることがあるので、回収の後に決める
+    games = [str(d) for d in _games_dirs(args.year)]
+    missing = [g for g in games if not Path(g).is_dir()]
+    if missing and not args.dry_run:
+        raise proc.Fail(f"棋譜がない: {', '.join(paths.rel(Path(g)) for g in missing)}")
 
     print(f"2/4: 分析レポート → {paths.rel(report_path)}")
     proc.run(
@@ -153,14 +182,12 @@ def cycle(args: argparse.Namespace) -> int:
         dry_run=args.dry_run,
         env={"RUSTFLAGS": config.rustflags()},
     )
-    report(
-        argparse.Namespace(games=str(games), out=str(report_path), dry_run=args.dry_run)
-    )
+    report(argparse.Namespace(games=games, out=str(report_path), dry_run=args.dry_run))
 
     print(f"3/4: 定跡追加（最大{args.seed_max}局面。冪等なので続きから足す）")
     book_cmd.seed(
         argparse.Namespace(
-            games=str(games),
+            games=games,
             out=None,
             depth=28,
             max_positions=args.seed_max,
@@ -226,4 +253,26 @@ def rate(args: argparse.Namespace) -> int:
     # 表を出してから判定する。古くても中身は見られるようにしておく
     if args.max_age is not None:
         rating.check_fresh(days, floodgate.today(), args.max_age)
+    return proc.OK
+
+
+def usilog_split(args: argparse.Namespace) -> int:
+    """USIログを局に分け、表を出す。--outがあれば1局1ファイルのJSONも書く。"""
+    logs = [Path(p) for p in args.logs]
+    missing = [paths.rel(p) for p in logs if not p.is_file()]
+    if missing:
+        raise proc.Fail(f"ログがない: {', '.join(missing)}")
+    games = usilog.split_games(usilog.read_lines(logs))
+    print(usilog.table(games))
+    if args.out:
+        out = Path(args.out)
+        for game in games:
+            target = out / f"{usilog.game_name(game)}.json"
+            if args.dry_run:
+                print(f"[dry-run] write {paths.rel(target)}")
+                continue
+            out.mkdir(parents=True, exist_ok=True)
+            target.write_text(json.dumps(game, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
+        if not args.dry_run:
+            print(f"{len(games)}局を {paths.rel(out)} へ書いた")
     return proc.OK

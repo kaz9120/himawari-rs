@@ -153,7 +153,7 @@ def run(args: argparse.Namespace) -> int:
     # ステップの所要は数分から数日まで揃わないので、残り時間は見積もらない
     with heartbeat.running(
         "exp", s.name, dry_run=args.dry_run, total=len(s.steps), unit="ステップ",
-        log=log, estimate=False, detail={"adr": s.adr},
+        log=log, estimate=False, detail={"adr": s.adr, "steps": [step.id for step in s.steps]},
     ) as beat:  # fmt: skip
         return _run_steps(args, s, log, beat)
 

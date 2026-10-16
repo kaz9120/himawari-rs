@@ -11,7 +11,7 @@
 //!            [--max-pairs N] [--max-moves 320]
 //!            [--adjudicate CP,PLIES] [--option Name=Value]...
 //!            [--copt Name=Value]... [--bopt Name=Value]...
-//!            [--ponder] [--ponder-both] [--out <path>] [--resume <jsonl>]
+//!            [--ponder] [--ponder-both] --out <path> [--resume <jsonl>]
 //!            [--codds K] [--bodds K] [--no-stop]
 //!
 //! --copt/--boptは候補側/ベースライン側だけに適用するオプション
@@ -25,7 +25,8 @@
 //!
 //! openingsは1行1局面のSFEN。#始まりはコメント。省略時は平手初期局面
 //! のみ（決定的エンジン同士では毎ペア同一の進行になるため注意）。
-//! 棋譜は--out（既定 selfplay.jsonl）へ1局1行のJSONで追記する。
+//! 棋譜は--out（必須）へ1局1行のJSONで追記する。既定の置き場を持たないのは、
+//! 作業ディレクトリへ黙って書き出さないためである（Issue #760）。
 //! 終了コード: 0=H1採択、1=H0採択、2=判定に至らず、3=実行エラー。
 
 mod sprt;
@@ -115,7 +116,7 @@ fn parse_args() -> Config {
     let mut options: Vec<(String, String)> = Vec::new();
     let mut copts: Vec<(String, String)> = Vec::new();
     let mut bopts: Vec<(String, String)> = Vec::new();
-    let mut out = "selfplay.jsonl".to_string();
+    let mut out: Option<String> = None;
     let mut resume = String::new();
 
     let mut i = 0;
@@ -225,7 +226,7 @@ fn parse_args() -> Config {
                     _ => options.push(entry),
                 }
             }
-            "--out" => out = value(&args, i),
+            "--out" => out = Some(value(&args, i)),
             "--resume" => resume = value(&args, i),
             "--ponder" => {
                 ponder = true;
@@ -247,6 +248,9 @@ fn parse_args() -> Config {
     };
     let Some(candidate) = candidate else {
         usage_exit("--candidate は必須");
+    };
+    let Some(out) = out else {
+        usage_exit("--out は必須");
     };
     let openings = match &openings_path {
         Some(path) => {

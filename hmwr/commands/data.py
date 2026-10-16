@@ -53,7 +53,7 @@ def add_parser(sub: argparse._SubParsersAction) -> None:
     t = ss.add_parser(
         "fetch",
         help="公開データセットを取得してpsvを作る",
-        description="生データ116GBと加工後120GBで、空きが236GB要る。"
+        description="容量はデータセットごとに違う。docs/DATASETS.md で確かめてから取る。"
         "取得は再実行できる。妥当なサイズのファイルは飛ばす。",
     )
     t.add_argument(
@@ -69,9 +69,10 @@ def add_parser(sub: argparse._SubParsersAction) -> None:
     t.add_argument("--train-dir", metavar="パス", help="加工後の置き場")
     t.add_argument(
         "--dataset",
-        default="hao",
+        default="tanuki2024",
         choices=sorted(DATASETS),
-        help="取得するデータセット（既定 hao）。prepareはhaoだけが持つ",
+        help="取得するデータセット（既定 tanuki2024）。prepareはhaoだけが持ち、"
+        "他のデータセットのallは取得と検査で止まる",
     )
     t.add_argument(
         "--limit-files",
