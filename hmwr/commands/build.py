@@ -138,6 +138,20 @@ def _resolve(ref: str, what: str) -> None:
         raise proc.Fail(f"{what}のrefが見つからない: {ref}")
 
 
+def _use_crates(ref: str, *, dry_run: bool, cwd: Path | None = None) -> None:
+    """crates/ の index と作業木を ref の状態に揃える。
+
+    `git checkout <ref> -- crates/` は ref に無いファイルを消さない。HEADで
+    消したファイルが比較元から戻り、index に追加された状態で残った（#776）。
+    `git restore --staged --worktree` は ref に無い追跡済みのファイルも消す。
+    """
+    proc.run(
+        ["git", "restore", f"--source={ref}", "--staged", "--worktree", "--", "crates/"],
+        dry_run=dry_run,
+        cwd=cwd,
+    )
+
+
 def make_pair(name: str, *, baseline: str, candidate: str | None = None, dry_run: bool) -> int:
     """比較用の2本を同じ条件で作る。
 
@@ -168,17 +182,17 @@ def make_pair(name: str, *, baseline: str, candidate: str | None = None, dry_run
     try:
         print("candidateをビルド中...")
         if candidate:
-            proc.run(["git", "checkout", candidate, "--", "crates/"], dry_run=dry_run)
+            _use_crates(candidate, dry_run=dry_run)
         cargo_build(dry_run=dry_run)
         _copy(paths.release_bin("himawari"), cand_out, dry_run=dry_run)
 
         print("baselineをビルド中...")
-        proc.run(["git", "checkout", baseline, "--", "crates/"], dry_run=dry_run)
+        _use_crates(baseline, dry_run=dry_run)
         cargo_build(dry_run=dry_run)
         _copy(paths.release_bin("himawari"), base_out, dry_run=dry_run)
     finally:
         # 失敗しても作業木を必ず戻す
-        proc.run(["git", "checkout", "HEAD", "--", "crates/"], dry_run=dry_run)
+        _use_crates("HEAD", dry_run=dry_run)
 
     if dry_run:
         return proc.OK
