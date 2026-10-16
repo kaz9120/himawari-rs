@@ -83,9 +83,11 @@ jobs:
       - run: cargo test -p himawari-usi --features tune
       - run: cargo test -p himawari-engine --features tune --lib
 
-  # required checkの集約。上の全ジョブが成功したときだけ成功する
+  # required checkの集約。ほかの全ジョブが成功したときだけ成功する。
+  # 下のdocsとavx2も含める。外していた間、textlintが落ちたリリースPRが
+  # 自動マージされた（#751）。ジョブを足したらここへも足す
   check:
-    needs: [lint, test, test-release, test-arch, test-tune]
+    needs: [lint, test, test-release, test-arch, test-tune, docs, avx2]
     if: always()
     runs-on: ubuntu-latest
     steps:
