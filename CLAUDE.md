@@ -225,7 +225,11 @@ PRは種別を明示して作る。本文のひな形を出して各節を埋め
 hmwr pr template chore > <スクラッチ>/body.md   # ひな形（chore か strength）
 hmwr pr create --kind chore --title "chore: …" --body-file <スクラッチ>/body.md
 hmwr ci wait <PR番号>                 # CIが確定するまで待つ
+hmwr pr merge <PR番号> --kind chore  # 検査してからsquashでマージする
 ```
+
+マージは `hmwr pr merge` で行う。squashの本文の入れ子の半角括弧を検査し、
+`--kind strength --sprt <名前>` なら `.result` のH1と `SPRT:` トレーラの一致も確かめる。
 
 `gh pr create --template` は使わない。エディタを開く前提で、非対話の環境では
 本文を渡せない。

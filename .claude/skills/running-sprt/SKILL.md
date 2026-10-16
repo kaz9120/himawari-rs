@@ -115,14 +115,22 @@ hmwr sprt show <名前>
 - どの結果でも、結果の一次情報はADRとコミットのトレーラに残す。棋譜と
   バイナリは30日で `hmwr clean` が消す（ADR-0189）。`.result` は残る
 
-### マージの本文はファイルで渡す
+### マージは検査を通して行う
 
 squashマージのコミット本文が、CHANGELOGとgit logの一次情報になる。組み立てを
-シェルの展開に任せない。
+シェルの展開に任せない。トレーラはコミットの本文へ書いておき、マージは
+`hmwr pr merge` で行う（issue #764）。
 
 ```
-gh pr merge <PR番号> --squash --delete-branch --body-file <ファイル>
+hmwr pr merge <PR番号> --kind strength --sprt <名前>
 ```
+
+squashで入る本文を組み立てて、3つを確かめる。`.result` がH1であること、
+本文の最後の段落に結果と一致する `SPRT:` トレーラがあること、入れ子の
+半角括弧がないことである。通ったら `gh pr merge --squash --delete-branch` を
+呼ぶ。複数コミットの
+squashでは、トレーラは最後のコミットに置く。前のコミットに置くと最後の段落に
+来ない。
 
 `--body "$(printf ...)"` と書くと、本文の `%` をprintfが書式指定として
 解釈する。2026-09-02に「NPSが4.29%上がった」でそこから先が切れ、末尾の

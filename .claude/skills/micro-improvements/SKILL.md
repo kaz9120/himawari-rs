@@ -30,7 +30,7 @@ Issue 9件作成・5件消化・PR 6本だった。
 2. 待ち時間ができたら、実行中の仕事と資源が重ならないIssueを選ぶ
 3. mainからブランチを切り、実装・検証・コミット・PR・CI待ち・
    squashマージ・Issueクローズまでを1サイクルで終える。
-   マージ待ちは `hmwr ci wait <PR番号> && gh pr merge <PR番号> --squash`
+   マージ待ちは `hmwr ci wait <PR番号> && hmwr pr merge <PR番号> --kind chore`
    をバックグラウンドに置き、次の作業へ移る
 
 ## 実行の場所のラベル
