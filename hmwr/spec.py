@@ -13,6 +13,9 @@ run = "hmwr data mix mixhao20_300M --in train_300M_q1 --in hao_extra_60M_q1"
 ```
 
 ステップは `hmwr` のコマンド1つにする。型付きのステップやDAGは作らない。
+
+指すADRには「仮説」と「事前登録」の見出しが要る（CLAUDE.md「実験の規律」）。
+仮説を持たない受け入れ試験だけは `kind = "smoke"` で外す。
 """
 
 from __future__ import annotations
@@ -33,8 +36,13 @@ DIR = "experiments"
 ADR_RE = re.compile(r"^[0-9]{4}$")
 # specが持てるキー。知らないキーは綴りの誤りとみなして弾く。黙って無視すると、
 # 書いたつもりの設定が効かないまま実験が走る
-KEYS = ("adr", "step")
+KEYS = ("adr", "kind", "step")
 STEP_KEYS = ("id", "run")
+# 仕組みの受け入れ試験。仮説を持たないので、事前登録の見出しを求めない
+SMOKE = "smoke"
+# 起動前にADRへ書き切る節（CLAUDE.md「実験の規律」）。見出しの部分一致で見る
+PREREGISTRATION = ("仮説", "事前登録")
+HEADING_RE = re.compile(r"^#{1,6}\s+(.+?)\s*$", re.M)
 
 # 終わるまで戻らない形でしか、次のステップと順番を保てない
 DETACHING = (("match", "run"), ("sprt", "run"), ("sprt", "net"))
@@ -63,6 +71,7 @@ class Spec:
     name: str
     adr: str
     steps: tuple[Step, ...]
+    kind: str = ""
 
 
 def path_of(name: str) -> str:
@@ -97,6 +106,9 @@ def parse(text: str, name: str) -> Spec:
     adr = data.get("adr")
     if not isinstance(adr, str) or not ADR_RE.match(adr):
         raise Invalid(f'{name}: adr は4桁の文字列で書く（例 adr = "0210"）')
+    kind = data.get("kind", "")
+    if kind not in ("", SMOKE):
+        raise Invalid(f'{name}: kind に書けるのは "{SMOKE}" だけ（受け入れ試験の印）')
     raw = data.get("step")
     if not isinstance(raw, list) or not raw:
         raise Invalid(f"{name}: [[step]] が1つも無い")
@@ -114,7 +126,7 @@ def parse(text: str, name: str) -> Spec:
         if any(s.id == sid for s in steps):
             raise Invalid(f"{name}: ステップのidが重複している: {sid}")
         steps.append(_checked(Step(sid, run), name))
-    return Spec(name, adr, tuple(steps))
+    return Spec(name, adr, tuple(steps), kind)
 
 
 def _known(table: dict, keys: tuple[str, ...], where: str) -> None:
@@ -169,3 +181,26 @@ def parse_subset(text: str) -> dict:
 def adr_file(adr: str) -> Path | None:
     found = sorted((paths.REPO / "docs" / "adr").glob(f"{adr}-*.md"))
     return found[0] if found else None
+
+
+def preregistration_gaps(s: Spec) -> list[str]:
+    """ADRに無い事前登録の見出しを返す。ADRが無ければ Invalid を投げる。
+
+    ファイルがあるだけでは、仮説と読み方を書き切ったことにならない（issue #764）。
+    """
+    file = adr_file(s.adr)
+    if file is None:
+        raise Invalid(f"{s.name}: docs/adr/{s.adr}-*.md がない")
+    if s.kind == SMOKE:
+        return []
+    headings = HEADING_RE.findall(file.read_text(encoding="utf-8"))
+    return [w for w in PREREGISTRATION if not any(w in h for h in headings)]
+
+
+def check_preregistered(s: Spec) -> None:
+    gaps = preregistration_gaps(s)
+    if gaps:
+        raise Invalid(
+            f"{s.name}: ADR-{s.adr} に「{'」「'.join(gaps)}」の見出しがない。"
+            "仮説と解釈の事前登録を書いてから走らせる（CLAUDE.md「実験の規律」）"
+        )

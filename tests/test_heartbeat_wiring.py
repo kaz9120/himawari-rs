@@ -166,6 +166,8 @@ def exp_runner(tmp_path, monkeypatch):
     monkeypatch.setattr(paths, "QUEUE", tmp_path / "queue")
     monkeypatch.setattr(paths, "LOGS", tmp_path / "logs")
     monkeypatch.setattr(spec, "load", lambda name, ref="origin/main": spec.parse(SPEC, name))
+    # 事前登録の見出しは test_exp が見る。ここでは実在のADRの中身に依存させない
+    monkeypatch.setattr(spec, "check_preregistered", lambda s: None)
     monkeypatch.setattr(proc, "succeeds", lambda argv, **_: True)
     seen = []
 

@@ -109,6 +109,8 @@ def runner(tmp_path, monkeypatch):
     for area in ("SPRT", "TRAIN", "NETS", "CHECKPOINTS", "BIN"):
         monkeypatch.setattr(paths, area, tmp_path / area.lower())
     monkeypatch.setattr(spec, "load", lambda name, ref="origin/main": spec.parse(GOOD, name))
+    # 事前登録の見出しは下の節で見る。ここでは実在のADRの中身に依存させない
+    monkeypatch.setattr(spec, "check_preregistered", lambda s: None)
     monkeypatch.setattr(proc, "succeeds", lambda argv, **_: True)
 
     def fake_run(argv, **_):
@@ -196,6 +198,59 @@ def test_every_spec_in_the_repository_passes_the_check():
     assert exp.check(cli.build_parser().parse_args(["exp", "check"])) == proc.OK
 
 
+# --- 事前登録の見出し（issue #764） ------------------------------------
+
+
+@pytest.fixture
+def adr_text(tmp_path, monkeypatch):
+    """ADRの本文を差し替える。"""
+    file = tmp_path / "0209-x.md"
+    monkeypatch.setattr(spec, "adr_file", lambda n: file)
+
+    def write(text: str) -> None:
+        file.write_text(text, encoding="utf-8")
+
+    return write
+
+
+def test_an_adr_with_hypothesis_and_preregistration_passes(adr_text):
+    adr_text("# 0209: x\n\n## 仮説\n\n本文\n\n### 解釈の事前登録\n\n本文\n")
+    spec.check_preregistered(spec.parse(GOOD, "x"))
+
+
+@pytest.mark.parametrize(
+    "text,missing",
+    [
+        ("# 0209: x\n\n## Context\n", ["仮説", "事前登録"]),
+        ("# 0209: x\n\n## 仮説\n", ["事前登録"]),
+        # 本文に語があるだけでは足りない。見出しとして書き切る
+        ("# 0209: x\n\n仮説と事前登録は後で書く\n", ["仮説", "事前登録"]),
+    ],
+)
+def test_an_adr_without_the_sections_is_refused(adr_text, text, missing):
+    adr_text(text)
+    assert spec.preregistration_gaps(spec.parse(GOOD, "x")) == missing
+    with pytest.raises(spec.Invalid):
+        spec.check_preregistered(spec.parse(GOOD, "x"))
+
+
+def test_a_smoke_spec_needs_no_hypothesis(adr_text):
+    adr_text("# 0209: x\n\n## Context\n")
+    smoke = spec.parse('kind = "smoke"\n' + GOOD, "x")
+    assert smoke.kind == spec.SMOKE
+    spec.check_preregistered(smoke)
+    with pytest.raises(spec.Invalid):
+        spec.parse('kind = "quick"\n' + GOOD, "x")
+
+
+def test_run_refuses_a_spec_without_preregistration(adr_text, monkeypatch, tmp_path):
+    adr_text("# 0209: x\n\n## Context\n")
+    monkeypatch.setattr(paths, "QUEUE", tmp_path / "queue")
+    monkeypatch.setattr(spec, "load", lambda name, ref="origin/main": spec.parse(GOOD, name))
+    monkeypatch.setattr(proc, "succeeds", lambda argv, **_: True)
+    assert cli.main(["--dry-run", "exp", "run", "x"]) == proc.USAGE
+
+
 # --- キューへ積む ------------------------------------------------------
 
 
@@ -206,6 +261,7 @@ def enqueue_env(monkeypatch, tmp_path):
     adr = paths.REPO / "docs" / "adr" / "0209-workflow-layers.md"
     monkeypatch.setattr(spec, "load", lambda name, ref="origin/main": spec.parse(GOOD, name))
     monkeypatch.setattr(spec, "adr_file", lambda n: adr)
+    monkeypatch.setattr(spec, "check_preregistered", lambda s: None)
     monkeypatch.setattr(proc, "succeeds", lambda argv, **_: True)
     created = []
     open_issues = {queue.QUEUED: [], queue.RUNNING: []}
