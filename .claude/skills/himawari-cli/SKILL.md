@@ -379,6 +379,7 @@ PRを出す前に通す。CIが落ちてから直すより速い（ADR-0178）�
 hmwr kifu cycle                回収→分析→定跡追加→網羅率
 hmwr kifu fetch                棋譜だけ回収する
 hmwr kifu rate                 レートの推移（日毎と2週間）を出す
+hmwr kifu usilog <ログ>...     放流機のUSIログを1局ごとに区切る
 hmwr book seed --max-positions 100
 hmwr book stats
 hmwr book release <DB> <番号> --apply
@@ -390,6 +391,10 @@ hmwr book release <DB> <番号> --apply
 2026年から今年までを読んで連結する。`--max-age N` を付けると、最新の日付が
 N日以上古いときに終了コード1で止まる。`--svg <ファイル>` で推移のグラフを書く。
 READMEの画像はこれで、ワークフロー `rate-graph.yml` が毎日作り直す。
+
+`kifu usilog` は `DebugLogFile` のログを読み、1局1行の表を出す。`--out <置き場>` で
+1局1ファイルのJSONも書く。形は `himawari-usilog-game/1` で、ADR-0221の追記が
+持つ。bestmoveの出なかった手（固まり）と待ちの行の数が表に並ぶ。
 
 定跡追加は1局面あたり深さ28で約34秒かかる。1回の追加数を絞り、残りは次回が
 続きから足す（冪等なので何度回しても増えない）。
