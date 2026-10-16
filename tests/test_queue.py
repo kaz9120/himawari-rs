@@ -5,6 +5,7 @@ GitHubにも開発機にも触らない。`gh` の呼び出しと実験の実行
 """
 
 import plistlib
+import re
 
 import pytest
 
@@ -131,6 +132,36 @@ def test_an_experiment_stopped_by_pause_stays_running(world, monkeypatch):
 def test_empty_queue_does_nothing(world):
     assert cli.main(["queue", "tick"]) == proc.OK
     assert world["ran"] == [] and world["edits"] == []
+
+
+def test_a_quiet_tick_writes_nothing_when_idle(world, capsys):
+    # launchdは5分おきに呼ぶ。何もしなかった回まで書くと、ログが9万行に膨らんだ
+    assert cli.main(["queue", "tick", "--quiet"]) == proc.OK
+    assert cli.main(["queue", "pause"]) == proc.OK
+    capsys.readouterr()
+    assert cli.main(["queue", "tick", "--quiet"]) == proc.OK
+    assert capsys.readouterr().out == ""
+
+
+def test_taking_an_experiment_is_logged_with_a_time(world, capsys):
+    world["queued"] = [issue(11, "adr0211-a")]
+    assert cli.main(["queue", "tick", "--quiet"]) == proc.OK
+    first = capsys.readouterr().out.splitlines()[0]
+    assert re.match(r"^\d{4}-\d\d-\d\d \d\d:\d\d:\d\d #11 ", first)
+
+
+def test_a_large_launchd_log_is_set_aside_not_deleted(tmp_path, monkeypatch):
+    monkeypatch.setattr(paths, "LOGS", tmp_path)
+    monkeypatch.setattr(queue, "ROTATE_BYTES", 10)
+    log = tmp_path / queue.LAUNCHD_LOG
+    log.write_text("小さい")
+    queue._rotate_log()
+    assert log.read_text() == "小さい"
+    log.write_text("x" * 11)
+    queue._rotate_log()
+    assert not log.exists()
+    [kept] = tmp_path.glob("queue-launchd-*.log")
+    assert kept.read_text() == "x" * 11
 
 
 def test_spec_name_is_read_from_the_issue_form():

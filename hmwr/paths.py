@@ -24,15 +24,19 @@ PROFILE = REPO / "data" / "profile"
 LEDGER = REPO / "data" / "ledger"  # 点数を付けた局面の台帳（ADR-0228）
 RAW = REPO / "data" / "raw"
 QUEUE = REPO / "data" / "queue"
+# DL系モデル（ADR-0215）。配布元から手で置くもので、hmwrは読むだけ
+MODELS = REPO / "data" / "models"
 
 SCRIPTS = REPO / "scripts"
 CHECKPOINTS = REPO / "training" / "checkpoints"
+# 学習の記録（registry.tsv）と学習曲線のTSV。TensorBoardと同じ置き場にある
+RUNS = REPO / "training" / "runs"
 
 # 書き込みのある置き場の名前。テストはこの全部を一時ディレクトリへ移す
 # （tests/conftest.py）。置き場を足したらここにも足す
 PLACES = (
     "BIN", "LOGS", "NETS", "SPRT", "SPSA", "BOOK", "TRAIN", "STATUS",
-    "PROFILE", "LEDGER", "RAW", "QUEUE", "CHECKPOINTS",
+    "PROFILE", "LEDGER", "RAW", "QUEUE", "CHECKPOINTS", "RUNS",
 )  # fmt: skip
 
 # 上の置き場の根。本番ではリポジトリそのもので、テストでだけ一時ディレクトリになる。
@@ -84,6 +88,16 @@ def log(area: str, name: str) -> Path:
     """
     LOGS.mkdir(parents=True, exist_ok=True)
     return LOGS / f"{area}-{check_name(name)}.log"
+
+
+def registry() -> Path:
+    """学習の記録。学習器が1本ごとに1行を足し、report と status が読む。"""
+    return RUNS / "registry.tsv"
+
+
+def dl_model() -> Path:
+    """DL系モデルによる付け直し（ADR-0215）の既定のモデル。"""
+    return MODELS / "dlshogi" / "model-dr2_exhi.onnx"
 
 
 def release_bin(name: str) -> Path:

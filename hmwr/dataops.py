@@ -38,8 +38,8 @@ RESCORE_HASH = 256
 EVAL = object()
 
 # DL系モデルによる付け直し（ADR-0215）。モデルは配布元のライセンスに従って
-# 手元に置く。パスワードつきの配布なので、取得の手順はIssue #556にある
-DL_MODEL = "data/models/dlshogi/model-dr2_exhi.onnx"
+# 手元に置く。パスワードつきの配布なので、取得の手順はIssue #556にある。
+# 既定のモデルの場所は paths.dl_model() が持つ
 DL_SCALE = 600.0
 
 
@@ -384,9 +384,9 @@ def add_parsers(ss: argparse._SubParsersAction) -> None:
     )
     t.add_argument(
         "--model",
-        default=DL_MODEL,
+        default=paths.rel(paths.dl_model()),
         metavar="パス",
-        help=f"モデルのファイル（既定 {DL_MODEL}）",
+        help=f"モデルのファイル（既定 {paths.rel(paths.dl_model())}）",
     )
     t.add_argument(
         "--scale",

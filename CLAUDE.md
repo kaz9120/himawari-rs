@@ -334,8 +334,10 @@ RUSTFLAGS="-C target-cpu=native" cargo build --release
 | `data/queue/` | 実験のステップの完了マーカー（ADR-0209） |
 | `data/status/` | 長く走るコマンドの状態ファイル（ADR-0220） |
 | `data/ledger/` | dlshogiで点数を付けた局面の盤面ハッシュの台帳（ADR-0228） |
+| `data/models/` | 付け直しに使うDL系モデル。手で置き、hmwrは読むだけ（ADR-0215） |
 
 ログのリダイレクト先を手で決めない。`hmwr` が `data/logs/<領域>-<名前>.log`
 へ追記する（[ADR-0149](docs/adr/0149-experiment-runner.md)・[ADR-0180](docs/adr/0180-hmwr-cli-in-python.md)）。
-チェックポイント（*.pt）は `training/checkpoints/` に置く。
+チェックポイント（*.pt）は `training/checkpoints/` に、学習の記録（`registry.tsv`）と
+学習曲線は `training/runs/` に置く。置き場の定数は `hmwr/paths.py` が持つ。
 ネットのファイル名は実験名を含める（例: `halfkp_180M.hmwr.best`）。

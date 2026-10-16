@@ -32,6 +32,8 @@ target
 *.jsonl
 # 教師データ（ADR-0038。リポジトリには含めない）
 /data/
+# hmwrの移行期（ADR-0180）に、REPOの解決がずれて hmwr/ の下へ書いた置き場
+/hmwr/data/
 # Python
 __pycache__/
 *.pyc
