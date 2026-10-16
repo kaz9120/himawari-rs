@@ -140,8 +140,8 @@ def test_tools_resolve_the_repository_root():
     """
     from hmwr.tools import floodgate
 
-    parsed = floodgate.build_parser(paths.REPO).parse_args([])
-    assert parsed.out == str(paths.REPO / "data" / "raw" / "floodgate")
+    parsed = floodgate.build_parser().parse_args([])
+    assert paths.rel(parsed.out) == "data/raw/floodgate"
     assert "hmwr/data" not in parsed.out
 
 
@@ -522,11 +522,8 @@ def test_data_fetch_excludes_the_validation_source(capsys, tmp_path):
 # --- kifu --------------------------------------------------------------
 
 
-def _no_fetch(monkeypatch):
-    """回収はdry-runでもwdoorへ問い合わせるので、テストでは止める。"""
-    from hmwr.commands import kifu
-
-    monkeypatch.setattr(kifu, "fetch", lambda args: proc.OK)
+def _refuse_network(self, url):
+    raise AssertionError(f"dry-runで問い合わせた: {url}")
 
 
 def test_kifu_cycle_reads_every_year_the_fetch_collects(capsys, monkeypatch):
@@ -535,7 +532,7 @@ def test_kifu_cycle_reads_every_year_the_fetch_collects(capsys, monkeypatch):
 
     from hmwr.tools import floodgate
 
-    _no_fetch(monkeypatch)
+    monkeypatch.setattr(floodgate.Fetcher, "get", _refuse_network)
     monkeypatch.setattr(floodgate, "today", lambda: datetime.date(2027, 2, 1))
     for year in ("2026", "2027"):
         (paths.RAW / "floodgate" / year).mkdir(parents=True)
@@ -548,7 +545,9 @@ def test_kifu_cycle_reads_every_year_the_fetch_collects(capsys, monkeypatch):
 
 
 def test_kifu_cycle_with_a_year_reads_only_that_year(capsys, monkeypatch):
-    _no_fetch(monkeypatch)
+    from hmwr.tools import floodgate
+
+    monkeypatch.setattr(floodgate.Fetcher, "get", _refuse_network)
     (paths.RAW / "floodgate" / "2026").mkdir(parents=True)
     _, lines = dry(capsys, ["kifu", "cycle", "--year", "2026"])
     seed = next(x for x in lines if " seed " in x)

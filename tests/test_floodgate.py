@@ -82,8 +82,8 @@ def test_game_csa_urls_reads_the_year_from_the_path():
     assert fetch.game_csa_urls(html, PAGE_URL)[0][0] == "2025"
 
 
-def test_parser_defaults_to_the_himawari_player_page(tmp_path):
-    args = fetch.build_parser(tmp_path).parse_args([])
+def test_parser_defaults_to_the_himawari_player_page():
+    args = fetch.build_parser().parse_args([])
     assert args.player_url is None
     assert fetch.player_urls(2026) == [PAGE_URL]
 
@@ -109,8 +109,8 @@ def test_a_missing_page_that_was_asked_for_is_an_error(tmp_path, monkeypatch):
     assert fetch.main(argv + ["--sleep", "0"]) == 3
 
 
-def test_parser_accepts_multiple_player_urls(tmp_path):
-    args = fetch.build_parser(tmp_path).parse_args(
+def test_parser_accepts_multiple_player_urls():
+    args = fetch.build_parser().parse_args(
         ["--player-url", "https://a/1.html", "--player-url", "https://b/2.html"]
     )
     assert args.player_url == ["https://a/1.html", "https://b/2.html"]
@@ -138,7 +138,27 @@ def test_games_dirs_names_this_year_when_nothing_is_there(tmp_path, monkeypatch)
     assert fetch.games_dirs(tmp_path) == [tmp_path / "2027"]
 
 
-def test_parser_puts_output_under_data_raw_floodgate(tmp_path):
-    args = fetch.build_parser(tmp_path).parse_args([])
-    assert args.out == str(tmp_path / "data" / "raw" / "floodgate")
-    assert args.log == str(tmp_path / "data" / "logs" / "floodgate-fetch.log")
+def test_parser_defaults_go_through_paths():
+    """既定の置き場はpathsを通る。conftestの差し替えが効き、kifuが読む置き場と揃う（#802）。"""
+    from hmwr import paths
+
+    args = fetch.build_parser().parse_args([])
+    assert args.out == str(paths.RAW / "floodgate")
+    assert args.log == str(paths.LOGS / "floodgate-fetch.log")
+    assert paths.RAW != paths.REPO / "data" / "raw"
+
+
+def test_dry_run_neither_asks_wdoor_nor_writes_the_log(monkeypatch, capsys):
+    """dry-runは副作用を持たない（#774）。問い合わせ先だけを見せる（#802）。"""
+    from hmwr import paths
+
+    def refuse(self, url):
+        raise AssertionError(f"dry-runで問い合わせた: {url}")
+
+    monkeypatch.setattr(fetch.Fetcher, "get", refuse)
+    monkeypatch.setattr(fetch, "today", lambda: datetime.date(2027, 1, 1))
+    assert fetch.main(["--dry-run"]) == 0
+    out = capsys.readouterr().out
+    assert f"[dry-run] GET {PAGE_URL}" in out
+    assert "/x/2027/player/" in out
+    assert not (paths.LOGS / "floodgate-fetch.log").exists()
