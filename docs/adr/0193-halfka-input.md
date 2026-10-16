@@ -96,3 +96,17 @@ NPS−1.21%は換算率3.12 Elo/1%で約−3.8 Eloにあたり、点推定−3.5
   新たな出発点にする
 - 氷彗の報告（蒸留データが容量拡張の前提）と合わせ、これが入力側の
   最後の単独変更になる見込み。以後の容量拡張は蒸留後に測る
+
+## 追記（2026-10-16）: 実装を削除した
+
+HalfKAの実装を削除した（#767）。消したのは次の4種類である。
+
+- 5クレートの `Cargo.toml` の `halfka` feature
+- `bonapiece.rs` の相手玉平面 `E_KING` と、次元の実効値 `FE_TOTAL`
+- `nnue.rs`・`nnue_acc.rs`・`posgen.rs` の `cfg(feature = "halfka")` の分岐
+- `hmwr build engine`・`hmwr build shapes`・`hmwr net train` の `--halfka`
+
+`FE_TOTAL` はHalfKAのために `FE_END` と分けた定数なので、`FE_END` へ戻した。
+`hmwr net train` の拡張の検査は、入力次元を数で持たず、`himawari.FT_IN` を
+正とする形にした。既定のHalfKPの経路は変わらず、固定深さの探索は変更の前後で
+一致する。見直す日が来たら、この版の実装をgitの履歴から戻せる。
