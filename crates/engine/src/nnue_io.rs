@@ -12,7 +12,7 @@
 use std::io::{Read, Write};
 
 use crate::nnue::{
-    ARCH, CONCAT, FT_I8, FT_IN, FT_OUT, FtWeight, HALF, L1_OUT, L1_PAD, L2_OUT, L2_PAD, L3_OUT,
+    ARCH, CONCAT, FT_IN, FT_OUT, FtWeight, HALF, L1_OUT, L1_PAD, L2_OUT, L2_PAD, L3_OUT,
     LAST_HIDDEN, NnueNetwork, ft_w_from_i16, pad_rows,
 };
 
@@ -36,13 +36,13 @@ const FORMAT_VERSION_DEEP_I8_PAIR: u32 = 8;
 const FORMAT_VERSION_TWO_HIDDEN_PAIR: u32 = 9;
 const FORMAT_VERSION_DEEP_PAIR: u32 = 10;
 
-/// 書き出しに使う版。層の数とFT重みの型で決まる。積の有無はビルドで
-/// 固定なので、このブランチは対応する版だけを書き、他は読まない。
-const FORMAT_VERSION: u32 = match (L3_OUT != 0, FT_I8) {
-    (false, false) => FORMAT_VERSION_TWO_HIDDEN_PAIR,
-    (true, false) => FORMAT_VERSION_DEEP_PAIR,
-    (false, true) => FORMAT_VERSION_TWO_HIDDEN_I8_PAIR,
-    (true, true) => FORMAT_VERSION_DEEP_I8_PAIR,
+/// 書き出しに使う版。層の数で決まる。FT重みはi8で書く（ADR-0138）。
+/// FT重みをi16で持つ版9・版10は、読み込みだけを受け付ける。積の有無は
+/// ビルドで固定なので、このブランチは対応する版だけを書き、他は読まない。
+const FORMAT_VERSION: u32 = if L3_OUT != 0 {
+    FORMAT_VERSION_DEEP_I8_PAIR
+} else {
+    FORMAT_VERSION_TWO_HIDDEN_I8_PAIR
 };
 
 /// FT重み列をi16として読む。ファイルの版で1要素のバイト数が変わる
@@ -666,8 +666,6 @@ mod tests {
         for &x in &net.ft_b {
             body.extend_from_slice(&x.to_le_bytes());
         }
-        // 既定ビルドでは型が同じで変換が恒等になるが、i8ビルドでは必要
-        #[allow(clippy::useless_conversion)]
         for &x in &net.ft_w {
             body.extend_from_slice(&i16::from(x).to_le_bytes());
         }

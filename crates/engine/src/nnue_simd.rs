@@ -13,22 +13,15 @@ use crate::value::Value;
 
 const I16_LANES: usize = 16;
 
-/// FT重みをi8で持つときの1回あたりのレーン数（ADR-0138）。
+/// FT重み（i8）の1回あたりのレーン数（ADR-0138）。
 /// 読み出しが半分になり、1命令で扱える要素が倍になる。
-#[cfg(ft_i8)]
 const FT_I8_LANES: usize = 32;
 
-/// accを1パスで舐めるときのチャンク数（i16重み）。
-#[cfg(not(ft_i8))]
-const FT_CHUNKS: usize = FT_OUT / I16_LANES;
-
-/// 同上（i8重み。1チャンクが32要素になる）。
-#[cfg(ft_i8)]
+/// accを1パスで舐めるときのチャンク数。1チャンクが32要素になる。
 const FT_CHUNKS: usize = FT_OUT / FT_I8_LANES;
 
 /// i8経路は32要素ずつ舐めるので、FT_OUTが32の倍数でないと末尾が落ちる。
 /// build.rsが要求するのは16の倍数までなので、ここで止める。
-#[cfg(ft_i8)]
 const _: () = assert!(FT_OUT.is_multiple_of(FT_I8_LANES));
 
 /// 対の積は前半・後半を16レーンずつ突き合わせる（ADR-0171）。
@@ -47,51 +40,10 @@ const _: () = assert!(HALF.is_multiple_of(I16_LANES));
 /// で呼び、accのチャンク1本ぶんの中で2色を続けて処理する。連鎖の走査と
 /// dirtyのデコードが1回で済み、依存の切れた2本のストリームが並ぶ。
 /// 各視点の演算順序は `V = 1` のときと同じなので結果はビット一致する。
-#[cfg(not(ft_i8))]
-pub fn ft_apply<const V: usize, const NS: usize, const NA: usize>(
-    dst: [&mut [i16; FT_OUT]; V],
-    src: [&[i16; FT_OUT]; V],
-    subs: [[&[i16]; V]; NS],
-    adds: [[&[i16]; V]; NA],
-) {
-    let subs = subs.map(|ws| {
-        ws.map(|w| {
-            debug_assert_eq!(w.len(), FT_OUT);
-            &w.as_chunks::<I16_LANES>().0[..FT_CHUNKS]
-        })
-    });
-    let adds = adds.map(|ws| {
-        ws.map(|w| {
-            debug_assert_eq!(w.len(), FT_OUT);
-            &w.as_chunks::<I16_LANES>().0[..FT_CHUNKS]
-        })
-    });
-    let dst = dst.map(|d| d.as_chunks_mut::<I16_LANES>().0);
-    let src = src.map(|s| &s.as_chunks::<I16_LANES>().0[..FT_CHUNKS]);
-    for i in 0..FT_CHUNKS {
-        let mut acc: [Simd<i16, I16_LANES>; V] =
-            std::array::from_fn(|k| Simd::from_array(src[k][i]));
-        for w in &subs {
-            for (k, a) in acc.iter_mut().enumerate() {
-                *a -= Simd::from_array(w[k][i]);
-            }
-        }
-        for w in &adds {
-            for (k, a) in acc.iter_mut().enumerate() {
-                *a += Simd::from_array(w[k][i]);
-            }
-        }
-        for (k, a) in acc.iter().enumerate() {
-            dst[k][i] = a.to_array();
-        }
-    }
-}
-
-/// 同上（i8重みを符号拡張してから足し引きする。ADR-0138）。
 ///
+/// 重みはi8で持ち、符号拡張してから足し引きする（ADR-0138）。
 /// accumulatorはi16のままなので、飽和は新たに起こらない。変わるのは
 /// 重みの読み出し幅だけである。
-#[cfg(ft_i8)]
 pub fn ft_apply<const V: usize, const NS: usize, const NA: usize>(
     dst: [&mut [i16; FT_OUT]; V],
     src: [&[i16; FT_OUT]; V],
@@ -140,27 +92,8 @@ pub fn ft_apply<const V: usize, const NS: usize, const NA: usize>(
 /// 外側をaccのチャンク、内側を特徴にする。accへの書きが1回になり、
 /// バイアスの初期化も同じパスに入る。加算の順序は特徴ごとに足す版と
 /// 同じで、結果もビット一致する。
-#[cfg(not(ft_i8))]
-pub fn ft_refresh(acc: &mut [i16; FT_OUT], bias: &[i16], w: &[i16], features: &[u32]) {
-    debug_assert_eq!(bias.len(), FT_OUT);
-    for (i, (a, b)) in acc
-        .as_chunks_mut::<I16_LANES>()
-        .0
-        .iter_mut()
-        .zip(bias.as_chunks::<I16_LANES>().0)
-        .enumerate()
-    {
-        let mut v = Simd::from_array(*b);
-        for &f in features {
-            let base = f as usize * FT_OUT + i * I16_LANES;
-            v += Simd::<i16, I16_LANES>::from_slice(&w[base..base + I16_LANES]);
-        }
-        *a = v.to_array();
-    }
-}
-
-/// 同上（i8重み。ADR-0138）。
-#[cfg(ft_i8)]
+///
+/// 重みはi8で持つ（ADR-0138）。
 pub fn ft_refresh(acc: &mut [i16; FT_OUT], bias: &[i16], w: &[i8], features: &[u32]) {
     debug_assert_eq!(bias.len(), FT_OUT);
     for (i, (a, b)) in acc
@@ -187,24 +120,8 @@ pub fn ft_refresh(acc: &mut [i16; FT_OUT], bias: &[i16], w: &[i8], features: &[u
 /// キャッシュとの差分は局面の隔たりで本数が変わるので、単相化できない。
 /// 構造は `ft_refresh` と同じで、外側をaccのチャンク、内側を行にする。
 /// 加減算はラップなので、1行ずつ適用した結果とビット一致する。
-#[cfg(not(ft_i8))]
-pub fn ft_update(acc: &mut [i16; FT_OUT], w: &[i16], adds: &[u32], subs: &[u32]) {
-    for (i, a) in acc.as_chunks_mut::<I16_LANES>().0.iter_mut().enumerate() {
-        let mut v = Simd::from_array(*a);
-        for &f in adds {
-            let base = f as usize * FT_OUT + i * I16_LANES;
-            v += Simd::<i16, I16_LANES>::from_slice(&w[base..base + I16_LANES]);
-        }
-        for &f in subs {
-            let base = f as usize * FT_OUT + i * I16_LANES;
-            v -= Simd::<i16, I16_LANES>::from_slice(&w[base..base + I16_LANES]);
-        }
-        *a = v.to_array();
-    }
-}
-
-/// 同上（i8重み。ADR-0138）。
-#[cfg(ft_i8)]
+///
+/// 重みはi8で持つ（ADR-0138）。
 pub fn ft_update(acc: &mut [i16; FT_OUT], w: &[i8], adds: &[u32], subs: &[u32]) {
     for (i, a) in acc.as_chunks_mut::<FT_I8_LANES>().0.iter_mut().enumerate() {
         let mut v = Simd::from_array(*a);
