@@ -1,6 +1,6 @@
 # 0207: ROADMAPを再び棚卸しし、注力を評価関数の学習と構造の1本に絞る
 
-- Status: accepted
+- Status: accepted（注力は[ADR-0229](0229-roadmap-visible-focus.md)で引き直した。候補へ下ろす・消す判断は残る）
 - Date: 2026-09-17
 - 関連ADR: [0199](0199-roadmap-inventory.md), [0202](0202-smp-loss-diagnosis.md), [0206](0206-entering-king-mix.md), [0126](0126-mate-score-in-training.md), [0120](0120-after-parity.md)
 
