@@ -502,3 +502,13 @@ def test_build_pair_can_build_the_candidate_from_a_ref(capsys):
     copies = [x for x in lines if " cp " in x]
     assert copies[0].endswith("data/bin/cand-adr0211-x")
     assert copies[1].endswith("data/bin/base-adr0211-x")
+
+
+def test_net_defaults_to_the_current_validation_set(capsys):
+    """既定の検証集合は config の1か所が持つ。train・eval・shapes で揃える。"""
+    _, train = dry(capsys, ["net", "train", "x", "--data", "d.psv"])
+    _, evaluate = dry(capsys, ["net", "eval", "a.hmwr"])
+    _, shapes = dry(capsys, ["net", "shapes", "256x16"])
+    for lines in (train, evaluate, shapes):
+        assert any(config.TRAIN_VALID in x for x in lines)
+    assert any(f"--data {config.TRAIN_DATA}" in x for x in shapes)
