@@ -47,11 +47,11 @@ def solve_elo(players, table, max_iterations=10_000, epsilon=1e-4, max_step=50.0
     rating = {p: 0.0 for p in players}
     # (i, j) -> [勝ち, 分け, 負け] を双方向に展開する
     pair = collections.defaultdict(lambda: [0, 0, 0])
-    for (a, b), (w, d, l) in table.items():
+    for (a, b), (w, d, loss) in table.items():
         pair[(a, b)][0] += w
         pair[(a, b)][1] += d
-        pair[(a, b)][2] += l
-        pair[(b, a)][0] += l
+        pair[(a, b)][2] += loss
+        pair[(b, a)][0] += loss
         pair[(b, a)][1] += d
         pair[(b, a)][2] += w
 
@@ -62,8 +62,8 @@ def solve_elo(players, table, max_iterations=10_000, epsilon=1e-4, max_step=50.0
             for j in players:
                 if i == j:
                     continue
-                w, d, l = pair[(i, j)]
-                games = w + d + l
+                w, d, loss = pair[(i, j)]
+                games = w + d + loss
                 if games == 0:
                     continue
                 actual += w + 0.5 * d
@@ -121,9 +121,9 @@ def main():
         for j in players:
             if p == j:
                 continue
-            w, d, l = pair[(p, j)]
+            w, d, loss = pair[(p, j)]
             points += w + 0.5 * d
-            games += w + d + l
+            games += w + d + loss
         se = stderr_of(p, players, pair, rating)
         print(f"| {p} | {rating[p]:+.1f} | {2 * se:.1f} | {points:.1f}/{games:.0f} | {games:.0f} |")
 
@@ -137,8 +137,8 @@ def main():
             if i == j:
                 cells.append(" — |")
             else:
-                w, d, l = pair[(i, j)]
-                cells.append(f" +{w} ={d} -{l} |")
+                w, d, loss = pair[(i, j)]
+                cells.append(f" +{w} ={d} -{loss} |")
         print(f"| {i} |" + "".join(cells))
 
 
