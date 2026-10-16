@@ -137,6 +137,13 @@ def test_per_side_nets_are_rebuilt(tmp_path, started):
     assert spec.opts == ("USI_Hash=1",)
 
 
+def test_fixed_nodes_are_rebuilt(tmp_path, started):
+    """ノード数固定の条件（issue #832）も組み立て直せる。"""
+    put(tmp_path, line=cond_line(tmp_path).replace("--tc 10+0.1", "--nodes 300000"))
+    assert cli.main(["sprt", "extend", NAME, "--foreground"]) == proc.OK
+    assert started[0].env["SPRT_NODES"] == "300000"
+
+
 def test_fixed_pairs_are_not_extended(tmp_path, started):
     put(tmp_path, line=cond_line(tmp_path) + " --no-stop")
     assert cli.main(["sprt", "extend", NAME, "--foreground"]) == proc.RUNTIME
