@@ -148,6 +148,8 @@ def _has_result(step) -> bool:
 
 def run(args: argparse.Namespace) -> int:
     s = _load(args)
+    # Issueフォームから積むと exp queue の検査を通らない。走らせる直前にも見る
+    spec.check_preregistered(s)
     log = paths.log("exp", s.name)
     print(f"=== 実験: {s.name}（ADR-{s.adr}、{len(s.steps)}ステップ） ===")
     # ステップの所要は数分から数日まで揃わないので、残り時間は見積もらない
@@ -269,8 +271,7 @@ def check(args: argparse.Namespace) -> int:
     for name in targets:
         try:
             s = spec.load(name, ref=None)
-            if spec.adr_file(s.adr) is None:
-                raise spec.Invalid(f"{name}: docs/adr/{s.adr}-*.md がない")
+            spec.check_preregistered(s)
             for step in s.steps:
                 code = _dry(step)
                 if code != proc.OK:
@@ -313,6 +314,7 @@ def enqueue(args: argparse.Namespace) -> int:
     adr = spec.adr_file(s.adr)
     if adr is None:
         raise proc.Fail(f"docs/adr/{s.adr}-*.md がない。事前登録のADRをmainへ入れてから積む")
+    spec.check_preregistered(s)
     adr_path = adr.relative_to(paths.REPO).as_posix()
     title = queue_title(args.title, s.adr)
     body = queue_body(s, adr_path, args.note)

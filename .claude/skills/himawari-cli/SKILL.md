@@ -207,6 +207,10 @@ specは `experiments/<名前>.toml` に置き、ADRと同じPRで入れる。ス
 付ける。**`exp run` が読むのはorigin/mainのspecである**。事前登録のPRを
 マージしてから走らせる。
 
+指すADRには「仮説」と「事前登録」を含む見出しが要る。`exp check`・`exp queue`・
+`exp run` が見て、無ければ止める。仮説を持たない受け入れ試験だけは、specに
+`kind = "smoke"` と書いて外す。
+
 ```toml
 adr = "0224"
 
