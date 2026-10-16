@@ -123,6 +123,7 @@
 - [0226](0226-lambda-one.md) 学習の目標から勝敗を外し、dlshogiの評価だけで学習する
 - [0227](0227-cell-dataset.md) 1億局面を、玉の位置×形勢の区画の配分と区画の中のαで組み立てる
 - [0228](0228-grow-labeled-pool.md) dlshogiで点数を付けた局面の母集団を、重複なく足して増やし続ける
+- [0229](0229-roadmap-visible-focus.md) ROADMAPを引き直し、注力を「焦点が見える評価関数」にする
 - [0220](0220-dev-environment-redesign.md) 開発環境を再設計する。状態の出力仕様・ポータル・コマンドの棚卸し・遠隔制御
 - [0144](0144-selfplay-teacher-loop.md) 自己生成による世代ループ
 - [0185](0185-sibling-ranking-loss.md) 兄弟局面のランキング損失を回帰へ足す
@@ -297,7 +298,7 @@
 | [0145](0145-continual-learning.md) | 前世代のネットから継続学習で積む | 2026-08-08 |  | accepted |
 | [0146](0146-book-full-width-opening.md) | 定跡の浅い層を全合法手で埋める | 2026-08-08 |  | accepted |
 | [0147](0147-effect-bucket-features.md) | 特徴indexを被利き数でバケット化する（EffectBucket） | 2026-08-08 |  | rejected（未測定で取り下げ。入力特徴の変更は構造の変更で、ADR-0213で凍結した） |
-| [0148](0148-effect-table.md) | 盤面の利きを差分で持つ | 2026-08-08 |  | proposed（保留。注力の外、[0207](0207-roadmap-focus-eval.md)） |
+| [0148](0148-effect-table.md) | 盤面の利きを差分で持つ | 2026-08-08 |  | proposed（再開。[0229](0229-roadmap-visible-focus.md)の注力の段階1が引き継ぐ） |
 | [0149](0149-experiment-runner.md) | 実験の実行とログを規約で固定する | 2026-08-08 |  | accepted |
 | [0150](0150-rootstrap-evaluation.md) | 世代ループでの検証損失の読み方 | 2026-08-08 |  | accepted |
 | [0151](0151-speedup-sweep.md) | 挙動を変えない高速化の第2弾をプロファイル起点で洗い出す | 2026-08-09 |  | accepted |
@@ -362,7 +363,7 @@
 | [0210](0210-teacher-mix-control.md) | 入玉混合の+37.3を、量・系列・入玉の3つの説明へ統制群で分ける | 2026-09-17 |  | accepted |
 | [0212](0212-tanuki-bench-mix.md) | tanukiの小規模学習で、別系列の混合が本学習の教師でも効くかを測る | 2026-09-18 |  | rejected |
 | [0211](0211-check-extension-see.md) | 王手延長を損をしない王手に限る | 2026-09-18 |  | rejected（判定に至らず打ち切り） |
-| [0213](0213-freeze-structure-focus.md) | 評価関数の構造を凍結し、「焦点」を学習側で掘る | 2026-09-18 |  | proposed |
+| [0213](0213-freeze-structure-focus.md) | 評価関数の構造を凍結し、「焦点」を学習側で掘る | 2026-09-18 |  | superseded（[0229](0229-roadmap-visible-focus.md)） |
 | [0214](0214-epochs-bench.md) | 3億局面の小規模学習で、同じデータの2周が新規データの追加に匹敵するかを測る | 2026-09-18 |  | accepted（2周は+32.2 Eloで効いたが、新規データの+70.4に劣る） |
 | [0215](0215-dl-relabel-pilot.md) | 公開dlshogiの探索なし評価値で教師を付け直し、E4の1億で効きを測る | 2026-09-18 |  | accepted（スケール3水準とも+90超。スケールは600〜340では効きを左右しない） |
 | [0216](0216-defense-oversample.md) | 攻撃的な受けの局面を3倍に重くして学習し、盲点が埋まるかを測る | 2026-09-18 |  | rejected（3倍の複製は−23.8 Elo、順位の差も+1.90から+2.18へ広がった） |
@@ -377,7 +378,8 @@
 | [0225](0225-dedup-20b.md) | 付け直し済みの20億から重複を除き、2周で学習して現行と比べる | 2026-10-06 |  | accepted（重複除去した20億の2周が現行に+22.8 Elo） |
 | [0226](0226-lambda-one.md) | 学習の目標から勝敗を外し、dlshogiの評価だけで学習する | 2026-10-07 |  | rejected（λ=1.0は−1.7 Eloで差が出ず、λ=0.7を維持する） |
 | [0227](0227-cell-dataset.md) | 1億局面を、玉の位置×形勢の区画の配分と区画の中のαで組み立てる | 2026-10-07 |  | rejected（区画の配分は−58.4、区画の中のα=0.5はさらに−17.2で、どちらも害） |
-| [0228](0228-grow-labeled-pool.md) | dlshogiで点数を付けた局面の母集団を、重複なく足して増やし続ける | 2026-10-08 |  | accepted（入玉5億を重複なく足した母集団の2周が現行に+5.9 Elo。2回目以降の回は続く） |
+| [0228](0228-grow-labeled-pool.md) | dlshogiで点数を付けた局面の母集団を、重複なく足して増やし続ける | 2026-10-08 |  | accepted（入玉5億を重複なく足した母集団の2周が現行に+5.9 Elo。2回目以降の回は[0229](0229-roadmap-visible-focus.md)で止めた） |
+| [0229](0229-roadmap-visible-focus.md) | ROADMAPを引き直し、注力を「焦点が見える評価関数」にする | 2026-10-16 |  | accepted |
 
 ## バックログ
 
