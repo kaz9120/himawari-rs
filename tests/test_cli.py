@@ -168,7 +168,7 @@ def test_sprt_run_builds_verifies_then_starts(capsys):
     verify_at = next(i for i, x in enumerate(lines) if "--bin verify" in x)
     start_at = next(i for i, x in enumerate(lines) if "--worker" in x)
     assert build_at < verify_at < start_at
-    assert "git checkout origin/main -- crates/" in joined
+    assert "git restore --source=origin/main --staged --worktree -- crates/" in joined
     assert "sprt run adr0180-x --worker" in lines[start_at]
 
 
@@ -176,9 +176,44 @@ def test_build_pair_restores_the_working_tree(capsys):
     """比較元を作った後、必ず作業木を戻す。"""
     _, lines = dry(capsys, ["build", "pair", "adr0180-c"])
     joined = "\n".join(lines)
-    assert "git checkout origin/main -- crates/" in joined
-    assert "git checkout HEAD -- crates/" in joined
-    assert lines[-1].endswith("git checkout HEAD -- crates/")
+    assert "git restore --source=origin/main --staged --worktree -- crates/" in joined
+    assert lines[-1].endswith("git restore --source=HEAD --staged --worktree -- crates/")
+
+
+def test_build_pair_restore_removes_files_absent_from_head(tmp_path):
+    """HEADで消したファイルを、比較元から戻したまま残さない（#776）。
+
+    `git checkout <ref> -- crates/` はrefに無いファイルを消さなかった。
+    本物のgitで、比較元へ切り替えてから戻した後の作業木とindexを見る。
+    """
+    from hmwr.commands import build
+
+    def git(*args):
+        ident = ["-c", "user.name=t", "-c", "user.email=t@t", "-c", "commit.gpgsign=false"]
+        code, _, err = proc.capture_code(["git", *ident, *args], cwd=tmp_path)
+        assert code == 0, err
+
+    git("init", "-q")
+    (tmp_path / "crates").mkdir()
+    (tmp_path / "crates" / "kept.rs").write_text("a\n")
+    (tmp_path / "crates" / "removed.rs").write_text("b\n")
+    git("add", ".")
+    git("commit", "-qm", "base")
+    git("tag", "base")
+    git("rm", "-q", "crates/removed.rs")
+    (tmp_path / "crates" / "added.rs").write_text("c\n")
+    git("add", ".")
+    git("commit", "-qm", "head")
+
+    build._use_crates("base", dry_run=False, cwd=tmp_path)
+    assert (tmp_path / "crates" / "removed.rs").exists()
+    assert not (tmp_path / "crates" / "added.rs").exists()
+
+    build._use_crates("HEAD", dry_run=False, cwd=tmp_path)
+    assert not (tmp_path / "crates" / "removed.rs").exists()
+    assert (tmp_path / "crates" / "added.rs").exists()
+    status = proc.capture(["git", "status", "--porcelain"], cwd=tmp_path)
+    assert status == ""
 
 
 def test_build_pair_uses_the_measurement_flags(capsys):
@@ -518,10 +553,10 @@ def test_diag_defend_runs_psv_and_keeps_the_tsv_under_profile(capsys):
 def test_build_pair_can_build_the_candidate_from_a_ref(capsys):
     """実験キューの作業ツリーはorigin/mainなので、候補をrefで指せるようにする。"""
     _, lines = dry(capsys, ["build", "pair", "adr0211-x", "--candidate", "0cd8205"])
-    checkouts = [x for x in lines if "git checkout" in x]
-    assert checkouts[0].endswith("git checkout 0cd8205 -- crates/")
-    assert checkouts[1].endswith("git checkout origin/main -- crates/")
-    assert checkouts[-1].endswith("git checkout HEAD -- crates/")
+    restores = [x for x in lines if "git restore" in x]
+    assert restores[0].endswith("--source=0cd8205 --staged --worktree -- crates/")
+    assert restores[1].endswith("--source=origin/main --staged --worktree -- crates/")
+    assert restores[-1].endswith("--source=HEAD --staged --worktree -- crates/")
     copies = [x for x in lines if " cp " in x]
     assert copies[0].endswith("data/bin/cand-adr0211-x")
     assert copies[1].endswith("data/bin/base-adr0211-x")
