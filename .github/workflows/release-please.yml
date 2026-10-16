@@ -33,10 +33,10 @@ on:
     branches:
       - main
 
+# 全ステップがRELEASE_PLEASE_TOKENで動き、GITHUB_TOKENは使わない。
+# 使わない書き込み権限を残さないよう、読み取りだけにする
 permissions:
-  contents: write
-  pull-requests: write
-  issues: write
+  contents: read
 
 # 連続pushでリリースPRの更新とauto-mergeが競合しないよう直列化する。
 # cancel-in-progressにはしない（タグ作成の取りこぼしを防ぐ）。
@@ -63,7 +63,7 @@ jobs:
       # cargo update --workspaceはworkspaceメンバーのバージョンだけを
       # lockへ反映し、外部依存は動かさない。
       #
-      # NOTE: 上のauto-mergeステップと同じ理由で、fromJSONをwith/envで
+      # NOTE: 下のauto-mergeステップと同じ理由で、fromJSONをwith/envで
       # 評価せずシェル内のjqでパースする。
       - name: Sync Cargo.lock on release PR
         if: steps.release-please.outputs.prs_created == 'true'

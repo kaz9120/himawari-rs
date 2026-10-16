@@ -227,6 +227,20 @@ def test_enqueue_files_the_form_body_with_both_labels(enqueue_env):
     assert "docs/adr/0209-workflow-layers.md" in body and "約1時間" in body
 
 
+@pytest.mark.parametrize(
+    "given",
+    ["試す", "実験: 試す", "試す（ADR-0209）", "実験: 試す（ADR-0209）"],
+)
+def test_the_title_gets_the_prefix_and_the_adr_only_once(given):
+    assert exp.queue_title(given, "0209") == "実験: 試す（ADR-0209）"
+
+
+def test_an_adr_mentioned_mid_title_is_not_repeated():
+    # #728 の題。「ADR-0143の再走」と書いてあるので、末尾へ足さない
+    title = "第1群をSPSAにかけ直す（ADR-0143の再走）"
+    assert exp.queue_title(title, "0143") == f"実験: {title}"
+
+
 def test_enqueue_refuses_a_spec_already_waiting(enqueue_env):
     from hmwr.commands import queue
 

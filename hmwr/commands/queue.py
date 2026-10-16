@@ -25,14 +25,8 @@ from pathlib import Path
 from .. import config, paths, proc
 from . import exp
 
+# ラベルの説明文はGitHubの側にだけ置く（gh label list）
 EXPERIMENT, QUEUED, RUNNING, DONE, FAILED = "experiment", "queued", "running", "done", "failed"
-LABELS = {
-    EXPERIMENT: "実験キューの対象（ADR-0209）",
-    QUEUED: "実行待ち",
-    RUNNING: "開発機で実行中",
-    DONE: "全ステップが完了",
-    FAILED: "失敗して止まった",
-}
 SPEC_RE = re.compile(r"experiments/([A-Za-z0-9][A-Za-z0-9._-]*)\.toml")
 AGENT = "com.kaz9120.himawari-queue"
 INTERVAL = 300
