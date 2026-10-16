@@ -42,6 +42,7 @@ hmwr sprt net <名前>                  ビルドを固定し、評価関数だ�
 hmwr sprt show <名前>                 途中経過・結果
 hmwr sprt show                        新しい順に10件
 hmwr sprt wait <名前>                 判定が出るまで待つ
+hmwr sprt extend <名前>               上限で見送りの実行を同じ条件で延ばす
 ```
 
 **SPRTの運用（条件の意味、判定の読み方、H1/H0後の後処理）はrunning-sprt
@@ -257,7 +258,7 @@ Issueフォーム「実験」でIssueを出す。`gh issue create` で手書き�
 同時に走ると、どちらの対局も持ち時間の消化が乱れる。走っているステップは
 止まらないので、`hmwr queue status` で実行中の実験が無いことを確かめてから測る。
 
-`sprt run`・`sprt net`・`match run`・`bench` は起動時にこれを確かめる。
+`sprt run`・`sprt net`・`sprt extend`・`match run`・`bench` は起動時にこれを確かめる。
 常駐が入っているのに一時停止していないか、tickがロックを握って実験を走らせて
 いれば、ビルドも対局も始めずに終了コード3で止まる。キュー自身のステップは
 `exp run` が環境変数 `HMWR_QUEUE_STEP` で印を付けるので止まらない。

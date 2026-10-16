@@ -461,6 +461,31 @@ def _selfplay(spec: Spec, *, dry_run: bool, attempt: int, on_line=None) -> int:
     if not binary.is_file() and not dry_run:
         raise proc.Fail(f"{paths.rel(binary)} がない。cargo build --release を実行する")
 
+    argv = play_command(spec)
+    f["jsonl"].parent.mkdir(parents=True, exist_ok=True)
+    games = _games(f["jsonl"])
+    check_conditions(f["cond"], proc.show(argv), games, adopt=spec.adopt, dry_run=dry_run)
+
+    # ペア数の上限は条件に数えない。続きを積むときに変わるのが正常である
+    max_pairs = spec.env.get("SPRT_MAX_PAIRS") or config.get("SPRT_MAX_PAIRS", "10000")
+    argv += ["--max-pairs", max_pairs, "--out", str(f["jsonl"])]
+    if games:
+        print(f"試行 {attempt}: 既存の棋譜から再開する（{games} 局）")
+        argv += ["--resume", str(f["jsonl"])]
+    else:
+        print(f"試行 {attempt}: 新規に開始する")
+
+    return proc.run(argv, dry_run=dry_run, log=f["log"], allowed=(0, 1, 2, 3), on_line=on_line)
+
+
+def play_command(spec: Spec) -> list[str]:
+    """対局のコマンドのうち、条件に数える部分を組み立てる。
+
+    条件の記録（.cond）はこの部分を控える。ペア数の上限と棋譜の置き場は
+    続きを積むときに変わるのが正常なので、ここに含めない。
+    """
+    binary = paths.release_bin("selfplay")
+
     def setting(key: str, fallback: str = "") -> str:
         return spec.env.get(key) or config.get(key, fallback)
 
@@ -497,20 +522,7 @@ def _selfplay(spec: Spec, *, dry_run: bool, attempt: int, on_line=None) -> int:
     ]  # fmt: skip
     if spec.stop_pairs:
         argv += ["--no-stop"]
-
-    f["jsonl"].parent.mkdir(parents=True, exist_ok=True)
-    games = _games(f["jsonl"])
-    check_conditions(f["cond"], proc.show(argv), games, adopt=spec.adopt, dry_run=dry_run)
-
-    # ペア数の上限は条件に数えない。続きを積むときに変わるのが正常である
-    argv += ["--max-pairs", setting("SPRT_MAX_PAIRS", "10000"), "--out", str(f["jsonl"])]
-    if games:
-        print(f"試行 {attempt}: 既存の棋譜から再開する（{games} 局）")
-        argv += ["--resume", str(f["jsonl"])]
-    else:
-        print(f"試行 {attempt}: 新規に開始する")
-
-    return proc.run(argv, dry_run=dry_run, log=f["log"], allowed=(0, 1, 2, 3), on_line=on_line)
+    return argv
 
 
 def check_conditions(cond: Path, line: str, games: int, *, adopt: bool, dry_run: bool) -> None:
