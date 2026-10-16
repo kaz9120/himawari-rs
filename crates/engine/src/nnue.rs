@@ -27,37 +27,26 @@ pub const FV_SCALE: i32 = 16;
 /// 入力特徴の総数。halfkaでは相手玉平面のぶん広がる（ADR-0193）。
 pub const FT_IN: usize = 81 * bonapiece::FE_TOTAL as usize;
 
-/// FT重みの格納型（ADR-0036、ADR-0138）。既定はi16で、`HIMAWARI_FT_I8=1`
-/// でビルドするとi8になる。accumulatorとFTバイアスはどちらの場合もi16の
-/// ままなので、活性（clipped ReLU）以降の精度は変わらない。
-#[cfg(not(ft_i8))]
-pub type FtWeight = i16;
-#[cfg(ft_i8)]
+/// FT重みの格納型（ADR-0138）。accumulatorとFTバイアスはi16のままなので、
+/// 活性（clipped ReLU）以降の精度は変わらない。
 pub type FtWeight = i8;
 
 /// i16で読んだFT重みを格納型へ移す（ADR-0138）。
 ///
-/// i8のビルドでは範囲を確かめる。**黙って切り詰めない。** 飽和は
+/// 範囲を確かめる。**黙って切り詰めない。** 飽和は
 /// 0.055%でも−59.3 Eloになる（ADR-0138のリーグ戦）ので、気づかず
 /// 壊れたネットで対局する事故のほうが高くつく。
 pub fn ft_w_from_i16(v: Vec<i16>) -> Result<Vec<FtWeight>, String> {
-    #[cfg(not(ft_i8))]
-    {
-        Ok(v)
+    if let Some(&bad) = v.iter().find(|&&x| !(-128..=127).contains(&i32::from(x))) {
+        return Err(format!(
+            "FT weight {bad} does not fit in i8; train the net with --ft-clip (ADR-0138)"
+        ));
     }
-    #[cfg(ft_i8)]
-    {
-        if let Some(&bad) = v.iter().find(|&&x| !(-128..=127).contains(&i32::from(x))) {
-            return Err(format!(
-                "FT weight {bad} does not fit in i8; train the net with --ft-clip (ADR-0138)"
-            ));
-        }
-        Ok(v.into_iter().map(|x| x as i8).collect())
-    }
+    Ok(v.into_iter().map(|x| x as i8).collect())
 }
 
-/// 重み一式。量子化はADR-0036（FT系i16、隠れ層i8）。FT重みだけは
-/// ビルドでi8にもできる（ADR-0138）。
+/// 重み一式。量子化はADR-0036（隠れ層i8）とADR-0138（FT重みi8）。
+/// FTバイアスとaccumulatorはi16で持つ。
 pub struct NnueNetwork {
     /// FT重み。列優先: `ft_w[feature * FT_OUT + o]`。
     pub ft_w: Vec<FtWeight>,

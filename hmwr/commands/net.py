@@ -161,8 +161,6 @@ def add_parser(sub: argparse._SubParsersAction) -> None:
     t.add_argument("--mmap", action="store_true", help="学習データをmmapで開く")
     t.add_argument("--init-net", metavar="ネット", help="初期値のネット")
     t.add_argument("--freeze-ft", action="store_true", help="FTを凍結する")
-    t.add_argument("--distill-net", metavar="ネット", help="蒸留の教師")
-    t.add_argument("--lambda-distill", metavar="値", help="蒸留の重み")
     t.add_argument("--effect-head", metavar="種類", help="利き予測のヘッド")
     t.add_argument("--lambda-effect", metavar="値", help="利き損失の重み")
     t.add_argument("--lambda-value", metavar="値", help="評価値損失の重み")
@@ -602,10 +600,6 @@ def _shape_common_args(args: argparse.Namespace) -> list[str]:
         out += ["--init-net", args.init_net]
         if args.freeze_ft:
             out.append("--freeze-ft")
-    if args.distill_net:
-        out += ["--distill-net", args.distill_net]
-        if args.lambda_distill:
-            out += ["--lambda-distill", args.lambda_distill]
     if args.effect_head:
         out += ["--effect-head", args.effect_head, "--lambda-effect", args.lambda_effect]
     if args.lambda_value:

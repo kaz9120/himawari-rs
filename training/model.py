@@ -67,7 +67,7 @@ class NnueModel(nn.Module):
     """
 
     def __init__(self, sparse_ft=True, factorized=False, policy=False,
-                 pretrain=False, distill_out=0, effect_head=None,
+                 pretrain=False, effect_head=None,
                  focus_head=None):
         super().__init__()
         self.ft = nn.EmbeddingBag(FT_IN, FT_OUT, mode="sum", sparse=sparse_ft)
@@ -90,11 +90,6 @@ class NnueModel(nn.Module):
         # ヘッドはタスクを自分で解いてしまい、FTへ表現を押し込む圧力が
         # 弱まる。評価値を当てる圧力自体は残す
         self.pretrain_value = nn.Linear(CONCAT, 1) if pretrain else None
-        # 表現蒸留の写像（ADR-0132）。生徒のFT出力から教師のFT出力へ当てる。
-        # 線形1層に限るのは補助ヘッドと同じ理由で、写像自身が圧縮を解いて
-        # しまうとFTへ表現を押し込む圧力が弱まるためである。
-        # 書き出しには載らないので推論は変わらない
-        self.distill = nn.Linear(CONCAT, distill_out) if distill_out else None
         # 利き予測ヘッド（ADR-0133）。FT出力から升ごとの利き数を当てる。
         # 線形1層と2層MLPのどちらが良い表現を作るかは決め打たず、比較軸に
         # する。深いヘッドは遮りの論理積を自分で計算できてしまう一方、
@@ -152,8 +147,7 @@ class NnueModel(nn.Module):
             nn.init.zeros_(self.l4.bias)
         nn.init.uniform_(self.out.weight, -0.3, 0.3)
         nn.init.zeros_(self.out.bias)
-        heads = [self.policy_from, self.policy_to, self.pretrain_value,
-                 self.distill]
+        heads = [self.policy_from, self.policy_to, self.pretrain_value]
         # 利きヘッドと焦点ヘッドはMLPのこともある。線形層を取り出して同じ初期化を当てる
         for head in (self.effect, self.focus):
             if head is not None:

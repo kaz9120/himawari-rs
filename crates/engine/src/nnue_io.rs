@@ -12,7 +12,7 @@
 use std::io::{Read, Write};
 
 use crate::nnue::{
-    ARCH, CONCAT, FT_I8, FT_IN, FT_OUT, FtWeight, HALF, L1_OUT, L1_PAD, L2_OUT, L2_PAD, L3_OUT,
+    ARCH, CONCAT, FT_IN, FT_OUT, FtWeight, HALF, L1_OUT, L1_PAD, L2_OUT, L2_PAD, L3_OUT,
     LAST_HIDDEN, NnueNetwork, ft_w_from_i16, pad_rows,
 };
 
@@ -36,13 +36,13 @@ const FORMAT_VERSION_DEEP_I8_PAIR: u32 = 8;
 const FORMAT_VERSION_TWO_HIDDEN_PAIR: u32 = 9;
 const FORMAT_VERSION_DEEP_PAIR: u32 = 10;
 
-/// 書き出しに使う版。層の数とFT重みの型で決まる。積の有無はビルドで
-/// 固定なので、このブランチは対応する版だけを書き、他は読まない。
-const FORMAT_VERSION: u32 = match (L3_OUT != 0, FT_I8) {
-    (false, false) => FORMAT_VERSION_TWO_HIDDEN_PAIR,
-    (true, false) => FORMAT_VERSION_DEEP_PAIR,
-    (false, true) => FORMAT_VERSION_TWO_HIDDEN_I8_PAIR,
-    (true, true) => FORMAT_VERSION_DEEP_I8_PAIR,
+/// 書き出しに使う版。層の数で決まる。FT重みはi8で書く（ADR-0138）。
+/// FT重みをi16で持つ版9・版10は、読み込みだけを受け付ける。積の有無は
+/// ビルドで固定なので、このブランチは対応する版だけを書き、他は読まない。
+const FORMAT_VERSION: u32 = if L3_OUT != 0 {
+    FORMAT_VERSION_DEEP_I8_PAIR
+} else {
+    FORMAT_VERSION_TWO_HIDDEN_I8_PAIR
 };
 
 /// FT重み列をi16として読む。ファイルの版で1要素のバイト数が変わる
@@ -616,27 +616,6 @@ pub fn load_resized_with_dims(
     ))
 }
 
-/// FTだけを、元ファイルの次元のまま読む（ADR-0132）。
-///
-/// `load_resized_with_dims` は読んだネットをビルド時の次元へ合わせるので、
-/// **FT256のビルドからFT768のファイルを読むとFTが256へ切り詰められる。**
-/// 表現蒸留はその768次元こそを教師にするため、切り詰めない口が要る。
-///
-/// 戻り値は (ft_w, ft_b, 構成)。`ft_w` の長さは `FT_IN * 構成[1]` になる。
-/// 後段は読まない。教師に使うのはFTだけで、読み残しがあっても正常とみなす。
-pub fn load_ft(r: &mut impl Read) -> Result<(Vec<i16>, Vec<i16>, Dims), String> {
-    let (version, dims, _, body) = read_header(r)?;
-    let [ft_in, src_ft, ..] = dims;
-    // FT入力は特徴の定義そのもので、次元を合わせて済む話ではない
-    if ft_in != FT_IN {
-        return Err(format!("FT input mismatch: file {ft_in} build {FT_IN}"));
-    }
-    let mut cur = Cursor::new(&body);
-    let ft_b = cur.i16v(src_ft)?;
-    let ft_w = read_ft_i16(&mut cur, version, FT_IN * src_ft)?;
-    Ok((ft_w, ft_b, dims))
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -687,8 +666,6 @@ mod tests {
         for &x in &net.ft_b {
             body.extend_from_slice(&x.to_le_bytes());
         }
-        // 既定ビルドでは型が同じで変換が恒等になるが、i8ビルドでは必要
-        #[allow(clippy::useless_conversion)]
         for &x in &net.ft_w {
             body.extend_from_slice(&i16::from(x).to_le_bytes());
         }
@@ -715,67 +692,6 @@ mod tests {
             .err()
             .expect("resizeの経路も後段を読むので弾く");
         assert!(err.contains("ADR-0171"), "原因の読める文言にする: {err}");
-        // FTだけを読む経路（ADR-0132）は積の有無に関わらないので通る
-        let (ft_w, _, dims) = load_ft(&mut v2.as_slice()).expect("FTだけなら読める");
-        assert_eq!(dims[0], FT_IN);
-        assert_eq!(ft_w.len(), FT_IN * FT_OUT);
-    }
-
-    /// FTだけを持つ合成ファイルを作る。戻り値は (バイト列, ft_w, ft_b)。
-    ///
-    /// `save` はビルド時の次元でしか書けないので、太いFTのファイルは
-    /// ここで組み立てる。後段はダミーのバイト列にする。`load_ft` が
-    /// そこを読まないことも同時に確かめられる。
-    fn synth_ft_file(ft_in: usize, src_ft: usize, seed: i16) -> (Vec<u8>, Vec<i16>, Vec<i16>) {
-        // FT重みはi8のビルドでも読めるよう±127に収める（ADR-0138）。
-        // バイアスはどちらのビルドでもi16なので範囲を絞らない
-        let ft_b: Vec<i16> = (0..src_ft)
-            .map(|i| (i as i16).wrapping_mul(7).wrapping_add(seed))
-            .collect();
-        let ft_w: Vec<i16> = (0..ft_in * src_ft)
-            .map(|i| ((i as i16).wrapping_mul(3).wrapping_sub(seed)).rem_euclid(255) - 127)
-            .collect();
-
-        let mut body = Vec::new();
-        for &x in ft_b.iter().chain(&ft_w) {
-            body.extend_from_slice(&x.to_le_bytes());
-        }
-        body.extend_from_slice(&[0xABu8; 64]);
-
-        let lineage = b"synthetic ft";
-        let mut file = Vec::new();
-        file.extend_from_slice(MAGIC);
-        file.extend_from_slice(&FORMAT_VERSION_TWO_HIDDEN.to_le_bytes());
-        for dim in [ft_in, src_ft, 16, 32] {
-            file.extend_from_slice(&(dim as u32).to_le_bytes());
-        }
-        file.extend_from_slice(&(lineage.len() as u32).to_le_bytes());
-        file.extend_from_slice(lineage);
-        file.extend_from_slice(&fnv1a(&body).to_le_bytes());
-        file.extend_from_slice(&body);
-        (file, ft_w, ft_b)
-    }
-
-    /// `load_ft` は元ファイルのFT幅をそのまま返す（ADR-0132）。
-    /// ビルドより太くても切り詰めず、細くても埋めない。
-    #[test]
-    fn load_ft_keeps_source_width() {
-        for src_ft in [FT_OUT + 3, 2] {
-            let (file, ft_w, ft_b) = synth_ft_file(FT_IN, src_ft, 11);
-            let (got_w, got_b, dims) = load_ft(&mut file.as_slice()).unwrap();
-            assert_eq!(dims, [FT_IN, src_ft, 16, 32, 0]);
-            assert_eq!(got_b, ft_b, "ft_bが元の幅で戻る");
-            assert_eq!(got_w.len(), FT_IN * src_ft);
-            assert_eq!(got_w, ft_w, "ft_wが元の幅で戻る");
-        }
-    }
-
-    /// FT入力が違うファイルは受け付けない。特徴の定義そのものが違うので、
-    /// 次元を合わせて使える種類の差ではない。
-    #[test]
-    fn load_ft_rejects_other_feature_set() {
-        let (file, _, _) = synth_ft_file(10, 2, 3);
-        assert!(load_ft(&mut file.as_slice()).is_err());
     }
 
     /// ヘッダ・重みの破損を検出してエラーになる。
