@@ -39,6 +39,12 @@ MATCH_MAX_MOVES = "320"
 EVAL_FILE = "data/nets/pool1_2ep_reorder.hmwr"
 OPENINGS = "openings/start_sfens_ply24.txt"
 
+# 学習の既定の学習データと検証集合。現行の評価関数を学習したときの組（ADR-0228）。
+# 評価関数の世代を替えて検証集合も替えたら、ここも揃える。net train・eval・shapesの
+# 既定がここを読む
+TRAIN_DATA = "data/train/pool1.psv"
+TRAIN_VALID = "data/train/valid_tanuki_dl430_q1.psv"
+
 # 計測・対局のビルドフラグ（ADR-0003）
 RUSTFLAGS = "-C target-cpu=native"
 

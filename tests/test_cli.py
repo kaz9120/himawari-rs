@@ -369,6 +369,15 @@ def test_net_train_logs_under_its_area(capsys):
     assert any("data/logs/train-x.log" in x for x in lines)
 
 
+def test_net_defaults_to_the_current_validation_set(capsys):
+    """既定の検証集合は config の1か所が持つ。train・eval・shapes で揃える。"""
+    _, train = dry(capsys, ["net", "train", "x", "--data", "d.psv"])
+    _, evaluate = dry(capsys, ["net", "eval", "a.hmwr"])
+    _, shapes = dry(capsys, ["net", "shapes", "256x16"])
+    for lines in (train, evaluate, shapes):
+        assert any(config.TRAIN_VALID in x for x in lines)
+    assert any(f"--data {config.TRAIN_DATA}" in x for x in shapes)
+
 def test_net_eval_uses_each_validation_set(capsys):
     _, lines = dry(capsys, ["net", "eval", "a.hmwr", "--valid", "v1.psv,v2.psv"])
     assert any("--valid v1.psv" in x for x in lines)
