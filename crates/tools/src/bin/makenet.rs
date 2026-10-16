@@ -2,8 +2,6 @@
 //!
 //! 使い方:
 //!   makenet [--seed N] [--out path]           乱数ネット生成（配線検証・ベンチ用）
-//!   makenet --import nn.bin [--out path]      やねうら王形式HalfKPネットを
-//!                                             独自形式へ変換（利き塔ゼロ）
 //!   makenet --resize other.hmwr [--out path]  別の構成のネットを、いまの
 //!                                             ビルド構成へ合わせる
 //!   makenet --reorder perm.txt --from net.hmwr [--out path]
@@ -16,19 +14,6 @@
 
 use himawari_engine::nnue::{CONCAT, FT_OUT, HALF, NnueNetwork};
 use himawari_engine::nnue_io::{load, load_resized, save};
-
-/// nn.bin（やねうら王形式）を読む。FT 256専用（ADR-0067）。
-fn import_net(path: &str) -> (NnueNetwork, String) {
-    let mut f = std::fs::File::open(path).unwrap_or_else(|e| {
-        eprintln!("開けません: {path}: {e}");
-        std::process::exit(1);
-    });
-    let (net, arch) = himawari_engine::nnue_compat::load_nn_bin(&mut f).unwrap_or_else(|e| {
-        eprintln!("nn.bin読み込み失敗: {e}");
-        std::process::exit(1);
-    });
-    (net, format!("imported from {path} ({arch})"))
-}
 
 /// 別の構成のネットを、いまのビルド構成へ合わせる（ADR-0127）。
 /// 広げる向きなら評価値が完全に一致するので、構成だけを変えて探索木を
@@ -136,7 +121,6 @@ fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
     let mut seed = 1u64;
     let mut out = "random.hmwr".to_string();
-    let mut import: Option<String> = None;
     let mut resize: Option<String> = None;
     let mut reorder: Option<String> = None;
     let mut from: Option<String> = None;
@@ -150,14 +134,6 @@ fn main() {
             "--out" => {
                 i += 1;
                 out = args.get(i).cloned().unwrap_or(out);
-            }
-            "--import" => {
-                i += 1;
-                import = args.get(i).cloned();
-                if import.is_none() {
-                    eprintln!("--import にはnn.binのパスが必要です");
-                    std::process::exit(1);
-                }
             }
             "--resize" => {
                 i += 1;
@@ -190,19 +166,18 @@ fn main() {
         }
         i += 1;
     }
-    let (net, lineage) = match (&import, &resize, &reorder) {
-        (Some(path), None, None) => import_net(path),
-        (None, Some(path), None) => resize_net(path),
-        (None, None, Some(perm)) => {
+    let (net, lineage) = match (&resize, &reorder) {
+        (Some(path), None) => resize_net(path),
+        (None, Some(perm)) => {
             let Some(src) = from.as_deref() else {
                 eprintln!("--reorder には --from で元の.hmwrを渡してください");
                 std::process::exit(1);
             };
             reorder_net(src, perm)
         }
-        (None, None, None) => (NnueNetwork::random(seed), format!("random seed={seed}")),
+        (None, None) => (NnueNetwork::random(seed), format!("random seed={seed}")),
         _ => {
-            eprintln!("--import・--resize・--reorder は同時に指定できません");
+            eprintln!("--resize と --reorder は同時に指定できません");
             std::process::exit(1);
         }
     };
