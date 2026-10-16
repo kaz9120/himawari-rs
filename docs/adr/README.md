@@ -274,7 +274,7 @@ ROADMAPの注力を決めた判断。いまの注力は0229にある。
 | [0116](0116-g7-timeman.md) | 停止を予約する構造へ移し最小思考時間を入れる（G7） | 2026-07-31 | ±0（非劣性） | accepted |
 | [0117](0117-g8-ponder.md) | ponder時間の計上・継続・予約を参照実装へ揃える（G8） | 2026-07-31 | +19.3 | accepted |
 | [0118](0118-g9-aspiration.md) | 反復深化とaspirationを参照実装へ揃える（G9） | 2026-07-31 | +55.6 | accepted |
-| [0119](0119-g10-book.md) | 定跡・投票・実務オプションを参照実装へ揃える（G10） | 2026-08-01 | +8.0 | accepted |
+| [0119](0119-g10-book.md) | 定跡・投票・実務オプションを参照実装へ揃える（G10） | 2026-08-01 | +8.0 | accepted（ponder中に定跡を引く挙動は[0231](0231-ponder-book-on-ponderhit.md)で戻した） |
 | [0120](0120-after-parity.md) | 追従一巡後の方向を評価関数と探索の結合へ置く | 2026-08-01 |  | superseded |
 | [0121](0121-book-scale-up.md) | 定跡を損失の小さい順に掘り、上限と再開を付ける | 2026-08-01 |  | accepted |
 | [0122](0122-tooling-language-split.md) | 開発スクリプトを役割で3言語に分ける | 2026-08-01 |  | accepted |
@@ -386,6 +386,7 @@ ROADMAPの注力を決めた判断。いまの注力は0229にある。
 | [0228](0228-grow-labeled-pool.md) | dlshogiで点数を付けた局面の母集団を、重複なく足して増やし続ける | 2026-10-08 | +5.9 | accepted（入玉5億を重複なく足した母集団の2周が現行に+5.9 Elo。2回目以降の回は[0229](0229-roadmap-visible-focus.md)で止めた） |
 | [0229](0229-roadmap-visible-focus.md) | ROADMAPを引き直し、注力を「焦点が見える評価関数」にする | 2026-10-16 |  | accepted |
 | [0230](0230-board-op-profile.md) | 探索時間に占める盤面操作の割合を測り、盤面の持ち方を決める材料にする | 2026-10-16 |  | proposed |
+| [0231](0231-ponder-book-on-ponderhit.md) | ponder中は定跡を引かずに探索し、ponderhitで定跡を引く | 2026-10-17 |  | accepted（指し手が変わらないのでSPRTで測らずに入れた） |
 
 ## バックログ
 
