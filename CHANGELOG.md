@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.55.6](https://github.com/kaz9120/himawari-rs/compare/v0.55.5...v0.55.6) (2026-10-16)
+
+
+### その他の変更
+
+* 探索の手の進め戻しを局面とaccumulatorで1つの関数にまとめる ([#817](https://github.com/kaz9120/himawari-rs/issues/817)) ([04c0bbb](https://github.com/kaz9120/himawari-rs/commit/04c0bbbc94911f38c5232716e67132988c629e35)), closes [#769](https://github.com/kaz9120/himawari-rs/issues/769)
+* 探索時間に占める盤面操作の割合を測る（ADR-0230） ([#816](https://github.com/kaz9120/himawari-rs/issues/816)) ([243b73a](https://github.com/kaz9120/himawari-rs/commit/243b73a33de761eee34e61fbbf68a708a8a61607))
+
 ## [0.55.5](https://github.com/kaz9120/himawari-rs/compare/v0.55.4...v0.55.5) (2026-10-16)
 
 
