@@ -236,6 +236,46 @@ mod tests {
         walk_and_compare(&mut pos, &t, 2);
     }
 
+    /// 戻した盤面へ同じ指し手の差分を当て直すと、進める前の表へ戻るか
+    /// （ADR-0232の案U2）。探索のワーカーはこの方式で利きを戻す。
+    fn walk_do_undo(pos: &mut Position, table: &mut EffectTable, depth: u32) -> u64 {
+        if depth == 0 {
+            return 1;
+        }
+        let mut list = crate::moves::MoveList::default();
+        crate::movegen::generate_legal(pos, true, &mut list);
+        let mut n = 0u64;
+        for &m in &list {
+            let before = table.clone();
+            pos.do_move(m);
+            table.update(pos.board_ref(), pos.occupied(), pos.sliders(), m);
+            n += walk_do_undo(pos, table, depth - 1);
+            pos.undo_move(m);
+            table.update(pos.board_ref(), pos.occupied(), pos.sliders(), m);
+            assert_eq!(
+                *table,
+                before,
+                "戻した表が進める前と食い違う: 手={m:?}\n{}",
+                pos.to_sfen()
+            );
+        }
+        n
+    }
+
+    #[test]
+    fn undo_by_reapplying_the_move_restores_the_table() {
+        for sfen in [
+            SFEN_STARTPOS,
+            "l6nl/5+P1gk/2np1S3/p1p4Pp/3P2Sp1/1PPb2P1P/P5GS1/R8/LN4bKL w GR5pnsg 1",
+        ] {
+            let mut pos = Position::from_sfen(sfen).expect("sfen");
+            let mut t = EffectTable::new();
+            t.rebuild(pos.board_ref(), pos.occupied());
+            let n = walk_do_undo(&mut pos, &mut t, 3);
+            assert!(n > 1000, "局面数が少なすぎる: {n}");
+        }
+    }
+
     /// 逆向きの索引が食い違っていないか。from_sq に入っているなら
     /// to_sq にも入っていて、その逆も成り立つ。
     #[test]

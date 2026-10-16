@@ -6,6 +6,7 @@
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicI64, AtomicU64, Ordering};
 
+use himawari_core::effect::EffectTable;
 use himawari_core::{
     Color, Move, MoveList, Piece, PieceType, Position, Repetition, Square, generate_legal,
 };
@@ -531,6 +532,9 @@ impl NodeBuffers {
 pub struct Worker {
     pub pos: Position,
     pub evaluator: Evaluator,
+    /// 盤面の利き（ADR-0232）。`pos` と対で持ち、`make_move`・`unmake_move` で
+    /// 差分を当てる。`pos` を差し替えたら `rebuild_effect` で作り直す
+    eff: EffectTable,
     /// historyの一式（ADR-0109のG1）。対局を通じてスレッドが持ち回る。
     pub hist: Histories,
     /// plyごとの探索状態（ADR-0109）。添字は `ply + STACK_OFFSET` で引く。
@@ -606,9 +610,12 @@ impl Worker {
         hist: Histories,
     ) -> Worker {
         let root_color = pos.side_to_move();
+        let mut eff = EffectTable::new();
+        eff.rebuild(pos.board_ref(), pos.occupied());
         Worker {
             pos,
             evaluator,
+            eff,
             hist,
             // ヒープ上で作ってから配列へ移す。要素数はコンパイル時に
             // 決まっているので、この変換が失敗することはない
@@ -654,14 +661,52 @@ impl Worker {
     #[inline(always)]
     fn make_move(&mut self, m: Move) {
         self.pos.do_move(m);
+        self.eff.update(
+            self.pos.board_ref(),
+            self.pos.occupied(),
+            self.pos.sliders(),
+            m,
+        );
+        self.debug_check_effect();
         self.evaluator.push(&self.pos);
     }
 
     /// `make_move` を戻す。進めたのと逆の順で戻す。
+    ///
+    /// 利きは戻した盤面へ同じ指し手の差分を当て直して戻す（ADR-0232の案U2）。
+    /// 触れる駒の集合は進めた後の表の逆引きで決まり、移動元・移動先へ利く
+    /// 飛び駒は進める前後で変わらないので、進めたときと同じ集合になる。
     #[inline(always)]
     fn unmake_move(&mut self, m: Move) {
         self.evaluator.pop();
         self.pos.undo_move(m);
+        self.eff.update(
+            self.pos.board_ref(),
+            self.pos.occupied(),
+            self.pos.sliders(),
+            m,
+        );
+        self.debug_check_effect();
+    }
+
+    /// 利きを盤面から作り直す。`pos` を差し替えたときに呼ぶ。
+    fn rebuild_effect(&mut self) {
+        self.eff.rebuild(self.pos.board_ref(), self.pos.occupied());
+    }
+
+    /// デバッグビルドでは、差分で保った利きを作り直しと突き合わせる。
+    #[inline(always)]
+    fn debug_check_effect(&self) {
+        #[cfg(debug_assertions)]
+        {
+            let mut full = EffectTable::new();
+            full.rebuild(self.pos.board_ref(), self.pos.occupied());
+            debug_assert!(
+                self.eff == full,
+                "利きの差分が作り直しと食い違う: {}",
+                self.pos.to_sfen()
+            );
+        }
     }
 
     /// null moveで1手進める。対の作法は `make_move` と同じ。
@@ -1081,6 +1126,7 @@ impl Worker {
     pub fn set_position(&mut self, pos: Position) {
         self.root_color = pos.side_to_move();
         self.pos = pos;
+        self.rebuild_effect();
         // accumulatorのスタックを捨てる。前の局面の計算済みフラグが
         // 残っていると、全く別の局面の評価値をそのまま読んでしまう
         self.evaluator.new_search(&self.pos);
@@ -1137,6 +1183,7 @@ impl Worker {
             };
         }
         self.shared.tt.new_search();
+        self.rebuild_effect();
         self.evaluator.new_search(&self.pos);
         // lowPly historyはgoのたびに埋め直す（ADR-0109。S:1539-1540）
         self.hist.new_search();
