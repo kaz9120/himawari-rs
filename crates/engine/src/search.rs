@@ -1160,7 +1160,7 @@ impl Worker {
             let Some(m) = self.pos.to_move(data.mv) else {
                 break;
             };
-            if !self.pos.pseudo_legal(m) || !self.pos.is_legal(m) {
+            if !self.pos.pseudo_legal(m) || !self.pos.is_legal_with(m, &self.eff) {
                 break;
             }
             self.make_move(m);
@@ -1921,12 +1921,12 @@ impl Worker {
             let mut best_move_is_capture = false;
             let mut count = 0u32;
 
-            while let Some(m) = picker.next(&self.pos, &self.hist, &cont) {
+            while let Some(m) = picker.next(&self.pos, &self.eff, &self.hist, &cont) {
                 // 除外手はスキップ（singular検証探索。ADR-0050）。通常はexcluded==NONE
                 if m == excluded {
                     continue;
                 }
-                if !self.pos.is_legal(m) {
+                if !self.pos.is_legal_with(m, &self.eff) {
                     continue;
                 }
                 count += 1;
@@ -2420,7 +2420,7 @@ impl Worker {
             // capture historyで動く。alphaが負のときは刈らない
             let margin =
                 (SEE_CAPTURE_COEF() * depth as i32 + capt_hist * SEE_CAPT_HIST() / 1024).max(0);
-            if alpha >= VALUE_DRAW && !self.pos.see_ge(m, -margin) {
+            if alpha >= VALUE_DRAW && !self.pos.see_ge_with(m, -margin, &self.eff) {
                 return true;
             }
         } else if !follow_pv || !PV {
@@ -2477,7 +2477,7 @@ impl Worker {
             let lmr_depth = lmr_depth.max(0);
             if !self
                 .pos
-                .see_ge(m, -SEE_QUIET_COEF() * lmr_depth * lmr_depth)
+                .see_ge_with(m, -SEE_QUIET_COEF() * lmr_depth * lmr_depth, &self.eff)
             {
                 return true;
             }
@@ -2522,7 +2522,7 @@ impl Worker {
             && tt.value.abs() < VALUE_MATE_IN_MAX_PLY
             // 往復手は検証探索にかけない（G5。yaneuraou-search.cpp:3749）
             && !self.is_shuffling(tt.mv, ply)
-            && self.pos.is_legal(tt.mv)
+            && self.pos.is_legal_with(tt.mv, &self.eff)
         {
             let singular_beta = tt.value
                 - (SINGULAR_MARGIN
@@ -2792,9 +2792,9 @@ impl Worker {
             let cont = self.cont_bases(ply);
             // バッファの返却を一本化するため、復帰点をこのブロックにまとめる
             let probcut_value = 'probcut: {
-                while let Some(m) = picker.next(&self.pos, &self.hist, &cont) {
+                while let Some(m) = picker.next(&self.pos, &self.eff, &self.hist, &cont) {
                     // 除外手はsingular検証探索中のTT手（ADR-0050）
-                    if m == excluded || !self.pos.is_legal(m) {
+                    if m == excluded || !self.pos.is_legal_with(m, &self.eff) {
                         continue;
                     }
                     self.set_current_move(ply, m, !self.pos.piece_on(m.to()).is_empty());
@@ -2922,7 +2922,7 @@ impl Worker {
             // 呼ぶ。王手中も呼ばない。評価関数の呼び出しより手前に置くので、
             // 詰みがあるときはevaluate()を省ける
             if tt_hit.is_none()
-                && let Some(m) = crate::mate::mate_1ply(&self.pos)
+                && let Some(m) = crate::mate::mate_1ply_with(&self.pos, &self.eff)
             {
                 // 次のノードで（指し手がなくなって）詰むという解釈
                 let mate = mate_in(ply + 1);
@@ -3016,8 +3016,8 @@ impl Worker {
         let node_value = 'node: {
             let mut count = 0u32;
             let mut best_move = Move::NONE;
-            while let Some(m) = picker.next(&self.pos, &self.hist, &cont) {
-                if !self.pos.is_legal(m) {
+            while let Some(m) = picker.next(&self.pos, &self.eff, &self.hist, &cont) {
+                if !self.pos.is_legal_with(m, &self.eff) {
                     continue;
                 }
                 count += 1;
@@ -3056,7 +3056,7 @@ impl Worker {
                             }
                             continue;
                         }
-                        if !self.pos.see_ge(m, alpha - futility_base) {
+                        if !self.pos.see_ge_with(m, alpha - futility_base, &self.eff) {
                             if raise {
                                 best = best.max(alpha.min(futility_base));
                             }
@@ -3070,7 +3070,7 @@ impl Worker {
                     }
                     // SEEが十分悪い手は探索しない（yaneuraou-search.cpp:4989-4990）。
                     // 無駄な王手ラッシュを抑える。歩損は許す下限である
-                    if !self.pos.see_ge(m, QS_SEE_MARGIN()) {
+                    if !self.pos.see_ge_with(m, QS_SEE_MARGIN(), &self.eff) {
                         continue;
                     }
                 }

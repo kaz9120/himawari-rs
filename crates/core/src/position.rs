@@ -9,6 +9,7 @@ use crate::attacks::{
     aligned, attacks, between, bishop_attacks, king_attacks, lance_attacks, line, rook_attacks,
 };
 use crate::bitboard::Bitboard;
+use crate::effect::EffectTable;
 use crate::hand::Hand;
 use crate::moves::{Move, Move16, MoveList};
 use crate::piece::{Piece, PieceType};
@@ -517,6 +518,33 @@ impl Position {
         }
         if self.blockers_for_king(us).test(from) {
             return aligned(from, to, self.king_sq[us.index()]);
+        }
+        true
+    }
+
+    /// `is_legal` と同じ値を、玉の移動だけ利きの表から引いて求める
+    /// （ADR-0232）。`eff` はこの局面の利きであること。
+    ///
+    /// 行き先へ利く相手の駒は表から引く。玉が空ける移動元の背後へ抜ける利きは、
+    /// 移動元へ利く相手の飛び駒の利きを、玉を除いた占有で引き直して拾う。
+    /// 玉が空いて利きが伸びるのは、移動元へ利いていた飛び駒だけである。
+    #[inline]
+    pub fn is_legal_with(&self, m: Move, eff: &EffectTable) -> bool {
+        if m.is_drop() || m.piece_before().piece_type() != PieceType::KING {
+            return self.is_legal(m);
+        }
+        let them = self.side.flip();
+        let theirs = self.by_color[them.index()];
+        let from = m.from_sq();
+        let to = m.to();
+        if !(eff.attackers(to) & theirs).is_empty() {
+            return false;
+        }
+        let occ = self.occupied() ^ Bitboard::from_square(from);
+        for s in eff.attackers(from) & theirs & self.sliders() {
+            if attacks(self.board[s.index()], s, occ).test(to) {
+                return false;
+            }
         }
         true
     }
@@ -1340,6 +1368,41 @@ impl Position {
     /// 駒打ちも解き（ADR-0091）、初手の成りも扱う（ADR-0095）。
     /// 交換の途中で相手が成る筋は見ない簡略版のままである。
     pub fn see_ge(&self, m: Move, threshold: i32) -> bool {
+        let (swap, occ0) = match self.see_prelude(m, threshold) {
+            Ok(v) => v,
+            Err(res) => return res,
+        };
+        let to = m.to();
+        let attackers = (self.attackers_to(Color::Black, to, occ0)
+            | self.attackers_to(Color::White, to, occ0))
+            & occ0;
+        self.see_swap(to, swap, occ0, attackers)
+    }
+
+    /// `see_ge` と同じ値を、最初の攻め駒の集合を利きの表から引いて求める
+    /// （ADR-0232）。`eff` はこの局面の利きであること。
+    ///
+    /// 表の攻め駒は今の占有での集合である。交換の占有と違うのは移動元が
+    /// 空く点だけなので、移動元の背後から通る飛び利きを足せば一致する。
+    /// 打つ手でtoが埋まっても、toへの利きは変わらない。
+    #[inline]
+    pub fn see_ge_with(&self, m: Move, threshold: i32, eff: &EffectTable) -> bool {
+        let (swap, occ0) = match self.see_prelude(m, threshold) {
+            Ok(v) => v,
+            Err(res) => return res,
+        };
+        let to = m.to();
+        let mut attackers = eff.attackers(to);
+        if !m.is_drop() {
+            attackers |= self.xray_attackers(to, m.from_sq(), occ0);
+        }
+        self.see_swap(to, swap, occ0, attackers & occ0)
+    }
+
+    /// see_geの前半。取り合いに入る前に決まるなら `Err` で結果を返し、
+    /// 決まらなければ交換の初期値と占有を返す。
+    #[inline]
+    fn see_prelude(&self, m: Move, threshold: i32) -> Result<(i32, Bitboard), bool> {
         let to = m.to();
         // 打つ手は移動先が空きマスなので取る駒がない。打った駒が盤上へ
         // 現れるぶん、飛び駒の利きはそこで止まる（occへtoを足す）。
@@ -1364,17 +1427,13 @@ impl Position {
         };
         let mut swap = captured - threshold;
         if swap < 0 {
-            return false;
+            return Err(false);
         }
         swap = placed - swap;
         if swap <= 0 {
-            return true;
+            return Err(true);
         }
-
-        let attackers = (self.attackers_to(Color::Black, to, occ0)
-            | self.attackers_to(Color::White, to, occ0))
-            & occ0;
-        self.see_swap(to, swap, occ0, attackers)
+        Ok((swap, occ0))
     }
 
     /// see_geの交換の本体。`attackers` は占有 `occ` のもとでtoへ利く両色の駒
@@ -1426,7 +1485,7 @@ impl Position {
     /// 返す集合は線の向きの飛び駒をまとめて引くので、r の背後以外の駒も入る。
     /// どれもtoへ利く駒なので、攻め駒の集合へ足しても値は変わらない。
     #[inline]
-    fn xray_attackers(&self, to: Square, r: Square, occ: Bitboard) -> Bitboard {
+    pub fn xray_attackers(&self, to: Square, r: Square, occ: Bitboard) -> Bitboard {
         let lances = self.by_type[PieceType::LANCE.index()];
         if r.file() == to.file() {
             (rook_attacks(to, occ) & self.composite[COMP_ROOK_DRAGON])
@@ -1798,5 +1857,62 @@ mod tests {
                 pos.do_move(list.as_slice()[idx]);
             }
         }
+    }
+
+    /// 利きの表を引く版が、引かない版と同じ値を返すか（ADR-0232）。
+    /// ランダム対局の各局面で、擬似合法手のすべてを突き合わせる。
+    /// 王手中の局面も混ぜるため、手は合法手から無作為に選んで進める。
+    #[test]
+    fn effect_table_versions_match_plain_versions() {
+        use crate::movegen::{GenType, generate};
+        let mut king_moves = 0u64;
+        let mut illegal_king = 0u64;
+        for seed in 1..=8u64 {
+            let mut rng = Rng(seed.wrapping_mul(0x2545_F491_4F6C_DD1D) | 1);
+            let mut pos = Position::from_sfen(SFEN_STARTPOS).unwrap();
+            for _ in 0..200 {
+                let mut eff = EffectTable::new();
+                eff.rebuild(pos.board_ref(), pos.occupied());
+                let mut pseudo = MoveList::default();
+                let gt = if pos.in_check() {
+                    GenType::Evasions
+                } else {
+                    GenType::NonEvasions
+                };
+                generate(&pos, gt, true, &mut pseudo);
+                for &m in pseudo.as_slice() {
+                    let want = pos.is_legal(m);
+                    assert_eq!(
+                        pos.is_legal_with(m, &eff),
+                        want,
+                        "is_legalの不一致: {} {}",
+                        pos.to_sfen(),
+                        m.to_usi()
+                    );
+                    if !m.is_drop() && m.piece_before().piece_type() == PieceType::KING {
+                        king_moves += 1;
+                        illegal_king += u64::from(!want);
+                    }
+                    for th in [-2000, -500, -90, 0, 1, 90, 500, 2000] {
+                        assert_eq!(
+                            pos.see_ge_with(m, th, &eff),
+                            pos.see_ge(m, th),
+                            "see_geの不一致: {} {} th={th}",
+                            pos.to_sfen(),
+                            m.to_usi()
+                        );
+                    }
+                }
+                let mut list = MoveList::default();
+                generate_legal(&pos, true, &mut list);
+                if list.is_empty() {
+                    break;
+                }
+                let idx = (rng.next() % list.len() as u64) as usize;
+                pos.do_move(list.as_slice()[idx]);
+            }
+        }
+        assert!(illegal_king > 0, "非合法な玉の移動を1度も踏んでいない");
+        assert!(king_moves > illegal_king);
     }
 }

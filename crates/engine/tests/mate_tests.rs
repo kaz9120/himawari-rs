@@ -8,8 +8,9 @@
 //! 疎な乱数局面で測る（ADR-0109）。乱数局面は合法な到達可能性を
 //! 問わないが、健全性の反例探しにはそれで足りる。
 
+use himawari_core::effect::EffectTable;
 use himawari_core::{Color, Move, MoveList, PieceType, Position, SFEN_STARTPOS, generate_legal};
-use himawari_engine::mate::{mate_1ply, mate_1ply_oracle};
+use himawari_engine::mate::{mate_1ply, mate_1ply_oracle, mate_1ply_with};
 
 struct Rng(u64);
 
@@ -22,6 +23,21 @@ impl Rng {
         self.0 = x;
         x
     }
+}
+
+/// 利きの表を引く版を呼び、表を引かない版と同じ手を返すことを確かめる
+/// （ADR-0232）。探索は表を引く版を使うので、両者は1手も違ってはならない。
+fn mate_1ply_checked(pos: &Position) -> Option<Move> {
+    let mut eff = EffectTable::new();
+    eff.rebuild(pos.board_ref(), pos.occupied());
+    let plain = mate_1ply(pos);
+    assert_eq!(
+        mate_1ply_with(pos, &eff),
+        plain,
+        "利きの表を引く版が違う手を返した: {}",
+        pos.to_sfen()
+    );
+    plain
 }
 
 fn verify_is_mate(pos: &mut Position, m: Move) {
@@ -65,7 +81,7 @@ fn random_playouts_soundness() {
                 break;
             }
             if !pos.in_check() {
-                if let Some(m) = mate_1ply(&pos) {
+                if let Some(m) = mate_1ply_checked(&pos) {
                     found += 1;
                     verify_is_mate(&mut pos, m);
                 }
@@ -247,7 +263,7 @@ fn random_positions_soundness_and_miss_rate() {
             continue;
         };
         positions += 1;
-        let ours = mate_1ply(&pos);
+        let ours = mate_1ply_checked(&pos);
         let oracle = mate_1ply_oracle(&mut pos);
         if oracle.is_some() {
             oracle_found += 1;

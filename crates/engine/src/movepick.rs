@@ -11,6 +11,7 @@
 use std::sync::Arc;
 use std::sync::atomic::{AtomicI16, Ordering};
 
+use himawari_core::effect::EffectTable;
 use himawari_core::{
     Color, GenType, Move, MoveList, Piece, PieceType, Position, Square, generate, piece_value,
 };
@@ -728,7 +729,14 @@ impl MovePicker {
     }
 
     /// 静かな手のスコア（movepick.cpp:362-393）。
-    fn score_quiets(&mut self, pos: &Position, h: &Histories, cont: &[usize; 6], list: &MoveList) {
+    fn score_quiets(
+        &mut self,
+        pos: &Position,
+        eff: &EffectTable,
+        h: &Histories,
+        cont: &[usize; 6],
+        list: &MoveList,
+    ) {
         let pawn_slot = h.shared.pawn.slot(pos.pawn_key());
         let us = pos.side_to_move();
         for &m in list {
@@ -744,7 +752,9 @@ impl MovePicker {
             // 王手になる手へのボーナス。直接王手になるマスは
             // Positionのノード内キャッシュが駒種ごとに1回だけ引く
             // （ADR-0151群O）
-            if pos.check_squares(pc.piece_type()).test(to) && pos.see_ge(m, CHECK_SEE_MARGIN) {
+            if pos.check_squares(pc.piece_type()).test(to)
+                && pos.see_ge_with(m, CHECK_SEE_MARGIN, eff)
+            {
                 v += CHECK_BONUS;
             }
             if self.ply < LOW_PLY_HISTORY_SIZE {
@@ -801,10 +811,10 @@ impl MovePicker {
     /// 静かな手を生成して並べる（movepick.cpp:519-533）。
     /// 切り出す理由は `init_captures` と同じ。
     #[inline(never)]
-    fn init_quiets(&mut self, pos: &Position, h: &Histories, cont: &[usize; 6]) {
+    fn init_quiets(&mut self, pos: &Position, eff: &EffectTable, h: &Histories, cont: &[usize; 6]) {
         let mut list = MoveList::default();
         generate(pos, GenType::Quiets, false, &mut list);
-        self.score_quiets(pos, h, cont, &list);
+        self.score_quiets(pos, eff, h, cont, &list);
         self.end_generated = self.moves.len();
         self.end_cur = self.end_generated;
         partial_insertion_sort(
@@ -828,7 +838,15 @@ impl MovePicker {
 
     /// 呼ばれるたびに擬似合法手を1つ返す（movepick.cpp:456-695）。
     /// contは1手前から6手前までのcontinuation historyの面。
-    pub fn next(&mut self, pos: &Position, h: &Histories, cont: &[usize; 6]) -> Option<Move> {
+    ///
+    /// `eff` はこの局面の利きで、SEEの最初の攻め駒を引くのに使う（ADR-0232）。
+    pub fn next(
+        &mut self,
+        pos: &Position,
+        eff: &EffectTable,
+        h: &Histories,
+        cont: &[usize; 6],
+    ) -> Option<Move> {
         loop {
             match self.stage {
                 Stage::MainTt => {
@@ -862,7 +880,7 @@ impl MovePicker {
                     while self.cur < self.end_cur {
                         let e = self.moves[self.cur];
                         if e.m != self.tt_move {
-                            if pos.see_ge(e.m, -e.v / 18) {
+                            if pos.see_ge_with(e.m, -e.v / 18, eff) {
                                 self.cur += 1;
                                 return Some(e.m);
                             }
@@ -875,7 +893,7 @@ impl MovePicker {
                 }
                 Stage::QuietInit => {
                     if !self.skip_quiets {
-                        self.init_quiets(pos, h, cont);
+                        self.init_quiets(pos, eff, h, cont);
                     }
                     self.stage = Stage::GoodQuiet;
                 }
@@ -934,7 +952,7 @@ impl MovePicker {
                     // 閾値以上のSEEを持つ取る手だけを良い順に返す
                     // （movepick.cpp:684-685）
                     let th = self.threshold;
-                    let m = self.select(|e| pos.see_ge(e.m, th));
+                    let m = self.select(|e| pos.see_ge_with(e.m, th, eff));
                     if m.is_none() {
                         self.stage = Stage::Done;
                     }

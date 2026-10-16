@@ -10,6 +10,7 @@
 //! 案A（全合法手からの王手列挙・検証）はテスト用オラクル。
 //! 歩打ちは打ち歩詰めで常に非合法なので候補にしない。
 
+use himawari_core::effect::EffectTable;
 use himawari_core::{
     Bitboard, Color, Move, MoveList, Piece, PieceType, Position, Rank, Square, attacks,
     generate_legal,
@@ -120,9 +121,25 @@ fn our_attackers(
 /// 成り・不成や打つ駒種によらず結果が同じなので、候補の列挙側で1回だけ
 /// 判定する。is_mate_moveの玉の逃げ場の検査と同じことを、いちばん効く
 /// 枝刈りとして前に出したものである。
+///
+/// 利きの表があれば先に引く（ADR-0232）。移動元と玉を除くと利きは伸びるだけ
+/// なので、今の局面で移動する駒のほかに味方の利きがあれば、取られない。
+/// 表で決まらないときだけ、占有を変えて引き直す。
 #[inline]
-fn king_captures_to(pos: &Position, us: Color, ksq: Square, to: Square, from_bb: Bitboard) -> bool {
+fn king_captures_to(
+    pos: &Position,
+    eff: Option<&EffectTable>,
+    us: Color,
+    ksq: Square,
+    to: Square,
+    from_bb: Bitboard,
+) -> bool {
     if !attacks::king_attacks(ksq).test(to) {
+        return false;
+    }
+    if let Some(eff) = eff
+        && !(eff.attackers(to) & pos.color_bb(us) & !from_bb).is_empty()
+    {
         return false;
     }
     // 玉が動くので占有から玉を抜く。toの駒は自分自身へ利かないので、
@@ -151,7 +168,10 @@ fn no_retreat(us: Color, pt: PieceType) -> Bitboard {
 ///
 /// mは擬似合法であることが前提。候補の列挙側が利きから作るので、
 /// `pseudo_legal` の再検査はしない（行き所のない駒だけ列挙側で除く）。
-fn is_mate_move(pos: &Position, m: Move) -> bool {
+///
+/// 利きの表 `eff` があれば、玉の逃げ場と王手駒を取る駒を表から引く
+/// （ADR-0232）。返す値は表のないときと変わらない。
+fn is_mate_move(pos: &Position, eff: Option<&EffectTable>, m: Move) -> bool {
     debug_assert!(pos.pseudo_legal(m), "擬似合法でない手: {}", m.to_usi());
     let us = pos.side_to_move();
     let them = us.flip();
@@ -185,6 +205,16 @@ fn is_mate_move(pos: &Position, m: Move) -> bool {
     //    移動先toも（隣接していれば）ここで検査される
     let their_after = pos.color_bb(them) & !to_bb;
     for s in attacks::king_attacks(ksq) & !their_after {
+        // 表に、移動する駒のほかの味方の利きがあり、移動先の駒で遮られない
+        // なら、玉はsへ逃げられない。移動元と玉を除くと利きは伸びるだけで、
+        // 新しく塞ぐのは移動先toだけである
+        if let Some(eff) = eff
+            && (eff.attackers(s) & pos.color_bb(us) & !from_bb)
+                .into_iter()
+                .any(|a| !attacks::between(a, s).test(to))
+        {
+            continue;
+        }
         let o = occ_no_king | Bitboard::from_square(s);
         if our_attackers(pos, us, s, o, from_bb, to, pc).is_empty() {
             return false;
@@ -198,8 +228,20 @@ fn is_mate_move(pos: &Position, m: Move) -> bool {
     let csq = checkers.lsb();
     let csq_bb = Bitboard::from_square(csq);
 
-    // 3. 玉以外の駒で王手駒を取る。取った後も王手が残るなら回避にならない
-    for d in pos.attackers_to(them, csq, occ_after) & !to_bb & !ksq_bb {
+    // 3. 玉以外の駒で王手駒を取る。取った後も王手が残るなら回避にならない。
+    //    王手駒が移動先にいるなら、取れる駒は表から引ける。toへの利きは
+    //    toの占有で変わらず、変わるのは移動元の背後から通る飛び利きだけである
+    let takers = match eff {
+        Some(eff) if csq == to => {
+            let mut a = eff.attackers(to);
+            if !m.is_drop() {
+                a |= pos.xray_attackers(to, m.from_sq(), occ_after);
+            }
+            a & pos.color_bb(them) & occ_after
+        }
+        _ => pos.attackers_to(them, csq, occ_after),
+    };
+    for d in takers & !to_bb & !ksq_bb {
         let o = occ_after ^ Bitboard::from_square(d);
         // csqにあった駒は取られたのでマスクで外す
         if (our_attackers(pos, us, ksq, o, from_bb, to, pc) & !csq_bb).is_empty() {
@@ -229,7 +271,7 @@ fn is_mate_move(pos: &Position, m: Move) -> bool {
 }
 
 /// 駒打ちの詰み候補。合駒不能な近接打ち（玉の隣接＋桂）に限る。
-fn drop_mates(pos: &Position, us: Color, ksq: Square) -> Option<Move> {
+fn drop_mates(pos: &Position, eff: Option<&EffectTable>, us: Color, ksq: Square) -> Option<Move> {
     let hand = pos.hand(us);
     if hand.is_empty() {
         return None;
@@ -259,11 +301,11 @@ fn drop_mates(pos: &Position, us: Color, ksq: Square) -> Option<Move> {
         } & empty
             & !no_retreat(us, pt);
         for to in targets {
-            if king_captures_to(pos, us, ksq, to, Bitboard::EMPTY) {
+            if king_captures_to(pos, eff, us, ksq, to, Bitboard::EMPTY) {
                 continue;
             }
             let m = Move::new_drop(pt, to, us);
-            if is_mate_move(pos, m) {
+            if is_mate_move(pos, eff, m) {
                 return Some(m);
             }
         }
@@ -273,7 +315,7 @@ fn drop_mates(pos: &Position, us: Color, ksq: Square) -> Option<Move> {
 
 /// 盤上の駒の詰み候補。移動先を玉の隣接8マスと桂の王手マスに限る。
 /// 王手になるかの事前判定はせず、検証側に任せる（間接王手も拾える）。
-fn move_mates(pos: &Position, us: Color, ksq: Square) -> Option<Move> {
+fn move_mates(pos: &Position, eff: Option<&EffectTable>, us: Color, ksq: Square) -> Option<Move> {
     // 玉の近傍へ届かない駒は利きを作らずに捨てる。駒種ごとの候補との積を
     // 取るので、玉と、届かない駒はここで全部落ちる
     let cand = check_cand(us, ksq);
@@ -303,18 +345,18 @@ fn move_mates(pos: &Position, us: Color, ksq: Square) -> Option<Move> {
         // 不成では入れないマス。成りの手は別に作る
         let blocked = no_retreat(us, pt);
         for to in targets {
-            if king_captures_to(pos, us, ksq, to, from_bb) {
+            if king_captures_to(pos, eff, us, ksq, to, from_bb) {
                 continue;
             }
             if pt.can_promote() && (zone.test(from) || zone.test(to)) {
                 let m = Move::new_move(from, to, true, pc.promote());
-                if is_mate_move(pos, m) {
+                if is_mate_move(pos, eff, m) {
                     return Some(m);
                 }
             }
             if !blocked.test(to) {
                 let m = Move::new_move(from, to, false, pc);
-                if is_mate_move(pos, m) {
+                if is_mate_move(pos, eff, m) {
                     return Some(m);
                 }
             }
@@ -326,10 +368,22 @@ fn move_mates(pos: &Position, us: Color, ksq: Square) -> Option<Move> {
 /// 1手詰めがあればその手を返す。王手されていない局面で呼ぶこと。
 /// 返した手は詰みであることが保証される（見逃しはあり得る）。
 pub fn mate_1ply(pos: &Position) -> Option<Move> {
+    mate_1ply_impl(pos, None)
+}
+
+/// `mate_1ply` と同じ手を、利きの表を引いて求める（ADR-0232）。
+/// `eff` はこの局面の利きであること。候補を並べる順序は変えないので、
+/// 詰みの手が複数あっても同じ手を返す。
+pub fn mate_1ply_with(pos: &Position, eff: &EffectTable) -> Option<Move> {
+    mate_1ply_impl(pos, Some(eff))
+}
+
+#[inline(always)]
+fn mate_1ply_impl(pos: &Position, eff: Option<&EffectTable>) -> Option<Move> {
     debug_assert!(!pos.in_check());
     let us = pos.side_to_move();
     let ksq = pos.king(us.flip());
-    move_mates(pos, us, ksq).or_else(|| drop_mates(pos, us, ksq))
+    move_mates(pos, eff, us, ksq).or_else(|| drop_mates(pos, eff, us, ksq))
 }
 
 /// テスト用オラクル（案A）: 全合法手から王手を選び、回避不能なら詰み。
