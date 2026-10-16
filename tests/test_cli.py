@@ -519,6 +519,42 @@ def test_data_fetch_excludes_the_validation_source(capsys, tmp_path):
     assert excluded not in shuffled
 
 
+# --- kifu --------------------------------------------------------------
+
+
+def _no_fetch(monkeypatch):
+    """回収はdry-runでもwdoorへ問い合わせるので、テストでは止める。"""
+    from hmwr.commands import kifu
+
+    monkeypatch.setattr(kifu, "fetch", lambda args: proc.OK)
+
+
+def test_kifu_cycle_reads_every_year_the_fetch_collects(capsys, monkeypatch):
+    """既定の年を固定しない。年が変わっても、分析と定跡追加が回収と同じ棋譜を読む（#791）。"""
+    import datetime
+
+    from hmwr.tools import floodgate
+
+    _no_fetch(monkeypatch)
+    monkeypatch.setattr(floodgate, "today", lambda: datetime.date(2027, 2, 1))
+    for year in ("2026", "2027"):
+        (paths.RAW / "floodgate" / year).mkdir(parents=True)
+    _, lines = dry(capsys, ["kifu", "cycle"])
+    both = "data/raw/floodgate/2026 data/raw/floodgate/2027"
+    report = next(x for x in lines if "release/kifu" in x)
+    seed = next(x for x in lines if " seed " in x)
+    assert both in report.replace(str(paths.WORK) + "/", "")
+    assert f"--games {both}" in seed.replace(str(paths.WORK) + "/", "")
+
+
+def test_kifu_cycle_with_a_year_reads_only_that_year(capsys, monkeypatch):
+    _no_fetch(monkeypatch)
+    (paths.RAW / "floodgate" / "2026").mkdir(parents=True)
+    _, lines = dry(capsys, ["kifu", "cycle", "--year", "2026"])
+    seed = next(x for x in lines if " seed " in x)
+    assert seed.replace(str(paths.WORK) + "/", "").count("data/raw/floodgate/") == 1
+
+
 # --- 設定 --------------------------------------------------------------
 
 
