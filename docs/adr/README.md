@@ -57,6 +57,7 @@ ROADMAPの注力を決めた判断。いまの注力は0229にある。
 - [0174](0174-mate1ply-knight-promotion.md) mate_1plyへ桂の成り王手を列挙する案（測って棄却）
 - [0176](0176-lance-non-promotion-rank.md) 香の不成を2段目から3段目以降へ移す
 - [0230](0230-board-op-profile.md) 盤面操作の割合を測り、Bitboardを残して利きを併せ持つと決める
+- [0232](0232-effect-table-prototype.md) 利きの表を探索のワーカーに持たせる試作（技巧・山田将棋の読解を含む）
 
 ### 探索
 
@@ -304,7 +305,7 @@ ROADMAPの注力を決めた判断。いまの注力は0229にある。
 | [0145](0145-continual-learning.md) | 前世代のネットから継続学習で積む | 2026-08-08 |  | accepted |
 | [0146](0146-book-full-width-opening.md) | 定跡の浅い層を全合法手で埋める | 2026-08-08 |  | accepted |
 | [0147](0147-effect-bucket-features.md) | 特徴indexを被利き数でバケット化する（EffectBucket） | 2026-08-08 |  | rejected（未測定で取り下げ。入力特徴の変更は構造の変更で、ADR-0213で凍結した） |
-| [0148](0148-effect-table.md) | 盤面の利きを差分で持つ | 2026-08-08 |  | proposed（再開。[0229](0229-roadmap-visible-focus.md)の注力の段階1が引き継ぐ） |
+| [0148](0148-effect-table.md) | 盤面の利きを差分で持つ | 2026-08-08 |  | proposed（再開。試作は[0232](0232-effect-table-prototype.md)が引き継ぐ） |
 | [0149](0149-experiment-runner.md) | 実験の実行とログを規約で固定する | 2026-08-08 |  | accepted |
 | [0150](0150-rootstrap-evaluation.md) | 世代ループでの検証損失の読み方 | 2026-08-08 |  | accepted |
 | [0151](0151-speedup-sweep.md) | 挙動を変えない高速化の第2弾をプロファイル起点で洗い出す | 2026-08-09 |  | accepted |
@@ -386,7 +387,8 @@ ROADMAPの注力を決めた判断。いまの注力は0229にある。
 | [0227](0227-cell-dataset.md) | 1億局面を、玉の位置×形勢の区画の配分と区画の中のαで組み立てる | 2026-10-07 | -58.4、-17.2 | rejected（区画の配分は−58.4、区画の中のα=0.5はさらに−17.2で、どちらも害） |
 | [0228](0228-grow-labeled-pool.md) | dlshogiで点数を付けた局面の母集団を、重複なく足して増やし続ける | 2026-10-08 | +5.9 | accepted（入玉5億を重複なく足した母集団の2周が現行に+5.9 Elo。2回目以降の回は[0229](0229-roadmap-visible-focus.md)で止めた） |
 | [0229](0229-roadmap-visible-focus.md) | ROADMAPを引き直し、注力を「焦点が見える評価関数」にする | 2026-10-16 |  | accepted |
-| [0230](0230-board-op-profile.md) | 探索時間に占める盤面操作の割合を測り、盤面の持ち方を決める材料にする | 2026-10-16 |  | accepted（Bitboardを残して利きを併せ持つ。試作は別ADR） |
+| [0230](0230-board-op-profile.md) | 探索時間に占める盤面操作の割合を測り、盤面の持ち方を決める材料にする | 2026-10-16 |  | accepted（Bitboardを残して利きを併せ持つ。試作は[0232](0232-effect-table-prototype.md)） |
+| [0232](0232-effect-table-prototype.md) | 利きの表を探索のワーカーに持たせ、1手詰め・SEE・玉の移動の合法性判定を表引きにする試作 | 2026-10-17 |  | proposed |
 
 ## バックログ
 
