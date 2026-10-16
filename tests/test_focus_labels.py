@@ -11,7 +11,7 @@ import struct
 
 import pytest
 
-from hmwr import cli, dataops, paths, proc
+from hmwr import cli, paths, proc
 from hmwr.tools import focus_labels as fl
 
 # 手で組む盤の駒。値そのものに意味はなく、0でなければよい

@@ -35,12 +35,16 @@ Rustで書くコンピュータ将棋エンジン。USIプロトコルに対応�
 | `himawari-<版>-macos-arm64.zip` | macOS（Apple Silicon） |
 
 評価関数は `net-v*` タグのうち、番号のいちばん大きいものから `.hmwr` を取る。
-古い番号のネットはそのぶん弱い。
+古い番号のネットはそのぶん弱い。net-v16以降のファイル名は `himawari.hmwr` に
+固定してある。
 
-コマンドで取るなら次のようにする。
+コマンドで取るなら次のようにする。`gh release list` は既定で新しい30件しか
+出さず、エンジンのリリースが多いと `net-v*` と `book-v*` が押し出される。
+件数を広げてタグで絞る。
 
 ```sh
-gh release list                              # v* と net-v* の最新を確認する
+gh release list -L 1000 --json tagName --jq '.[].tagName' | grep -m1 '^v'      # 最新のv*
+gh release list -L 1000 --json tagName --jq '.[].tagName' | grep -m1 '^net-v'  # 最新のnet-v*
 gh release download <最新のv*> -p '*macos-arm64.zip'
 gh release download <最新のnet-v*> -p '*.hmwr'
 ```
@@ -52,17 +56,19 @@ gh release download <最新のnet-v*> -p '*.hmwr'
 
 ### GUIへ登録する
 
-解凍した `himawari`（Windowsは `himawari.exe`）をGUIへエンジンとして登録し、
-USIオプション `EvalFile` に評価関数のパスを設定する。
+解凍した `himawari`（Windowsは `himawari.exe`）をGUIへエンジンとして登録する。
+評価関数は、実行ファイルと同じフォルダに `himawari.hmwr` の名前で置く。
+USIオプション `EvalFile` が空なら、エンジンはそこを読む。評価関数の更新は
+上書きコピーで済む。
 
-**`EvalFile` の設定を忘れない**。未設定でも起動するが、駒割だけで指すため
-極端に弱くなる。
+別の場所や名前で置くなら、`EvalFile` にパスを設定する。評価関数を読めないと、
+エンジンは `isready` で終了する。駒割だけで指し続けることはしない。
 
 ### 主なUSIオプション
 
 | オプション | 既定 | 説明 |
 |---|---|---|
-| `EvalFile` | （空） | 評価関数のパス。必須 |
+| `EvalFile` | （空） | 評価関数のパス。空なら実行ファイルと同じフォルダの `himawari.hmwr` を読む |
 | `BookFile` | （空） | 定跡ファイルのパス |
 | `USI_Hash` | 256 | 置換表[MB] |
 | `Threads` | 1 | 探索スレッド数 |
@@ -118,8 +124,9 @@ hmwr threadtune --eval <評価関数> --current 6 --hours 8
 
 エンジンの異常はGUIのログへ `info string error:` の行で出る。まずそこを読む。
 
-起動直後に終了するときは、`EvalFile` のパスが違う。エンジンはパスと現在位置を
-併記して終了するので、手元のファイルと突き合わせる。
+起動直後に終了するときは、評価関数を読めていない。エンジンは読もうとした
+パスと現在位置を併記して終了するので、手元のファイルと突き合わせる。`EvalFile` が
+空なら、実行ファイルの隣の `himawari.hmwr` を探している。
 
 ```
 info string error: cannot open EvalFile: No such file or directory (os error 2)
@@ -147,13 +154,13 @@ Unicodeの番号から元の文字を辿る。将棋所での文字化けを避�
 scripts/setup.sh               # ツールチェイン・Python・ビルド・テスト
 export PATH="$PWD/bin:$PATH"   # hmwr コマンドへパスを通す
 gh auth login                  # Releaseの取得に要る
-hmwr data fetch all            # 教師データ（学習を回す場合のみ）
+hmwr data fetch --dataset tanuki2024   # 教師データ（学習を回す場合のみ）
 ```
 
 `scripts/setup.sh` はLinuxとWSL2向けである。macOSでも開発できるが、ツールは
 個別に入れる（Apple Siliconで確認している）。
 
-教師データは生データと加工後の合計で220GBを超える。内訳と前処理は
+教師データは生データだけで数百GBある。データセットごとの容量と前処理は
 [docs/DATASETS.md](docs/DATASETS.md)にある。`hmwr data fetch` は
 download・verify・prepareへ分けて実行もできる。
 
@@ -215,20 +222,22 @@ python3 -m pytest tests -q        # hmwr のテスト
 hmwr doc lint                     # 日本語文書のlint
 ```
 
-開発用ツールは `cargo run --release -p himawari-tools --bin <name>` でも動く。
+開発用ツールは `crates/tools` にあり、多くは `hmwr` から呼ぶ。直接実行すると、
+呼び出しごとに既定値がずれる。`hmwr` に入口があるものは `hmwr` を通す。
 
-| ツール | 用途 |
-|---|---|
-| `perft` / `tsume` | 指し手生成と詰み探索の検証 |
-| `bench` / `verify` / `profile` | NPS計測・探索の差分比較・プロファイル |
-| `selfplay` / `league` | SPRTの対局と総当たりリーグ戦 |
-| `gensfen` / `psv` | 教師データの生成と加工 |
-| `makenet` | 評価関数ファイルの生成 |
-| `book` | 定跡の生成と統計 |
-| `kifu` | floodgate棋譜の回収と分析 |
+| ツール | 用途 | 入口 |
+|---|---|---|
+| `perft` / `tsume` | 指し手生成と詰み探索の検証 | `cargo run` |
+| `bench` / `verify` / `profile` | NPS計測・探索の差分比較・プロファイル | `hmwr bench` / `hmwr verify` / `hmwr profile` |
+| `selfplay` / `league` | SPRTの対局と総当たりリーグ戦 | `hmwr match`・`hmwr sprt` / `hmwr league` |
+| `gensfen` / `psv` | 教師データの生成と加工 | `cargo run` / `hmwr data` |
+| `makenet` | 評価関数ファイルの生成 | `hmwr net` |
+| `book` | 定跡の生成と統計 | `hmwr book` |
+| `kifu` | floodgate棋譜の回収と分析 | `hmwr kifu` |
+| `blindspot` | 盲点ベンチマークの抽出・ラベル・測定 | `hmwr kifu blindspot` |
 
-`bench`・`verify`・`profile` は評価関数の場所を環境変数 `EVAL_FILE` から読む。
-`hmwr` 経由で呼ぶときは指定が要らない。
+`hmwr` に入口がないツールは `cargo run --release -p himawari-tools --bin <name>` で
+動かす。
 
 ### 学習
 

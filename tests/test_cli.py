@@ -369,6 +369,15 @@ def test_net_train_logs_under_its_area(capsys):
     assert any("data/logs/train-x.log" in x for x in lines)
 
 
+def test_net_defaults_to_the_current_validation_set(capsys):
+    """既定の検証集合は config の1か所が持つ。train・eval・shapes で揃える。"""
+    _, train = dry(capsys, ["net", "train", "x", "--data", "d.psv"])
+    _, evaluate = dry(capsys, ["net", "eval", "a.hmwr"])
+    _, shapes = dry(capsys, ["net", "shapes", "256x16"])
+    for lines in (train, evaluate, shapes):
+        assert any(config.TRAIN_VALID in x for x in lines)
+    assert any(f"--data {config.TRAIN_DATA}" in x for x in shapes)
+
 def test_net_eval_uses_each_validation_set(capsys):
     _, lines = dry(capsys, ["net", "eval", "a.hmwr", "--valid", "v1.psv,v2.psv"])
     assert any("--valid v1.psv" in x for x in lines)
@@ -396,6 +405,20 @@ def test_net_shapes_rejects_a_malformed_spec(capsys):
 def test_net_release_needs_an_existing_file(capsys):
     assert cli.main(["--dry-run", "net", "release", "nope.hmwr", "5"]) == proc.RUNTIME
     assert "ネットファイルがない" in capsys.readouterr().err
+
+
+def test_net_release_ships_the_fixed_asset_name(capsys, tmp_path):
+    """アセットは固定名で配り、学習時の名前はノートに残す（ADR-0080の追記）。"""
+    lineage = b"train-v2 data=x"
+    header = b"HMWRNNUE" + (10).to_bytes(4, "little") + bytes(5 * 4)
+    net_file = tmp_path / "pool9_2ep.hmwr.best"
+    net_file.write_bytes(header + len(lineage).to_bytes(4, "little") + lineage + bytes(8))
+    assert cli.main(["--dry-run", "net", "release", str(net_file), "16"]) == proc.OK
+    out = capsys.readouterr().out
+    assert "| アセット | `himawari.hmwr` |" in out
+    assert "| 学習時の名前 | `pool9_2ep.hmwr` |" in out
+    assert "--title net-v16: pool9_2ep.hmwr" in out
+    assert "-O data/nets/pool9_2ep.hmwr" in out
 
 
 def test_net_release_rejects_a_bad_version(capsys):
@@ -502,3 +525,57 @@ def test_build_pair_can_build_the_candidate_from_a_ref(capsys):
     copies = [x for x in lines if " cp " in x]
     assert copies[0].endswith("data/bin/cand-adr0211-x")
     assert copies[1].endswith("data/bin/base-adr0211-x")
+
+
+# --- 全サブコマンド ----------------------------------------------------
+
+
+def _leaf_commands(parser, prefix=()):
+    """サブコマンドの経路を末端まで列挙する。領域だけの経路も含める。"""
+    for action in parser._actions:
+        choices = getattr(action, "choices", None)
+        if isinstance(choices, dict):
+            for name, sub in choices.items():
+                path = (*prefix, name)
+                yield path
+                yield from _leaf_commands(sub, path)
+
+
+ALL_COMMANDS = sorted(set(_leaf_commands(cli.build_parser())))
+
+
+@pytest.mark.parametrize("path", ALL_COMMANDS, ids=" ".join)
+def test_every_command_prints_help(capsys, path):
+    """どのサブコマンドも --help で落ちない。登録の食い違いはここで捕まる。"""
+    with pytest.raises(SystemExit) as e:
+        cli.main([*path, "--help"])
+    assert e.value.code == 0
+    assert capsys.readouterr().out
+
+
+def test_every_tool_main_takes_argv():
+    """hmwrはツールの main へ引数の列を渡す。受け取らない main は呼んだ時点で落ちる。"""
+    import importlib
+    import inspect
+    import pkgutil
+
+    from hmwr import tools
+
+    for info in pkgutil.iter_modules(tools.__path__):
+        module = importlib.import_module(f"hmwr.tools.{info.name}")
+        main = getattr(module, "main", None)
+        if main is None:
+            continue
+        assert inspect.signature(main).parameters, f"hmwr.tools.{info.name}.main が引数を受けない"
+
+
+def test_league_summary_reads_the_kifu(capsys, tmp_path):
+    jsonl = tmp_path / "league.jsonl"
+    jsonl.write_text(
+        '{"a": "x", "b": "y", "a_side": "black", "winner": "black"}\n'
+        '{"a": "x", "b": "y", "a_side": "white", "winner": "draw"}\n'
+    )
+    assert cli.main(["league", "summary", str(jsonl), "--anchor", "y"]) == proc.OK
+    out = capsys.readouterr().out
+    assert "=== 2局 ===" in out
+    assert "| x |" in out

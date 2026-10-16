@@ -4,6 +4,8 @@
 確かめられる。取得そのものはこのテストでは走らせない。
 """
 
+import datetime
+
 from hmwr.tools import floodgate as fetch
 
 PAGE_URL = "https://wdoor.c.u-tokyo.ac.jp/shogi/x/2026/player/Himawari+6fd5a66.html"
@@ -83,7 +85,28 @@ def test_game_csa_urls_reads_the_year_from_the_path():
 def test_parser_defaults_to_the_himawari_player_page(tmp_path):
     args = fetch.build_parser(tmp_path).parse_args([])
     assert args.player_url is None
-    assert fetch.DEFAULT_PLAYER_URL.endswith("/player/Himawari+6fd5a66.html")
+    assert fetch.player_urls(2026) == [PAGE_URL]
+
+
+def _serve(monkeypatch, pages):
+    """Fetcher.getを差し替える。pagesにないURLは404（None）にする。"""
+    monkeypatch.setattr(fetch.Fetcher, "get", lambda self, url: pages.get(url))
+
+
+def test_a_missing_page_for_this_year_counts_as_no_games(tmp_path, monkeypatch, capsys):
+    """年が明けた直後は今年の対局者ページがない。そこで失敗しない。"""
+    _serve(monkeypatch, {PAGE_URL: b"<h2>Games</h2>"})
+    monkeypatch.setattr(fetch, "today", lambda: datetime.date(2027, 1, 1))
+    argv = ["--out", str(tmp_path / "out"), "--log", str(tmp_path / "log"), "--sleep", "0"]
+    assert fetch.main(argv) == 0
+    out = capsys.readouterr().out
+    assert "/x/2026/player/" in out and "/x/2027/player/" in out
+
+
+def test_a_missing_page_that_was_asked_for_is_an_error(tmp_path, monkeypatch):
+    _serve(monkeypatch, {})
+    argv = ["--player-url", PAGE_URL, "--out", str(tmp_path), "--log", str(tmp_path / "log")]
+    assert fetch.main(argv + ["--sleep", "0"]) == 3
 
 
 def test_parser_accepts_multiple_player_urls(tmp_path):

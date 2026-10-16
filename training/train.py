@@ -504,9 +504,9 @@ def main():
     # 凍結した重みは更新対象から外す。残すとoptimizerが空の勾配を扱う
     dense_params = [t for t in dense_params if t.requires_grad]
     ft_params = [t for t in ft_params if t.requires_grad]
-    lr_fn = lambda step: lr_lambda(
-        step, args.warmup_steps, total_steps, args.min_lr, args.peak_lr,
-    )
+    def lr_fn(step):
+        return lr_lambda(step, args.warmup_steps, total_steps, args.min_lr, args.peak_lr)
+
     optimizer_dense = torch.optim.Adam(dense_params, lr=args.peak_lr)
     # FT勾配をdenseにするとMPSへ載せられる。更新則はSparseAdamと
     # 同じ「出現した行だけ動かす」を保つ（ADR-0064）
