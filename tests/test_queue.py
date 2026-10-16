@@ -183,3 +183,72 @@ def test_the_agent_keeps_the_machine_awake_and_unthrottled(tmp_path):
     assert spec["ProcessType"] == "Standard"
     assert spec["StartInterval"] == queue.INTERVAL
     plistlib.dumps(spec)
+
+
+# --- 計測と対局の前の検査（issue #764） ---------------------------------
+
+
+@pytest.fixture
+def machine(tmp_path, monkeypatch):
+    """常駐が入った開発機。data/queue があり、一時停止していない。"""
+    import fcntl
+
+    monkeypatch.setattr(paths, "QUEUE", tmp_path / "queue")
+    paths.QUEUE.mkdir()
+    plist = tmp_path / "agent.plist"
+    plist.touch()
+    monkeypatch.setattr(queue, "plist_path", lambda: plist)
+    monkeypatch.delenv(queue.STEP_ENV, raising=False)
+
+    class Machine:
+        def pause(self):
+            (paths.QUEUE / "PAUSE").touch()
+
+        def hold_lock(self):
+            fh = open(paths.QUEUE / "LOCK", "w")
+            fcntl.flock(fh, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            return fh
+
+    return Machine()
+
+
+def test_measuring_needs_the_queue_paused(machine):
+    with pytest.raises(proc.Fail) as e:
+        queue.guard("SPRT", dry_run=False)
+    assert e.value.code == proc.RUNTIME and "hmwr queue pause" in str(e.value)
+    machine.pause()
+    queue.guard("SPRT", dry_run=False)
+
+
+def test_a_running_step_blocks_even_when_paused(machine):
+    # 一時停止は走っているステップを止めない。ロックが離れるまで待たせる
+    machine.pause()
+    fh = machine.hold_lock()
+    with pytest.raises(proc.Fail, match="実行中"):
+        queue.guard("NPSの計測", dry_run=False)
+    fh.close()
+    queue.guard("NPSの計測", dry_run=False)
+
+
+def test_the_queue_own_steps_and_dry_runs_pass(machine, monkeypatch, capsys):
+    queue.guard("SPRT", dry_run=True)
+    assert "本番なら止まる" in capsys.readouterr().out
+    monkeypatch.setenv(queue.STEP_ENV, "1")
+    queue.guard("SPRT", dry_run=False)
+
+
+def test_a_machine_without_the_agent_is_not_held(machine, monkeypatch, tmp_path):
+    # CIやクラウドには常駐が無い。一時停止を求めない
+    monkeypatch.setattr(queue, "plist_path", lambda: tmp_path / "none.plist")
+    queue.guard("SPRT", dry_run=False)
+
+
+def test_bench_and_sprt_stop_before_doing_anything(machine, monkeypatch):
+    from hmwr.commands import build
+
+    ran = []
+    monkeypatch.setattr(proc, "run", lambda argv, **kw: ran.append(argv) or proc.OK)
+    monkeypatch.setattr(build, "make_pair", lambda *a, **kw: ran.append("build") or proc.OK)
+    assert cli.main(["bench", "a", "b"]) == proc.RUNTIME
+    assert cli.main(["sprt", "run", "adr0001-x"]) == proc.RUNTIME
+    assert ran == []

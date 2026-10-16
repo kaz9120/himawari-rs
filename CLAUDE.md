@@ -35,7 +35,8 @@ himawari-rsで作業するエージェントの規約。詳細は各文書へリ
 mainへ入れる。`hmwr exp queue` かIssueフォーム「実験」で積むと、開発機のlaunchdが古い順に
 1件ずつ走らせる。対話セッションの仕事は設計と結果の読みで、実行の見張りでは
 ない。走り終えた結果のADRへの記録は、recording-experimentスキルの手順で行う。
-計測や手元のSPRTの前には `hmwr queue pause` を打つ。
+計測や手元のSPRTの前には `hmwr queue pause` を打つ。打たずに `sprt run`・
+`match run`・`bench` を起動すると、終了コード3で止まる。
 
 **細かいタスクはGitHub Issueで回す**（2026-08-30オーナー指示）。小さな
 気になる点（既定値の食い違い、表示の粗、重複コード、CIの遅さ）は見つけた

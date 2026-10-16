@@ -39,6 +39,8 @@ RECORD_TIMEOUT = 40 * 60
 # 新しいファイルへ書く。大きさが上限を超えたら日付つきの名前へ退避する（消さない）
 LAUNCHD_LOG = "queue-launchd.log"
 ROTATE_BYTES = 4 * 1024 * 1024
+# キュー（exp run）が走らせるステップの印。計測と対局の入口の検査を外す
+STEP_ENV = exp.QUEUE_STEP_ENV
 
 
 def add_parser(sub: argparse._SubParsersAction) -> None:
@@ -353,11 +355,65 @@ def _build_if_moved() -> None:
 
 def status(args: argparse.Namespace) -> int:
     print("一時停止: " + ("している" if exp.pause_file().exists() else "していない"))
+    print("実行中  : " + ("している（ロックが握られている）" if _lock_held() else "していない"))
     for state in (RUNNING, QUEUED, FAILED):
         for issue in issues(state):
             name = spec_name(issue["body"]) or "（specのパスなし）"
             print(f"{paths.pad(state, 9)}#{issue['number']} {name}  {issue['title']}")
     return proc.OK
+
+
+def _lock_held() -> bool:
+    """tickが実験を走らせている間はロックを握っている。掴めなければ実行中である。"""
+    lock = paths.QUEUE / "LOCK"
+    if not lock.is_file():
+        return False
+    with open(lock, "a") as fh:
+        try:
+            fcntl.flock(fh, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except OSError:
+            return True
+        fcntl.flock(fh, fcntl.LOCK_UN)
+    return False
+
+
+def guard(what: str, *, dry_run: bool) -> None:
+    """計測と対局の前に、キューが開発機を空けているかを確かめる（issue #764）。
+
+    キューが走らせる実験と重なると、NPSも対局の持ち時間も乱れる。CLAUDE.mdは
+    計測と手元のSPRTの前に `hmwr queue pause` を打つと決めている。止める
+    条件は2つある。実験が走っている（tickがロックを握っている）か、常駐が
+    入っているのに一時停止していないかである。状態は `queue status` と同じく
+    data/queue の一時停止の印から読む。
+
+    キュー自身が走らせるステップは止めない。`exp run` が環境変数で印を付ける。
+    止めるのは引数ではなく開発機の状態が理由なので、終了コードは3（ADR-0122）。
+    """
+    if os.environ.get(STEP_ENV):
+        return
+    installed = plist_path().exists()
+    if not paths.QUEUE.is_dir():
+        if installed:
+            print(
+                f"警告: {paths.rel(paths.QUEUE)} が無く、キューの状態を読めない。"
+                "開発用の作業ツリーで hmwr queue status を確かめてから測る",
+                file=sys.stderr,
+            )
+        return
+    reason = None
+    if _lock_held():
+        reason = (
+            "キューが実験を実行中である。hmwr queue pause を打ち、走っているステップが"
+            "終わるのを待つ（hmwr queue status で見られる）"
+        )
+    elif installed and not exp.pause_file().exists():
+        reason = "キューが一時停止していない。先に hmwr queue pause を打つ（終わったら hmwr queue resume）"
+    if reason is None:
+        return
+    if dry_run:
+        print(f"[dry-run] 本番なら止まる: {reason}")
+        return
+    raise proc.Fail(f"{what}を始めない。{reason}", proc.RUNTIME)
 
 
 def pause(args: argparse.Namespace) -> int:

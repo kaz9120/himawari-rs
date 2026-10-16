@@ -286,6 +286,9 @@ def run(args: argparse.Namespace) -> int:
         return until_decision(spec, dry_run=False)
     if decided(spec.name):
         return proc.OK
+    from . import queue
+
+    queue.guard("対局", dry_run=args.dry_run)
     if not args.dry_run:
         for path in (spec.base.build, spec.cand.build, spec.base.net, spec.cand.net, spec.openings):
             if path and not Path(path).is_file():
