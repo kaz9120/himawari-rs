@@ -37,6 +37,11 @@ def add_parser(sub: argparse._SubParsersAction) -> None:
     t.add_argument("--days", type=int, default=14, metavar="N", help="直近の何日を出すか（既定 14）")
     t.add_argument("--csv", action="store_true", help="全履歴をCSVで出す")
     t.add_argument(
+        "--svg",
+        metavar="ファイル",
+        help="全履歴の推移のグラフをSVGで書く（READMEの画像、#750）",
+    )
+    t.add_argument(
         "--max-age",
         type=int,
         metavar="N",
@@ -208,10 +213,14 @@ def rate(args: argparse.Namespace) -> int:
         return proc.OK
     # 既定の並びでは、今年のCSVだけがまだ無くてよい
     days = rating.load(pages, missing_ok_last=not args.player_url)
+    if args.svg:
+        # 出典は最新の記録がある年の対局者ページ。グラフの数値をそこで確かめられる
+        year = f"/x/{days[-1].date[:4]}/" if days else ""
+        source = next((p for p in reversed(pages) if year and year in p), pages[-1])
+        text = rating.svg(days, floodgate.today(), source)
+        Path(args.svg).write_text(text, encoding="utf-8")
     if args.csv:
-        print("date,daily,two_weeks")
-        for d in days:
-            print(f"{d.date},{d.daily or ''},{d.two_weeks or ''}")
+        print(rating.csv_text(days), end="")
     else:
         print(rating.markdown(days, args.days))
     # 表を出してから判定する。古くても中身は見られるようにしておく

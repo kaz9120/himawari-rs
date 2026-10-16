@@ -1,0 +1,54 @@
+# floodgateのレートの推移グラフを毎日作り直す（#750、ADR-0182の追記）。
+#
+# 元データは対局者ページのグラフが読むCSVで、初日からの全履歴を持つ。
+# 毎日すべてを一次情報から作り直すので、1回飛んでも欠けない。
+# 置き場はorphanブランチ rate-graph（rate.svg と rate.csv）。mainの履歴を汚さず、
+# CIもrelease-pleaseも走らない。READMEはこの rate.svg を画像として読む。
+#
+# ブランチがなければ、初回の実行がorphanで作る。最新の記録が2日以上古いと
+# hmwr が終了コード1を返し、ここで失敗する。年の変わり目にURLが追従しない、
+# 放流が止まった、といった異常に気づくためである（#749）。
+# 判断が要らない仕事なので、LLMを通さない。
+name: rate-graph
+
+on:
+  schedule:
+    - cron: "30 21 * * *" # 毎日 06:30 JST
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: rate-graph
+  cancel-in-progress: false
+
+jobs:
+  draw:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: グラフと表を作る
+        run: |
+          mkdir -p out
+          python3 bin/hmwr kifu rate --csv --svg out/rate.svg --max-age 2 > out/rate.csv
+          tail -n 3 out/rate.csv
+      - name: rate-graph ブランチへ置く
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git fetch --depth=1 origin rate-graph; then
+            git worktree add --detach graph FETCH_HEAD
+          else
+            echo "rate-graph がまだないので、orphanで作る"
+            git worktree add --orphan -b rate-graph graph
+          fi
+          cp out/rate.svg out/rate.csv graph/
+          cd graph
+          git add rate.svg rate.csv
+          if git diff --cached --quiet; then
+            echo "変化なし"
+            exit 0
+          fi
+          git commit -q -m "chore: レートの推移を更新する（$(TZ=Asia/Tokyo date +%F)）"
+          git push origin HEAD:refs/heads/rate-graph
