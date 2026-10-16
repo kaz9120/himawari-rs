@@ -7,7 +7,8 @@
 # マージ済みのコミットを「このブランチのコミット」として拾う（issue #579）。
 #
 # `--branches=main` は末尾に /* を補って main 自体に一致しないので、refを列挙して渡す。
-base=$(git for-each-ref --format='%(refname)' refs/heads/main refs/remotes/origin/main)
+# gitの外などで失敗したら、その終了コードを返す。呼び出し側が警告を出す
+base=$(git for-each-ref --format='%(refname)' refs/heads/main refs/remotes/origin/main) || exit
 [ -z "$base" ] && exit 0
 # shellcheck disable=SC2086
 git log HEAD --not $base --format="$1"
