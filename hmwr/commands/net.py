@@ -21,6 +21,10 @@ TRAINER = "training/train.py"
 # 学習曲線のTSVの置き場。paths.RUNS の下に置く
 CURVES = "net_shape"
 
+# 既定の構成の正。Python側では数を持たず、ここから読む（#804）
+BUILD_RS = paths.REPO / "crates" / "engine" / "build.rs"
+DEFAULT_ARCH_RE = re.compile(r'^const DEFAULT_ARCH: &str = "([^"]+)";', re.MULTILINE)
+
 # 1局面40バイト固定（ADR-0038）
 BYTES_PER_POSITION = 40
 BATCH = 16384
@@ -238,19 +242,31 @@ def positions(psv: Path) -> int:
     return psv.stat().st_size // BYTES_PER_POSITION
 
 
-def _ensure_extension(*, dry_run: bool) -> None:
-    """py拡張が入っていなければ作って入れる。
+def default_arch() -> str:
+    """既定の構成。正は `crates/engine/build.rs` の `DEFAULT_ARCH` にある。"""
+    m = DEFAULT_ARCH_RE.search(BUILD_RS.read_text(encoding="utf-8"))
+    if not m:
+        raise proc.Fail(f"既定の構成を読めない: {paths.rel(BUILD_RS)} に DEFAULT_ARCH がない")
+    return paths.check_arch(m.group(1))
 
-    入力次元は拡張が持つ `himawari.FT_IN` を正とし、ここでは数を持たない。
+
+def _ensure_extension(*, dry_run: bool) -> None:
+    """既定の構成のpy拡張を入れる。入っていないか、構成が違えば作り直す。
+
+    `net shapes` は構成ごとに拡張を入れ替え、最後の構成のまま残す。拡張の有無
+    だけを見ると、その後の学習が既定と違う構成のまま進む（#804）。
+    入力次元などの数は拡張が持つので、ここでは構成の名前だけを比べる。
     """
+    want = default_arch()
     if dry_run:
         return
-    got = proc.capture(
-        ["python3", "-c", "import himawari; print(himawari.FT_IN)"]
-    ).strip()
-    if got:
+    got = proc.capture(["python3", "-c", "import himawari; print(himawari.ARCH)"]).strip()
+    if got == want:
         return
-    print("py拡張が入っていないので作る")
+    if got:
+        print(f"py拡張の構成が既定と違う: {got}（既定 {want}）。既定で作り直す")
+    else:
+        print("py拡張が入っていないので作る")
     wheels = paths.REPO / "target" / "wheels"
     proc.run(
         [
@@ -258,13 +274,9 @@ def _ensure_extension(*, dry_run: bool) -> None:
             "-m", "crates/py/Cargo.toml",
             "--out", str(wheels),
         ],
-        dry_run=dry_run,
-        env={"CARGO_TARGET_DIR": "target/py-kp"},
+        env={"HIMAWARI_ARCH": want, "CARGO_TARGET_DIR": "target/py-kp"},
     )
-    built = sorted(wheels.glob("*.whl"), key=lambda w: w.stat().st_mtime, reverse=True)
-    if not built:
-        raise proc.Fail(f"拡張が作られていない: {paths.rel(wheels)}")
-    proc.run(["pip", "install", "--quiet", "--force-reinstall", str(built[0])])
+    _install_wheel(wheels, want, dry_run=False)
 
 
 def train(args: argparse.Namespace) -> int:

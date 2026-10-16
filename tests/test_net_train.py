@@ -95,3 +95,65 @@ def test_a_checkpoint_without_a_record_needs_adopt(trainer):
     assert cli.main(argv_for(train_dir)) == proc.RUNTIME
     assert cli.main(argv_for(train_dir, "d.psv", "--adopt")) == proc.OK
     assert "--resume" in calls[0]
+
+
+# --- py拡張の構成（#804） ----------------------------------------------
+
+
+def test_default_arch_is_read_from_build_rs():
+    """既定の構成はbuild.rsが持つ。Python側に数を写さない。"""
+    text = net.BUILD_RS.read_text(encoding="utf-8")
+    assert f'const DEFAULT_ARCH: &str = "{net.default_arch()}";' in text
+
+
+def test_default_arch_fails_when_build_rs_changes_shape(tmp_path, monkeypatch):
+    rs = tmp_path / "build.rs"
+    rs.write_text('const OTHER: &str = "1x1";\n', encoding="utf-8")
+    monkeypatch.setattr(net, "BUILD_RS", rs)
+    with pytest.raises(proc.Fail, match="DEFAULT_ARCH"):
+        net.default_arch()
+
+
+@pytest.fixture
+def extension(monkeypatch):
+    """入っている拡張の構成を差し替え、ビルドと入れ直しの呼び出しを控える。"""
+    state = {"installed": "", "builds": [], "installs": []}
+    monkeypatch.setattr(net, "default_arch", lambda: "1024x16x32")
+    monkeypatch.setattr(proc, "capture", lambda argv, **_: state["installed"] + "\n")
+
+    def fake_run(argv, **kw):
+        state["builds"].append(kw.get("env", {}))
+        return proc.OK
+
+    def fake_install(wheels, spec, *, dry_run):
+        state["installs"].append(spec)
+
+    monkeypatch.setattr(proc, "run", fake_run)
+    monkeypatch.setattr(net, "_install_wheel", fake_install)
+    return state
+
+
+def test_extension_of_the_default_arch_is_kept(extension):
+    extension["installed"] = "1024x16x32"
+    net._ensure_extension(dry_run=False)
+    assert extension["builds"] == [] and extension["installs"] == []
+
+
+def test_extension_left_by_net_shapes_is_rebuilt_with_the_default(extension, capsys):
+    """net shapesが残した別構成の拡張のまま学習しない（#804）。"""
+    extension["installed"] = "512x16x64"
+    net._ensure_extension(dry_run=False)
+    assert [b["HIMAWARI_ARCH"] for b in extension["builds"]] == ["1024x16x32"]
+    assert extension["installs"] == ["1024x16x32"]
+    assert "512x16x64" in capsys.readouterr().out
+
+
+def test_missing_extension_is_built_with_the_default(extension):
+    net._ensure_extension(dry_run=False)
+    assert [b["HIMAWARI_ARCH"] for b in extension["builds"]] == ["1024x16x32"]
+
+
+def test_dry_run_neither_builds_nor_installs(extension):
+    extension["installed"] = "512x16x64"
+    net._ensure_extension(dry_run=True)
+    assert extension["builds"] == [] and extension["installs"] == []
