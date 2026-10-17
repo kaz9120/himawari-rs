@@ -17,6 +17,7 @@ pub mod types;
 pub mod zobrist;
 
 pub use bitboard::Bitboard;
+pub use effect::EffectMap;
 pub use hand::Hand;
 pub use movegen::{GenType, generate, generate_legal, perft, perft_slow};
 pub use moves::{Move, Move16, MoveList};

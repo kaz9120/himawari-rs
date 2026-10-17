@@ -13,10 +13,13 @@
 //! 利き数は `count(pos, sq, c)` で取る。駒の色は盤面から引くので、
 //! ここでは色ごとの表を持たない。
 
-use crate::attacks::attacks;
+use crate::attacks::{
+    attacks, bishop_attacks, gold_attacks, king_attacks, knight_attacks, lance_attacks,
+    rook_attacks, silver_attacks,
+};
 use crate::bitboard::Bitboard;
 use crate::moves::Move;
-use crate::piece::Piece;
+use crate::piece::{Piece, PieceType};
 use crate::position::Position;
 use crate::types::{Color, Square};
 
@@ -129,6 +132,94 @@ impl EffectTable {
     /// バケット決定はこの値を使う。
     pub fn count(&self, pos: &Position, sq: Square, c: Color) -> u32 {
         (self.to_sq[sq.index()] & pos.color_bb(c)).count()
+    }
+}
+
+/// 色cの利きの地図（ADR-0239の案E）。
+///
+/// 維持はせず、使うノードで作る。`EffectTable` と違って利いている駒の位置は
+/// 持たず、1枚以上・2枚以上利いている升の集合だけを持つ。玉の利きも数える。
+/// 1手詰めの候補を落とす、玉の行き先が安全かを見る、といった用途では、
+/// 位置まで要らずにこれで決まる場合が大半である。
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
+pub struct EffectMap {
+    /// cの駒が1枚以上利いている升
+    pub any: Bitboard,
+    /// cの駒が2枚以上利いている升
+    pub multi: Bitboard,
+    /// cの飛び駒（香・角・飛と、馬・竜の飛び利き）が利いている升。
+    /// この升の駒が動くと、その奥へ飛び利きが伸びうる
+    pub slider: Bitboard,
+}
+
+impl EffectMap {
+    #[inline(always)]
+    fn add(&mut self, x: Bitboard) {
+        self.multi |= self.any & x;
+        self.any |= x;
+    }
+
+    #[inline(always)]
+    fn add_slider(&mut self, x: Bitboard) {
+        self.add(x);
+        self.slider |= x;
+    }
+
+    /// 盤全体の地図を作る。
+    pub fn build(pos: &Position, c: Color) -> EffectMap {
+        Self::build_near(pos, c, Bitboard::ALL)
+    }
+
+    /// 銀・金・玉（金の動きをする成駒を含む）は、`near` にある駒だけを数える。
+    /// 歩・桂・飛び駒は全部数える。
+    ///
+    /// 銀・金・玉の利きは隣の升にしか届かないので、ある升の周りの3×3だけを
+    /// 正しく知りたいときは、5×5を `near` に渡せば足りる。`near` の外の駒が
+    /// 利く升では、`any` と `multi` が実際より少なくなる。
+    pub fn build_near(pos: &Position, c: Color, near: Bitboard) -> EffectMap {
+        let occ = pos.occupied();
+        let mut m = EffectMap::default();
+        // 歩の利きは駒ごとに別の升なので、集合のまま1段ずらせば重ならない
+        let pawns = pos.pieces(c, PieceType::PAWN);
+        m.add(match c {
+            Color::Black => pawns.shift_up(),
+            Color::White => pawns.shift_down(),
+        });
+        for sq in pos.pieces(c, PieceType::KNIGHT) {
+            m.add(knight_attacks(c, sq));
+        }
+        for sq in pos.pieces(c, PieceType::SILVER) & near {
+            m.add(silver_attacks(c, sq));
+        }
+        for sq in pos.golds(c) & near {
+            m.add(gold_attacks(c, sq));
+        }
+        let ksq = pos.king(c);
+        if near.test(ksq) && pos.pieces(c, PieceType::KING).test(ksq) {
+            m.add(king_attacks(ksq));
+        }
+        for sq in pos.pieces(c, PieceType::LANCE) {
+            m.add_slider(lance_attacks(c, sq, occ));
+        }
+        for sq in pos.pieces(c, PieceType::BISHOP) {
+            m.add_slider(bishop_attacks(sq, occ));
+        }
+        for sq in pos.pieces(c, PieceType::ROOK) {
+            m.add_slider(rook_attacks(sq, occ));
+        }
+        // 馬・竜は飛び利きと1升の利きを分けて足す。同じ駒の利きなので、
+        // 2つが重なる升はない
+        for sq in pos.pieces(c, PieceType::HORSE) {
+            let ray = bishop_attacks(sq, occ);
+            m.add(ray | (king_attacks(sq) & !ray));
+            m.slider |= ray;
+        }
+        for sq in pos.pieces(c, PieceType::DRAGON) {
+            let ray = rook_attacks(sq, occ);
+            m.add(ray | (king_attacks(sq) & !ray));
+            m.slider |= ray;
+        }
+        m
     }
 }
 
@@ -257,6 +348,84 @@ mod tests {
                     t.attacks_from(from2).test(from),
                     "to_sq にあって from_sq にない: {from2:?} -> {from:?}"
                 );
+            }
+        }
+    }
+
+    /// 地図が全升で `attackers_to` の数と一致するか（ADR-0239）。
+    fn assert_map_matches(pos: &Position) {
+        let occ = pos.occupied();
+        for c in [Color::Black, Color::White] {
+            let m = EffectMap::build(pos, c);
+            let mut slider = Bitboard::EMPTY;
+            for sq in pos.color_bb(c) {
+                let pt = pos.piece_on(sq).piece_type();
+                slider |= match pt {
+                    PieceType::LANCE => lance_attacks(c, sq, occ),
+                    PieceType::BISHOP | PieceType::HORSE => bishop_attacks(sq, occ),
+                    PieceType::ROOK | PieceType::DRAGON => rook_attacks(sq, occ),
+                    _ => Bitboard::EMPTY,
+                };
+            }
+            assert_eq!(m.slider, slider, "飛び利きが食い違う\n{}", pos.to_sfen());
+            for i in 0..Square::NB {
+                let sq = Square::from_index(i as u8);
+                let n = pos.attackers_to(c, sq, occ).count();
+                assert_eq!(m.any.test(sq), n >= 1, "1枚以上: {sq:?}\n{}", pos.to_sfen());
+                assert_eq!(
+                    m.multi.test(sq),
+                    n >= 2,
+                    "2枚以上: {sq:?}\n{}",
+                    pos.to_sfen()
+                );
+            }
+        }
+    }
+
+    fn walk_maps(pos: &mut Position, depth: u32) -> u64 {
+        assert_map_matches(pos);
+        if depth == 0 {
+            return 1;
+        }
+        let mut list = crate::moves::MoveList::default();
+        crate::movegen::generate_legal(pos, true, &mut list);
+        let mut n = 0;
+        for &m in &list {
+            pos.do_move(m);
+            n += walk_maps(pos, depth - 1);
+            pos.undo_move(m);
+        }
+        n
+    }
+
+    #[test]
+    fn effect_map_matches_attackers_to() {
+        let mut pos = Position::from_sfen(SFEN_STARTPOS).expect("startpos");
+        walk_maps(&mut pos, 2);
+        let sfen = "l6nl/5+P1gk/2np1S3/p1p4Pp/3P2Sp1/1PPb2P1P/P5GS1/R8/LN4bKL w GR5pnsg 1";
+        let mut pos = Position::from_sfen(sfen).expect("sfen");
+        let n = walk_maps(&mut pos, 2);
+        assert!(n > 1000, "局面数が少なすぎる: {n}");
+    }
+
+    /// `build_near` は、5×5を渡した升の周り3×3で全体の地図と一致する。
+    #[test]
+    fn effect_map_near_is_exact_around_the_center() {
+        let sfen = "l6nl/5+P1gk/2np1S3/p1p4Pp/3P2Sp1/1PPb2P1P/P5GS1/R8/LN4bKL w GR5pnsg 1";
+        let pos = Position::from_sfen(sfen).expect("sfen");
+        for c in [Color::Black, Color::White] {
+            let full = EffectMap::build(&pos, c);
+            for i in 0..Square::NB {
+                let center = Square::from_index(i as u8);
+                let zone = king_attacks(center) | Bitboard::from_square(center);
+                let mut box5 = zone;
+                for s in zone {
+                    box5 |= king_attacks(s);
+                }
+                let near = EffectMap::build_near(&pos, c, box5);
+                assert_eq!(near.any & zone, full.any & zone);
+                assert_eq!(near.multi & zone, full.multi & zone);
+                assert_eq!(near.slider, full.slider);
             }
         }
     }
