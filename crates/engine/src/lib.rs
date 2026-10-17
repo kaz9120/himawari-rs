@@ -3,6 +3,7 @@
 
 #[cfg(feature = "actdump")]
 pub mod actdump;
+pub mod board;
 pub mod eval;
 pub mod mate;
 pub mod movepick;
@@ -18,6 +19,7 @@ pub mod tt;
 pub mod tunables;
 pub mod value;
 
+pub use board::SearchBoard;
 pub use eval::Evaluator;
 pub use search::{IterInfo, ScoreBound, SearchInfo, SearchResult, Shared, Worker};
 pub use thread::{EngineOptions, ThreadPool};

@@ -334,6 +334,31 @@ def test_bench_forwards_options(capsys):
     assert "--runs 3" in lines[0]
 
 
+def test_build_pair_places_boardbench_next_to_each_side(capsys):
+    """盤面操作の計測は、対局用のバイナリと同じ crates/ から作る（ADR-0239）。"""
+    _, lines = dry(capsys, ["build", "pair", "adr0239-x"])
+    copies = [x for x in lines if " cp " in x]
+    assert copies[1].endswith("target/release/boardbench data/bin/cand-adr0239-x.boardbench")
+    assert copies[3].endswith("target/release/boardbench data/bin/base-adr0239-x.boardbench")
+
+
+def test_bench_board_with_name_expands_to_pair(capsys):
+    _, lines = dry(capsys, ["bench", "board", "adr0239-x", "--runs", "3", "--depth", "3"])
+    assert lines[0].startswith("[dry-run] data/bin/base-adr0239-x.boardbench --depth 3")
+    assert "（3周）" in lines[0]
+    assert lines[1].startswith("[dry-run] data/bin/cand-adr0239-x.boardbench")
+
+
+def test_bench_board_uses_the_sibling_of_an_engine_binary(capsys):
+    _, lines = dry(capsys, ["bench", "board", "data/bin/base-a", "data/bin/cand-a"])
+    assert "data/bin/base-a.boardbench" in lines[0]
+    assert "data/bin/cand-a.boardbench" in lines[1]
+
+
+def test_bench_rejects_repeat_outside_board(capsys):
+    assert cli.main(["--dry-run", "bench", "a", "b", "--repeat", "3"]) == proc.USAGE
+
+
 def test_threadtune_defaults_to_the_current_network(capsys):
     """評価関数を省いたら現行のネットで測る。ログも名前から決まる。"""
     _, lines = dry(capsys, ["threadtune", "--current", "6", "--hours", "8"])
@@ -599,7 +624,7 @@ def test_build_pair_can_build_the_candidate_from_a_ref(capsys):
     assert restores[0].endswith("--source=0cd8205 --staged --worktree -- crates/")
     assert restores[1].endswith("--source=origin/main --staged --worktree -- crates/")
     assert restores[-1].endswith("--source=HEAD --staged --worktree -- crates/")
-    copies = [x for x in lines if " cp " in x]
+    copies = [x for x in lines if " cp " in x and "boardbench" not in x]
     assert copies[0].endswith("data/bin/cand-adr0211-x")
     assert copies[1].endswith("data/bin/base-adr0211-x")
 
