@@ -25,7 +25,20 @@ use crate::moves::Move;
 use crate::zobrist::{self, HAND_PAWN, HAND_SHIFT, PIECE_VALUE, PSQ, is_minor_piece};
 
 /// 王手駒を探す短い利きの差分（玉の8近傍と、両者の桂の位置）。
-pub(crate) const CHECK_OFFSETS: [i8; 12] = [-1, 1, 11, -11, 10, -10, -12, 12, 9, -13, -9, 13];
+pub(crate) const CHECK_OFFSETS: [i8; 12] = [
+    DELTA[0],
+    DELTA[1],
+    DELTA[2],
+    DELTA[3],
+    DELTA[4],
+    DELTA[5],
+    DELTA[6],
+    DELTA[7],
+    KNIGHT_STEPS[0],
+    KNIGHT_STEPS[1],
+    -KNIGHT_STEPS[0],
+    -KNIGHT_STEPS[1],
+];
 
 /// 駒番号の無い升の値。盤上と手駒の駒は40枚。
 pub const NO_ID: u8 = 0xFF;
@@ -84,10 +97,16 @@ struct EffectSnapshot {
     longdir: [[u8; LEN]; 2],
 }
 
+/// 盤と利きの表を先頭に並べ、64バイト境界にそろえる（`stride16` では各表が64バイトの倍数になる）。
 #[derive(Clone)]
+#[repr(C, align(64))]
 pub struct Position {
     /// 升の中身（駒の符号・EMPTY・WALL）。
     pub(crate) board: [u8; LEN],
+    /// 手番別の利き数。
+    pub(crate) count: [[u8; LEN]; 2],
+    /// 手番別の飛び利きの方向ビット。bit dは「方向dへ進む飛び利きがこの升に届く」。
+    pub(crate) longdir: [[u8; LEN]; 2],
     /// 升にいる駒の番号。空き升と壁はNO_ID。
     pub(crate) id_on: [u8; LEN],
     /// 駒番号ごとの升（手駒なら0）。
@@ -99,10 +118,6 @@ pub struct Position {
     /// 持ち主別の駒のいる升の集合（81升の通し番号のビット）。
     /// 空き升の列挙と、生成の順をcoreに揃えるために持つ。利きの計算には使わない。
     pub(crate) occ: [u128; 2],
-    /// 手番別の利き数。
-    pub(crate) count: [[u8; LEN]; 2],
-    /// 手番別の飛び利きの方向ビット。bit dは「方向dへ進む飛び利きがこの升に届く」。
-    pub(crate) longdir: [[u8; LEN]; 2],
     pub(crate) king: [u8; 2],
     /// 生の歩がいる筋のビット（二歩の判定）。
     pub(crate) pawn_files: [u16; 2],

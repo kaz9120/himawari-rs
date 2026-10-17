@@ -12,6 +12,10 @@ workspace = true
 [features]
 # 戻しを差分ではなく、利きの表の複写で行う（ADR-0241の段階4で比べる）
 copy-undo = []
+# 盤と利きの表の1列を16升にする。外すと1列11升（143要素）になる。
+# 第5回の計測で16升がratio_moveを約0.1下げたので既定にした（ADR-0241）
+default = ["stride16"]
+stride16 = []
 
 # 既存のcoreは正しさの照合（perft・生成の列）と段階4の計測にだけ使う。本体は依存しない。
 # himawari-toolsは計測の局面リストの読み込みに使う（boardbenchと同じ局面）

@@ -1,11 +1,15 @@
 //! 壁付きの配列盤の座標と、駒の動きの表。
 //!
-//! 升の添字は `idx = (筋 + 2) * 11 + 段 + 1`（筋・段は0始まり、1筋・一段が0）。
-//! 1筋は縦11升で、上下に1升ずつ壁を持つ。左右は筋−1と筋9の列が壁になる。
-//! 桂が盤の外へ2段跳んでも、隣の列の壁の行へ落ちるので、範囲の検査が要らない。
-//! 添字の最小は10、最大は132で、配列の長さは143とする。
+//! 升の添字は `idx = (筋 + FILE_OFF) * STRIDE + 段 + 1`（筋・段は0始まり、1筋・一段が0）。
+//! 列の配置は2通りあり、フィーチャで選ぶ（ADR-0241の第5回で比べる）。
 //!
-//! 方向の差分は先手から見て 上=−1、下=+1、左（9筋側）=+11、右（1筋側）=−11。
+//! - `stride16`（既定のフィーチャ）: 1列は縦16升（段9＋上1升・下6升の壁）。`FILE_OFF = 2`、配列の長さは256。
+//!   添字から筋・段を引く割り算がシフトとマスクになり、1筋が16バイトにそろう
+//! - `--no-default-features`: 1列は縦11升（段9＋上下の壁）。`FILE_OFF = 2`、配列の長さは143
+//!
+//! どちらも、桂が盤の外へ2段跳ぶと隣の列の壁の行へ落ちるので、範囲の検査が要らない。
+//!
+//! 方向の差分は先手から見て 上=−1、下=+1、左（9筋側）=+STRIDE、右（1筋側）=−STRIDE。
 //! 方向の番号は逆向きの組が `d ^ 1` になるように並べる。
 
 /// 手番・駒の先後。
@@ -33,15 +37,19 @@ impl Color {
 
 pub const SFEN_STARTPOS: &str = "lnsgkgsnl/1r5b1/ppppppppp/9/9/9/PPPPPPPPP/1B5R1/LNSGKGSNL b - 1";
 
-/// 列の高さ（段9＋上下の壁）。筋をまたぐ差分になる。
-pub const STRIDE: i32 = 11;
+/// 列の高さ。筋をまたぐ差分になる。
+pub const STRIDE: i32 = if cfg!(feature = "stride16") { 16 } else { 11 };
+/// 筋0の列の前に置く壁の列の数。盤外へ跳ぶ桂の差分が負の添字にならないよう2列置く。
+pub const FILE_OFF: u16 = 2;
 /// 盤の配列の長さ。
-pub const LEN: usize = 143;
+pub const LEN: usize = if cfg!(feature = "stride16") { 256 } else { 143 };
+
+const S: i8 = STRIDE as i8;
 
 /// 筋・段（0始まり）から升の添字を作る。
 #[inline]
 pub const fn idx(file: u8, rank: u8) -> u8 {
-    ((file as u16 + 2) * 11 + rank as u16 + 1) as u8
+    ((file as u16 + FILE_OFF) * STRIDE as u16 + rank as u16 + 1) as u8
 }
 
 /// 升の添字から81升の通し番号（`file * 9 + rank`、coreのSquareと同じ）。壁は0xFF。
@@ -72,12 +80,12 @@ pub const IDX81: [u8; 81] = {
 
 #[inline]
 pub const fn file_of(i: u8) -> u8 {
-    i / 11 - 2
+    i / STRIDE as u8 - FILE_OFF as u8
 }
 
 #[inline]
 pub const fn rank_of(i: u8) -> u8 {
-    i % 11 - 1
+    i % STRIDE as u8 - 1
 }
 
 /// 手番cから見た段（先手はそのまま、後手は反転）。
@@ -116,23 +124,12 @@ pub const UR: usize = 6;
 pub const DL: usize = 7;
 
 /// 方向の差分。逆向きは `d ^ 1`。
-pub const DELTA: [i8; 8] = [-1, 1, 11, -11, 10, -10, -12, 12];
+pub const DELTA: [i8; 8] = [-1, 1, S, -S, S - 1, -(S - 1), -S - 1, S + 1];
 
 #[inline]
 pub const fn opp(d: usize) -> usize {
     d ^ 1
 }
-
-/// 差分（−12..=12）から方向の番号。8方向でなければ8。
-pub const DIR_OF_DELTA: [u8; 25] = {
-    let mut t = [8u8; 25];
-    let mut d = 0;
-    while d < 8 {
-        t[(DELTA[d] + 12) as usize] = d as u8;
-        d += 1;
-    }
-    t
-};
 
 /// 盤上の升aから升bへ向かう方向。同じ筋・段・斜めの線に無ければNone。
 #[inline]
@@ -294,7 +291,9 @@ const fn bit(d: usize) -> u8 {
     1 << d
 }
 
-const GOLD_STEPS: [i8; 6] = [-1, 1, 11, -11, 10, -12];
+const GOLD_STEPS: [i8; 6] = [-1, 1, S, -S, S - 1, -S - 1];
+/// 先手の桂の2つの跳び先の差分。
+pub const KNIGHT_STEPS: [i8; 2] = [S - 2, -S - 2];
 const ORTH: u8 = bit(UP) | bit(DOWN) | bit(LEFT) | bit(RIGHT);
 const DIAG: u8 = bit(UL) | bit(DR) | bit(UR) | bit(DL);
 
@@ -303,14 +302,14 @@ const fn black_moves(pt: u8) -> PieceMoves {
     match pt {
         PAWN => pm(&[-1], 0),
         LANCE => pm(&[], bit(UP)),
-        KNIGHT => pm(&[9, -13], 0),
-        SILVER => pm(&[-1, 10, -12, 12, -10], 0),
+        KNIGHT => pm(&KNIGHT_STEPS, 0),
+        SILVER => pm(&[-1, S - 1, -S - 1, S + 1, -(S - 1)], 0),
         GOLD | 2..=5 => pm(&GOLD_STEPS, 0),
-        KING => pm(&[-1, 1, 11, -11, 10, -10, -12, 12], 0),
+        KING => pm(&DELTA, 0),
         BISHOP => pm(&[], DIAG),
         ROOK => pm(&[], ORTH),
-        HORSE => pm(&[-1, 1, 11, -11], DIAG),
-        DRAGON => pm(&[10, -10, -12, 12], ORTH),
+        HORSE => pm(&[-1, 1, S, -S], DIAG),
+        DRAGON => pm(&[S - 1, -(S - 1), -S - 1, S + 1], ORTH),
         _ => pm(&[], 0),
     }
 }
@@ -421,7 +420,6 @@ mod tests {
     fn opposite_dirs() {
         for d in 0..8 {
             assert_eq!(DELTA[d], -DELTA[opp(d)]);
-            assert_eq!(DIR_OF_DELTA[(DELTA[d] + 12) as usize] as usize, d);
         }
     }
 }
