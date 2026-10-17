@@ -2876,9 +2876,11 @@ impl Worker {
             // 1手詰め判定（ADR-0029。yaneuraou-search.cpp:4756-4784）。
             // 置換表にヒットしたときはすでに調べたはずなので、ミスのときだけ
             // 呼ぶ。王手中も呼ばない。評価関数の呼び出しより手前に置くので、
-            // 詰みがあるときはevaluate()を省ける
+            // 詰みがあるときはevaluate()を省ける。
+            // 静止探索は利き数の表を読まず、1手詰め・SEE・玉の移動を都度作る
+            // 地図で解く。表の追いつきを通常探索のノードに限るためである（ADR-0240の2回目）
             if tt_hit.is_none()
-                && let Some(m) = self.pos.mate_1ply()
+                && let Some(m) = crate::mate::mate_1ply(self.pos.position())
             {
                 // 次のノードで（指し手がなくなって）詰むという解釈
                 let mate = mate_in(ply + 1);
@@ -2973,7 +2975,7 @@ impl Worker {
             let mut count = 0u32;
             let mut best_move = Move::NONE;
             while let Some(m) = picker.next(&self.pos, &self.hist, &cont) {
-                if !self.pos.is_legal(m) {
+                if !self.pos.position().is_legal(m) {
                     continue;
                 }
                 count += 1;
@@ -3012,7 +3014,7 @@ impl Worker {
                             }
                             continue;
                         }
-                        if !self.pos.see_ge(m, alpha - futility_base) {
+                        if !self.pos.position().see_ge(m, alpha - futility_base) {
                             if raise {
                                 best = best.max(alpha.min(futility_base));
                             }
@@ -3026,7 +3028,7 @@ impl Worker {
                     }
                     // SEEが十分悪い手は探索しない（yaneuraou-search.cpp:4989-4990）。
                     // 無駄な王手ラッシュを抑える。歩損は許す下限である
-                    if !self.pos.see_ge(m, QS_SEE_MARGIN()) {
+                    if !self.pos.position().see_ge(m, QS_SEE_MARGIN()) {
                         continue;
                     }
                 }
