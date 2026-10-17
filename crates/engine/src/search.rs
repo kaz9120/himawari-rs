@@ -10,6 +10,7 @@ use himawari_core::{
     Color, Move, MoveList, Piece, PieceType, Position, Repetition, Square, generate_legal,
 };
 
+use crate::board::SearchBoard;
 use crate::eval::Evaluator;
 use crate::movepick::{
     ContinuationCorrectionHistory, ContinuationHistory, Histories, LOW_PLY_HISTORY_SIZE, MoveBuf,
@@ -529,7 +530,9 @@ impl NodeBuffers {
 }
 
 pub struct Worker {
-    pub pos: Position,
+    /// 探索が進め戻す盤面（ADR-0239）。読み取りは `Position` のメソッドを
+    /// そのまま呼べる
+    pub pos: SearchBoard,
     pub evaluator: Evaluator,
     /// historyの一式（ADR-0109のG1）。対局を通じてスレッドが持ち回る。
     pub hist: Histories,
@@ -607,7 +610,7 @@ impl Worker {
     ) -> Worker {
         let root_color = pos.side_to_move();
         Worker {
-            pos,
+            pos: SearchBoard::new(pos),
             evaluator,
             hist,
             // ヒープ上で作ってから配列へ移す。要素数はコンパイル時に
@@ -1080,7 +1083,7 @@ impl Worker {
     /// 手順の再現性を壊さない。
     pub fn set_position(&mut self, pos: Position) {
         self.root_color = pos.side_to_move();
-        self.pos = pos;
+        self.pos = SearchBoard::new(pos);
         // accumulatorのスタックを捨てる。前の局面の計算済みフラグが
         // 残っていると、全く別の局面の評価値をそのまま読んでしまう
         self.evaluator.new_search(&self.pos);

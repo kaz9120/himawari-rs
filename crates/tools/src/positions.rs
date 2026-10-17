@@ -7,6 +7,7 @@ use std::fs;
 use std::path::Path;
 
 use anyhow::{Context, Result, bail};
+use himawari_core::{Position, SFEN_STARTPOS};
 
 /// 検証局面。初期局面と `openings/start_sfens_ply24.txt` の先頭3行。
 /// 固定して条件を揃える。増やすときは末尾へ足し、既存の並びは変えない。
@@ -54,6 +55,31 @@ pub fn builtin_positions() -> Vec<String> {
     POSITIONS.iter().map(|s| s.to_string()).collect()
 }
 
+/// `position` に続けて渡す形の1行（`startpos` か `sfen <4トークン>`、
+/// 続けて `moves <手順>`）から局面を作る。USIエンジンを通さずに盤面を
+/// 歩くツール（`boardbench`）が、`hmwr bench` と同じ局面リストを読むために使う。
+pub fn parse_position(line: &str) -> Result<Position> {
+    let tokens: Vec<&str> = line.split_whitespace().collect();
+    let (sfen, rest) = match tokens.first() {
+        Some(&"startpos") => (SFEN_STARTPOS.to_string(), &tokens[1..]),
+        Some(&"sfen") if tokens.len() >= 5 => (tokens[1..5].join(" "), &tokens[5..]),
+        _ => bail!("局面の形が読めない: {line}"),
+    };
+    let mut pos = Position::from_sfen(&sfen)
+        .map_err(|e| anyhow::anyhow!("SFENが不正だ: {}（{line}）", e.0))?;
+    if rest.first() == Some(&"moves") {
+        for s in &rest[1..] {
+            let Some(m) = pos.move_from_usi(s) else {
+                bail!("指し手が読めない: {s}（{line}）");
+            };
+            pos.do_move(m);
+        }
+    } else if !rest.is_empty() {
+        bail!("局面の後ろが読めない: {line}");
+    }
+    Ok(pos)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -76,5 +102,17 @@ mod tests {
         assert_eq!(depth_at(25, 2), 22);
         // 浅い深さでも0や負にしない
         assert_eq!(depth_at(1, 2), 1);
+    }
+
+    /// 組み込みの局面と、手順つきの形の両方を読める。
+    #[test]
+    fn parse_position_reads_both_forms() {
+        for line in POSITIONS {
+            parse_position(line).unwrap();
+        }
+        let pos = parse_position("startpos moves 7g7f 3c3d").unwrap();
+        assert_eq!(pos.game_ply(), 3);
+        assert!(parse_position("startpos moves 7g7e").is_err());
+        assert!(parse_position("hoge").is_err());
     }
 }

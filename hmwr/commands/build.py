@@ -152,6 +152,24 @@ def _use_crates(ref: str, *, dry_run: bool, cwd: Path | None = None) -> None:
     )
 
 
+def _build_side(out: Path, *, dry_run: bool) -> None:
+    """片側をビルドし、対局用のバイナリと盤面操作の計測を out の隣へ置く。
+
+    `boardbench`（ADR-0239）は同じ crates/ から作らないと、比べる2本の
+    盤面操作が揃わない。手順0より前のコミットには無いので、無ければ置かない。
+    前の側のビルドが target/ に残したものを拾わないよう、先に消しておく。
+    """
+    board = paths.release_bin("boardbench")
+    board_out = out.with_name(out.name + ".boardbench")
+    if not dry_run:
+        board.unlink(missing_ok=True)
+        board_out.unlink(missing_ok=True)
+    cargo_build(dry_run=dry_run)
+    _copy(paths.release_bin("himawari"), out, dry_run=dry_run)
+    if dry_run or board.is_file():
+        _copy(board, board_out, dry_run=dry_run)
+
+
 def make_pair(name: str, *, baseline: str, candidate: str | None = None, dry_run: bool) -> int:
     """比較用の2本を同じ条件で作る。
 
@@ -183,13 +201,11 @@ def make_pair(name: str, *, baseline: str, candidate: str | None = None, dry_run
         print("candidateをビルド中...")
         if candidate:
             _use_crates(candidate, dry_run=dry_run)
-        cargo_build(dry_run=dry_run)
-        _copy(paths.release_bin("himawari"), cand_out, dry_run=dry_run)
+        _build_side(cand_out, dry_run=dry_run)
 
         print("baselineをビルド中...")
         _use_crates(baseline, dry_run=dry_run)
-        cargo_build(dry_run=dry_run)
-        _copy(paths.release_bin("himawari"), base_out, dry_run=dry_run)
+        _build_side(base_out, dry_run=dry_run)
     finally:
         # 失敗しても作業木を必ず戻す
         _use_crates("HEAD", dry_run=dry_run)
