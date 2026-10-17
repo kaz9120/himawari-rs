@@ -255,9 +255,26 @@ fn run(cli: &Cli) -> Result<()> {
     Ok(())
 }
 
+/// 計測を走らせるスレッドのスタック。深さ2の歩き方には十分に大きい。
+const STACK_BYTES: usize = 64 << 20;
+
 fn main() -> ExitCode {
     let cli = Cli::parse();
-    match run(&cli) {
+    // 計測は別スレッドで走らせる。メインスレッドのスタックは、起動時の
+    // 引数と環境変数の長さで開始位置がずれる。同じバイナリでも、実験名で
+    // 渡すか相対パスで渡すかで mate_1ply が 92ns と 154ns に分かれた。
+    // スレッドのスタックはページ境界から始まるので、呼び方に左右されない。
+    // 探索のワーカーも別スレッドで動くので、条件が揃う（ADR-0239）
+    let worker = std::thread::Builder::new()
+        .stack_size(STACK_BYTES)
+        .spawn(move || run(&cli));
+    let result = match worker {
+        Ok(handle) => handle
+            .join()
+            .unwrap_or_else(|_| Err(anyhow::anyhow!("計測のスレッドが落ちた"))),
+        Err(e) => Err(anyhow::anyhow!("計測のスレッドを起こせない: {e}")),
+    };
+    match result {
         Ok(()) => ExitCode::SUCCESS,
         Err(e) => {
             eprintln!("エラー: {e:#}");
