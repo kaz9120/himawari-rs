@@ -62,11 +62,10 @@ impl SearchBoard {
         self.pos.do_move(m);
         let next = self.ply + 1;
         if next == self.counts.len() {
-            let top = self.counts[self.ply];
-            self.counts.push(top);
-        } else {
-            self.counts[next] = self.counts[self.ply];
+            self.counts.push(EffectCounts::default());
         }
+        let (lo, hi) = self.counts.split_at_mut(next);
+        hi[0].copy_from(&lo[self.ply]);
         self.ply = next;
         self.counts[next].update(&self.pos, m, captured, occ);
         debug_assert_eq!(

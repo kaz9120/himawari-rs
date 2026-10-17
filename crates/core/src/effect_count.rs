@@ -21,7 +21,10 @@
 //! 届いていた飛び利きが移動先で止まるからである。3がその升の方向ビットを
 //! 消すので、4で誤って延ばさない。
 
-use crate::attacks::{attacks, bishop_attacks, king_attacks, ray_attacks, rook_attacks};
+use crate::attacks::{
+    bishop_attacks, gold_attacks, king_attacks, knight_attacks, pawn_attacks, ray_attacks,
+    rook_attacks, silver_attacks,
+};
 use crate::bitboard::Bitboard;
 use crate::moves::Move;
 use crate::piece::{Piece, PieceType};
@@ -84,7 +87,12 @@ fn short_attacks(pc: Piece, sq: Square) -> Bitboard {
         // 馬の縦横の1升、竜の斜めの1升。全升を占有にした飛び利きは隣の升だけになる
         PieceType::HORSE => king_attacks(sq) & !bishop_attacks(sq, Bitboard::ALL),
         PieceType::DRAGON => king_attacks(sq) & !rook_attacks(sq, Bitboard::ALL),
-        _ => attacks(pc, sq, Bitboard::EMPTY),
+        PieceType::PAWN => pawn_attacks(pc.color(), sq),
+        PieceType::KNIGHT => knight_attacks(pc.color(), sq),
+        PieceType::SILVER => silver_attacks(pc.color(), sq),
+        PieceType::KING => king_attacks(sq),
+        // 金と、金の動きをする成駒
+        _ => gold_attacks(pc.color(), sq),
     }
 }
 
@@ -99,6 +107,20 @@ impl EffectCounts {
         t
     }
 
+    /// 1段下の表を複写する。探索の進めごとに呼ぶので、`memcpy` の呼び出しを
+    /// 避けて16バイトずつ読み書きする。
+    #[inline(always)]
+    pub fn copy_from(&mut self, src: &EffectCounts) {
+        const WORDS: usize = std::mem::size_of::<EffectCounts>() / 16;
+        let s = (src as *const EffectCounts).cast::<u128>();
+        let d = (self as *mut EffectCounts).cast::<u128>();
+        for i in 0..WORDS {
+            // SAFETY: どちらも同じ型の値で、64バイト境界に置かれ、大きさは16の倍数。
+            // 1語ずつの読み書きに固定し、`memcpy` の呼び出しへ畳ませない
+            unsafe { d.add(i).write_volatile(s.add(i).read_volatile()) };
+        }
+    }
+
     /// 色cの駒が升sqへ利いている数。
     #[inline]
     pub fn count(&self, c: Color, sq: Square) -> u8 {
@@ -111,11 +133,27 @@ impl EffectCounts {
         self.dirs[c.index()][sq.index()]
     }
 
+    /// 差分の内側のループで引く升。升の番号は81未満、色は0か1なので、
+    /// 境界検査を外す。
+    #[inline(always)]
+    fn count_mut(&mut self, c: usize, s: Square) -> &mut u8 {
+        debug_assert!(c < 2 && s.index() < LANES);
+        // SAFETY: c < 2 かつ s.index() < 81 <= LANES
+        unsafe { self.count.get_unchecked_mut(c).get_unchecked_mut(s.index()) }
+    }
+
+    #[inline(always)]
+    fn dirs_mut(&mut self, c: usize, s: Square) -> &mut u8 {
+        debug_assert!(c < 2 && s.index() < LANES);
+        // SAFETY: c < 2 かつ s.index() < 81 <= LANES
+        unsafe { self.dirs.get_unchecked_mut(c).get_unchecked_mut(s.index()) }
+    }
+
     #[inline(always)]
     fn add_piece(&mut self, pc: Piece, sq: Square, occ: Bitboard) {
         let c = pc.color().index();
         for s in short_attacks(pc, sq) {
-            self.count[c][s.index()] += 1;
+            *self.count_mut(c, s) += 1;
         }
         let mut dirs = ray_dirs(pc);
         while dirs != 0 {
@@ -129,7 +167,7 @@ impl EffectCounts {
     fn remove_piece(&mut self, pc: Piece, sq: Square, occ: Bitboard) {
         let c = pc.color().index();
         for s in short_attacks(pc, sq) {
-            self.count[c][s.index()] -= 1;
+            *self.count_mut(c, s) -= 1;
         }
         let mut dirs = ray_dirs(pc);
         while dirs != 0 {
@@ -144,8 +182,8 @@ impl EffectCounts {
     fn extend(&mut self, c: usize, d: usize, sq: Square, occ: Bitboard) {
         let bit = 1u8 << d;
         for s in ray_attacks(d, sq, occ) {
-            self.count[c][s.index()] += 1;
-            self.dirs[c][s.index()] |= bit;
+            *self.count_mut(c, s) += 1;
+            *self.dirs_mut(c, s) |= bit;
         }
     }
 
@@ -154,8 +192,8 @@ impl EffectCounts {
     fn cut(&mut self, c: usize, d: usize, sq: Square, occ: Bitboard) {
         let bit = 1u8 << d;
         for s in ray_attacks(d, sq, occ) {
-            self.count[c][s.index()] -= 1;
-            self.dirs[c][s.index()] &= !bit;
+            *self.count_mut(c, s) -= 1;
+            *self.dirs_mut(c, s) &= !bit;
         }
     }
 
