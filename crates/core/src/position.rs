@@ -529,6 +529,14 @@ impl Position {
 
     /// 擬似合法手に対するO(1)の合法性検査。
     pub fn is_legal(&self, m: Move) -> bool {
+        self.is_legal_by(m, |to| !self.threat_map().any.test(to))
+    }
+
+    /// `is_legal` の玉の移動の判定を差し替えられる形（ADR-0239）。
+    /// `king_safe(to)` は、王手がかかっていないときに玉の行き先toへ相手の
+    /// 利きがないかを返す。利きの地図でも、維持している利き数の表でもよい。
+    #[inline(always)]
+    pub fn is_legal_by(&self, m: Move, king_safe: impl FnOnce(Square) -> bool) -> bool {
         let us = self.side;
         let them = us.flip();
         if m.is_drop() {
@@ -547,7 +555,7 @@ impl Position {
             // 王手がかかっていなければ、玉を除いて伸びる相手の利きはない。
             // 行き先が相手の地図にないかだけで決まる（ADR-0239）
             if !self.in_check() {
-                return !self.threat_map().any.test(to);
+                return king_safe(to);
             }
             let occ_without_king = self.occupied() ^ Bitboard::from_square(from);
             return self.attackers_to(them, to, occ_without_king).is_empty();
@@ -1379,6 +1387,17 @@ impl Position {
     /// 駒打ちも解き（ADR-0091）、初手の成りも扱う（ADR-0095）。
     /// 交換の途中で相手が成る筋は見ない簡略版のままである。
     pub fn see_ge(&self, m: Move, threshold: i32) -> bool {
+        self.see_ge_by(m, threshold, || {
+            let threat = self.threat_map();
+            !threat.any.test(m.to()) && (m.is_drop() || !threat.slider.test(m.from_sq()))
+        })
+    }
+
+    /// `see_ge` の取り合いなしの判定を差し替えられる形（ADR-0239）。
+    /// `no_exchange()` は、移動先に相手の利きがなく、移動元の奥から相手の
+    /// 飛び利きも通らないかを返す。真なら取り合いに入らずに真を返す。
+    #[inline(always)]
+    pub fn see_ge_by(&self, m: Move, threshold: i32, no_exchange: impl FnOnce() -> bool) -> bool {
         let to = m.to();
         // 打つ手は移動先が空きマスなので取る駒がない。打った駒が盤上へ
         // 現れるぶん、飛び駒の利きはそこで止まる（occへtoを足す）。
@@ -1411,8 +1430,7 @@ impl Position {
         }
         // 取り合いなし: 移動先に相手の利きがなく、移動元の奥から相手の飛び
         // 利きも通らないなら、下のループは1回目で抜けて真を返す（ADR-0239）
-        let threat = self.threat_map();
-        if !threat.any.test(to) && (m.is_drop() || !threat.slider.test(m.from_sq())) {
+        if no_exchange() {
             return true;
         }
 

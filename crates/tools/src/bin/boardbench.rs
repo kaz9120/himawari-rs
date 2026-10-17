@@ -16,7 +16,7 @@
 //! 1回あたりのnsは段の差を呼び出し回数で割って出す。`is_legal` だけは
 //! 擬似合法手の生成を差し引くためにgenとの差を取る。
 //!
-//! 手を進め戻すのは探索と同じ `SearchBoard` である。局面に付いて回る
+//! 手を進め戻し、`mate_1ply`・`see_ge`・`is_legal` を呼ぶのは探索と同じ `SearchBoard` である。局面に付いて回る
 //! 状態（利きの表など）を足すと、walkの値にその維持費が載る。
 //!
 //! 出力は1周1行のJSONである。`check` は `mate_1ply` の返す手、`see_ge` と
@@ -32,7 +32,6 @@ use clap::Parser;
 
 use himawari_core::{GenType, Move, MoveList, Piece, generate, generate_legal};
 use himawari_engine::SearchBoard;
-use himawari_engine::mate::mate_1ply;
 use himawari_tools::exit;
 use himawari_tools::positions::{builtin_positions, parse_position, read_positions};
 
@@ -112,7 +111,7 @@ fn visit(b: &SearchBoard, stage: Stage, list: &MoveList, t: &mut Tally) {
         Stage::Walk => {}
         Stage::Mate => {
             if !b.in_check() {
-                let r = mate_1ply(b);
+                let r = b.mate_1ply();
                 t.calls += 1;
                 t.mix(r.map_or(0, move_bits));
             }

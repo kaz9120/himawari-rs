@@ -2878,7 +2878,7 @@ impl Worker {
             // 呼ぶ。王手中も呼ばない。評価関数の呼び出しより手前に置くので、
             // 詰みがあるときはevaluate()を省ける
             if tt_hit.is_none()
-                && let Some(m) = crate::mate::mate_1ply(&self.pos)
+                && let Some(m) = self.pos.mate_1ply()
             {
                 // 次のノードで（指し手がなくなって）詰むという解釈
                 let mate = mate_in(ply + 1);

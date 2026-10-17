@@ -84,6 +84,31 @@ impl SearchBoard {
         debug_assert_eq!(self.counts[self.ply], EffectCounts::build(&self.pos));
     }
 
+    /// `Position::see_ge` と同じ値を返す。取り合いなしの判定を、地図の代わりに
+    /// 表から読む（ADR-0239の案B）。
+    #[inline(always)]
+    pub fn see_ge(&self, m: Move, threshold: i32) -> bool {
+        self.pos.see_ge_by(m, threshold, || {
+            let t = self.counts();
+            let them = self.pos.side_to_move().flip();
+            t.count(them, m.to()) == 0 && (m.is_drop() || t.dirs(them, m.from_sq()) == 0)
+        })
+    }
+
+    /// `Position::is_legal` と同じ値を返す。玉の行き先を表から読む。
+    #[inline(always)]
+    pub fn is_legal(&self, m: Move) -> bool {
+        self.pos.is_legal_by(m, |to| {
+            self.counts().count(self.pos.side_to_move().flip(), to) == 0
+        })
+    }
+
+    /// `mate_1ply` と同じ手を返す。候補を表から読んで落とす。
+    #[inline(always)]
+    pub fn mate_1ply(&self) -> Option<Move> {
+        crate::mate::mate_1ply_with_counts(&self.pos, self.counts())
+    }
+
     /// null moveで1手進める。盤面が変わらないので表はそのまま使う。
     #[inline(always)]
     pub fn do_null_move(&mut self) {
@@ -103,5 +128,52 @@ impl Deref for SearchBoard {
     #[inline(always)]
     fn deref(&self) -> &Position {
         &self.pos
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use himawari_core::{GenType, MoveList, SFEN_STARTPOS, generate, generate_legal};
+
+    /// 表から読む `see_ge`・`is_legal`・`mate_1ply` が、`Position` 側と同じ値を返す。
+    fn walk(b: &mut SearchBoard, depth: u32) {
+        if !b.in_check() {
+            assert_eq!(b.mate_1ply(), crate::mate::mate_1ply(b.position()));
+            let mut pseudo = MoveList::default();
+            generate(b, GenType::NonEvasions, false, &mut pseudo);
+            for &m in pseudo.as_slice() {
+                assert_eq!(b.is_legal(m), b.position().is_legal(m), "{}", m.to_usi());
+            }
+        }
+        let mut list = MoveList::default();
+        generate_legal(b, true, &mut list);
+        for &m in list.as_slice() {
+            for th in [-90, 0, 90] {
+                assert_eq!(
+                    b.see_ge(m, th),
+                    b.position().see_ge(m, th),
+                    "{}",
+                    m.to_usi()
+                );
+            }
+            if depth > 0 {
+                b.do_move(m);
+                walk(b, depth - 1);
+                b.undo_move(m);
+            }
+        }
+    }
+
+    #[test]
+    fn table_reads_match_position() {
+        for sfen in [
+            SFEN_STARTPOS,
+            "l6nl/5+P1gk/2np1S3/p1p4Pp/3P2Sp1/1PPb2P1P/P5GS1/R8/LN4bKL w GR5pnsg 1",
+            "+R1G4nl/1g4+Ss1/1kspp2p1/ppp2pS1p/4n4/P4Gp1P/1P1PP1P2/1+n2K2R1/7NL w G2P2b2lp 24",
+        ] {
+            let mut b = SearchBoard::new(Position::from_sfen(sfen).expect("sfen"));
+            walk(&mut b, 1);
+        }
     }
 }

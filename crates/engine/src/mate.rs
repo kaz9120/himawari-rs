@@ -11,8 +11,8 @@
 //! 歩打ちは打ち歩詰めで常に非合法なので候補にしない。
 
 use himawari_core::{
-    Bitboard, Color, EffectMap, Move, MoveList, Piece, PieceType, Position, Rank, Square, attacks,
-    generate_legal,
+    Bitboard, Color, EffectCounts, EffectMap, Move, MoveList, Piece, PieceType, Position, Rank,
+    Square, attacks, generate_legal,
 };
 
 /// 玉の近傍へ移動できる駒の位置（出典はやねうら王
@@ -123,6 +123,90 @@ struct MateMap {
     escapes: Bitboard,
 }
 
+/// 1手詰めの候補を、手番側の利きだけで落とす判定（ADR-0239）。
+/// 都度作る地図（`MateMap`）と、維持している利き数の表（`MateTable`）が実装する。
+trait MateFilter {
+    /// 移動元から飛び利きが伸びうるか。伸びうる手は利きだけで決めない。
+    fn opens_line(&self, from: Square) -> bool;
+    /// 玉の隣のtoへ動かした駒が、玉に取られるか（`opens_line` でない手に限る）。
+    fn king_takes(&self, ksq: Square, to: Square, drop: bool) -> bool;
+    /// 動かした駒の利きで埋まらない逃げ場が残るか（`opens_line` でない手に限る）。
+    fn escape_left(&self, occ_no_king: Bitboard, to: Square, pc: Piece) -> bool;
+}
+
+/// 地図で空いている逃げ場のうち、動かした駒の利きで埋まらない升が残るか。
+/// 駒の利きは玉を除いた移動後の占有で引くので、実際の利きの上位集合である。
+#[inline(always)]
+fn escape_left_of(escapes: Bitboard, occ_no_king: Bitboard, to: Square, pc: Piece) -> bool {
+    if escapes.is_empty() {
+        return false;
+    }
+    let covered = attacks::attacks(pc, to, occ_no_king) | Bitboard::from_square(to);
+    !(escapes & !covered).is_empty()
+}
+
+impl MateFilter for MateMap {
+    #[inline]
+    fn opens_line(&self, from: Square) -> bool {
+        self.map.slider.test(from)
+    }
+
+    /// 動かす駒はtoへ利いているので、2枚以上でなければほかに守りがない。
+    /// 打つ手は打った駒が数に入っていないので、1枚以上で見る。
+    #[inline]
+    fn king_takes(&self, ksq: Square, to: Square, drop: bool) -> bool {
+        attacks::king_attacks(ksq).test(to)
+            && !(if drop { self.map.any } else { self.map.multi }).test(to)
+    }
+
+    #[inline]
+    fn escape_left(&self, occ_no_king: Bitboard, to: Square, pc: Piece) -> bool {
+        escape_left_of(self.escapes, occ_no_king, to, pc)
+    }
+}
+
+/// 維持している利き数の表から読む版（ADR-0239の案B）。判定は `MateMap` と同じで、
+/// 地図を作らずに表の升を直接読む。
+struct MateTable<'a> {
+    counts: &'a EffectCounts,
+    us: Color,
+    escapes: Bitboard,
+}
+
+impl<'a> MateTable<'a> {
+    fn new(pos: &Position, counts: &'a EffectCounts, us: Color, ksq: Square) -> MateTable<'a> {
+        let mut escapes = Bitboard::EMPTY;
+        for s in attacks::king_attacks(ksq) & !pos.color_bb(us.flip()) {
+            if counts.count(us, s) == 0 {
+                escapes |= Bitboard::from_square(s);
+            }
+        }
+        MateTable {
+            counts,
+            us,
+            escapes,
+        }
+    }
+}
+
+impl MateFilter for MateTable<'_> {
+    #[inline]
+    fn opens_line(&self, from: Square) -> bool {
+        self.counts.dirs(self.us, from) != 0
+    }
+
+    #[inline]
+    fn king_takes(&self, ksq: Square, to: Square, drop: bool) -> bool {
+        attacks::king_attacks(ksq).test(to)
+            && self.counts.count(self.us, to) < if drop { 1 } else { 2 }
+    }
+
+    #[inline]
+    fn escape_left(&self, occ_no_king: Bitboard, to: Square, pc: Piece) -> bool {
+        escape_left_of(self.escapes, occ_no_king, to, pc)
+    }
+}
+
 impl MateMap {
     /// 地図を使わない経路が渡す空の値。読まれない
     const EMPTY: MateMap = MateMap {
@@ -138,32 +222,6 @@ impl MateMap {
         let map = EffectMap::build_near(pos, us, near5(ksq));
         let escapes = attacks::king_attacks(ksq) & !pos.color_bb(us.flip()) & !map.any;
         MateMap { map, escapes }
-    }
-
-    /// 移動元から飛び利きが伸びうるか。伸びうる手は地図で決めない。
-    #[inline]
-    fn opens_line(&self, from_bb: Bitboard) -> bool {
-        !(self.map.slider & from_bb).is_empty()
-    }
-
-    /// 玉の隣のtoへ動かした駒が、玉に取られるか（`opens_line` でない手に限る）。
-    /// 動かす駒はtoへ利いているので、2枚以上でなければほかに守りがない。
-    /// 打つ手は打った駒が数に入っていないので、1枚以上で見る。
-    #[inline]
-    fn king_takes(&self, ksq: Square, to: Square, drop: bool) -> bool {
-        attacks::king_attacks(ksq).test(to)
-            && !(if drop { self.map.any } else { self.map.multi }).test(to)
-    }
-
-    /// 動かした駒の利きで埋まらない逃げ場が残るか（`opens_line` でない手に限る）。
-    /// 駒の利きは玉を除いた移動後の占有で引くので、実際の利きの上位集合である。
-    #[inline]
-    fn escape_left(&self, occ_no_king: Bitboard, to: Square, pc: Piece) -> bool {
-        if self.escapes.is_empty() {
-            return false;
-        }
-        let covered = attacks::attacks(pc, to, occ_no_king) | Bitboard::from_square(to);
-        !(self.escapes & !covered).is_empty()
     }
 }
 
@@ -303,11 +361,11 @@ fn is_mate_move(pos: &Position, m: Move) -> bool {
 }
 
 /// 駒打ちの詰み候補。合駒不能な近接打ち（玉の隣接＋桂）に限る。
-fn drop_mates<const MAP: bool>(
+fn drop_mates<const MAP: bool, F: MateFilter>(
     pos: &Position,
     us: Color,
     ksq: Square,
-    mm: &MateMap,
+    mm: &F,
 ) -> Option<Move> {
     let hand = pos.hand(us);
     if hand.is_empty() {
@@ -365,12 +423,12 @@ fn drop_mates<const MAP: bool>(
 
 /// 盤上の駒の詰み候補。移動先を玉の隣接8マスと桂の王手マスに限る。
 /// 王手になるかの事前判定はせず、検証側に任せる（間接王手も拾える）。
-fn move_mates<const MAP: bool>(
+fn move_mates<const MAP: bool, F: MateFilter>(
     pos: &Position,
     us: Color,
     ksq: Square,
     froms: Bitboard,
-    mm: &MateMap,
+    mm: &F,
 ) -> Option<Move> {
     let them = us.flip();
     let ksq_bb = Bitboard::from_square(ksq);
@@ -392,7 +450,7 @@ fn move_mates<const MAP: bool>(
         // 不成では入れないマス。成りの手は別に作る
         let blocked = no_retreat(us, pt);
         // 移動元に飛び利きが当たっていなければ、候補を地図で落とせる
-        let by_map = MAP && !mm.opens_line(from_bb);
+        let by_map = MAP && !mm.opens_line(from);
         for to in targets {
             if by_map {
                 if mm.king_takes(ksq, to, false) {
@@ -424,20 +482,30 @@ fn move_mates<const MAP: bool>(
 /// 1手詰めがあればその手を返す。王手されていない局面で呼ぶこと。
 /// 返した手は詰みであることが保証される（見逃しはあり得る）。
 pub fn mate_1ply(pos: &Position) -> Option<Move> {
-    mate_1ply_impl::<true>(pos)
+    let (us, ksq, froms) = candidates(pos)?;
+    let mm = MateMap::new(pos, us, ksq);
+    search_candidates::<true, _>(pos, us, ksq, froms, &mm)
+}
+
+/// `mate_1ply` の、維持している利き数の表から読む版（ADR-0239の案B）。
+/// `counts` は `pos` の表であること。返す手は `mate_1ply` と同じ。
+pub fn mate_1ply_with_counts(pos: &Position, counts: &EffectCounts) -> Option<Move> {
+    let (us, ksq, froms) = candidates(pos)?;
+    let mm = MateTable::new(pos, counts, us, ksq);
+    search_candidates::<true, _>(pos, us, ksq, froms, &mm)
 }
 
 /// 利きの地図を使わない `mate_1ply`（ADR-0239より前の実装）。返す手が
 /// `mate_1ply` と一致することをテストで確かめるために残す。
 #[doc(hidden)]
 pub fn mate_1ply_without_map(pos: &Position) -> Option<Move> {
-    mate_1ply_impl::<false>(pos)
+    let (us, ksq, froms) = candidates(pos)?;
+    search_candidates::<false, _>(pos, us, ksq, froms, &MateMap::EMPTY)
 }
 
-/// `MAP` が真なら、候補を利きの地図で先に落とす。落とすのは詰みでないと
-/// 決まった候補だけで、残りを調べる順は変えないので、返す手は同じになる。
+/// 手番・相手玉の升・玉の近傍へ届く駒の位置を返す。候補が1つもなければNone。
 #[inline(always)]
-fn mate_1ply_impl<const MAP: bool>(pos: &Position) -> Option<Move> {
+fn candidates(pos: &Position) -> Option<(Color, Square, Bitboard)> {
     debug_assert!(!pos.in_check());
     let us = pos.side_to_move();
     let ksq = pos.king(us.flip());
@@ -451,17 +519,25 @@ fn mate_1ply_impl<const MAP: bool>(pos: &Position) -> Option<Move> {
     if froms.is_empty() && pos.hand(us).is_empty() {
         return None;
     }
-    let mm = if MAP {
-        MateMap::new(pos, us, ksq)
-    } else {
-        MateMap::EMPTY
-    };
+    Some((us, ksq, froms))
+}
+
+/// `MAP` が真なら、候補を利きで先に落とす。落とすのは詰みでないと
+/// 決まった候補だけで、残りを調べる順は変えないので、返す手は同じになる。
+#[inline(always)]
+fn search_candidates<const MAP: bool, F: MateFilter>(
+    pos: &Position,
+    us: Color,
+    ksq: Square,
+    froms: Bitboard,
+    mm: &F,
+) -> Option<Move> {
     if !froms.is_empty()
-        && let Some(m) = move_mates::<MAP>(pos, us, ksq, froms, &mm)
+        && let Some(m) = move_mates::<MAP, F>(pos, us, ksq, froms, mm)
     {
         return Some(m);
     }
-    drop_mates::<MAP>(pos, us, ksq, &mm)
+    drop_mates::<MAP, F>(pos, us, ksq, mm)
 }
 
 /// テスト用オラクル（案A）: 全合法手から王手を選び、回避不能なら詰み。

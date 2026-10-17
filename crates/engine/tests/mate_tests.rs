@@ -8,8 +8,11 @@
 //! 疎な乱数局面で測る（ADR-0109）。乱数局面は合法な到達可能性を
 //! 問わないが、健全性の反例探しにはそれで足りる。
 
+use himawari_core::EffectCounts;
 use himawari_core::{Color, Move, MoveList, PieceType, Position, SFEN_STARTPOS, generate_legal};
-use himawari_engine::mate::{mate_1ply, mate_1ply_oracle, mate_1ply_without_map};
+use himawari_engine::mate::{
+    mate_1ply, mate_1ply_oracle, mate_1ply_with_counts, mate_1ply_without_map,
+};
 
 struct Rng(u64);
 
@@ -338,6 +341,12 @@ fn effect_map_does_not_change_the_returned_move() {
                         ours,
                         mate_1ply_without_map(&pos),
                         "利きの地図で返す手が変わった: {}",
+                        pos.to_sfen()
+                    );
+                    assert_eq!(
+                        ours,
+                        mate_1ply_with_counts(&pos, &EffectCounts::build(&pos)),
+                        "利き数の表で返す手が変わった: {}",
                         pos.to_sfen()
                     );
                     checked += 1;
