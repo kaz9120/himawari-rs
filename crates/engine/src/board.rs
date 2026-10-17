@@ -13,7 +13,8 @@
 use std::cell::{Cell, UnsafeCell};
 use std::ops::Deref;
 
-use himawari_core::{Bitboard, EffectCounts, Move, Piece, Position};
+use himawari_core::attacks::ray_attacks;
+use himawari_core::{Bitboard, EffectCounts, Move, Piece, PieceType, Position, Square};
 
 /// 表の1段。差分を当てるのに要る手と占有を、進めるときに積んでおく。
 struct Ply {
@@ -168,9 +169,36 @@ impl SearchBoard {
     /// `Position::is_legal` と同じ値を返す。玉の行き先を表から読む。
     #[inline(always)]
     pub fn is_legal(&self, m: Move) -> bool {
+        if self.pos.in_check() && !m.is_drop() && m.piece_before().piece_type() == PieceType::KING {
+            return self.king_evasion_safe(m.to());
+        }
         self.pos.is_legal_by(m, |to| {
             self.counts().count(self.pos.side_to_move().flip(), to) == 0
         })
+    }
+
+    /// 王手がかかっているときに、玉が隣の升toへ逃げて安全か（ADR-0240の3回目）。
+    /// 玉を除くと伸びる相手の利きは、玉へ届いている飛び利き（王手の飛び駒）だけで、
+    /// 玉の奥の1升へ延びる。表の利き数がゼロで、その1升でもなければ安全である。
+    /// `Position::is_legal` の `attackers_to`（玉を除いた占有）と同じ値を返す。
+    #[inline(always)]
+    fn king_evasion_safe(&self, to: Square) -> bool {
+        let t = self.counts();
+        let them = self.pos.side_to_move().flip();
+        if t.count(them, to) != 0 {
+            return false;
+        }
+        let ksq = self.pos.king(self.pos.side_to_move());
+        let mut dirs = t.dirs(them, ksq);
+        while dirs != 0 {
+            let d = dirs.trailing_zeros() as usize;
+            dirs &= dirs - 1;
+            // 方向dへ進む飛び利きは、玉の奥の1升（全升を占有にしたときの最初の升）へ延びる
+            if ray_attacks(d, ksq, Bitboard::ALL).test(to) {
+                return false;
+            }
+        }
+        true
     }
 
     /// `mate_1ply` と同じ手を返す。候補を表から読んで落とす。
@@ -266,6 +294,47 @@ mod tests {
             walk_sparse(&mut b, 4, &mut n);
             assert!(n > 1000, "局面数が少なすぎる: {n}");
         }
+    }
+
+    /// 王手のかかった局面で、表から読む玉の逃げ先の判定が `Position` 側と一致する。
+    fn walk_evasions(b: &mut SearchBoard, depth: u32, checked: &mut u64) {
+        if b.in_check() {
+            *checked += 1;
+            let mut pseudo = MoveList::default();
+            generate(b, GenType::Evasions, false, &mut pseudo);
+            for &m in pseudo.as_slice() {
+                assert_eq!(
+                    b.is_legal(m),
+                    b.position().is_legal(m),
+                    "{} {}",
+                    m.to_usi(),
+                    b.position().to_sfen()
+                );
+            }
+        }
+        if depth == 0 {
+            return;
+        }
+        let mut list = MoveList::default();
+        generate_legal(b, true, &mut list);
+        for &m in list.as_slice() {
+            b.do_move(m);
+            walk_evasions(b, depth - 1, checked);
+            b.undo_move(m);
+        }
+    }
+
+    #[test]
+    fn evasion_reads_match_position() {
+        let mut checked = 0;
+        for sfen in [
+            "l6nl/5+P1gk/2np1S3/p1p4Pp/3P2Sp1/1PPb2P1P/P5GS1/R8/LN4bKL w GR5pnsg 1",
+            "+R1G4nl/1g4+Ss1/1kspp2p1/ppp2pS1p/4n4/P4Gp1P/1P1PP1P2/1+n2K2R1/7NL w G2P2b2lp 24",
+        ] {
+            let mut b = SearchBoard::new(Position::from_sfen(sfen).expect("sfen"));
+            walk_evasions(&mut b, 2, &mut checked);
+        }
+        assert!(checked > 100, "王手の局面が少なすぎる: {checked}");
     }
 
     #[test]
