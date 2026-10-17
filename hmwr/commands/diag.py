@@ -14,6 +14,7 @@ from pathlib import Path
 from .. import config, paths, proc
 from ..tools import (
     dead_dims,
+    depth_reach,
     defend_rank,
     phase as phase_tool,
     rank_diag,
@@ -40,11 +41,22 @@ def add_parser(sub: argparse._SubParsersAction) -> None:
         "返るまでの時間と最終の反復を出す。時間制の対局と重ねて走らせない。",
     )
     t.add_argument("csa", metavar="CSA", help="棋譜")
-    t.add_argument("--engine", metavar="パス", help="エンジン（既定 target/release/himawari）")
+    t.add_argument(
+        "--engine", metavar="パス", help="エンジン（既定 target/release/himawari）"
+    )
     t.add_argument("--eval-file", metavar="パス", help="評価関数（既定は EVAL_FILE）")
-    t.add_argument("--player", default="Himawari", metavar="名前", help="自分の側の名前")
+    t.add_argument(
+        "--player", default="Himawari", metavar="名前", help="自分の側の名前"
+    )
     t.add_argument("--threads", type=int, default=4, metavar="N")
-    t.add_argument("--from", dest="start_ply", type=int, default=1, metavar="手数", help="この手から探索する")
+    t.add_argument(
+        "--from",
+        dest="start_ply",
+        type=int,
+        default=1,
+        metavar="手数",
+        help="この手から探索する",
+    )
     t.add_argument("--initial", type=int, default=300, metavar="秒", help="持ち時間")
     t.add_argument("--inc", type=int, default=10, metavar="秒", help="1手ごとの加算")
     t.set_defaults(func=replay)
@@ -90,7 +102,13 @@ def add_parser(sub: argparse._SubParsersAction) -> None:
     t.add_argument("psv", metavar="PSV", help="測る局面")
     t.add_argument("--eval-file", metavar="パス", help="評価関数（既定は EVAL_FILE）")
     t.add_argument("--limit", type=int, metavar="N", help="先頭N局面だけ測る")
-    t.add_argument("--lambda", type=float, dest="lambda_", metavar="X", help="目標の混合比（既定0.7）")
+    t.add_argument(
+        "--lambda",
+        type=float,
+        dest="lambda_",
+        metavar="X",
+        help="目標の混合比（既定0.7）",
+    )
     t.add_argument("--seed", type=int, metavar="N", help="乱数分割の種")
     t.set_defaults(func=phase)
 
@@ -103,9 +121,15 @@ def add_parser(sub: argparse._SubParsersAction) -> None:
         "粒度ごとに集計する。動いた駒と取られた駒は、属性がなくてもFTが触れるので"
         "数に入れない。",
     )
-    t.add_argument("inputs", nargs="+", metavar="入力", help="対局順のpsv（data/raw/<名前>/*.bin）")
-    t.add_argument("--limit", type=int, default=1000000, metavar="N", help="先頭N局面だけ読む")
-    t.add_argument("--name", metavar="名前", help="ログの名前（既定は入力の置き場の名前）")
+    t.add_argument(
+        "inputs", nargs="+", metavar="入力", help="対局順のpsv（data/raw/<名前>/*.bin）"
+    )
+    t.add_argument(
+        "--limit", type=int, default=1000000, metavar="N", help="先頭N局面だけ読む"
+    )
+    t.add_argument(
+        "--name", metavar="名前", help="ログの名前（既定は入力の置き場の名前）"
+    )
     t.set_defaults(func=shadow)
 
     t = ss.add_parser(
@@ -125,10 +149,52 @@ def add_parser(sub: argparse._SubParsersAction) -> None:
         metavar="名前",
         help="入力のpsv（data/train/<名前>.psv）",
     )
-    t.add_argument("--limit", type=int, default=200000, metavar="N", help="先頭N局面だけ測る")
+    t.add_argument(
+        "--limit", type=int, default=200000, metavar="N", help="先頭N局面だけ測る"
+    )
     t.add_argument("--skip", type=int, metavar="N", help="先頭N局面を飛ばす")
     t.add_argument("--eval-file", metavar="パス", help="評価関数（既定は EVAL_FILE）")
     t.set_defaults(func=defend)
+
+    t = ss.add_parser(
+        "reach",
+        help="局面ごとに、固定深さの探索が打ち切りの秒数内に終わるかを測る",
+        description="Issue #653の測定。局面ごとに go depth N を送り、"
+        "打ち切りの秒数を過ぎたら stop を送る。所要時間と、確定した最後の反復の"
+        "深さ・評価値・ノード数を出す。終わらなかった局面と5秒を超えた局面だけを"
+        "画面へ出し、全行はログに残す。時間制の対局と重ねて走らせない。",
+    )
+    t.add_argument("name", metavar="名前", help="測定の名前。ログの名前になる")
+    t.add_argument(
+        "--engine", metavar="パス", help="エンジン（既定 target/release/himawari）"
+    )
+    t.add_argument("--eval-file", metavar="パス", help="評価関数（既定は EVAL_FILE）")
+    t.add_argument(
+        "--positions",
+        default="openings/actdump_positions.txt",
+        metavar="パス",
+        help="局面リスト（既定 openings/actdump_positions.txt）",
+    )
+    t.add_argument(
+        "--only",
+        type=int,
+        action="append",
+        metavar="番号",
+        help="この番号の局面だけ測る（繰り返し可。1始まり）",
+    )
+    t.add_argument(
+        "--depth", type=int, default=16, metavar="N", help="探索の深さ（既定16）"
+    )
+    t.add_argument(
+        "--limit",
+        type=float,
+        default=20.0,
+        metavar="秒",
+        help="打ち切りの秒数（既定20）",
+    )
+    t.add_argument("--threads", type=int, default=1, metavar="N")
+    t.add_argument("--hash", type=int, default=256, metavar="MB")
+    t.set_defaults(func=reach)
 
 
 def rank(args: argparse.Namespace) -> int:
@@ -179,7 +245,14 @@ def phase(args: argparse.Namespace) -> int:
     print(f"局面    : {paths.rel(psv)}")
     print(f"評価関数: {paths.rel(eval_file or '（未設定）')}")
     print(f"TSV     : {paths.rel(tsv)}")
-    argv = ["--in", str(psv), "--out", str(tsv), "--eval-file", eval_file or "（未設定）"]
+    argv = [
+        "--in",
+        str(psv),
+        "--out",
+        str(tsv),
+        "--eval-file",
+        eval_file or "（未設定）",
+    ]
     if args.limit is not None:
         argv += ["--limit", str(args.limit)]
     code = proc.run(
@@ -258,7 +331,9 @@ def defend(args: argparse.Namespace) -> int:
     ]  # fmt: skip
     if args.skip is not None:
         argv += ["--skip", str(args.skip)]
-    code = proc.run(proc.cargo_tool("psv", ["defend", *argv]), dry_run=args.dry_run, log=log)
+    code = proc.run(
+        proc.cargo_tool("psv", ["defend", *argv]), dry_run=args.dry_run, log=log
+    )
     if code != proc.OK:
         return code
     if args.dry_run:
@@ -275,9 +350,15 @@ def replay(args: argparse.Namespace) -> int:
     engine = args.engine or str(paths.release_bin("himawari"))
     eval_file = args.eval_file or config.get("EVAL_FILE")
     if args.dry_run:
-        print(f"[dry-run] {paths.rel(engine)} で {args.csa} を{args.start_ply}手目から指し直す")
+        print(
+            f"[dry-run] {paths.rel(engine)} で {args.csa} を{args.start_ply}手目から指し直す"
+        )
         return proc.OK
-    for path, what in ((engine, "エンジン"), (eval_file, "評価関数"), (args.csa, "棋譜")):
+    for path, what in (
+        (engine, "エンジン"),
+        (eval_file, "評価関数"),
+        (args.csa, "棋譜"),
+    ):
         if not Path(path).is_file():
             raise proc.Fail(f"{what}がない: {path}")
     return replay_tool.replay(
@@ -285,3 +366,32 @@ def replay(args: argparse.Namespace) -> int:
         player=args.player, threads=args.threads, start_ply=args.start_ply, hash_mb=256,
         initial_ms=args.initial * 1000, inc_ms=args.inc * 1000,
     )  # fmt: skip
+
+
+def reach(args: argparse.Namespace) -> int:
+    """固定深さの探索が打ち切りの秒数内に終わるかを測る（ADR-0233）。"""
+    name = paths.check_name(args.name)
+    engine = args.engine or str(paths.release_bin("himawari"))
+    eval_file = args.eval_file or config.get("EVAL_FILE")
+    log = paths.log("diag-reach", name)
+    if args.dry_run:
+        print(
+            f"[dry-run] {paths.rel(engine)} で {args.positions} を深さ{args.depth}、"
+            f"{args.limit:g}秒で打ち切って測る"
+        )
+        print(f"[dry-run] ログ: {paths.rel(log)}")
+        return proc.OK
+    for path, what in (
+        (engine, "エンジン"),
+        (eval_file, "評価関数"),
+        (args.positions, "局面リスト"),
+    ):
+        if not path or not Path(path).is_file():
+            raise proc.Fail(f"{what}がない: {path}")
+    code = depth_reach.run(
+        engine, Path(args.positions),
+        eval_file=eval_file, depth=args.depth, limit=args.limit,
+        threads=args.threads, hash_mb=args.hash, only=args.only, log=log,
+    )  # fmt: skip
+    print(f"ログ: {paths.rel(log)}")
+    return code
