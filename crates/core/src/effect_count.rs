@@ -21,9 +21,11 @@
 //! 届いていた飛び利きが移動先で止まるからである。3がその升の方向ビットを
 //! 消すので、4で誤って延ばさない。
 
+use crate::attacks::ray_attacks;
+#[cfg(test)]
 use crate::attacks::{
-    bishop_attacks, gold_attacks, king_attacks, knight_attacks, pawn_attacks, ray_attacks,
-    rook_attacks, silver_attacks,
+    bishop_attacks, gold_attacks, king_attacks, knight_attacks, pawn_attacks, rook_attacks,
+    silver_attacks,
 };
 use crate::bitboard::Bitboard;
 use crate::moves::Move;
@@ -34,12 +36,99 @@ use crate::types::{Color, Square};
 /// 1色ぶんの升の数。81升をSIMDの幅（16・32）の倍数へ切り上げる
 const LANES: usize = 96;
 
+/// 利き数の行の前に置く詰め物。短い利きのパターンを升の前後11升の窓で
+/// まとめて足すので（ADR-0240の2回目）、盤の端の升でも窓が行からはみ出さない
+const PAD: usize = 16;
+/// 利き数の1色ぶんの長さ。詰め物16＋81升＋窓のはみ出し20を16の倍数へ切り上げる
+const COUNT_LANES: usize = 128;
+/// 短い利きのパターンの窓。升sqの窓は行の `PAD + sq - WINDOW_BACK` から32バイト
+const WINDOW: usize = 32;
+const WINDOW_BACK: usize = 11;
+
+/// 短い利きの駒の種類の数。歩・桂・銀・金は先後で2つずつ、玉・馬の縦横・竜の斜めは1つずつ
+const SHORT_KINDS: usize = 11;
+
+/// 短い利きの升の差（筋の差, 段の差）。先手の前は段の差−1である。
+/// 後手は段の差の符号を反転して使う
+const fn short_deltas(kind: usize) -> &'static [(i32, i32)] {
+    match kind / 2 {
+        0 => &[(0, -1)],
+        1 => &[(-1, -2), (1, -2)],
+        2 => &[(-1, -1), (0, -1), (1, -1), (-1, 1), (1, 1)],
+        3 => &[(-1, -1), (0, -1), (1, -1), (-1, 0), (1, 0), (0, 1)],
+        _ => match kind {
+            8 => &[(0, -1), (0, 1), (-1, 0), (1, 0)],
+            9 => &[(-1, -1), (1, -1), (-1, 1), (1, 1)],
+            _ => &[
+                (-1, -1),
+                (0, -1),
+                (1, -1),
+                (-1, 0),
+                (1, 0),
+                (-1, 1),
+                (0, 1),
+                (1, 1),
+            ],
+        },
+    }
+}
+
+/// 種類と段ごとの短い利きのパターン。窓の中で利く升に1が立つ。
+/// 段をはみ出す升は落とす。筋をはみ出す升は行の詰め物へ落ちるので、
+/// 足し引きが釣り合う限り盤の升の値を汚さない。
+const fn build_short_patterns() -> [[[u8; WINDOW]; 9]; SHORT_KINDS] {
+    let mut t = [[[0u8; WINDOW]; 9]; SHORT_KINDS];
+    let mut kind = 0;
+    while kind < SHORT_KINDS {
+        let deltas = short_deltas(kind);
+        // 歩・桂・銀・金の後手（奇数）は段の差を反転する
+        let flip = kind < 8 && kind % 2 == 1;
+        let mut rank = 0;
+        while rank < 9 {
+            let mut i = 0;
+            while i < deltas.len() {
+                let (df, dr0) = deltas[i];
+                let dr = if flip { -dr0 } else { dr0 };
+                let r = rank as i32 + dr;
+                if r >= 0 && r < 9 {
+                    let off = WINDOW_BACK as i32 + df * 9 + dr;
+                    t[kind][rank][off as usize] = 1;
+                }
+                i += 1;
+            }
+            rank += 1;
+        }
+        kind += 1;
+    }
+    t
+}
+
+static SHORT_PATTERNS: [[[u8; WINDOW]; 9]; SHORT_KINDS] = build_short_patterns();
+
+/// 短い利きのパターンの種類。飛び利きしか持たない駒（香・角・飛）は `None`。
+#[inline(always)]
+fn short_kind(pc: Piece) -> Option<usize> {
+    let c = pc.color().index();
+    match pc.piece_type() {
+        PieceType::LANCE | PieceType::BISHOP | PieceType::ROOK => None,
+        PieceType::PAWN => Some(c),
+        PieceType::KNIGHT => Some(2 + c),
+        PieceType::SILVER => Some(4 + c),
+        PieceType::HORSE => Some(8),
+        PieceType::DRAGON => Some(9),
+        PieceType::KING => Some(10),
+        // 金と、金の動きをする成駒
+        _ => Some(6 + c),
+    }
+}
+
 /// 利き数と飛び利きの方向のバイト表。
 #[derive(Clone, Copy, PartialEq, Eq)]
 #[repr(C, align(64))]
 pub struct EffectCounts {
     /// 色cの駒が升へ利いている数。玉の利きも数える
-    count: [[u8; LANES]; 2],
+    /// 升sqの値は `count[c][PAD + sq]` にある
+    count: [[u8; COUNT_LANES]; 2],
     /// 色cの飛び利きが升へ届いている方向（ビットdが方向d）
     dirs: [[u8; LANES]; 2],
 }
@@ -47,7 +136,10 @@ pub struct EffectCounts {
 impl std::fmt::Debug for EffectCounts {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("EffectCounts")
-            .field("count", &[&self.count[0][..81], &self.count[1][..81]])
+            .field(
+                "count",
+                &[&self.count[0][PAD..PAD + 81], &self.count[1][PAD..PAD + 81]],
+            )
             .field("dirs", &[&self.dirs[0][..81], &self.dirs[1][..81]])
             .finish()
     }
@@ -56,7 +148,7 @@ impl std::fmt::Debug for EffectCounts {
 impl Default for EffectCounts {
     fn default() -> Self {
         EffectCounts {
-            count: [[0; LANES]; 2],
+            count: [[0; COUNT_LANES]; 2],
             dirs: [[0; LANES]; 2],
         }
     }
@@ -79,8 +171,9 @@ fn ray_dirs(pc: Piece) -> u8 {
     }
 }
 
-/// 駒の飛び利きでない利き（隣への1升など）。
-#[inline(always)]
+/// 駒の飛び利きでない利き（隣への1升など）。差分はパターンで当てるので、
+/// テストでパターンとの一致を確かめるときだけ使う。
+#[cfg(test)]
 fn short_attacks(pc: Piece, sq: Square) -> Bitboard {
     match pc.piece_type() {
         PieceType::LANCE | PieceType::BISHOP | PieceType::ROOK => Bitboard::EMPTY,
@@ -124,7 +217,7 @@ impl EffectCounts {
     /// 色cの駒が升sqへ利いている数。
     #[inline]
     pub fn count(&self, c: Color, sq: Square) -> u8 {
-        self.count[c.index()][sq.index()]
+        self.count[c.index()][PAD + sq.index()]
     }
 
     /// 色cの飛び利きが升sqへ届いている方向のビット。
@@ -138,8 +231,12 @@ impl EffectCounts {
     #[inline(always)]
     fn count_mut(&mut self, c: usize, s: Square) -> &mut u8 {
         debug_assert!(c < 2 && s.index() < LANES);
-        // SAFETY: c < 2 かつ s.index() < 81 <= LANES
-        unsafe { self.count.get_unchecked_mut(c).get_unchecked_mut(s.index()) }
+        // SAFETY: c < 2 かつ PAD + s.index() < PAD + 81 <= COUNT_LANES
+        unsafe {
+            self.count
+                .get_unchecked_mut(c)
+                .get_unchecked_mut(PAD + s.index())
+        }
     }
 
     #[inline(always)]
@@ -149,12 +246,39 @@ impl EffectCounts {
         unsafe { self.dirs.get_unchecked_mut(c).get_unchecked_mut(s.index()) }
     }
 
+    /// 駒の短い利きを、升の前後の32バイトの窓へパターンでまとめて足し引きする
+    /// （ADR-0240の2回目）。升を1つずつ辿るループと分岐を消す。
+    #[inline(always)]
+    fn apply_short<const ADD: bool>(&mut self, c: usize, pc: Piece, sq: Square) {
+        let Some(kind) = short_kind(pc) else {
+            return;
+        };
+        let rank = sq.index() % 9;
+        debug_assert!(c < 2 && kind < SHORT_KINDS);
+        // SAFETY: kind < SHORT_KINDS、rank < 9。窓の先頭は PAD + sq - 11 >= 5、
+        // 末尾は PAD + 80 - 11 + 32 = 117 <= COUNT_LANES なので行に収まる
+        unsafe {
+            let pat = SHORT_PATTERNS.get_unchecked(kind).get_unchecked(rank);
+            let row = self
+                .count
+                .get_unchecked_mut(c)
+                .as_mut_ptr()
+                .add(PAD + sq.index() - WINDOW_BACK);
+            let w = &mut *row.cast::<[u8; WINDOW]>();
+            for i in 0..WINDOW {
+                w[i] = if ADD {
+                    w[i].wrapping_add(pat[i])
+                } else {
+                    w[i].wrapping_sub(pat[i])
+                };
+            }
+        }
+    }
+
     #[inline(always)]
     fn add_piece(&mut self, pc: Piece, sq: Square, occ: Bitboard) {
         let c = pc.color().index();
-        for s in short_attacks(pc, sq) {
-            *self.count_mut(c, s) += 1;
-        }
+        self.apply_short::<true>(c, pc, sq);
         let mut dirs = ray_dirs(pc);
         while dirs != 0 {
             let d = dirs.trailing_zeros() as usize;
@@ -166,9 +290,7 @@ impl EffectCounts {
     #[inline(always)]
     fn remove_piece(&mut self, pc: Piece, sq: Square, occ: Bitboard) {
         let c = pc.color().index();
-        for s in short_attacks(pc, sq) {
-            *self.count_mut(c, s) -= 1;
-        }
+        self.apply_short::<false>(c, pc, sq);
         let mut dirs = ray_dirs(pc);
         while dirs != 0 {
             let d = dirs.trailing_zeros() as usize;
@@ -298,6 +420,41 @@ mod tests {
             let t = EffectCounts::build(&pos);
             let n = walk(&mut pos, &t, 2);
             assert!(n > 500, "局面数が少なすぎる: {n}");
+        }
+    }
+
+    /// 短い利きのパターンが、駒・升ごとの利きのBitboardと一致する。
+    /// 盤の外へ出る分は行の詰め物へ落ちるので、盤の升だけを比べる。
+    #[test]
+    fn short_patterns_match_attacks() {
+        use crate::piece::PieceType as P;
+        for color in [Color::Black, Color::White] {
+            for pt in [
+                P::PAWN,
+                P::KNIGHT,
+                P::SILVER,
+                P::GOLD,
+                P::KING,
+                P::HORSE,
+                P::DRAGON,
+                P::PRO_PAWN,
+            ] {
+                let pc = Piece::new(color, pt);
+                for i in 0..Square::NB {
+                    let sq = Square::from_index(i as u8);
+                    let mut t = EffectCounts::default();
+                    t.apply_short::<true>(color.index(), pc, sq);
+                    let want = short_attacks(pc, sq);
+                    for j in 0..Square::NB {
+                        let s = Square::from_index(j as u8);
+                        assert_eq!(
+                            t.count(color, s),
+                            u8::from(want.test(s)),
+                            "{pc:?} {sq:?} -> {s:?}"
+                        );
+                    }
+                }
+            }
         }
     }
 
