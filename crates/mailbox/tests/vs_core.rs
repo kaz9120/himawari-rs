@@ -6,11 +6,15 @@
 //! - ランダムな対局の全手で同じ検査をする（終盤・駒打ち・王手の多い局面まで届かせる）
 //! - 全ノードでZobristのキー5本・hand_key・駒割り・王手駒・連続王手の数がcoreと一致し、
 //!   進めた直後のDirtyPieceがcoreと同じ中身になる
+//! - 全ノードで、段階5の関数（is_legal・pseudo_legal・gives_check・see_ge・mate_1ply）の
+//!   返す値がcoreと一致する
 //! - perftの数がcoreと一致する（深い方は `--ignored` で走らせる）
 
 use himawari_core::{
-    GenType as CoreGen, MoveList as CoreList, Position as CorePos, generate, generate_legal,
+    GenType as CoreGen, Move as CoreMove, MoveList as CoreList, Position as CorePos, generate,
+    generate_legal,
 };
+use himawari_engine::mate::mate_1ply;
 use himawari_mailbox::{GenType, MoveList, Position, SFEN_STARTPOS, perft};
 
 /// coreの統合テスト（generate_legal_matches_filtered_pseudo）と同じ6局面。
@@ -128,7 +132,121 @@ fn check_state(core: &CorePos, mb: &Position) {
     }
 }
 
+/// coreの指し手を配列盤の指し手へ直す。
+fn to_mb(m: CoreMove) -> himawari_mailbox::Move {
+    use himawari_mailbox::board::IDX81;
+    let pa = m.piece_after().0;
+    if m.is_drop() {
+        let c = if pa & 16 != 0 {
+            himawari_mailbox::Color::White
+        } else {
+            himawari_mailbox::Color::Black
+        };
+        himawari_mailbox::Move::drop(m.drop_piece_type().0, IDX81[m.to().index()], c)
+    } else {
+        himawari_mailbox::Move::normal(
+            IDX81[m.from_sq().index()],
+            IDX81[m.to().index()],
+            m.is_promote(),
+            pa,
+        )
+    }
+}
+
+thread_local! {
+    /// 直前に調べたノードの合法手。pseudo_legalの照合で「よその局面の手」として使う。
+    static PREV_MOVES: std::cell::RefCell<Vec<CoreMove>> = const { std::cell::RefCell::new(Vec::new()) };
+}
+
+/// 段階5の関数の返す値をcoreと比べる。
+fn check_stage5(core: &CorePos, mb: &mut Position) {
+    let sfen = core.to_sfen();
+    let mut legal = CoreList::default();
+    generate_legal(core, true, &mut legal);
+    let legal: Vec<CoreMove> = legal.as_slice().to_vec();
+    // is_legal: coreの擬似合法手の全部
+    let mut pseudo = CoreList::default();
+    let gt = if core.in_check() {
+        CoreGen::Evasions
+    } else {
+        CoreGen::NonEvasions
+    };
+    generate(core, gt, true, &mut pseudo);
+    for &m in pseudo.as_slice() {
+        assert_eq!(
+            mb.is_legal(to_mb(m)),
+            core.is_legal(m),
+            "is_legal {}: {sfen}",
+            m.to_usi()
+        );
+    }
+    // pseudo_legal: この局面の合法手・擬似合法手、直前のノードの合法手、成りと駒を入れ替えた手
+    let mut cands: Vec<CoreMove> = legal.clone();
+    cands.extend_from_slice(pseudo.as_slice());
+    PREV_MOVES.with(|p| cands.extend_from_slice(&p.borrow()));
+    let n = cands.len();
+    for i in 0..n {
+        let m = cands[i];
+        if m.is_drop() {
+            continue;
+        }
+        let pa = m.piece_after();
+        let flipped = if m.is_promote() {
+            CoreMove::new_move(m.from_sq(), m.to(), false, pa.unpromote())
+        } else if pa.piece_type().can_promote() {
+            CoreMove::new_move(m.from_sq(), m.to(), true, pa.promote())
+        } else {
+            continue;
+        };
+        cands.push(flipped);
+        // 移動元の駒と合わない駒
+        cands.push(CoreMove::new_move(
+            m.from_sq(),
+            m.to(),
+            false,
+            himawari_core::Piece(pa.0 ^ 1),
+        ));
+    }
+    for &m in &cands {
+        if m.piece_after().piece_type().0 < 2 {
+            continue;
+        }
+        assert_eq!(
+            mb.pseudo_legal(to_mb(m)),
+            core.pseudo_legal(m),
+            "pseudo_legal {}: {sfen}",
+            m.to_usi()
+        );
+    }
+    PREV_MOVES.with(|p| *p.borrow_mut() = legal.clone());
+    // gives_check・see_ge: 合法手の全部
+    for &m in &legal {
+        let mm = to_mb(m);
+        assert_eq!(
+            mb.gives_check(mm),
+            core.gives_check(m),
+            "gives_check {}: {sfen}",
+            m.to_usi()
+        );
+        for th in [-1000, -300, -90, 0, 1, 90, 315, 540, 1000] {
+            assert_eq!(
+                mb.see_ge(mm, th),
+                core.see_ge(m, th),
+                "see_ge {} {th}: {sfen}",
+                m.to_usi()
+            );
+        }
+    }
+    // mate_1ply: 王手されていないとき
+    if !core.in_check() {
+        let a = mate_1ply(core).map(|m| m.to_usi());
+        let b = mb.mate_1ply().map(|m| m.to_usi());
+        assert_eq!(b, a, "mate_1ply: {sfen}");
+    }
+}
+
 fn check_node(core: &CorePos, mb: &mut Position) {
+    check_stage5(core, mb);
     assert_eq!(mb.to_sfen(), core.to_sfen());
     if let Err(e) = mb.check_consistency() {
         panic!("{e}: {}", mb.to_sfen());
@@ -343,4 +461,202 @@ fn pawn_drop_mate_rule() {
 fn startpos_perft_known_values() {
     let mut mb = Position::from_sfen(SFEN_STARTPOS).unwrap();
     assert_eq!(perft(&mut mb, 4), 719_731);
+}
+
+/// 疎な乱数局面を1つ作る。coreの mate_tests.rs の生成器をそのまま写した
+/// （玉2枚と数駒、先手番、玉の近くに攻め駒）。1手詰めの照合に使う。
+fn random_position(rng: &mut Rng) -> Option<CorePos> {
+    // index = 筋 * 9 + 段。段0が1段目（先手から見た最奥）
+    let mut board = [None::<char>; 81];
+    let wk = (rng.next() % 81) as usize;
+    let bk = (rng.next() % 81) as usize;
+    if bk == wk {
+        return None;
+    }
+    // 玉が隣接する局面は非合法
+    let (bf, br) = ((bk / 9) as i32, (bk % 9) as i32);
+    let (wf, wr) = ((wk / 9) as i32, (wk % 9) as i32);
+    if (bf - wf).abs() <= 1 && (br - wr).abs() <= 1 {
+        return None;
+    }
+    board[wk] = Some('k');
+    board[bk] = Some('K');
+
+    // 攻め方（先手）の駒は玉の5×5近傍へ置く。詰みが出やすくなる
+    let attackers = ['R', 'B', 'G', 'S', 'N', 'L', 'P', '+', 'D'];
+    let n_att = 1 + rng.next() % 4;
+    let mut black_pawn_files = [false; 9];
+    for _ in 0..n_att {
+        let df = (rng.next() % 5) as i32 - 2;
+        let dr = (rng.next() % 5) as i32 - 2;
+        let (f, r) = (wf + df, wr + dr);
+        if !(0..9).contains(&f) || !(0..9).contains(&r) {
+            continue;
+        }
+        let sq = (f * 9 + r) as usize;
+        if board[sq].is_some() {
+            continue;
+        }
+        let c = attackers[(rng.next() % attackers.len() as u64) as usize];
+        // 先手の歩・香は1段目、桂は1〜2段目に置けない
+        let ok = match c {
+            'P' | 'L' => r >= 1,
+            'N' => r >= 2,
+            _ => true,
+        };
+        if !ok {
+            continue;
+        }
+        if c == 'P' {
+            if black_pawn_files[f as usize] {
+                continue;
+            }
+            black_pawn_files[f as usize] = true;
+        }
+        // '+' は竜、'D' は馬の代わり（SFENは+R / +B）
+        board[sq] = Some(c);
+    }
+
+    // 遠くの飛角香も置く。開き王手と合駒の経路を通すため
+    let sliders = ['R', 'B', 'L', '+', 'D'];
+    for _ in 0..(rng.next() % 3) {
+        let sq = (rng.next() % 81) as usize;
+        if board[sq].is_some() {
+            continue;
+        }
+        let c = sliders[(rng.next() % sliders.len() as u64) as usize];
+        // 先手の香は1段目（段の添字0）に置けない
+        if c == 'L' && sq % 9 < 1 {
+            continue;
+        }
+        board[sq] = Some(c);
+    }
+
+    // 受け方（後手）の駒を数枚。玉の守りになる
+    let defenders = ['g', 's', 'p', 'n', 'l'];
+    let n_def = rng.next() % 3;
+    let mut white_pawn_files = [false; 9];
+    for _ in 0..n_def {
+        let df = (rng.next() % 5) as i32 - 2;
+        let dr = (rng.next() % 5) as i32 - 2;
+        let (f, r) = (wf + df, wr + dr);
+        if !(0..9).contains(&f) || !(0..9).contains(&r) {
+            continue;
+        }
+        let sq = (f * 9 + r) as usize;
+        if board[sq].is_some() {
+            continue;
+        }
+        let c = defenders[(rng.next() % defenders.len() as u64) as usize];
+        // 後手の歩・香は9段目、桂は8〜9段目に置けない
+        let ok = match c {
+            'p' | 'l' => r <= 7,
+            'n' => r <= 6,
+            _ => true,
+        };
+        if !ok {
+            continue;
+        }
+        if c == 'p' {
+            if white_pawn_files[f as usize] {
+                continue;
+            }
+            white_pawn_files[f as usize] = true;
+        }
+        board[sq] = Some(c);
+    }
+
+    // 盤面のSFEN。1段目から順に、9筋から1筋へ
+    let mut s = String::new();
+    for r in 0..9 {
+        let mut run = 0;
+        for f in (0..9).rev() {
+            match board[f * 9 + r] {
+                None => run += 1,
+                Some(c) => {
+                    if run > 0 {
+                        s.push_str(&run.to_string());
+                        run = 0;
+                    }
+                    match c {
+                        '+' => s.push_str("+R"),
+                        'D' => s.push_str("+B"),
+                        c => s.push(c),
+                    }
+                }
+            }
+        }
+        if run > 0 {
+            s.push_str(&run.to_string());
+        }
+        if r < 8 {
+            s.push('/');
+        }
+    }
+    s.push_str(" b ");
+    // 持ち駒。先手に打ち駒を持たせて駒打ちの詰みも試す
+    let hands = ["-", "G", "S", "N", "L", "GS", "R", "B", "GSNL", "P", "Gp"];
+    s.push_str(hands[(rng.next() % hands.len() as u64) as usize]);
+    s.push_str(" 1");
+
+    let pos = CorePos::from_sfen(&s).ok()?;
+    // 先手番なので先手玉に王手がかかっていてはならない
+    if pos.in_check() {
+        return None;
+    }
+    // 後手玉に王手がかかっている局面は非合法（手番側が取れてしまう）
+    let occ = pos.occupied();
+    let wksq = pos.king(himawari_core::Color::White);
+    if !pos
+        .attackers_to(himawari_core::Color::Black, wksq, occ)
+        .is_empty()
+    {
+        return None;
+    }
+    Some(pos)
+}
+
+/// 疎な乱数局面で、全部の検査（段階5の関数と1手詰めを含む）をcoreと突き合わせる。
+#[test]
+fn sparse_positions_match_core() {
+    let mut rng = Rng(0x1234_5678_9ABC_DEF0);
+    let mut positions = 0u32;
+    let mut mates = 0u32;
+    while positions < 20_000 {
+        let Some(core) = random_position(&mut rng) else {
+            continue;
+        };
+        positions += 1;
+        let mut mb = Position::from_sfen(&core.to_sfen()).unwrap();
+        check_node(&core, &mut mb);
+        mates += u32::from(mate_1ply(&core).is_some());
+    }
+    println!("疎な乱数局面 {positions}、1手詰めあり {mates}");
+    assert!(mates > 1000);
+}
+
+/// 実戦の棋譜（openings/actdump_positions.txt）を再生し、全手で全部の検査をする。
+#[test]
+fn game_records_match_core() {
+    let text = include_str!("../../../openings/actdump_positions.txt");
+    let (mut nodes, mut mates) = (0u32, 0u32);
+    for line in text.lines().filter(|l| l.starts_with("sfen ")).take(60) {
+        let tokens: Vec<&str> = line.split_whitespace().collect();
+        let sfen = tokens[1..5].join(" ");
+        let mut core = CorePos::from_sfen(&sfen).unwrap();
+        let mut mb = Position::from_sfen(&sfen).unwrap();
+        for usi in &tokens[6..] {
+            check_node(&core, &mut mb);
+            nodes += 1;
+            mates += u32::from(!core.in_check() && mate_1ply(&core).is_some());
+            let Some(cm) = core.move_from_usi(usi) else {
+                break;
+            };
+            let mm = find(&mut mb, usi);
+            core.do_move(cm);
+            mb.do_move(mm);
+        }
+    }
+    println!("棋譜の局面 {nodes}、1手詰めあり {mates}");
+    assert!(nodes > 5000);
 }

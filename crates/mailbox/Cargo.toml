@@ -22,6 +22,8 @@ stride16 = []
 [dev-dependencies]
 himawari-core = { path = "../core" }
 himawari-tools = { path = "../tools" }
+# 1手詰めの照合にcoreの探索側の mate_1ply を使う
+himawari-engine = { path = "../engine" }
 
 # 段階4のミクロな計測（ADR-0241）。cargo bench -p himawari-mailbox --bench mbbench
 [[bench]]

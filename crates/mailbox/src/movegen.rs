@@ -116,7 +116,7 @@ impl Position {
 
     /// 手番cの玉から方向dへ歩いて最初の駒の升（無ければNone）。
     #[inline]
-    fn first_piece(&self, k: u8, d: usize) -> Option<u8> {
+    pub(crate) fn first_piece(&self, k: u8, d: usize) -> Option<u8> {
         let delta = DELTA[d] as i32;
         let mut t = (k as i32 + delta) as usize;
         loop {
@@ -130,7 +130,7 @@ impl Position {
 
     /// 色usの駒xが、自玉に対してピンされているか。
     #[inline]
-    fn is_pinned(&self, us: Color, x: u8) -> bool {
+    pub(crate) fn is_pinned(&self, us: Color, x: u8) -> bool {
         let k = self.king[us.index()];
         let Some(d) = dir_between(k, x) else {
             return false;
@@ -158,7 +158,7 @@ impl Position {
     }
 
     /// 1つの王手駒の升と、合駒の升の集合。王手が1つのときに呼ぶ。
-    fn checker(&self, us: Color) -> (u8, u128) {
+    pub(crate) fn checker(&self, us: Color) -> (u8, u128) {
         let k = self.king[us.index()];
         let them = us.flip();
         let mut between = 0u128;
@@ -191,7 +191,7 @@ impl Position {
 
     /// 升sの駒pが動ける升の集合（空き升と相手の駒）。
     #[inline]
-    fn targets_of(&self, s: u8, p: u8, ui: usize) -> u128 {
+    pub(crate) fn targets_of(&self, s: u8, p: u8, ui: usize) -> u128 {
         let m = &MOVES[p as usize];
         let mut out = 0u128;
         for k in 0..m.n_short as usize {
@@ -222,7 +222,7 @@ impl Position {
     }
 
     /// 合法手を全部生成する。順はcoreの `generate_legal(pos, all, list)` と同じ。
-    pub fn generate_legal(&mut self, all: bool, list: &mut MoveList) {
+    pub fn generate_legal(&self, all: bool, list: &mut MoveList) {
         if self.in_check() {
             self.generate(GenType::Evasions, all, list);
         } else {
@@ -231,7 +231,7 @@ impl Position {
     }
 
     /// 分類ごとの合法手を生成する。Evasionsは王手中だけ、ほかは王手でないときだけ呼ぶ。
-    pub fn generate(&mut self, gt: GenType, all: bool, list: &mut MoveList) {
+    pub fn generate(&self, gt: GenType, all: bool, list: &mut MoveList) {
         let us = self.side;
         let ui = us.index();
         let them = us.flip().index();
@@ -280,7 +280,7 @@ impl Position {
                         && rel_rank(us, t) <= 2
                         && ctx.pin_mask(s) & bit81(t) != 0
                     {
-                        list.push(Move::normal(s, t, true));
+                        list.push(Move::normal(s, t, true, make_piece(us, PRO_PAWN)));
                     }
                 });
             }
@@ -299,7 +299,7 @@ impl Position {
                     }
                     let rr = rel_rank(us, t);
                     if rr > 2 || (all && rr >= 1) {
-                        list.push(Move::normal(s, t, false));
+                        list.push(Move::normal(s, t, false, make_piece(us, PAWN)));
                     }
                 });
                 self.gen_king(&ctx, empty, list);
@@ -323,7 +323,8 @@ impl Position {
                 safe |= bit81(t);
             }
         }
-        for_each81(safe & target, |t| list.push(Move::normal(k, t, false)));
+        let kp = make_piece(ctx.us, KING);
+        for_each81(safe & target, |t| list.push(Move::normal(k, t, false, kp)));
     }
 
     /// 玉以外の盤上の駒の手。skip_pawnsなら歩を飛ばす（Quietsは歩を別に積む）。
@@ -343,7 +344,7 @@ impl Position {
         });
     }
 
-    fn gen_drops(&mut self, ctx: &Ctx, target: u128, list: &mut MoveList) {
+    fn gen_drops(&self, ctx: &Ctx, target: u128, list: &mut MoveList) {
         let us = ctx.us;
         let ui = us.index();
         if self.hand_ids[ui].iter().all(|&h| h == 0) {
@@ -380,66 +381,14 @@ impl Position {
                     mask &= !bit81(sq);
                 }
             }
-            for_each81(mask, |t| list.push(Move::drop(pt, t)));
+            for_each81(mask, |t| list.push(Move::drop(pt, t, us)));
         }
-    }
-
-    /// 升sへの歩打ちが打ち歩詰めか。打って進め、相手に王手を外す手があるかを見て戻す。
-    fn pawn_drop_mates(&mut self, s: u8) -> bool {
-        let m = Move::drop(PAWN, s);
-        self.do_move(m);
-        let escapes = self.has_reply_to_pawn_check(s);
-        self.undo_move(m);
-        !escapes
-    }
-
-    /// 升sの歩で王手された側（手番側）に、合法手があるか。
-    /// 王手は歩の1つだけなので、合駒は無い。玉の移動と、歩を取る手だけを見る。
-    fn has_reply_to_pawn_check(&self, s: u8) -> bool {
-        let us = self.side;
-        let ui = us.index();
-        let att = us.flip().index();
-        let k = self.king[ui];
-        // 玉の移動（歩を取る手を含む）。王手は短い利きだけなので、背後の利きは無い
-        for &delta in DELTA.iter() {
-            let t = (k as i32 + delta as i32) as usize;
-            if CAN_MOVE_TO[ui][self.board[t] as usize] && self.count[att][t] == 0 {
-                return true;
-            }
-        }
-        // 玉以外で歩を取る手。ピンされた駒は歩の升へ動けない（歩の升は玉の隣で、
-        // ピンの線の上なら歩が玉との間にいることになり、ピンにならない）
-        for o in CHECK_OFFSETS {
-            let x = (s as i32 - o as i32) as u8;
-            let v = self.board[x as usize];
-            if v == EMPTY || v == WALL || piece_color(v) != us || piece_type(v) == KING {
-                continue;
-            }
-            let m = &MOVES[v as usize];
-            if m.short[..m.n_short as usize].contains(&o) && !self.is_pinned(us, x) {
-                return true;
-            }
-        }
-        let mut dirs = self.longdir[ui][s as usize];
-        while dirs != 0 {
-            let d = dirs.trailing_zeros() as usize;
-            dirs &= dirs - 1;
-            let back = DELTA[opp(d)] as i32;
-            let mut x = (s as i32 + back) as u8;
-            while self.board[x as usize] == EMPTY {
-                x = (x as i32 + back) as u8;
-            }
-            if !self.is_pinned(us, x) {
-                return true;
-            }
-        }
-        false
     }
 }
 
 /// 歩が進む向きの差分。
 #[inline]
-const fn pawn_delta(us: Color) -> i32 {
+pub(crate) const fn pawn_delta(us: Color) -> i32 {
     match us {
         Color::Black => -1,
         Color::White => 1,
@@ -451,7 +400,7 @@ const fn pawn_delta(us: Color) -> i32 {
 fn push_variants(us: Color, pt: u8, from: u8, to: u8, all: bool, list: &mut MoveList) {
     let rel = rel_rank(us, to);
     if can_promote(pt) && (rel_rank(us, from) <= 2 || rel <= 2) {
-        list.push(Move::normal(from, to, true));
+        list.push(Move::normal(from, to, true, make_piece(us, pt - 8)));
         let non_promote = match pt {
             PAWN => all && rel >= 1,
             LANCE => {
@@ -466,7 +415,7 @@ fn push_variants(us: Color, pt: u8, from: u8, to: u8, all: bool, list: &mut Move
             _ => all,
         };
         if non_promote {
-            list.push(Move::normal(from, to, false));
+            list.push(Move::normal(from, to, false, make_piece(us, pt)));
         }
     } else {
         let ok = match pt {
@@ -475,7 +424,7 @@ fn push_variants(us: Color, pt: u8, from: u8, to: u8, all: bool, list: &mut Move
             _ => true,
         };
         if ok {
-            list.push(Move::normal(from, to, false));
+            list.push(Move::normal(from, to, false, make_piece(us, pt)));
         }
     }
 }

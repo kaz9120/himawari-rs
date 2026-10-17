@@ -328,6 +328,7 @@ name = "himawari-mailbox"
 version = "0.55.12"
 dependencies = [
  "himawari-core",
+ "himawari-engine",
  "himawari-tools",
 ]
 

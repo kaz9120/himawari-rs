@@ -1,8 +1,10 @@
 //! 指し手。升は配列盤の添字で持つ。
 //!
-//! bit 0..8: 行き先、bit 8..16: 移動元（駒打ちは打つ駒種）、bit 16: 成り、bit 17: 駒打ち。
+//! bit 0..8: 行き先、bit 8..16: 移動元（駒打ちは打つ駒種）、bit 16: 成り、bit 17: 駒打ち、
+//! bit 24..29: 移動後の駒（先後込み）。移動後の駒はcoreの `Move` と同じく、置換表から来た手を
+//! `pseudo_legal` で確かめるときに、移動元の駒と突き合わせるために持つ。
 
-use crate::board::{sfen_of_type, usi_square};
+use crate::board::{Color, make_piece, sfen_of_type, usi_square};
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Default)]
 pub struct Move(u32);
@@ -14,14 +16,30 @@ impl Move {
     pub const NONE: Move = Move(0);
 
     #[inline]
-    pub const fn normal(from: u8, to: u8, promote: bool) -> Move {
-        let v = to as u32 | ((from as u32) << 8);
+    pub const fn normal(from: u8, to: u8, promote: bool, piece_after: u8) -> Move {
+        let v = to as u32 | ((from as u32) << 8) | ((piece_after as u32) << 24);
         Move(if promote { v | PROMOTE } else { v })
     }
 
     #[inline]
-    pub const fn drop(pt: u8, to: u8) -> Move {
-        Move(to as u32 | ((pt as u32) << 8) | DROP)
+    pub const fn drop(pt: u8, to: u8, c: Color) -> Move {
+        Move(to as u32 | ((pt as u32) << 8) | DROP | ((make_piece(c, pt) as u32) << 24))
+    }
+
+    /// 移動後の駒（成りなら成駒、打ちなら打った駒）。
+    #[inline]
+    pub const fn piece_after(self) -> u8 {
+        ((self.0 >> 24) & 0x1F) as u8
+    }
+
+    /// 移動前の駒。
+    #[inline]
+    pub const fn piece_before(self) -> u8 {
+        if self.is_promote() {
+            self.piece_after() | 8
+        } else {
+            self.piece_after()
+        }
     }
 
     #[inline]

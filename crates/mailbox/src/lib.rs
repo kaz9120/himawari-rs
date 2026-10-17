@@ -6,6 +6,7 @@
 //! 既存の `himawari-core` には依存しない（照合のテストだけが使う）。
 
 pub mod board;
+pub mod check;
 pub mod movegen;
 pub mod moves;
 pub mod position;
