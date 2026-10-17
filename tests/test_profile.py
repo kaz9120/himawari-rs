@@ -105,6 +105,18 @@ def test_classify_inner_first_for_see_in_move_ordering():
     assert profile_report.classify(chain) == "SEE"
 
 
+def test_classify_effect_map_built_inside_see():
+    # SEEが初めて読むときに作る利きの地図は、地図として数える（ADR-0239）
+    chain = [
+        "himawari_core::attacks::rook_attacks",
+        "<himawari_core::effect::EffectMap>::build_near",
+        "<himawari_core::position::Position>::threat_map",
+        "<himawari_core::position::Position>::see_ge",
+        "<himawari_engine::search::Worker>::search::<false>",
+    ]
+    assert profile_report.classify(chain) == "利きの地図"
+
+
 def test_classify_helper_alone_falls_back():
     chain = [
         "<himawari_core::position::Position>::attackers_to",
