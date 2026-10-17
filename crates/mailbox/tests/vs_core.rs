@@ -4,6 +4,8 @@
 //! - perft木の全ノードで、合法手の列が順まで含めてcoreと一致し、利きの配列が全計算と一致する。
 //!   列は `generate_legal`（all の両方）と、Captures・Quiets（coreの擬似合法手を `is_legal` で濾した列）
 //! - ランダムな対局の全手で同じ検査をする（終盤・駒打ち・王手の多い局面まで届かせる）
+//! - 全ノードでZobristのキー5本・hand_key・駒割り・王手駒・連続王手の数がcoreと一致し、
+//!   進めた直後のDirtyPieceがcoreと同じ中身になる
 //! - perftの数がcoreと一致する（深い方は `--ignored` で走らせる）
 
 use himawari_core::{
@@ -77,11 +79,61 @@ fn mb_seq(pos: &mut Position, gt: Option<GenType>, all: bool) -> Vec<String> {
 }
 
 /// 1ノードの検査。SFEN・利きの配列・合法手の列（順まで）。
+/// 局面に付いて回る値（キー・駒割り・王手駒・連続王手・DirtyPiece）をcoreと比べる。
+fn check_state(core: &CorePos, mb: &Position) {
+    let c = core.state();
+    let m = mb.state();
+    let sfen = core.to_sfen();
+    assert_eq!(mb.key(), core.key(), "key: {sfen}");
+    assert_eq!(m.board_key, c.board_key, "board_key: {sfen}");
+    assert_eq!(m.hand_key, c.hand_key, "hand_key: {sfen}");
+    assert_eq!(m.pawn_key, c.pawn_key, "pawn_key: {sfen}");
+    assert_eq!(m.non_pawn_key, c.non_pawn_key, "non_pawn_key: {sfen}");
+    assert_eq!(
+        m.minor_piece_key, c.minor_piece_key,
+        "minor_piece_key: {sfen}"
+    );
+    assert_eq!(m.material, c.material, "material: {sfen}");
+    let mut checkers = 0u128;
+    for sq in c.checkers {
+        checkers |= 1u128 << sq.index();
+    }
+    assert_eq!(m.checkers, checkers, "checkers: {sfen}");
+    assert_eq!(
+        m.continuous_check, c.continuous_check,
+        "continuous_check: {sfen}"
+    );
+    assert_eq!(
+        m.plies_from_null, c.plies_from_null,
+        "plies_from_null: {sfen}"
+    );
+    let (cd, md) = (&c.dirty, &m.dirty);
+    assert_eq!(md.count, cd.count, "dirty.count: {sfen}");
+    assert_eq!(md.king_moved, cd.king_moved, "dirty.king_moved: {sfen}");
+    for i in 0..2 {
+        assert_eq!(
+            md.piece_old[i], cd.piece_old[i].0,
+            "dirty.piece_old[{i}]: {sfen}"
+        );
+        assert_eq!(
+            md.piece_new[i], cd.piece_new[i].0,
+            "dirty.piece_new[{i}]: {sfen}"
+        );
+        assert_eq!(
+            md.from[i] as usize,
+            cd.from[i].index(),
+            "dirty.from[{i}]: {sfen}"
+        );
+        assert_eq!(md.to[i] as usize, cd.to[i].index(), "dirty.to[{i}]: {sfen}");
+    }
+}
+
 fn check_node(core: &CorePos, mb: &mut Position) {
     assert_eq!(mb.to_sfen(), core.to_sfen());
     if let Err(e) = mb.check_consistency() {
         panic!("{e}: {}", mb.to_sfen());
     }
+    check_state(core, mb);
     assert_eq!(mb.in_check(), core.in_check(), "{}", core.to_sfen());
     let mut kinds = vec![(None, None)];
     if !core.in_check() {
@@ -130,6 +182,31 @@ fn walk(core: &mut CorePos, mb: &mut Position, depth: u32) {
         mb.undo_move(mm);
         assert_eq!(mb.to_sfen(), before, "undoで戻らない: {usi}");
         mb.check_consistency().unwrap();
+    }
+}
+
+/// Zobristの乱数表がcoreと1ビットも違わない。
+#[test]
+fn zobrist_tables_match_core() {
+    use himawari_core::{Piece, Square, zobrist};
+    use himawari_mailbox::zobrist::{HAND_PAWN, PSQ};
+    for p in 0..32u8 {
+        for sq in 0..81u8 {
+            let core = if p % 16 >= 2 {
+                zobrist::psq(Piece(p), Square::from_index(sq))
+            } else {
+                0
+            };
+            assert_eq!(PSQ[p as usize][sq as usize], core, "PSQ[{p}][{sq}]");
+        }
+    }
+    for (c, color) in [himawari_core::Color::Black, himawari_core::Color::White]
+        .into_iter()
+        .enumerate()
+    {
+        for n in 0..19u32 {
+            assert_eq!(HAND_PAWN[c][n as usize], zobrist::hand_pawn(color, n));
+        }
     }
 }
 

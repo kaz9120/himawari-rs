@@ -22,14 +22,58 @@
 
 use crate::board::*;
 use crate::moves::Move;
+use crate::zobrist::{self, HAND_PAWN, HAND_SHIFT, PIECE_VALUE, PSQ, is_minor_piece};
+
+/// 王手駒を探す短い利きの差分（玉の8近傍と、両者の桂の位置）。
+pub(crate) const CHECK_OFFSETS: [i8; 12] = [-1, 1, 11, -11, 10, -10, -12, 12, 9, -13, -9, 13];
 
 /// 駒番号の無い升の値。盤上と手駒の駒は40枚。
 pub const NO_ID: u8 = 0xFF;
 
-#[derive(Copy, Clone, Default, Debug)]
-struct Undo {
-    captured: u8,
+/// 81升の通し番号の「升なし」。coreの `Square::NONE` と同じ値。
+pub const SQ_NONE: u8 = 81;
+
+/// NNUEの差分の材料（coreの `DirtyPiece` と同じ中身。ADR-0014）。
+/// 駒は駒の符号、升は81升の通し番号で持つ。1手で変わる駒は最大2。
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub struct DirtyPiece {
+    pub count: u8,
+    pub king_moved: bool,
+    pub piece_old: [u8; 2],
+    pub piece_new: [u8; 2],
+    pub from: [u8; 2],
+    pub to: [u8; 2],
+}
+
+impl Default for DirtyPiece {
+    fn default() -> Self {
+        DirtyPiece {
+            count: 0,
+            king_moved: false,
+            piece_old: [EMPTY; 2],
+            piece_new: [EMPTY; 2],
+            from: [SQ_NONE; 2],
+            to: [SQ_NONE; 2],
+        }
+    }
+}
+
+/// 1手ごとに積む状態。coreの `StateInfo` と同じ値を持つ（遅延で作るピン・利きの地図は除く）。
+#[derive(Copy, Clone, Debug, Default)]
+pub struct StateInfo {
+    pub captured: u8,
     cap_id: u8,
+    pub board_key: u64,
+    pub hand_key: u64,
+    pub pawn_key: u64,
+    pub non_pawn_key: [u64; 2],
+    pub minor_piece_key: u64,
+    /// 手番側の玉に王手をかけている駒の升の集合（81升の通し番号のビット）。
+    pub checkers: u128,
+    pub continuous_check: [u16; 2],
+    pub plies_from_null: u16,
+    pub material: i32,
+    pub dirty: DirtyPiece,
 }
 
 /// 複写で戻すときに積む利きの表。
@@ -64,7 +108,9 @@ pub struct Position {
     pub(crate) pawn_files: [u16; 2],
     pub(crate) side: Color,
     ply: u32,
-    undo: Vec<Undo>,
+    /// 手駒をcoreの `Hand` と同じ詰め方で持った値（hand_keyに使う）。
+    hand_raw: [u32; 2],
+    states: Vec<StateInfo>,
     #[cfg(feature = "copy-undo")]
     snapshots: Vec<EffectSnapshot>,
 }
@@ -91,7 +137,8 @@ impl Position {
             pawn_files: [0; 2],
             side: Color::Black,
             ply: 1,
-            undo: Vec::with_capacity(512),
+            hand_raw: [0; 2],
+            states: Vec::with_capacity(512),
             #[cfg(feature = "copy-undo")]
             snapshots: Vec::with_capacity(512),
         }
@@ -125,6 +172,23 @@ impl Position {
     #[inline]
     pub fn hand_count(&self, c: Color, pt: u8) -> u32 {
         self.hand_ids[c.index()][hand_index(pt)].count_ones()
+    }
+
+    #[inline]
+    pub fn state(&self) -> &StateInfo {
+        self.states.last().expect("state stack is never empty")
+    }
+
+    /// 置換表用の合成キー（coreと同じ定義）。
+    #[inline]
+    pub fn key(&self) -> u64 {
+        let st = self.state();
+        st.board_key ^ st.hand_key.wrapping_mul(zobrist::HAND_MIX)
+    }
+
+    #[inline]
+    pub fn checkers(&self) -> u128 {
+        self.state().checkers
     }
 
     #[inline]
@@ -332,6 +396,103 @@ impl Position {
         (tmp.count, tmp.longdir)
     }
 
+    // --- キーと王手の情報 ---
+
+    /// 駒pが81升の升sに出入りしたときの、部分キー（歩構造・歩以外・小駒）の更新。
+    #[inline]
+    fn xor_partial_keys(st: &mut StateInfo, p: u8, s: u8) {
+        let k = PSQ[p as usize][s as usize];
+        let pt = piece_type(p);
+        if pt == PAWN {
+            st.pawn_key ^= k;
+        } else {
+            if is_minor_piece(pt) {
+                st.minor_piece_key ^= k;
+            }
+            st.non_pawn_key[piece_color(p).index()] ^= k;
+        }
+    }
+
+    #[inline]
+    fn hand_key_of(&self) -> u64 {
+        u64::from(self.hand_raw[0]) | (u64::from(self.hand_raw[1]) << 32)
+    }
+
+    /// 手番側の玉に王手をかけている駒の升の集合。利き数が0なら歩かずに0を返す。
+    #[inline]
+    fn compute_checkers(&self) -> u128 {
+        let us = self.side;
+        let k = self.king[us.index()];
+        let them = us.flip();
+        let ti = them.index();
+        if self.count[ti][k as usize] == 0 {
+            return 0;
+        }
+        let mut set = 0u128;
+        let mut dirs = self.longdir[ti][k as usize];
+        while dirs != 0 {
+            let d = dirs.trailing_zeros() as usize;
+            dirs &= dirs - 1;
+            let back = DELTA[opp(d)] as i32;
+            let mut x = (k as i32 + back) as u8;
+            while self.board[x as usize] == EMPTY {
+                x = (x as i32 + back) as u8;
+            }
+            set |= bit81(x);
+        }
+        for o in CHECK_OFFSETS {
+            let x = (k as i32 - o as i32) as usize;
+            let v = self.board[x];
+            if v == EMPTY || v == WALL || piece_color(v) != them {
+                continue;
+            }
+            let m = &MOVES[v as usize];
+            if m.short[..m.n_short as usize].contains(&o) {
+                set |= bit81(x as u8);
+            }
+        }
+        set
+    }
+
+    /// キーと駒割りを盤面と手駒から全部作り直す（初期化と照合に使う）。
+    /// 返す値の継続王手と手数の欄は0にする。
+    fn state_from_scratch(&self) -> StateInfo {
+        let mut st = StateInfo {
+            captured: EMPTY,
+            cap_id: NO_ID,
+            dirty: DirtyPiece::default(),
+            ..StateInfo::default()
+        };
+        for (c, &cc) in [Color::Black, Color::White].iter().enumerate() {
+            let sign = if c == 0 { 1 } else { -1 };
+            for &pt in HAND_KINDS.iter() {
+                st.material += sign * PIECE_VALUE[pt as usize] * self.hand_count(cc, pt) as i32;
+            }
+            st.pawn_key ^= HAND_PAWN[c][self.hand_count(cc, PAWN) as usize];
+        }
+        for &i in IDX81.iter() {
+            let p = self.board[i as usize];
+            if p == EMPTY {
+                continue;
+            }
+            let s81 = SQ81[i as usize];
+            st.board_key ^= PSQ[p as usize][s81 as usize];
+            Self::xor_partial_keys(&mut st, p, s81);
+            let sign = if piece_color(p) == Color::Black {
+                1
+            } else {
+                -1
+            };
+            st.material += sign * PIECE_VALUE[piece_type(p) as usize];
+        }
+        if self.side == Color::White {
+            st.board_key ^= zobrist::SIDE;
+        }
+        st.hand_key = self.hand_key_of();
+        st.checkers = self.compute_checkers();
+        st
+    }
+
     // --- 指し手 ---
 
     pub fn do_move(&mut self, m: Move) {
@@ -343,26 +504,49 @@ impl Position {
         let us = self.side;
         let ui = us.index();
         let them = us.flip().index();
-        let to = m.to();
-        let mut u = Undo {
+        let sign = if us == Color::Black { 1 } else { -1 };
+        let prev = self.state();
+        let mut st = StateInfo {
             captured: EMPTY,
             cap_id: NO_ID,
+            board_key: prev.board_key,
+            hand_key: 0,
+            pawn_key: prev.pawn_key,
+            non_pawn_key: prev.non_pawn_key,
+            minor_piece_key: prev.minor_piece_key,
+            checkers: 0,
+            continuous_check: prev.continuous_check,
+            plies_from_null: prev.plies_from_null + 1,
+            material: prev.material,
+            dirty: DirtyPiece::default(),
         };
+        let to = m.to();
+        let to81 = SQ81[to as usize];
         if m.is_drop() {
             let pt = m.drop_type();
+            let pc = make_piece(us, pt);
             let h = &mut self.hand_ids[ui][hand_index(pt)];
             debug_assert!(*h != 0);
             let id = h.trailing_zeros() as u8;
             *h &= *h - 1;
+            self.hand_raw[ui] -= 1 << HAND_SHIFT[pt as usize];
             self.on_board[ui] |= 1 << id;
             self.sq_of[id as usize] = to;
             self.id_on[to as usize] = id;
-            self.put(to, make_piece(us, pt));
+            self.put(to, pc);
+            st.board_key ^= PSQ[pc as usize][to81 as usize];
             if pt == PAWN {
                 self.pawn_files[ui] |= 1 << file_of(to);
+                let new = self.hand_count(us, PAWN) as usize;
+                st.pawn_key ^= HAND_PAWN[ui][new + 1] ^ HAND_PAWN[ui][new];
             }
+            Self::xor_partial_keys(&mut st, pc, to81);
+            st.dirty.count = 1;
+            st.dirty.piece_new[0] = pc;
+            st.dirty.to[0] = to81;
         } else {
             let from = m.from();
+            let from81 = SQ81[from as usize];
             let p = self.board[from as usize];
             let np = if m.is_promote() { p - 8 } else { p };
             let id = self.id_on[from as usize];
@@ -371,34 +555,68 @@ impl Position {
             self.id_on[from as usize] = NO_ID;
             if cap != EMPTY {
                 let cid = self.id_on[to as usize];
+                let hk = piece_type(cap) | 8;
                 self.on_board[them] &= !(1u64 << cid);
-                let cpt = piece_type(cap) | 8;
-                self.hand_ids[ui][hand_index(cpt)] |= 1 << cid;
+                self.hand_ids[ui][hand_index(hk)] |= 1 << cid;
+                self.hand_raw[ui] += 1 << HAND_SHIFT[hk as usize];
                 if piece_type(cap) == PAWN {
                     self.pawn_files[them] &= !(1 << file_of(to));
                 }
-                u = Undo {
-                    captured: cap,
-                    cap_id: cid,
-                };
+                st.board_key ^= PSQ[cap as usize][to81 as usize];
+                Self::xor_partial_keys(&mut st, cap, to81);
+                if hk == PAWN {
+                    let new = self.hand_count(us, PAWN) as usize;
+                    st.pawn_key ^= HAND_PAWN[ui][new - 1] ^ HAND_PAWN[ui][new];
+                }
+                st.material +=
+                    sign * (PIECE_VALUE[piece_type(cap) as usize] + PIECE_VALUE[hk as usize]);
+                st.captured = cap;
+                st.cap_id = cid;
+                st.dirty.count = 2;
+                st.dirty.piece_old[1] = cap;
+                st.dirty.piece_new[1] = make_piece(us, hk);
+                st.dirty.from[1] = to81;
+            } else {
+                st.dirty.count = 1;
             }
             self.id_on[to as usize] = id;
             self.sq_of[id as usize] = to;
+            st.board_key ^= PSQ[p as usize][from81 as usize] ^ PSQ[np as usize][to81 as usize];
+            Self::xor_partial_keys(&mut st, p, from81);
+            Self::xor_partial_keys(&mut st, np, to81);
+            if m.is_promote() {
+                st.material += sign
+                    * (PIECE_VALUE[piece_type(np) as usize] - PIECE_VALUE[piece_type(p) as usize]);
+            }
             if piece_type(p) == KING {
                 self.king[ui] = to;
+                st.dirty.king_moved = true;
             } else if piece_type(p) == PAWN && m.is_promote() {
                 self.pawn_files[ui] &= !(1 << file_of(to));
             }
+            st.dirty.piece_old[0] = p;
+            st.dirty.piece_new[0] = np;
+            st.dirty.from[0] = from81;
+            st.dirty.to[0] = to81;
         }
-        self.undo.push(u);
+        st.board_key ^= zobrist::SIDE;
+        st.hand_key = self.hand_key_of();
         self.side = us.flip();
         self.ply += 1;
+        // 王手の情報。利き数で王手の有無が決まるので、王手のときだけ王手駒を探す
+        st.checkers = self.compute_checkers();
+        if st.checkers != 0 {
+            st.continuous_check[ui] += 1;
+        } else {
+            st.continuous_check[ui] = 0;
+        }
+        self.states.push(st);
         #[cfg(debug_assertions)]
         self.assert_consistent();
     }
 
     pub fn undo_move(&mut self, m: Move) {
-        let u = self.undo.pop().expect("undo stack");
+        let u = self.states.pop().expect("undo_move without do_move");
         #[cfg(feature = "copy-undo")]
         let snap = self.snapshots.pop().expect("snapshot stack");
         self.side = self.side.flip();
@@ -418,6 +636,7 @@ impl Position {
             self.id_on[to as usize] = NO_ID;
             self.on_board[ui] &= !(1u64 << id);
             self.hand_ids[ui][hand_index(pt)] |= 1 << id;
+            self.hand_raw[ui] += 1 << HAND_SHIFT[pt as usize];
             if pt == PAWN {
                 self.pawn_files[ui] &= !(1 << file_of(to));
             }
@@ -437,8 +656,9 @@ impl Position {
                 self.id_on[to as usize] = cid;
                 self.sq_of[cid as usize] = to;
                 self.on_board[them] |= 1 << cid;
-                let cpt = piece_type(u.captured) | 8;
-                self.hand_ids[ui][hand_index(cpt)] &= !(1u64 << cid);
+                let hk = piece_type(u.captured) | 8;
+                self.hand_ids[ui][hand_index(hk)] &= !(1u64 << cid);
+                self.hand_raw[ui] -= 1 << HAND_SHIFT[hk as usize];
                 if piece_type(u.captured) == PAWN {
                     self.pawn_files[them] |= 1 << file_of(to);
                 }
@@ -480,6 +700,26 @@ impl Position {
                     ));
                 }
             }
+        }
+        let fresh = self.state_from_scratch();
+        let st = self.state();
+        let keys = |x: &StateInfo| {
+            (
+                x.board_key,
+                x.hand_key,
+                x.pawn_key,
+                x.non_pawn_key,
+                x.minor_piece_key,
+                x.material,
+                x.checkers,
+            )
+        };
+        if keys(&fresh) != keys(st) {
+            return Err(format!(
+                "キー・駒割り・王手駒の食い違い: 差分 {:?} 全計算 {:?}",
+                keys(st),
+                keys(&fresh)
+            ));
         }
         let mut seen = 0u64;
         let mut pawn_files = [0u16; 2];
@@ -658,6 +898,14 @@ impl Position {
         let (count, longdir) = pos.effects_from_scratch();
         pos.count = count;
         pos.longdir = longdir;
+        for c in 0..2 {
+            for k in 1..8 {
+                let n = pos.hand_ids[c][k].count_ones();
+                pos.hand_raw[c] += n << HAND_SHIFT[k + 8];
+            }
+        }
+        let st = pos.state_from_scratch();
+        pos.states.push(st);
         // 手番でない側の玉に王手がかかっている局面は受け付けない
         let them = pos.side.flip();
         if pos.count[pos.side.index()][pos.king[them.index()] as usize] != 0 {

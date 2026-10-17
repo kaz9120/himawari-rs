@@ -99,8 +99,7 @@ impl Ctx {
     }
 }
 
-/// 王手駒を探す短い利きの差分（玉の8近傍と、両者の桂の位置）。
-const CHECK_OFFSETS: [i8; 12] = [-1, 1, 11, -11, 10, -10, -12, 12, 9, -13, -9, 13];
+use crate::position::CHECK_OFFSETS;
 
 impl Position {
     /// 玉の升kから方向dへ盤の端まで歩いた升の集合（kを含まない）。

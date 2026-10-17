@@ -9,8 +9,9 @@ pub mod board;
 pub mod movegen;
 pub mod moves;
 pub mod position;
+pub mod zobrist;
 
 pub use board::{Color, SFEN_STARTPOS};
 pub use movegen::{GenType, MoveList, perft};
 pub use moves::Move;
-pub use position::Position;
+pub use position::{DirtyPiece, Position, StateInfo};
