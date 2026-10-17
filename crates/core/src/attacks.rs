@@ -178,6 +178,19 @@ pub fn lance_attacks(c: Color, sq: Square, occ: Bitboard) -> Bitboard {
     }
 }
 
+/// 方向dirへ1本だけ伸ばした飛び利き。最初に当たる駒の升を含む
+/// （ADR-0239の利き数の表）。dirの並びは `DF`・`DR` と同じで、0〜3は升の
+/// 番号が増える向き、`dir ^ 4` がその逆向きになる。偶数が縦横、奇数が斜めである。
+#[inline]
+pub fn ray_attacks(dir: usize, sq: Square, occ: Bitboard) -> Bitboard {
+    let mask = RAYS.0[sq.index()][dir & 7];
+    if dir < 4 {
+        Bitboard(ray_inc(occ.raw(), mask))
+    } else {
+        Bitboard(ray_dec(occ.raw(), mask))
+    }
+}
+
 #[inline]
 pub fn bishop_attacks(sq: Square, occ: Bitboard) -> Bitboard {
     let i = sq.index();

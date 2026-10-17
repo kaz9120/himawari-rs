@@ -7,6 +7,7 @@ pub mod attacks;
 pub mod bitboard;
 pub mod bonapiece;
 pub mod effect;
+pub mod effect_count;
 pub mod hand;
 pub mod movegen;
 pub mod moves;
@@ -18,6 +19,7 @@ pub mod zobrist;
 
 pub use bitboard::Bitboard;
 pub use effect::EffectMap;
+pub use effect_count::EffectCounts;
 pub use hand::Hand;
 pub use movegen::{GenType, generate, generate_legal, perft, perft_slow};
 pub use moves::{Move, Move16, MoveList};
