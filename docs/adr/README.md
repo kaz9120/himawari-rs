@@ -58,6 +58,7 @@ ROADMAPの注力を決めた判断。いまの注力は0229にある。
 - [0176](0176-lance-non-promotion-rank.md) 香の不成を2段目から3段目以降へ移す
 - [0230](0230-board-op-profile.md) 盤面操作の割合を測り、Bitboardを残して利きを併せ持つと決める
 - [0232](0232-effect-table-prototype.md) 利きの表を探索のワーカーに持たせる試作（技巧・山田将棋の読解を含む）
+- [0239](0239-effect-options.md) 利きの持ち方を6案で比べ直し、都度作る地図→技巧型のバイト表の順に測る
 
 ### 探索
 
@@ -309,7 +310,7 @@ ROADMAPの注力を決めた判断。いまの注力は0229にある。
 | [0145](0145-continual-learning.md) | 前世代のネットから継続学習で積む | 2026-08-08 |  | accepted |
 | [0146](0146-book-full-width-opening.md) | 定跡の浅い層を全合法手で埋める | 2026-08-08 |  | accepted |
 | [0147](0147-effect-bucket-features.md) | 特徴indexを被利き数でバケット化する（EffectBucket） | 2026-08-08 |  | rejected（未測定で取り下げ。入力特徴の変更は構造の変更で、ADR-0213で凍結した） |
-| [0148](0148-effect-table.md) | 盤面の利きを差分で持つ | 2026-08-08 |  | proposed（再開。試作は[0232](0232-effect-table-prototype.md)が引き継ぐ） |
+| [0148](0148-effect-table.md) | 盤面の利きを差分で持つ | 2026-08-08 |  | proposed（再開。試作は[0232](0232-effect-table-prototype.md)から[0239](0239-effect-options.md)が引き継ぐ） |
 | [0149](0149-experiment-runner.md) | 実験の実行とログを規約で固定する | 2026-08-08 |  | accepted |
 | [0150](0150-rootstrap-evaluation.md) | 世代ループでの検証損失の読み方 | 2026-08-08 |  | accepted |
 | [0151](0151-speedup-sweep.md) | 挙動を変えない高速化の第2弾をプロファイル起点で洗い出す | 2026-08-09 |  | accepted |
@@ -391,15 +392,16 @@ ROADMAPの注力を決めた判断。いまの注力は0229にある。
 | [0227](0227-cell-dataset.md) | 1億局面を、玉の位置×形勢の区画の配分と区画の中のαで組み立てる | 2026-10-07 | -58.4、-17.2 | rejected（区画の配分は−58.4、区画の中のα=0.5はさらに−17.2で、どちらも害） |
 | [0228](0228-grow-labeled-pool.md) | dlshogiで点数を付けた局面の母集団を、重複なく足して増やし続ける | 2026-10-08 | +5.9 | accepted（入玉5億を重複なく足した母集団の2周が現行に+5.9 Elo。2回目以降の回は[0229](0229-roadmap-visible-focus.md)で止めた） |
 | [0229](0229-roadmap-visible-focus.md) | ROADMAPを引き直し、注力を「焦点が見える評価関数」にする | 2026-10-16 |  | accepted |
-| [0230](0230-board-op-profile.md) | 探索時間に占める盤面操作の割合を測り、盤面の持ち方を決める材料にする | 2026-10-16 |  | accepted（Bitboardを残して利きを併せ持つ。試作は[0232](0232-effect-table-prototype.md)） |
+| [0230](0230-board-op-profile.md) | 探索時間に占める盤面操作の割合を測り、盤面の持ち方を決める材料にする | 2026-10-16 |  | accepted（Bitboardを残して利きを併せ持つ。試作は[0232](0232-effect-table-prototype.md)と[0239](0239-effect-options.md)） |
 | [0231](0231-ponder-book-on-ponderhit.md) | ponder中は定跡を引かずに探索し、ponderhitで定跡を引く | 2026-10-17 |  | accepted（指し手が変わらないのでSPRTで測らずに入れた） |
-| [0232](0232-effect-table-prototype.md) | 利きの表を探索のワーカーに持たせ、1手詰め・SEE・玉の移動の合法性判定を表引きにする試作 | 2026-10-17 |  | proposed |
+| [0232](0232-effect-table-prototype.md) | 利きの表を探索のワーカーに持たせ、1手詰め・SEE・玉の移動の合法性判定を表引きにする試作 | 2026-10-17 |  | superseded（[0239](0239-effect-options.md)で事前登録の順を組み替えた） |
 | [0233](0233-check-extension-hanging.md) | 取られるだけの王手を、利きで見分けて王手延長から外す | 2026-10-17 |  | proposed |
 | [0234](0234-king-danger-rfp.md) | 手番側の玉の周りに相手の利きが集まるノードでは、子ノードのfutilityで刈らない | 2026-10-17 |  | proposed |
 | [0235](0235-quiet-ordering-hanging.md) | 静かな手の並べ替えに、取られる駒を逃がす手と取られる升へ行く手の項を足す | 2026-10-17 |  | proposed |
 | [0236](0236-entering-king-path.md) | 玉の前進の余地を利きで測る指標を作り、探索と学習のどちらで使うかを測定で決める | 2026-10-17 |  | proposed |
 | [0237](0237-effect-count-inputs.md) | 駒×升×利き数の特徴を、細い別のaccumulatorで評価関数の入力に足す | 2026-10-17 |  | proposed |
 | [0238](0238-effect-progress-layer-stack.md) | 利きから出す2軸の進行度で、後段（L1から出力まで）を4組に切り替える | 2026-10-17 |  | proposed |
+| [0239](0239-effect-options.md) | 利きの持ち方を6案で比べ直し、都度作る利きの地図を先に、技巧型のバイト表を次に測る | 2026-10-17 |  | proposed |
 
 ## バックログ
 
