@@ -310,7 +310,7 @@ ROADMAPの注力を決めた判断。いまの注力は0229にある。
 | [0145](0145-continual-learning.md) | 前世代のネットから継続学習で積む | 2026-08-08 |  | accepted |
 | [0146](0146-book-full-width-opening.md) | 定跡の浅い層を全合法手で埋める | 2026-08-08 |  | accepted |
 | [0147](0147-effect-bucket-features.md) | 特徴indexを被利き数でバケット化する（EffectBucket） | 2026-08-08 |  | rejected（未測定で取り下げ。入力特徴の変更は構造の変更で、ADR-0213で凍結した） |
-| [0148](0148-effect-table.md) | 盤面の利きを差分で持つ | 2026-08-08 |  | proposed（再開。試作は[0232](0232-effect-table-prototype.md)から[0239](0239-effect-options.md)が引き継ぐ） |
+| [0148](0148-effect-table.md) | 盤面の利きを差分で持つ | 2026-08-08 |  | rejected（探索で利きを維持する案は[0239](0239-effect-options.md)の案Bで測って棄却した） |
 | [0149](0149-experiment-runner.md) | 実験の実行とログを規約で固定する | 2026-08-08 |  | accepted |
 | [0150](0150-rootstrap-evaluation.md) | 世代ループでの検証損失の読み方 | 2026-08-08 |  | accepted |
 | [0151](0151-speedup-sweep.md) | 挙動を変えない高速化の第2弾をプロファイル起点で洗い出す | 2026-08-09 |  | accepted |
@@ -401,7 +401,7 @@ ROADMAPの注力を決めた判断。いまの注力は0229にある。
 | [0236](0236-entering-king-path.md) | 玉の前進の余地を利きで測る指標を作り、探索と学習のどちらで使うかを測定で決める | 2026-10-17 |  | proposed |
 | [0237](0237-effect-count-inputs.md) | 駒×升×利き数の特徴を、細い別のaccumulatorで評価関数の入力に足す | 2026-10-17 |  | proposed |
 | [0238](0238-effect-progress-layer-stack.md) | 利きから出す2軸の進行度で、後段（L1から出力まで）を4組に切り替える | 2026-10-17 |  | proposed |
-| [0239](0239-effect-options.md) | 利きの持ち方を6案で比べ直し、都度作る利きの地図を先に、技巧型のバイト表を次に測る | 2026-10-17 |  | proposed |
+| [0239](0239-effect-options.md) | 利きの持ち方を6案で比べ直し、都度作る利きの地図を先に、技巧型のバイト表を次に測る | 2026-10-17 |  | accepted（案Eの地図をmainへ入れた。案Bのバイト表は正味−3.37%で棄却） |
 
 ## バックログ
 
