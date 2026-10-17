@@ -1,0 +1,14 @@
+[package]
+name = "himawari-mailbox"
+description = "配列盤と利きの配列による盤面表現の研究用試作（ADR-0241、mainへは入れない）"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[lints]
+workspace = true
+
+# 既存のcoreは正しさの照合（perft・合法手の集合）にだけ使う。本体は依存しない
+[dev-dependencies]
+himawari-core = { path = "../core" }
