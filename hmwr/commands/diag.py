@@ -14,6 +14,7 @@ from pathlib import Path
 from .. import config, paths, proc
 from ..tools import (
     dead_dims,
+    depth_reach,
     defend_rank,
     phase as phase_tool,
     rank_diag,
@@ -129,6 +130,46 @@ def add_parser(sub: argparse._SubParsersAction) -> None:
     t.add_argument("--skip", type=int, metavar="N", help="先頭N局面を飛ばす")
     t.add_argument("--eval-file", metavar="パス", help="評価関数（既定は EVAL_FILE）")
     t.set_defaults(func=defend)
+
+    t = ss.add_parser(
+        "reach",
+        help="局面ごとに、固定深さの探索が打ち切りの秒数内に終わるかを測る",
+        description="Issue #653の測定。局面ごとに go depth N を送り、"
+        "打ち切りの秒数を過ぎたら stop を送る。所要時間と、確定した最後の反復の"
+        "深さ・評価値・ノード数を出す。終わらなかった局面と5秒を超えた局面だけを"
+        "画面へ出し、全行はログに残す。時間制の対局と重ねて走らせない。",
+    )
+    t.add_argument("name", metavar="名前", help="測定の名前。ログの名前になる")
+    t.add_argument(
+        "--engine", metavar="パス", help="エンジン（既定 target/release/himawari）"
+    )
+    t.add_argument("--eval-file", metavar="パス", help="評価関数（既定は EVAL_FILE）")
+    t.add_argument(
+        "--positions",
+        default="openings/actdump_positions.txt",
+        metavar="パス",
+        help="局面リスト（既定 openings/actdump_positions.txt）",
+    )
+    t.add_argument(
+        "--only",
+        type=int,
+        action="append",
+        metavar="番号",
+        help="この番号の局面だけ測る（繰り返し可。1始まり）",
+    )
+    t.add_argument(
+        "--depth", type=int, default=16, metavar="N", help="探索の深さ（既定16）"
+    )
+    t.add_argument(
+        "--limit",
+        type=float,
+        default=20.0,
+        metavar="秒",
+        help="打ち切りの秒数（既定20）",
+    )
+    t.add_argument("--threads", type=int, default=1, metavar="N")
+    t.add_argument("--hash", type=int, default=256, metavar="MB")
+    t.set_defaults(func=reach)
 
 
 def rank(args: argparse.Namespace) -> int:
@@ -285,3 +326,32 @@ def replay(args: argparse.Namespace) -> int:
         player=args.player, threads=args.threads, start_ply=args.start_ply, hash_mb=256,
         initial_ms=args.initial * 1000, inc_ms=args.inc * 1000,
     )  # fmt: skip
+
+
+def reach(args: argparse.Namespace) -> int:
+    """固定深さの探索が打ち切りの秒数内に終わるかを測る（ADR-0233）。"""
+    name = paths.check_name(args.name)
+    engine = args.engine or str(paths.release_bin("himawari"))
+    eval_file = args.eval_file or config.get("EVAL_FILE")
+    log = paths.log("diag-reach", name)
+    if args.dry_run:
+        print(
+            f"[dry-run] {paths.rel(engine)} で {args.positions} を深さ{args.depth}、"
+            f"{args.limit:g}秒で打ち切って測る"
+        )
+        print(f"[dry-run] ログ: {paths.rel(log)}")
+        return proc.OK
+    for path, what in (
+        (engine, "エンジン"),
+        (eval_file, "評価関数"),
+        (args.positions, "局面リスト"),
+    ):
+        if not path or not Path(path).is_file():
+            raise proc.Fail(f"{what}がない: {path}")
+    code = depth_reach.run(
+        engine, Path(args.positions),
+        eval_file=eval_file, depth=args.depth, limit=args.limit,
+        threads=args.threads, hash_mb=args.hash, only=args.only, log=log,
+    )  # fmt: skip
+    print(f"ログ: {paths.rel(log)}")
+    return code

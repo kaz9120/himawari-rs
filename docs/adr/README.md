@@ -395,7 +395,7 @@ ROADMAPの注力を決めた判断。いまの注力は0229にある。
 | [0230](0230-board-op-profile.md) | 探索時間に占める盤面操作の割合を測り、盤面の持ち方を決める材料にする | 2026-10-16 |  | accepted（Bitboardを残して利きを併せ持つ。試作は[0232](0232-effect-table-prototype.md)と[0239](0239-effect-options.md)） |
 | [0231](0231-ponder-book-on-ponderhit.md) | ponder中は定跡を引かずに探索し、ponderhitで定跡を引く | 2026-10-17 |  | accepted（指し手が変わらないのでSPRTで測らずに入れた） |
 | [0232](0232-effect-table-prototype.md) | 利きの表を探索のワーカーに持たせ、1手詰め・SEE・玉の移動の合法性判定を表引きにする試作 | 2026-10-17 |  | superseded（[0239](0239-effect-options.md)で事前登録の順を組み替えた） |
-| [0233](0233-check-extension-hanging.md) | 取られるだけの王手を、利きで見分けて王手延長から外す | 2026-10-17 |  | proposed |
+| [0233](0233-check-extension-hanging.md) | 取られるだけの王手を、利きで見分けて王手延長から外す | 2026-10-17 | -1.1 | rejected（H0。深さ16の打ち切りは消えたが、棋力は変わらない） |
 | [0234](0234-king-danger-rfp.md) | 手番側の玉の周りに相手の利きが集まるノードでは、子ノードのfutilityで刈らない | 2026-10-17 |  | proposed |
 | [0235](0235-quiet-ordering-hanging.md) | 静かな手の並べ替えに、取られる駒を逃がす手と取られる升へ行く手の項を足す | 2026-10-17 |  | proposed |
 | [0236](0236-entering-king-path.md) | 玉の前進の余地を利きで測る指標を作り、探索と学習のどちらで使うかを測定で決める | 2026-10-17 |  | proposed |
