@@ -103,7 +103,8 @@ impl SearchBoard {
 
     /// 正しい最後の段から今の段まで、1段ずつ複写して差分を当てる。
     /// 途中の段も正しくなるので、兄弟のノードが同じ祖先を使い回せる。
-    #[cold]
+    /// `#[cold]` は付けない。静止探索の先行更新（q1）では、この呼び出しがほぼ毎回通る
+    /// （ADR-0240の3回目のc1）。
     #[inline(never)]
     fn catch_up(&self) {
         for k in self.valid.get() + 1..=self.ply {
