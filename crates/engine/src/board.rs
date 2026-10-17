@@ -109,6 +109,7 @@ impl SearchBoard {
         }
         self.valid.set(self.ply);
         debug_assert_eq!(
+            // SAFETY: 書き終えた段を読むだけで、ほかに書く者はいない
             unsafe { *self.plies[self.ply].counts.get() },
             EffectCounts::build(&self.pos),
             "利き数の表が作り直しと食い違う"
@@ -238,7 +239,7 @@ mod tests {
     /// 積んだ差分をまとめて当てる経路を通る（ADR-0240の遅延更新）。
     fn walk_sparse(b: &mut SearchBoard, depth: u32, n: &mut u64) {
         *n += 1;
-        if depth == 0 || *n % 7 == 0 {
+        if depth == 0 || (*n).is_multiple_of(7) {
             assert_eq!(*b.counts(), EffectCounts::build(b.position()));
         }
         if depth == 0 {
