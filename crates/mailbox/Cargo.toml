@@ -9,6 +9,17 @@ publish = false
 [lints]
 workspace = true
 
-# 既存のcoreは正しさの照合（perft・合法手の集合）にだけ使う。本体は依存しない
+[features]
+# 戻しを差分ではなく、利きの表の複写で行う（ADR-0241の段階4で比べる）
+copy-undo = []
+
+# 既存のcoreは正しさの照合（perft・生成の列）と段階4の計測にだけ使う。本体は依存しない。
+# himawari-toolsは計測の局面リストの読み込みに使う（boardbenchと同じ局面）
 [dev-dependencies]
 himawari-core = { path = "../core" }
+himawari-tools = { path = "../tools" }
+
+# 段階4のミクロな計測（ADR-0241）。cargo bench -p himawari-mailbox --bench mbbench
+[[bench]]
+name = "mbbench"
+harness = false
