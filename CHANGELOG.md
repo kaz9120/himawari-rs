@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.55.11](https://github.com/kaz9120/himawari-rs/compare/v0.55.10...v0.55.11) (2026-10-17)
+
+
+### その他の変更
+
+* ADR-0233をH0で棄却し、関門と測定の結果を記録する ([#840](https://github.com/kaz9120/himawari-rs/issues/840)) ([60ceb45](https://github.com/kaz9120/himawari-rs/commit/60ceb451893ac31ba8ce4440d05b29804348dc97))
+
 ## [0.55.10](https://github.com/kaz9120/himawari-rs/compare/v0.55.9...v0.55.10) (2026-10-16)
 
 
