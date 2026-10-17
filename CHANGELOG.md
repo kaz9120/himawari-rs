@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.55.12](https://github.com/kaz9120/himawari-rs/compare/v0.55.11...v0.55.12) (2026-10-17)
+
+
+### その他の変更
+
+* 利きの地図で1手詰め・SEE・玉の移動を速くする（ADR-0239の第1段、+2.07% NPS） ([#843](https://github.com/kaz9120/himawari-rs/issues/843)) ([9e202a5](https://github.com/kaz9120/himawari-rs/commit/9e202a560b082129996e7511fa262b41c93225de))
+* 盤面操作だけを測る hmwr bench board を足す（ADR-0239の手順0） ([#842](https://github.com/kaz9120/himawari-rs/issues/842)) ([6e40686](https://github.com/kaz9120/himawari-rs/commit/6e406867b13008753adca9cbcd8f0b5ccee15ab5))
+
 ## [0.55.11](https://github.com/kaz9120/himawari-rs/compare/v0.55.10...v0.55.11) (2026-10-17)
 
 
