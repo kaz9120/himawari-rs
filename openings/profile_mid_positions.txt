@@ -1,0 +1,9 @@
+# 序中盤の計測用の局面（ADR-0240の2回目）。組み込みの4局面は1周が約1秒で、
+# 周ごとの幅が5%を超えたので替えた。start_sfens_ply32.txt（32手目の開始局面）の
+# 1行目から4378行おきに6局面を採った。
+sfen +B1sg1gsnl/2+N2k1b1/pP2pp2p/2p3p2/9/2PpP4/P1+p2PP1P/7R1/LN1GKGSNL w RLs3p 32
+sfen l3k2nl/1r1sg1g2/p1n1ppsp1/2pp2p1p/1p5P1/2PPSPP1P/PPS1P1N2/3G3R1/LN2KG2L w Bb 32
+sfen ln1g1k1nl/1r4gs1/3ppp1p1/p1ps2p2/1p6p/P1PP2P2/1PS1PPN1P/2G3SR1/LN2KG2L w BPb 32
+sfen ln1gk2nl/1r3s1g1/3sp2pp/2pp1pp2/pp7/2PP1P2P/PPS1PSP2/2G4R1/LN2KG1NL w BPb 32
+sfen ln2k2nl/3g2g2/2p1ppsp1/pr1ps1p1p/1p5P1/P1PP1PP1P/1PS1P1N2/2GKGS1R1/LN6L w Bb 32
+sfen ln5nl/1r1sgkg2/p3ppsp1/2pp2p1p/1p5P1/2PP1PP1P/PPS1PS3/2G2G1R1/LN1K3NL w Bb 32
