@@ -93,8 +93,8 @@ impl SearchBoard {
 
     /// 正しい最後の段から今の段まで、1段ずつ複写して差分を当てる。
     /// 途中の段も正しくなるので、兄弟のノードが同じ祖先を使い回せる。
-    #[cold]
-    #[inline(never)]
+    /// `#[cold]` は付けない。付けると下請けの利きの計算がインライン化されなくなり、
+    /// 1回あたりが重くなった（ADR-0240の1回目）。
     fn catch_up(&self) {
         for k in self.valid.get() + 1..=self.ply {
             let prev = &self.plies[k - 1];
