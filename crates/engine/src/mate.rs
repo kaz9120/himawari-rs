@@ -11,7 +11,7 @@
 //! 歩打ちは打ち歩詰めで常に非合法なので候補にしない。
 
 use himawari_core::{
-    Bitboard, Color, Move, MoveList, Piece, PieceType, Position, Rank, Square, attacks,
+    Bitboard, Color, EffectMap, Move, MoveList, Piece, PieceType, Position, Rank, Square, attacks,
     generate_legal,
 };
 
@@ -91,6 +91,80 @@ fn check_cand(us: Color, ksq: Square) -> &'static CheckCand {
         v
     });
     &t[us.index() * 81 + ksq.index()]
+}
+
+/// 升の周り5×5。玉の近傍3×3へ隣から利く駒は、ここに収まる。
+static NEAR5: std::sync::OnceLock<[Bitboard; 81]> = std::sync::OnceLock::new();
+
+#[inline]
+fn near5(sq: Square) -> Bitboard {
+    NEAR5.get_or_init(|| {
+        std::array::from_fn(|i| {
+            let center = Square::from_index(i as u8);
+            let mut b = attacks::king_attacks(center) | Bitboard::from_square(center);
+            for s in b {
+                b |= attacks::king_attacks(s);
+            }
+            b
+        })
+    })[sq.index()]
+}
+
+/// 候補を利きの地図だけで落とすための前計算（ADR-0239の案E）。
+///
+/// 地図は指す前の手番側の利きである。指した後に手番側の利きが増えるのは、
+/// 動かした駒の利きと、移動元が空いて伸びる飛び利きの2つしかない。玉を
+/// 除いて伸びる利きは、指す前に王手がかかっていないので生まれない。
+/// 移動元に飛び利きが当たっている手は地図で決めず、従来の判定へ回す。
+/// ここで落とすのは詰みでないと決まった候補だけなので、返す手は変わらない。
+struct MateMap {
+    map: EffectMap,
+    /// 玉の近傍で、相手の駒がなく手番側の利きもない升（地図で空いている逃げ場）
+    escapes: Bitboard,
+}
+
+impl MateMap {
+    /// 地図を使わない経路が渡す空の値。読まれない
+    const EMPTY: MateMap = MateMap {
+        map: EffectMap {
+            any: Bitboard::EMPTY,
+            multi: Bitboard::EMPTY,
+            slider: Bitboard::EMPTY,
+        },
+        escapes: Bitboard::EMPTY,
+    };
+
+    fn new(pos: &Position, us: Color, ksq: Square) -> MateMap {
+        let map = EffectMap::build_near(pos, us, near5(ksq));
+        let escapes = attacks::king_attacks(ksq) & !pos.color_bb(us.flip()) & !map.any;
+        MateMap { map, escapes }
+    }
+
+    /// 移動元から飛び利きが伸びうるか。伸びうる手は地図で決めない。
+    #[inline]
+    fn opens_line(&self, from_bb: Bitboard) -> bool {
+        !(self.map.slider & from_bb).is_empty()
+    }
+
+    /// 玉の隣のtoへ動かした駒が、玉に取られるか（`opens_line` でない手に限る）。
+    /// 動かす駒はtoへ利いているので、2枚以上でなければほかに守りがない。
+    /// 打つ手は打った駒が数に入っていないので、1枚以上で見る。
+    #[inline]
+    fn king_takes(&self, ksq: Square, to: Square, drop: bool) -> bool {
+        attacks::king_attacks(ksq).test(to)
+            && !(if drop { self.map.any } else { self.map.multi }).test(to)
+    }
+
+    /// 動かした駒の利きで埋まらない逃げ場が残るか（`opens_line` でない手に限る）。
+    /// 駒の利きは玉を除いた移動後の占有で引くので、実際の利きの上位集合である。
+    #[inline]
+    fn escape_left(&self, occ_no_king: Bitboard, to: Square, pc: Piece) -> bool {
+        if self.escapes.is_empty() {
+            return false;
+        }
+        let covered = attacks::attacks(pc, to, occ_no_king) | Bitboard::from_square(to);
+        !(self.escapes & !covered).is_empty()
+    }
 }
 
 /// 手を指した後の盤面で、手番側の駒がsqへ利いている集合。
@@ -229,13 +303,19 @@ fn is_mate_move(pos: &Position, m: Move) -> bool {
 }
 
 /// 駒打ちの詰み候補。合駒不能な近接打ち（玉の隣接＋桂）に限る。
-fn drop_mates(pos: &Position, us: Color, ksq: Square) -> Option<Move> {
+fn drop_mates<const MAP: bool>(
+    pos: &Position,
+    us: Color,
+    ksq: Square,
+    mm: &MateMap,
+) -> Option<Move> {
     let hand = pos.hand(us);
     if hand.is_empty() {
         return None;
     }
     let them = us.flip();
     let empty = !pos.occupied() & Bitboard::ALL;
+    let ksq_bb = Bitboard::from_square(ksq);
     // ptを打ってksqに王手できるマス。逆視点の利きで求める。
     // 飛角は全升占有の利き＝隣接4マスだけを使う（遠打ちは合駒可能）
     for pt in [
@@ -259,8 +339,20 @@ fn drop_mates(pos: &Position, us: Color, ksq: Square) -> Option<Move> {
         } & empty
             & !no_retreat(us, pt);
         for to in targets {
-            if king_captures_to(pos, us, ksq, to, Bitboard::EMPTY) {
-                continue;
+            // 打つ手は移動元がないので、地図だけで決まる。玉に取られるかの
+            // 判定は `king_captures_to` と同じ値になる
+            if !MAP {
+                if king_captures_to(pos, us, ksq, to, Bitboard::EMPTY) {
+                    continue;
+                }
+            } else {
+                if mm.king_takes(ksq, to, true) {
+                    continue;
+                }
+                let occ_no_king = (pos.occupied() | Bitboard::from_square(to)) ^ ksq_bb;
+                if mm.escape_left(occ_no_king, to, Piece::new(us, pt)) {
+                    continue;
+                }
             }
             let m = Move::new_drop(pt, to, us);
             if is_mate_move(pos, m) {
@@ -273,18 +365,15 @@ fn drop_mates(pos: &Position, us: Color, ksq: Square) -> Option<Move> {
 
 /// 盤上の駒の詰み候補。移動先を玉の隣接8マスと桂の王手マスに限る。
 /// 王手になるかの事前判定はせず、検証側に任せる（間接王手も拾える）。
-fn move_mates(pos: &Position, us: Color, ksq: Square) -> Option<Move> {
-    // 玉の近傍へ届かない駒は利きを作らずに捨てる。駒種ごとの候補との積を
-    // 取るので、玉と、届かない駒はここで全部落ちる
-    let cand = check_cand(us, ksq);
-    let mut froms = pos.golds(us) & cand.by_pt[PieceType::GOLD.index()];
-    for pt in PLAIN_MOVERS {
-        froms |= pos.pieces(us, pt) & cand.by_pt[pt.index()];
-    }
-    if froms.is_empty() {
-        return None;
-    }
+fn move_mates<const MAP: bool>(
+    pos: &Position,
+    us: Color,
+    ksq: Square,
+    froms: Bitboard,
+    mm: &MateMap,
+) -> Option<Move> {
     let them = us.flip();
+    let ksq_bb = Bitboard::from_square(ksq);
     let occ = pos.occupied();
     let ours = pos.color_bb(us);
     let near = attacks::king_attacks(ksq) & !ours;
@@ -302,19 +391,28 @@ fn move_mates(pos: &Position, us: Color, ksq: Square) -> Option<Move> {
             };
         // 不成では入れないマス。成りの手は別に作る
         let blocked = no_retreat(us, pt);
+        // 移動元に飛び利きが当たっていなければ、候補を地図で落とせる
+        let by_map = MAP && !mm.opens_line(from_bb);
         for to in targets {
-            if king_captures_to(pos, us, ksq, to, from_bb) {
+            if by_map {
+                if mm.king_takes(ksq, to, false) {
+                    continue;
+                }
+            } else if king_captures_to(pos, us, ksq, to, from_bb) {
                 continue;
             }
+            let occ_no_king = ((occ ^ from_bb) | Bitboard::from_square(to)) ^ ksq_bb;
             if pt.can_promote() && (zone.test(from) || zone.test(to)) {
                 let m = Move::new_move(from, to, true, pc.promote());
-                if is_mate_move(pos, m) {
+                if !(by_map && mm.escape_left(occ_no_king, to, m.piece_after()))
+                    && is_mate_move(pos, m)
+                {
                     return Some(m);
                 }
             }
             if !blocked.test(to) {
                 let m = Move::new_move(from, to, false, pc);
-                if is_mate_move(pos, m) {
+                if !(by_map && mm.escape_left(occ_no_king, to, pc)) && is_mate_move(pos, m) {
                     return Some(m);
                 }
             }
@@ -326,10 +424,44 @@ fn move_mates(pos: &Position, us: Color, ksq: Square) -> Option<Move> {
 /// 1手詰めがあればその手を返す。王手されていない局面で呼ぶこと。
 /// 返した手は詰みであることが保証される（見逃しはあり得る）。
 pub fn mate_1ply(pos: &Position) -> Option<Move> {
+    mate_1ply_impl::<true>(pos)
+}
+
+/// 利きの地図を使わない `mate_1ply`（ADR-0239より前の実装）。返す手が
+/// `mate_1ply` と一致することをテストで確かめるために残す。
+#[doc(hidden)]
+pub fn mate_1ply_without_map(pos: &Position) -> Option<Move> {
+    mate_1ply_impl::<false>(pos)
+}
+
+/// `MAP` が真なら、候補を利きの地図で先に落とす。落とすのは詰みでないと
+/// 決まった候補だけで、残りを調べる順は変えないので、返す手は同じになる。
+#[inline(always)]
+fn mate_1ply_impl<const MAP: bool>(pos: &Position) -> Option<Move> {
     debug_assert!(!pos.in_check());
     let us = pos.side_to_move();
     let ksq = pos.king(us.flip());
-    move_mates(pos, us, ksq).or_else(|| drop_mates(pos, us, ksq))
+    // 玉の近傍へ届かない駒は利きを作らずに捨てる。駒種ごとの候補との積を
+    // 取るので、玉と、届かない駒はここで全部落ちる
+    let cand = check_cand(us, ksq);
+    let mut froms = pos.golds(us) & cand.by_pt[PieceType::GOLD.index()];
+    for pt in PLAIN_MOVERS {
+        froms |= pos.pieces(us, pt) & cand.by_pt[pt.index()];
+    }
+    if froms.is_empty() && pos.hand(us).is_empty() {
+        return None;
+    }
+    let mm = if MAP {
+        MateMap::new(pos, us, ksq)
+    } else {
+        MateMap::EMPTY
+    };
+    if !froms.is_empty()
+        && let Some(m) = move_mates::<MAP>(pos, us, ksq, froms, &mm)
+    {
+        return Some(m);
+    }
+    drop_mates::<MAP>(pos, us, ksq, &mm)
 }
 
 /// テスト用オラクル（案A）: 全合法手から王手を選び、回避不能なら詰み。

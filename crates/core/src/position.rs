@@ -9,6 +9,7 @@ use crate::attacks::{
     aligned, attacks, between, bishop_attacks, king_attacks, lance_attacks, rook_attacks,
 };
 use crate::bitboard::Bitboard;
+use crate::effect::EffectMap;
 use crate::hand::Hand;
 use crate::moves::{Move, Move16, MoveList};
 use crate::piece::{Piece, PieceType};
@@ -152,6 +153,15 @@ struct CheckSquares {
 
 const _: () = assert!(PieceType::NB <= u16::BITS as usize);
 
+/// 1ノード分の、手番でない側の利きの地図の遅延スロット（ADR-0239の案E）。
+///
+/// 維持はしない。SEEと玉の移動の合法性判定が初めて読むときに作る。
+#[derive(Clone, Default, Debug)]
+struct LazyMap {
+    computed: Cell<bool>,
+    map: Cell<EffectMap>,
+}
+
 /// do_moveの巻き戻し材料と差分計算済みの付随情報（ADR-0014）。
 #[derive(Clone, Default, Debug)]
 pub struct StateInfo {
@@ -170,6 +180,8 @@ pub struct StateInfo {
     /// 色別のpin情報（ADR-0151群K）。読み出しは
     /// `Position::blockers_for_king`・`Position::pinners` を通す
     check_info: [CheckInfo; 2],
+    /// 手番でない側の利きの地図。読み出しは `Position::threat_map` を通す
+    threat_map: LazyMap,
     pub continuous_check: [u16; 2],
     pub plies_from_null: u16,
     pub material: i32,
@@ -469,6 +481,26 @@ impl Position {
         ci
     }
 
+    /// 手番でない側の利きの地図（ADR-0239の案E）。初回参照時に作る。
+    ///
+    /// 手番側の駒を取り返せるか、玉の行き先に利いているかを、
+    /// `attackers_to` を引かずに見るために使う。
+    #[inline]
+    pub fn threat_map(&self) -> EffectMap {
+        let slot = &self.state().threat_map;
+        if slot.computed.get() {
+            debug_assert_eq!(
+                slot.map.get(),
+                EffectMap::build(self, self.side.flip()),
+                "遅延キャッシュが盤面と食い違う（無効化漏れ）"
+            );
+        } else {
+            slot.map.set(EffectMap::build(self, self.side.flip()));
+            slot.computed.set(true);
+        }
+        slot.map.get()
+    }
+
     /// 色cの玉への利きを遮っている駒（両色）。初回参照時に計算する。
     #[inline]
     pub fn blockers_for_king(&self, c: Color) -> Bitboard {
@@ -512,6 +544,11 @@ impl Position {
         let from = m.from_sq();
         let to = m.to();
         if m.piece_before().piece_type() == PieceType::KING {
+            // 王手がかかっていなければ、玉を除いて伸びる相手の利きはない。
+            // 行き先が相手の地図にないかだけで決まる（ADR-0239）
+            if !self.in_check() {
+                return !self.threat_map().any.test(to);
+            }
             let occ_without_king = self.occupied() ^ Bitboard::from_square(from);
             return self.attackers_to(them, to, occ_without_king).is_empty();
         }
@@ -682,6 +719,7 @@ impl Position {
             checkers: Bitboard::EMPTY,
             // 未計算の状態で積む（ADR-0151群K）
             check_info: Default::default(),
+            threat_map: Default::default(),
             continuous_check: prev.continuous_check,
             plies_from_null: prev.plies_from_null + 1,
             material: prev.material,
@@ -844,6 +882,7 @@ impl Position {
             checkers: Bitboard::EMPTY,
             // 未計算の状態で積む（ADR-0151群K）
             check_info: Default::default(),
+            threat_map: Default::default(),
             continuous_check: prev.continuous_check,
             plies_from_null: 0,
             material: prev.material,
@@ -1368,6 +1407,12 @@ impl Position {
         }
         swap = placed - swap;
         if swap <= 0 {
+            return true;
+        }
+        // 取り合いなし: 移動先に相手の利きがなく、移動元の奥から相手の飛び
+        // 利きも通らないなら、下のループは1回目で抜けて真を返す（ADR-0239）
+        let threat = self.threat_map();
+        if !threat.any.test(to) && (m.is_drop() || !threat.slider.test(m.from_sq())) {
             return true;
         }
 

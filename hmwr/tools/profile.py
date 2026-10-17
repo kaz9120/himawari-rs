@@ -233,6 +233,9 @@ def report(profile, binary, topn):
 CATEGORIES = [
     ("1手詰め", True, "outer", r"himawari_engine::mate::"),
     ("do_move・undo_move", True, "outer", r"Position>::(do_move|undo_move|do_null_move|undo_null_move)$"),
+    # 都度作る利きの地図（ADR-0239）。SEEと合法性判定の中から作られるので、
+    # それらより先に照合する。1手詰めの中で作る分は1手詰めに入る
+    ("利きの地図", True, "inner", r"(EffectMap>::(build|build_near|add|add_slider)$|Position>::threat_map$)"),
     ("SEE", True, "inner", r"Position>::(see_ge|least_valuable_attacker)$"),
     (
         "王手判定",

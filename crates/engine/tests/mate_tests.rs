@@ -9,7 +9,7 @@
 //! 問わないが、健全性の反例探しにはそれで足りる。
 
 use himawari_core::{Color, Move, MoveList, PieceType, Position, SFEN_STARTPOS, generate_legal};
-use himawari_engine::mate::{mate_1ply, mate_1ply_oracle};
+use himawari_engine::mate::{mate_1ply, mate_1ply_oracle, mate_1ply_without_map};
 
 struct Rng(u64);
 
@@ -65,6 +65,12 @@ fn random_playouts_soundness() {
                 break;
             }
             if !pos.in_check() {
+                assert_eq!(
+                    mate_1ply(&pos),
+                    mate_1ply_without_map(&pos),
+                    "利きの地図で返す手が変わった: {}",
+                    pos.to_sfen()
+                );
                 if let Some(m) = mate_1ply(&pos) {
                     found += 1;
                     verify_is_mate(&mut pos, m);
@@ -248,6 +254,12 @@ fn random_positions_soundness_and_miss_rate() {
         };
         positions += 1;
         let ours = mate_1ply(&pos);
+        assert_eq!(
+            ours,
+            mate_1ply_without_map(&pos),
+            "利きの地図で返す手が変わった: {}",
+            pos.to_sfen()
+        );
         let oracle = mate_1ply_oracle(&mut pos);
         if oracle.is_some() {
             oracle_found += 1;
@@ -294,4 +306,48 @@ fn finds_drop_mates() {
         assert!(m.is_drop(), "駒打ちのはず: {}", m.to_usi());
         verify_is_mate(&mut pos, m);
     }
+}
+
+/// 利きの地図で候補を落としても、返す手が変わらないこと（ADR-0239）。
+/// 実戦の局面から全合法手を1手進めた局面で、地図を使わない実装と比べる。
+/// 移動元に飛び利きが当たる手や、玉の隣で取られる手が多く出る。
+#[test]
+fn effect_map_does_not_change_the_returned_move() {
+    let text = include_str!("../../../openings/actdump_positions.txt");
+    let mut checked = 0u32;
+    let mut mates = 0u32;
+    for line in text.lines().filter(|l| l.starts_with("sfen ")).take(60) {
+        let tokens: Vec<&str> = line.split_whitespace().collect();
+        let mut pos = Position::from_sfen(&tokens[1..5].join(" ")).unwrap();
+        let moves = &tokens[6..];
+        for (ply, usi) in moves.iter().enumerate() {
+            let Some(m) = pos.move_from_usi(usi) else {
+                break;
+            };
+            pos.do_move(m);
+            if ply % 3 != 0 {
+                continue;
+            }
+            let mut list = MoveList::default();
+            generate_legal(&pos, true, &mut list);
+            for &c in list.as_slice() {
+                pos.do_move(c);
+                if !pos.in_check() {
+                    let ours = mate_1ply(&pos);
+                    assert_eq!(
+                        ours,
+                        mate_1ply_without_map(&pos),
+                        "利きの地図で返す手が変わった: {}",
+                        pos.to_sfen()
+                    );
+                    checked += 1;
+                    mates += u32::from(ours.is_some());
+                }
+                pos.undo_move(c);
+            }
+        }
+    }
+    println!("effect_map: checked={checked} mates={mates}");
+    assert!(checked > 100_000, "局面が少なすぎる: {checked}");
+    assert!(mates > 100, "詰みの局面が少なすぎる: {mates}");
 }
