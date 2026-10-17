@@ -158,25 +158,20 @@ impl SearchBoard {
     /// 表から読む（ADR-0239の案B）。
     #[inline(always)]
     pub fn see_ge(&self, m: Move, threshold: i32) -> bool {
-        self.pos.see_ge_by(m, threshold, || {
-            let t = self.counts();
-            let them = self.pos.side_to_move().flip();
-            t.count(them, m.to()) == 0 && (m.is_drop() || t.dirs(them, m.from_sq()) == 0)
-        })
+        // ADR-0240の3回目のn1: 表を持つが読まない（費用の分解用）
+        self.pos.see_ge(m, threshold)
     }
 
     /// `Position::is_legal` と同じ値を返す。玉の行き先を表から読む。
     #[inline(always)]
     pub fn is_legal(&self, m: Move) -> bool {
-        self.pos.is_legal_by(m, |to| {
-            self.counts().count(self.pos.side_to_move().flip(), to) == 0
-        })
+        self.pos.is_legal(m)
     }
 
     /// `mate_1ply` と同じ手を返す。候補を表から読んで落とす。
     #[inline(always)]
     pub fn mate_1ply(&self) -> Option<Move> {
-        crate::mate::mate_1ply_with_counts(&self.pos, self.counts())
+        crate::mate::mate_1ply(&self.pos)
     }
 
     /// null moveで1手進める。盤面が変わらないので表はそのまま使う。
