@@ -134,6 +134,70 @@ pub const DIR_OF_DELTA: [u8; 25] = {
     t
 };
 
+/// 盤上の升aから升bへ向かう方向。同じ筋・段・斜めの線に無ければNone。
+#[inline]
+pub fn dir_between(a: u8, b: u8) -> Option<usize> {
+    let df = file_of(b) as i32 - file_of(a) as i32;
+    let dr = rank_of(b) as i32 - rank_of(a) as i32;
+    match (df.signum(), dr.signum()) {
+        (0, 0) => None,
+        (0, -1) => Some(UP),
+        (0, 1) => Some(DOWN),
+        (1, 0) => Some(LEFT),
+        (-1, 0) => Some(RIGHT),
+        _ if df.abs() != dr.abs() => None,
+        (1, -1) => Some(UL),
+        (-1, 1) => Some(DR),
+        (-1, -1) => Some(UR),
+        _ => Some(DL),
+    }
+}
+
+// --- 81升の集合 ---
+// 升の集合はcoreのBitboardと同じく、bit i = 81升の通し番号iのu128で持つ。
+// 利きの計算には使わない。空き升の列挙と、生成の順をcoreに揃えるための並べ替えに使う。
+
+/// 81升すべて。
+pub const ALL81: u128 = (1u128 << 81) - 1;
+
+/// 段rの升の集合。
+pub const fn rank_mask(r: u8) -> u128 {
+    let mut m = 0u128;
+    let mut f = 0;
+    while f < 9 {
+        m |= 1u128 << (f * 9 + r);
+        f += 1;
+    }
+    m
+}
+
+/// 筋fの升の集合。
+pub const fn file_mask(f: u8) -> u128 {
+    0x1FFu128 << (f * 9)
+}
+
+/// 升の添字の、81升の集合のビット。
+#[inline]
+pub const fn bit81(i: u8) -> u128 {
+    1u128 << SQ81[i as usize]
+}
+
+/// 81升の集合を小さい番号から順に、升の添字で回す。
+#[inline]
+pub fn for_each81(mut m: u128, mut f: impl FnMut(u8)) {
+    let mut lo = m as u64;
+    while lo != 0 {
+        f(IDX81[lo.trailing_zeros() as usize]);
+        lo &= lo - 1;
+    }
+    m >>= 64;
+    let mut hi = m as u64;
+    while hi != 0 {
+        f(IDX81[64 + hi.trailing_zeros() as usize]);
+        hi &= hi - 1;
+    }
+}
+
 // --- 駒 ---
 // 駒の符号はcoreと同じOSL配列（ADR-0009）。成駒2〜7、生駒8〜15、後手は+16。
 
@@ -154,8 +218,11 @@ pub const SILVER: u8 = 13;
 pub const BISHOP: u8 = 14;
 pub const ROOK: u8 = 15;
 
-/// 手駒の駒種（生成の順）。
+/// 手駒の駒種（SFENの表記の順）。
 pub const HAND_KINDS: [u8; 7] = [ROOK, BISHOP, GOLD, SILVER, KNIGHT, LANCE, PAWN];
+
+/// 駒打ちを生成する駒種の順。coreの `PieceType::HAND_KINDS` と同じ。
+pub const DROP_KINDS: [u8; 7] = [GOLD, PAWN, LANCE, KNIGHT, SILVER, BISHOP, ROOK];
 
 #[inline]
 pub const fn make_piece(c: Color, pt: u8) -> u8 {

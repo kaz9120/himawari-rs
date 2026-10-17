@@ -11,6 +11,6 @@ pub mod moves;
 pub mod position;
 
 pub use board::{Color, SFEN_STARTPOS};
-pub use movegen::{MoveList, perft};
+pub use movegen::{GenType, MoveList, perft};
 pub use moves::Move;
 pub use position::Position;

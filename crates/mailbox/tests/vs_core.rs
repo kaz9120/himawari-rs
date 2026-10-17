@@ -1,12 +1,15 @@
 //! 配列盤の試作を、既存のcore（Bitboard）と突き合わせる（ADR-0241の段階3）。
 //!
 //! - SFENの往復がcoreの出力と一致する
-//! - perft木の全ノードで、合法手の集合がcoreと一致し、利きの配列が全計算と一致する
+//! - perft木の全ノードで、合法手の列が順まで含めてcoreと一致し、利きの配列が全計算と一致する。
+//!   列は `generate_legal`（all の両方）と、Captures・Quiets（coreの擬似合法手を `is_legal` で濾した列）
 //! - ランダムな対局の全手で同じ検査をする（終盤・駒打ち・王手の多い局面まで届かせる）
 //! - perftの数がcoreと一致する（深い方は `--ignored` で走らせる）
 
-use himawari_core::{MoveList as CoreList, Position as CorePos, generate_legal};
-use himawari_mailbox::{MoveList, Position, SFEN_STARTPOS, perft};
+use himawari_core::{
+    GenType as CoreGen, MoveList as CoreList, Position as CorePos, generate, generate_legal,
+};
+use himawari_mailbox::{GenType, MoveList, Position, SFEN_STARTPOS, perft};
 
 /// coreの統合テスト（generate_legal_matches_filtered_pseudo）と同じ6局面。
 const CASES: [&str; 6] = [
@@ -19,7 +22,7 @@ const CASES: [&str; 6] = [
 ];
 
 /// 王手・ピン・打ち歩詰めの周りを狙った局面。
-const EXTRA: [&str; 6] = [
+const EXTRA: [&str; 9] = [
     // 打ち歩詰め（1一玉。1二の歩を2三の銀が支え、2一・2二は3二の金が押さえる）
     "8k/6G2/7S1/9/9/9/9/9/K8 b P 1",
     // 歩を打つと王手だが、玉が取れるので打ち歩詰めではない
@@ -32,49 +35,78 @@ const EXTRA: [&str; 6] = [
     "4k4/9/9/9/9/9/9/9/K3R4 w gsnlp 1",
     // 玉の背後の利き（玉が飛の線に沿って逃げられない）
     "9/9/9/4k4/9/9/9/4R4/K8 w - 1",
+    // 同じ筋に香と飛が並ぶ（香が滑ると、後ろの飛の利きが香の後ろを延びる）
+    "5k3/9/9/9/4L4/9/9/9/K3R4 b - 1",
+    // 打ち歩詰め。歩を取れる2二の金が、4四の角にピンされている
+    "8k/6Gg1/9/5B1N1/9/9/9/9/K8 b P 1",
+    // 歩打ちが9二の飛の横利きを遮り、4二へ逃げ道ができるので打ち歩詰めではない
+    "4k4/R8/2N3N2/5N3/9/9/9/9/K8 b P 1",
 ];
 
 fn core_moves(pos: &CorePos) -> Vec<String> {
     let mut list = CoreList::default();
     generate_legal(pos, true, &mut list);
-    let mut v: Vec<String> = list.as_slice().iter().map(|m| m.to_usi()).collect();
-    v.sort();
-    v
+    list.as_slice().iter().map(|m| m.to_usi()).collect()
 }
 
-fn mb_moves(pos: &mut Position) -> Vec<String> {
+/// coreの生成の列。Noneならgenerate_legal、Someならその分類の擬似合法手を合法手で濾した列。
+fn core_seq(pos: &CorePos, gt: Option<CoreGen>, all: bool) -> Vec<String> {
+    let mut list = CoreList::default();
+    match gt {
+        None => generate_legal(pos, all, &mut list),
+        Some(g) => {
+            let mut pseudo = CoreList::default();
+            generate(pos, g, all, &mut pseudo);
+            for &m in pseudo.as_slice() {
+                if pos.is_legal(m) {
+                    list.push(m);
+                }
+            }
+        }
+    }
+    list.as_slice().iter().map(|m| m.to_usi()).collect()
+}
+
+fn mb_seq(pos: &mut Position, gt: Option<GenType>, all: bool) -> Vec<String> {
     let mut list = MoveList::default();
-    pos.generate_legal(&mut list);
-    let mut v: Vec<String> = list.as_slice().iter().map(|m| m.to_usi()).collect();
-    v.sort();
-    let n = v.len();
-    v.dedup();
-    assert_eq!(n, v.len(), "同じ手を2回出した: {}", pos.to_sfen());
-    v
+    match gt {
+        None => pos.generate_legal(all, &mut list),
+        Some(g) => pos.generate(g, all, &mut list),
+    }
+    list.as_slice().iter().map(|m| m.to_usi()).collect()
 }
 
-/// 1ノードの検査。SFEN・合法手の集合・利きの配列。
+/// 1ノードの検査。SFEN・利きの配列・合法手の列（順まで）。
 fn check_node(core: &CorePos, mb: &mut Position) {
     assert_eq!(mb.to_sfen(), core.to_sfen());
     if let Err(e) = mb.check_consistency() {
         panic!("{e}: {}", mb.to_sfen());
     }
     assert_eq!(mb.in_check(), core.in_check(), "{}", core.to_sfen());
-    let a = core_moves(core);
-    let b = mb_moves(mb);
-    if a != b {
-        let missing: Vec<_> = a.iter().filter(|m| !b.contains(m)).collect();
-        let extra: Vec<_> = b.iter().filter(|m| !a.contains(m)).collect();
-        panic!(
-            "合法手の不一致 {}\n  足りない: {missing:?}\n  余分: {extra:?}",
-            core.to_sfen()
-        );
+    let mut kinds = vec![(None, None)];
+    if !core.in_check() {
+        kinds.push((Some(CoreGen::Captures), Some(GenType::Captures)));
+        kinds.push((Some(CoreGen::Quiets), Some(GenType::Quiets)));
+    }
+    for (cg, mg) in kinds {
+        for all in [true, false] {
+            let a = core_seq(core, cg, all);
+            let b = mb_seq(mb, mg, all);
+            if a != b {
+                let missing: Vec<_> = a.iter().filter(|m| !b.contains(m)).collect();
+                let extra: Vec<_> = b.iter().filter(|m| !a.contains(m)).collect();
+                panic!(
+                    "生成の列の不一致（{mg:?}, all={all}） {}\n  足りない: {missing:?}\n  余分: {extra:?}\n  core: {a:?}\n  配列盤: {b:?}",
+                    core.to_sfen()
+                );
+            }
+        }
     }
 }
 
 fn find(mb: &mut Position, usi: &str) -> himawari_mailbox::Move {
     let mut list = MoveList::default();
-    mb.generate_legal(&mut list);
+    mb.generate_legal(true, &mut list);
     *list
         .as_slice()
         .iter()
@@ -218,11 +250,16 @@ fn perft_matches_core_deep() {
 /// 打ち歩詰めの規則。詰む歩打ちは出さず、詰まない歩打ちは出す。
 #[test]
 fn pawn_drop_mate_rule() {
+    let mut pinned = Position::from_sfen(EXTRA[7]).unwrap();
+    assert!(!mb_seq(&mut pinned, None, true).contains(&"P*1b".to_string()));
+    let mut blocked = Position::from_sfen(EXTRA[8]).unwrap();
+    assert!(mb_seq(&mut blocked, None, true).contains(&"P*5b".to_string()));
     let mut mate = Position::from_sfen(EXTRA[0]).unwrap();
-    assert!(!mb_moves(&mut mate).contains(&"P*1b".to_string()));
-    assert!(mb_moves(&mut mate).contains(&"P*1c".to_string()));
+    let moves = mb_seq(&mut mate, None, true);
+    assert!(!moves.contains(&"P*1b".to_string()));
+    assert!(moves.contains(&"P*1c".to_string()));
     let mut not_mate = Position::from_sfen(EXTRA[1]).unwrap();
-    assert!(mb_moves(&mut not_mate).contains(&"P*1b".to_string()));
+    assert!(mb_seq(&mut not_mate, None, true).contains(&"P*1b".to_string()));
 }
 
 #[test]
