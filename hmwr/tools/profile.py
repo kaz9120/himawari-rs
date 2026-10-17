@@ -7,7 +7,9 @@ atos を使うため、macOS上でしか行番号は出ない。
 
 `--categories` を付けると、探索時間を処理の種類ごとに分けた表を出す
 （ADR-0230）。インライン展開された関数まで呼び出し連鎖を復元して数えるので、
-self時間の表では呼び出し元へ溶けて見えない処理も拾える。
+self時間の表では呼び出し元へ溶けて見えない処理も拾える。表の後に、分類の
+規則に当たらない関数のうち割合の大きいものを挙げる。関数が増えたときに、
+その時間が別の種類へ黙って数えられるのを見つけるためである。
 
 終了コード: 0=成功、2=引数エラー、3=実行時エラー（ADR-0122）。
 """
@@ -238,12 +240,17 @@ CATEGORIES = [
     ("利きの表: 複写", True, "inner", r"EffectCounts>::copy_from$"),
     ("利きの表: 飛び利きの伸縮", True, "inner", r"EffectCounts>::(extend|cut)$"),
     ("利きの表: 短い利き", True, "inner", r"(EffectCounts>::(add_piece|remove_piece)$|effect_count::short_attacks$)"),
-    ("利きの表: 差分のその他", True, "inner", r"(EffectCounts>::\w+$|EffectTable>::\w+$)"),
-    ("利きの表: 段の管理", True, "inner", r"SearchBoard>::(do_move|undo_move|do_null_move|undo_null_move)$"),
+    ("利きの表: 差分のその他", True, "inner", r"EffectCounts>::\w+$"),
+    ("利きの表: 段の管理", True, "inner", r"SearchBoard>::(do_move|undo_move|do_null_move|undo_null_move|catch_up)$"),
     # 都度作る利きの地図（ADR-0239）。SEEと合法性判定の中から作られるので、
     # それらより先に照合する。1手詰めの中で作る分は1手詰めに入る
     ("利きの地図", True, "inner", r"(EffectMap>::(build|build_near|add|add_slider)$|Position>::threat_map$)"),
-    ("SEE", True, "inner", r"Position>::(see_ge|see_ge_by|see_ge_with|least_valuable_attacker)$"),
+    # 維持する利きの表（ADR-0148・ADR-0232）。試作では探索のワーカーが
+    # make_move・unmake_move で更新するので、do_move・undo_move の外側の
+    # 優先には当たらない。Position の中から更新する形へ変えると、
+    # do_move・undo_move へ数えられる
+    ("利きの表の維持", True, "inner", r"EffectTable>::(update|rebuild)$"),
+    ("SEE", True, "inner", r"Position>::(see_ge|least_valuable_attacker)(_with|_by)?$"),
     (
         "王手判定",
         True,
@@ -251,7 +258,12 @@ CATEGORIES = [
         r"Position>::(gives_check|gives_direct_check_slow|check_squares|compute_check_squares"
         r"|check_info|slider_blockers|blockers_for_king|pinners|update_checkers)$",
     ),
-    ("合法性判定", True, "inner", r"Position>::(is_legal|is_legal_by|pseudo_legal|is_pawn_drop_mate|to_move)$"),
+    (
+        "合法性判定",
+        True,
+        "inner",
+        r"Position>::(is_legal|pseudo_legal|is_pawn_drop_mate|to_move)(_with|_by)?$",
+    ),
     ("指し手生成", True, "inner", r"himawari_core::movegen::"),
     ("利きの計算（上記の外から）", True, "fallback", r"(Position>::attackers_to$|himawari_core::attacks::)"),
     ("千日手・宣言勝ち", False, "inner", r"Position>::(scan_repetition|repetition_state\w*|can_declare_win)$"),
@@ -269,6 +281,11 @@ CATEGORIES = [
 OTHER = "探索のその他"
 # このいずれかを連鎖に含むサンプルだけを探索時間として数える
 SEARCH_FRAME = re.compile(r"himawari_engine::search::Worker>::")
+# 規則に当たらない関数を挙げる対象。自前のクレートに限る
+OWN_CODE = re.compile(r"himawari_(core|engine)::")
+# 挙げる下限（探索時間に占める割合）と件数
+UNKNOWN_MIN_RATIO = 0.01
+UNKNOWN_TOP = 5
 _COMPILED = [(name, board, kind, re.compile(pat)) for name, board, kind, pat in CATEGORIES]
 
 
@@ -278,18 +295,55 @@ def clean_name(name):
     return re.sub(r"::h[0-9a-f]{16}$", "", name)
 
 
-def classify(chain):
-    """論理フレームの連鎖（葉が先頭）を種類の名前へ落とす。"""
-    names = [clean_name(n) for n in chain]
+def classify_at(names):
+    """名前の連鎖（葉が先頭、clean_name済み）を種類と決め手の添字へ落とす。
+
+    添字は、その種類を決めたフレームの位置である。種類に当たらなければ
+    (OTHER, None) を返す。外側優先の種類は、連鎖の中で最も外側の一致を
+    決め手とする。その内側が、その種類の中で費やした時間に当たる。
+    """
     for kind in ("outer", "inner", "fallback"):
         rules = [(name, pat) for name, _, k, pat in _COMPILED if k == kind]
         if kind == "outer":
-            hit = next((name for name, pat in rules if any(pat.search(n) for n in names)), None)
+            for name, pat in rules:
+                hits = [i for i, n in enumerate(names) if pat.search(n)]
+                if hits:
+                    return name, max(hits)
         else:
-            hit = next((name for n in names for name, pat in rules if pat.search(n)), None)
-        if hit:
-            return hit
-    return OTHER
+            for i, n in enumerate(names):
+                for name, pat in rules:
+                    if pat.search(n):
+                        return name, i
+    return OTHER, None
+
+
+def classify(chain):
+    """論理フレームの連鎖（葉が先頭）を種類の名前へ落とす。"""
+    return classify_at([clean_name(n) for n in chain])[0]
+
+
+def unknown_names(names, index):
+    """決め手のフレームより内側で、どの規則にも当たらない自前の関数を返す。
+
+    分類器が知らない関数を見つけるための目印である。関数が増えたとき、
+    その時間は別の種類へ黙って数えられる。ADR-0232の計測では `see_ge_with`
+    がSEEではなく指し手の順序付けへ、`EffectTable::update` が探索のその他へ
+    入っていた。種類が妥当かは連鎖だけでは決まらないので、判断の材料として
+    挙げるだけにする。
+    """
+    if index is None:
+        # 種類に当たらないサンプルは、探索のフレームより内側だけを見る。
+        # 根の側にはUSIの入口やランタイムが並ぶ
+        index = next((i for i, n in enumerate(names) if SEARCH_FRAME.search(n)), len(names))
+    out = []
+    for n in names[:index]:
+        if not OWN_CODE.search(n) or SEARCH_FRAME.search(n):
+            continue
+        if any(pat.search(n) for _, _, _, pat in _COMPILED):
+            continue
+        if n not in out:
+            out.append(n)
+    return out
 
 
 def demangle(names):
@@ -392,6 +446,8 @@ def category_report(data, binary):
     counts = defaultdict(int)
     total = 0
     in_helper = defaultdict(int)
+    # (規則に当たらない関数, 数えられた種類) -> サンプル数
+    unknown = defaultdict(int)
     memo = {}
     for frames, w in per_thread:
         key = id(frames)
@@ -401,16 +457,19 @@ def category_report(data, binary):
                 chain.extend(chains.get(v, [f"0x{v:x}"]) if kind == "own" else [v])
             if any(SEARCH_FRAME.search(n) for n in chain):
                 names = [clean_name(n) for n in chain]
-                memo[key] = (classify(chain), any(helper.search(n) for n in names))
+                cat, at = classify_at(names)
+                memo[key] = (cat, any(helper.search(n) for n in names), unknown_names(names, at))
             else:
                 memo[key] = None
         if memo[key] is None:
             continue
-        cat, uses_helper = memo[key]
+        cat, uses_helper, unknown_here = memo[key]
         counts[cat] += w
         total += w
         if uses_helper:
             in_helper[cat] += w
+        for name in unknown_here:
+            unknown[(name, cat)] += w
     if total == 0:
         print("（探索中のサンプルがない）")
         return
@@ -435,6 +494,23 @@ def category_report(data, binary):
         f"| 盤面操作の合計 | ○ | {board_total * 100 / total:.1f}% "
         f"| {board_helper * 100 / total:.1f}% |"
     )
+    print()
+    unknown_report(unknown, total)
+
+
+def unknown_report(unknown, total):
+    """分類の規則に当たらない関数のうち、割合の大きいものを挙げる。"""
+    hot = [(k, v) for k, v in unknown.items() if v >= total * UNKNOWN_MIN_RATIO]
+    hot.sort(key=lambda x: -x[1])
+    if not hot:
+        print(f"（分類の規則に当たらない関数は、探索時間の{UNKNOWN_MIN_RATIO:.0%}以上にない）")
+        return
+    print(f"--- 分類の規則に当たらない関数（探索時間の{UNKNOWN_MIN_RATIO:.0%}以上） ---")
+    print("| 関数 | 割合 | 数えられた種類 |")
+    print("|---|---|---|")
+    for (name, cat), v in hot[:UNKNOWN_TOP]:
+        print(f"| `{name}` | {v * 100 / total:.1f}% | {cat} |")
+    print("数えられた種類が妥当か確かめ、違えばCATEGORIES（hmwr/tools/profile.py）へ足す。")
 
 
 def main(argv=None):

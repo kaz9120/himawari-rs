@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.55.13](https://github.com/kaz9120/himawari-rs/compare/v0.55.12...v0.55.13) (2026-10-17)
+
+
+### その他の変更
+
+* profile report --categories に利きの表の維持と規則の漏れの一覧を足す ([#846](https://github.com/kaz9120/himawari-rs/issues/846)) ([b0f3121](https://github.com/kaz9120/himawari-rs/commit/b0f312136766f2a5b013dd7f2a512596e2f0e4a8)), closes [#837](https://github.com/kaz9120/himawari-rs/issues/837)
+
 ## [0.55.12](https://github.com/kaz9120/himawari-rs/compare/v0.55.11...v0.55.12) (2026-10-17)
 
 
