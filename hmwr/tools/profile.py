@@ -233,10 +233,17 @@ def report(profile, binary, topn):
 CATEGORIES = [
     ("1手詰め", True, "outer", r"himawari_engine::mate::"),
     ("do_move・undo_move", True, "outer", r"Position>::(do_move|undo_move|do_null_move|undo_null_move)$"),
+    # 維持する利きの表（ADR-0232の位置の表、ADR-0239・ADR-0240のバイト表）。
+    # 内訳を分けるため、葉に近い関数から照合する
+    ("利きの表: 複写", True, "inner", r"EffectCounts>::copy_from$"),
+    ("利きの表: 飛び利きの伸縮", True, "inner", r"EffectCounts>::(extend|cut)$"),
+    ("利きの表: 短い利き", True, "inner", r"(EffectCounts>::(add_piece|remove_piece)$|effect_count::short_attacks$)"),
+    ("利きの表: 差分のその他", True, "inner", r"(EffectCounts>::\w+$|EffectTable>::\w+$)"),
+    ("利きの表: 段の管理", True, "inner", r"SearchBoard>::(do_move|undo_move|do_null_move|undo_null_move)$"),
     # 都度作る利きの地図（ADR-0239）。SEEと合法性判定の中から作られるので、
     # それらより先に照合する。1手詰めの中で作る分は1手詰めに入る
     ("利きの地図", True, "inner", r"(EffectMap>::(build|build_near|add|add_slider)$|Position>::threat_map$)"),
-    ("SEE", True, "inner", r"Position>::(see_ge|least_valuable_attacker)$"),
+    ("SEE", True, "inner", r"Position>::(see_ge|see_ge_by|see_ge_with|least_valuable_attacker)$"),
     (
         "王手判定",
         True,
@@ -244,7 +251,7 @@ CATEGORIES = [
         r"Position>::(gives_check|gives_direct_check_slow|check_squares|compute_check_squares"
         r"|check_info|slider_blockers|blockers_for_king|pinners|update_checkers)$",
     ),
-    ("合法性判定", True, "inner", r"Position>::(is_legal|pseudo_legal|is_pawn_drop_mate|to_move)$"),
+    ("合法性判定", True, "inner", r"Position>::(is_legal|is_legal_by|pseudo_legal|is_pawn_drop_mate|to_move)$"),
     ("指し手生成", True, "inner", r"himawari_core::movegen::"),
     ("利きの計算（上記の外から）", True, "fallback", r"(Position>::attackers_to$|himawari_core::attacks::)"),
     ("千日手・宣言勝ち", False, "inner", r"Position>::(scan_repetition|repetition_state\w*|can_declare_win)$"),

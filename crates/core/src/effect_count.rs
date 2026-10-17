@@ -197,11 +197,11 @@ impl EffectCounts {
         }
     }
 
-    /// 1手ぶん進めた盤面へ追従する。`pos` は `do_move` を終えた局面、
-    /// `captured` は取られた駒（なければ空）、`occ_before` は指す前の占有である。
-    pub fn update(&mut self, pos: &Position, m: Move, captured: Piece, occ_before: Bitboard) {
+    /// 1手ぶん進めた盤面へ追従する。`captured` は取られた駒（なければ空）、
+    /// `occ_before`・`occ_after` は指す前と指した後の占有である。局面そのものは
+    /// 読まないので、手と占有を積んでおけば後から当てられる（ADR-0240の遅延更新）。
+    pub fn update(&mut self, m: Move, captured: Piece, occ_before: Bitboard, occ_after: Bitboard) {
         let to = m.to();
-        let occ_after = pos.occupied();
         if !m.is_drop() {
             self.remove_piece(m.piece_before(), m.from_sq(), occ_before);
         }
@@ -273,7 +273,7 @@ mod tests {
             };
             pos.do_move(m);
             let mut next = *t;
-            next.update(pos, m, captured, occ);
+            next.update(m, captured, occ, pos.occupied());
             assert_eq!(
                 next,
                 EffectCounts::build(pos),
