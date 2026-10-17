@@ -1,6 +1,6 @@
 # 0148: 盤面の利きを差分で持つ
 
-- Status: proposed（再開。試作は[0232](0232-effect-table-prototype.md)から[0239](0239-effect-options.md)が引き継ぐ）
+- Status: rejected（探索で利きを維持する案は[0239](0239-effect-options.md)の案Bで測って棄却した。利きの地図を都度作る案Eはmainへ入った）
 - Date: 2026-08-08
 - 関連ADR: [0018](0018-sfen-perft.md), [0035](0035-nnue-accumulator.md), [0093](0093-mate1ply-in-search.md), [0124](0124-hot-path-allocs.md), [0133](0133-effect-pretraining.md), [0139](0139-mate1ply-in-search-retry.md), [0147](0147-effect-bucket-features.md)
 
