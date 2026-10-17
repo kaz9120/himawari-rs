@@ -660,6 +660,17 @@ impl Worker {
         self.evaluator.push(&self.pos);
     }
 
+    /// 静止探索の `make_move`。利き数の表の差分を進めた直後に当てる（ADR-0240の3回目のq1）。
+    /// 静止探索のノードは置換表に当たらなければ1手詰めで表を読む。読む入口で追いつくと、
+    /// その結果をすぐ読むので差分の計算が隠れない。進めた直後に当て、評価関数の差分の
+    /// 準備と重ねる。
+    #[inline(always)]
+    fn make_move_eager(&mut self, m: Move) {
+        self.pos.do_move(m);
+        self.pos.catch_up_now();
+        self.evaluator.push(&self.pos);
+    }
+
     /// `make_move` を戻す。進めたのと逆の順で戻す。
     #[inline(always)]
     fn unmake_move(&mut self, m: Move) {
@@ -2877,10 +2888,10 @@ impl Worker {
             // 置換表にヒットしたときはすでに調べたはずなので、ミスのときだけ
             // 呼ぶ。王手中も呼ばない。評価関数の呼び出しより手前に置くので、
             // 詰みがあるときはevaluate()を省ける。
-            // 静止探索は利き数の表を読まず、1手詰め・SEE・玉の移動を都度作る
-            // 地図で解く。表の追いつきを通常探索のノードに限るためである（ADR-0240の2回目）
+            // 静止探索も利き数の表から1手詰め・SEE・玉の移動を解く。表は手を進めた直後に
+            // 先行して当てておき、ここで待たされないようにする（ADR-0240の3回目のq1）
             if tt_hit.is_none()
-                && let Some(m) = crate::mate::mate_1ply(self.pos.position())
+                && let Some(m) = self.pos.mate_1ply()
             {
                 // 次のノードで（指し手がなくなって）詰むという解釈
                 let mate = mate_in(ply + 1);
@@ -2975,7 +2986,7 @@ impl Worker {
             let mut count = 0u32;
             let mut best_move = Move::NONE;
             while let Some(m) = picker.next(&self.pos, &self.hist, &cont) {
-                if !self.pos.position().is_legal(m) {
+                if !self.pos.is_legal(m) {
                     continue;
                 }
                 count += 1;
@@ -3014,7 +3025,7 @@ impl Worker {
                             }
                             continue;
                         }
-                        if !self.pos.position().see_ge(m, alpha - futility_base) {
+                        if !self.pos.see_ge(m, alpha - futility_base) {
                             if raise {
                                 best = best.max(alpha.min(futility_base));
                             }
@@ -3028,13 +3039,13 @@ impl Worker {
                     }
                     // SEEが十分悪い手は探索しない（yaneuraou-search.cpp:4989-4990）。
                     // 無駄な王手ラッシュを抑える。歩損は許す下限である
-                    if !self.pos.position().see_ge(m, QS_SEE_MARGIN()) {
+                    if !self.pos.see_ge(m, QS_SEE_MARGIN()) {
                         continue;
                     }
                 }
 
                 self.set_current_move(ply, m, capture);
-                self.make_move(m);
+                self.make_move_eager(m);
                 let value = -self.qsearch::<PV>(-beta, -alpha, ply + 1);
                 self.unmake_move(m);
                 if self.stopped() {

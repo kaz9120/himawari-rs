@@ -92,6 +92,15 @@ impl SearchBoard {
         unsafe { &*self.plies.get_unchecked(self.ply).counts.get() }
     }
 
+    /// 今の段の表を、まだ当てていなければいま当てる。読む前に先行して
+    /// 当てておきたい場所（静止探索の進めの直後）から呼ぶ（ADR-0240の3回目のq1）。
+    #[inline(always)]
+    pub fn catch_up_now(&self) {
+        if self.valid.get() < self.ply {
+            self.catch_up();
+        }
+    }
+
     /// 正しい最後の段から今の段まで、1段ずつ複写して差分を当てる。
     /// 途中の段も正しくなるので、兄弟のノードが同じ祖先を使い回せる。
     #[cold]
