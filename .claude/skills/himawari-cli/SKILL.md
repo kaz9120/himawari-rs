@@ -471,7 +471,9 @@ hmwr league summary <棋譜>           相対Eloを集計する
 
 `--categories` は、インライン展開まで遡った呼び出し連鎖で探索時間を分ける
 （ADR-0230）。盤面操作・NNUE・指し手の順序付けの割合が出る。バイナリは
-`CARGO_PROFILE_RELEASE_DEBUG=1` でビルドしたものを渡す。
+`CARGO_PROFILE_RELEASE_DEBUG=1` でビルドしたものを渡す。表の後に、分類の規則に
+当たらない関数のうち探索時間の1%以上を占めるものが出る。関数が増えたときは、
+そこを見て `CATEGORIES` へ足す。
 
 ### CIを待つ
 
