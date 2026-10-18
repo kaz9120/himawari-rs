@@ -13,7 +13,7 @@ use himawari_core::{Bitboard, Color, DirtyPiece, PieceType, Position, Square, bo
 
 use crate::nnue::{
     CONCAT, EFF_BASE, EFF_OUT, EffectLevels, FT_OUT, FtWeight, HALF, NnueNetwork, effect_code,
-    effect_code_index, effect_row, effect_row_add, effect_row_swap,
+    effect_code_index, effect_row, effect_row_add16, effect_row_swap16,
 };
 use crate::nnue_simd;
 use crate::value::{MAX_PLY, Value};
@@ -62,11 +62,12 @@ impl AccEntry {
 /// 利きの段（ADR-0237のD2）。`EFF_OUT` が0の構成では確保しない。
 ///
 /// 祖先と比べるために、段階の集合と升ごとの語（`effect_code`）を持つ。
-/// accはi32で持つ。全計算（D3）もi32で足すので、桁あふれの扱いまで一致する。
+/// accはi16で持ち、巡回加算で足す。読み込み時に `effect_acc_bound` がi16に
+/// 収まることを確かめてあるので、i32で足す全計算（D3）と一致する。
 #[derive(Clone)]
 struct EffEntry {
     /// 絶対色ごとの利きのaccumulator。
-    acc: [[i32; EFF_OUT]; 2],
+    acc: [[i16; EFF_OUT]; 2],
     /// 升ごとの中身と段階（`effect_code`）。
     codes: [u16; 81],
     levels: EffectLevels,
@@ -228,7 +229,7 @@ impl NnueState {
             let e = &self.eff[self.top];
             for (k, c) in [(0usize, stm), (1, stm.flip())] {
                 let at = EFF_BASE + k * EFF_OUT;
-                crate::nnue::effect_clip(&e.acc[c.index()], &mut concat[at..at + EFF_OUT]);
+                crate::nnue::effect_clip16(&e.acc[c.index()], &mut concat[at..at + EFF_OUT]);
             }
             if cfg!(any(test, debug_assertions)) {
                 self.check_effect(net, pos);
@@ -288,7 +289,7 @@ impl NnueState {
                     e.codes[sq.index()] = new;
                     for c in [Color::Black, Color::White] {
                         let acc = &mut e.acc[c.index()];
-                        effect_row_swap(
+                        effect_row_swap16(
                             acc,
                             effect_row(net, effect_code_index(c, sq, old)),
                             effect_row(net, effect_code_index(c, sq, new)),
@@ -299,16 +300,14 @@ impl NnueState {
             _ => {
                 let e = &mut self.eff[top];
                 for c in [Color::Black, Color::White] {
-                    for (a, &b) in e.acc[c.index()].iter_mut().zip(&net.eff_b) {
-                        *a = i32::from(b);
-                    }
+                    e.acc[c.index()].copy_from_slice(&net.eff_b[..EFF_OUT]);
                 }
                 for i in 0..81u8 {
                     let sq = Square::from_index(i);
                     let code = effect_code(pos, &levels, sq);
                     e.codes[sq.index()] = code;
                     for c in [Color::Black, Color::White] {
-                        effect_row_add(
+                        effect_row_add16(
                             &mut e.acc[c.index()],
                             effect_row(net, effect_code_index(c, sq, code)),
                         );
@@ -347,7 +346,7 @@ impl NnueState {
             crate::nnue::effect_active(pos, c, &counts, &mut feats);
             let full = crate::nnue::effect_accumulate(net, &feats);
             assert_eq!(
-                e.acc[c.index()],
+                e.acc[c.index()].map(i32::from),
                 full,
                 "利きのaccが全計算と食い違う: 視点{c:?} {}",
                 pos.to_sfen()

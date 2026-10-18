@@ -404,6 +404,32 @@ pub fn effect_accumulate(net: &NnueNetwork, features: &[u32; 81]) -> [i32; EFF_O
     acc
 }
 
+/// 利きのaccumulatorが取りうる値の上限（絶対値）を、重みから見積もる。
+///
+/// 出力ごとに、バイアスと升ごとの重みの最大の絶対値を足す。1升に立つ特徴は
+/// 1つなので、どの局面でもaccの絶対値はこれを超えない。i16に収まれば、
+/// 差分の経路（D2）をi16の巡回加算で持っても、i32で足す全計算と一致する。
+pub fn effect_acc_bound(net: &NnueNetwork) -> i64 {
+    let per = EFF_PIECES * EFF_LEVELS * EFF_LEVELS;
+    // 利きを持たない構成では重みが空で、下のループは回らない。chunksに0を
+    // 渡せないので、そのときだけ幅を1と置く
+    const WIDTH: usize = if EFF_OUT == 0 { 1 } else { EFF_OUT };
+    let width = WIDTH;
+    let mut sum: Vec<i64> = net.eff_b.iter().map(|&b| i64::from(b).abs()).collect();
+    for rows in net.eff_w.chunks(per * width) {
+        let mut most = vec![0i64; EFF_OUT];
+        for row in rows.chunks(width) {
+            for (m, &w) in most.iter_mut().zip(row) {
+                *m = (*m).max(i64::from(w).abs());
+            }
+        }
+        for (s, m) in sum.iter_mut().zip(&most) {
+            *s += m;
+        }
+    }
+    sum.into_iter().max().unwrap_or(0)
+}
+
 /// 利きの特徴 `f` の重みの行。
 #[inline]
 pub fn effect_row(net: &NnueNetwork, f: u32) -> &[i16] {
@@ -418,11 +444,20 @@ pub fn effect_row_add(acc: &mut [i32; EFF_OUT], row: &[i16]) {
     }
 }
 
-/// 升の特徴が `old` から `new` へ入れ替わった分を1パスで当てる。
+/// 差分の経路（D2）のi16のaccへ行を足す。巡回加算にするのは、途中の値が
+/// i16を越えても最後の値が `effect_acc_bound` の内なら正しくなるためである。
 #[inline]
-pub fn effect_row_swap(acc: &mut [i32; EFF_OUT], old: &[i16], new: &[i16]) {
+pub fn effect_row_add16(acc: &mut [i16; EFF_OUT], row: &[i16]) {
+    for (a, &w) in acc.iter_mut().zip(row) {
+        *a = a.wrapping_add(w);
+    }
+}
+
+/// 升の特徴が `old` から `new` へ入れ替わった分を1パスで当てる（D2）。
+#[inline]
+pub fn effect_row_swap16(acc: &mut [i16; EFF_OUT], old: &[i16], new: &[i16]) {
     for ((a, &o), &n) in acc.iter_mut().zip(old).zip(new) {
-        *a += i32::from(n) - i32::from(o);
+        *a = a.wrapping_add(n.wrapping_sub(o));
     }
 }
 
@@ -432,6 +467,15 @@ pub fn effect_clip(acc: &[i32; EFF_OUT], out: &mut [u8]) {
     debug_assert_eq!(out.len(), EFF_OUT);
     for (o, &a) in out.iter_mut().zip(acc) {
         *o = clip(a);
+    }
+}
+
+/// 同上をi16のaccから書く（D2）。
+#[inline]
+pub fn effect_clip16(acc: &[i16; EFF_OUT], out: &mut [u8]) {
+    debug_assert_eq!(out.len(), EFF_OUT);
+    for (o, &a) in out.iter_mut().zip(acc) {
+        *o = a.clamp(0, 127) as u8;
     }
 }
 

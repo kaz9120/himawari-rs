@@ -506,25 +506,34 @@ pub fn load(r: &mut impl Read) -> Result<(NnueNetwork, String), String> {
     let b_out = cur.i32v(1)?[0];
     cur.finish(expect_hash)?;
 
-    Ok((
-        NnueNetwork {
-            ft_w,
-            ft_b,
-            w2,
-            w2_sparse: Vec::new(),
-            b2,
-            w3,
-            b3,
-            w4,
-            b4,
-            w_out,
-            b_out,
-            eff_w,
-            eff_b,
+    let net = NnueNetwork {
+        ft_w,
+        ft_b,
+        w2,
+        w2_sparse: Vec::new(),
+        b2,
+        w3,
+        b3,
+        w4,
+        b4,
+        w_out,
+        b_out,
+        eff_w,
+        eff_b,
+    }
+    .finish();
+    // 利きのaccumulatorは差分の経路でi16に持つ（ADR-0237のD2）。取りうる値が
+    // i16に収まらないネットでは全計算と食い違うので、読み込みで弾く
+    if EFF_OUT != 0 {
+        let bound = crate::nnue::effect_acc_bound(&net);
+        if bound > i64::from(i16::MAX) {
+            return Err(format!(
+                "利きのaccumulatorがi16に収まらない（上限の見積もり{bound}）。\
+                 量子化で利きの重みを小さくする"
+            ));
         }
-        .finish(),
-        lineage,
-    ))
+    }
+    Ok((net, lineage))
 }
 
 /// 別の構成のファイルを読み、いまのビルド構成へ合わせる（ADR-0127）。
@@ -795,6 +804,27 @@ mod tests {
         assert_eq!(require_effect([EFF_IN, 64]).is_ok(), EFF_OUT == 64);
         let err = require_effect([EFF_IN, 48]).expect_err("幅が違えば弾く");
         assert!(err.contains("ADR-0237"), "原因の読める文言にする: {err}");
+    }
+
+    /// 利きのaccumulatorがi16に収まらないネットは弾く（ADR-0237のD2）。
+    /// 収まるネットは読める。
+    #[test]
+    fn effect_acc_must_fit_in_i16() {
+        if EFF_OUT == 0 {
+            return;
+        }
+        let mut net = NnueNetwork::random(5);
+        let mut buf = Vec::new();
+        save(&net, "", &mut buf).unwrap();
+        assert!(load(&mut buf.as_slice()).is_ok());
+        // 1升あたり405で81升なら32,805になり、i16の上限を越える
+        net.eff_w.fill(405);
+        net.eff_b.fill(0);
+        assert_eq!(crate::nnue::effect_acc_bound(&net), 81 * 405);
+        let mut buf = Vec::new();
+        save(&net, "", &mut buf).unwrap();
+        let err = load(&mut buf.as_slice()).err().expect("収まらなければ弾く");
+        assert!(err.contains("i16"), "原因の読める文言にする: {err}");
     }
 
     /// ヘッダ・重みの破損を検出してエラーになる。
