@@ -16,6 +16,10 @@
 //! `check_core` と `check_mb` は、歩いた手の列と各段の返す値を順に混ぜたハッシュで、
 //! 生成の順と返す値がcoreと揃っていれば一致する。一致しなければ `"same":false` になる。
 //!
+//! `--stage <段> --side <core|mb>` を渡すと、空回しのwalkの後にその段を片側だけ走らせる（第10回）。
+//! 命令数は段ごとに分けて取れないので、`/usr/bin/time -l` の命令数を `--stage walk` の実行との差で読む。
+//! 1回あたりの命令数は (段−walk)÷呼び出し回数で、合法性判定だけは (legal−pgen)÷呼び出し回数である。
+//!
 //! 走らせ方（開発機が空いているときだけ。`hmwr queue pause` を先に打つ）:
 //!
 //! ```text
@@ -42,6 +46,28 @@ struct Cli {
     depth: u32,
     repeat: u32,
     runs: u32,
+    /// 段を1つだけ走らせる（`--stage` と `--side`）。命令数を段ごとに出すため（ADR-0241の第10回）
+    only: Option<(Stage, Side)>,
+}
+
+/// `--stage` で走らせる側。
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Side {
+    Core,
+    Mb,
+}
+
+fn parse_stage(s: &str) -> Result<Stage, String> {
+    Ok(match s {
+        "walk" => Stage::Walk,
+        "gen" => Stage::Gen,
+        "mate" => Stage::Mate,
+        "see" => Stage::See,
+        "check" => Stage::Check,
+        "pgen" => Stage::Pgen,
+        "legal" => Stage::Legal,
+        _ => return Err(format!("知らない段: {s}")),
+    })
 }
 
 fn parse_args() -> Result<Cli, String> {
@@ -50,7 +76,10 @@ fn parse_args() -> Result<Cli, String> {
         depth: 2,
         repeat: 3,
         runs: 1,
+        only: None,
     };
+    let mut stage = None;
+    let mut side = None;
     let mut args = std::env::args().skip(1);
     while let Some(a) = args.next() {
         let mut value = |name: &str| args.next().ok_or(format!("{name} に値がない"));
@@ -59,11 +88,24 @@ fn parse_args() -> Result<Cli, String> {
             "--depth" => cli.depth = value("--depth")?.parse().map_err(|e| format!("{e}"))?,
             "--repeat" => cli.repeat = value("--repeat")?.parse().map_err(|e| format!("{e}"))?,
             "--runs" => cli.runs = value("--runs")?.parse().map_err(|e| format!("{e}"))?,
+            "--stage" => stage = Some(parse_stage(&value("--stage")?)?),
+            "--side" => {
+                side = Some(match value("--side")?.as_str() {
+                    "core" => Side::Core,
+                    "mb" => Side::Mb,
+                    x => return Err(format!("--side は core か mb: {x}")),
+                })
+            }
             // cargo bench が渡すフラグ
             "--bench" => {}
             _ => return Err(format!("知らない引数: {a}")),
         }
     }
+    cli.only = match (stage, side) {
+        (Some(st), Some(sd)) => Some((st, sd)),
+        (None, None) => None,
+        _ => return Err("--stage と --side は一緒に渡す".into()),
+    };
     if cli.positions.is_empty() {
         let late = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("../../openings/profile_late_positions.txt");
@@ -409,6 +451,31 @@ fn run(cli: &Cli) -> Result<(), String> {
             mbs.iter_mut().for_each(|p| walk_mb(p, d, st, &pseudo, t))
         })
     };
+    if let Some((st, side)) = cli.only {
+        // 段を1つだけ、片側だけ走らせる。命令数（`/usr/bin/time -l`）を、walk段だけの実行との差で
+        // 段ごとに出すための形で、空回しも同じ側のwalkで1回行う
+        for run in 1..=cli.runs {
+            let (ns, t) = match side {
+                Side::Core => {
+                    core_stage(&mut cores, Stage::Walk);
+                    core_stage(&mut cores, st)
+                }
+                Side::Mb => {
+                    mb_stage(&mut mbs, Stage::Walk);
+                    mb_stage(&mut mbs, st)
+                }
+            };
+            let name = ["walk", "gen", "mate", "see", "check", "pgen", "legal"]
+                [STAGES.iter().position(|&x| x == st).unwrap_or(0)];
+            let side = if side == Side::Core { "core" } else { "mb" };
+            println!(
+                "{{\"run\":{run},\"stage\":\"{name}\",\"side\":\"{side}\",\"ns\":{ns},\
+                 \"moves\":{},\"nodes\":{},\"calls\":{},\"hash\":\"{:016x}\"}}",
+                t.moves, t.nodes, t.calls, t.hash
+            );
+        }
+        return Ok(());
+    }
     // 1段ぶん空回しして、表と分岐予測を温める
     core_stage(&mut cores, Stage::Walk);
     mb_stage(&mut mbs, Stage::Walk);
