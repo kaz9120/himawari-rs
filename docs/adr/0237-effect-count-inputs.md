@@ -493,9 +493,10 @@ Qが教師の量で縮むのか、保たれるのかが分かる。
 - 走らせる場所は研究ブランチの作業木 `.claude/worktrees/agent-af0cbebaf04fde3ff` である。ログと状態ファイルは
   作業木の `data/` に書かれ、本体の `data/` には出ない
 - ログ: 作業木の `data/logs/train-pool1_2ep_f2.log`。100ステップごとに損失と局面/秒、
-  2,000ステップごとに検証損失を書く
+  2,000ステップごとに検証損失を書く。ファイルへの書き込みはブロック単位でまとめて出るので、数分遅れる
 - 作業木で `./bin/hmwr status` を打つと、`train:pool1_2ep_f2` の行にステップと残り時間が出る
 - 作業木の `data/train` と `data/nets` は本体へのシンボリックリンクである。片付けるときはリンクだけをunlinkする
 - チェックポイント: 作業木の `training/checkpoints/pool1_2ep_f2/`（best.ckptとlatest.ckpt、合わせて約3GB）
 - 落ちたら、同じコマンドを作業木から打ち直すと `latest.ckpt` から続きを学習する。データは消さない
 - 学習の間は `hmwr queue pause` してある。終わったら `hmwr queue resume` する
+- 起動は2026-10-18 21:40。立ち上がりの速さは約4.0万局面/秒で、`hmwr status` の見込みは約29時間である
