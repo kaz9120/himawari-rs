@@ -236,6 +236,13 @@ pub fn attacks(pc: Piece, sq: Square, occ: Bitboard) -> Bitboard {
     }
 }
 
+/// aから見たbの方向（`ray_attacks` の並びの0〜7）。非直線とa==bは8を返す
+/// （ADR-0240の利き数の表）。
+#[inline]
+pub fn direction(a: Square, b: Square) -> usize {
+    usize::from(DIR[a.index()][b.index()])
+}
+
 /// aとbの間のマス（両端を除く。非直線なら空）。
 #[inline]
 pub fn between(a: Square, b: Square) -> Bitboard {
