@@ -110,7 +110,7 @@ impl SearchBoard {
     }
 
     /// 今の段の表を、まだ当てていなければいま当てる。読む前に先行して
-    /// 当てておきたい場所（静止探索の進めの直後）から呼ぶ（ADR-0240の3回目のq1）。
+    /// 当てておきたい場所（静止探索で置換表に外れた直後）から呼ぶ（ADR-0240の4回目のp2）。
     #[inline(always)]
     pub fn catch_up_now(&self) {
         if self.valid.get() < self.ply {
