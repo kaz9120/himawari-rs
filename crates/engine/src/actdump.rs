@@ -3,14 +3,15 @@
 //! `--features actdump` を付けたビルドにだけ入る調査用の仕組みで、
 //! 通常のビルドには一切コードが残らない。集めるのは値ではなく
 //! 「どの次元が非ゼロだったか」のビットマスクで、1サンプル
-//! `CONCAT / 8` バイトになる。
+//! `FT_OUT / 8` バイトになる。並べ替えはHalfKPの活性だけを動かすので、
+//! 利きの活性（ADR-0237）は記録しない。
 //!
 //! 出力先は環境変数 `HIMAWARI_ACT_OUT`（既定 `data/profile/act.bin`）。
 //! 目標数に達した時点で書き出し、以降は何もしない。
 
 use std::sync::Mutex;
 
-use crate::nnue::CONCAT;
+use crate::nnue::{CONCAT, FT_OUT};
 
 /// 何回の評価につき1つ記録するか。連続する評価は同じ枝の局面で
 /// 似通うため、間隔を空けて相関を薄める。
@@ -23,8 +24,8 @@ const DEFAULT_STRIDE: usize = 251;
 /// 集めるサンプル数。
 const TARGET: usize = 12_500;
 
-/// 1サンプルのバイト数。
-const BYTES: usize = CONCAT / 8;
+/// 1サンプルのバイト数。HalfKPの両視点の活性だけを数える。
+const BYTES: usize = FT_OUT / 8;
 
 struct State {
     seen: usize,
@@ -62,7 +63,7 @@ pub fn record(concat: &[u8; CONCAT]) {
         return;
     }
     let mut bits = [0u8; BYTES];
-    for (i, &v) in concat.iter().enumerate() {
+    for (i, &v) in concat[..FT_OUT].iter().enumerate() {
         if v != 0 {
             bits[i / 8] |= 1 << (i % 8);
         }
