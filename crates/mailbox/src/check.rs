@@ -30,6 +30,74 @@ fn iter81(mut m: u128) -> impl Iterator<Item = u8> {
     })
 }
 
+/// 空の盤で、升fromの駒pが利く升の集合（81升）。
+fn empty_board_targets(from: u8, p: u8) -> u128 {
+    let on = |t: i32| (0..LEN as i32).contains(&t) && SQ81[t as usize] != 0xFF;
+    let m = &MOVES[p as usize];
+    let mut out = 0u128;
+    for k in 0..m.n_short as usize {
+        let t = from as i32 + m.short[k] as i32;
+        if on(t) {
+            out |= bit81(t as u8);
+        }
+    }
+    for (d, &delta) in DELTA.iter().enumerate() {
+        if m.long & (1 << d) == 0 {
+            continue;
+        }
+        let mut t = from as i32 + delta as i32;
+        while on(t) {
+            out |= bit81(t as u8);
+            t += delta as i32;
+        }
+    }
+    out
+}
+
+/// 1手詰めの候補の移動元（coreの `CHECK_CAND` と同じ考え方）。
+/// `[玉の81升][駒の符号]` は、その駒が空の盤で玉の近傍（桂は王手の升）へ利く移動元の集合。
+/// どの占有に対しても上位集合なので、外れた駒は利きを歩かずに捨てられる。
+fn mate_cand() -> &'static [[u128; 32]; 81] {
+    static T: std::sync::OnceLock<Box<[[u128; 32]; 81]>> = std::sync::OnceLock::new();
+    T.get_or_init(|| {
+        let mut t = Box::new([[0u128; 32]; 81]);
+        for k81 in 0..81u8 {
+            let ksq = IDX81[k81 as usize];
+            let near = empty_board_targets(ksq, make_piece(Color::Black, KING));
+            for p in 0..32u8 {
+                let pt = piece_type(p);
+                if pt < 2 || pt == KING {
+                    continue;
+                }
+                let target = if pt == KNIGHT {
+                    // 王手の升: 玉の升へ跳べる升
+                    let mv = &MOVES[p as usize];
+                    let mut s = 0u128;
+                    for k in 0..mv.n_short as usize {
+                        let x = ksq as i32 - mv.short[k] as i32;
+                        if (0..LEN as i32).contains(&x) && SQ81[x as usize] != 0xFF {
+                            s |= bit81(x as u8);
+                        }
+                    }
+                    s
+                } else {
+                    near
+                };
+                for f81 in 0..81u8 {
+                    if f81 == k81 {
+                        continue;
+                    }
+                    let from = IDX81[f81 as usize];
+                    if empty_board_targets(from, p) & target != 0 {
+                        t[k81 as usize][p as usize] |= bit81(from);
+                    }
+                }
+            }
+        }
+        t
+    })
+}
+
 /// SEEで攻め駒を選ぶ順（安い順）。coreの `SEE_ORDER` と同じで、金と成金4種は同じ組。
 #[inline]
 const fn see_rank(pt: u8) -> u8 {
@@ -341,19 +409,32 @@ impl Position {
         {
             return true;
         }
+        // 攻め駒は最初に1回だけ集め、取り除いた駒の後ろから伸びる飛び利きだけを足していく
+        let mut att = [
+            self.see_attackers(Color::Black, to),
+            self.see_attackers(Color::White, to),
+        ];
         let mut removed = removed0;
+        if !m.is_drop() {
+            let from = m.from();
+            att[us.index()] &= !bit81(from);
+            self.add_xray(to, from, removed, &mut att);
+        }
         let mut stm = us;
         let mut res = true;
         loop {
             stm = stm.flip();
-            let att = self.attackers_with(stm, to, removed);
-            if att == 0 {
+            let a = att[stm.index()];
+            if a == 0 {
                 break;
             }
             res = !res;
-            let (best, val, is_king) = self.least_valuable(att);
+            let (best, val, is_king) = self.least_valuable(a);
             if is_king {
-                if self.attackers_with(stm.flip(), to, removed | bit81(best)) != 0 {
+                let mut rest = att;
+                rest[stm.index()] &= !bit81(best);
+                self.add_xray(to, best, removed | bit81(best), &mut rest);
+                if rest[stm.flip().index()] != 0 {
                     res = !res;
                 }
                 break;
@@ -363,8 +444,73 @@ impl Position {
                 break;
             }
             removed |= bit81(best);
+            att[stm.index()] &= !bit81(best);
+            self.add_xray(to, best, removed, &mut att);
         }
         res
+    }
+
+    /// 色cの駒のうち、いまの盤で升toへ利いている駒の升の集合。
+    /// 利き数が0なら歩かない。飛び利きは方向ビットの向きだけを歩き、
+    /// 利き数が飛び利きの本数より多いときだけ近傍の短い利きを見る。
+    #[inline]
+    fn see_attackers(&self, c: Color, to: u8) -> u128 {
+        let ci = c.index();
+        let n = self.count[ci][to as usize];
+        if n == 0 {
+            return 0;
+        }
+        let ld = self.longdir[ci][to as usize];
+        let mut set = 0u128;
+        let mut dirs = ld;
+        while dirs != 0 {
+            let d = dirs.trailing_zeros() as usize;
+            dirs &= dirs - 1;
+            // 方向dへ進む飛び利きなので、駒はopp(d)の向きにいる
+            let x = self
+                .first_piece(to, opp(d))
+                .expect("飛び利きの元の駒がある");
+            set |= bit81(x);
+        }
+        if u32::from(n) > ld.count_ones() {
+            for o in CHECK_OFFSETS {
+                let x = (to as i32 - o as i32) as u8;
+                let v = self.board[x as usize];
+                if v == EMPTY || v == WALL || piece_color(v) != c {
+                    continue;
+                }
+                let m = &MOVES[v as usize];
+                if m.short[..m.n_short as usize].contains(&o) {
+                    set |= bit81(x);
+                }
+            }
+        }
+        set
+    }
+
+    /// 升toへの攻め駒xを取り除いたとき、xの後ろからtoへ伸びる飛び利きの駒をattへ足す。
+    /// removedの升は空きとみなして通す。
+    #[inline]
+    fn add_xray(&self, to: u8, x: u8, removed: u128, att: &mut [u128; 2]) {
+        let Some(d) = dir_between(to, x) else {
+            return;
+        };
+        let delta = DELTA[d] as i32;
+        let mut t = (x as i32 + delta) as u8;
+        loop {
+            let v = self.board[t as usize];
+            if v == WALL {
+                return;
+            }
+            if v == EMPTY || removed & bit81(t) != 0 {
+                t = (t as i32 + delta) as u8;
+                continue;
+            }
+            if MOVES[v as usize].long & (1 << opp(d)) != 0 {
+                att[piece_color(v).index()] |= bit81(t);
+            }
+            return;
+        }
     }
 
     /// 1手詰めがあればその手を返す（coreの `mate_1ply` と同じ手を返す）。王手されていない局面で呼ぶ。
@@ -421,21 +567,51 @@ impl Position {
             (ROOK, adjacent([UP, DOWN, LEFT, RIGHT])),
             (BISHOP, adjacent([UL, DR, UR, DL])),
         ];
+        // 玉の逃げ場: 玉の隣で、相手（玉の側）の駒がなく、手番側の利きもない升（方向のビット）
+        let mut escapes = 0u8;
+        for (d, &delta) in DELTA.iter().enumerate() {
+            let t = (ksq as i32 + delta as i32) as usize;
+            let v = self.board[t];
+            if v != WALL && (v == EMPTY || piece_color(v) == us) && self.count[ui][t] == 0 {
+                escapes |= 1 << d;
+            }
+        }
+        let cand = &mate_cand()[SQ81[ksq as usize] as usize];
         let movers = self.occ[ui] & !bit81(self.king[ui]);
         for s in iter81(movers) {
             let p = self.board[s as usize];
+            // 空の盤でも玉の近傍（桂は王手の升）へ届かない駒は、利きを歩かずに捨てる
+            if cand[p as usize] & bit81(s) == 0 {
+                continue;
+            }
             let pt = piece_type(p);
             let targets = self.targets_of(s, p, ui) & if pt == KNIGHT { knight_to } else { near };
+            // 移動元に手番側の飛び利きが当たっていれば、動かすと利きが伸びうる。
+            // その手は利き数で決めず、玉に取られるかを升の利きで調べ直す（coreの `opens_line`）
+            let open = self.longdir[ui][s as usize] != 0;
             for t in iter81(targets) {
+                if near & bit81(t) != 0 {
+                    let taken = if open {
+                        self.attackers_with(us, t, bit81(s) | bit81(ksq)) & !bit81(s) == 0
+                    } else {
+                        // 動かす駒もtへ利いているので、2枚以上でなければほかに守りがない
+                        self.count[ui][t as usize] < 2
+                    };
+                    if taken {
+                        continue;
+                    }
+                }
                 if can_promote(pt) && (rel_rank(us, s) <= 2 || rel_rank(us, t) <= 2) {
                     let m = Move::normal(s, t, true, p - 8);
-                    if self.is_mate_move(m) {
+                    if !(!open && self.escape_left(escapes, ksq, t, p - 8, s))
+                        && self.is_mate_move(m)
+                    {
                         return Some(m);
                     }
                 }
                 if !dead_square(us, pt, t) {
                     let m = Move::normal(s, t, false, p);
-                    if self.is_mate_move(m) {
+                    if !(!open && self.escape_left(escapes, ksq, t, p, s)) && self.is_mate_move(m) {
                         return Some(m);
                     }
                 }
@@ -449,6 +625,13 @@ impl Position {
                 if dead_square(us, pt, t) {
                     continue;
                 }
+                // 打った駒は利き数に入っていないので、守りが0枚なら玉に取られる
+                if near & bit81(t) != 0 && self.count[ui][t as usize] == 0 {
+                    continue;
+                }
+                if self.escape_left(escapes, ksq, t, make_piece(us, pt), 0) {
+                    continue;
+                }
                 let m = Move::drop(pt, t, us);
                 if self.is_mate_move(m) {
                     return Some(m);
@@ -456,6 +639,49 @@ impl Position {
             }
         }
         None
+    }
+
+    /// 升tへ置いた駒npの利きで埋まらない逃げ場が残るか（移動元に飛び利きが当たっていない手に限る）。
+    ///
+    /// 逃げ場は指す前に手番側の利きがない升なので、指した後に利きが増えるのはnpの利きだけである。
+    /// npの飛び利きは、玉と移動元fromを空きとみなして通す（玉が線に沿って逃げても利きは届く）。
+    /// 駒打ちはfromに0（盤外）を渡す。
+    #[inline]
+    fn escape_left(&self, escapes: u8, ksq: u8, t: u8, np: u8, from: u8) -> bool {
+        let mv = &MOVES[np as usize];
+        let mut dirs = escapes;
+        while dirs != 0 {
+            let d = dirs.trailing_zeros() as usize;
+            dirs &= dirs - 1;
+            let e = (ksq as i32 + DELTA[d] as i32) as u8;
+            if e == t {
+                continue;
+            }
+            let diff = e as i32 - t as i32;
+            if diff.abs() <= 2 * STRIDE && mv.short[..mv.n_short as usize].contains(&(diff as i8)) {
+                continue;
+            }
+            let covered = match dir_between(t, e) {
+                Some(dd) if mv.long & (1 << dd) != 0 => {
+                    let delta = DELTA[dd] as i32;
+                    let mut x = (t as i32 + delta) as u8;
+                    let mut clear = true;
+                    while x != e {
+                        if self.board[x as usize] != EMPTY && x != from && x != ksq {
+                            clear = false;
+                            break;
+                        }
+                        x = (x as i32 + delta) as u8;
+                    }
+                    clear
+                }
+                _ => false,
+            };
+            if !covered {
+                return true;
+            }
+        }
+        false
     }
 
     /// 候補mが詰みか。合法なら進め、王手を外す手があるかを利きの配列で見て戻す。
