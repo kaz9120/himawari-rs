@@ -13,7 +13,7 @@ use himawari_core::{Bitboard, Color, DirtyPiece, PieceType, Position, Square, bo
 
 use crate::nnue::{
     CONCAT, EFF_BASE, EFF_OUT, EffectLevels, FT_OUT, FtWeight, HALF, NnueNetwork, effect_code,
-    effect_code_index, effect_row, effect_row_add, effect_row_sub,
+    effect_code_index, effect_row, effect_row_add, effect_row_swap,
 };
 use crate::nnue_simd;
 use crate::value::{MAX_PLY, Value};
@@ -288,8 +288,11 @@ impl NnueState {
                     e.codes[sq.index()] = new;
                     for c in [Color::Black, Color::White] {
                         let acc = &mut e.acc[c.index()];
-                        effect_row_sub(acc, effect_row(net, effect_code_index(c, sq, old)));
-                        effect_row_add(acc, effect_row(net, effect_code_index(c, sq, new)));
+                        effect_row_swap(
+                            acc,
+                            effect_row(net, effect_code_index(c, sq, old)),
+                            effect_row(net, effect_code_index(c, sq, new)),
+                        );
                     }
                 }
             }

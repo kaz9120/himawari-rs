@@ -418,10 +418,11 @@ pub fn effect_row_add(acc: &mut [i32; EFF_OUT], row: &[i16]) {
     }
 }
 
+/// 升の特徴が `old` から `new` へ入れ替わった分を1パスで当てる。
 #[inline]
-pub fn effect_row_sub(acc: &mut [i32; EFF_OUT], row: &[i16]) {
-    for (a, &w) in acc.iter_mut().zip(row) {
-        *a -= i32::from(w);
+pub fn effect_row_swap(acc: &mut [i32; EFF_OUT], old: &[i16], new: &[i16]) {
+    for ((a, &o), &n) in acc.iter_mut().zip(old).zip(new) {
+        *a += i32::from(n) - i32::from(o);
     }
 }
 
