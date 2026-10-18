@@ -382,3 +382,17 @@ HalfKPの差分更新（2,000〜3,000要素）に対して＋35〜52%である�
   学習を回すと、そちらで入れ直される
 
 結果は事前登録の表で読む。あわせて価値の線Q/3.12を、95%区間の下端とともに書く。
+
+### 段階1の実行（2026-10-18起動）
+
+この作業木で `hmwr exp run adr0237-effect-quality --worktree` を起動した。
+作業木の `data/train` と `data/nets` は、本体の `data/` へのシンボリックリンクにした。
+ネットは本体の `data/nets/eff_ctrl.hmwr`・`eff_f2.hmwr` に残る。
+
+進み具合は、作業木の次のファイルで分かる。
+
+- 全体: `data/logs/exp-adr0237-effect-quality.log`。終わったステップの印は `data/queue/adr0237-effect-quality/`
+- 学習: 本体の `data/logs/` ではなく、作業木の `data/logs/train-eff_ctrl.log`・`train-eff_f2.log`
+- 対局: 作業木の `data/logs/sprt-adr0237-q.log`。`hmwr match show adr0237-q` でも読める
+
+落ちたら、同じコマンドで終わっていないステップから再開する。
