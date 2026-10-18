@@ -16,56 +16,73 @@ use std::ops::Deref;
 use himawari_core::attacks::ray_attacks;
 use himawari_core::{Bitboard, EffectCounts, Move, Piece, PieceType, Position, Square};
 
-/// 表の1段。差分を当てるのに要る手と占有を、進めるときに積んでおく。
-struct Ply {
-    /// この段の局面の表。`SearchBoard::valid` 以下の段だけが正しい
-    counts: UnsafeCell<EffectCounts>,
-    /// この段へ進めた手と、取られた駒（なければ空）
-    mv: Move,
-    captured: Piece,
-    /// この段の局面の占有。1つ下の段の占有と合わせて差分を当てる
+/// 表の1段。差分を当てた後の表と、その局面の占有を持つ。
+/// どちらも `catch_up` だけが書く。`do_move` は触らない（ADR-0240の4回目のp1）。
+#[derive(Clone, Copy)]
+struct Table {
+    counts: EffectCounts,
+    /// この段の局面の占有。次の段の差分を当てるときに指す前の占有として読む
     occ: Bitboard,
 }
 
-impl Clone for Ply {
-    fn clone(&self) -> Ply {
-        Ply {
-            // SAFETY: 複写の間、ほかに表を書く者はいない（`&self` を借りている）
-            counts: UnsafeCell::new(unsafe { *self.counts.get() }),
-            mv: self.mv,
-            captured: self.captured,
-            occ: self.occ,
-        }
-    }
+/// 進めるときに積む1段の材料。手と取られた駒（なければ空）で8バイトになる。
+/// 表と別の密な配列に置き、`do_move` が触るキャッシュラインを8段で1本に減らす
+/// （ADR-0240の4回目のp1）。指した後の占有は積まず、追いつくときに手から求める。
+#[derive(Clone, Copy)]
+struct PlyMove {
+    mv: Move,
+    captured: Piece,
 }
 
 /// 探索が進め戻す盤面。`Position` と、それに追従する状態を持つ。
 ///
 /// 利き数の表は遅延して更新する（ADR-0240の1回目）。NNUEのaccumulatorと
-/// 同じく、進めるときは手と占有を積むだけにし、表を読むノードで初めて、
+/// 同じく、進めるときは手を積むだけにし、表を読むノードで初めて、
 /// 正しい最後の段から今の段までの差分を当てる。読まずに戻るノードは費用を払わない。
-#[derive(Clone)]
 pub struct SearchBoard {
     pos: Position,
-    /// `plies[k]` が根からk手進めた局面の段
-    plies: Vec<Ply>,
+    /// `tables[k]` が根からk手進めた局面の表。`valid` 以下の段だけが正しい
+    tables: Vec<UnsafeCell<Table>>,
+    /// `moves[k]` が根からk手目に指した手。`moves[0]` は使わない
+    moves: Vec<PlyMove>,
     ply: usize,
     /// 0〜valid の段の表が正しい。読むときに今の段まで進める
     valid: Cell<usize>,
 }
 
+impl Clone for SearchBoard {
+    fn clone(&self) -> SearchBoard {
+        SearchBoard {
+            pos: self.pos.clone(),
+            tables: self
+                .tables
+                .iter()
+                // SAFETY: 複写の間、ほかに表を書く者はいない（`&self` を借りている）
+                .map(|t| UnsafeCell::new(unsafe { *t.get() }))
+                .collect(),
+            moves: self.moves.clone(),
+            ply: self.ply,
+            valid: self.valid.clone(),
+        }
+    }
+}
+
 impl SearchBoard {
     pub fn new(pos: Position) -> SearchBoard {
-        let mut plies = Vec::with_capacity(Self::INITIAL_DEPTH);
-        plies.push(Ply {
-            counts: UnsafeCell::new(EffectCounts::build(&pos)),
+        let mut tables = Vec::with_capacity(Self::INITIAL_DEPTH);
+        tables.push(UnsafeCell::new(Table {
+            counts: EffectCounts::build(&pos),
+            occ: pos.occupied(),
+        }));
+        let mut moves = Vec::with_capacity(Self::INITIAL_DEPTH);
+        moves.push(PlyMove {
             mv: Move::NONE,
             captured: Piece::EMPTY,
-            occ: pos.occupied(),
         });
         SearchBoard {
             pos,
-            plies,
+            tables,
+            moves,
             ply: 0,
             valid: Cell::new(0),
         }
@@ -89,7 +106,7 @@ impl SearchBoard {
         // SAFETY: 今の段の表を書くのは `catch_up` だけで、それは今の段が
         // 正しくないときにしか走らない。返した参照が生きている間に今の段が
         // 正しくなくなるには `do_move`（`&mut self`）が要る
-        unsafe { &*self.plies.get_unchecked(self.ply).counts.get() }
+        unsafe { &(*self.tables.get_unchecked(self.ply).get()).counts }
     }
 
     /// 今の段の表を、まだ当てていなければいま当てる。読む前に先行して
@@ -107,27 +124,54 @@ impl SearchBoard {
     /// （ADR-0240の3回目のc1）。
     #[inline(never)]
     fn catch_up(&self) {
-        for k in self.valid.get() + 1..=self.ply {
-            let prev = &self.plies[k - 1];
-            let cur = &self.plies[k];
+        let valid = self.valid.get();
+        // SAFETY: valid段は正しい段で、ここでは読むだけである
+        let mut occ = unsafe { (*self.tables[valid].get()).occ };
+        for k in valid + 1..=self.ply {
+            let pm = self.moves[k];
+            // 指した後の占有。移動先は必ず埋まり、移動元は空く
+            let to = Bitboard::from_square(pm.mv.to());
+            let occ_after = if pm.mv.is_drop() {
+                occ | to
+            } else {
+                (occ ^ Bitboard::from_square(pm.mv.from_sq())) | to
+            };
             // SAFETY: k-1段とk段は別の要素である。k段は正しくない段なので、
             // それを指す参照は外に出ていない（`counts` は正しい段しか返さない）
             unsafe {
-                let dst = &mut *cur.counts.get();
-                dst.copy_from(&*prev.counts.get());
-                dst.update(cur.mv, cur.captured, prev.occ, cur.occ);
+                let src = &(*self.tables[k - 1].get()).counts;
+                let dst = &mut *self.tables[k].get();
+                dst.counts.copy_from(src);
+                dst.counts.update(pm.mv, pm.captured, occ, occ_after);
+                dst.occ = occ_after;
             }
+            occ = occ_after;
         }
         self.valid.set(self.ply);
+        debug_assert_eq!(occ, self.pos.occupied(), "手から求めた占有が局面と食い違う");
         debug_assert_eq!(
             // SAFETY: 書き終えた段を読むだけで、ほかに書く者はいない
-            unsafe { *self.plies[self.ply].counts.get() },
+            unsafe { (*self.tables[self.ply].get()).counts },
             EffectCounts::build(&self.pos),
             "利き数の表が作り直しと食い違う"
         );
     }
 
-    /// 1手進める。表には触らず、差分に要る手と占有を積む。
+    /// 段を1つ伸ばす。探索の最大の深さを超えて進めたときだけ通る。
+    #[cold]
+    #[inline(never)]
+    fn grow(&mut self) {
+        self.tables.push(UnsafeCell::new(Table {
+            counts: EffectCounts::default(),
+            occ: Bitboard::EMPTY,
+        }));
+        self.moves.push(PlyMove {
+            mv: Move::NONE,
+            captured: Piece::EMPTY,
+        });
+    }
+
+    /// 1手進める。表には触らず、差分に要る手と取られた駒を密な配列へ積む。
     #[inline(always)]
     pub fn do_move(&mut self, m: Move) {
         let captured = if m.is_drop() {
@@ -141,20 +185,11 @@ impl SearchBoard {
             self.valid.set(self.ply);
         }
         let next = self.ply + 1;
-        let occ = self.pos.occupied();
-        if next == self.plies.len() {
-            self.plies.push(Ply {
-                counts: UnsafeCell::new(EffectCounts::default()),
-                mv: m,
-                captured,
-                occ,
-            });
-        } else {
-            let p = &mut self.plies[next];
-            p.mv = m;
-            p.captured = captured;
-            p.occ = occ;
+        if next == self.moves.len() {
+            self.grow();
         }
+        // SAFETY: `moves` と `tables` は同じ長さで伸び、next < len を上で保証した
+        unsafe { *self.moves.get_unchecked_mut(next) = PlyMove { mv: m, captured } };
         self.ply = next;
     }
 
