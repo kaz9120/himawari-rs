@@ -391,23 +391,155 @@ pub fn effect_active(pos: &Position, c: Color, counts: &[[u8; 81]; 2], out: &mut
     }
 }
 
-/// 利きのaccumulatorを特徴から作り直し、0〜127へクリップして書く（ADR-0237のD3）。
-///
-/// 評価のたびに81行を足す。差分は持たない。対の積は掛けない。
-pub fn effect_transform(net: &NnueNetwork, features: &[u32; 81], out: &mut [u8]) {
-    debug_assert_eq!(out.len(), EFF_OUT);
+/// 利きのaccumulatorを特徴から全計算する（ADR-0237のD3）。i32で足すので、
+/// 81行を足しても桁あふれしない。差分の経路（D2）はこの値との一致を求める。
+pub fn effect_accumulate(net: &NnueNetwork, features: &[u32; 81]) -> [i32; EFF_OUT] {
     let mut acc = [0i32; EFF_OUT];
     for (a, &b) in acc.iter_mut().zip(&net.eff_b) {
         *a = i32::from(b);
     }
     for &f in features {
-        let row = &net.eff_w[f as usize * EFF_OUT..(f as usize + 1) * EFF_OUT];
-        for (a, &w) in acc.iter_mut().zip(row) {
-            *a += i32::from(w);
-        }
+        effect_row_add(&mut acc, effect_row(net, f));
     }
-    for (o, &a) in out.iter_mut().zip(&acc) {
+    acc
+}
+
+/// 利きの特徴 `f` の重みの行。
+#[inline]
+pub fn effect_row(net: &NnueNetwork, f: u32) -> &[i16] {
+    let at = f as usize * EFF_OUT;
+    &net.eff_w[at..at + EFF_OUT]
+}
+
+#[inline]
+pub fn effect_row_add(acc: &mut [i32; EFF_OUT], row: &[i16]) {
+    for (a, &w) in acc.iter_mut().zip(row) {
+        *a += i32::from(w);
+    }
+}
+
+#[inline]
+pub fn effect_row_sub(acc: &mut [i32; EFF_OUT], row: &[i16]) {
+    for (a, &w) in acc.iter_mut().zip(row) {
+        *a -= i32::from(w);
+    }
+}
+
+/// 利きのaccumulatorを0〜127へクリップして書く。
+#[inline]
+pub fn effect_clip(acc: &[i32; EFF_OUT], out: &mut [u8]) {
+    debug_assert_eq!(out.len(), EFF_OUT);
+    for (o, &a) in out.iter_mut().zip(acc) {
         *o = clip(a);
+    }
+}
+
+/// 利きのaccumulatorを特徴から作り直し、0〜127へクリップして書く（ADR-0237のD3）。
+///
+/// 評価のたびに81行を足す。差分は持たない。対の積は掛けない。
+pub fn effect_transform(net: &NnueNetwork, features: &[u32; 81], out: &mut [u8]) {
+    effect_clip(&effect_accumulate(net, features), out);
+}
+
+/// 色ごとの利き数を、1枚以上・2枚以上・3枚以上の3枚の集合で持つ（ADR-0237のD2）。
+///
+/// 特徴は利き数を3で打ち切るので、升ごとの数を持たなくても段階は決まる。
+/// 駒ごとに利き先の集合を飽和カウンタへ足すので、升を1つずつ数えずに済む。
+/// 親の段の値と排他的論理和を取れば、段階が変わった升の集合になる。
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub struct EffectLevels {
+    /// `ge[色][k]` は、その色の利きが k+1 枚以上ある升
+    pub ge: [[Bitboard; 3]; 2],
+}
+
+impl EffectLevels {
+    pub const EMPTY: EffectLevels = EffectLevels {
+        ge: [[Bitboard::EMPTY; 3]; 2],
+    };
+
+    /// 局面から作る。数え方は `effect_counts` と同じで、一致はテストで確かめる。
+    pub fn build(pos: &Position) -> EffectLevels {
+        let occ = pos.occupied();
+        let mut l = EffectLevels::EMPTY;
+        // 歩の利き先は駒ごとに別の升なので、集合のまま1段ずらして1回で足せる
+        let pawns_b = pos.pieces(Color::Black, PieceType::PAWN);
+        let pawns_w = pos.pieces(Color::White, PieceType::PAWN);
+        l.add(Color::Black, pawns_b.shift_up());
+        l.add(Color::White, pawns_w.shift_down());
+        for sq in occ & !(pawns_b | pawns_w) {
+            let pc = pos.piece_on(sq);
+            l.add(pc.color(), attacks(pc, sq, occ));
+        }
+        l
+    }
+
+    #[inline(always)]
+    fn add(&mut self, c: Color, x: Bitboard) {
+        let g = &mut self.ge[c.index()];
+        g[2] |= g[1] & x;
+        g[1] |= g[0] & x;
+        g[0] |= x;
+    }
+
+    /// 升sqへの色cの利き数を、3で打ち切って返す。
+    #[inline]
+    pub fn level(&self, c: Color, sq: Square) -> u8 {
+        let g = &self.ge[c.index()];
+        u8::from(g[0].test(sq)) + u8::from(g[1].test(sq)) + u8::from(g[2].test(sq))
+    }
+
+    /// 2つの局面で、どちらかの色の段階が違う升。
+    #[inline]
+    pub fn diff(&self, other: &EffectLevels) -> Bitboard {
+        let mut d = Bitboard::EMPTY;
+        for c in 0..2 {
+            for k in 0..3 {
+                d |= self.ge[c][k] ^ other.ge[c][k];
+            }
+        }
+        d
+    }
+}
+
+/// 升の中身と両色の利き数を、視点に依らない形で1語に詰める（ADR-0237のD2）。
+///
+/// 上位が駒（0は空き、先手の14種を1〜14、後手を15〜28）、下位4ビットが
+/// 先手と後手の利き数（各2ビット、3で打ち切り）である。視点ごとの特徴の
+/// indexは `effect_code_index` で戻す。
+#[inline]
+pub fn effect_code(pos: &Position, levels: &EffectLevels, sq: Square) -> u16 {
+    let pc = pos.piece_on(sq);
+    let p = if pc.is_empty() {
+        0
+    } else {
+        let kind = u16::from(pc.piece_type().0) - 1;
+        if pc.color() == Color::Black {
+            kind
+        } else {
+            kind + 14
+        }
+    };
+    p << 4
+        | u16::from(levels.level(Color::Black, sq)) << 2
+        | u16::from(levels.level(Color::White, sq))
+}
+
+/// `effect_code` の語を、視点cの特徴のindexへ戻す。`effect_active` と同じ値になる。
+#[inline]
+pub fn effect_code_index(c: Color, sq: Square, code: u16) -> u32 {
+    let p = usize::from(code >> 4);
+    let (b, w) = (((code >> 2) & 3) as u8, (code & 3) as u8);
+    match c {
+        Color::Black => effect_index(sq.index(), p, b, w),
+        Color::White => {
+            // 後手の視点では自他が入れ替わる
+            let p = match p {
+                0 => 0,
+                1..=14 => p + 14,
+                _ => p - 14,
+            };
+            effect_index(sq.inv().index(), p, w, b)
+        }
     }
 }
 
@@ -1007,6 +1139,39 @@ mod tests {
                 effect_active(pos, c, &a, &mut fa);
                 effect_active(&mirrored, c.flip(), &b, &mut fb);
                 assert_eq!(fa, fb, "鏡像で特徴が一致しない: {}", pos.to_sfen());
+            }
+        }
+    }
+
+    /// 段階の集合（D2）は、升ごとに数えた利き数を3で打ち切った値と一致する。
+    /// 升の語から戻した特徴のindexも、`effect_active` と一致する（ADR-0237）。
+    #[test]
+    fn effect_levels_and_codes_match_counts() {
+        for pos in &effect_positions() {
+            let counts = effect_counts(pos);
+            let levels = EffectLevels::build(pos);
+            for i in 0..81u8 {
+                let sq = Square::from_index(i);
+                for c in [Color::Black, Color::White] {
+                    assert_eq!(
+                        levels.level(c, sq),
+                        counts[c.index()][sq.index()].min(3),
+                        "sq={} c={c:?} {}",
+                        sq.to_usi(),
+                        pos.to_sfen()
+                    );
+                }
+            }
+            for c in [Color::Black, Color::White] {
+                let mut want = [0u32; 81];
+                effect_active(pos, c, &counts, &mut want);
+                let mut got = [0u32; 81];
+                for i in 0..81u8 {
+                    let sq = Square::from_index(i);
+                    let view = if c == Color::Black { sq } else { sq.inv() };
+                    got[view.index()] = effect_code_index(c, sq, effect_code(pos, &levels, sq));
+                }
+                assert_eq!(got, want, "視点{c:?} {}", pos.to_sfen());
             }
         }
     }
