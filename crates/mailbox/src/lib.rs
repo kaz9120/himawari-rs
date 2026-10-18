@@ -14,6 +14,7 @@ pub mod position;
 pub mod zobrist;
 
 pub use board::{Color, SFEN_STARTPOS};
+pub use mate::MateCount;
 pub use movegen::{GenType, MoveList, perft};
 pub use moves::Move;
 pub use position::{DirtyPiece, Position, StateInfo};

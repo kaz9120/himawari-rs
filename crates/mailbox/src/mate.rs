@@ -46,48 +46,162 @@ fn empty_board_targets(from: u8, p: u8) -> u128 {
     out
 }
 
-/// 1手詰めの候補の移動元（coreの `CHECK_CAND` と同じ考え方）。
-/// `[玉の81升][駒の符号]` は、その駒が空の盤で玉の近傍（桂は王手の升）へ利く移動元の集合。
-/// どの占有に対しても上位集合なので、外れた駒は利きを歩かずに捨てられる。
-fn mate_cand() -> &'static [[u128; 32]; 81] {
-    static T: std::sync::OnceLock<Box<[[u128; 32]; 81]>> = std::sync::OnceLock::new();
+/// 玉の升と手番ごとの、1手詰めの候補の升の集合（81升）。毎回の作り直しをやめるため表に持つ。
+#[derive(Clone, Copy, Default)]
+struct KingSets {
+    /// 玉の8近傍
+    near: u128,
+    /// 桂・金・銀・香を打てば（動かせば）王手になる升
+    knight_to: u128,
+    gold_to: u128,
+    silver_to: u128,
+    lance_to: u128,
+    /// 飛・角を打って王手になる隣の升
+    rook_adj: u128,
+    bishop_adj: u128,
+    /// どの駒種でも、空の盤で短い利きだけで近傍（桂は王手の升）へ届きうる移動元の和集合。
+    /// 飛び利きで届く駒は、近傍の升の方向ビットから別に引く
+    cand_short: u128,
+}
+
+/// 1手詰めの候補を絞る表。
+struct MateTable {
+    /// `[玉の81升][駒の符号]` は、その駒が空の盤で玉の近傍（桂は王手の升）へ利く移動元の集合
+    /// （coreの `CHECK_CAND` と同じ考え方）。どの占有に対しても上位集合なので、外れた駒は利きを歩かずに捨てられる
+    cand: [[u128; 32]; 81],
+    /// `[玉の81升][手番]`
+    sets: [[KingSets; 2]; 81],
+}
+
+fn mate_table() -> &'static MateTable {
+    static T: std::sync::OnceLock<Box<MateTable>> = std::sync::OnceLock::new();
     T.get_or_init(|| {
-        let mut t = Box::new([[0u128; 32]; 81]);
+        let mut t = Box::new(MateTable {
+            cand: [[0u128; 32]; 81],
+            sets: [[KingSets::default(); 2]; 81],
+        });
+        let on = |x: i32| (0..LEN as i32).contains(&x) && SQ81[x as usize] != 0xFF;
         for k81 in 0..81u8 {
             let ksq = IDX81[k81 as usize];
             let near = empty_board_targets(ksq, make_piece(Color::Black, KING));
+            // 色cの駒pを置いて玉へ短い利きで届く升
+            let hit_from = |p: u8| -> u128 {
+                let mv = &MOVES[p as usize];
+                let mut s = 0u128;
+                for k in 0..mv.n_short as usize {
+                    let x = ksq as i32 - mv.short[k] as i32;
+                    if on(x) {
+                        s |= bit81(x as u8);
+                    }
+                }
+                s
+            };
+            let adjacent = |dirs: [usize; 4]| -> u128 {
+                let mut s = 0u128;
+                for d in dirs {
+                    let x = ksq as i32 + DELTA[d] as i32;
+                    if on(x) {
+                        s |= bit81(x as u8);
+                    }
+                }
+                s
+            };
+            for c in [Color::Black, Color::White] {
+                let lance_sq = ksq as i32 - pawn_delta(c);
+                let ks = &mut t.sets[k81 as usize][c.index()];
+                ks.near = near;
+                ks.knight_to = hit_from(make_piece(c, KNIGHT));
+                ks.gold_to = hit_from(make_piece(c, GOLD));
+                ks.silver_to = hit_from(make_piece(c, SILVER));
+                ks.lance_to = if on(lance_sq) {
+                    bit81(lance_sq as u8)
+                } else {
+                    0
+                };
+                ks.rook_adj = adjacent([UP, DOWN, LEFT, RIGHT]);
+                ks.bishop_adj = adjacent([UL, DR, UR, DL]);
+            }
             for p in 0..32u8 {
                 let pt = piece_type(p);
                 if pt < 2 || pt == KING {
                     continue;
                 }
+                let c = piece_color(p);
                 let target = if pt == KNIGHT {
-                    // 王手の升: 玉の升へ跳べる升
-                    let mv = &MOVES[p as usize];
-                    let mut s = 0u128;
-                    for k in 0..mv.n_short as usize {
-                        let x = ksq as i32 - mv.short[k] as i32;
-                        if (0..LEN as i32).contains(&x) && SQ81[x as usize] != 0xFF {
-                            s |= bit81(x as u8);
-                        }
-                    }
-                    s
+                    t.sets[k81 as usize][c.index()].knight_to
                 } else {
                     near
                 };
+                let mut set = 0u128;
                 for f81 in 0..81u8 {
                     if f81 == k81 {
                         continue;
                     }
                     let from = IDX81[f81 as usize];
                     if empty_board_targets(from, p) & target != 0 {
-                        t[k81 as usize][p as usize] |= bit81(from);
+                        set |= bit81(from);
+                    }
+                }
+                t.cand[k81 as usize][p as usize] = set;
+                let mv = &MOVES[p as usize];
+                for f81 in 0..81u8 {
+                    let from = IDX81[f81 as usize];
+                    for k in 0..mv.n_short as usize {
+                        let x = from as i32 + mv.short[k] as i32;
+                        if f81 != k81 && on(x) && target & bit81(x as u8) != 0 {
+                            t.sets[k81 as usize][c.index()].cand_short |= bit81(from);
+                        }
                     }
                 }
             }
         }
         t
     })
+}
+
+/// 升の添字の81升のビット。壁なら0。
+#[inline]
+fn bit81_or_zero(i: u8) -> u128 {
+    let s = SQ81[i as usize];
+    if s == 0xFF { 0 } else { 1u128 << s }
+}
+
+/// 方向dへ進むと81升の通し番号が増えるか（下・左・左上・左下）。線の最初の駒を最下位か最上位のビットで引くのに使う。
+const INCREASING: [bool; 8] = [false, true, true, false, true, false, false, true];
+
+/// 81升の升s81から方向dへ、occの最初の駒まで（その駒を含む）の升の集合。
+#[inline]
+fn ray_to_blocker(s81: usize, d: usize, occ: u128) -> u128 {
+    let ray = RAY81[s81][d];
+    let hit = ray & occ;
+    if hit == 0 {
+        return ray;
+    }
+    let first = if INCREASING[d] {
+        hit.trailing_zeros()
+    } else {
+        127 - hit.leading_zeros()
+    } as usize;
+    ray & !RAY81[first][d]
+}
+
+/// 1手詰めの列挙と判定の仕事の量（`mate_1ply_counted` が足す。ADR-0241の第10回）。
+#[derive(Clone, Copy, Debug, Default)]
+pub struct MateCount {
+    /// 呼び出しの回数
+    pub calls: u64,
+    /// 列挙で回した手番側の駒の数
+    pub pieces_seen: u64,
+    /// そのうち、候補の表で落ちずに行き先を求めた駒の数
+    pub pieces_kept: u64,
+    /// 盤上の駒の候補の行き先の数
+    pub targets: u64,
+    /// 駒打ちの候補の升の数
+    pub drop_targets: u64,
+    /// 候補の判定（`is_mate_move`）まで届いた回数
+    pub judged: u64,
+    /// 回す駒を絞るために、近傍の升から飛び利きの元の駒まで歩いた回数
+    pub line_walks: u64,
 }
 
 /// 候補の手を指した後の盤を、盤を書き換えずに読むための差分。
@@ -431,54 +545,39 @@ impl Position {
     /// 候補はcoreと同じで、同じ順に調べる。盤上の駒は玉の8近傍へ動く手（桂は王手の升へ跳ぶ手）、
     /// 成りを先に、行き所のある不成を後に。駒打ちは金・銀・桂・香・飛・角の順に、玉の隣（桂は王手の升）へ打つ手。
     pub fn mate_1ply(&self) -> Option<Move> {
+        self.mate_1ply_impl::<false>(&mut MateCount::default())
+    }
+
+    /// `mate_1ply` と同じ手を返し、列挙と判定の仕事の量をcへ足す。数え上げのテストだけが使う。
+    #[doc(hidden)]
+    pub fn mate_1ply_counted(&self, c: &mut MateCount) -> Option<Move> {
+        self.mate_1ply_impl::<true>(c)
+    }
+
+    #[inline(always)]
+    fn mate_1ply_impl<const COUNT: bool>(&self, cnt: &mut MateCount) -> Option<Move> {
         debug_assert!(!self.in_check());
+        if COUNT {
+            cnt.calls += 1;
+        }
         let us = self.side;
         let ui = us.index();
         let ksq = self.king[us.flip().index()];
-        let mut near = 0u128;
-        for &delta in DELTA.iter() {
-            let t = (ksq as i32 + delta as i32) as u8;
-            if self.board[t as usize] != WALL {
-                near |= bit81(t);
-            }
-        }
-        let hit_from = |pt: u8| -> u128 {
-            let m = &MOVES[make_piece(us, pt) as usize];
-            let mut set = 0u128;
-            for k in 0..m.n_short as usize {
-                let x = (ksq as i32 - m.short[k] as i32) as u8;
-                if self.board[x as usize] != WALL {
-                    set |= bit81(x);
-                }
-            }
-            set
-        };
-        let adjacent = |dirs: [usize; 4]| -> u128 {
-            let mut set = 0u128;
-            for d in dirs {
-                let x = (ksq as i32 + DELTA[d] as i32) as u8;
-                if self.board[x as usize] != WALL {
-                    set |= bit81(x);
-                }
-            }
-            set
-        };
-        let knight_to = hit_from(KNIGHT);
-        let empty = ALL81 & !(self.occ[0] | self.occ[1]);
-        let lance_sq = (ksq as i32 - pawn_delta(us)) as u8;
-        let lance_to = if self.board[lance_sq as usize] != WALL {
-            bit81(lance_sq)
-        } else {
-            0
-        };
+        let tab = mate_table();
+        let k81 = SQ81[ksq as usize] as usize;
+        let ks = &tab.sets[k81][ui];
+        let near = ks.near;
+        let knight_to = ks.knight_to;
+        let occ_all = self.occ[0] | self.occ[1];
+        let empty = ALL81 & !occ_all;
         // 駒打ちの候補の升。coreと同じ駒種の順
         let drops: [(u8, u128); 6] = [
-            (GOLD, hit_from(GOLD)),
-            (SILVER, hit_from(SILVER)),
+            (GOLD, ks.gold_to),
+            (SILVER, ks.silver_to),
             (KNIGHT, knight_to),
-            (LANCE, lance_to),
-            (ROOK, adjacent([UP, DOWN, LEFT, RIGHT])),
-            (BISHOP, adjacent([UL, DR, UR, DL])),
+            (LANCE, ks.lance_to),
+            (ROOK, ks.rook_adj),
+            (BISHOP, ks.bishop_adj),
         ];
         // 玉の逃げ場: 玉の隣で、相手（玉の側）の駒がなく、手番側の利きもない升（方向のビット）
         let mut escapes = 0u8;
@@ -489,20 +588,58 @@ impl Position {
                 escapes |= 1 << d;
             }
         }
-        let cand = &mate_cand()[SQ81[ksq as usize] as usize];
-        let movers = self.occ[ui] & !bit81(self.king[ui]);
+        let cand = &tab.cand[k81];
+        // 回す駒を先に絞る。短い利きで近傍（桂は王手の升）へ届きうる升の駒と、
+        // 近傍の升に届いている手番側の飛び利きの元の駒である。ほかの駒は行き先が近傍に無い
+        let mut movers = self.occ[ui] & ks.cand_short;
+        let mut nb = near;
+        while nb != 0 {
+            let t81 = nb.trailing_zeros() as usize;
+            nb &= nb - 1;
+            let t = IDX81[t81];
+            let mut dirs = self.longdir[ui][t as usize];
+            while dirs != 0 {
+                let d = dirs.trailing_zeros() as usize;
+                dirs &= dirs - 1;
+                // 1つ手前の升も近傍の空き升で同じ線が届いていれば、元の駒はそちらで拾う
+                let prev = t.wrapping_add(DELTA[opp(d)] as u8);
+                if near & bit81_or_zero(prev) != 0
+                    && self.board[prev as usize] == EMPTY
+                    && self.longdir[ui][prev as usize] & (1 << d) != 0
+                {
+                    continue;
+                }
+                if COUNT {
+                    cnt.line_walks += 1;
+                }
+                if let Some(x) = self.first_piece(t, opp(d)) {
+                    movers |= bit81(x);
+                }
+            }
+        }
+        let movers = movers & !bit81(self.king[ui]);
         for s in iter81(movers) {
+            if COUNT {
+                cnt.pieces_seen += 1;
+            }
             let p = self.board[s as usize];
             // 空の盤でも玉の近傍（桂は王手の升）へ届かない駒は、利きを歩かずに捨てる
             if cand[p as usize] & bit81(s) == 0 {
                 continue;
             }
+            if COUNT {
+                cnt.pieces_kept += 1;
+            }
             let pt = piece_type(p);
-            let targets = self.targets_of(s, p, ui) & if pt == KNIGHT { knight_to } else { near };
+            let targets =
+                self.near_targets(s, p, ui, occ_all) & if pt == KNIGHT { knight_to } else { near };
             // 移動元に手番側の飛び利きが当たっていれば、動かすと利きが伸びうる。
             // その手は利き数で決めず、玉に取られるかを升の利きで調べ直す（coreの `opens_line`）
             let open = self.longdir[ui][s as usize] != 0;
             for t in iter81(targets) {
+                if COUNT {
+                    cnt.targets += 1;
+                }
                 if near & bit81(t) != 0 {
                     let taken = if open {
                         self.attackers_with(us, t, bit81(s) | bit81(ksq)) & !bit81(s) == 0
@@ -517,14 +654,16 @@ impl Position {
                 if can_promote(pt) && (rel_rank(us, s) <= 2 || rel_rank(us, t) <= 2) {
                     let m = Move::normal(s, t, true, p - 8);
                     if !(!open && self.escape_left(escapes, ksq, t, p - 8, s))
-                        && self.is_mate_move(m)
+                        && self.judge::<COUNT>(m, cnt)
                     {
                         return Some(m);
                     }
                 }
                 if !dead_square(us, pt, t) {
                     let m = Move::normal(s, t, false, p);
-                    if !(!open && self.escape_left(escapes, ksq, t, p, s)) && self.is_mate_move(m) {
+                    if !(!open && self.escape_left(escapes, ksq, t, p, s))
+                        && self.judge::<COUNT>(m, cnt)
+                    {
                         return Some(m);
                     }
                 }
@@ -535,6 +674,9 @@ impl Position {
                 continue;
             }
             for t in iter81(targets & empty) {
+                if COUNT {
+                    cnt.drop_targets += 1;
+                }
                 if dead_square(us, pt, t) {
                     continue;
                 }
@@ -546,12 +688,45 @@ impl Position {
                     continue;
                 }
                 let m = Move::drop(pt, t, us);
-                if self.is_mate_move(m) {
+                if self.judge::<COUNT>(m, cnt) {
                     return Some(m);
                 }
             }
         }
         None
+    }
+
+    /// 升sの駒pの行き先の集合（`targets_of` と同じ値）。
+    /// 飛び利きは盤を歩かず、81升の線の集合と占有の積から最初の駒を引く。
+    #[inline]
+    fn near_targets(&self, s: u8, p: u8, ui: usize, occ_all: u128) -> u128 {
+        let m = &MOVES[p as usize];
+        let mut out = 0u128;
+        for k in 0..m.n_short as usize {
+            let t = s.wrapping_add(m.short[k] as u8);
+            if SQ81[t as usize] != 0xFF {
+                out |= bit81(t);
+            }
+        }
+        let s81 = SQ81[s as usize] as usize;
+        let mut dirs = m.long;
+        while dirs != 0 {
+            let d = dirs.trailing_zeros() as usize;
+            dirs &= dirs - 1;
+            out |= ray_to_blocker(s81, d, occ_all);
+        }
+        let out = out & !self.occ[ui];
+        debug_assert_eq!(out, self.targets_of(s, p, ui), "near_targets");
+        out
+    }
+
+    /// 候補の判定。数えるときは判定の回数も足す。
+    #[inline(always)]
+    fn judge<const COUNT: bool>(&self, m: Move, cnt: &mut MateCount) -> bool {
+        if COUNT {
+            cnt.judged += 1;
+        }
+        self.is_mate_move(m)
     }
 
     /// 升tへ置いた駒npの利きで埋まらない逃げ場が残るか（移動元に飛び利きが当たっていない手に限る）。

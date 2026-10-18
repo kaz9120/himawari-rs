@@ -9,6 +9,8 @@
 //! 滑り（自分の線に沿う飛び駒の移動）の付け替えは、駒の利きを全部引き直すものとして数える。
 //! 戻しは進めと同じ量とみなす。どれも上限寄りの見積もりである。
 //!
+//! 1手詰めは、王手でないノードごとに `mate_1ply` の列挙と判定の量を数える（第10回）。
+//!
 //! ```text
 //! cargo test --release -p himawari-mailbox --test work_count -- --ignored --nocapture
 //! ```
@@ -16,7 +18,7 @@
 use std::path::PathBuf;
 
 use himawari_mailbox::board::{DELTA, EMPTY, MOVES, WALL};
-use himawari_mailbox::{Color, Move, MoveList, Position};
+use himawari_mailbox::{Color, MateCount, Move, MoveList, Position};
 use himawari_tools::positions::{builtin_positions, parse_position, read_positions};
 
 #[derive(Default, Debug)]
@@ -170,5 +172,51 @@ fn do_undo_work() {
     println!(
         "  利きの表の読み書き {bytes:.1}バイト（1往復で約{:.0}）",
         2.0 * bytes
+    );
+}
+
+fn walk_mate(pos: &mut Position, depth: u32, c: &mut MateCount) {
+    let mut list = MoveList::default();
+    pos.generate_legal(true, &mut list);
+    if !pos.in_check() {
+        pos.mate_1ply_counted(c);
+    }
+    for &m in list.as_slice() {
+        let capture = !m.is_drop() && pos.piece_on(m.to()) != EMPTY;
+        if depth == 0 && !capture {
+            continue;
+        }
+        pos.do_move(m);
+        if depth > 0 {
+            walk_mate(pos, depth - 1, c);
+        }
+        pos.undo_move(m);
+    }
+}
+
+#[test]
+#[ignore = "見積もりの表示だけを行う。cargo test --release --test work_count -- --ignored --nocapture"]
+fn mate_1ply_work() {
+    let late =
+        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../openings/profile_late_positions.txt");
+    let mut lines = builtin_positions();
+    lines.extend(read_positions(&late).unwrap());
+    let mut c = MateCount::default();
+    for line in &lines {
+        let core = parse_position(line).unwrap();
+        let mut pos = Position::from_sfen(&core.to_sfen()).unwrap();
+        walk_mate(&mut pos, 2, &mut c);
+    }
+    let per = |x: u64| x as f64 / c.calls as f64;
+    println!("1手詰めの呼び出し {}", c.calls);
+    println!("1回あたり");
+    println!("  回した駒 {:.2}", per(c.pieces_seen));
+    println!("  候補の表で残った駒 {:.2}", per(c.pieces_kept));
+    println!("  盤上の駒の候補の行き先 {:.2}", per(c.targets));
+    println!("  駒打ちの候補の升 {:.2}", per(c.drop_targets));
+    println!("  判定まで届いた候補 {:.4}", per(c.judged));
+    println!(
+        "  近傍から飛び利きの元へ歩いた回数 {:.2}",
+        per(c.line_walks)
     );
 }
