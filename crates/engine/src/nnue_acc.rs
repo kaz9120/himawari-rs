@@ -173,6 +173,8 @@ impl NnueState {
             let acc = &top.acc[c.index()];
             nnue_simd::clip_to_u8(acc, &mut concat[half * HALF..(half + 1) * HALF]);
         }
+        // 利きの部分は差分を持たず、評価のたびに作り直す（ADR-0237のD3）
+        crate::nnue::fill_effect(net, pos, &mut concat);
         #[cfg(feature = "actdump")]
         crate::actdump::record(&concat);
         nnue_simd::forward_hidden(net, &concat)

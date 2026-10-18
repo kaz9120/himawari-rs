@@ -15,13 +15,23 @@ use crate::value::Value;
 // FT_OUT・L1_OUT・L2_OUT・L1_PAD・ARCH を定義する。
 include!(concat!(env!("OUT_DIR"), "/arch.rs"));
 
-/// 隠れ層の入力次元（FT両視点）。
+/// 隠れ層の入力次元（FT両視点＋利きの両視点）。
 ///
 /// 片視点は `FT_OUT` 次元のaccumulatorを2つに割って要素ごとに掛けるので、
 /// 出す活性は `FT_OUT / 2` 次元になる（ADR-0171）。両視点でその2倍。
-pub const CONCAT: usize = FT_OUT;
-/// 連結ベクトルのうち片視点ぶんの幅。
-pub const HALF: usize = CONCAT / 2;
+/// 利きのaccumulator（ADR-0237）を持つ構成では、その後ろへ `EFF_OUT` 次元を
+/// 2視点ぶん連結する。`EFF_OUT` が0の既定構成では `FT_OUT` のままである。
+pub const CONCAT: usize = FT_OUT + 2 * EFF_OUT;
+/// 連結ベクトルのうち、HalfKPの片視点ぶんの幅。
+pub const HALF: usize = FT_OUT / 2;
+/// 連結ベクトルのうち、利きの活性が始まる位置（ADR-0237）。
+pub const EFF_BASE: usize = FT_OUT;
+/// 利きの特徴で、升に乗るものの種類。空き・自分の14種・相手の14種（ADR-0237）。
+pub const EFF_PIECES: usize = 29;
+/// 利き数の段階。0・1・2・3以上の4つ（技巧の3で打ち切り、ADR-0237）。
+pub const EFF_LEVELS: usize = 4;
+/// 利きの特徴の総数。升×乗るもの×自分の利き数×相手の利き数。
+pub const EFF_IN: usize = 81 * EFF_PIECES * EFF_LEVELS * EFF_LEVELS;
 /// 評価値スケール（ADR-0036）。
 pub const FV_SCALE: i32 = 16;
 /// 入力特徴の総数。
@@ -68,6 +78,10 @@ pub struct NnueNetwork {
     /// 出力層。入力は最後の隠れ層（4層なら`L3_OUT`、3層なら`L2_OUT`）。
     pub w_out: Vec<i8>,
     pub b_out: i32,
+    /// 利きの特徴の重み（ADR-0237）。列優先: `eff_w[feature * EFF_OUT + o]`。
+    /// `EFF_OUT` が0の構成では空。
+    pub eff_w: Vec<i16>,
+    pub eff_b: Vec<i16>,
 }
 
 /// 出力層の入力次元。層を1つ挟むかで変わる。
@@ -141,7 +155,7 @@ impl NnueNetwork {
             }
         }
         let mut r = Rng(seed.max(1));
-        NnueNetwork {
+        let mut net = NnueNetwork {
             ft_w: r
                 .i16v(FT_IN * FT_OUT, 32)
                 .into_iter()
@@ -157,8 +171,13 @@ impl NnueNetwork {
             b4: r.i32v(L3_OUT),
             w_out: r.i8v(LAST_HIDDEN),
             b_out: 0,
-        }
-        .finish()
+            eff_w: Vec::new(),
+            eff_b: Vec::new(),
+        };
+        // 利きの重みは最後に引く。既定構成（EFF_OUT=0）の乱数列を変えない
+        net.eff_w = r.i16v(EFF_IN * EFF_OUT, 16);
+        net.eff_b = r.i16v(EFF_OUT, 128);
+        net.finish()
     }
 }
 
@@ -322,6 +341,93 @@ pub fn halfkp_active(pos: &Position, c: Color, out: &mut Vec<u32>) {
     });
 }
 
+/// 升ごとの利き数を色別に数える（ADR-0237）。添字は `[色][升]` で、升は盤の
+/// 向きのまま。玉の利きを含め、ピンは無視する。その升の駒自身は数えない
+/// （駒は自分の升へ利かない）。値は打ち切らない。
+///
+/// 盤上の駒を1周して利き先へ足す。`effect_labels` と同じ数え方で、
+/// `attackers_to` との一致はテストで確かめる。
+pub fn effect_counts(pos: &Position) -> [[u8; 81]; 2] {
+    let occ = pos.occupied();
+    let mut n = [[0u8; 81]; 2];
+    for sq in occ {
+        let pc = pos.piece_on(sq);
+        let side = &mut n[pc.color().index()];
+        for to in attacks(pc, sq, occ) {
+            side[to.index()] += 1;
+        }
+    }
+    n
+}
+
+/// 利きの特徴のindex（ADR-0237のF2）。`sq` は視点から見た升、`pc` は
+/// 0（空き）・1〜14（自分の駒）・15〜28（相手の駒）、`own`・`opp` は
+/// 自分と相手の利き数（打ち切り前）。
+#[inline]
+pub fn effect_index(sq: usize, pc: usize, own: u8, opp: u8) -> u32 {
+    let cap = |n: u8| usize::from(n).min(EFF_LEVELS - 1);
+    (((sq * EFF_PIECES + pc) * EFF_LEVELS + cap(own)) * EFF_LEVELS + cap(opp)) as u32
+}
+
+/// 視点cの利きの特徴を81個書く（ADR-0237のF2）。升ごとに1つ立つ。
+///
+/// 視点ごとに盤を反転し、自他は視点から見る。HalfKPと同じ扱いなので、
+/// 180度回して先後を入れ替えた局面は同じ特徴になる。`counts` は
+/// `effect_counts` の結果を渡す。両視点で使い回すために外へ出してある。
+pub fn effect_active(pos: &Position, c: Color, counts: &[[u8; 81]; 2], out: &mut [u32; 81]) {
+    let (own, opp) = (&counts[c.index()], &counts[c.flip().index()]);
+    for i in 0..81u8 {
+        let sq = Square::from_index(i);
+        let pc = pos.piece_on(sq);
+        let code = if pc.is_empty() {
+            0
+        } else {
+            // 駒種は2〜15の14種。自分を1〜14、相手を15〜28へ写す
+            let kind = usize::from(pc.piece_type().0) - 1;
+            if pc.color() == c { kind } else { kind + 14 }
+        };
+        let view = if c == Color::Black { sq } else { sq.inv() };
+        out[view.index()] = effect_index(view.index(), code, own[sq.index()], opp[sq.index()]);
+    }
+}
+
+/// 利きのaccumulatorを特徴から作り直し、0〜127へクリップして書く（ADR-0237のD3）。
+///
+/// 評価のたびに81行を足す。差分は持たない。対の積は掛けない。
+pub fn effect_transform(net: &NnueNetwork, features: &[u32; 81], out: &mut [u8]) {
+    debug_assert_eq!(out.len(), EFF_OUT);
+    let mut acc = [0i32; EFF_OUT];
+    for (a, &b) in acc.iter_mut().zip(&net.eff_b) {
+        *a = i32::from(b);
+    }
+    for &f in features {
+        let row = &net.eff_w[f as usize * EFF_OUT..(f as usize + 1) * EFF_OUT];
+        for (a, &w) in acc.iter_mut().zip(row) {
+            *a += i32::from(w);
+        }
+    }
+    for (o, &a) in out.iter_mut().zip(&acc) {
+        *o = clip(a);
+    }
+}
+
+/// 連結ベクトルの利きの部分（両視点）を埋める（ADR-0237）。手番視点が先に並ぶ。
+/// `EFF_OUT` が0の構成では何もしない。
+#[inline]
+pub fn fill_effect(net: &NnueNetwork, pos: &Position, concat: &mut [u8; CONCAT]) {
+    if EFF_OUT == 0 {
+        return;
+    }
+    let counts = effect_counts(pos);
+    let stm = pos.side_to_move();
+    let mut feats = [0u32; 81];
+    for (k, c) in [(0usize, stm), (1, stm.flip())] {
+        effect_active(pos, c, &counts, &mut feats);
+        let at = EFF_BASE + k * EFF_OUT;
+        effect_transform(net, &feats, &mut concat[at..at + EFF_OUT]);
+    }
+}
+
 #[inline]
 fn clip(v: i32) -> u8 {
     v.clamp(0, 127) as u8
@@ -366,6 +472,7 @@ pub fn evaluate_scalar(net: &NnueNetwork, pos: &Position) -> Value {
             concat[half * HALF + o] = pair_activation(acc[o], acc[o + HALF]);
         }
     }
+    fill_effect(net, pos, &mut concat);
 
     forward_hidden(net, &concat)
 }
@@ -792,6 +899,169 @@ mod tests {
                 pos.to_sfen()
             );
         }
+    }
+
+    /// 利きの特徴を確かめる局面。検証用の3局面と、ランダムに進めた局面。
+    fn effect_positions() -> Vec<Position> {
+        let mut positions: Vec<Position> = EFFECT_SFENS
+            .iter()
+            .map(|s| Position::from_sfen(s).expect("検証用sfen"))
+            .collect();
+        for seed in 1..=8u64 {
+            let mut rng = Rng(seed.wrapping_mul(0x9E37_79B9_7F4A_7C15));
+            let mut pos = Position::from_sfen(SFEN_STARTPOS).unwrap();
+            for ply in 0..80 {
+                let mut list = MoveList::default();
+                generate_legal(&pos, true, &mut list);
+                if list.is_empty() {
+                    break;
+                }
+                if ply % 7 == 0 {
+                    positions.push(Position::from_sfen(&pos.to_sfen()).unwrap());
+                }
+                let m = list.as_slice()[(rng.next() % list.len() as u64) as usize];
+                pos.do_move(m);
+            }
+        }
+        positions
+    }
+
+    /// 利き数は探索が使う `attackers_to` と一致する（ADR-0237）。実装を
+    /// 共有しない別経路で、遮り・玉の利き・駒自身を数えないことをまとめて確かめる。
+    #[test]
+    fn effect_counts_match_attackers_to() {
+        for pos in &effect_positions() {
+            let n = effect_counts(pos);
+            let occ = pos.occupied();
+            for i in 0..81u8 {
+                let sq = Square::from_index(i);
+                for c in [Color::Black, Color::White] {
+                    assert_eq!(
+                        u32::from(n[c.index()][sq.index()]),
+                        pos.attackers_to(c, sq, occ).count(),
+                        "sq={} c={c:?} {}",
+                        sq.to_usi(),
+                        pos.to_sfen()
+                    );
+                }
+            }
+        }
+    }
+
+    /// 特徴のindexを升・駒・自他の利き数へ戻し、局面から直接数えた値と
+    /// 突き合わせる（ADR-0237のF2）。視点の反転と自他の入れ替えもここで見る。
+    #[test]
+    fn effect_features_decode_to_the_board() {
+        for pos in &effect_positions() {
+            let occ = pos.occupied();
+            for c in [Color::Black, Color::White] {
+                let counts = effect_counts(pos);
+                let mut f = [0u32; 81];
+                effect_active(pos, c, &counts, &mut f);
+                for (view, &idx) in f.iter().enumerate() {
+                    let idx = idx as usize;
+                    assert!(idx < EFF_IN, "範囲外: {idx}");
+                    let opp = idx % EFF_LEVELS;
+                    let own = idx / EFF_LEVELS % EFF_LEVELS;
+                    let pc = idx / (EFF_LEVELS * EFF_LEVELS) % EFF_PIECES;
+                    assert_eq!(
+                        idx / (EFF_LEVELS * EFF_LEVELS * EFF_PIECES),
+                        view,
+                        "升の位置"
+                    );
+                    let sq = if c == Color::Black {
+                        Square::from_index(view as u8)
+                    } else {
+                        Square::from_index(view as u8).inv()
+                    };
+                    let cap = |n: u32| (n as usize).min(EFF_LEVELS - 1);
+                    assert_eq!(own, cap(pos.attackers_to(c, sq, occ).count()), "自分の利き");
+                    assert_eq!(
+                        opp,
+                        cap(pos.attackers_to(c.flip(), sq, occ).count()),
+                        "相手の利き"
+                    );
+                    let p = pos.piece_on(sq);
+                    let want = if p.is_empty() {
+                        0
+                    } else {
+                        let side = if p.color() == c { 0 } else { 14 };
+                        usize::from(p.piece_type().0) - 1 + side
+                    };
+                    assert_eq!(pc, want, "乗っている駒 sq={}", sq.to_usi());
+                }
+            }
+        }
+    }
+
+    /// 利きの特徴は手番視点で作るので、180度回して先後を入れ替えた局面と
+    /// 同じ並びになる。HalfKPと同じ性質で、学習が先後で割れない。
+    #[test]
+    fn effect_features_follow_the_perspective() {
+        for pos in &effect_positions() {
+            let mirrored = Position::from_sfen(&mirror_sfen(pos)).unwrap();
+            let (a, b) = (effect_counts(pos), effect_counts(&mirrored));
+            for c in [Color::Black, Color::White] {
+                let mut fa = [0u32; 81];
+                let mut fb = [0u32; 81];
+                effect_active(pos, c, &a, &mut fa);
+                effect_active(&mirrored, c.flip(), &b, &mut fb);
+                assert_eq!(fa, fb, "鏡像で特徴が一致しない: {}", pos.to_sfen());
+            }
+        }
+    }
+
+    /// 遮りが特徴に入る。香の前に駒を置くと、その先の升の利き数が落ちる。
+    /// 遮りを無視した利き数は駒の位置の線形和で、FTがすでに表せる（ADR-0237）。
+    #[test]
+    fn effect_features_see_blocking() {
+        let open = Position::from_sfen("8k/9/9/9/4L4/9/9/9/K8 b - 1").unwrap();
+        let blocked = Position::from_sfen("8k/9/4P4/9/4L4/9/9/9/K8 b - 1").unwrap();
+        let at = Square::from_usi("5b").expect("升").index();
+        let (o, b) = (effect_counts(&open), effect_counts(&blocked));
+        assert_eq!(o[Color::Black.index()][at], 1);
+        assert_eq!(b[Color::Black.index()][at], 1, "5二は歩が肩代わりする");
+        let at = Square::from_usi("5a").expect("升").index();
+        assert_eq!(o[Color::Black.index()][at], 1);
+        assert_eq!(b[Color::Black.index()][at], 0, "5一は香の利きが切れる");
+    }
+
+    /// 利きの活性は連結ベクトルの後ろ（`EFF_BASE` 以降）に入り、第1層の
+    /// 利きの列を通って評価値に効く（ADR-0237）。利きを持たない構成では
+    /// 何も書かない。
+    #[test]
+    fn effect_activations_reach_the_output() {
+        let pos = Position::from_sfen(EFFECT_SFENS[2]).unwrap();
+        let mut net = NnueNetwork::random(11);
+        assert_eq!(net.eff_w.len(), EFF_IN * EFF_OUT);
+        let mut concat = [0u8; CONCAT];
+        fill_effect(&net, &pos, &mut concat);
+        assert!(
+            concat[..EFF_BASE].iter().all(|&x| x == 0),
+            "HalfKPの位置へ書かない"
+        );
+        if EFF_OUT == 0 {
+            return;
+        }
+        net.eff_b.fill(2000);
+        fill_effect(&net, &pos, &mut concat);
+        assert!(
+            concat[EFF_BASE..].iter().all(|&x| x == 127),
+            "バイアスで飽和する"
+        );
+        // 第1層の利きの列だけを動かすと評価値が変わる。HalfKPの列は触らない
+        let base = evaluate_scalar(&net, &pos);
+        let mut moved = false;
+        for scale in [1i8, -1, 3, -3] {
+            for (i, w) in net.w2.iter_mut().enumerate() {
+                if i % CONCAT >= EFF_BASE {
+                    *w = scale;
+                }
+            }
+            net = net.finish();
+            moved |= evaluate_scalar(&net, &pos) != base;
+        }
+        assert!(moved, "利きの活性が後段へ届いていない");
     }
 
     /// インターリーブ表は `w2` の並べ替えである（ADR-0151群L）。

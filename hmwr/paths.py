@@ -47,8 +47,9 @@ WORK = REPO
 # アンダースコアを含むため（pairprod_2990M_q1）、そこは許す
 NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
 
-# ネットワークの構成。<FT>x<L1>[x<L2>[x<L3>]] の形だけを通す（512x16x64など）
-ARCH_RE = re.compile(r"^\d+x\d+(x\d+){0,2}$")
+# ネットワークの構成。<FT>x<L1>[x<L2>[x<L3>]][e<E>] の形だけを通す（512x16x64など）。
+# 末尾の e<E> は幅Eの利きのaccumulatorを足す（ADR-0237、例 1024x16x32e64）
+ARCH_RE = re.compile(r"^\d+x\d+(x\d+){0,2}(e\d+)?$")
 
 
 class BadName(ValueError):
@@ -76,7 +77,7 @@ def check_name(name: str) -> str:
 def check_arch(spec: str) -> str:
     """ネットワークの構成を検証する。ビルドと学習で同じ書式を使う。"""
     if not ARCH_RE.match(spec):
-        raise BadArch(f"構成の書き方が違う: {spec}（<FT>x<L1>[x<L2>[x<L3>]]）")
+        raise BadArch(f"構成の書き方が違う: {spec}（<FT>x<L1>[x<L2>[x<L3>]][e<E>]）")
     return spec
 
 
