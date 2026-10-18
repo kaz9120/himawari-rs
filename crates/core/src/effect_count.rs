@@ -21,7 +21,7 @@
 //! 届いていた飛び利きが移動先で止まるからである。3がその升の方向ビットを
 //! 消すので、4で誤って延ばさない。
 
-use crate::attacks::{between, direction, ray_attacks};
+use crate::attacks::ray_attacks;
 #[cfg(test)]
 use crate::attacks::{
     bishop_attacks, gold_attacks, king_attacks, knight_attacks, pawn_attacks, rook_attacks,
@@ -195,8 +195,7 @@ impl EffectCounts {
         let mut t = EffectCounts::default();
         let occ = pos.occupied();
         for sq in occ {
-            let pc = pos.piece_on(sq);
-            t.add_piece(pc, sq, occ, ray_dirs(pc));
+            t.add_piece(pos.piece_on(sq), sq, occ);
         }
         t
     }
@@ -276,12 +275,11 @@ impl EffectCounts {
         }
     }
 
-    /// 駒の利きを足す。飛び利きは `rays` に立っている方向だけを伸ばす。
     #[inline(always)]
-    fn add_piece(&mut self, pc: Piece, sq: Square, occ: Bitboard, rays: u8) {
+    fn add_piece(&mut self, pc: Piece, sq: Square, occ: Bitboard) {
         let c = pc.color().index();
         self.apply_short::<true>(c, pc, sq);
-        let mut dirs = rays;
+        let mut dirs = ray_dirs(pc);
         while dirs != 0 {
             let d = dirs.trailing_zeros() as usize;
             dirs &= dirs - 1;
@@ -289,31 +287,15 @@ impl EffectCounts {
         }
     }
 
-    /// 駒の利きを外す。飛び利きは `rays` に立っている方向だけを切る。
     #[inline(always)]
-    fn remove_piece(&mut self, pc: Piece, sq: Square, occ: Bitboard, rays: u8) {
+    fn remove_piece(&mut self, pc: Piece, sq: Square, occ: Bitboard) {
         let c = pc.color().index();
         self.apply_short::<false>(c, pc, sq);
-        let mut dirs = rays;
+        let mut dirs = ray_dirs(pc);
         while dirs != 0 {
             let d = dirs.trailing_zeros() as usize;
             dirs &= dirs - 1;
             self.cut(c, d, sq, occ);
-        }
-    }
-
-    /// 升の集合へ、色cの方向dの飛び利きを1本ずつ足す（`ADD`）か外す。
-    #[inline(always)]
-    fn apply_segment<const ADD: bool>(&mut self, c: usize, d: usize, squares: Bitboard) {
-        let bit = 1u8 << d;
-        for s in squares {
-            if ADD {
-                *self.count_mut(c, s) += 1;
-                *self.dirs_mut(c, s) |= bit;
-            } else {
-                *self.count_mut(c, s) -= 1;
-                *self.dirs_mut(c, s) &= !bit;
-            }
         }
     }
 
@@ -340,78 +322,37 @@ impl EffectCounts {
     /// 1手ぶん進めた盤面へ追従する。`captured` は取られた駒（なければ空）、
     /// `occ_before`・`occ_after` は指す前と指した後の占有である。局面そのものは
     /// 読まないので、手と占有を積んでおけば後から当てられる（ADR-0240の遅延更新）。
-    ///
-    /// 飛び駒が自分の飛び利きの線の上を動くとき、その線の2方向は伸縮を区間に限る
-    /// （ADR-0240の4回目のp3）。移動元から移動先へ向かう方向dの利きは、移動元の隣から
-    /// 移動先までが消え、移動先の奥は変わらない。逆向きの利きは、移動先の手前から
-    /// 移動元までが増え、移動元の奥は変わらない。線の外の奥を切って延ばし直す分を省く。
     pub fn update(&mut self, m: Move, captured: Piece, occ_before: Bitboard, occ_after: Bitboard) {
         let to = m.to();
-        let after = m.piece_after();
-        let c = after.color().index();
-        // 線の上で区間だけ足し引きする方向。順方向（`fwd`）と逆方向（`bwd`）の1ビットずつ
-        let mut fwd = 0u8;
-        let mut bwd = 0u8;
-        let mut fwd_dir = 0;
         if !m.is_drop() {
-            let from = m.from_sq();
-            let before = m.piece_before();
-            let kept = ray_dirs(before) & ray_dirs(after);
-            if kept != 0 {
-                let d = direction(from, to);
-                if d < 8 {
-                    fwd_dir = d;
-                    fwd = kept & (1 << d);
-                    bwd = kept & (1 << (d ^ 4));
-                }
-            }
-            self.remove_piece(before, from, occ_before, ray_dirs(before) & !(fwd | bwd));
-            // 順方向の利きは、移動元の隣から移動先までが消える。移動先のビットも消えるので、
-            // 下の「移動先へ届いていた飛び利きを切る」で自分の利きを切らない
-            if fwd != 0 {
-                self.apply_segment::<false>(
-                    c,
-                    fwd_dir,
-                    between(from, to) | Bitboard::from_square(to),
-                );
-            }
+            self.remove_piece(m.piece_before(), m.from_sq(), occ_before);
         }
         if captured != Piece::EMPTY {
-            self.remove_piece(captured, to, occ_before, ray_dirs(captured));
+            self.remove_piece(captured, to, occ_before);
         } else {
-            // 空いていた移動先へ届いていた飛び利きは、移動先で止まる。
-            // 両色の方向ビットを16ビットへ並べ、1本のループで走査する
-            let mut bits =
-                u16::from(self.dirs[0][to.index()]) | (u16::from(self.dirs[1][to.index()]) << 8);
-            while bits != 0 {
-                let b = bits.trailing_zeros() as usize;
-                bits &= bits - 1;
-                self.cut(b >> 3, b & 7, to, occ_before);
+            // 空いていた移動先へ届いていた飛び利きは、移動先で止まる
+            for c in 0..2 {
+                let mut dirs = self.dirs[c][to.index()];
+                while dirs != 0 {
+                    let d = dirs.trailing_zeros() as usize;
+                    dirs &= dirs - 1;
+                    self.cut(c, d, to, occ_before);
+                }
             }
         }
         if !m.is_drop() {
             // 移動元へ届いていた飛び利きは、空いた移動元の奥へ伸びる
             let from = m.from_sq();
-            let mut bits = u16::from(self.dirs[0][from.index()])
-                | (u16::from(self.dirs[1][from.index()]) << 8);
-            while bits != 0 {
-                let b = bits.trailing_zeros() as usize;
-                bits &= bits - 1;
-                self.extend(b >> 3, b & 7, from, occ_after);
-            }
-            // 逆方向の利きは、移動先の手前から移動元までが増える。移動元の方向ビットを
-            // 立てるので、上の延ばし直しの後に当てる
-            if bwd != 0 {
-                self.apply_segment::<true>(
-                    c,
-                    fwd_dir ^ 4,
-                    between(from, to) | Bitboard::from_square(from),
-                );
+            for c in 0..2 {
+                let mut dirs = self.dirs[c][from.index()];
+                while dirs != 0 {
+                    let d = dirs.trailing_zeros() as usize;
+                    dirs &= dirs - 1;
+                    self.extend(c, d, from, occ_after);
+                }
             }
         }
-        // 取った手の順方向は、移動先の奥へ改めて延ばす。取らない手の奥は変わっていない
-        let skip = bwd | if captured == Piece::EMPTY { fwd } else { 0 };
-        self.add_piece(after, to, occ_after, ray_dirs(after) & !skip);
+        self.add_piece(m.piece_after(), to, occ_after);
     }
 }
 
@@ -474,9 +415,6 @@ mod tests {
             SFEN_STARTPOS,
             "l6nl/5+P1gk/2np1S3/p1p4Pp/3P2Sp1/1PPb2P1P/P5GS1/R8/LN4bKL w GR5pnsg 1",
             "+R1G4nl/1g4+Ss1/1kspp2p1/ppp2pS1p/4n4/P4Gp1P/1P1PP1P2/1+n2K2R1/7NL w G2P2b2lp 24",
-            // 飛び駒どうしが線の上で向き合い、線の上を動く手・取る手・成る手が多い局面
-            // （ADR-0240の4回目のp3の区間の足し引き）
-            "k6l1/9/1r2b4/9/9/9/1+R2+B4/9/1L6K b GSN2Pgsn2p 1",
         ] {
             let mut pos = Position::from_sfen(sfen).expect("sfen");
             let t = EffectCounts::build(&pos);

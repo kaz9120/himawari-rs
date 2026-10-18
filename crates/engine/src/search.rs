@@ -660,6 +660,17 @@ impl Worker {
         self.evaluator.push(&self.pos);
     }
 
+    /// 静止探索の `make_move`。利き数の表の差分を進めた直後に当てる（ADR-0240の3回目のq1）。
+    /// 静止探索のノードは置換表に当たらなければ1手詰めで表を読む。読む入口で追いつくと、
+    /// その結果をすぐ読むので差分の計算が隠れない。進めた直後に当て、評価関数の差分の
+    /// 準備と重ねる。
+    #[inline(always)]
+    fn make_move_eager(&mut self, m: Move) {
+        self.pos.do_move(m);
+        self.pos.catch_up_now();
+        self.evaluator.push(&self.pos);
+    }
+
     /// `make_move` を戻す。進めたのと逆の順で戻す。
     #[inline(always)]
     fn unmake_move(&mut self, m: Move) {
@@ -2861,13 +2872,6 @@ impl Worker {
             }
         }
 
-        // 置換表に外れたノードは、1手詰めで利き数の表を読む。差分はここで先に当て、
-        // 1手詰めまでの間に王手の確認と補正値の計算を挟んで、読む側が待たされないようにする。
-        // 当たったノードは表を読まずに戻ることが多いので当てない（ADR-0240の4回目のp2）
-        if tt_hit.is_none() {
-            self.pos.catch_up_now();
-        }
-
         let in_check = self.pos.in_check();
         // continuation historyの面を決める材料（ADR-0109のG1）
         self.stack[ply + STACK_OFFSET].in_check = in_check;
@@ -2884,8 +2888,8 @@ impl Worker {
             // 置換表にヒットしたときはすでに調べたはずなので、ミスのときだけ
             // 呼ぶ。王手中も呼ばない。評価関数の呼び出しより手前に置くので、
             // 詰みがあるときはevaluate()を省ける。
-            // 静止探索も利き数の表から1手詰め・SEE・玉の移動を解く。表は置換表を引いた直後に
-            // 先行して当てておき、ここで待たされないようにする（ADR-0240の4回目のp2）
+            // 静止探索も利き数の表から1手詰め・SEE・玉の移動を解く。表は手を進めた直後に
+            // 先行して当てておき、ここで待たされないようにする（ADR-0240の3回目のq1）
             if tt_hit.is_none()
                 && let Some(m) = self.pos.mate_1ply()
             {
@@ -3041,7 +3045,7 @@ impl Worker {
                 }
 
                 self.set_current_move(ply, m, capture);
-                self.make_move(m);
+                self.make_move_eager(m);
                 let value = -self.qsearch::<PV>(-beta, -alpha, ply + 1);
                 self.unmake_move(m);
                 if self.stopped() {
