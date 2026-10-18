@@ -7,6 +7,7 @@
 
 pub mod board;
 pub mod check;
+pub mod mate;
 pub mod movegen;
 pub mod moves;
 pub mod position;

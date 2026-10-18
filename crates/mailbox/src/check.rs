@@ -1,15 +1,14 @@
-//! 段階5の盤面操作。合法性・擬似合法性・王手の判定・SEE・1手詰め（ADR-0241の第6回）。
+//! 段階5の盤面操作。合法性・擬似合法性・王手の判定・SEE（ADR-0241の第6回）。1手詰めは `mate.rs` にある。
 //!
 //! どれもcoreの同名の関数と同じ値を返す（照合のテストで確かめる）。
 //! 利きの配列を引いて決め、Bitboardの利きの計算は使わない。
 //!
 //! - `is_legal`: 擬似合法手の合法性。玉の手は利き数と飛び利きの延長、ほかはピンで決める
 //! - `pseudo_legal`: 置換表から来た手が、この局面の擬似合法手か
-//! - `gives_check`: 直接王手は駒の利きの形と線の空き、開き王手は自分の飛び利きの方向ビットで決める
+//! - `gives_check`: ノードごとに1回、相手玉から8方向の線と開き王手の駒を求めておき、表を引いて決める
 //! - `see_ge`: coreと同じswapの手順。攻め駒は升から8方向と近傍を見て集める
-//! - `mate_1ply`: coreと同じ候補を同じ順に調べ、最初に詰みと判定した手を返す。
-//!   判定は手を進めて、王手を外す手があるかを利きの配列で見る。coreの判定は不完全
-//!   （持ち駒があれば合駒できるとみなす）なので、その取り決めも同じにする
+
+use std::cell::Cell;
 
 use crate::board::*;
 use crate::movegen::pawn_delta;
@@ -19,7 +18,7 @@ use crate::zobrist::PIECE_VALUE;
 
 /// 81升の集合を小さい升の順に、升の添字で返す。
 #[inline]
-fn iter81(mut m: u128) -> impl Iterator<Item = u8> {
+pub(crate) fn iter81(mut m: u128) -> impl Iterator<Item = u8> {
     std::iter::from_fn(move || {
         if m == 0 {
             return None;
@@ -30,72 +29,22 @@ fn iter81(mut m: u128) -> impl Iterator<Item = u8> {
     })
 }
 
-/// 空の盤で、升fromの駒pが利く升の集合（81升）。
-fn empty_board_targets(from: u8, p: u8) -> u128 {
-    let on = |t: i32| (0..LEN as i32).contains(&t) && SQ81[t as usize] != 0xFF;
-    let m = &MOVES[p as usize];
-    let mut out = 0u128;
-    for k in 0..m.n_short as usize {
-        let t = from as i32 + m.short[k] as i32;
-        if on(t) {
-            out |= bit81(t as u8);
-        }
-    }
-    for (d, &delta) in DELTA.iter().enumerate() {
-        if m.long & (1 << d) == 0 {
-            continue;
-        }
-        let mut t = from as i32 + delta as i32;
-        while on(t) {
-            out |= bit81(t as u8);
-            t += delta as i32;
-        }
-    }
-    out
+/// 相手玉から見た王手の手がかり（coreの `check_squares` と `blockers_for_king` に当たる）。
+#[derive(Copy, Clone, Default, PartialEq, Eq, Debug)]
+pub(crate) struct CheckInfo {
+    /// 方向dの、玉から最初の駒まで（その駒の升を含む）の升の集合（81升）
+    rays: [u128; 8],
+    /// 動くと開き王手になりうる手番側の駒の升の集合
+    blockers: u128,
+    /// 相手玉の81升の通し番号
+    k81: u8,
 }
 
-/// 1手詰めの候補の移動元（coreの `CHECK_CAND` と同じ考え方）。
-/// `[玉の81升][駒の符号]` は、その駒が空の盤で玉の近傍（桂は王手の升）へ利く移動元の集合。
-/// どの占有に対しても上位集合なので、外れた駒は利きを歩かずに捨てられる。
-fn mate_cand() -> &'static [[u128; 32]; 81] {
-    static T: std::sync::OnceLock<Box<[[u128; 32]; 81]>> = std::sync::OnceLock::new();
-    T.get_or_init(|| {
-        let mut t = Box::new([[0u128; 32]; 81]);
-        for k81 in 0..81u8 {
-            let ksq = IDX81[k81 as usize];
-            let near = empty_board_targets(ksq, make_piece(Color::Black, KING));
-            for p in 0..32u8 {
-                let pt = piece_type(p);
-                if pt < 2 || pt == KING {
-                    continue;
-                }
-                let target = if pt == KNIGHT {
-                    // 王手の升: 玉の升へ跳べる升
-                    let mv = &MOVES[p as usize];
-                    let mut s = 0u128;
-                    for k in 0..mv.n_short as usize {
-                        let x = ksq as i32 - mv.short[k] as i32;
-                        if (0..LEN as i32).contains(&x) && SQ81[x as usize] != 0xFF {
-                            s |= bit81(x as u8);
-                        }
-                    }
-                    s
-                } else {
-                    near
-                };
-                for f81 in 0..81u8 {
-                    if f81 == k81 {
-                        continue;
-                    }
-                    let from = IDX81[f81 as usize];
-                    if empty_board_targets(from, p) & target != 0 {
-                        t[k81 as usize][p as usize] |= bit81(from);
-                    }
-                }
-            }
-        }
-        t
-    })
+/// 局面の深さ1つ分の `CheckInfo` の置き場。
+#[derive(Clone, Default)]
+pub(crate) struct CheckSlot {
+    pub(crate) valid: Cell<bool>,
+    info: Cell<CheckInfo>,
 }
 
 /// SEEで攻め駒を選ぶ順（安い順）。coreの `SEE_ORDER` と同じで、金と成金4種は同じ組。
@@ -119,7 +68,7 @@ const SEE_VALUE: [i32; 10] = [90, 315, 405, 495, 540, 855, 945, 990, 1395, 15000
 
 /// 行き所のない駒になるので不成では入れない升か。
 #[inline]
-fn dead_square(us: Color, pt: u8, to: u8) -> bool {
+pub(crate) fn dead_square(us: Color, pt: u8, to: u8) -> bool {
     let rr = rel_rank(us, to);
     match pt {
         PAWN | LANCE => rr == 0,
@@ -324,15 +273,103 @@ impl Position {
         true
     }
 
+    /// 王手の判定の手がかりを、この深さで初めてなら作って返す。
+    #[inline]
+    fn check_info(&self) -> &CheckInfo {
+        let slot = &self.check_slots[self.check_slots_depth()];
+        if !slot.valid.get() {
+            slot.info.set(self.compute_check_info());
+            slot.valid.set(true);
+        }
+        // SAFETY: 中身を書き換えるのは、上の無効な欄を埋めるときと、`push_state`（&mut self）が
+        // 欄を無効にした後だけである。有効な欄へ返した参照が生きている間は&selfが借りられているので、
+        // 同じ欄が書き換えられることはない
+        let ci = unsafe { &*slot.info.as_ptr() };
+        debug_assert!(
+            *ci == self.compute_check_info(),
+            "王手の手がかりが盤面と食い違う（無効化漏れ）"
+        );
+        ci
+    }
+
+    /// 相手玉から8方向へ最初の駒まで歩き、線の升の集合と開き王手の駒を求める。
+    fn compute_check_info(&self) -> CheckInfo {
+        let us = self.side;
+        let ui = us.index();
+        let ksq = self.king[us.flip().index()];
+        let k81 = SQ81[ksq as usize];
+        let mut ci = CheckInfo {
+            k81,
+            ..CheckInfo::default()
+        };
+        for (d, &ray) in RAY81[k81 as usize].iter().enumerate() {
+            match self.first_piece(ksq, d) {
+                None => ci.rays[d] = ray,
+                Some(x) => {
+                    ci.rays[d] = ray & !RAY81[SQ81[x as usize] as usize][d];
+                    // 開き王手の駒: 玉から最初の駒が手番側の駒で、その升に玉へ向かう自分の飛び利きが届いている
+                    if piece_color(self.board[x as usize]) == us
+                        && self.longdir[ui][x as usize] & (1 << opp(d)) != 0
+                    {
+                        ci.blockers |= bit81(x);
+                    }
+                }
+            }
+        }
+        ci
+    }
+
     /// 合法手mが相手玉への王手になるか（coreの `gives_check` と同じ値）。
+    ///
+    /// 直接王手の飛び利きは、指す前の盤の線で決める。coreの `gives_check` と同じ理由で、指す前と後で
+    /// 結果は変わらない。移動元が行き先と玉の間にあるとき、指す前の駒も同じ線を走るので、
+    /// 玉との間が空いていれば指す前から王手になり、局面が不正になる。
+    #[inline]
     pub fn gives_check(&self, m: Move) -> bool {
+        let r = self.gives_check_with(self.check_info(), m);
+        debug_assert_eq!(r, self.gives_check_slow(m), "gives_check: {}", m.to_usi());
+        r
+    }
+
+    #[inline]
+    fn gives_check_with(&self, ci: &CheckInfo, m: Move) -> bool {
+        let ksq = self.king[self.side.flip().index()];
+        let to = m.to();
+        let np = m.piece_after();
+        if short_hit(np, ksq as i32 - to as i32) {
+            return true;
+        }
+        let to81 = SQ81[to as usize];
+        let to_bit = 1u128 << to81;
+        // 玉から行き先への方向。駒は逆向きに走って玉へ届く
+        let dk = DIR81[ci.k81 as usize][to81 as usize];
+        if dk != NO_DIR
+            && MOVES[np as usize].long & (1 << opp(dk as usize)) != 0
+            && ci.rays[dk as usize] & to_bit != 0
+        {
+            return true;
+        }
+        if m.is_drop() {
+            return false;
+        }
+        // 開き王手: 移動元が開き王手の駒で、行き先がその線（玉を通る直線）から外れる
+        let from81 = SQ81[m.from() as usize];
+        if ci.blockers & (1u128 << from81) == 0 {
+            return false;
+        }
+        let df = DIR81[ci.k81 as usize][from81 as usize];
+        dk != df && dk != (df ^ 1)
+    }
+
+    /// 盤を歩いて決める版。キャッシュの経路の正解器で、デバッグの検査とテストからだけ呼ぶ。
+    #[doc(hidden)]
+    pub fn gives_check_slow(&self, m: Move) -> bool {
         let us = self.side;
         let ksq = self.king[us.flip().index()];
         let to = m.to();
         let np = m.piece_after();
         let mv = &MOVES[np as usize];
-        let diff = ksq as i32 - to as i32;
-        if diff.abs() <= 2 * STRIDE && mv.short[..mv.n_short as usize].contains(&(diff as i8)) {
+        if short_hit(np, ksq as i32 - to as i32) {
             return true;
         }
         let from = if m.is_drop() { 0 } else { m.from() };
@@ -511,236 +548,5 @@ impl Position {
             }
             return;
         }
-    }
-
-    /// 1手詰めがあればその手を返す（coreの `mate_1ply` と同じ手を返す）。王手されていない局面で呼ぶ。
-    ///
-    /// 候補はcoreと同じで、同じ順に調べる。盤上の駒は玉の8近傍へ動く手（桂は王手の升へ跳ぶ手）、
-    /// 成りを先に、行き所のある不成を後に。駒打ちは金・銀・桂・香・飛・角の順に、玉の隣（桂は王手の升）へ打つ手。
-    pub fn mate_1ply(&mut self) -> Option<Move> {
-        debug_assert!(!self.in_check());
-        let us = self.side;
-        let ui = us.index();
-        let ksq = self.king[us.flip().index()];
-        let mut near = 0u128;
-        for &delta in DELTA.iter() {
-            let t = (ksq as i32 + delta as i32) as u8;
-            if self.board[t as usize] != WALL {
-                near |= bit81(t);
-            }
-        }
-        let hit_from = |pt: u8| -> u128 {
-            let m = &MOVES[make_piece(us, pt) as usize];
-            let mut set = 0u128;
-            for k in 0..m.n_short as usize {
-                let x = (ksq as i32 - m.short[k] as i32) as u8;
-                if self.board[x as usize] != WALL {
-                    set |= bit81(x);
-                }
-            }
-            set
-        };
-        let adjacent = |dirs: [usize; 4]| -> u128 {
-            let mut set = 0u128;
-            for d in dirs {
-                let x = (ksq as i32 + DELTA[d] as i32) as u8;
-                if self.board[x as usize] != WALL {
-                    set |= bit81(x);
-                }
-            }
-            set
-        };
-        let knight_to = hit_from(KNIGHT);
-        let empty = ALL81 & !(self.occ[0] | self.occ[1]);
-        let lance_sq = (ksq as i32 - pawn_delta(us)) as u8;
-        let lance_to = if self.board[lance_sq as usize] != WALL {
-            bit81(lance_sq)
-        } else {
-            0
-        };
-        // 駒打ちの候補の升。coreと同じ駒種の順
-        let drops: [(u8, u128); 6] = [
-            (GOLD, hit_from(GOLD)),
-            (SILVER, hit_from(SILVER)),
-            (KNIGHT, knight_to),
-            (LANCE, lance_to),
-            (ROOK, adjacent([UP, DOWN, LEFT, RIGHT])),
-            (BISHOP, adjacent([UL, DR, UR, DL])),
-        ];
-        // 玉の逃げ場: 玉の隣で、相手（玉の側）の駒がなく、手番側の利きもない升（方向のビット）
-        let mut escapes = 0u8;
-        for (d, &delta) in DELTA.iter().enumerate() {
-            let t = (ksq as i32 + delta as i32) as usize;
-            let v = self.board[t];
-            if v != WALL && (v == EMPTY || piece_color(v) == us) && self.count[ui][t] == 0 {
-                escapes |= 1 << d;
-            }
-        }
-        let cand = &mate_cand()[SQ81[ksq as usize] as usize];
-        let movers = self.occ[ui] & !bit81(self.king[ui]);
-        for s in iter81(movers) {
-            let p = self.board[s as usize];
-            // 空の盤でも玉の近傍（桂は王手の升）へ届かない駒は、利きを歩かずに捨てる
-            if cand[p as usize] & bit81(s) == 0 {
-                continue;
-            }
-            let pt = piece_type(p);
-            let targets = self.targets_of(s, p, ui) & if pt == KNIGHT { knight_to } else { near };
-            // 移動元に手番側の飛び利きが当たっていれば、動かすと利きが伸びうる。
-            // その手は利き数で決めず、玉に取られるかを升の利きで調べ直す（coreの `opens_line`）
-            let open = self.longdir[ui][s as usize] != 0;
-            for t in iter81(targets) {
-                if near & bit81(t) != 0 {
-                    let taken = if open {
-                        self.attackers_with(us, t, bit81(s) | bit81(ksq)) & !bit81(s) == 0
-                    } else {
-                        // 動かす駒もtへ利いているので、2枚以上でなければほかに守りがない
-                        self.count[ui][t as usize] < 2
-                    };
-                    if taken {
-                        continue;
-                    }
-                }
-                if can_promote(pt) && (rel_rank(us, s) <= 2 || rel_rank(us, t) <= 2) {
-                    let m = Move::normal(s, t, true, p - 8);
-                    if !(!open && self.escape_left(escapes, ksq, t, p - 8, s))
-                        && self.is_mate_move(m)
-                    {
-                        return Some(m);
-                    }
-                }
-                if !dead_square(us, pt, t) {
-                    let m = Move::normal(s, t, false, p);
-                    if !(!open && self.escape_left(escapes, ksq, t, p, s)) && self.is_mate_move(m) {
-                        return Some(m);
-                    }
-                }
-            }
-        }
-        for (pt, targets) in drops {
-            if self.hand_ids[ui][hand_index(pt)] == 0 {
-                continue;
-            }
-            for t in iter81(targets & empty) {
-                if dead_square(us, pt, t) {
-                    continue;
-                }
-                // 打った駒は利き数に入っていないので、守りが0枚なら玉に取られる
-                if near & bit81(t) != 0 && self.count[ui][t as usize] == 0 {
-                    continue;
-                }
-                if self.escape_left(escapes, ksq, t, make_piece(us, pt), 0) {
-                    continue;
-                }
-                let m = Move::drop(pt, t, us);
-                if self.is_mate_move(m) {
-                    return Some(m);
-                }
-            }
-        }
-        None
-    }
-
-    /// 升tへ置いた駒npの利きで埋まらない逃げ場が残るか（移動元に飛び利きが当たっていない手に限る）。
-    ///
-    /// 逃げ場は指す前に手番側の利きがない升なので、指した後に利きが増えるのはnpの利きだけである。
-    /// npの飛び利きは、玉と移動元fromを空きとみなして通す（玉が線に沿って逃げても利きは届く）。
-    /// 駒打ちはfromに0（盤外）を渡す。
-    #[inline]
-    fn escape_left(&self, escapes: u8, ksq: u8, t: u8, np: u8, from: u8) -> bool {
-        let mv = &MOVES[np as usize];
-        let mut dirs = escapes;
-        while dirs != 0 {
-            let d = dirs.trailing_zeros() as usize;
-            dirs &= dirs - 1;
-            let e = (ksq as i32 + DELTA[d] as i32) as u8;
-            if e == t {
-                continue;
-            }
-            let diff = e as i32 - t as i32;
-            if diff.abs() <= 2 * STRIDE && mv.short[..mv.n_short as usize].contains(&(diff as i8)) {
-                continue;
-            }
-            let covered = match dir_between(t, e) {
-                Some(dd) if mv.long & (1 << dd) != 0 => {
-                    let delta = DELTA[dd] as i32;
-                    let mut x = (t as i32 + delta) as u8;
-                    let mut clear = true;
-                    while x != e {
-                        if self.board[x as usize] != EMPTY && x != from && x != ksq {
-                            clear = false;
-                            break;
-                        }
-                        x = (x as i32 + delta) as u8;
-                    }
-                    clear
-                }
-                _ => false,
-            };
-            if !covered {
-                return true;
-            }
-        }
-        false
-    }
-
-    /// 候補mが詰みか。合法なら進め、王手を外す手があるかを利きの配列で見て戻す。
-    fn is_mate_move(&mut self, m: Move) -> bool {
-        if !self.is_legal(m) {
-            return false;
-        }
-        self.do_move(m);
-        let mate = self.no_evasion_core_rules();
-        self.undo_move(m);
-        mate
-    }
-
-    /// 手番側（王手をかけられた側）に、coreの1手詰めの判定で認める王手の外し方が無いか。
-    ///
-    /// 玉の移動・王手駒を取る手・盤上の駒の合駒を見る。合駒の升があって持ち駒が1枚でもあれば、
-    /// 打って遮れるとみなす（coreの取り決め。打てない歩でも数える）。
-    fn no_evasion_core_rules(&self) -> bool {
-        let def = self.side;
-        let di = def.index();
-        let ai = def.flip().index();
-        let k = self.king[di];
-        let checkers = self.state().checkers;
-        if checkers == 0 {
-            return false;
-        }
-        let xray = self.longdir[ai][k as usize];
-        for (d, &delta) in DELTA.iter().enumerate() {
-            let t = (k as i32 + delta as i32) as usize;
-            if CAN_MOVE_TO[di][self.board[t] as usize]
-                && self.count[ai][t] == 0
-                && xray & (1 << d) == 0
-            {
-                return false;
-            }
-        }
-        if checkers.count_ones() >= 2 {
-            return true;
-        }
-        let csq = IDX81[checkers.trailing_zeros() as usize];
-        let not_king = !bit81(k);
-        for x in iter81(self.attackers_with(def, csq, 0) & not_king) {
-            if !self.is_pinned(def, x) {
-                return false;
-            }
-        }
-        let inter = self.between81(k, csq);
-        if inter != 0 {
-            if self.hand_ids[di].iter().any(|&h| h != 0) {
-                return false;
-            }
-            for s in iter81(inter) {
-                for x in iter81(self.attackers_with(def, s, 0) & not_king) {
-                    if !self.is_pinned(def, x) {
-                        return false;
-                    }
-                }
-            }
-        }
-        true
     }
 }

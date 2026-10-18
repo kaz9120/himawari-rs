@@ -21,6 +21,7 @@
 //! 進めるたびに利きの表を積み、戻しは表を書き戻して盤だけを戻す（ADR-0241の段階4で比べる）。
 
 use crate::board::*;
+use crate::check::CheckSlot;
 use crate::moves::Move;
 use crate::zobrist::{self, HAND_PAWN, HAND_SHIFT, PIECE_VALUE, PSQ, is_minor_piece};
 
@@ -126,6 +127,9 @@ pub struct Position {
     /// 手駒をcoreの `Hand` と同じ詰め方で持った値（hand_keyに使う）。
     hand_raw: [u32; 2],
     states: Vec<StateInfo>,
+    /// 局面の深さごとの、王手の判定の手がかり（`gives_check` が初めて呼ばれたときに作る）。
+    /// 添字は `states` と同じ。進めるたびにその深さの欄を無効にする
+    pub(crate) check_slots: Vec<CheckSlot>,
     #[cfg(feature = "copy-undo")]
     snapshots: Vec<EffectSnapshot>,
 }
@@ -154,6 +158,7 @@ impl Position {
             ply: 1,
             hand_raw: [0; 2],
             states: Vec::with_capacity(512),
+            check_slots: Vec::with_capacity(512),
             #[cfg(feature = "copy-undo")]
             snapshots: Vec::with_capacity(512),
         }
@@ -194,6 +199,12 @@ impl Position {
         self.states.last().expect("state stack is never empty")
     }
 
+    /// いまの局面の深さ（`states` と `check_slots` の添字）。
+    #[inline]
+    pub(crate) fn check_slots_depth(&self) -> usize {
+        self.states.len() - 1
+    }
+
     /// 置換表用の合成キー（coreと同じ定義）。
     #[inline]
     pub fn key(&self) -> u64 {
@@ -218,10 +229,12 @@ impl Position {
     #[inline]
     fn piece_effect<const ADD: bool>(&mut self, p: u8, s: u8, skip: u8) {
         let c = piece_color(p).index();
-        let m = &MOVES[p as usize];
+        // 駒の符号は32未満。マスクで境界検査を消す
+        let m = &MOVES[(p & 31) as usize];
         for k in 0..m.n_short as usize {
-            // 短い利きは壁の升にも書く（分岐を省く）。壁の値は読まない
-            let t = (s as i32 + m.short[k] as i32) as usize;
+            // 短い利きは壁の升にも書く（分岐を省く）。壁の値は読まない。
+            // 添字をu8で持つと、256要素の配置では境界検査が消える
+            let t = s.wrapping_add(m.short[k] as u8) as usize;
             if ADD {
                 self.count[c][t] += 1;
             } else {
@@ -239,25 +252,26 @@ impl Position {
     /// 升sの先、方向dへ伸びる色cの飛び利きを足す（ADD）か引く。最初の駒の升まで含める。
     #[inline]
     fn ray<const ADD: bool>(&mut self, c: usize, s: u8, d: usize) {
-        let delta = DELTA[d] as i32;
+        let delta = DELTA[d] as u8;
         let b = 1u8 << d;
-        let mut t = (s as i32 + delta) as usize;
+        let mut t = s.wrapping_add(delta);
         loop {
-            let v = self.board[t];
+            let i = t as usize;
+            let v = self.board[i];
             if v == WALL {
                 break;
             }
             if ADD {
-                self.count[c][t] += 1;
-                self.longdir[c][t] |= b;
+                self.count[c][i] += 1;
+                self.longdir[c][i] |= b;
             } else {
-                self.count[c][t] -= 1;
-                self.longdir[c][t] &= !b;
+                self.count[c][i] -= 1;
+                self.longdir[c][i] &= !b;
             }
             if v != EMPTY {
                 break;
             }
-            t = (t as i32 + delta) as usize;
+            t = t.wrapping_add(delta);
         }
     }
 
@@ -282,11 +296,11 @@ impl Position {
     /// 間の升が空きで、bがaから方向dの線上にあることが前提。
     #[inline]
     fn segment<const ADD: bool>(&mut self, c: usize, a: u8, b: u8, d: usize) {
-        let delta = DELTA[d] as i32;
+        let delta = DELTA[d] as u8;
         let bit = 1u8 << d;
-        let mut t = a as i32;
+        let mut t = a;
         loop {
-            t += delta;
+            t = t.wrapping_add(delta);
             let i = t as usize;
             if ADD {
                 self.count[c][i] += 1;
@@ -618,16 +632,34 @@ impl Position {
         st.hand_key = self.hand_key_of();
         self.side = us.flip();
         self.ply += 1;
-        // 王手の情報。利き数で王手の有無が決まるので、王手のときだけ王手駒を探す
-        st.checkers = self.compute_checkers();
+        // 王手の情報。利き数で王手の有無が決まるので、王手のときだけ王手駒を探す。
+        // 利き数の読みはここに置き、王手駒を探す関数の呼び出しは王手のときだけにする
+        let k = self.king[self.side.index()];
+        st.checkers = if self.count[ui][k as usize] == 0 {
+            0
+        } else {
+            self.compute_checkers()
+        };
         if st.checkers != 0 {
             st.continuous_check[ui] += 1;
         } else {
             st.continuous_check[ui] = 0;
         }
-        self.states.push(st);
+        self.push_state(st);
         #[cfg(debug_assertions)]
         self.assert_consistent();
+    }
+
+    /// 状態を積み、その深さの王手の手がかりを無効にする。
+    #[inline]
+    fn push_state(&mut self, st: StateInfo) {
+        self.states.push(st);
+        let n = self.states.len();
+        if self.check_slots.len() < n {
+            self.check_slots.push(CheckSlot::default());
+        } else {
+            self.check_slots[n - 1].valid.set(false);
+        }
     }
 
     pub fn undo_move(&mut self, m: Move) {
@@ -920,7 +952,7 @@ impl Position {
             }
         }
         let st = pos.state_from_scratch();
-        pos.states.push(st);
+        pos.push_state(st);
         // 手番でない側の玉に王手がかかっている局面は受け付けない
         let them = pos.side.flip();
         if pos.count[pos.side.index()][pos.king[them.index()] as usize] != 0 {

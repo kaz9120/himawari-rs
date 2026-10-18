@@ -158,6 +158,10 @@ thread_local! {
     static PREV_MOVES: std::cell::RefCell<Vec<CoreMove>> = const { std::cell::RefCell::new(Vec::new()) };
 }
 
+/// 合法手のうち、1手詰めの判定（coreの取り決め）で詰みとされた手の数。照合の濃さを表示するために数える。
+/// 並列に走るテストの間で共有するので、数を読むときは `--test-threads 1` で走らせる
+static MATE_MOVES: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+
 /// 段階5の関数の返す値をcoreと比べる。
 fn check_stage5(core: &CorePos, mb: &mut Position) {
     let sfen = core.to_sfen();
@@ -236,6 +240,18 @@ fn check_stage5(core: &CorePos, mb: &mut Position) {
                 m.to_usi()
             );
         }
+    }
+    // 1手詰めの候補の判定: 合法手の全部で、盤を動かさない判定と手を進める判定（第6回の実装）を比べる
+    for &m in &legal {
+        let mm = to_mb(m);
+        let fast = mb.is_mate_move_for_test(mm);
+        assert_eq!(
+            fast,
+            mb.is_mate_move_by_move(mm),
+            "is_mate_move {}: {sfen}",
+            m.to_usi()
+        );
+        MATE_MOVES.fetch_add(u64::from(fast), std::sync::atomic::Ordering::Relaxed);
     }
     // mate_1ply: 王手されていないとき
     if !core.in_check() {
@@ -369,6 +385,7 @@ impl Rng {
 /// 届いた局面の種類を数え、検査が王手・駒打ち・詰みまで届いたことを確かめる。
 fn playouts(games: u32, max_ply: u32, seed: u64) {
     let mut rng = Rng(seed);
+    MATE_MOVES.store(0, std::sync::atomic::Ordering::Relaxed);
     let (mut nodes, mut checks, mut drops, mut mates) = (0u64, 0u64, 0u64, 0u64);
     for g in 0..games {
         let start = CASES[g as usize % CASES.len()];
@@ -399,7 +416,10 @@ fn playouts(games: u32, max_ply: u32, seed: u64) {
         }
         mb.check_consistency().unwrap();
     }
-    println!("局面 {nodes}、王手 {checks}、駒打ちの合法手 {drops}、詰み {mates}");
+    println!(
+        "局面 {nodes}、王手 {checks}、駒打ちの合法手 {drops}、詰み {mates}、詰みと判定した合法手 {}",
+        MATE_MOVES.load(std::sync::atomic::Ordering::Relaxed)
+    );
     assert!(checks > 0 && drops > 0 && mates > 0);
 }
 
@@ -620,6 +640,7 @@ fn random_position(rng: &mut Rng) -> Option<CorePos> {
 #[test]
 fn sparse_positions_match_core() {
     let mut rng = Rng(0x1234_5678_9ABC_DEF0);
+    MATE_MOVES.store(0, std::sync::atomic::Ordering::Relaxed);
     let mut positions = 0u32;
     let mut mates = 0u32;
     while positions < 20_000 {
@@ -631,7 +652,10 @@ fn sparse_positions_match_core() {
         check_node(&core, &mut mb);
         mates += u32::from(mate_1ply(&core).is_some());
     }
-    println!("疎な乱数局面 {positions}、1手詰めあり {mates}");
+    println!(
+        "疎な乱数局面 {positions}、1手詰めあり {mates}、詰みと判定した合法手 {}",
+        MATE_MOVES.load(std::sync::atomic::Ordering::Relaxed)
+    );
     assert!(mates > 1000);
 }
 
@@ -639,6 +663,7 @@ fn sparse_positions_match_core() {
 #[test]
 fn game_records_match_core() {
     let text = include_str!("../../../openings/actdump_positions.txt");
+    MATE_MOVES.store(0, std::sync::atomic::Ordering::Relaxed);
     let (mut nodes, mut mates) = (0u32, 0u32);
     for line in text.lines().filter(|l| l.starts_with("sfen ")).take(60) {
         let tokens: Vec<&str> = line.split_whitespace().collect();
@@ -657,6 +682,9 @@ fn game_records_match_core() {
             mb.do_move(mm);
         }
     }
-    println!("棋譜の局面 {nodes}、1手詰めあり {mates}");
+    println!(
+        "棋譜の局面 {nodes}、1手詰めあり {mates}、詰みと判定した合法手 {}",
+        MATE_MOVES.load(std::sync::atomic::Ordering::Relaxed)
+    );
     assert!(nodes > 5000);
 }

@@ -348,6 +348,95 @@ pub const MOVES: [PieceMoves; 32] = {
     t
 };
 
+/// 短い利きの差分を表で引くときのずらし幅。短い利きの差分は ±(STRIDE+2) に収まる。
+pub const SHORT_OFF: i32 = STRIDE + 2;
+
+/// 駒の符号ごとの短い利きの差分の集合。bit (差分+SHORT_OFF) が立つ。
+///
+/// 盤上の2升の差分が短い利きの差分と一致するなら、2升の位置関係もその利きの形である。
+/// 段の差は±8、短い利きの段の差は±2なので、列の幅（11以上）をまたいだ取り違えが起きない。
+pub const SHORT_MASK: [u64; 32] = {
+    let mut t = [0u64; 32];
+    let mut p = 0;
+    while p < 32 {
+        let m = &MOVES[p];
+        let mut k = 0;
+        while k < m.n_short as usize {
+            t[p] |= 1u64 << (m.short[k] as i32 + SHORT_OFF);
+            k += 1;
+        }
+        p += 1;
+    }
+    t
+};
+
+/// 駒pの短い利きに、差分diffの升が入るか。
+#[inline]
+pub const fn short_hit(p: u8, diff: i32) -> bool {
+    let i = diff + SHORT_OFF;
+    i >= 0 && i <= 2 * SHORT_OFF && (SHORT_MASK[p as usize] >> i) & 1 != 0
+}
+
+/// 81升の通し番号で、方向dへ1歩進む筋・段の差分（`DELTA` と同じ向き）。
+const STEP81: [(i8, i8); 8] = [
+    (0, -1),
+    (0, 1),
+    (1, 0),
+    (-1, 0),
+    (1, -1),
+    (-1, 1),
+    (-1, -1),
+    (1, 1),
+];
+
+/// 方向が無いことを表す `DIR81` の値。
+pub const NO_DIR: u8 = 8;
+
+/// `DIR81[a][b]` は81升の通し番号aからbへ向かう方向。同じ線に無ければ `NO_DIR`。
+/// `dir_between` の表引き版で、升の添字の配置に依らない。
+pub const DIR81: [[u8; 81]; 81] = {
+    let mut t = [[NO_DIR; 81]; 81];
+    let mut a = 0;
+    while a < 81 {
+        let mut d = 0;
+        while d < 8 {
+            let (df, dr) = STEP81[d];
+            let mut f = (a / 9) as i32 + df as i32;
+            let mut r = (a % 9) as i32 + dr as i32;
+            while f >= 0 && f < 9 && r >= 0 && r < 9 {
+                t[a][(f * 9 + r) as usize] = d as u8;
+                f += df as i32;
+                r += dr as i32;
+            }
+            d += 1;
+        }
+        a += 1;
+    }
+    t
+};
+
+/// `RAY81[a][d]` は81升の通し番号aから方向dへ盤の端までの升の集合（aを含まない）。
+pub const RAY81: [[u128; 8]; 81] = {
+    let mut t = [[0u128; 8]; 81];
+    let mut a = 0;
+    while a < 81 {
+        let mut d = 0;
+        while d < 8 {
+            let (df, dr) = STEP81[d];
+            let mut f = (a / 9) as i32 + df as i32;
+            let mut r = (a % 9) as i32 + dr as i32;
+            while f >= 0 && f < 9 && r >= 0 && r < 9 {
+                t[a][d] |= 1u128 << (f * 9 + r);
+                f += df as i32;
+                r += dr as i32;
+            }
+            d += 1;
+        }
+        a += 1;
+    }
+    t
+};
+
 /// SFENの駒文字（大文字）。
 pub fn sfen_of_type(pt: u8) -> &'static str {
     match pt {
@@ -412,6 +501,36 @@ mod tests {
             for d in DELTA {
                 let t = i + d as i32;
                 assert!((0..LEN as i32).contains(&t));
+            }
+        }
+    }
+
+    #[test]
+    fn tables_match_geometry() {
+        for &a in IDX81.iter() {
+            for &b in IDX81.iter() {
+                let want = dir_between(a, b).map_or(NO_DIR, |d| d as u8);
+                assert_eq!(
+                    DIR81[SQ81[a as usize] as usize][SQ81[b as usize] as usize],
+                    want
+                );
+                let diff = b as i32 - a as i32;
+                for p in 0..32u8 {
+                    let m = &MOVES[p as usize];
+                    let want = m.short[..m.n_short as usize]
+                        .iter()
+                        .any(|&o| o as i32 == diff);
+                    assert_eq!(short_hit(p, diff), want);
+                }
+            }
+            for d in 0..8 {
+                let mut want = 0u128;
+                let mut t = (a as i32 + DELTA[d] as i32) as u8;
+                while SQ81[t as usize] != 0xFF {
+                    want |= bit81(t);
+                    t = (t as i32 + DELTA[d] as i32) as u8;
+                }
+                assert_eq!(RAY81[SQ81[a as usize] as usize][d], want);
             }
         }
     }
