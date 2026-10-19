@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.55.14](https://github.com/kaz9120/himawari-rs/compare/v0.55.13...v0.55.14) (2026-10-19)
+
+
+### その他の変更
+
+* SPRTトレーラの注記をsprt_logへ一本化する ([#851](https://github.com/kaz9120/himawari-rs/issues/851)) ([1e213ba](https://github.com/kaz9120/himawari-rs/commit/1e213ba422f20430b871e59c10fb913b62d0777b)), closes [#849](https://github.com/kaz9120/himawari-rs/issues/849)
+
 ## [0.55.13](https://github.com/kaz9120/himawari-rs/compare/v0.55.12...v0.55.13) (2026-10-17)
 
 
