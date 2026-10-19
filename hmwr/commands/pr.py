@@ -14,7 +14,7 @@ import re
 import tempfile
 from pathlib import Path
 
-from .. import paths, proc
+from .. import paths, proc, sprt_log
 
 KINDS = {"chore": "その他", "strength": "棋力向上"}
 FRONT_MATTER_RE = re.compile(r"\A---\n.*?\n---\n", re.S)
@@ -111,7 +111,6 @@ def create(args: argparse.Namespace) -> int:
 # release-please のパーサは入れ子の半角括弧で失敗し、その回のリリースが黙って止まる
 NESTED_PARENS_RE = re.compile(r"\([^()]*\(")
 CI_PASS = {"SUCCESS", "SKIPPED", "NEUTRAL"}
-NON_INFERIORITY_NOTE = "（非劣性 elo0=-5 elo1=0）"
 
 
 def squash_message(pr: dict) -> tuple[str, str]:
@@ -143,14 +142,19 @@ def read_result(path: Path) -> dict[str, str]:
 
 
 def expected_trailer(result: dict[str, str]) -> str:
-    """結果ファイルから、本文に載るべき SPRT: トレーラを作る（ADR-0071）。"""
+    """結果ファイルから、本文に載るべき SPRT: トレーラを作る（ADR-0071）。
+
+    注記は `sprt_log.hypothesis_note()` に任せる。トレーラを書く側と
+    検査する側で別々に組むと、既定でも非劣性でもない対立仮説（elo1=10の
+    加速SPRTなど）で食い違い、マージが止まる。
+    """
     line = (
         f"SPRT: {result['elo']} [{result['ci_low']},{result['ci_high']}] "
         f"{result['games']}games {result['decision']}"
     )
-    if (result.get("elo0"), result.get("elo1")) == ("-5", "0"):
-        line += NON_INFERIORITY_NOTE
-    return line
+    elo0, elo1 = result.get("elo0"), result.get("elo1")
+    hyp = (elo0, elo1) if elo0 is not None and elo1 is not None else None
+    return line + sprt_log.hypothesis_note(hyp)
 
 
 def problems(kind: str, subject: str, body: str, result: dict[str, str] | None) -> list[str]:
