@@ -564,16 +564,16 @@ impl Position {
         self.mate_drops::<COUNT>(ks, escapes, ksq, near, empty, occ_all, cnt)
     }
 
-    /// 相手玉の逃げ場（方向のビット）。1手詰めの列挙の1段目。
+    /// 相手玉の逃げ場（81升の集合）。1手詰めの列挙の1段目。
     #[inline(always)]
-    fn mate_escapes(&self, us: Color, ksq: u8) -> u8 {
+    fn mate_escapes(&self, us: Color, ksq: u8) -> u128 {
         let ui = us.index();
-        let mut escapes = 0u8;
-        for (d, &delta) in DELTA.iter().enumerate() {
+        let mut escapes = 0u128;
+        for &delta in DELTA.iter() {
             let t = (ksq as i32 + delta as i32) as usize;
             let v = self.board[t];
             if v != WALL && (v == EMPTY || piece_color(v) == us) && self.count[ui][t] == 0 {
-                escapes |= 1 << d;
+                escapes |= bit81(t as u8);
             }
         }
         escapes
@@ -635,7 +635,7 @@ impl Position {
         &self,
         cand: &[u128; 32],
         movers: u128,
-        escapes: u8,
+        escapes: u128,
         ksq: u8,
         near: u128,
         knight_to: u128,
@@ -704,7 +704,7 @@ impl Position {
     fn mate_drops<const COUNT: bool>(
         &self,
         ks: &KingSets,
-        escapes: u8,
+        escapes: u128,
         ksq: u8,
         near: u128,
         empty: u128,
@@ -782,31 +782,33 @@ impl Position {
     /// npの飛び利きは、玉と移動元fromを空きとみなして通す（玉が線に沿って逃げても利きは届く）。
     /// 駒打ちはfromに `NO_FROM` を渡す。
     #[inline]
-    fn escape_left(&self, escapes: u8, ksq: u8, t: u8, np: u8, from: u8, occ_all: u128) -> bool {
-        let mv = &MOVES[(np & 31) as usize];
+    fn escape_left(&self, escapes: u128, ksq: u8, t: u8, np: u8, from: u8, occ_all: u128) -> bool {
         let t81 = SQ81[t as usize] as usize;
+        // 置いた升と、置いた駒の短い利きで埋まる逃げ場を1回の論理積で落とす（ADR-0241の第16回）
+        let mut left = escapes & !short81(np, t81) & !(1u128 << t81);
+        if left == 0 {
+            return false;
+        }
+        let long = MOVES[(np & 31) as usize].long;
+        if long == 0 {
+            return true;
+        }
+        // 飛び駒は、残った逃げ場ごとに線が届くかを見る。線を通すときは玉と移動元を空きとみなす
         let k81 = SQ81[ksq as usize] as usize;
-        // 線を通すときに空きとみなす升（玉と移動元）を抜いた占有
         let from_bit = if from == NO_FROM {
             0
         } else {
             bit81_or_zero(from)
         };
         let occ = occ_all & !(1u128 << k81) & !from_bit;
-        let mut dirs = escapes;
-        while dirs != 0 {
-            let d = dirs.trailing_zeros() as usize;
-            dirs &= dirs - 1;
-            let e = (ksq as i32 + DELTA[d] as i32) as u8;
-            if e == t || short_hit(np, e as i32 - t as i32) {
-                continue;
-            }
-            let e81 = SQ81[e as usize] as usize;
+        while left != 0 {
+            let e81 = left.trailing_zeros() as usize;
+            left &= left - 1;
             let dd = dir81(t81, e81) as usize;
-            // 置いた駒の飛び利きがeへ届くか。tからeの間（両端を含まない）が空いていれば届く
+            // tからeの間（両端を含まない）が空いていれば届く
             let covered = dd != NO_DIR as usize
-                && mv.long & (1 << dd) != 0
-                && RAY81[t81][dd] & !RAY81[e81][dd] & !(1u128 << e81) & occ == 0;
+                && long & (1 << dd) != 0
+                && ray81(t81, dd) & !ray81(e81, dd) & !(1u128 << e81) & occ == 0;
             if !covered {
                 return true;
             }
