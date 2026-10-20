@@ -1,0 +1,11 @@
+# ADR-0143 の再走（4回目）: 利き数入力の評価関数（ADR-0237）で、第1群の26定数をSPSAで回し直す。
+# 15,000ペアで約31〜39時間。評価関数は開始時点の EVAL_FILE を使う。検収のSPRTは対話セッションが行う。
+adr = "0143"
+
+[[step]]
+id = "init"
+run = "hmwr spsa init g4"
+
+[[step]]
+id = "run"
+run = "hmwr spsa run g4 --pairs 15000 --foreground"
