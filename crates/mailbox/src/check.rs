@@ -163,17 +163,14 @@ impl Position {
 
     /// 升aと升bの間の升の集合（同じ線に無ければ空）。
     pub fn between81(&self, a: u8, b: u8) -> u128 {
-        let Some(d) = dir_between(a, b) else {
+        // 盤を歩かず、aからbへの線とbから先の線の差で引く（ADR-0241の第16回）
+        let (a81, b81) = (SQ81[a as usize] as usize, SQ81[b as usize] as usize);
+        let d = dir81(a81, b81);
+        if d == NO_DIR {
             return 0;
-        };
-        let delta = DELTA[d] as i32;
-        let mut m = 0u128;
-        let mut t = (a as i32 + delta) as u8;
-        while t != b {
-            m |= bit81(t);
-            t = (t as i32 + delta) as u8;
         }
-        m
+        let d = d as usize;
+        ray81(a81, d) & !ray81(b81, d) & !(1u128 << b81)
     }
 
     /// 升sへの歩打ちが打ち歩詰めか（sへの歩打ちが相手玉への王手である前提）。盤は動かさない。
@@ -305,9 +302,21 @@ impl Position {
         if pc != m.piece_before() || pc == EMPTY || pc == WALL || piece_color(pc) != us {
             return false;
         }
-        if self.targets_of(from, pc, ui) & bit81(to) == 0 {
+        // 駒がtoへ動けるか。短い利きは表、飛び利きは線の間の升が空いているかで決める（盤を歩かない）
+        let (from81, to81) = (SQ81[from as usize] as usize, SQ81[to as usize] as usize);
+        if self.occ[ui] & (1u128 << to81) != 0 {
             return false;
         }
+        if short81(pc, from81) & (1u128 << to81) == 0 {
+            let d = dir81(from81, to81);
+            if d == NO_DIR
+                || MOVES[(pc & 31) as usize].long & (1 << d) == 0
+                || self.between81(from, to) & (self.occ[0] | self.occ[1]) != 0
+            {
+                return false;
+            }
+        }
+        debug_assert!(self.targets_of(from, pc, ui) & bit81(to) != 0);
         let pt = piece_type(pc);
         if m.is_promote() {
             if !can_promote(pt) || !(rel_rank(us, from) <= 2 || rel_rank(us, to) <= 2) {
