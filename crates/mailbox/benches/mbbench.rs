@@ -20,6 +20,10 @@
 //! 命令数は段ごとに分けて取れないので、`/usr/bin/time -l` の命令数を `--stage walk` の実行との差で読む。
 //! 1回あたりの命令数は (段−walk)÷呼び出し回数で、合法性判定だけは (legal−pgen)÷呼び出し回数である。
 //!
+//! `--extra <all|drop|capture|quiet|long>` は、配列盤の側で選んだ種類の手ごとに、進めて戻す1往復を足す（第15回）。
+//! 足さない実行との命令数の差を `"extra"`（足した往復の数）で割ると、歩き方と生成を含まない進め戻し1往復の命令数になる。
+//! longは飛び駒（香・角・飛・馬・竜）の盤上の手である。coreの側は `all` だけを受け付ける。
+//!
 //! 走らせ方（開発機が空いているときだけ。`hmwr queue pause` を先に打つ）:
 //!
 //! ```text
@@ -40,6 +44,8 @@ use himawari_mailbox::{GenType, Move, MoveList, Position};
 use himawari_tools::positions::{builtin_positions, parse_position, read_positions};
 
 const BUILTIN: &str = "builtin";
+/// `--extra` の手の種類（0は足さない）。1手ごとに、進めて戻す1往復を足す手を選ぶ。
+static EXTRA: std::sync::atomic::AtomicU8 = std::sync::atomic::AtomicU8::new(0);
 
 struct Cli {
     positions: Vec<String>,
@@ -90,6 +96,17 @@ fn parse_args() -> Result<Cli, String> {
             "--repeat" => cli.repeat = value("--repeat")?.parse().map_err(|e| format!("{e}"))?,
             "--runs" => cli.runs = value("--runs")?.parse().map_err(|e| format!("{e}"))?,
             "--stage" => stage = Some(parse_stage(&value("--stage")?)?),
+            "--extra" => {
+                let k = match value("--extra")?.as_str() {
+                    "all" => 1,
+                    "drop" => 2,
+                    "capture" => 3,
+                    "quiet" => 4,
+                    "long" => 5,
+                    x => return Err(format!("--extra は all・drop・capture・quiet・long: {x}")),
+                };
+                EXTRA.store(k, std::sync::atomic::Ordering::Relaxed);
+            }
             "--side" => {
                 side = Some(match value("--side")?.as_str() {
                     "core" => Side::Core,
@@ -123,6 +140,8 @@ struct Tally {
     moves: u64,
     nodes: u64,
     calls: u64,
+    /// `--extra` で足した進め戻しの往復の数
+    extra: u64,
     hash: u64,
     /// 配列盤の合法性判定の段で、次に読むノードの番号
     cursor: usize,
@@ -368,6 +387,11 @@ fn walk_core(pos: &mut CorePos, depth: u32, stage: Stage, t: &mut Tally) {
             continue;
         }
         t.mix(core_key(m));
+        if EXTRA.load(std::sync::atomic::Ordering::Relaxed) == 1 {
+            pos.do_move(m);
+            pos.undo_move(m);
+            t.extra += 1;
+        }
         pos.do_move(m);
         t.moves += 1;
         if depth > 0 {
@@ -388,6 +412,23 @@ fn walk_mb(pos: &mut Position, depth: u32, stage: Stage, pseudo: &Pseudo, t: &mu
             continue;
         }
         t.mix(mb_key(m));
+        let extra = EXTRA.load(std::sync::atomic::Ordering::Relaxed);
+        if extra != 0 {
+            let long = !m.is_drop()
+                && himawari_mailbox::board::MOVES[pos.piece_on(m.from()) as usize].long != 0;
+            let hit = match extra {
+                1 => true,
+                2 => m.is_drop(),
+                3 => capture,
+                4 => !m.is_drop() && !capture,
+                _ => long,
+            };
+            if hit {
+                pos.do_move(m);
+                pos.undo_move(m);
+                t.extra += 1;
+            }
+        }
         pos.do_move(m);
         t.moves += 1;
         if depth > 0 {
@@ -494,8 +535,8 @@ fn run(cli: &Cli) -> Result<(), String> {
             let side = if side == Side::Core { "core" } else { "mb" };
             println!(
                 "{{\"run\":{run},\"stage\":\"{name}\",\"side\":\"{side}\",\"ns\":{ns},\
-                 \"moves\":{},\"nodes\":{},\"calls\":{},\"hash\":\"{:016x}\"}}",
-                t.moves, t.nodes, t.calls, t.hash
+                 \"moves\":{},\"nodes\":{},\"calls\":{},\"extra\":{},\"hash\":\"{:016x}\"}}",
+                t.moves, t.nodes, t.calls, t.extra, t.hash
             );
         }
         return Ok(());
