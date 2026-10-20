@@ -347,6 +347,8 @@ impl SearchBoard {
         for &m in ml.as_slice() {
             list.push(mbconv::to_core(m));
         }
+        // 照合の引数は、照合するビルドでだけ作る。作るだけで確保が走る
+        #[cfg(feature = "mailbox-shadow")]
         self.shadow("generate", &list.as_slice().to_vec(), |p| {
             let mut want = MoveList::default();
             himawari_core::generate(p, gt, all, &mut want);
@@ -366,6 +368,7 @@ impl SearchBoard {
         for &m in ml.as_slice() {
             list.push(mbconv::to_core(m));
         }
+        #[cfg(feature = "mailbox-shadow")]
         self.shadow("generate_legal", &list.as_slice().to_vec(), |p| {
             let mut want = MoveList::default();
             himawari_core::generate_legal(p, all, &mut want);
