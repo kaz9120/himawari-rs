@@ -616,9 +616,18 @@ fn effect_apply(net: &NnueNetwork, codes: &[u16; 81], e: &mut EffEntry, changed:
     nnue_simd::effect_rows_update(net, &mut e.acc, || {
         let sq = sqs.next()?;
         let (old, new) = (old_codes[sq.index()], codes[sq.index()]);
-        let idx = |code| [Color::Black, Color::White].map(|c| effect_code_index(c, sq, code));
-        Some((Some(idx(old)), idx(new)))
+        Some((Some(effect_code_pair(sq, old)), effect_code_pair(sq, new)))
     });
+}
+
+/// 両視点の特徴の添字。`[Color; 2]::map` の閉包はインライン化されずに残ったので、
+/// 並べて書く（ADR-0241の第15回）。
+#[inline(always)]
+fn effect_code_pair(sq: Square, code: u16) -> [u32; 2] {
+    [
+        effect_code_index(Color::Black, sq, code),
+        effect_code_index(Color::White, sq, code),
+    ]
 }
 
 /// 81升を全計算する（ADR-0237のD3と同じ値になる）。
@@ -633,10 +642,7 @@ fn effect_refresh(net: &NnueNetwork, codes: &[u16; 81], e: &mut EffEntry) {
         }
         let sq = Square::from_index(i);
         i += 1;
-        Some((
-            None,
-            [Color::Black, Color::White].map(|c| effect_code_index(c, sq, codes[sq.index()])),
-        ))
+        Some((None, effect_code_pair(sq, codes[sq.index()])))
     });
 }
 
