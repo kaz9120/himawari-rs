@@ -377,9 +377,77 @@ impl Position {
         });
     }
 
+    /// 玉以外の盤上の駒の手（並びの変わる版、`HIMAWARI_MB_ORDER=type`）。skip_pawnsなら歩を飛ばす。
+    ///
+    /// 駒種ごとの集合から回し、駒種をconstの引数にする。駒を盤から引く手間と駒種での分岐が消え、
+    /// 短い利き・飛び利き・成りの判定が駒種ごとに畳まれる。手の集合はcoreと同じで、並びは
+    /// 駒種の順（歩・香・桂・銀・角・飛・金・成駒4種・馬・竜）の中で移動元の升の順になる（ADR-0241の第16回）。
+    #[cfg(mb_order_type)]
+    fn gen_board<L: MoveSink>(
+        &self,
+        ctx: &Ctx,
+        target: u128,
+        all: bool,
+        skip_pawns: bool,
+        list: &mut L,
+    ) {
+        let ui = ctx.us.index();
+        let own = self.occ[ui];
+        let occ_all = own | self.occ[ctx.us.flip().index()];
+        let target = target & ctx.evasion & !own;
+        let ps = &self.psets[ui];
+        if !skip_pawns {
+            self.gen_type::<PAWN, L>(ctx, ps[PAWN as usize], target, occ_all, all, list);
+        }
+        self.gen_type::<LANCE, L>(ctx, ps[LANCE as usize], target, occ_all, all, list);
+        self.gen_type::<KNIGHT, L>(ctx, ps[KNIGHT as usize], target, occ_all, all, list);
+        self.gen_type::<SILVER, L>(ctx, ps[SILVER as usize], target, occ_all, all, list);
+        self.gen_type::<BISHOP, L>(ctx, ps[BISHOP as usize], target, occ_all, all, list);
+        self.gen_type::<ROOK, L>(ctx, ps[ROOK as usize], target, occ_all, all, list);
+        self.gen_type::<GOLD, L>(ctx, ps[GOLD as usize], target, occ_all, all, list);
+        self.gen_type::<PRO_PAWN, L>(ctx, ps[PRO_PAWN as usize], target, occ_all, all, list);
+        self.gen_type::<3, L>(ctx, ps[3], target, occ_all, all, list);
+        self.gen_type::<4, L>(ctx, ps[4], target, occ_all, all, list);
+        self.gen_type::<5, L>(ctx, ps[5], target, occ_all, all, list);
+        self.gen_type::<HORSE, L>(ctx, ps[HORSE as usize], target, occ_all, all, list);
+        self.gen_type::<DRAGON, L>(ctx, ps[DRAGON as usize], target, occ_all, all, list);
+    }
+
+    /// 駒種PTの駒の手を、移動元の升の順に積む（並びの変わる版）。
+    #[cfg(mb_order_type)]
+    #[inline(always)]
+    fn gen_type<const PT: u8, L: MoveSink>(
+        &self,
+        ctx: &Ctx,
+        set: u128,
+        target: u128,
+        occ_all: u128,
+        all: bool,
+        list: &mut L,
+    ) {
+        if set == 0 {
+            return;
+        }
+        let us = ctx.us;
+        let p = make_piece(us, PT);
+        let long = MOVES[(p & 31) as usize].long;
+        for_each_bit81(set, |s| {
+            let mut to = short81(p, s as usize);
+            let mut dirs = long;
+            while dirs != 0 {
+                let d = dirs.trailing_zeros() as usize;
+                dirs &= dirs - 1;
+                to |= ray_to_blocker(s as usize, d, occ_all);
+            }
+            let to = to & target & ctx.pin_mask(s);
+            for_each_bit81(to, |t| push_variants(us, PT, s, t, all, list));
+        });
+    }
+
     /// 玉以外の盤上の駒の手。skip_pawnsなら歩を飛ばす（Quietsは歩を別に積む）。
     ///
     /// 81升の番号のまま回す。短い利きは表、飛び利きは占有の集合と線の表から引くので、盤を歩かない。
+    #[cfg(not(mb_order_type))]
     fn gen_board<L: MoveSink>(
         &self,
         ctx: &Ctx,
