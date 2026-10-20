@@ -64,6 +64,63 @@ const fn see_rank(pt: u8) -> u8 {
     }
 }
 
+/// 81升の通し番号が増える向きの方向（下・左・左上・左下）のビット。
+const INCREASING81: u8 = (1 << DOWN) | (1 << LEFT) | (1 << UL) | (1 << DL);
+
+/// 81升の通し番号aから方向dへ進み、集合occの中で最初に当たる升（81升）。無ければNone。
+///
+/// 盤を1升ずつ歩かずに、線の集合と駒のいる升の集合の積をビット走査して決める。
+#[inline]
+pub(crate) fn first81(a81: u8, d: usize, occ: u128) -> Option<u8> {
+    let r = RAY81[a81 as usize][d] & occ;
+    if r == 0 {
+        return None;
+    }
+    Some(if INCREASING81 & (1 << d) != 0 {
+        r.trailing_zeros() as u8
+    } else {
+        127 - r.leading_zeros() as u8
+    })
+}
+
+/// 色cの駒が短い利きで升toへ利くとき、駒のいる升の差分 `to − 駒の升` の一覧と、
+/// その差分で利く駒の符号の集合（bit p）。玉の8近傍と、色cの桂の2升の10通り。
+pub(crate) const SHORT_FROM: [[(i8, u32); 10]; 2] = {
+    let mut t = [[(0i8, 0u32); 10]; 2];
+    let mut c = 0;
+    while c < 2 {
+        let mut k = 0;
+        while k < 10 {
+            let o = if k < 8 {
+                DELTA[k]
+            } else if c == 0 {
+                KNIGHT_STEPS[k - 8]
+            } else {
+                -KNIGHT_STEPS[k - 8]
+            };
+            let mut mask = 0u32;
+            let mut p = 2;
+            while p < 32 {
+                if (p >= 16) == (c == 1) && (p & 15) >= 2 {
+                    let m = &MOVES[p];
+                    let mut j = 0;
+                    while j < m.n_short as usize {
+                        if m.short[j] == o {
+                            mask |= 1 << p;
+                        }
+                        j += 1;
+                    }
+                }
+                p += 1;
+            }
+            t[c][k] = (o, mask);
+            k += 1;
+        }
+        c += 1;
+    }
+    t
+};
+
 const SEE_VALUE: [i32; 10] = [90, 315, 405, 495, 540, 855, 945, 990, 1395, 15000];
 
 /// 行き所のない駒になるので不成では入れない升か。
@@ -298,7 +355,7 @@ impl Position {
         &self.check_info().rays
     }
 
-    /// 相手玉から8方向へ最初の駒まで歩き、線の升の集合と開き王手の駒を求める。
+    /// 相手玉から8方向の最初の駒まで（その駒の升を含む）の線と、開き王手の駒を求める。
     fn compute_check_info(&self) -> CheckInfo {
         let us = self.side;
         let ui = us.index();
@@ -308,16 +365,19 @@ impl Position {
             k81,
             ..CheckInfo::default()
         };
+        let occ = self.occ[0] | self.occ[1];
+        let mine = self.occ[ui];
         for (d, &ray) in RAY81[k81 as usize].iter().enumerate() {
-            match self.first_piece(ksq, d) {
+            match first81(k81, d, occ) {
                 None => ci.rays[d] = ray,
-                Some(x) => {
-                    ci.rays[d] = ray & !RAY81[SQ81[x as usize] as usize][d];
+                Some(x81) => {
+                    ci.rays[d] = ray & !RAY81[x81 as usize][d];
                     // 開き王手の駒: 玉から最初の駒が手番側の駒で、その升に玉へ向かう自分の飛び利きが届いている
-                    if piece_color(self.board[x as usize]) == us
-                        && self.longdir[ui][x as usize] & (1 << opp(d)) != 0
+                    let xb = 1u128 << x81;
+                    if mine & xb != 0
+                        && self.longdir[ui][IDX81[x81 as usize] as usize] & (1 << opp(d)) != 0
                     {
-                        ci.blockers |= bit81(x);
+                        ci.blockers |= xb;
                     }
                 }
             }
@@ -446,9 +506,12 @@ impl Position {
         if swap <= 0 {
             return true;
         }
-        // 取り合いなし: 移動先に相手の利きがなく、移動元に相手の飛び利きも届いていない
+        // 取り合いなし: 移動先に相手の利きがなく、移動元を通って移動先へ向かう相手の飛び利きも無い
         if self.count[them.index()][to as usize] == 0
-            && (m.is_drop() || self.longdir[them.index()][m.from() as usize] == 0)
+            && (m.is_drop() || {
+                let d = DIR81[SQ81[m.from() as usize] as usize][SQ81[to as usize] as usize];
+                d == NO_DIR || self.longdir[them.index()][m.from() as usize] & (1 << d) == 0
+            })
         {
             return true;
         }
@@ -494,8 +557,8 @@ impl Position {
     }
 
     /// 色cの駒のうち、いまの盤で升toへ利いている駒の升の集合。
-    /// 利き数が0なら歩かない。飛び利きは方向ビットの向きだけを歩き、
-    /// 利き数が飛び利きの本数より多いときだけ近傍の短い利きを見る。
+    /// 利き数が0なら調べない。飛び利きは方向ビットの向きの最初の駒を、駒のいる升の集合から引く。
+    /// 短い利きの駒は、利き数から飛び利きの本数を引いた数だけ見つけたら打ち切る。
     #[inline]
     fn see_attackers(&self, c: Color, to: u8) -> u128 {
         let ci = c.index();
@@ -504,27 +567,30 @@ impl Position {
             return 0;
         }
         let ld = self.longdir[ci][to as usize];
+        let to81 = SQ81[to as usize];
         let mut set = 0u128;
-        let mut dirs = ld;
-        while dirs != 0 {
-            let d = dirs.trailing_zeros() as usize;
-            dirs &= dirs - 1;
-            // 方向dへ進む飛び利きなので、駒はopp(d)の向きにいる
-            let x = self
-                .first_piece(to, opp(d))
-                .expect("飛び利きの元の駒がある");
-            set |= bit81(x);
+        if ld != 0 {
+            let occ = self.occ[0] | self.occ[1];
+            let mut dirs = ld;
+            while dirs != 0 {
+                let d = dirs.trailing_zeros() as usize;
+                dirs &= dirs - 1;
+                // 方向dへ進む飛び利きなので、駒はopp(d)の向きにいる
+                let x81 = first81(to81, opp(d), occ).expect("飛び利きの元の駒がある");
+                set |= 1u128 << x81;
+            }
         }
-        if u32::from(n) > ld.count_ones() {
-            for o in CHECK_OFFSETS {
-                let x = (to as i32 - o as i32) as u8;
+        let mut need = u32::from(n) - ld.count_ones();
+        if need != 0 {
+            for &(o, mask) in SHORT_FROM[ci].iter() {
+                let x = to.wrapping_sub(o as u8);
                 let v = self.board[x as usize];
-                if v == EMPTY || v == WALL || piece_color(v) != c {
-                    continue;
-                }
-                let m = &MOVES[v as usize];
-                if m.short[..m.n_short as usize].contains(&o) {
+                if (mask >> (v & 31)) & 1 != 0 {
                     set |= bit81(x);
+                    need -= 1;
+                    if need == 0 {
+                        break;
+                    }
                 }
             }
         }
@@ -535,24 +601,19 @@ impl Position {
     /// removedの升は空きとみなして通す。
     #[inline]
     fn add_xray(&self, to: u8, x: u8, removed: u128, att: &mut [u128; 2]) {
-        let Some(d) = dir_between(to, x) else {
+        let x81 = SQ81[x as usize];
+        let d = DIR81[SQ81[to as usize] as usize][x81 as usize];
+        if d == NO_DIR {
+            return;
+        }
+        let d = d as usize;
+        let occ = (self.occ[0] | self.occ[1]) & !removed;
+        let Some(y81) = first81(x81, d, occ) else {
             return;
         };
-        let delta = DELTA[d] as i32;
-        let mut t = (x as i32 + delta) as u8;
-        loop {
-            let v = self.board[t as usize];
-            if v == WALL {
-                return;
-            }
-            if v == EMPTY || removed & bit81(t) != 0 {
-                t = (t as i32 + delta) as u8;
-                continue;
-            }
-            if MOVES[v as usize].long & (1 << opp(d)) != 0 {
-                att[piece_color(v).index()] |= bit81(t);
-            }
-            return;
+        let v = self.board[IDX81[y81 as usize] as usize];
+        if MOVES[v as usize].long & (1 << opp(d)) != 0 {
+            att[piece_color(v).index()] |= 1u128 << y81;
         }
     }
 }
