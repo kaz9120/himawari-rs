@@ -127,6 +127,8 @@ pub struct StateInfo {
     pub plies_from_null: u16,
     pub material: i32,
     pub dirty: DirtyPiece,
+    /// この手を進める前の `ray_log` の長さ。戻しはここから後ろを逆順に戻す
+    pub(crate) log_start: u32,
 }
 
 /// 複写で戻すときに積む利きの表。
@@ -173,6 +175,8 @@ pub struct Position {
     /// 局面の深さごとの、王手の判定の手がかり（`gives_check` が初めて呼ばれたときに作る）。
     /// 添字は `states` と同じ。進めるたびにその深さの欄を無効にする
     pub(crate) check_slots: Vec<CheckSlot>,
+    /// 進めるときに飛び利きで書き換えた升の記録（`log_ray` の語）。戻しで逆順に戻す
+    ray_log: Vec<u32>,
     #[cfg(feature = "copy-undo")]
     snapshots: Vec<EffectSnapshot>,
 }
@@ -203,6 +207,7 @@ impl Position {
             hand_raw: [0; 2],
             states: Vec::with_capacity(512),
             check_slots: Vec::with_capacity(512),
+            ray_log: Vec::with_capacity(4096),
             #[cfg(feature = "copy-undo")]
             snapshots: Vec::with_capacity(512),
         }
@@ -270,12 +275,25 @@ impl Position {
     // --- 利きの差分更新 ---
 
     /// 駒pを升sに置いたときの利きを足す（ADD）か引く。skipの方向の飛び利きは触らない。
+    /// LOGなら、飛び利きで書き換えた升を戻しの記録（`ray_log`）へ積む。
     #[inline]
-    fn piece_effect<const ADD: bool>(&mut self, p: u8, s: u8, skip: u8) {
+    fn piece_effect<const ADD: bool, const LOG: bool>(&mut self, p: u8, s: u8, skip: u8) {
+        self.short_effect::<ADD>(p, s);
         let c = piece_color(p).index();
         // 駒の符号は32未満。マスクで境界検査を消す
-        let m = &MOVES[(p & 31) as usize];
-        // 短い利きは、3列ぶんの8升の窓を語のまま足し引きする。壁の升にも書くが、壁の値は読まない
+        let mut dirs = MOVES[(p & 31) as usize].long & !skip;
+        while dirs != 0 {
+            let d = dirs.trailing_zeros() as usize;
+            dirs &= dirs - 1;
+            self.ray::<ADD, LOG>(c, s, d);
+        }
+    }
+
+    /// 升sの駒pの短い利きを足す（ADD）か引く。3列ぶんの8升の窓を語のまま足し引きする。
+    /// 壁の升にも書くが、壁の値は読まない。利き数の足し引きだけなので、戻しは逆の向きで当て直す
+    #[inline]
+    fn short_effect<const ADD: bool>(&mut self, p: u8, s: u8) {
+        let c = piece_color(p).index();
         let win = &SHORT_WIN[(p & 31) as usize];
         let row = self.count[c].as_mut_ptr();
         for (j, &w) in win.iter().enumerate() {
@@ -293,17 +311,34 @@ impl Position {
                 });
             }
         }
-        let mut dirs = m.long & !skip;
-        while dirs != 0 {
-            let d = dirs.trailing_zeros() as usize;
-            dirs &= dirs - 1;
-            self.ray::<ADD>(c, s, d);
+    }
+
+    /// 飛び利きで升iを書き換える前に、戻しの記録を積む。
+    /// 語は 下位16ビットが利きの表の通しの添字（色c×LEN＋i）、16〜23ビットが書き換える前の方向ビット、
+    /// 24ビットが足したか（ADD）である。利き数は足し引きなので、戻しは逆の向きに1を当てる
+    #[inline(always)]
+    fn log_ray<const ADD: bool>(&mut self, c: usize, i: usize) {
+        let e = (c * LEN + i) as u32 | u32::from(self.longdir[c][i]) << 16 | u32::from(ADD) << 24;
+        self.ray_log.push(e);
+    }
+
+    /// `ray_log` のstartから後ろを逆順に戻す。
+    #[inline]
+    fn replay_ray_log(&mut self, start: usize) {
+        let count = self.count.as_flattened_mut();
+        let longdir = self.longdir.as_flattened_mut();
+        for &e in self.ray_log[start..].iter().rev() {
+            let off = (e & 0xFFFF) as usize;
+            // 足した升は1引き、引いた升は1足す
+            count[off] = count[off].wrapping_add(1u8.wrapping_sub(((e >> 23) & 2) as u8));
+            longdir[off] = (e >> 16) as u8;
         }
+        self.ray_log.truncate(start);
     }
 
     /// 升sの先、方向dへ伸びる色cの飛び利きを足す（ADD）か引く。最初の駒の升まで含める。
     #[inline]
-    fn ray<const ADD: bool>(&mut self, c: usize, s: u8, d: usize) {
+    fn ray<const ADD: bool, const LOG: bool>(&mut self, c: usize, s: u8, d: usize) {
         let delta = DELTA[d] as u8;
         let b = 1u8 << d;
         let mut t = s.wrapping_add(delta);
@@ -312,6 +347,9 @@ impl Position {
             let v = self.board[i];
             if v == WALL {
                 break;
+            }
+            if LOG {
+                self.log_ray::<ADD>(c, i);
             }
             if ADD {
                 self.count[c][i] += 1;
@@ -330,7 +368,7 @@ impl Position {
     /// 升sに届く飛び利きを、sの先で切る（ADD=false）か延ばす（ADD=true）。
     /// 色exclの方向ビットexcl_bitsは触らない（動く駒自身の線）。
     #[inline]
-    fn through<const ADD: bool>(&mut self, s: u8, excl: usize, excl_bits: u8) {
+    fn through<const ADD: bool, const LOG: bool>(&mut self, s: u8, excl: usize, excl_bits: u8) {
         for c in 0..2 {
             let mut dirs = self.longdir[c][s as usize];
             if c == excl {
@@ -339,7 +377,7 @@ impl Position {
             while dirs != 0 {
                 let d = dirs.trailing_zeros() as usize;
                 dirs &= dirs - 1;
-                self.ray::<ADD>(c, s, d);
+                self.ray::<ADD, LOG>(c, s, d);
             }
         }
     }
@@ -347,13 +385,16 @@ impl Position {
     /// 升aの次から升bまで（両端のうちbを含む）、方向dへ進む色cの飛び利きを足すか引く。
     /// 間の升が空きで、bがaから方向dの線上にあることが前提。
     #[inline]
-    fn segment<const ADD: bool>(&mut self, c: usize, a: u8, b: u8, d: usize) {
+    fn segment<const ADD: bool, const LOG: bool>(&mut self, c: usize, a: u8, b: u8, d: usize) {
         let delta = DELTA[d] as u8;
         let bit = 1u8 << d;
         let mut t = a;
         loop {
             t = t.wrapping_add(delta);
             let i = t as usize;
+            if LOG {
+                self.log_ray::<ADD>(c, i);
+            }
             if ADD {
                 self.count[c][i] += 1;
                 self.longdir[c][i] |= bit;
@@ -407,30 +448,30 @@ impl Position {
                 let od = opp(d);
                 let axis = (1u8 << d) | (1u8 << od);
                 if x == EMPTY {
-                    self.through::<false>(dst, c, 1 << d);
+                    self.through::<false, true>(dst, c, 1 << d);
                 } else {
-                    self.piece_effect::<false>(x, dst, 0);
+                    self.piece_effect::<false, true>(x, dst, 0);
                 }
-                self.piece_effect::<false>(p, src, axis);
-                self.segment::<false>(c, src, dst, d);
+                self.piece_effect::<false, true>(p, src, axis);
+                self.segment::<false, true>(c, src, dst, d);
                 if lp & (1 << od) != 0 {
                     if leave != EMPTY {
                         // 移動元が塞がるので、後ろ向きの線の移動元より先を引く
-                        self.ray::<false>(c, src, od);
+                        self.ray::<false, true>(c, src, od);
                     }
-                    self.segment::<true>(c, dst, src, od);
+                    self.segment::<true, true>(c, dst, src, od);
                 }
                 self.set_square(src, leave);
                 self.set_square(dst, np);
                 if leave == EMPTY {
-                    self.through::<true>(src, c, 1 << od);
+                    self.through::<true, true>(src, c, 1 << od);
                 } else {
-                    self.piece_effect::<true>(leave, src, 0);
+                    self.piece_effect::<true, true>(leave, src, 0);
                 }
-                self.piece_effect::<true>(np, dst, axis);
+                self.piece_effect::<true, true>(np, dst, axis);
                 if x != EMPTY {
                     // 取った駒の先へ前向きの線が伸びる
-                    self.ray::<true>(c, dst, d);
+                    self.ray::<true, true>(c, dst, d);
                 }
             }
             _ => {
@@ -438,19 +479,19 @@ impl Position {
                 // 行き先を通る自分の線を切らずに、駒の利きとしてまとめて引く
                 let excl = along.map_or(0, |d| 1u8 << d);
                 if x == EMPTY {
-                    self.through::<false>(dst, c, excl);
+                    self.through::<false, true>(dst, c, excl);
                 } else {
-                    self.piece_effect::<false>(x, dst, 0);
+                    self.piece_effect::<false, true>(x, dst, 0);
                 }
-                self.piece_effect::<false>(p, src, 0);
+                self.piece_effect::<false, true>(p, src, 0);
                 self.set_square(src, leave);
                 self.set_square(dst, np);
                 if leave == EMPTY {
-                    self.through::<true>(src, c, 0);
+                    self.through::<true, true>(src, c, 0);
                 } else {
-                    self.piece_effect::<true>(leave, src, 0);
+                    self.piece_effect::<true, true>(leave, src, 0);
                 }
-                self.piece_effect::<true>(np, dst, 0);
+                self.piece_effect::<true, true>(np, dst, 0);
             }
         }
     }
@@ -458,18 +499,9 @@ impl Position {
     /// 空き升sへ駒pを打つ。sを通っていた飛び利きを切り、駒の利きを足す。
     #[inline]
     fn put(&mut self, s: u8, p: u8) {
-        self.through::<false>(s, 2, 0);
+        self.through::<false, true>(s, 2, 0);
         self.set_square(s, p);
-        self.piece_effect::<true>(p, s, 0);
-    }
-
-    /// 升sの駒を取り除く（駒打ちの戻し）。駒の利きを引き、sで止まっていた飛び利きを延ばす。
-    #[inline]
-    fn lift(&mut self, s: u8) {
-        let p = self.board[s as usize];
-        self.piece_effect::<false>(p, s, 0);
-        self.set_square(s, EMPTY);
-        self.through::<true>(s, 2, 0);
+        self.piece_effect::<true, true>(p, s, 0);
     }
 
     /// 利きを盤面から全部作り直す。
@@ -480,7 +512,7 @@ impl Position {
         for &i in IDX81.iter() {
             let p = tmp.board[i as usize];
             if p != EMPTY {
-                tmp.piece_effect::<true>(p, i, 0);
+                tmp.piece_effect::<true, false>(p, i, 0);
             }
         }
         (tmp.count, tmp.longdir)
@@ -610,6 +642,7 @@ impl Position {
             plies_from_null: prev.plies_from_null + 1,
             material: prev.material,
             dirty: DirtyPiece::default(),
+            log_start: self.ray_log.len() as u32,
         };
         let to = m.to();
         let to81 = SQ81[to as usize];
@@ -737,11 +770,12 @@ impl Position {
         if m.is_drop() {
             let pt = m.drop_type();
             let id = self.id_on[to as usize];
-            if cfg!(feature = "copy-undo") {
-                self.set_square(to, EMPTY);
-            } else {
-                self.lift(to);
+            // 短い利きは逆の向きに当て直し、飛び利きは記録から戻す
+            let pc = self.board[to as usize];
+            if !cfg!(feature = "copy-undo") {
+                self.short_effect::<false>(pc, to);
             }
+            self.set_square(to, EMPTY);
             self.id_on[to as usize] = NO_ID;
             self.on_board[ui] &= !(1u64 << id);
             self.hand_ids[ui][hand_index(pt)] |= 1 << id;
@@ -754,12 +788,16 @@ impl Position {
             let np = self.board[to as usize];
             let p = if m.is_promote() { np + 8 } else { np };
             let id = self.id_on[to as usize];
-            if cfg!(feature = "copy-undo") {
-                self.set_square(to, u.captured);
-                self.set_square(from, p);
-            } else {
-                self.transfer(to, from, p, u.captured);
+            // 短い利きは逆の向きに当て直し、飛び利きは記録から戻す
+            if !cfg!(feature = "copy-undo") {
+                self.short_effect::<false>(np, to);
+                self.short_effect::<true>(p, from);
+                if u.captured != EMPTY {
+                    self.short_effect::<true>(u.captured, to);
+                }
             }
+            self.set_square(to, u.captured);
+            self.set_square(from, p);
             if u.captured != EMPTY {
                 let cid = u.cap_id;
                 self.id_on[to as usize] = cid;
@@ -786,7 +824,10 @@ impl Position {
         {
             self.count = snap.count;
             self.longdir = snap.longdir;
+            self.ray_log.truncate(u.log_start as usize);
         }
+        #[cfg(not(feature = "copy-undo"))]
+        self.replay_ray_log(u.log_start as usize);
         #[cfg(debug_assertions)]
         self.assert_consistent();
     }
@@ -807,6 +848,7 @@ impl Position {
             checkers: 0,
             plies_from_null: 0,
             dirty: DirtyPiece::default(),
+            log_start: self.ray_log.len() as u32,
             ..prev
         };
         // パスなので手番側は王手を掛けていない
