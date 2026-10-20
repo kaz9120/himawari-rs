@@ -871,7 +871,7 @@ impl Position {
         if self.check_slots.len() < n {
             self.check_slots.push(CheckSlot::default());
         } else {
-            self.check_slots[n - 1].valid.set(false);
+            self.check_slots[n - 1].invalidate();
         }
     }
 
