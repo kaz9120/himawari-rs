@@ -5,6 +5,7 @@
 
 use std::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Not};
 
+use crate::piece::Piece;
 use crate::types::{Color, File, Rank, Square};
 
 #[derive(Copy, Clone, PartialEq, Eq, Default, Debug)]
@@ -127,6 +128,31 @@ impl Bitboard {
             BOARD & !m
         };
         Bitboard((self.0 >> 1) & OK)
+    }
+
+    /// 2つの盤の配列で、駒が違う升の集合。
+    ///
+    /// 8升ずつ1語に詰めて排他的論理和を取り、0でないバイトの最上位ビットを
+    /// 1語8ビットへ畳む。升ごとに比べて立てるより分岐が少ない。
+    #[inline]
+    pub fn piece_diff(a: &[Piece; 81], b: &[Piece; 81]) -> Bitboard {
+        const LO: u64 = 0x7F7F_7F7F_7F7F_7F7F;
+        const HI: u64 = 0x8080_8080_8080_8080;
+        let word =
+            |p: &[Piece], k: usize| u64::from_le_bytes(std::array::from_fn(|i| p[k * 8 + i].0));
+        let mut m = 0u128;
+        for k in 0..10 {
+            let x = word(a, k) ^ word(b, k);
+            // 0でないバイトだけ最上位ビットが立つ
+            let nz = (((x & LO) + LO) | x) & HI;
+            // 各バイトの最上位ビットを下位8ビットへ集める
+            let bits = ((nz >> 7).wrapping_mul(0x0102_0408_1020_4080) >> 56) as u128;
+            m |= bits << (k * 8);
+        }
+        if a[80] != b[80] {
+            m |= 1 << 80;
+        }
+        Bitboard(m)
     }
 
     /// 内部値（クレート内部の演算用）。
@@ -367,6 +393,32 @@ mod tests {
             let sq = Square::from_index(i);
             assert!(Bitboard::file(sq.file()).test(sq));
             assert!(Bitboard::rank(sq.rank()).test(sq));
+        }
+    }
+
+    #[test]
+    fn piece_diff_matches_square_by_square() {
+        let mut x = 0x2545_F491_4F6C_DD1Du64;
+        let mut next = || {
+            x ^= x << 13;
+            x ^= x >> 7;
+            x ^= x << 17;
+            x
+        };
+        for _ in 0..2000 {
+            let a: [Piece; 81] = std::array::from_fn(|_| Piece((next() % 32) as u8));
+            let mut b = a;
+            for _ in 0..(next() % 12) {
+                let i = (next() % 81) as usize;
+                b[i] = Piece((next() % 32) as u8);
+            }
+            let mut want = Bitboard::EMPTY;
+            for i in 0..81u8 {
+                if a[i as usize] != b[i as usize] {
+                    want.set(Square::from_index(i));
+                }
+            }
+            assert_eq!(Bitboard::piece_diff(&a, &b), want);
         }
     }
 }
