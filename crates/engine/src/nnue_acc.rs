@@ -18,6 +18,76 @@ use crate::nnue::{
 use crate::nnue_simd;
 use crate::value::{MAX_PLY, Value};
 
+/// 評価関数が盤から読むもの（ADR-0241の第13回）。
+///
+/// coreの局面と探索の盤（`SearchBoard`）が実装する。探索の盤は、配列盤の研究のフィーチャ
+/// `mailbox` ではcoreの局面を持たずに、配列盤から同じ値を返す。
+pub trait EvalBoard {
+    fn side_to_move(&self) -> Color;
+    fn king(&self, c: Color) -> Square;
+    fn hand_count(&self, owner: Color, pt: PieceType) -> u32;
+    fn piece_on(&self, sq: Square) -> Piece;
+    /// 直前の手の差分の材料。
+    fn dirty(&self) -> DirtyPiece;
+    /// 視点cのBonaPiece集合（`bonapiece::bona_piece_bits` と同じ値）。
+    fn bona_piece_bits(&self, c: Color, out: &mut bonapiece::BonaBits);
+    /// 利き数の段階の集合（`EffectLevels::build` と同じ値）。
+    fn effect_levels(&self) -> EffectLevels;
+    /// 81升の利きの語（`effect_code`）をまとめて書く（ADR-0242の段1を配列盤へ移した形）。
+    /// 配列盤は利き数と駒の配列から直接作れるので、段階の集合を経由しない。
+    fn effect_codes(&self, out: &mut [u16; 81]);
+    /// 駒割り（先手から見た値）。駒割りだけの評価関数が使う。
+    fn material(&self) -> i32;
+    /// 全計算との突き合わせ（テストとデバッグビルド）に使うcoreの局面。無ければ突き合わせない。
+    fn core_position(&self) -> Option<&Position>;
+}
+
+impl EvalBoard for Position {
+    #[inline(always)]
+    fn side_to_move(&self) -> Color {
+        Position::side_to_move(self)
+    }
+    #[inline(always)]
+    fn king(&self, c: Color) -> Square {
+        Position::king(self, c)
+    }
+    #[inline(always)]
+    fn hand_count(&self, owner: Color, pt: PieceType) -> u32 {
+        self.hand(owner).count(pt)
+    }
+    #[inline(always)]
+    fn piece_on(&self, sq: Square) -> Piece {
+        Position::piece_on(self, sq)
+    }
+    #[inline(always)]
+    fn dirty(&self) -> DirtyPiece {
+        self.state().dirty
+    }
+    #[inline(always)]
+    fn bona_piece_bits(&self, c: Color, out: &mut bonapiece::BonaBits) {
+        bonapiece::bona_piece_bits(self, c, out);
+    }
+    #[inline(always)]
+    fn effect_levels(&self) -> EffectLevels {
+        EffectLevels::build(self)
+    }
+    #[inline(always)]
+    fn effect_codes(&self, out: &mut [u16; 81]) {
+        let levels = EffectLevels::build(self);
+        for (i, o) in out.iter_mut().enumerate() {
+            *o = effect_code(self, &levels, Square::from_index(i as u8));
+        }
+    }
+    #[inline(always)]
+    fn material(&self) -> i32 {
+        self.state().material
+    }
+    #[inline(always)]
+    fn core_position(&self) -> Option<&Position> {
+        Some(self)
+    }
+}
+
 /// 手駒の増減1件（キャプチャで増、駒打ちで減）。
 #[derive(Clone, Copy)]
 struct HandDelta {
@@ -70,13 +140,10 @@ struct EffEntry {
     acc: [[i16; EFF_OUT]; 2],
     /// 升ごとの中身と段階（`effect_code`）。
     codes: [u16; 81],
-    levels: EffectLevels,
-    /// 盤の配列。`levels` と合わせて、参照にした局面との差を作る（ADR-0242）。
-    board: [Piece; 81],
     /// falseの間は中身が未定義で、誰も読まない。
     computed: bool,
-    /// `acc`・`codes`・`levels`・`board` が、ある1つの局面を表している。
-    /// pushで `computed` を落としても中身は残るので、差分の参照に使える（ADR-0242）。
+    /// `acc` と `codes` が、ある1つの局面を表している。pushで `computed` を
+    /// 落としても中身は残るので、差分の参照に使える（ADR-0242の段1）。
     coherent: bool,
 }
 
@@ -85,8 +152,6 @@ impl EffEntry {
         EffEntry {
             acc: [[0; EFF_OUT]; 2],
             codes: [0; 81],
-            levels: EffectLevels::EMPTY,
-            board: [Piece::EMPTY; 81],
             computed: false,
             coherent: false,
         }
@@ -194,8 +259,8 @@ impl NnueState {
     }
 
     /// do_move直後のposで呼ぶ。差分材料だけ積む（計算はしない）。
-    pub fn push(&mut self, pos: &Position) {
-        let dirty = pos.state().dirty;
+    pub fn push<B: EvalBoard + ?Sized>(&mut self, pos: &B) {
+        let dirty = pos.dirty();
         let hand = hand_delta_of(pos, &dirty);
         self.top += 1;
         debug_assert!(
@@ -220,7 +285,10 @@ impl NnueState {
     }
 
     /// 現局面の評価値。必要な視点だけ遡り差分または全計算で作る。
-    pub fn evaluate(&mut self, net: &NnueNetwork, pos: &Position) -> Value {
+    ///
+    /// 盤は `EvalBoard` 越しに読む。coreの局面のほか、探索の盤（`SearchBoard`）も渡せる
+    /// （ADR-0241の第13回）。
+    pub fn evaluate<B: EvalBoard + ?Sized>(&mut self, net: &NnueNetwork, pos: &B) -> Value {
         self.ensure_both(net, pos);
         let stm = pos.side_to_move();
         let top = &self.entries[self.top];
@@ -238,8 +306,10 @@ impl NnueState {
                 let at = EFF_BASE + k * EFF_OUT;
                 crate::nnue::effect_clip16(&e.acc[c.index()], &mut concat[at..at + EFF_OUT]);
             }
-            if cfg!(any(test, debug_assertions)) {
-                self.check_effect(net, pos);
+            if cfg!(any(test, debug_assertions))
+                && let Some(p) = pos.core_position()
+            {
+                self.check_effect(net, p);
             }
         }
         #[cfg(feature = "actdump")]
@@ -247,44 +317,41 @@ impl NnueState {
         nnue_simd::forward_hidden(net, &concat)
     }
 
-    /// 利きのaccumulatorを最上段に用意する（ADR-0237のD2、ADR-0242）。
+    /// 利きのaccumulatorを最上段に用意する（ADR-0237のD2、ADR-0242の段1・段2）。
     ///
-    /// 参照の候補は2つある。計算済みの祖先と、この段に残る前回の中身である。
-    /// 前回の中身は兄弟か従兄弟の局面で、祖先より近いことが多い。どちらも
-    /// 盤と段階を持つので、変わった升は2つの局面の実際の差として作れる。
-    /// **途中の手の材料は要らない。** 近いほうから差分を当て、遠ければ全計算する。
-    /// 利きの特徴は玉位置に依らないので、玉が動いても参照にできる。
-    fn ensure_effect(&mut self, net: &NnueNetwork, pos: &Position) {
+    /// 81升の語を盤から受け取り、参照の局面の語と比べて変わった升だけを当てる。
+    /// 参照の候補は、計算済みの祖先と、この段に残る前回の中身（兄弟か従兄弟の
+    /// 局面）の2つで、変わった升が少ないほうを使う。**途中の手の材料は要らない。**
+    /// どちらも40升を超えたら全計算する。利きの特徴は玉位置に依らないので、
+    /// 玉が動いても参照にできる。
+    fn ensure_effect<B: EvalBoard + ?Sized>(&mut self, net: &NnueNetwork, pos: &B) {
         let top = self.top;
         if self.eff[top].computed {
             return;
         }
-        let levels = EffectLevels::build(pos);
-        let board = pos.board_ref();
-        let changed_from =
-            |e: &EffEntry| levels.diff(&e.levels) | Bitboard::piece_diff(board, &e.board);
+        let mut codes = [0u16; 81];
+        pos.effect_codes(&mut codes);
         let here = &self.eff[top];
-        let from_here = here.coherent.then(|| changed_from(here));
+        let from_here = here.coherent.then(|| codes_diff(&codes, &here.codes));
         let anc = (0..top).rev().find(|&i| self.eff[i].computed);
-        let from_anc = anc.map(|a| (a, changed_from(&self.eff[a])));
+        let from_anc = anc.map(|a| (a, codes_diff(&codes, &self.eff[a].codes)));
         let far = |c: &Bitboard| c.count() > EFF_REFRESH_ABOVE;
         match (from_here, from_anc) {
             // 同数なら、写さずに済むこの段を使う
             (Some(h), a) if !far(&h) && a.is_none_or(|(_, c)| h.count() <= c.count()) => {
-                effect_apply(net, pos, &levels, &mut self.eff[top], h);
+                effect_apply(net, &codes, &mut self.eff[top], h);
             }
             (_, Some((a, c))) if !far(&c) => {
                 let (before, after) = self.eff.split_at_mut(top);
                 let e = &mut after[0];
                 e.acc = before[a].acc;
                 e.codes = before[a].codes;
-                effect_apply(net, pos, &levels, e, c);
+                effect_apply(net, &codes, e, c);
             }
-            _ => effect_refresh(net, pos, &levels, &mut self.eff[top]),
+            _ => effect_refresh(net, &codes, &mut self.eff[top]),
         }
         let e = &mut self.eff[top];
-        e.levels = levels;
-        e.board = *board;
+        e.codes = codes;
         e.computed = true;
         e.coherent = true;
     }
@@ -295,11 +362,6 @@ impl NnueState {
         let e = &self.eff[self.top];
         let counts = crate::nnue::effect_counts(pos);
         let levels = EffectLevels::build(pos);
-        assert!(
-            e.levels == levels,
-            "段階の集合が食い違う: {}",
-            pos.to_sfen()
-        );
         for i in 0..81u8 {
             let sq = Square::from_index(i);
             assert_eq!(
@@ -329,7 +391,7 @@ impl NnueState {
     /// 遅いほうの起点から上の区間だけである。** 手前の区間は片色ずつ
     /// 埋め、そこから上を1パスで両色へ書く。玉が動いた視点は遡れないので
     /// 全計算になり、その視点は融合の対象から外れる。
-    fn ensure_both(&mut self, net: &NnueNetwork, pos: &Position) {
+    fn ensure_both<B: EvalBoard + ?Sized>(&mut self, net: &NnueNetwork, pos: &B) {
         let top = self.top;
         let src = [
             self.computed_ancestor(Color::Black),
@@ -383,7 +445,14 @@ impl NnueState {
 
     /// 段 `from` から `to` まで、視点cの差分を1段ずつ適用する。
     /// `from` は計算済みで、`from+1..=to` を埋める。
-    fn apply_range(&mut self, net: &NnueNetwork, pos: &Position, c: Color, from: usize, to: usize) {
+    fn apply_range<B: EvalBoard + ?Sized>(
+        &mut self,
+        net: &NnueNetwork,
+        pos: &B,
+        c: Color,
+        from: usize,
+        to: usize,
+    ) {
         // この区間に視点cの玉移動はないので、玉位置は現局面のもので通る
         let king = pos.king(c);
         for j in from + 1..=to {
@@ -401,7 +470,13 @@ impl NnueState {
 
     /// 同上を両視点まとめて行う（ADR-0151群N）。連鎖の走査とdirtyの
     /// デコードが1回で済み、accへの読み書きが2本のストリームで並ぶ。
-    fn apply_range_both(&mut self, net: &NnueNetwork, pos: &Position, from: usize, to: usize) {
+    fn apply_range_both<B: EvalBoard + ?Sized>(
+        &mut self,
+        net: &NnueNetwork,
+        pos: &B,
+        from: usize,
+        to: usize,
+    ) {
         let views = [
             (Color::Black, pos.king(Color::Black)),
             (Color::White, pos.king(Color::White)),
@@ -429,13 +504,13 @@ impl NnueState {
     ///
     /// キャッシュが空のときは、バイアスを置いて全特徴を足す形になり、
     /// 従来の全計算と同じ経路をたどる。
-    fn refresh_top(&mut self, net: &NnueNetwork, pos: &Position, c: Color) {
+    fn refresh_top<B: EvalBoard + ?Sized>(&mut self, net: &NnueNetwork, pos: &B, c: Color) {
         let king = pos.king(c);
         // 玉位置を固定した特徴インデックスの起点。BonaPieceを足せば
         // そのまま特徴インデックスになる
         let base = bonapiece::halfkp_index(c, king, 0);
         let mut cur = [0u128; BP_BLOCKS];
-        bonapiece::bona_piece_bits(pos, c, &mut cur);
+        pos.bona_piece_bits(c, &mut cur);
 
         // scratch・finny・entriesを同時に借りられないので、いったん取り出して
         // 戻す。takeは空Vecとの交換なので確保は起きず、容量も残る
@@ -487,7 +562,7 @@ impl Default for NnueState {
 }
 
 /// dirtyから手駒の増減を復元する。posはdo_move直後の局面。
-fn hand_delta_of(pos: &Position, dirty: &DirtyPiece) -> Option<HandDelta> {
+fn hand_delta_of<B: EvalBoard + ?Sized>(pos: &B, dirty: &DirtyPiece) -> Option<HandDelta> {
     if dirty.count == 2 {
         // キャプチャ: piece_new[1]が手駒に入った駒（枚数は取った後の値）
         let pc = dirty.piece_new[1];
@@ -496,7 +571,7 @@ fn hand_delta_of(pos: &Position, dirty: &DirtyPiece) -> Option<HandDelta> {
         Some(HandDelta {
             owner,
             kind,
-            slot: pos.hand(owner).count(kind),
+            slot: pos.hand_count(owner, kind),
             added: true,
         })
     } else if dirty.count == 1 && dirty.from[0] == Square::NONE {
@@ -507,7 +582,7 @@ fn hand_delta_of(pos: &Position, dirty: &DirtyPiece) -> Option<HandDelta> {
         Some(HandDelta {
             owner,
             kind,
-            slot: pos.hand(owner).count(kind) + 1,
+            slot: pos.hand_count(owner, kind) + 1,
             added: false,
         })
     } else {
@@ -515,38 +590,51 @@ fn hand_delta_of(pos: &Position, dirty: &DirtyPiece) -> Option<HandDelta> {
     }
 }
 
+/// 2つの局面の利きの語が違う升（ADR-0242の段1）。8升ずつベクトルで比べる。
+#[inline]
+fn codes_diff(a: &[u16; 81], b: &[u16; 81]) -> Bitboard {
+    use std::simd::Simd;
+    use std::simd::cmp::SimdPartialEq;
+    let (ac, at) = a.as_chunks::<8>();
+    let (bc, bt) = b.as_chunks::<8>();
+    let mut m = 0u128;
+    for (k, (x, y)) in ac.iter().zip(bc).enumerate() {
+        let ne = Simd::from_array(*x).simd_ne(Simd::from_array(*y));
+        m |= u128::from(ne.to_bitmask() as u8) << (k * 8);
+    }
+    if at[0] != bt[0] {
+        m |= 1 << 80;
+    }
+    Bitboard::from_bits(m)
+}
+
 /// 変わった升の行だけを入れ替える（ADR-0237のD2）。`e` は参照の局面の
 /// accと升の語を持っている。両視点をまとめて当てる（ADR-0242の段2）。
-fn effect_apply(
-    net: &NnueNetwork,
-    pos: &Position,
-    levels: &EffectLevels,
-    e: &mut EffEntry,
-    changed: Bitboard,
-) {
-    let codes = &mut e.codes;
+fn effect_apply(net: &NnueNetwork, codes: &[u16; 81], e: &mut EffEntry, changed: Bitboard) {
+    let old_codes = &e.codes;
     let mut sqs = changed.into_iter();
     nnue_simd::effect_rows_update(net, &mut e.acc, || {
-        for sq in sqs.by_ref() {
-            let new = effect_code(pos, levels, sq);
-            let old = codes[sq.index()];
-            if old == new {
-                continue;
-            }
-            codes[sq.index()] = new;
-            let idx = |code| [Color::Black, Color::White].map(|c| effect_code_index(c, sq, code));
-            return Some((Some(idx(old)), idx(new)));
-        }
-        None
+        let sq = sqs.next()?;
+        let (old, new) = (old_codes[sq.index()], codes[sq.index()]);
+        Some((Some(effect_code_pair(sq, old)), effect_code_pair(sq, new)))
     });
 }
 
+/// 両視点の特徴の添字。`[Color; 2]::map` の閉包はインライン化されずに残ったので、
+/// 並べて書く（ADR-0241の第15回）。
+#[inline(always)]
+fn effect_code_pair(sq: Square, code: u16) -> [u32; 2] {
+    [
+        effect_code_index(Color::Black, sq, code),
+        effect_code_index(Color::White, sq, code),
+    ]
+}
+
 /// 81升を全計算する（ADR-0237のD3と同じ値になる）。
-fn effect_refresh(net: &NnueNetwork, pos: &Position, levels: &EffectLevels, e: &mut EffEntry) {
+fn effect_refresh(net: &NnueNetwork, codes: &[u16; 81], e: &mut EffEntry) {
     for c in [Color::Black, Color::White] {
         e.acc[c.index()].copy_from_slice(&net.eff_b[..EFF_OUT]);
     }
-    let codes = &mut e.codes;
     let mut i = 0u8;
     nnue_simd::effect_rows_update(net, &mut e.acc, || {
         if i == 81 {
@@ -554,12 +642,7 @@ fn effect_refresh(net: &NnueNetwork, pos: &Position, levels: &EffectLevels, e: &
         }
         let sq = Square::from_index(i);
         i += 1;
-        let code = effect_code(pos, levels, sq);
-        codes[sq.index()] = code;
-        Some((
-            None,
-            [Color::Black, Color::White].map(|c| effect_code_index(c, sq, code)),
-        ))
+        Some((None, effect_code_pair(sq, codes[sq.index()])))
     });
 }
 

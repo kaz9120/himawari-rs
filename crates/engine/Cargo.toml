@@ -7,6 +7,8 @@ license.workspace = true
 
 [dependencies]
 himawari-core = { path = "../core" }
+# 探索の盤（ADR-0241）。既定のフィーチャ mailbox で入る
+himawari-mailbox = { path = "../mailbox", optional = true }
 
 # 第1層へ入る活性の非ゼロパターンをダンプする（ADR-0168の調査用）。
 # 通常のビルドには入らない。
@@ -15,6 +17,16 @@ actdump = []
 # SPSAの対象定数をatomicにしてUSIオプションへ出す（ADR-0143）。
 # 通常のビルドには入らない。
 tune = []
+# 探索の盤は既定で配列盤にする（ADR-0241）
+default = ["mailbox"]
+mailbox = ["dep:himawari-mailbox"]
+# coreの盤（Bitboard）で探索する。比較と照合のために残す。mailboxより優先する（build.rs）
+core-search = []
+# mailboxに加えてcoreの局面も並べて持ち、デバッグビルドで配列盤の答えを毎回coreと比べる（照合用）
+mailbox-shadow = ["mailbox"]
+# coreの盤のまま、擬似合法手の生成を合法手で濾す統制群（ADR-0241の第12回）。
+# 配列盤の生成が合法手だけを出すことで木が変わる分を、配列盤なしで再現する
+legal-gen = ["core-search"]
 
 [lints]
 workspace = true

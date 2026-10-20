@@ -233,7 +233,9 @@ def report(profile, binary, topn):
 # 処理として数えるためである。"fallback" は利きを引く下請けの関数で、
 # 連鎖のどこにもほかの種類が無いときだけ取る。
 CATEGORIES = [
-    ("1手詰め", True, "outer", r"himawari_engine::mate::"),
+    # 配列盤（ADR-0241）の関数は `himawari_mailbox::position::Position` のメソッドとして
+    # 出る。探索の盤 `SearchBoard` の包みも同じ種類へ数える
+    ("1手詰め", True, "outer", r"(himawari_engine::mate::|(SearchBoard|mailbox::position::Position)>::mate_1ply$)"),
     ("do_move・undo_move", True, "outer", r"Position>::(do_move|undo_move|do_null_move|undo_null_move)$"),
     # 都度作る利きの地図（ADR-0239）。SEEと合法性判定の中から作られるので、
     # それらより先に照合する。1手詰めの中で作る分は1手詰めに入る
@@ -249,7 +251,8 @@ CATEGORIES = [
         True,
         "inner",
         r"Position>::(gives_check|gives_direct_check_slow|check_squares|compute_check_squares"
-        r"|check_info|slider_blockers|blockers_for_king|pinners|update_checkers)$",
+        r"|check_info|slider_blockers|blockers_for_king|pinners|update_checkers"
+        r"|gives_check_with|compute_check_info|compute_checkers|check_rays)$",
     ),
     (
         "合法性判定",
@@ -257,7 +260,13 @@ CATEGORIES = [
         "inner",
         r"Position>::(is_legal|pseudo_legal|is_pawn_drop_mate|to_move)(_with)?$",
     ),
-    ("指し手生成", True, "inner", r"himawari_core::movegen::"),
+    (
+        "指し手生成",
+        True,
+        "inner",
+        r"(himawari_core::movegen::|SearchBoard>::generate\w*$"
+        r"|mailbox::position::Position>::(generate\w*|gen_\w+|targets_of|collect_pins)$)",
+    ),
     ("利きの計算（上記の外から）", True, "fallback", r"(Position>::attackers_to$|himawari_core::attacks::)"),
     ("千日手・宣言勝ち", False, "inner", r"Position>::(scan_repetition|repetition_state\w*|can_declare_win)$"),
     (
@@ -275,7 +284,7 @@ OTHER = "探索のその他"
 # このいずれかを連鎖に含むサンプルだけを探索時間として数える
 SEARCH_FRAME = re.compile(r"himawari_engine::search::Worker>::")
 # 規則に当たらない関数を挙げる対象。自前のクレートに限る
-OWN_CODE = re.compile(r"himawari_(core|engine)::")
+OWN_CODE = re.compile(r"himawari_(core|engine|mailbox)::")
 # 挙げる下限（探索時間に占める割合）と件数
 UNKNOWN_MIN_RATIO = 0.01
 UNKNOWN_TOP = 5

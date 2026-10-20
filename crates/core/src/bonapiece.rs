@@ -167,11 +167,37 @@ const fn rev81(x: u128) -> u128 {
 /// なっているためである。** 盤はbitboardをそのままブロックへ入れ、手駒は
 /// 連続ビットのマスクを1つ組み立てて入れる。どのブロックも代入で埋まる。
 pub fn bona_piece_bits(pos: &Position, c: Color, out: &mut BonaBits) {
+    bona_piece_bits_with(
+        c,
+        |owner, pt| pos.hand(owner).count(pt),
+        |owner, pt| {
+            if pt == PieceType::GOLD {
+                pos.golds(owner)
+            } else {
+                pos.pieces(owner, pt)
+            }
+            .raw()
+        },
+        out,
+    );
+}
+
+/// `bona_piece_bits` の材料を関数で受け取る版。
+///
+/// `hand_count(持ち主, 駒種)` は手駒の枚数、`board(持ち主, 駒種)` は盤上の駒の81升の集合を返す。
+/// 駒種が金のときは、金の動きをする5駒種（金と成駒4種）の和を返す契約である。
+/// 配列盤の研究（ADR-0241の第13回）が、coreの局面なしで同じ集合を作るのに使う。
+#[inline]
+pub fn bona_piece_bits_with(
+    c: Color,
+    hand_count: impl Fn(Color, PieceType) -> u32,
+    board: impl Fn(Color, PieceType) -> u128,
+    out: &mut BonaBits,
+) {
     let mut hand_bits = 0u128;
     for owner in [Color::Black, Color::White] {
-        let hand = pos.hand(owner);
         for pt in PieceType::HAND_KINDS {
-            let n = hand.count(pt);
+            let n = hand_count(owner, pt);
             if n == 0 {
                 continue;
             }
@@ -183,15 +209,7 @@ pub fn bona_piece_bits(pos: &Position, c: Color, out: &mut BonaBits) {
     out[0] = hand_bits;
 
     for (i, pt) in BOARD_CATEGORIES.into_iter().enumerate() {
-        let pick = |owner: Color| {
-            if pt == PieceType::GOLD {
-                pos.golds(owner)
-            } else {
-                pos.pieces(owner, pt)
-            }
-            .raw()
-        };
-        let (own, opp) = (pick(c), pick(c.flip()));
+        let (own, opp) = (board(c, pt), board(c.flip(), pt));
         // 後手視点は盤を180度回す。board_bona_pieceのsq.inv()にあたる
         let (own, opp) = if c == Color::Black {
             (own, opp)

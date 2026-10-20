@@ -16,6 +16,10 @@ himawari-engine = { path = "../engine" }
 # SPSAのチューニング用ビルド（ADR-0143）。対象定数をUSIオプションへ出す。
 [features]
 tune = ["himawari-engine/tune"]
+# 探索の盤の構成（ADR-0241）。既定は配列盤で、次の3つは比較と照合のために残す
+core-search = ["himawari-engine/core-search"]
+legal-gen = ["himawari-engine/legal-gen"]
+mailbox-shadow = ["himawari-engine/mailbox-shadow"]
 
 [lints]
 workspace = true

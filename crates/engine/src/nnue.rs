@@ -537,6 +537,19 @@ impl EffectLevels {
         l
     }
 
+    /// 色ごとの「k+1枚以上」の升の集合（81升の通し番号のビット）から作る。
+    /// 配列盤（ADR-0241の段階6）が升ごとの利き数から作った集合を受け取る口である。
+    #[inline]
+    pub fn from_bits(bits: [[u128; 3]; 2]) -> EffectLevels {
+        let mut l = EffectLevels::EMPTY;
+        for (c, g) in bits.iter().enumerate() {
+            for (k, &b) in g.iter().enumerate() {
+                l.ge[c][k] = Bitboard::from_bits(b);
+            }
+        }
+        l
+    }
+
     #[inline(always)]
     fn add(&mut self, c: Color, x: Bitboard) {
         let g = &mut self.ge[c.index()];
@@ -571,7 +584,11 @@ impl EffectLevels {
 /// 先手と後手の利き数（各2ビット、3で打ち切り）である。視点ごとの特徴の
 /// indexは `effect_code_index` で戻す。
 #[inline]
-pub fn effect_code(pos: &Position, levels: &EffectLevels, sq: Square) -> u16 {
+pub fn effect_code<B: crate::nnue_acc::EvalBoard + ?Sized>(
+    pos: &B,
+    levels: &EffectLevels,
+    sq: Square,
+) -> u16 {
     let pc = pos.piece_on(sq);
     let p = if pc.is_empty() {
         0
@@ -589,23 +606,40 @@ pub fn effect_code(pos: &Position, levels: &EffectLevels, sq: Square) -> u16 {
 }
 
 /// `effect_code` の語を、視点cの特徴のindexへ戻す。`effect_active` と同じ値になる。
-#[inline]
+///
+/// 語は `駒 << 4 | 先手の段階 << 2 | 後手の段階` で、`effect_index` の升より下の桁と
+/// 同じ並びになる。先手の視点は升の起点に語を足すだけで済む。後手の視点は、
+/// 自他を入れ替えた語を表で引く（ADR-0241の第15回）。
+#[inline(always)]
 pub fn effect_code_index(c: Color, sq: Square, code: u16) -> u32 {
-    let p = usize::from(code >> 4);
-    let (b, w) = (((code >> 2) & 3) as u8, (code & 3) as u8);
+    const PER_SQ: u32 = (EFF_PIECES * EFF_LEVELS * EFF_LEVELS) as u32;
     match c {
-        Color::Black => effect_index(sq.index(), p, b, w),
+        Color::Black => sq.index() as u32 * PER_SQ + u32::from(code),
         Color::White => {
-            // 後手の視点では自他が入れ替わる
-            let p = match p {
-                0 => 0,
-                1..=14 => p + 14,
-                _ => p - 14,
-            };
-            effect_index(sq.inv().index(), p, w, b)
+            sq.inv().index() as u32 * PER_SQ + u32::from(WHITE_CODE[usize::from(code) & 511])
         }
     }
 }
+
+/// 後手の視点の語。駒の先後と、両色の段階を入れ替える。
+static WHITE_CODE: [u16; 512] = {
+    let mut t = [0u16; 512];
+    let mut code = 0;
+    while code < 512 {
+        let p = code >> 4;
+        let (b, w) = ((code >> 2) & 3, code & 3);
+        let p = if p == 0 {
+            0
+        } else if p <= 14 {
+            p + 14
+        } else {
+            p - 14
+        };
+        t[code] = ((p << 4) | (w << 2) | b) as u16;
+        code += 1;
+    }
+    t
+};
 
 /// 連結ベクトルの利きの部分（両視点）を埋める（ADR-0237）。手番視点が先に並ぶ。
 /// `EFF_OUT` が0の構成では何もしない。

@@ -6,9 +6,7 @@
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicI64, AtomicU64, Ordering};
 
-use himawari_core::{
-    Color, Move, MoveList, Piece, PieceType, Position, Repetition, Square, generate_legal,
-};
+use himawari_core::{Color, Move, MoveList, Piece, PieceType, Position, Repetition, Square};
 
 use crate::board::SearchBoard;
 use crate::eval::Evaluator;
@@ -865,7 +863,7 @@ impl Worker {
         }
         // null moveをまたぐと2手前・4手前の手が繋がらない。局面が動いて
         // いない手数が浅いうちも対象にしない
-        if self.pos.state().plies_from_null <= 6 || ply < 18 {
+        if self.pos.plies_from_null() <= 6 || ply < 18 {
             return false;
         }
         let move2 = self.stack[ply + STACK_OFFSET - 2].current_move;
@@ -1147,7 +1145,7 @@ impl Worker {
         // （yaneuraou-search.cpp:943）
         self.last_iteration_pv.clear();
         let mut list = MoveList::default();
-        generate_legal(&self.pos, false, &mut list);
+        self.pos.generate_legal(false, &mut list);
         self.root_moves = list
             .as_slice()
             .iter()
@@ -1688,7 +1686,7 @@ impl Worker {
         self.stack[ply + STACK_OFFSET].follow_pv = follow_pv;
         // 1手前が取った駒と、1手前の移動先（yaneuraou-search.cpp:2355, 2550）。
         // historyの更新条件が繰り返し読む
-        let prior_capture = self.pos.state().captured;
+        let prior_capture = self.pos.captured();
         let prev_move = self.stack[ply + STACK_OFFSET - 1].current_move;
         let prev_sq = if prev_move.is_special() {
             None
@@ -1882,7 +1880,7 @@ impl Worker {
                 if m == excluded {
                     continue;
                 }
-                if !self.pos.is_legal(m) {
+                if !self.pos.is_legal_picked(m, picker.last_from_tt()) {
                     continue;
                 }
                 count += 1;
@@ -2750,7 +2748,7 @@ impl Worker {
             let probcut_value = 'probcut: {
                 while let Some(m) = picker.next(&self.pos, &self.hist, &cont) {
                     // 除外手はsingular検証探索中のTT手（ADR-0050）
-                    if m == excluded || !self.pos.is_legal(m) {
+                    if m == excluded || !self.pos.is_legal_picked(m, picker.last_from_tt()) {
                         continue;
                     }
                     self.set_current_move(ply, m, !self.pos.piece_on(m.to()).is_empty());
@@ -2878,7 +2876,7 @@ impl Worker {
             // 呼ぶ。王手中も呼ばない。評価関数の呼び出しより手前に置くので、
             // 詰みがあるときはevaluate()を省ける
             if tt_hit.is_none()
-                && let Some(m) = crate::mate::mate_1ply(&self.pos)
+                && let Some(m) = self.pos.mate_1ply()
             {
                 // 次のノードで（指し手がなくなって）詰むという解釈
                 let mate = mate_in(ply + 1);
@@ -2973,7 +2971,7 @@ impl Worker {
             let mut count = 0u32;
             let mut best_move = Move::NONE;
             while let Some(m) = picker.next(&self.pos, &self.hist, &cont) {
-                if !self.pos.is_legal(m) {
+                if !self.pos.is_legal_picked(m, picker.last_from_tt()) {
                     continue;
                 }
                 count += 1;

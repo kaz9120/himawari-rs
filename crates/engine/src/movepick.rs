@@ -12,8 +12,10 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicI16, Ordering};
 
 use himawari_core::{
-    Color, GenType, Move, MoveList, Piece, PieceType, Position, Square, generate, piece_value,
+    Bitboard, Color, GenType, Move, MoveList, Piece, PieceType, Square, piece_value,
 };
+
+use crate::board::SearchBoard;
 
 // ---- テーブルの寸法 ----
 
@@ -287,7 +289,7 @@ impl CorrectionHistory {
     /// 4系統の合成前の生の値を取り出す（yaneuraou-search.cpp:728-731）。
     /// 返り値は (歩, 小駒, 先手非歩, 後手非歩)。
     #[inline]
-    pub fn probe(&self, pos: &Position) -> (i32, i32, i32, i32) {
+    pub fn probe(&self, pos: &SearchBoard) -> (i32, i32, i32, i32) {
         let stm = pos.side_to_move().index();
         (
             self.get(pos.pawn_key(), stm, CORR_PAWN),
@@ -307,7 +309,7 @@ impl CorrectionHistory {
 
     /// 4系統をまとめて更新する（yaneuraou-search.cpp:759-762）。
     /// 系統ごとの重みも参照実装のものを使う。
-    pub fn update_all(&self, pos: &Position, bonus: i32) {
+    pub fn update_all(&self, pos: &SearchBoard, bonus: i32) {
         /// 非歩系統の重み（yaneuraou-search.cpp:755）。
         const NON_PAWN_WEIGHT: i32 = 187;
         let stm = pos.side_to_move().index();
@@ -573,6 +575,19 @@ impl MoveBuf {
     }
 }
 
+/// 容量を確保した後の積み込み。容量の検査と伸ばす経路を手ごとに通らない（ADR-0241の第16回）。
+#[inline(always)]
+fn push_reserved(v: &mut Vec<ExtMove>, e: ExtMove) {
+    debug_assert!(v.len() < v.capacity());
+    // SAFETY: 点数付けの前に `reserve(list.len())` で、積む手の数だけ容量を確保してある。
+    // 積むのは手の列の各手について1回だけなので、長さは容量を超えない
+    unsafe {
+        let len = v.len();
+        v.as_mut_ptr().add(len).write(e);
+        v.set_len(len + 1);
+    }
+}
+
 /// 良い静かな手とみなすスコアの下限（movepick.cpp:459）。
 const GOOD_QUIET_THRESHOLD: i32 = -14000;
 /// 静かな手の部分ソートの閾値係数（movepick.cpp:605）。
@@ -583,19 +598,28 @@ const CHECK_SEE_MARGIN: i32 = -75;
 
 /// limit以上のスコアを持つ指し手だけを降順に並べる（movepick.cpp:91-105）。
 /// limit未満の並びは不定になる。
+///
+/// 添字は範囲検査なしで引く（ADR-0241の第16回）。p は `1..len`、sorted_end は p 以下、
+/// q は sorted_end 以下で、q-1 を読むのは q≠0 のときだけなので、どれも len 未満である。
 fn partial_insertion_sort(a: &mut [ExtMove], limit: i32) {
+    let len = a.len();
+    let a = a.as_mut_ptr();
     let mut sorted_end = 0usize;
-    for p in 1..a.len() {
-        if a[p].v >= limit {
-            let tmp = a[p];
-            sorted_end += 1;
-            a[p] = a[sorted_end];
-            let mut q = sorted_end;
-            while q != 0 && a[q - 1].v < tmp.v {
-                a[q] = a[q - 1];
-                q -= 1;
+    // SAFETY: 上の添字の範囲の説明のとおり、読み書きする添字はすべて len 未満である
+    unsafe {
+        for p in 1..len {
+            if (*a.add(p)).v >= limit {
+                let tmp = *a.add(p);
+                sorted_end += 1;
+                debug_assert!(sorted_end <= p);
+                *a.add(p) = *a.add(sorted_end);
+                let mut q = sorted_end;
+                while q != 0 && (*a.add(q - 1)).v < tmp.v {
+                    *a.add(q) = *a.add(q - 1);
+                    q -= 1;
+                }
+                *a.add(q) = tmp;
             }
-            a[q] = tmp;
         }
     }
 }
@@ -651,7 +675,7 @@ impl MovePicker {
     }
 
     /// 通常探索・静止探索用（movepick.cpp:120-202）。depth <= 0で静止探索。
-    pub fn new(pos: &Position, tt_move: Move, depth: i32, ply: usize, buf: MoveBuf) -> Self {
+    pub fn new(pos: &SearchBoard, tt_move: Move, depth: i32, ply: usize, buf: MoveBuf) -> Self {
         let tt_ok = tt_move != Move::NONE && pos.pseudo_legal(tt_move);
         let stage = if pos.in_check() {
             if tt_ok {
@@ -676,7 +700,7 @@ impl MovePicker {
     /// ProbCut用（movepick.cpp:204-252）。SEEが閾値以上の取る手だけを返す。
     /// 置換表の手は取る手でありさえすれば、SEEを見ずに先に返す
     /// （movepick.cpp:245-248）。ProbCutは王手中に呼ばれない
-    pub fn new_probcut(pos: &Position, tt_move: Move, threshold: i32, buf: MoveBuf) -> Self {
+    pub fn new_probcut(pos: &SearchBoard, tt_move: Move, threshold: i32, buf: MoveBuf) -> Self {
         debug_assert!(!pos.in_check());
         let tt_ok = tt_move != Move::NONE
             && !tt_move.is_drop()
@@ -704,8 +728,10 @@ impl MovePicker {
     /// 条件を満たす次の手を返す（movepick.cpp:436-445）。TT手は返さない。
     #[inline]
     fn select(&mut self, pred: impl Fn(&ExtMove) -> bool) -> Option<Move> {
+        debug_assert!(self.end_cur <= self.moves.len());
         while self.cur < self.end_cur {
-            let e = self.moves[self.cur];
+            // SAFETY: end_cur は積んだ手の数（moves.len()）以下に保たれる。cur < end_cur なので範囲内
+            let e = unsafe { *self.moves.get_unchecked(self.cur) };
             self.cur += 1;
             if e.m != self.tt_move && pred(&e) {
                 return Some(e.m);
@@ -717,20 +743,31 @@ impl MovePicker {
     /// 取る手のスコア（movepick.cpp:341-342）。
     /// 取った駒の価値を7倍し、capture historyを足す。倍率7は、あとで
     /// `see_ge(m, -value/18)` に渡すためにSEEのスケールへ合わせたもの。
-    fn score_captures(&mut self, pos: &Position, h: &Histories, list: &MoveList) {
+    fn score_captures(&mut self, pos: &SearchBoard, h: &Histories, list: &MoveList) {
+        self.moves.reserve(list.len());
         for &m in list {
             let pc = m.piece_after();
             let to = m.to();
             let captured = pos.piece_on(to).piece_type();
             let v = h.capture.get(pc, to, captured) + 7 * piece_value(captured);
-            self.moves.push(ExtMove { m, v });
+            push_reserved(&mut self.moves, ExtMove { m, v });
         }
     }
 
     /// 静かな手のスコア（movepick.cpp:362-393）。
-    fn score_quiets(&mut self, pos: &Position, h: &Histories, cont: &[usize; 6], list: &MoveList) {
+    fn score_quiets(
+        &mut self,
+        pos: &SearchBoard,
+        h: &Histories,
+        cont: &[usize; 6],
+        list: &MoveList,
+    ) {
+        self.moves.reserve(list.len());
         let pawn_slot = h.shared.pawn.slot(pos.pawn_key());
         let us = pos.side_to_move();
+        // 王手になる升を駒種ごとに1回だけ引く。配列盤の盤は呼ぶたびに作り直すので、
+        // 手ごとに引くと重い（ADR-0241の第15回）
+        let mut checks: [Option<Bitboard>; 16] = [None; 16];
         for &m in list {
             let pc = m.piece_after();
             let to = m.to();
@@ -744,24 +781,28 @@ impl MovePicker {
             // 王手になる手へのボーナス。直接王手になるマスは
             // Positionのノード内キャッシュが駒種ごとに1回だけ引く
             // （ADR-0151群O）
-            if pos.check_squares(pc.piece_type()).test(to) && pos.see_ge(m, CHECK_SEE_MARGIN) {
+            let pt = pc.piece_type();
+            let check =
+                *checks[usize::from(pt.0) & 15].get_or_insert_with(|| pos.check_squares(pt));
+            if check.test(to) && pos.see_ge(m, CHECK_SEE_MARGIN) {
                 v += CHECK_BONUS;
             }
             if self.ply < LOW_PLY_HISTORY_SIZE {
                 v += 8 * h.low_ply.get(self.ply, m) / (1 + self.ply as i32);
             }
-            self.moves.push(ExtMove { m, v });
+            push_reserved(&mut self.moves, ExtMove { m, v });
         }
     }
 
     /// 王手回避のスコア（movepick.cpp:396-421）。
     fn score_evasions(
         &mut self,
-        pos: &Position,
+        pos: &SearchBoard,
         h: &Histories,
         cont: &[usize; 6],
         list: &MoveList,
     ) {
+        self.moves.reserve(list.len());
         let us = pos.side_to_move();
         for &m in list {
             let pc = m.piece_after();
@@ -773,7 +814,7 @@ impl MovePicker {
             } else {
                 h.main.get(us, m) + h.cont.get(cont[0], pc, to)
             };
-            self.moves.push(ExtMove { m, v });
+            push_reserved(&mut self.moves, ExtMove { m, v });
         }
     }
 
@@ -784,9 +825,9 @@ impl MovePicker {
     /// 通るのは `next` の呼び出し5〜6回に1回だが、インライン化すると
     /// フレームの確保とレジスタの退避が毎回走る。
     #[inline(never)]
-    fn init_captures(&mut self, pos: &Position, h: &Histories) {
+    fn init_captures(&mut self, pos: &SearchBoard, h: &Histories) {
         let mut list = MoveList::default();
-        generate(pos, GenType::Captures, false, &mut list);
+        pos.generate(GenType::Captures, false, &mut list);
         self.moves.clear();
         self.score_captures(pos, h, &list);
         self.cur = 0;
@@ -801,9 +842,9 @@ impl MovePicker {
     /// 静かな手を生成して並べる（movepick.cpp:519-533）。
     /// 切り出す理由は `init_captures` と同じ。
     #[inline(never)]
-    fn init_quiets(&mut self, pos: &Position, h: &Histories, cont: &[usize; 6]) {
+    fn init_quiets(&mut self, pos: &SearchBoard, h: &Histories, cont: &[usize; 6]) {
         let mut list = MoveList::default();
-        generate(pos, GenType::Quiets, false, &mut list);
+        pos.generate(GenType::Quiets, false, &mut list);
         self.score_quiets(pos, h, cont, &list);
         self.end_generated = self.moves.len();
         self.end_cur = self.end_generated;
@@ -816,9 +857,9 @@ impl MovePicker {
     /// 王手回避を生成して並べる（movepick.cpp:661-668）。
     /// 切り出す理由は `init_captures` と同じ。
     #[inline(never)]
-    fn init_evasions(&mut self, pos: &Position, h: &Histories, cont: &[usize; 6]) {
+    fn init_evasions(&mut self, pos: &SearchBoard, h: &Histories, cont: &[usize; 6]) {
         let mut list = MoveList::default();
-        generate(pos, GenType::Evasions, false, &mut list);
+        pos.generate(GenType::Evasions, false, &mut list);
         self.moves.clear();
         self.score_evasions(pos, h, cont, &list);
         self.cur = 0;
@@ -826,9 +867,22 @@ impl MovePicker {
         partial_insertion_sort(&mut self.moves, i32::MIN);
     }
 
+    /// 直前に `next` が返した手が置換表の手か（生成した列の手でないか）。
+    ///
+    /// 置換表の手を返した直後だけ、段は生成の準備（`*Init`）に止まっている。生成した手を返すときは
+    /// 準備の段を通り過ぎているので、段を見るだけで決まる。配列盤の生成は合法手だけを出すので、
+    /// 探索はこれを見て合法性の判定を省く（ADR-0241の第15回）。
+    #[inline(always)]
+    pub fn last_from_tt(&self) -> bool {
+        matches!(
+            self.stage,
+            Stage::CaptureInit | Stage::EvasionInit | Stage::QCaptureInit | Stage::ProbCutInit
+        )
+    }
+
     /// 呼ばれるたびに擬似合法手を1つ返す（movepick.cpp:456-695）。
     /// contは1手前から6手前までのcontinuation historyの面。
-    pub fn next(&mut self, pos: &Position, h: &Histories, cont: &[usize; 6]) -> Option<Move> {
+    pub fn next(&mut self, pos: &SearchBoard, h: &Histories, cont: &[usize; 6]) -> Option<Move> {
         loop {
             match self.stage {
                 Stage::MainTt => {

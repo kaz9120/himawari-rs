@@ -132,6 +132,20 @@ fn main() {
     println!("cargo::rerun-if-env-changed=HIMAWARI_ARCH");
     println!("cargo::rerun-if-env-changed=HIMAWARI_EVAL_HASH_BITS");
 
+    // 探索の盤の構成（ADR-0241）。フィーチャは足し算でしか合わさらないので、
+    // coreの探索を選ぶ core-search を、配列盤の mailbox より優先させる。
+    // ワークスペースで一緒にビルドしたほかのクレートが core-search を有効にすれば、
+    // そのビルドの探索はcoreになる
+    println!("cargo::rustc-check-cfg=cfg(mb_search)");
+    println!("cargo::rustc-check-cfg=cfg(mb_shadow)");
+    let feature = |name: &str| std::env::var_os(format!("CARGO_FEATURE_{name}")).is_some();
+    if feature("MAILBOX") && !feature("CORE_SEARCH") {
+        println!("cargo::rustc-cfg=mb_search");
+        if feature("MAILBOX_SHADOW") {
+            println!("cargo::rustc-cfg=mb_shadow");
+        }
+    }
+
     // eval hashのエントリ数の指数（ADR-0049、issue #429）。既定23は64MBで
     // 従来と同じ。wasmのような小メモリの的に向けてビルド時だけ絞れる。
     // 実行時オプションは設けない方針（ADR-0049）を変えない
