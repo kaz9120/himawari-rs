@@ -1880,7 +1880,7 @@ impl Worker {
                 if m == excluded {
                     continue;
                 }
-                if !self.pos.is_legal(m) {
+                if !self.pos.is_legal_picked(m, picker.last_from_tt()) {
                     continue;
                 }
                 count += 1;
@@ -2748,7 +2748,7 @@ impl Worker {
             let probcut_value = 'probcut: {
                 while let Some(m) = picker.next(&self.pos, &self.hist, &cont) {
                     // 除外手はsingular検証探索中のTT手（ADR-0050）
-                    if m == excluded || !self.pos.is_legal(m) {
+                    if m == excluded || !self.pos.is_legal_picked(m, picker.last_from_tt()) {
                         continue;
                     }
                     self.set_current_move(ply, m, !self.pos.piece_on(m.to()).is_empty());
@@ -2971,7 +2971,7 @@ impl Worker {
             let mut count = 0u32;
             let mut best_move = Move::NONE;
             while let Some(m) = picker.next(&self.pos, &self.hist, &cont) {
-                if !self.pos.is_legal(m) {
+                if !self.pos.is_legal_picked(m, picker.last_from_tt()) {
                     continue;
                 }
                 count += 1;

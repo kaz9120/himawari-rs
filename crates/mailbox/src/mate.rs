@@ -593,9 +593,17 @@ impl Position {
                 if COUNT {
                     cnt.line_walks += 1;
                 }
-                if let Some(x) = self.first_piece(t, opp(d)) {
-                    movers |= bit81(x);
-                }
+                // 線の元の駒は、近傍の升から逆向きに占有の集合と線の表で引く（盤を歩かない）。
+                // 方向ビットが立っているので、線の上に必ず駒がある
+                let od = opp(d);
+                let hit = RAY81[t81][od] & occ_all;
+                debug_assert!(hit != 0);
+                let first = if INCREASING[od] {
+                    hit.trailing_zeros()
+                } else {
+                    127 - hit.leading_zeros()
+                };
+                movers |= 1u128 << first;
             }
         }
         let movers = movers & !bit81(self.king[ui]);
@@ -634,7 +642,7 @@ impl Position {
                 }
                 if can_promote(pt) && (rel_rank(us, s) <= 2 || rel_rank(us, t) <= 2) {
                     let m = Move::normal(s, t, true, p - 8);
-                    if !(!open && self.escape_left(escapes, ksq, t, p - 8, s))
+                    if !(!open && self.escape_left(escapes, ksq, t, p - 8, s, occ_all))
                         && self.judge::<COUNT>(m, cnt)
                     {
                         return Some(m);
@@ -642,7 +650,7 @@ impl Position {
                 }
                 if !dead_square(us, pt, t) {
                     let m = Move::normal(s, t, false, p);
-                    if !(!open && self.escape_left(escapes, ksq, t, p, s))
+                    if !(!open && self.escape_left(escapes, ksq, t, p, s, occ_all))
                         && self.judge::<COUNT>(m, cnt)
                     {
                         return Some(m);
@@ -665,7 +673,7 @@ impl Position {
                 if near & bit81(t) != 0 && self.count[ui][t as usize] == 0 {
                     continue;
                 }
-                if self.escape_left(escapes, ksq, t, make_piece(us, pt), NO_FROM) {
+                if self.escape_left(escapes, ksq, t, make_piece(us, pt), NO_FROM, occ_all) {
                     continue;
                 }
                 let m = Move::drop(pt, t, us);
@@ -681,15 +689,9 @@ impl Position {
     /// 飛び利きは盤を歩かず、81升の線の集合と占有の積から最初の駒を引く。
     #[inline]
     fn near_targets(&self, s: u8, p: u8, ui: usize, occ_all: u128) -> u128 {
-        let m = &MOVES[p as usize];
-        let mut out = 0u128;
-        for k in 0..m.n_short as usize {
-            let t = s.wrapping_add(m.short[k] as u8);
-            if SQ81[t as usize] != 0xFF {
-                out |= bit81(t);
-            }
-        }
+        let m = &MOVES[(p & 31) as usize];
         let s81 = SQ81[s as usize] as usize;
+        let mut out = SHORT81[(p & 31) as usize][s81];
         let mut dirs = m.long;
         while dirs != 0 {
             let d = dirs.trailing_zeros() as usize;
@@ -716,8 +718,17 @@ impl Position {
     /// npの飛び利きは、玉と移動元fromを空きとみなして通す（玉が線に沿って逃げても利きは届く）。
     /// 駒打ちはfromに `NO_FROM` を渡す。
     #[inline]
-    fn escape_left(&self, escapes: u8, ksq: u8, t: u8, np: u8, from: u8) -> bool {
-        let mv = &MOVES[np as usize];
+    fn escape_left(&self, escapes: u8, ksq: u8, t: u8, np: u8, from: u8, occ_all: u128) -> bool {
+        let mv = &MOVES[(np & 31) as usize];
+        let t81 = SQ81[t as usize] as usize;
+        let k81 = SQ81[ksq as usize] as usize;
+        // 線を通すときに空きとみなす升（玉と移動元）を抜いた占有
+        let from_bit = if from == NO_FROM {
+            0
+        } else {
+            bit81_or_zero(from)
+        };
+        let occ = occ_all & !(1u128 << k81) & !from_bit;
         let mut dirs = escapes;
         while dirs != 0 {
             let d = dirs.trailing_zeros() as usize;
@@ -726,22 +737,12 @@ impl Position {
             if e == t || short_hit(np, e as i32 - t as i32) {
                 continue;
             }
-            let covered = match dir_between(t, e) {
-                Some(dd) if mv.long & (1 << dd) != 0 => {
-                    let delta = DELTA[dd] as i32;
-                    let mut x = (t as i32 + delta) as u8;
-                    let mut clear = true;
-                    while x != e {
-                        if self.board[x as usize] != EMPTY && x != from && x != ksq {
-                            clear = false;
-                            break;
-                        }
-                        x = (x as i32 + delta) as u8;
-                    }
-                    clear
-                }
-                _ => false,
-            };
+            let e81 = SQ81[e as usize] as usize;
+            let dd = DIR81[t81][e81] as usize;
+            // 置いた駒の飛び利きがeへ届くか。tからeの間（両端を含まない）が空いていれば届く
+            let covered = dd != NO_DIR as usize
+                && mv.long & (1 << dd) != 0
+                && RAY81[t81][dd] & !RAY81[e81][dd] & !(1u128 << e81) & occ == 0;
             if !covered {
                 return true;
             }

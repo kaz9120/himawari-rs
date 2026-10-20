@@ -840,6 +840,19 @@ impl MovePicker {
         partial_insertion_sort(&mut self.moves, i32::MIN);
     }
 
+    /// 直前に `next` が返した手が置換表の手か（生成した列の手でないか）。
+    ///
+    /// 置換表の手を返した直後だけ、段は生成の準備（`*Init`）に止まっている。生成した手を返すときは
+    /// 準備の段を通り過ぎているので、段を見るだけで決まる。配列盤の生成は合法手だけを出すので、
+    /// 探索はこれを見て合法性の判定を省く（ADR-0241の第15回）。
+    #[inline(always)]
+    pub fn last_from_tt(&self) -> bool {
+        matches!(
+            self.stage,
+            Stage::CaptureInit | Stage::EvasionInit | Stage::QCaptureInit | Stage::ProbCutInit
+        )
+    }
+
     /// 呼ばれるたびに擬似合法手を1つ返す（movepick.cpp:456-695）。
     /// contは1手前から6手前までのcontinuation historyの面。
     pub fn next(&mut self, pos: &SearchBoard, h: &Histories, cont: &[usize; 6]) -> Option<Move> {
