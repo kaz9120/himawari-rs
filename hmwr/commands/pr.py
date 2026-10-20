@@ -62,6 +62,11 @@ def add_parser(sub: argparse._SubParsersAction) -> None:
         metavar="名前",
         help="strengthのとき必須。data/sprt/<名前>.result の判定を見る",
     )
+    t.add_argument(
+        "--body-file",
+        metavar="ファイル",
+        help="squashの本文をこのファイルにする。コミットの多い研究ブランチ向け。検査は同じにかける",
+    )
     t.set_defaults(func=merge)
 
 
@@ -217,6 +222,13 @@ def merge(args: argparse.Namespace) -> int:
         if path.is_file():
             result = read_result(path)
     subject, body = squash_message(pr)
+    if args.body_file:
+        # 研究ブランチは数十件のコミットを持つ。全部をつなげた本文は、古いコミットの
+        # 入れ子の括弧を拾い、トレーラも最後の段落から外れる（ADR-0241の取り込み）
+        body_file = Path(args.body_file)
+        if not body_file.is_file():
+            raise proc.Fail(f"本文のファイルがない: {args.body_file}", proc.USAGE)
+        body = body_file.read_text(encoding="utf-8").strip()
     found = problems(args.kind, subject, body, result)
     if not ci_green(pr):
         found.append("CIが緑ではない（hmwr ci wait で確定を待つ）")

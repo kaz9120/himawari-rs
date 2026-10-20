@@ -155,3 +155,18 @@ def test_dry_run_checks_but_does_not_merge(monkeypatch, capsys):
 
 def test_strength_requires_the_sprt_name():
     assert cli.main(["--dry-run", "pr", "merge", "9", "--kind", "strength"]) == proc.USAGE
+
+
+def test_body_file_replaces_the_squash_body(monkeypatch, capsys, tmp_path):
+    """コミットの多いブランチは、本文をファイルで渡せる。渡した本文も同じ検査にかける。"""
+    data = _pr(("fix: a", "古い本文 (clip(a)) だめ"), ("fix: b", "本文"), title="fix: x")
+    monkeypatch.setattr(proc, "capture_code", lambda argv, **kw: (0, json.dumps(data), ""))
+    body = tmp_path / "body.md"
+    body.write_text("まとめた本文\n", encoding="utf-8")
+    argv = ["--dry-run", "pr", "merge", "9", "--kind", "chore", "--body-file", str(body)]
+    assert cli.main(argv) == proc.OK
+    assert "まとめた本文" in capsys.readouterr().out
+
+    body.write_text("まとめた本文 (clip(a))\n", encoding="utf-8")
+    assert cli.main(argv) == proc.JUDGE
+    assert "入れ子の半角括弧" in capsys.readouterr().err
