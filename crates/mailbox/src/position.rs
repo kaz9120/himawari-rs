@@ -846,29 +846,30 @@ impl Position {
     /// 利き数（各2ビット、3で打ち切り）である。配列盤は駒と利き数を升ごとに持つので、
     /// 読んで詰めるだけで済む。1筋の9升は配列の上で続いている。
     pub fn effect_codes(&self, out: &mut [u16; 81]) {
-        const KIND: [u16; 32] = {
-            let mut t = [0u16; 32];
-            let mut p = 0;
-            while p < 32 {
-                let pt = p & 15;
-                if pt >= 2 {
-                    let k = (pt - 1) as u16 + if p & 16 != 0 { 14 } else { 0 };
-                    t[p] = k << 4;
-                }
-                p += 1;
-            }
-            t
-        };
-        let cap = |n: u8| u16::from(n.min(3));
-        let (b, w) = (&self.count[0], &self.count[1]);
+        use std::simd::Simd;
+        use std::simd::cmp::SimdOrd;
+        use std::simd::num::SimdUint;
+        type U8 = Simd<u8, 16>;
+        type U16 = Simd<u16, 16>;
+        // 1筋の9升を16升ぶん読み、9升だけ使う。最後の筋の書き出しが81升を越えるので、
+        // 余白のある置き場へ書いてから写す。壁の升の値は使わない
+        let mut tmp = [0u16; 9 * 8 + 16];
+        let three = U8::splat(3);
         for f in 0..9u8 {
             let base = crate::board::idx(f, 0) as usize;
-            for r in 0..9 {
-                let i = base + r;
-                out[f as usize * 9 + r] =
-                    KIND[usize::from(self.board[i] & 31)] | cap(b[i]) << 2 | cap(w[i]);
-            }
+            let p = U8::from_slice(&self.board[base..base + 16]);
+            let cb = U8::from_slice(&self.count[0][base..base + 16]).simd_min(three);
+            let cw = U8::from_slice(&self.count[1][base..base + 16]).simd_min(three);
+            // 駒: 空きは0、先手の駒種2〜15を1〜14、後手は14を足す
+            let kind = (p & U8::splat(15)).saturating_sub(U8::splat(1))
+                + ((p >> U8::splat(4)) & U8::splat(1)) * U8::splat(14);
+            let code: U16 = (kind.cast::<u16>() << U16::splat(4))
+                | (cb.cast::<u16>() << U16::splat(2))
+                | cw.cast::<u16>();
+            let at = f as usize * 9;
+            tmp[at..at + 16].copy_from_slice(code.as_array());
         }
+        out.copy_from_slice(&tmp[..81]);
     }
 
     /// coreの `Move16` のビット列から手を復元する。coreの `to_move` と同じ検査をし、同じ場面で `None` を返す。
