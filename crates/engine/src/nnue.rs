@@ -7,7 +7,10 @@
 //!
 //! 次元は `build.rs` が環境変数 `HIMAWARI_ARCH` から生成する（ADR-0127）。
 
-use himawari_core::attacks::{attacks, king_attacks};
+use himawari_core::attacks::{
+    attacks, bishop_attacks, gold_attacks, king_attacks, knight_attacks, lance_attacks,
+    rook_attacks, silver_attacks,
+};
 use himawari_core::{Bitboard, Color, PieceType, Position, Square, bonapiece};
 
 use crate::value::Value;
@@ -486,17 +489,50 @@ impl EffectLevels {
     };
 
     /// 局面から作る。数え方は `effect_counts` と同じで、一致はテストで確かめる。
+    ///
+    /// 駒種ごとに集合から引く（ADR-0242の段3）。駒ごとに `attacks` の分岐を
+    /// 通らないので、駒種の分岐の外れが減る。
     pub fn build(pos: &Position) -> EffectLevels {
         let occ = pos.occupied();
         let mut l = EffectLevels::EMPTY;
-        // 歩の利き先は駒ごとに別の升なので、集合のまま1段ずらして1回で足せる
-        let pawns_b = pos.pieces(Color::Black, PieceType::PAWN);
-        let pawns_w = pos.pieces(Color::White, PieceType::PAWN);
-        l.add(Color::Black, pawns_b.shift_up());
-        l.add(Color::White, pawns_w.shift_down());
-        for sq in occ & !(pawns_b | pawns_w) {
-            let pc = pos.piece_on(sq);
-            l.add(pc.color(), attacks(pc, sq, occ));
+        for c in [Color::Black, Color::White] {
+            // 歩の利き先は駒ごとに別の升なので、集合のまま1段ずらして1回で足せる
+            let pawns = pos.pieces(c, PieceType::PAWN);
+            l.add(
+                c,
+                match c {
+                    Color::Black => pawns.shift_up(),
+                    Color::White => pawns.shift_down(),
+                },
+            );
+            for sq in pos.pieces(c, PieceType::KNIGHT) {
+                l.add(c, knight_attacks(c, sq));
+            }
+            for sq in pos.pieces(c, PieceType::SILVER) {
+                l.add(c, silver_attacks(c, sq));
+            }
+            for sq in pos.golds(c) {
+                l.add(c, gold_attacks(c, sq));
+            }
+            // 玉の無い局面（詰将棋など）もあるので、集合から引く
+            for sq in pos.pieces(c, PieceType::KING) {
+                l.add(c, king_attacks(sq));
+            }
+            for sq in pos.pieces(c, PieceType::LANCE) {
+                l.add(c, lance_attacks(c, sq, occ));
+            }
+            for sq in pos.pieces(c, PieceType::BISHOP) {
+                l.add(c, bishop_attacks(sq, occ));
+            }
+            for sq in pos.pieces(c, PieceType::ROOK) {
+                l.add(c, rook_attacks(sq, occ));
+            }
+            for sq in pos.pieces(c, PieceType::HORSE) {
+                l.add(c, bishop_attacks(sq, occ) | king_attacks(sq));
+            }
+            for sq in pos.pieces(c, PieceType::DRAGON) {
+                l.add(c, rook_attacks(sq, occ) | king_attacks(sq));
+            }
         }
         l
     }
