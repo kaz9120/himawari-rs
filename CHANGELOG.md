@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.57.0](https://github.com/kaz9120/himawari-rs/compare/v0.56.6...v0.57.0) (2026-10-20)
+
+
+### 棋力向上
+
+* 探索の盤を配列盤へ置き換える（ADR-0241） ([#879](https://github.com/kaz9120/himawari-rs/issues/879)) ([4eba896](https://github.com/kaz9120/himawari-rs/commit/4eba896bc2fe396700329eef0559d71b5993cc25))
+
+
+### その他の変更
+
+* hmwr pr merge に、squashの本文をファイルで渡す --body-file を足す ([#880](https://github.com/kaz9120/himawari-rs/issues/880)) ([1ef8861](https://github.com/kaz9120/himawari-rs/commit/1ef8861eed8c770d3416e6d415eac08aae0a7314))
+
 ## [0.56.6](https://github.com/kaz9120/himawari-rs/compare/v0.56.5...v0.56.6) (2026-10-20)
 
 
