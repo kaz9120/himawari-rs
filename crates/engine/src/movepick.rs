@@ -11,7 +11,9 @@
 use std::sync::Arc;
 use std::sync::atomic::{AtomicI16, Ordering};
 
-use himawari_core::{Color, GenType, Move, MoveList, Piece, PieceType, Square, piece_value};
+use himawari_core::{
+    Bitboard, Color, GenType, Move, MoveList, Piece, PieceType, Square, piece_value,
+};
 
 use crate::board::SearchBoard;
 
@@ -737,6 +739,9 @@ impl MovePicker {
     ) {
         let pawn_slot = h.shared.pawn.slot(pos.pawn_key());
         let us = pos.side_to_move();
+        // 王手になる升を駒種ごとに1回だけ引く。配列盤の盤は呼ぶたびに作り直すので、
+        // 手ごとに引くと重い（ADR-0241の第15回）
+        let mut checks: [Option<Bitboard>; 16] = [None; 16];
         for &m in list {
             let pc = m.piece_after();
             let to = m.to();
@@ -750,7 +755,10 @@ impl MovePicker {
             // 王手になる手へのボーナス。直接王手になるマスは
             // Positionのノード内キャッシュが駒種ごとに1回だけ引く
             // （ADR-0151群O）
-            if pos.check_squares(pc.piece_type()).test(to) && pos.see_ge(m, CHECK_SEE_MARGIN) {
+            let pt = pc.piece_type();
+            let check =
+                *checks[usize::from(pt.0) & 15].get_or_insert_with(|| pos.check_squares(pt));
+            if check.test(to) && pos.see_ge(m, CHECK_SEE_MARGIN) {
                 v += CHECK_BONUS;
             }
             if self.ply < LOW_PLY_HISTORY_SIZE {
