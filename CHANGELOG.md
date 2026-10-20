@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.56.3](https://github.com/kaz9120/himawari-rs/compare/v0.56.2...v0.56.3) (2026-10-20)
+
+
+### その他の変更
+
+* 利きのaccの両視点を、レジスタに置いたまま1ループで更新する（ADR-0242の段2、+1.01% NPS） ([#866](https://github.com/kaz9120/himawari-rs/issues/866)) ([79e1069](https://github.com/kaz9120/himawari-rs/commit/79e1069d0a2aa9b313bff7106521afa00611ba5c))
+
 ## [0.56.2](https://github.com/kaz9120/himawari-rs/compare/v0.56.1...v0.56.2) (2026-10-20)
 
 
