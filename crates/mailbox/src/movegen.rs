@@ -418,12 +418,14 @@ impl Position {
             }
             let mut mask = match pt {
                 PAWN => {
-                    let mut nifu = 0u128;
-                    let mut files = self.pawn_files[ui];
-                    while files != 0 {
-                        nifu |= file_mask(files.trailing_zeros() as u8);
-                        files &= files - 1;
+                    // 二歩の筋。筋fのビットを81升の番号9fへ散らし、0x1FFを掛けて筋全体へ広げる。
+                    // 筋ごとの9bitの塊は重ならないので繰り上がりは出ない。分岐しない
+                    let files = u128::from(self.pawn_files[ui]);
+                    let mut spread = 0u128;
+                    for f in 0..9 {
+                        spread |= ((files >> f) & 1) << (9 * f);
                     }
+                    let nifu = spread * 0x1FF;
                     target & !r1 & !nifu
                 }
                 LANCE => target & !r1,
