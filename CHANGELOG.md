@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.56.6](https://github.com/kaz9120/himawari-rs/compare/v0.56.5...v0.56.6) (2026-10-20)
+
+
+### その他の変更
+
+* net train の学習データの置き場を paths.TRAIN から組む ([#876](https://github.com/kaz9120/himawari-rs/issues/876)) ([f76bb30](https://github.com/kaz9120/himawari-rs/commit/f76bb307dbb803a2b129401e66a19073f3836478)), closes [#850](https://github.com/kaz9120/himawari-rs/issues/850)
+
+## [0.56.5](https://github.com/kaz9120/himawari-rs/compare/v0.56.4...v0.56.5) (2026-10-20)
+
+
+### その他の変更
+
+* build pair で比較元へ戻すとき、ワークスペースの Cargo.toml と Cargo.lock も揃える ([#874](https://github.com/kaz9120/himawari-rs/issues/874)) ([3ff757d](https://github.com/kaz9120/himawari-rs/commit/3ff757d8cca4df22565cb6412a276f58f1ea5083))
+
 ## [0.56.4](https://github.com/kaz9120/himawari-rs/compare/v0.56.3...v0.56.4) (2026-10-20)
 
 
