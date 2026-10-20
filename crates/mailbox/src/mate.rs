@@ -596,7 +596,7 @@ impl Position {
         while nb != 0 {
             let t81 = nb.trailing_zeros() as usize;
             nb &= nb - 1;
-            let t = IDX81[t81];
+            let t = idx81(t81);
             let mut dirs = self.longdir[ui][t as usize];
             while dirs != 0 {
                 let d = dirs.trailing_zeros() as usize;
@@ -615,7 +615,7 @@ impl Position {
                 // 線の元の駒は、近傍の升から逆向きに占有の集合と線の表で引く（盤を歩かない）。
                 // 方向ビットが立っているので、線の上に必ず駒がある
                 let od = opp(d);
-                let hit = RAY81[t81][od] & occ_all;
+                let hit = ray81(t81, od) & occ_all;
                 debug_assert!(hit != 0);
                 let first = if INCREASING[od] {
                     hit.trailing_zeros()
@@ -755,7 +755,7 @@ impl Position {
     fn near_targets(&self, s: u8, p: u8, ui: usize, occ_all: u128) -> u128 {
         let m = &MOVES[(p & 31) as usize];
         let s81 = SQ81[s as usize] as usize;
-        let mut out = SHORT81[(p & 31) as usize][s81];
+        let mut out = short81(p, s81);
         let mut dirs = m.long;
         while dirs != 0 {
             let d = dirs.trailing_zeros() as usize;
@@ -802,7 +802,7 @@ impl Position {
                 continue;
             }
             let e81 = SQ81[e as usize] as usize;
-            let dd = DIR81[t81][e81] as usize;
+            let dd = dir81(t81, e81) as usize;
             // 置いた駒の飛び利きがeへ届くか。tからeの間（両端を含まない）が空いていれば届く
             let covered = dd != NO_DIR as usize
                 && mv.long & (1 << dd) != 0

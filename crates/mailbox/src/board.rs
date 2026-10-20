@@ -448,10 +448,51 @@ pub const RAY81: [[u128; 8]; 81] = {
 /// 方向dへ進むと81升の通し番号が増えるか（下・左・左上・左下）。線の最初の駒を最下位か最上位のビットで引くのに使う。
 pub const INCREASING: [bool; 8] = [false, true, true, false, true, false, false, true];
 
+/// 81升の通し番号から升の添字（範囲検査なし）。s81は81未満であること。
+#[inline(always)]
+pub fn idx81(s81: usize) -> u8 {
+    debug_assert!(s81 < 81);
+    // SAFETY: 呼び出し側は81升の集合（ALL81の内側）のビットの位置か、升の添字から引いた
+    // 81升の通し番号だけを渡す。どちらも81未満である
+    unsafe { *IDX81.get_unchecked(s81) }
+}
+
+/// `RAY81[s81][d]` の範囲検査なしの版。s81は81未満、dは8未満であること。
+#[inline(always)]
+pub fn ray81(s81: usize, d: usize) -> u128 {
+    debug_assert!(s81 < 81 && d < 8);
+    // SAFETY: s81は81升の通し番号（81未満）、dは方向（u8の方向ビットの位置で8未満）である
+    unsafe { *RAY81.get_unchecked(s81).get_unchecked(d) }
+}
+
+/// `SHORT81[p & 31][s81]` の範囲検査なしの版。s81は81未満であること。
+#[inline(always)]
+pub fn short81(p: u8, s81: usize) -> u128 {
+    debug_assert!(s81 < 81);
+    // SAFETY: 駒の符号は `& 31` で32未満に収まる。s81は81升の通し番号で81未満である
+    unsafe { *SHORT81.get_unchecked((p & 31) as usize).get_unchecked(s81) }
+}
+
+/// `REL_RANK81[ui][s81]` の範囲検査なしの版。uiは2未満、s81は81未満であること。
+#[inline(always)]
+pub fn rel_rank81(ui: usize, s81: usize) -> u8 {
+    debug_assert!(ui < 2 && s81 < 81);
+    // SAFETY: uiは手番の添字（0か1）、s81は81升の通し番号で81未満である
+    unsafe { *REL_RANK81.get_unchecked(ui).get_unchecked(s81) }
+}
+
+/// `DIR81[a][b]` の範囲検査なしの版。a・bは81未満であること。
+#[inline(always)]
+pub fn dir81(a: usize, b: usize) -> u8 {
+    debug_assert!(a < 81 && b < 81);
+    // SAFETY: a・bは81升の通し番号で81未満である
+    unsafe { *DIR81.get_unchecked(a).get_unchecked(b) }
+}
+
 /// 81升の升s81から方向dへ、occの最初の駒まで（その駒を含む）の升の集合。
 #[inline(always)]
 pub fn ray_to_blocker(s81: usize, d: usize, occ: u128) -> u128 {
-    let ray = RAY81[s81][d];
+    let ray = ray81(s81, d);
     let hit = ray & occ;
     if hit == 0 {
         return ray;
@@ -461,7 +502,7 @@ pub fn ray_to_blocker(s81: usize, d: usize, occ: u128) -> u128 {
     } else {
         127 - hit.leading_zeros()
     } as usize;
-    ray & !RAY81[first][d]
+    ray & !ray81(first, d)
 }
 
 /// `SHORT81[p][s81]` は駒pを81升の升s81に置いたときの短い利きの升の集合（盤の上だけ）。

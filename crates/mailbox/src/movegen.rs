@@ -171,19 +171,19 @@ impl Position {
         let k81 = SQ81[self.king[ui] as usize] as usize;
         let own = self.occ[ui];
         let occ_all = own | self.occ[them];
-        for d in 0..8 {
-            let ray = RAY81[k81][d];
+        for (d, &inc) in INCREASING.iter().enumerate() {
+            let ray = ray81(k81, d);
             let hit = ray & occ_all;
             if hit == 0 {
                 continue;
             }
-            let first = if INCREASING[d] {
+            let first = if inc {
                 hit.trailing_zeros()
             } else {
                 127 - hit.leading_zeros()
             } as u8;
             if own & (1u128 << first) != 0
-                && self.longdir[them][IDX81[first as usize] as usize] & (1 << opp(d)) != 0
+                && self.longdir[them][idx81(first as usize) as usize] & (1 << opp(d)) != 0
             {
                 ctx.pins[ctx.n_pins] = (first, ray);
                 ctx.n_pins += 1;
@@ -314,12 +314,12 @@ impl Position {
                 let fwd81 = pawn_delta81(us);
                 let pawn = make_piece(us, PAWN);
                 for_each_bit81(own, |s| {
-                    if self.board[IDX81[s as usize] as usize] != pawn {
+                    if self.board[idx81(s as usize) as usize] != pawn {
                         return;
                     }
                     let t = (s as i32 + fwd81) as u8;
                     if empty & (1u128 << t) != 0
-                        && REL_RANK81[ui][t as usize] <= 2
+                        && rel_rank81(ui, t as usize) <= 2
                         && ctx.pin_mask(s) & (1u128 << t) != 0
                     {
                         list.push_normal(s, t, true, make_piece(us, PRO_PAWN));
@@ -333,14 +333,14 @@ impl Position {
                 let fwd81 = pawn_delta81(us);
                 let pawn = make_piece(us, PAWN);
                 for_each_bit81(own, |s| {
-                    if self.board[IDX81[s as usize] as usize] != pawn {
+                    if self.board[idx81(s as usize) as usize] != pawn {
                         return;
                     }
                     let t = (s as i32 + fwd81) as u8;
                     if empty & (1u128 << t) == 0 || ctx.pin_mask(s) & (1u128 << t) == 0 {
                         return;
                     }
-                    let rr = REL_RANK81[ui][t as usize];
+                    let rr = rel_rank81(ui, t as usize);
                     if rr > 2 || (all && rr >= 1) {
                         list.push_normal(s, t, false, pawn);
                     }
@@ -358,10 +358,10 @@ impl Position {
         let k81 = SQ81[k as usize];
         let xray = self.longdir[them][k as usize];
         let kp = make_piece(ctx.us, KING);
-        let cand = SHORT81[kp as usize][k81 as usize] & !self.occ[ui] & target;
+        let cand = short81(kp, k81 as usize) & !self.occ[ui] & target;
         for_each_bit81(cand, |t| {
             // 玉の升に届く飛び利きの延長（玉が線に沿って逃げる升）は、利き数に入っていない
-            let d = DIR81[k81 as usize][t as usize];
+            let d = dir81(k81 as usize, t as usize);
             if self.count[them][IDX81[t as usize] as usize] == 0 && xray & (1 << d) == 0 {
                 list.push_normal(k81, t, false, kp);
             }
@@ -386,13 +386,13 @@ impl Position {
         let movers = own & !bit81(self.king[ui]);
         let target = target & ctx.evasion & !own;
         for_each_bit81(movers, |s| {
-            let p = self.board[IDX81[s as usize] as usize];
+            let p = self.board[idx81(s as usize) as usize];
             let pt = piece_type(p);
             if skip_pawns && pt == PAWN {
                 return;
             }
             let m = &MOVES[(p & 31) as usize];
-            let mut to = SHORT81[(p & 31) as usize][s as usize];
+            let mut to = short81(p, s as usize);
             let mut dirs = m.long;
             while dirs != 0 {
                 let d = dirs.trailing_zeros() as usize;
@@ -471,8 +471,8 @@ const fn pawn_delta81(us: Color) -> i32 {
 #[inline(always)]
 fn push_variants<L: MoveSink>(us: Color, pt: u8, from81: u8, to81: u8, all: bool, list: &mut L) {
     let ui = us.index();
-    let rel = REL_RANK81[ui][to81 as usize];
-    if can_promote(pt) && (REL_RANK81[ui][from81 as usize] <= 2 || rel <= 2) {
+    let rel = rel_rank81(ui, to81 as usize);
+    if can_promote(pt) && (rel_rank81(ui, from81 as usize) <= 2 || rel <= 2) {
         list.push_normal(from81, to81, true, make_piece(us, pt - 8));
         let non_promote = match pt {
             PAWN => all && rel >= 1,
