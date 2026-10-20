@@ -1,4 +1,4 @@
-//! 配列盤の局面。駒番号・手番別の利き数・飛び利きの方向ビットを持つ。
+//! 配列盤の局面。手番別の利き数・飛び利きの方向ビットと、駒のいる升の集合を持つ。
 //!
 //! 利きの差分更新は、盤上の駒の移動をまとめて扱う `transfer` と、駒打ちの `put` で行う。
 //! 利きは盤面だけで決まる関数なので、途中の各段が整合していれば結果は全計算と一致する。
@@ -24,7 +24,7 @@
 use crate::board::*;
 use crate::check::{CheckSlot, SHORT_FROM, first81};
 use crate::moves::Move;
-use crate::zobrist::{self, HAND_PAWN, HAND_SHIFT, PIECE_VALUE, PSQ, is_minor_piece};
+use crate::zobrist::{self, HAND_MASK, HAND_PAWN, HAND_SHIFT, PIECE_VALUE, PSQ, is_minor_piece};
 
 /// 王手駒を探す短い利きの差分（玉の8近傍と、両者の桂の位置）。
 pub(crate) const CHECK_OFFSETS: [i8; 12] = [
@@ -84,9 +84,6 @@ const GOLD_LIKE_MASK: [u128; 16] = {
 /// 8升ぶんの利き数に1ずつ足す語。
 const ONES64: u64 = 0x0101_0101_0101_0101;
 
-/// 駒番号の無い升の値。盤上と手駒の駒は40枚。
-pub const NO_ID: u8 = 0xFF;
-
 /// 81升の通し番号の「升なし」。coreの `Square::NONE` と同じ値。
 pub const SQ_NONE: u8 = 81;
 
@@ -119,7 +116,6 @@ impl Default for DirtyPiece {
 #[derive(Copy, Clone, Debug, Default)]
 pub struct StateInfo {
     pub captured: u8,
-    pub(crate) cap_id: u8,
     pub board_key: u64,
     pub hand_key: u64,
     pub pawn_key: u64,
@@ -153,14 +149,6 @@ pub struct Position {
     pub(crate) count: [[u8; LEN]; 2],
     /// 手番別の飛び利きの方向ビット。bit dは「方向dへ進む飛び利きがこの升に届く」。
     pub(crate) longdir: [[u8; LEN]; 2],
-    /// 升にいる駒の番号。空き升と壁はNO_ID。
-    pub(crate) id_on: [u8; LEN],
-    /// 駒番号ごとの升（手駒なら0）。
-    pub(crate) sq_of: [u8; 40],
-    /// 盤上の駒番号の集合（持ち主別）。
-    pub(crate) on_board: [u64; 2],
-    /// 手駒の駒番号の集合（持ち主別、駒種別。添字はhand_index）。
-    pub(crate) hand_ids: [[u64; 8]; 2],
     /// 持ち主別の駒のいる升の集合（81升の通し番号のビット）。
     /// 空き升の列挙と、生成の順をcoreに揃えるために持つ。利きの計算には使わない。
     pub(crate) occ: [u128; 2],
@@ -196,10 +184,6 @@ impl Position {
         }
         Position {
             board,
-            id_on: [NO_ID; LEN],
-            sq_of: [0; 40],
-            on_board: [0; 2],
-            hand_ids: [[0; 8]; 2],
             occ: [0; 2],
             psets: [[0; 16]; 2],
             count: [[0; LEN]; 2],
@@ -244,7 +228,19 @@ impl Position {
 
     #[inline]
     pub fn hand_count(&self, c: Color, pt: u8) -> u32 {
-        self.hand_ids[c.index()][hand_index(pt)].count_ones()
+        (self.hand_raw[c.index()] >> HAND_SHIFT[pt as usize]) & HAND_MASK[pt as usize]
+    }
+
+    /// 色（添字ci）が駒種ptの手駒を持つか。
+    #[inline]
+    pub(crate) fn has_hand(&self, ci: usize, pt: u8) -> bool {
+        self.hand_raw[ci] & (HAND_MASK[pt as usize] << HAND_SHIFT[pt as usize]) != 0
+    }
+
+    /// 色（添字ci）が手駒を1枚でも持つか。
+    #[inline]
+    pub(crate) fn has_any_hand(&self, ci: usize) -> bool {
+        self.hand_raw[ci] != 0
     }
 
     #[inline]
@@ -698,7 +694,6 @@ impl Position {
     fn state_from_scratch(&self) -> StateInfo {
         let mut st = StateInfo {
             captured: EMPTY,
-            cap_id: NO_ID,
             dirty: DirtyPiece::default(),
             ..StateInfo::default()
         };
@@ -747,7 +742,6 @@ impl Position {
         let prev = self.state();
         let mut st = StateInfo {
             captured: EMPTY,
-            cap_id: NO_ID,
             board_key: prev.board_key,
             hand_key: 0,
             pawn_key: prev.pawn_key,
@@ -765,14 +759,8 @@ impl Position {
         if m.is_drop() {
             let pt = m.drop_type();
             let pc = make_piece(us, pt);
-            let h = &mut self.hand_ids[ui][hand_index(pt)];
-            debug_assert!(*h != 0);
-            let id = h.trailing_zeros() as u8;
-            *h &= *h - 1;
+            debug_assert!(self.hand_count(us, pt) != 0);
             self.hand_raw[ui] -= 1 << HAND_SHIFT[pt as usize];
-            self.on_board[ui] |= 1 << id;
-            self.sq_of[id as usize] = to;
-            self.id_on[to as usize] = id;
             self.put(to, pc, 1u128 << to81);
             st.board_key ^= PSQ[pc as usize][to81 as usize];
             if pt == PAWN {
@@ -789,17 +777,12 @@ impl Position {
             let from81 = SQ81[from as usize];
             let p = self.board[from as usize];
             let np = if m.is_promote() { p - 8 } else { p };
-            let id = self.id_on[from as usize];
             let cap = self.board[to as usize];
             let (bf, bt) = (1u128 << from81, 1u128 << to81);
             self.transfer(from, to, np, bf, bt);
             self.toggle_piece_sets(ui, p, np, cap, bf, bt);
-            self.id_on[from as usize] = NO_ID;
             if cap != EMPTY {
-                let cid = self.id_on[to as usize];
                 let hk = piece_type(cap) | 8;
-                self.on_board[them] &= !(1u64 << cid);
-                self.hand_ids[ui][hand_index(hk)] |= 1 << cid;
                 self.hand_raw[ui] += 1 << HAND_SHIFT[hk as usize];
                 if piece_type(cap) == PAWN {
                     self.pawn_files[them] &= !(1 << file_of(to));
@@ -813,7 +796,6 @@ impl Position {
                 st.material +=
                     sign * (PIECE_VALUE[piece_type(cap) as usize] + PIECE_VALUE[hk as usize]);
                 st.captured = cap;
-                st.cap_id = cid;
                 st.dirty.count = 2;
                 st.dirty.piece_old[1] = cap;
                 st.dirty.piece_new[1] = make_piece(us, hk);
@@ -821,8 +803,6 @@ impl Position {
             } else {
                 st.dirty.count = 1;
             }
-            self.id_on[to as usize] = id;
-            self.sq_of[id as usize] = to;
             st.board_key ^= PSQ[p as usize][from81 as usize] ^ PSQ[np as usize][to81 as usize];
             Self::xor_partial_keys(&mut st, p, from81);
             Self::xor_partial_keys(&mut st, np, to81);
@@ -887,7 +867,6 @@ impl Position {
         let to = m.to();
         if m.is_drop() {
             let pt = m.drop_type();
-            let id = self.id_on[to as usize];
             // 短い利きは逆の向きに当て直し、飛び利きは記録から戻す
             let pc = self.board[to as usize];
             if !cfg!(feature = "copy-undo") {
@@ -897,9 +876,6 @@ impl Position {
             self.board[to as usize] = EMPTY;
             self.occ[ui] ^= b;
             self.toggle_drop_sets(ui, pc, b);
-            self.id_on[to as usize] = NO_ID;
-            self.on_board[ui] &= !(1u64 << id);
-            self.hand_ids[ui][hand_index(pt)] |= 1 << id;
             self.hand_raw[ui] += 1 << HAND_SHIFT[pt as usize];
             if pt == PAWN {
                 self.pawn_files[ui] &= !(1 << file_of(to));
@@ -908,7 +884,6 @@ impl Position {
             let from = m.from();
             let np = self.board[to as usize];
             let p = if m.is_promote() { np + 8 } else { np };
-            let id = self.id_on[to as usize];
             // 短い利きは逆の向きに当て直し、飛び利きは記録から戻す
             if !cfg!(feature = "copy-undo") {
                 self.short_effect::<false>(np, to);
@@ -926,21 +901,12 @@ impl Position {
             }
             self.toggle_piece_sets(ui, p, np, u.captured, bf, bt);
             if u.captured != EMPTY {
-                let cid = u.cap_id;
-                self.id_on[to as usize] = cid;
-                self.sq_of[cid as usize] = to;
-                self.on_board[them] |= 1 << cid;
                 let hk = piece_type(u.captured) | 8;
-                self.hand_ids[ui][hand_index(hk)] &= !(1u64 << cid);
                 self.hand_raw[ui] -= 1 << HAND_SHIFT[hk as usize];
                 if piece_type(u.captured) == PAWN {
                     self.pawn_files[them] |= 1 << file_of(to);
                 }
-            } else {
-                self.id_on[to as usize] = NO_ID;
             }
-            self.id_on[from as usize] = id;
-            self.sq_of[id as usize] = from;
             if piece_type(p) == KING {
                 self.king[ui] = from;
             } else if piece_type(p) == PAWN && m.is_promote() {
@@ -970,7 +936,6 @@ impl Position {
         let prev = *self.state();
         let mut st = StateInfo {
             captured: EMPTY,
-            cap_id: NO_ID,
             board_key: prev.board_key ^ zobrist::SIDE,
             checkers: 0,
             plies_from_null: 0,
@@ -1096,7 +1061,7 @@ impl Position {
         }
     }
 
-    /// 不変条件を全部検査する。利きは全計算と、駒番号は盤と手駒と突き合わせる。
+    /// 不変条件を全部検査する。利きは全計算と、集合と手駒は盤から作り直した値と突き合わせる。
     /// 食い違いがあれば説明を返す。
     pub fn check_consistency(&self) -> Result<(), String> {
         let (count, longdir) = self.effects_from_scratch();
@@ -1135,25 +1100,15 @@ impl Position {
                 keys(&fresh)
             ));
         }
-        let mut seen = 0u64;
         let mut pawn_files = [0u16; 2];
+        let mut pieces = 0u32;
         for &i in IDX81.iter() {
             let p = self.board[i as usize];
-            let id = self.id_on[i as usize];
             if p == EMPTY {
-                if id != NO_ID {
-                    return Err(format!("空き升に駒番号 {}", usi_square(i)));
-                }
                 continue;
             }
-            if id == NO_ID || self.sq_of[id as usize] != i {
-                return Err(format!("駒番号の食い違い {}", usi_square(i)));
-            }
+            pieces += 1;
             let c = piece_color(p).index();
-            if self.on_board[c] & (1 << id) == 0 {
-                return Err(format!("盤上の集合に無い駒番号 {id}"));
-            }
-            seen |= 1 << id;
             if piece_type(p) == KING && self.king[c] != i {
                 return Err("玉の升の食い違い".into());
             }
@@ -1161,8 +1116,13 @@ impl Position {
                 pawn_files[c] |= 1 << file_of(i);
             }
         }
-        if seen != self.on_board[0] | self.on_board[1] || self.on_board[0] & self.on_board[1] != 0 {
-            return Err("盤上の駒番号の集合が盤と合わない".into());
+        for c in [Color::Black, Color::White] {
+            for pt in HAND_KINDS {
+                pieces += self.hand_count(c, pt);
+            }
+        }
+        if pieces > 40 {
+            return Err(format!("盤上と手駒の駒が40枚を超える（{pieces}枚）"));
         }
         let mut occ = [0u128; 2];
         let mut psets = [[0u128; 16]; 2];
@@ -1186,16 +1146,6 @@ impl Position {
         if pawn_files != self.pawn_files {
             return Err("二歩の筋の食い違い".into());
         }
-        let mut hands = 0u64;
-        for c in 0..2 {
-            for k in 0..8 {
-                let h = self.hand_ids[c][k];
-                if h & (hands | seen) != 0 {
-                    return Err("手駒の駒番号が重なる".into());
-                }
-                hands |= h;
-            }
-        }
         Ok(())
     }
 
@@ -1215,13 +1165,13 @@ impl Position {
         let hands_str = tok.next().ok_or(SfenError("手駒がない"))?;
         let ply_str = tok.next().unwrap_or("1");
         let mut pos = Position::empty();
-        let mut next_id = 0u8;
-        let mut new_id = || -> Result<u8, SfenError> {
-            if next_id >= 40 {
+        let mut pieces = 0u32;
+        let mut new_piece = || -> Result<(), SfenError> {
+            if pieces >= 40 {
                 return Err(SfenError("駒が40枚を超える"));
             }
-            next_id += 1;
-            Ok(next_id - 1)
+            pieces += 1;
+            Ok(())
         };
         let mut kings = [0u8; 2];
         let ranks: Vec<&str> = board_str.split('/').collect();
@@ -1274,11 +1224,8 @@ impl Position {
                         kings[c.index()] += 1;
                         pos.king[c.index()] = i;
                     }
-                    let id = new_id()?;
+                    new_piece()?;
                     pos.set_square(i, make_piece(c, pt));
-                    pos.id_on[i as usize] = id;
-                    pos.sq_of[id as usize] = i;
-                    pos.on_board[c.index()] |= 1 << id;
                     f -= 1;
                 }
             }
@@ -1294,6 +1241,7 @@ impl Position {
             "w" => Color::White,
             _ => return Err(SfenError("手番はbかw")),
         };
+        let mut hand = [[0u32; 8]; 2];
         if hands_str != "-" {
             let mut n = 0u32;
             for ch in hands_str.chars() {
@@ -1310,8 +1258,8 @@ impl Position {
                     }
                     let c = if ch.is_ascii_uppercase() { 0 } else { 1 };
                     for _ in 0..n.max(1) {
-                        let id = new_id()?;
-                        pos.hand_ids[c][hand_index(pt)] |= 1 << id;
+                        new_piece()?;
+                        hand[c][hand_index(pt)] += 1;
                     }
                     n = 0;
                 }
@@ -1321,10 +1269,12 @@ impl Position {
         let (count, longdir) = pos.effects_from_scratch();
         pos.count = count;
         pos.longdir = longdir;
-        for c in 0..2 {
-            for k in 1..8 {
-                let n = pos.hand_ids[c][k].count_ones();
-                pos.hand_raw[c] += n << HAND_SHIFT[k + 8];
+        for (raw, h) in pos.hand_raw.iter_mut().zip(hand.iter()) {
+            for (k, &n) in h.iter().enumerate().skip(1) {
+                if n > HAND_MASK[k + 8] {
+                    return Err(SfenError("手駒の枚数が駒種の上限を超える"));
+                }
+                *raw += n << HAND_SHIFT[k + 8];
             }
         }
         let st = pos.state_from_scratch();

@@ -484,13 +484,13 @@ impl Position {
     fn gen_drops<L: MoveSink>(&self, ctx: &Ctx, target: u128, list: &mut L) {
         let us = ctx.us;
         let ui = us.index();
-        if self.hand_ids[ui].iter().all(|&h| h == 0) {
+        if !self.has_any_hand(ui) {
             return;
         }
         let r1 = rank_mask(if us == Color::Black { 0 } else { 8 });
         let r2 = rank_mask(if us == Color::Black { 1 } else { 7 });
         for pt in DROP_KINDS {
-            if self.hand_ids[ui][hand_index(pt)] == 0 {
+            if !self.has_hand(ui, pt) {
                 continue;
             }
             let mut mask = match pt {

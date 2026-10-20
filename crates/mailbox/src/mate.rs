@@ -425,7 +425,7 @@ impl Position {
         let inter = self.between81(ksq, csq);
         if inter != 0 {
             // 持ち駒があれば遮れるとみなす（coreの取り決め。打てない歩でも数える）
-            if self.hand_ids[a.ti].iter().any(|&h| h != 0) {
+            if self.has_any_hand(a.ti) {
                 return false;
             }
             for s in iter81(inter) {
@@ -492,7 +492,7 @@ impl Position {
         }
         let inter = self.between81(k, csq);
         if inter != 0 {
-            if self.hand_ids[di].iter().any(|&h| h != 0) {
+            if self.has_any_hand(di) {
                 return false;
             }
             for s in iter81(inter) {
@@ -705,7 +705,7 @@ impl Position {
                 ROOK => ks.rook_adj,
                 _ => ks.bishop_adj,
             };
-            if self.hand_ids[ui][hand_index(pt)] == 0 {
+            if !self.has_hand(ui, pt) {
                 continue;
             }
             for t in iter81(targets & empty) {

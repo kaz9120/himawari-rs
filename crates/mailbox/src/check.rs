@@ -268,7 +268,7 @@ impl Position {
         if m.is_drop() {
             let pt = m.drop_type();
             if !(GOLD..=ROOK).contains(&pt)
-                || self.hand_ids[ui][hand_index(pt)] == 0
+                || !self.has_hand(ui, pt)
                 || self.board[to as usize] != EMPTY
             {
                 return false;
