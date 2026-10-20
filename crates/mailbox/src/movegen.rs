@@ -304,46 +304,60 @@ impl Position {
                 self.collect_pins(&mut ctx);
                 self.gen_board(&ctx, enemy, all, false, list);
                 self.gen_king(&ctx, enemy, list);
-                // 空き升への歩の成り
-                // 81升の番号のまま回す。歩は行き所の無い段にいないので、前の升は同じ筋の盤の上にある
+                // 空き升への歩の成り。行き先の小さい順に回すと、移動元も同じ順に並ぶ
                 let fwd81 = pawn_delta81(us);
-                let pawn = make_piece(us, PAWN);
-                for_each_bit81(own, |s| {
-                    if self.board[idx81(s as usize) as usize] != pawn {
-                        return;
-                    }
-                    let t = (s as i32 + fwd81) as u8;
-                    if empty & (1u128 << t) != 0
-                        && rel_rank81(ui, t as usize) <= 2
-                        && ctx.pin_mask(s) & (1u128 << t) != 0
-                    {
-                        list.push_normal(s, t, true, make_piece(us, PRO_PAWN));
-                    }
+                let pro = make_piece(us, PRO_PAWN);
+                let to = self.pawn_pushes(&ctx, empty) & zone81(ui);
+                for_each_bit81(to, |t| {
+                    list.push_normal((t as i32 - fwd81) as u8, t, true, pro);
                 });
             }
             GenType::Quiets => {
                 self.collect_pins(&mut ctx);
                 self.gen_board(&ctx, empty, all, true, list);
-                // 歩の静かな手。成りはCaptures側で、不成だけをここで積む
+                // 歩の静かな手。成りはCaptures側で、不成だけをここで積む。
+                // 敵陣の外へ進む手と、allなら敵陣の2・3段目への不成
                 let fwd81 = pawn_delta81(us);
                 let pawn = make_piece(us, PAWN);
-                for_each_bit81(own, |s| {
-                    if self.board[idx81(s as usize) as usize] != pawn {
-                        return;
-                    }
-                    let t = (s as i32 + fwd81) as u8;
-                    if empty & (1u128 << t) == 0 || ctx.pin_mask(s) & (1u128 << t) == 0 {
-                        return;
-                    }
-                    let rr = rel_rank81(ui, t as usize);
-                    if rr > 2 || (all && rr >= 1) {
-                        list.push_normal(s, t, false, pawn);
-                    }
+                let zone = zone81(ui);
+                let allowed = if all {
+                    !zone | (zone & !rank_mask(if us == Color::Black { 0 } else { 8 }))
+                } else {
+                    !zone
+                };
+                let to = self.pawn_pushes(&ctx, empty) & allowed;
+                for_each_bit81(to, |t| {
+                    list.push_normal((t as i32 - fwd81) as u8, t, false, pawn);
                 });
                 self.gen_king(&ctx, empty, list);
                 self.gen_drops(&ctx, empty, list);
             }
         }
+    }
+
+    /// 手番側の歩が1升進める空き升の集合（ピンを守る）。行き先の升で返す。
+    ///
+    /// ピンされていない歩は、歩の集合をずらしてまとめて作る。歩は行き所の無い段にいないので、
+    /// ずらしても筋をまたがない（ADR-0241の第16回）。
+    #[inline(always)]
+    fn pawn_pushes(&self, ctx: &Ctx, empty: u128) -> u128 {
+        let ui = ctx.us.index();
+        let pawns = self.psets[ui][PAWN as usize];
+        let shift = |b: u128| {
+            if ctx.us == Color::Black {
+                b >> 1
+            } else {
+                (b << 1) & ALL81
+            }
+        };
+        let mut to = shift(pawns & !ctx.pinned);
+        let mut pinned = pawns & ctx.pinned;
+        while pinned != 0 {
+            let s = pinned.trailing_zeros() as u8;
+            pinned &= pinned - 1;
+            to |= shift(1u128 << s) & ctx.pin_mask(s);
+        }
+        to & empty
     }
 
     fn gen_king<L: MoveSink>(&self, ctx: &Ctx, target: u128, list: &mut L) {
@@ -451,6 +465,16 @@ pub(crate) const fn pawn_delta(us: Color) -> i32 {
         Color::Black => -1,
         Color::White => 1,
     }
+}
+
+/// 手番uiから見た敵陣（1〜3段目）の升の集合。
+#[inline(always)]
+fn zone81(ui: usize) -> u128 {
+    const ZONE: [u128; 2] = [
+        rank_mask(0) | rank_mask(1) | rank_mask(2),
+        rank_mask(6) | rank_mask(7) | rank_mask(8),
+    ];
+    ZONE[ui & 1]
 }
 
 /// 歩が進む向きの、81升の通し番号の差分。
