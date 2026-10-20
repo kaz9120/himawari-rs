@@ -36,7 +36,7 @@ use himawari_core::{
 };
 use himawari_engine::mate::mate_1ply;
 use himawari_mailbox::board::SQ81;
-use himawari_mailbox::{Move, MoveList, Position};
+use himawari_mailbox::{GenType, Move, MoveList, Position};
 use himawari_tools::positions::{builtin_positions, parse_position, read_positions};
 
 const BUILTIN: &str = "builtin";
@@ -66,6 +66,7 @@ fn parse_stage(s: &str) -> Result<Stage, String> {
         "check" => Stage::Check,
         "pgen" => Stage::Pgen,
         "legal" => Stage::Legal,
+        "cap" => Stage::Cap,
         _ => return Err(format!("知らない段: {s}")),
     })
 }
@@ -208,8 +209,12 @@ enum Stage {
     Pgen,
     /// pgenに加え、その擬似合法手ごとに `is_legal`
     Legal,
+    /// walkに加え、王手でない各ノードで駒取りの手（Captures、all=false）を生成する。
+    /// coreは擬似合法手、配列盤は合法手なので、数は混ぜない（ADR-0241の第16回）
+    Cap,
 }
 
+/// 全段の実行で回す段。`Cap` は `--stage cap` でだけ使う。
 const STAGES: [Stage; 7] = [
     Stage::Walk,
     Stage::Gen,
@@ -264,6 +269,14 @@ fn visit_core(pos: &CorePos, stage: Stage, list: &CoreList, t: &mut Tally) {
             t.calls += list.len() as u64;
             t.mix(bits_of(list.as_slice().iter().map(|&m| pos.gives_check(m))));
         }
+        Stage::Cap => {
+            if !pos.in_check() {
+                let mut caps = CoreList::default();
+                generate(pos, CoreGen::Captures, false, &mut caps);
+                t.calls += 1;
+                t.mix(u64::from(caps.is_empty()));
+            }
+        }
         Stage::Pgen | Stage::Legal => {
             if !pos.in_check() {
                 let mut pseudo = CoreList::default();
@@ -315,6 +328,14 @@ fn visit_mb(pos: &mut Position, stage: Stage, list: &MoveList, pseudo: &Pseudo, 
         Stage::Check => {
             t.calls += list.len() as u64;
             t.mix(bits_of(list.as_slice().iter().map(|&m| pos.gives_check(m))));
+        }
+        Stage::Cap => {
+            if !pos.in_check() {
+                let mut caps = MoveList::default();
+                pos.generate(GenType::Captures, false, &mut caps);
+                t.calls += 1;
+                t.mix(u64::from(caps.is_empty()));
+            }
         }
         Stage::Pgen | Stage::Legal => {
             let n = t.cursor;
@@ -465,8 +486,11 @@ fn run(cli: &Cli) -> Result<(), String> {
                     mb_stage(&mut mbs, st)
                 }
             };
-            let name = ["walk", "gen", "mate", "see", "check", "pgen", "legal"]
-                [STAGES.iter().position(|&x| x == st).unwrap_or(0)];
+            let name = match st {
+                Stage::Cap => "cap",
+                _ => ["walk", "gen", "mate", "see", "check", "pgen", "legal"]
+                    [STAGES.iter().position(|&x| x == st).unwrap_or(0)],
+            };
             let side = if side == Side::Core { "core" } else { "mb" };
             println!(
                 "{{\"run\":{run},\"stage\":\"{name}\",\"side\":\"{side}\",\"ns\":{ns},\
