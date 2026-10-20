@@ -603,8 +603,8 @@ impl EvalBoard for SearchBoard {
             |owner, pt| {
                 let s = &sets[owner.index()];
                 if pt == PieceType::GOLD {
-                    // 金の動きをする5駒種（金と成駒4種）
-                    s[pt.0 as usize] | s[2] | s[3] | s[4] | s[5]
+                    // 金の動きをする5駒種（金と成駒4種）の和は、配列盤が添字1に持つ
+                    s[1]
                 } else {
                     s[pt.0 as usize]
                 }

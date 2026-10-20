@@ -13,7 +13,7 @@ use std::cell::Cell;
 use crate::board::*;
 use crate::movegen::pawn_delta;
 use crate::moves::Move;
-use crate::position::{CHECK_OFFSETS, Position};
+use crate::position::Position;
 use crate::zobrist::PIECE_VALUE;
 
 /// 81升の集合を小さい升の順に、升の添字で返す。
@@ -138,33 +138,24 @@ impl Position {
     /// 色cの駒のうち、升sqへ利いている駒の升の集合（81升）。
     /// removedの升の駒は無いものとし、飛び利きもそこを通す（SEEの取り合いで使う）。
     pub fn attackers_with(&self, c: Color, sq: u8, removed: u128) -> u128 {
+        let ci = c.index();
         let mut set = 0u128;
-        for o in CHECK_OFFSETS {
-            let x = (sq as i32 - o as i32) as u8;
-            let v = self.board[x as usize];
-            if v == EMPTY || v == WALL || piece_color(v) != c || removed & bit81(x) != 0 {
-                continue;
-            }
-            let m = &MOVES[v as usize];
-            if m.short[..m.n_short as usize].contains(&o) {
+        for &(o, mask) in SHORT_FROM[ci].iter() {
+            let x = sq.wrapping_sub(o as u8);
+            if (mask >> (self.board[x as usize] & 31)) & 1 != 0 {
                 set |= bit81(x);
             }
         }
-        for (d, &delta) in DELTA.iter().enumerate() {
-            let mut t = (sq as i32 + delta as i32) as u8;
-            loop {
-                let v = self.board[t as usize];
-                if v == WALL {
-                    break;
-                }
-                if v == EMPTY || removed & bit81(t) != 0 {
-                    t = (t as i32 + delta as i32) as u8;
-                    continue;
-                }
-                if piece_color(v) == c && MOVES[v as usize].long & (1 << opp(d)) != 0 {
-                    set |= bit81(t);
-                }
-                break;
+        set &= !removed;
+        let occ = (self.occ[0] | self.occ[1]) & !removed;
+        let s81 = SQ81[sq as usize];
+        for d in 0..8 {
+            if let Some(x81) = first81(s81, d, occ)
+                && self.occ[ci] & (1u128 << x81) != 0
+                && MOVES[self.board[IDX81[x81 as usize] as usize] as usize].long & (1 << opp(d))
+                    != 0
+            {
+                set |= 1u128 << x81;
             }
         }
         set
@@ -245,12 +236,19 @@ impl Position {
             return self.count[ti][to as usize] == 0
                 && dir_between(from, to).is_none_or(|d| xray & (1 << d) == 0);
         }
-        if self.is_pinned(us, from) {
-            let k = self.king[us.index()];
-            let d = dir_between(k, from).expect("ピンされた駒は玉と同じ線にいる");
-            return matches!(dir_between(k, to), Some(e) if e == d || e == opp(d));
+        // ピン: 自玉から移動元への線の上で、移動元が最初の駒であり、相手の飛び利きが玉へ向かって届いている。
+        // 方向ビットの検査を先に置く（ほとんどの手はここで抜ける）
+        let k81 = SQ81[self.king[us.index()] as usize];
+        let f81 = SQ81[from as usize];
+        let d = DIR81[k81 as usize][f81 as usize];
+        if d == NO_DIR || self.longdir[ti][from as usize] & (1 << opp(d as usize)) == 0 {
+            return true;
         }
-        true
+        if first81(k81, d as usize, self.occ[0] | self.occ[1]) != Some(f81) {
+            return true;
+        }
+        let e = DIR81[k81 as usize][SQ81[to as usize] as usize];
+        e == d || e == (d ^ 1)
     }
 
     /// mがこの局面の擬似合法手か（coreの `pseudo_legal` と同じ値）。

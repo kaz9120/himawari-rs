@@ -132,8 +132,16 @@ pub const fn opp(d: usize) -> usize {
 }
 
 /// 盤上の升aから升bへ向かう方向。同じ筋・段・斜めの線に無ければNone。
+///
+/// 81升の表（`DIR81`）を引く。筋と段の差から決める版は `dir_between_slow` で、表の照合に使う。
 #[inline]
 pub fn dir_between(a: u8, b: u8) -> Option<usize> {
+    let d = DIR81[SQ81[a as usize] as usize][SQ81[b as usize] as usize];
+    (d != NO_DIR).then_some(d as usize)
+}
+
+/// `dir_between` を筋と段の差から決める版。
+pub fn dir_between_slow(a: u8, b: u8) -> Option<usize> {
     let df = file_of(b) as i32 - file_of(a) as i32;
     let dr = rank_of(b) as i32 - rank_of(a) as i32;
     match (df.signum(), dr.signum()) {
@@ -580,7 +588,7 @@ mod tests {
     fn tables_match_geometry() {
         for &a in IDX81.iter() {
             for &b in IDX81.iter() {
-                let want = dir_between(a, b).map_or(NO_DIR, |d| d as u8);
+                let want = dir_between_slow(a, b).map_or(NO_DIR, |d| d as u8);
                 assert_eq!(
                     DIR81[SQ81[a as usize] as usize][SQ81[b as usize] as usize],
                     want

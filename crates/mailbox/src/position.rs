@@ -21,7 +21,7 @@
 //! 進めるたびに利きの表を積み、戻しは表を書き戻して盤だけを戻す（ADR-0241の段階4で比べる）。
 
 use crate::board::*;
-use crate::check::CheckSlot;
+use crate::check::{CheckSlot, SHORT_FROM, first81};
 use crate::moves::Move;
 use crate::zobrist::{self, HAND_PAWN, HAND_SHIFT, PIECE_VALUE, PSQ, is_minor_piece};
 
@@ -65,6 +65,18 @@ const SHORT_WIN: [[u64; 3]; 32] = {
         }
         p += 1;
     }
+    t
+};
+
+/// 駒種ごとの、金の動きの駒（金と成駒4種）なら全部のビットが立つ語。`psets[c][1]` の更新に使う。
+const GOLD_LIKE_MASK: [u128; 16] = {
+    let mut t = [0u128; 16];
+    let mut pt = 2;
+    while pt <= 5 {
+        t[pt] = u128::MAX;
+        pt += 1;
+    }
+    t[GOLD as usize] = u128::MAX;
     t
 };
 
@@ -147,7 +159,8 @@ pub struct Position {
     /// 空き升の列挙と、生成の順をcoreに揃えるために持つ。利きの計算には使わない。
     pub(crate) occ: [u128; 2],
     /// 持ち主別・駒種別の駒のいる升の集合（81升）。評価関数の駒の特徴の作り直しに使う。
-    /// 盤を書き換えるたびに差分で直す。駒種0・1（空き・壁）の欄は使わない
+    /// 盤を書き換えるたびに差分で直す。駒種1（壁）の欄には金の動きの5駒種（金と成駒4種）の和を持ち、
+    /// 駒種0の欄は使わない
     pub(crate) psets: [[u128; 16]; 2],
     pub(crate) king: [u8; 2],
     /// 生の歩がいる筋のビット（二歩の判定）。
@@ -361,12 +374,16 @@ impl Position {
         if old != EMPTY {
             let c = piece_color(old).index();
             self.occ[c] &= !b;
-            self.psets[c][piece_type(old) as usize] &= !b;
+            let pt = piece_type(old) as usize;
+            self.psets[c][pt] &= !b;
+            self.psets[c][1] &= !(b & GOLD_LIKE_MASK[pt]);
         }
         if p != EMPTY {
             let c = piece_color(p).index();
             self.occ[c] |= b;
-            self.psets[c][piece_type(p) as usize] |= b;
+            let pt = piece_type(p) as usize;
+            self.psets[c][pt] |= b;
+            self.psets[c][1] |= b & GOLD_LIKE_MASK[pt];
         }
         self.board[s as usize] = p;
     }
@@ -501,27 +518,28 @@ impl Position {
         if self.count[ti][k as usize] == 0 {
             return 0;
         }
+        let k81 = SQ81[k as usize];
+        let occ = self.occ[0] | self.occ[1];
         let mut set = 0u128;
-        let mut dirs = self.longdir[ti][k as usize];
+        let ld = self.longdir[ti][k as usize];
+        let mut dirs = ld;
         while dirs != 0 {
             let d = dirs.trailing_zeros() as usize;
             dirs &= dirs - 1;
-            let back = DELTA[opp(d)] as i32;
-            let mut x = (k as i32 + back) as u8;
-            while self.board[x as usize] == EMPTY {
-                x = (x as i32 + back) as u8;
-            }
-            set |= bit81(x);
+            let x81 = first81(k81, opp(d), occ).expect("飛び利きの元の駒がある");
+            set |= 1u128 << x81;
         }
-        for o in CHECK_OFFSETS {
-            let x = (k as i32 - o as i32) as usize;
-            let v = self.board[x];
-            if v == EMPTY || v == WALL || piece_color(v) != them {
-                continue;
-            }
-            let m = &MOVES[v as usize];
-            if m.short[..m.n_short as usize].contains(&o) {
-                set |= bit81(x as u8);
+        let mut need = u32::from(self.count[ti][k as usize]) - ld.count_ones();
+        if need != 0 {
+            for &(o, mask) in SHORT_FROM[ti].iter() {
+                let x = k.wrapping_sub(o as u8);
+                if (mask >> (self.board[x as usize] & 31)) & 1 != 0 {
+                    set |= bit81(x);
+                    need -= 1;
+                    if need == 0 {
+                        break;
+                    }
+                }
             }
         }
         set
@@ -983,7 +1001,11 @@ impl Position {
             let p = self.board[i as usize];
             if p != EMPTY {
                 occ[piece_color(p).index()] |= bit81(i);
-                psets[piece_color(p).index()][piece_type(p) as usize] |= bit81(i);
+                let pt = piece_type(p);
+                psets[piece_color(p).index()][pt as usize] |= bit81(i);
+                if pt == GOLD || (2..=5).contains(&pt) {
+                    psets[piece_color(p).index()][1] |= bit81(i);
+                }
             }
         }
         if occ != self.occ {
