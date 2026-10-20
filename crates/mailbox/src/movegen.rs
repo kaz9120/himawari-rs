@@ -110,26 +110,24 @@ struct Ctx {
     us: Color,
     /// 玉以外の駒が行ってよい升。王手中は王手駒の升と合駒の升、それ以外は全部。
     evasion: u128,
-    /// ピンされた駒の升（81升の通し番号）と、その駒が動ける線（玉からピンの方向へ盤の端まで）。
-    pins: [(u8, u128); 8],
-    n_pins: usize,
-    /// ピンされた駒の升の集合。ピンの無い駒は線を探さずに済ませる
+    /// 手番側の玉の81升の通し番号。
+    k81: u8,
+    /// ピンされた駒の升の集合。ピンの無い駒は線を引かずに済ませる
     pinned: u128,
 }
 
 impl Ctx {
     /// 81升の升s81の駒が動ける升の集合。
+    ///
+    /// ピンされた駒は、玉からその駒の方向へ盤の端までの線の上だけを動ける。線は表から引くので、
+    /// ピンごとの線を配列に持たない（ADR-0241の第16回）。
     #[inline(always)]
     fn pin_mask(&self, s81: u8) -> u128 {
         if self.pinned & (1u128 << s81) == 0 {
             return ALL81;
         }
-        for k in 0..self.n_pins {
-            if self.pins[k].0 == s81 {
-                return self.pins[k].1;
-            }
-        }
-        ALL81
+        let k81 = self.k81 as usize;
+        ray81(k81, dir81(k81, s81 as usize) as usize)
     }
 }
 
@@ -185,8 +183,6 @@ impl Position {
             if own & (1u128 << first) != 0
                 && self.longdir[them][idx81(first as usize) as usize] & (1 << opp(d)) != 0
             {
-                ctx.pins[ctx.n_pins] = (first, ray);
-                ctx.n_pins += 1;
                 ctx.pinned |= 1u128 << first;
             }
         }
@@ -280,8 +276,7 @@ impl Position {
         let mut ctx = Ctx {
             us,
             evasion: ALL81,
-            pins: [(0, 0); 8],
-            n_pins: 0,
+            k81: SQ81[k as usize],
             pinned: 0,
         };
         let own = self.occ[ui];
