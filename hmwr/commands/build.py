@@ -75,15 +75,17 @@ def add_parser(sub: argparse._SubParsersAction) -> None:
 
 
 def require_clean_crates() -> None:
-    """crates/ に未コミットの変更がないことを確かめる。
+    """crates/ とワークスペースの Cargo.toml・Cargo.lock に、未コミットの変更がないことを確かめる。
 
     あるままビルドすると、どのコードから作ったバイナリか後から辿れない。
+    比べる2本を作るときはこの3つを ref から戻すので、未コミットの変更は消える。
     """
-    dirty = not proc.succeeds(["git", "diff", "--quiet", "--", "crates/"])
-    staged = not proc.succeeds(["git", "diff", "--cached", "--quiet", "--", "crates/"])
+    where = ["crates/", "Cargo.toml", "Cargo.lock"]
+    dirty = not proc.succeeds(["git", "diff", "--quiet", "--", *where])
+    staged = not proc.succeeds(["git", "diff", "--cached", "--quiet", "--", *where])
     if dirty or staged:
-        print(proc.git("status", "--short", "--", "crates/"))
-        raise proc.Fail("crates/ に未コミットの変更がある。コミットしてから実行する")
+        print(proc.git("status", "--short", "--", *where))
+        raise proc.Fail("crates/ か Cargo.toml・Cargo.lock に未コミットの変更がある。コミットしてから実行する")
 
 
 def cargo_build(
@@ -144,9 +146,23 @@ def _use_crates(ref: str, *, dry_run: bool, cwd: Path | None = None) -> None:
     `git checkout <ref> -- crates/` は ref に無いファイルを消さない。HEADで
     消したファイルが比較元から戻り、index に追加された状態で残った（#776）。
     `git restore --staged --worktree` は ref に無い追跡済みのファイルも消す。
+
+    ワークスペースの `Cargo.toml` と `Cargo.lock` も揃える。片側にだけある
+    クレートを members に足した変更では、crates/ だけを戻すと、もう片側に無い
+    クレートを探しに行ってビルドが落ちる（ADR-0241の配列盤で起きた）。
     """
     proc.run(
-        ["git", "restore", f"--source={ref}", "--staged", "--worktree", "--", "crates/"],
+        [
+            "git",
+            "restore",
+            f"--source={ref}",
+            "--staged",
+            "--worktree",
+            "--",
+            "crates/",
+            "Cargo.toml",
+            "Cargo.lock",
+        ],
         dry_run=dry_run,
         cwd=cwd,
     )
