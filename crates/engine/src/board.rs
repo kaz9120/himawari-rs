@@ -342,13 +342,9 @@ impl SearchBoard {
             GenType::Evasions => himawari_mailbox::GenType::Evasions,
             GenType::NonEvasions => himawari_mailbox::GenType::NonEvasions,
         };
-        let mut ml = himawari_mailbox::MoveList::default();
-        self.mb.generate(g, all, &mut ml);
-        for &m in ml.as_slice() {
-            list.push(mbconv::to_core(m));
-        }
+        self.mb.generate(g, all, &mut mbconv::CoreSink(list));
         // 照合の引数は、照合するビルドでだけ作る。作るだけで確保が走る
-        #[cfg(feature = "mailbox-shadow")]
+        #[cfg(mb_shadow)]
         self.shadow("generate", &list.as_slice().to_vec(), |p| {
             let mut want = MoveList::default();
             himawari_core::generate(p, gt, all, &mut want);
@@ -363,12 +359,8 @@ impl SearchBoard {
     /// 合法手を生成する。
     #[inline(always)]
     pub fn generate_legal(&self, all: bool, list: &mut MoveList) {
-        let mut ml = himawari_mailbox::MoveList::default();
-        self.mb.generate_legal(all, &mut ml);
-        for &m in ml.as_slice() {
-            list.push(mbconv::to_core(m));
-        }
-        #[cfg(feature = "mailbox-shadow")]
+        self.mb.generate_legal(all, &mut mbconv::CoreSink(list));
+        #[cfg(mb_shadow)]
         self.shadow("generate_legal", &list.as_slice().to_vec(), |p| {
             let mut want = MoveList::default();
             himawari_core::generate_legal(p, all, &mut want);
@@ -632,6 +624,33 @@ impl EvalBoard for SearchBoard {
 mod mbconv {
     use himawari_core::{Color, DirtyPiece, Move, Piece, PieceType, Position, Square};
     use himawari_mailbox::board::{IDX81, SQ81};
+
+    /// 配列盤の生成に、coreの手の列へ直接書かせる受け手。升は81升の通し番号のまま受け取れるので、
+    /// 表を引かずにcoreの手の符号になる（ADR-0241の第15回）。
+    pub struct CoreSink<'a>(pub &'a mut himawari_core::MoveList);
+
+    impl himawari_mailbox::MoveSink for CoreSink<'_> {
+        #[inline(always)]
+        fn push_normal(&mut self, from81: u8, to81: u8, promote: bool, piece_after: u8) {
+            self.0.push(Move::new_move(
+                Square::from_index(from81),
+                Square::from_index(to81),
+                promote,
+                Piece(piece_after),
+            ));
+        }
+
+        #[inline(always)]
+        fn push_drop(&mut self, pt: u8, to81: u8, piece: u8) {
+            let c = if piece & 16 != 0 {
+                Color::White
+            } else {
+                Color::Black
+            };
+            self.0
+                .push(Move::new_drop(PieceType(pt), Square::from_index(to81), c));
+        }
+    }
 
     /// coreの局面から配列盤を作る。千日手の判定のために、過去の局面のキーも写す。
     pub fn from_core(pos: &Position) -> himawari_mailbox::Position {

@@ -64,6 +64,34 @@ impl MoveList {
     }
 }
 
+/// 生成した手の受け手（ADR-0241の第15回）。
+///
+/// 升は81升の通し番号、駒は移動後の駒（先後込み）で渡す。探索（engine）はcoreの手の列へ
+/// 直接書く受け手を作り、配列盤の手の列への詰め替えと変換を省く。
+pub trait MoveSink {
+    /// 盤上の手。
+    fn push_normal(&mut self, from81: u8, to81: u8, promote: bool, piece_after: u8);
+    /// 駒打ち。ptは打つ駒種、pieceは打った駒。
+    fn push_drop(&mut self, pt: u8, to81: u8, piece: u8);
+}
+
+impl MoveSink for MoveList {
+    #[inline(always)]
+    fn push_normal(&mut self, from81: u8, to81: u8, promote: bool, piece_after: u8) {
+        self.push(Move::normal(
+            IDX81[from81 as usize],
+            IDX81[to81 as usize],
+            promote,
+            piece_after,
+        ));
+    }
+
+    #[inline(always)]
+    fn push_drop(&mut self, pt: u8, to81: u8, piece: u8) {
+        self.push(Move::drop(pt, IDX81[to81 as usize], piece_color(piece)));
+    }
+}
+
 /// 生成の分類。coreの `GenType` と同じ意味で、どれも合法手だけを返す。
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum GenType {
@@ -222,7 +250,7 @@ impl Position {
     }
 
     /// 合法手を全部生成する。順はcoreの `generate_legal(pos, all, list)` と同じ。
-    pub fn generate_legal(&self, all: bool, list: &mut MoveList) {
+    pub fn generate_legal<L: MoveSink>(&self, all: bool, list: &mut L) {
         if self.in_check() {
             self.generate(GenType::Evasions, all, list);
         } else {
@@ -231,7 +259,7 @@ impl Position {
     }
 
     /// 分類ごとの合法手を生成する。Evasionsは王手中だけ、ほかは王手でないときだけ呼ぶ。
-    pub fn generate(&self, gt: GenType, all: bool, list: &mut MoveList) {
+    pub fn generate<L: MoveSink>(&self, gt: GenType, all: bool, list: &mut L) {
         let us = self.side;
         let ui = us.index();
         let them = us.flip().index();
@@ -280,7 +308,12 @@ impl Position {
                         && rel_rank(us, t) <= 2
                         && ctx.pin_mask(s) & bit81(t) != 0
                     {
-                        list.push(Move::normal(s, t, true, make_piece(us, PRO_PAWN)));
+                        list.push_normal(
+                            SQ81[s as usize],
+                            SQ81[t as usize],
+                            true,
+                            make_piece(us, PRO_PAWN),
+                        );
                     }
                 });
             }
@@ -299,7 +332,12 @@ impl Position {
                     }
                     let rr = rel_rank(us, t);
                     if rr > 2 || (all && rr >= 1) {
-                        list.push(Move::normal(s, t, false, make_piece(us, PAWN)));
+                        list.push_normal(
+                            SQ81[s as usize],
+                            SQ81[t as usize],
+                            false,
+                            make_piece(us, PAWN),
+                        );
                     }
                 });
                 self.gen_king(&ctx, empty, list);
@@ -308,7 +346,7 @@ impl Position {
         }
     }
 
-    fn gen_king(&self, ctx: &Ctx, target: u128, list: &mut MoveList) {
+    fn gen_king<L: MoveSink>(&self, ctx: &Ctx, target: u128, list: &mut L) {
         let ui = ctx.us.index();
         let them = ctx.us.flip().index();
         let k = self.king[ui];
@@ -324,11 +362,21 @@ impl Position {
             }
         }
         let kp = make_piece(ctx.us, KING);
-        for_each81(safe & target, |t| list.push(Move::normal(k, t, false, kp)));
+        let k81 = SQ81[k as usize];
+        for_each81(safe & target, |t| {
+            list.push_normal(k81, SQ81[t as usize], false, kp)
+        });
     }
 
     /// 玉以外の盤上の駒の手。skip_pawnsなら歩を飛ばす（Quietsは歩を別に積む）。
-    fn gen_board(&self, ctx: &Ctx, target: u128, all: bool, skip_pawns: bool, list: &mut MoveList) {
+    fn gen_board<L: MoveSink>(
+        &self,
+        ctx: &Ctx,
+        target: u128,
+        all: bool,
+        skip_pawns: bool,
+        list: &mut L,
+    ) {
         let us = ctx.us;
         let ui = us.index();
         let movers = self.occ[ui] & !bit81(self.king[ui]);
@@ -344,7 +392,7 @@ impl Position {
         });
     }
 
-    fn gen_drops(&self, ctx: &Ctx, target: u128, list: &mut MoveList) {
+    fn gen_drops<L: MoveSink>(&self, ctx: &Ctx, target: u128, list: &mut L) {
         let us = ctx.us;
         let ui = us.index();
         if self.hand_ids[ui].iter().all(|&h| h == 0) {
@@ -381,7 +429,8 @@ impl Position {
                     mask &= !bit81(sq);
                 }
             }
-            for_each81(mask, |t| list.push(Move::drop(pt, t, us)));
+            let pc = make_piece(us, pt);
+            for_each81(mask, |t| list.push_drop(pt, SQ81[t as usize], pc));
         }
     }
 }
@@ -397,10 +446,11 @@ pub(crate) const fn pawn_delta(us: Color) -> i32 {
 
 /// 盤上の駒の手を、成り・不成を分けて積む。規約はcoreの `push_variants` と同じ。
 #[inline]
-fn push_variants(us: Color, pt: u8, from: u8, to: u8, all: bool, list: &mut MoveList) {
+fn push_variants<L: MoveSink>(us: Color, pt: u8, from: u8, to: u8, all: bool, list: &mut L) {
+    let (from81, to81) = (SQ81[from as usize], SQ81[to as usize]);
     let rel = rel_rank(us, to);
     if can_promote(pt) && (rel_rank(us, from) <= 2 || rel <= 2) {
-        list.push(Move::normal(from, to, true, make_piece(us, pt - 8)));
+        list.push_normal(from81, to81, true, make_piece(us, pt - 8));
         let non_promote = match pt {
             PAWN => all && rel >= 1,
             LANCE => {
@@ -415,7 +465,7 @@ fn push_variants(us: Color, pt: u8, from: u8, to: u8, all: bool, list: &mut Move
             _ => all,
         };
         if non_promote {
-            list.push(Move::normal(from, to, false, make_piece(us, pt)));
+            list.push_normal(from81, to81, false, make_piece(us, pt));
         }
     } else {
         let ok = match pt {
@@ -424,7 +474,7 @@ fn push_variants(us: Color, pt: u8, from: u8, to: u8, all: bool, list: &mut Move
             _ => true,
         };
         if ok {
-            list.push(Move::normal(from, to, false, make_piece(us, pt)));
+            list.push_normal(from81, to81, false, make_piece(us, pt));
         }
     }
 }
