@@ -177,7 +177,9 @@ def test_build_pair_restores_the_working_tree(capsys):
     _, lines = dry(capsys, ["build", "pair", "adr0180-c"])
     joined = "\n".join(lines)
     assert "git restore --source=origin/main --staged --worktree -- crates/" in joined
-    assert lines[-1].endswith("git restore --source=HEAD --staged --worktree -- crates/")
+    assert lines[-1].endswith(
+        "git restore --source=HEAD --staged --worktree -- crates/ Cargo.toml Cargo.lock"
+    )
 
 
 def test_build_pair_restore_removes_files_absent_from_head(tmp_path):
@@ -197,21 +199,29 @@ def test_build_pair_restore_removes_files_absent_from_head(tmp_path):
     (tmp_path / "crates").mkdir()
     (tmp_path / "crates" / "kept.rs").write_text("a\n")
     (tmp_path / "crates" / "removed.rs").write_text("b\n")
+    (tmp_path / "Cargo.toml").write_text("members = [a]\n")
+    (tmp_path / "Cargo.lock").write_text("lock a\n")
     git("add", ".")
     git("commit", "-qm", "base")
     git("tag", "base")
     git("rm", "-q", "crates/removed.rs")
     (tmp_path / "crates" / "added.rs").write_text("c\n")
+    # 片側にだけあるクレートをワークスペースへ足した形（ADR-0241）
+    (tmp_path / "Cargo.toml").write_text("members = [a, b]\n")
+    (tmp_path / "Cargo.lock").write_text("lock b\n")
     git("add", ".")
     git("commit", "-qm", "head")
 
     build._use_crates("base", dry_run=False, cwd=tmp_path)
     assert (tmp_path / "crates" / "removed.rs").exists()
     assert not (tmp_path / "crates" / "added.rs").exists()
+    assert (tmp_path / "Cargo.toml").read_text() == "members = [a]\n"
+    assert (tmp_path / "Cargo.lock").read_text() == "lock a\n"
 
     build._use_crates("HEAD", dry_run=False, cwd=tmp_path)
     assert not (tmp_path / "crates" / "removed.rs").exists()
     assert (tmp_path / "crates" / "added.rs").exists()
+    assert (tmp_path / "Cargo.toml").read_text() == "members = [a, b]\n"
     status = proc.capture(["git", "status", "--porcelain"], cwd=tmp_path)
     assert status == ""
 
@@ -633,9 +643,15 @@ def test_build_pair_can_build_the_candidate_from_a_ref(capsys):
     """実験キューの作業ツリーはorigin/mainなので、候補をrefで指せるようにする。"""
     _, lines = dry(capsys, ["build", "pair", "adr0211-x", "--candidate", "0cd8205"])
     restores = [x for x in lines if "git restore" in x]
-    assert restores[0].endswith("--source=0cd8205 --staged --worktree -- crates/")
-    assert restores[1].endswith("--source=origin/main --staged --worktree -- crates/")
-    assert restores[-1].endswith("--source=HEAD --staged --worktree -- crates/")
+    assert restores[0].endswith(
+        "--source=0cd8205 --staged --worktree -- crates/ Cargo.toml Cargo.lock"
+    )
+    assert restores[1].endswith(
+        "--source=origin/main --staged --worktree -- crates/ Cargo.toml Cargo.lock"
+    )
+    assert restores[-1].endswith(
+        "--source=HEAD --staged --worktree -- crates/ Cargo.toml Cargo.lock"
+    )
     copies = [x for x in lines if " cp " in x and "boardbench" not in x]
     assert copies[0].endswith("data/bin/cand-adr0211-x")
     assert copies[1].endswith("data/bin/base-adr0211-x")
