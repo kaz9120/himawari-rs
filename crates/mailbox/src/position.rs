@@ -21,7 +21,7 @@
 //! 進めるたびに利きの表を積み、戻しは表を書き戻して盤だけを戻す（ADR-0241の段階4で比べる）。
 
 use crate::board::*;
-use crate::check::CheckSlot;
+use crate::check::{CheckSlot, SHORT_FROM, first81};
 use crate::moves::Move;
 use crate::zobrist::{self, HAND_PAWN, HAND_SHIFT, PIECE_VALUE, PSQ, is_minor_piece};
 
@@ -501,27 +501,28 @@ impl Position {
         if self.count[ti][k as usize] == 0 {
             return 0;
         }
+        let k81 = SQ81[k as usize];
+        let occ = self.occ[0] | self.occ[1];
         let mut set = 0u128;
-        let mut dirs = self.longdir[ti][k as usize];
+        let ld = self.longdir[ti][k as usize];
+        let mut dirs = ld;
         while dirs != 0 {
             let d = dirs.trailing_zeros() as usize;
             dirs &= dirs - 1;
-            let back = DELTA[opp(d)] as i32;
-            let mut x = (k as i32 + back) as u8;
-            while self.board[x as usize] == EMPTY {
-                x = (x as i32 + back) as u8;
-            }
-            set |= bit81(x);
+            let x81 = first81(k81, opp(d), occ).expect("飛び利きの元の駒がある");
+            set |= 1u128 << x81;
         }
-        for o in CHECK_OFFSETS {
-            let x = (k as i32 - o as i32) as usize;
-            let v = self.board[x];
-            if v == EMPTY || v == WALL || piece_color(v) != them {
-                continue;
-            }
-            let m = &MOVES[v as usize];
-            if m.short[..m.n_short as usize].contains(&o) {
-                set |= bit81(x as u8);
+        let mut need = u32::from(self.count[ti][k as usize]) - ld.count_ones();
+        if need != 0 {
+            for &(o, mask) in SHORT_FROM[ti].iter() {
+                let x = k.wrapping_sub(o as u8);
+                if (mask >> (self.board[x as usize] & 31)) & 1 != 0 {
+                    set |= bit81(x);
+                    need -= 1;
+                    if need == 0 {
+                        break;
+                    }
+                }
             }
         }
         set
