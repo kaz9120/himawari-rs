@@ -1394,6 +1394,92 @@ engineとcoreの変更は次のとおりである。
 3. 木曜（10/22）の夜のSPRTに向けて、`mailbox` をmainへ入れる形を整える。既定をどちらにするか、`legal-gen` の扱い、ツールのビルドを決める
 4. 優等・劣等の千日手を照合に含める局面を足す
 
+## 第14回（2026-10-20）: mainへ入れる形
+
+監督がorigin/mainを研究ブランチへマージし（`cc5fd00`、ADR-0242の段1〜3を `EvalBoard` の上へ載せ替えたもの）、こちらはその上で作業した。
+監督の依頼は、木曜の夜のSPRTが終わったら、そのままPRを出せる状態である。時間は測っていない。
+
+### 構成の決め方
+
+フィーチャは足し算でしか合わさらない。ワークスペースで一緒にビルドしたクレートのどれかが有効にしたフィーチャは、全部のクレートに効く。
+`hmwr` の `queue`（実験の無人実行）と `kifu` は、`cargo build --release` で default-members（core・engine・tools・usi）をまとめて作る。
+監督の案のようにツールのクレートが `core-search` を有効にすると、このビルドでは対局用の本体もcoreの探索に戻る。無人の実験が、気づかれないままcoreの探索で走る。
+
+そこで、次の形にした。
+
+| 構成 | engineのフィーチャ | 使いどころ |
+|---|---|---|
+| 配列盤（既定） | `mailbox`（engineの既定のフィーチャ） | 対局用の本体、ツール、`hmwr` の全コマンド |
+| coreの探索 | `core-search`。`mailbox` より優先する | 比較と照合。`cargo build -p himawari-usi --features core-search` |
+| 統制群 | `legal-gen`（`core-search` を含む） | 配列盤と同じ木をcoreの盤で作る |
+| 並走の照合 | `mailbox-shadow` | 配列盤とcoreを並べ、デバッグビルドで答えを毎回比べる |
+
+`core-search` が `mailbox` より優先するのは、build.rsがcfg（`mb_search`・`mb_shadow`）を決めるからである。
+既定の構成をcoreへ戻すには `core-search` を明示する必要がある。黙ってcoreに戻る経路は無い。
+usiのクレートには、同じ名前の3つのフィーチャ（`core-search`・`legal-gen`・`mailbox-shadow`）を足した。
+
+ツールは配列盤の構成のままビルドできるようにした。coreの局面を読んでいた3か所を直した。
+
+- `gensfen`・`psv`: 局面を書き出すときに `SearchBoard::to_position` でcoreの局面を受け取る。配列盤の構成ではSFENを経由して作る
+- `boardbench`: 生成・1手詰めを `SearchBoard` のメソッドで呼ぶ。配列盤の構成では生成が合法手だけを出すので、合法性判定の段の意味が変わる（濾す手が無い）
+
+`hmwr` は変えていない。どのコマンドも usi か default-members を作るので、既定の配列盤のエンジンが作られる。
+確かめたのは `build engine`・`build pgo`・`build shapes`・`net actdump`・`spsa init` である。
+`net actdump` は `--features himawari-engine/actdump`、`spsa init` は `--features tune` を足して作る。
+`build pair` と `sprt run` は、比較元をそのrefのソースから作る。mainへ入った後は両側とも配列盤になる。`verify`・`bench` はツールを `cargo run -p himawari-tools` で動かし、エンジンはバイナリを受け取る。
+
+### CI
+
+`.github/workflows/ci.yml` に2つ足した。
+
+- lintのジョブ: `cargo clippy --all-targets --features himawari-engine/core-search -- -D warnings`
+- ジョブ `test-board`（`check` の集約に足した）: coreの探索のワークスペース全体のテストと、並走の照合のengineのテスト。
+  コマンドは次の2つである
+
+  ```
+  cargo test --workspace --features himawari-engine/core-search
+  cargo test -p himawari-engine --features mailbox-shadow
+  ```
+
+既定の配列盤は、これまでの `test`・`test-release`・`test-arch`・`test-tune`・`avx2` がそのまま見る。
+配列盤のクレートの照合（`vs_core`）は `--workspace` に入るので、default-members へ足さなくても走る。
+手元のdebugビルド（opt-level=1、`nice -n 19`、並列度4）の所要は、`cargo test --workspace` が70秒だった。
+`core-search` は50秒、`mailbox-shadow` は15秒である。
+
+### 照合の結果
+
+| 検査 | 結果 |
+|---|---|
+| `cargo test --workspace`（既定・`core-search`）と `-p himawari-engine --features mailbox-shadow` | 全部通った |
+| clippy（`-D warnings`）: 既定・`core-search`・`legal-gen`・`mailbox-shadow`・`tune`・配列盤のクレート | 全部通った。`actdump` もcheckが通った |
+| pytest（`hmwr` のテスト） | 666件が通った |
+| 固定深さのノード数: main 対 `core-search` | 4局面とも一致（22,257／38,027／207,778／23,367） |
+| 固定深さのノード数: `legal-gen` 対 既定（配列盤） | 4局面とも一致（22,257／26,568／153,145／16,923） |
+
+### Cargo.tomlの変更（オーナーに確認する差分）
+
+ワークスペースのCargo.toml（ルート）は、第1回から次の1行だけが違う。default-members は変えない案である。
+`cargo build --release` は依存として配列盤のクレートも作り、CIは `--workspace` で照合を回すためである。
+
+```diff
+-members = ["crates/core", "crates/engine", "crates/tools", "crates/usi", "crates/py"]
++members = ["crates/core", "crates/engine", "crates/tools", "crates/usi", "crates/py", "crates/mailbox"]
+```
+
+クレートのCargo.tomlは、研究ブランチで次のように変えた。
+
+- engine: 配列盤への依存（任意）と、フィーチャ `default = ["mailbox"]`・`mailbox`・`core-search`・`mailbox-shadow`・`legal-gen`
+- usi: フィーチャ `core-search`・`legal-gen`・`mailbox-shadow`（engineの同名のフィーチャへ渡す）
+- mailbox: 第1回に作ったクレート。mainへ入れるときに、`description` の「研究用の試作（mainへは入れない）」を書き換える必要がある
+
+### mainへ入れるときに残る作業
+
+- このADRのStatusと冒頭の「mainへは入れない」、索引の記述を、採否に合わせて直す
+- 配列盤のクレートの `description` と、`lib.rs` の冒頭の説明（研究用の試作）を直す
+- PRの種別とSPRTの対立仮説は、監督がNPSの結果を見て決める（[ADR-0163](0163-sprt-hypothesis-choice.md)）
+- 千日手の優等・劣等の判定は、照合の局面にまだ現れていない
+- 配列盤の構成では、`SearchBoard::to_position` が作るcoreの局面は過去の局面を持たない。いまの呼び出し元（局面の書き出し）には影響しない
+
 ## Consequences
 
 - 研究ブランチだけの変更で、mainの挙動は変わらない。ワークスペースの `members` に1行足した（`default-members` には入れない）
