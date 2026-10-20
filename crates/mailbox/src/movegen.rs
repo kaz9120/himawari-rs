@@ -200,14 +200,18 @@ impl Position {
         // 飛び利きの王手。玉へ向かう方向dの飛び利きを逆にたどって駒を探す
         let dirs = self.longdir[them.index()][k as usize];
         if dirs != 0 {
+            // 玉から逆向きの線で最初の駒が王手駒。占有の集合と線の表で引く（盤を歩かない）
             let d = dirs.trailing_zeros() as usize;
-            let back = DELTA[opp(d)] as i32;
-            let mut t = (k as i32 + back) as u8;
-            while self.board[t as usize] == EMPTY {
-                between |= bit81(t);
-                t = (t as i32 + back) as u8;
-            }
-            return (t, between);
+            let od = opp(d);
+            let k81 = SQ81[k as usize] as usize;
+            let seg = ray_to_blocker(k81, od, self.occ[0] | self.occ[1]);
+            let first = if INCREASING[od] {
+                127 - seg.leading_zeros()
+            } else {
+                seg.trailing_zeros()
+            } as usize;
+            between = seg & !(1u128 << first);
+            return (IDX81[first], between);
         }
         // 短い利きの王手。玉の近傍と桂の升を見る
         for o in CHECK_OFFSETS {
