@@ -92,6 +92,18 @@ impl Move {
         v & DROP_BIT == 0 && (v & 0x7F) == ((v >> 7) & 0x7F)
     }
 
+    /// 符号のビット列そのもの。配列盤の研究（ADR-0241の第15回）が、手を表引きで変換するのに使う。
+    #[inline]
+    pub const fn bits(self) -> u32 {
+        self.0
+    }
+
+    /// 符号のビット列から作る。`bits` の逆で、中身は検査しない。
+    #[inline]
+    pub const fn from_bits(bits: u32) -> Move {
+        Move(bits)
+    }
+
     #[inline]
     pub const fn to_move16(self) -> Move16 {
         Move16((self.0 & 0xFFFF) as u16)

@@ -110,26 +110,24 @@ struct Ctx {
     us: Color,
     /// 玉以外の駒が行ってよい升。王手中は王手駒の升と合駒の升、それ以外は全部。
     evasion: u128,
-    /// ピンされた駒の升（81升の通し番号）と、その駒が動ける線（玉からピンの方向へ盤の端まで）。
-    pins: [(u8, u128); 8],
-    n_pins: usize,
-    /// ピンされた駒の升の集合。ピンの無い駒は線を探さずに済ませる
+    /// 手番側の玉の81升の通し番号。
+    k81: u8,
+    /// ピンされた駒の升の集合。ピンの無い駒は線を引かずに済ませる
     pinned: u128,
 }
 
 impl Ctx {
     /// 81升の升s81の駒が動ける升の集合。
+    ///
+    /// ピンされた駒は、玉からその駒の方向へ盤の端までの線の上だけを動ける。線は表から引くので、
+    /// ピンごとの線を配列に持たない（ADR-0241の第16回）。
     #[inline(always)]
     fn pin_mask(&self, s81: u8) -> u128 {
         if self.pinned & (1u128 << s81) == 0 {
             return ALL81;
         }
-        for k in 0..self.n_pins {
-            if self.pins[k].0 == s81 {
-                return self.pins[k].1;
-            }
-        }
-        ALL81
+        let k81 = self.k81 as usize;
+        ray81(k81, dir81(k81, s81 as usize) as usize)
     }
 }
 
@@ -171,22 +169,20 @@ impl Position {
         let k81 = SQ81[self.king[ui] as usize] as usize;
         let own = self.occ[ui];
         let occ_all = own | self.occ[them];
-        for d in 0..8 {
-            let ray = RAY81[k81][d];
+        for (d, &inc) in INCREASING.iter().enumerate() {
+            let ray = ray81(k81, d);
             let hit = ray & occ_all;
             if hit == 0 {
                 continue;
             }
-            let first = if INCREASING[d] {
+            let first = if inc {
                 hit.trailing_zeros()
             } else {
                 127 - hit.leading_zeros()
             } as u8;
             if own & (1u128 << first) != 0
-                && self.longdir[them][IDX81[first as usize] as usize] & (1 << opp(d)) != 0
+                && self.longdir[them][idx81(first as usize) as usize] & (1 << opp(d)) != 0
             {
-                ctx.pins[ctx.n_pins] = (first, ray);
-                ctx.n_pins += 1;
                 ctx.pinned |= 1u128 << first;
             }
         }
@@ -280,8 +276,7 @@ impl Position {
         let mut ctx = Ctx {
             us,
             evasion: ALL81,
-            pins: [(0, 0); 8],
-            n_pins: 0,
+            k81: SQ81[k as usize],
             pinned: 0,
         };
         let own = self.occ[ui];
@@ -309,46 +304,60 @@ impl Position {
                 self.collect_pins(&mut ctx);
                 self.gen_board(&ctx, enemy, all, false, list);
                 self.gen_king(&ctx, enemy, list);
-                // 空き升への歩の成り
-                // 81升の番号のまま回す。歩は行き所の無い段にいないので、前の升は同じ筋の盤の上にある
+                // 空き升への歩の成り。行き先の小さい順に回すと、移動元も同じ順に並ぶ
                 let fwd81 = pawn_delta81(us);
-                let pawn = make_piece(us, PAWN);
-                for_each_bit81(own, |s| {
-                    if self.board[IDX81[s as usize] as usize] != pawn {
-                        return;
-                    }
-                    let t = (s as i32 + fwd81) as u8;
-                    if empty & (1u128 << t) != 0
-                        && REL_RANK81[ui][t as usize] <= 2
-                        && ctx.pin_mask(s) & (1u128 << t) != 0
-                    {
-                        list.push_normal(s, t, true, make_piece(us, PRO_PAWN));
-                    }
+                let pro = make_piece(us, PRO_PAWN);
+                let to = self.pawn_pushes(&ctx, empty) & zone81(ui);
+                for_each_bit81(to, |t| {
+                    list.push_normal((t as i32 - fwd81) as u8, t, true, pro);
                 });
             }
             GenType::Quiets => {
                 self.collect_pins(&mut ctx);
                 self.gen_board(&ctx, empty, all, true, list);
-                // 歩の静かな手。成りはCaptures側で、不成だけをここで積む
+                // 歩の静かな手。成りはCaptures側で、不成だけをここで積む。
+                // 敵陣の外へ進む手と、allなら敵陣の2・3段目への不成
                 let fwd81 = pawn_delta81(us);
                 let pawn = make_piece(us, PAWN);
-                for_each_bit81(own, |s| {
-                    if self.board[IDX81[s as usize] as usize] != pawn {
-                        return;
-                    }
-                    let t = (s as i32 + fwd81) as u8;
-                    if empty & (1u128 << t) == 0 || ctx.pin_mask(s) & (1u128 << t) == 0 {
-                        return;
-                    }
-                    let rr = REL_RANK81[ui][t as usize];
-                    if rr > 2 || (all && rr >= 1) {
-                        list.push_normal(s, t, false, pawn);
-                    }
+                let zone = zone81(ui);
+                let allowed = if all {
+                    !zone | (zone & !rank_mask(if us == Color::Black { 0 } else { 8 }))
+                } else {
+                    !zone
+                };
+                let to = self.pawn_pushes(&ctx, empty) & allowed;
+                for_each_bit81(to, |t| {
+                    list.push_normal((t as i32 - fwd81) as u8, t, false, pawn);
                 });
                 self.gen_king(&ctx, empty, list);
                 self.gen_drops(&ctx, empty, list);
             }
         }
+    }
+
+    /// 手番側の歩が1升進める空き升の集合（ピンを守る）。行き先の升で返す。
+    ///
+    /// ピンされていない歩は、歩の集合をずらしてまとめて作る。歩は行き所の無い段にいないので、
+    /// ずらしても筋をまたがない（ADR-0241の第16回）。
+    #[inline(always)]
+    fn pawn_pushes(&self, ctx: &Ctx, empty: u128) -> u128 {
+        let ui = ctx.us.index();
+        let pawns = self.psets[ui][PAWN as usize];
+        let shift = |b: u128| {
+            if ctx.us == Color::Black {
+                b >> 1
+            } else {
+                (b << 1) & ALL81
+            }
+        };
+        let mut to = shift(pawns & !ctx.pinned);
+        let mut pinned = pawns & ctx.pinned;
+        while pinned != 0 {
+            let s = pinned.trailing_zeros() as u8;
+            pinned &= pinned - 1;
+            to |= shift(1u128 << s) & ctx.pin_mask(s);
+        }
+        to & empty
     }
 
     fn gen_king<L: MoveSink>(&self, ctx: &Ctx, target: u128, list: &mut L) {
@@ -358,10 +367,10 @@ impl Position {
         let k81 = SQ81[k as usize];
         let xray = self.longdir[them][k as usize];
         let kp = make_piece(ctx.us, KING);
-        let cand = SHORT81[kp as usize][k81 as usize] & !self.occ[ui] & target;
+        let cand = short81(kp, k81 as usize) & !self.occ[ui] & target;
         for_each_bit81(cand, |t| {
             // 玉の升に届く飛び利きの延長（玉が線に沿って逃げる升）は、利き数に入っていない
-            let d = DIR81[k81 as usize][t as usize];
+            let d = dir81(k81 as usize, t as usize);
             if self.count[them][IDX81[t as usize] as usize] == 0 && xray & (1 << d) == 0 {
                 list.push_normal(k81, t, false, kp);
             }
@@ -386,13 +395,13 @@ impl Position {
         let movers = own & !bit81(self.king[ui]);
         let target = target & ctx.evasion & !own;
         for_each_bit81(movers, |s| {
-            let p = self.board[IDX81[s as usize] as usize];
+            let p = self.board[idx81(s as usize) as usize];
             let pt = piece_type(p);
             if skip_pawns && pt == PAWN {
                 return;
             }
             let m = &MOVES[(p & 31) as usize];
-            let mut to = SHORT81[(p & 31) as usize][s as usize];
+            let mut to = short81(p, s as usize);
             let mut dirs = m.long;
             while dirs != 0 {
                 let d = dirs.trailing_zeros() as usize;
@@ -418,12 +427,14 @@ impl Position {
             }
             let mut mask = match pt {
                 PAWN => {
-                    let mut nifu = 0u128;
-                    let mut files = self.pawn_files[ui];
-                    while files != 0 {
-                        nifu |= file_mask(files.trailing_zeros() as u8);
-                        files &= files - 1;
+                    // 二歩の筋。筋fのビットを81升の番号9fへ散らし、0x1FFを掛けて筋全体へ広げる。
+                    // 筋ごとの9bitの塊は重ならないので繰り上がりは出ない。分岐しない
+                    let files = u128::from(self.pawn_files[ui]);
+                    let mut spread = 0u128;
+                    for f in 0..9 {
+                        spread |= ((files >> f) & 1) << (9 * f);
                     }
+                    let nifu = spread * 0x1FF;
                     target & !r1 & !nifu
                 }
                 LANCE => target & !r1,
@@ -456,6 +467,16 @@ pub(crate) const fn pawn_delta(us: Color) -> i32 {
     }
 }
 
+/// 手番uiから見た敵陣（1〜3段目）の升の集合。
+#[inline(always)]
+fn zone81(ui: usize) -> u128 {
+    const ZONE: [u128; 2] = [
+        rank_mask(0) | rank_mask(1) | rank_mask(2),
+        rank_mask(6) | rank_mask(7) | rank_mask(8),
+    ];
+    ZONE[ui & 1]
+}
+
 /// 歩が進む向きの、81升の通し番号の差分。
 #[inline]
 const fn pawn_delta81(us: Color) -> i32 {
@@ -469,8 +490,8 @@ const fn pawn_delta81(us: Color) -> i32 {
 #[inline(always)]
 fn push_variants<L: MoveSink>(us: Color, pt: u8, from81: u8, to81: u8, all: bool, list: &mut L) {
     let ui = us.index();
-    let rel = REL_RANK81[ui][to81 as usize];
-    if can_promote(pt) && (REL_RANK81[ui][from81 as usize] <= 2 || rel <= 2) {
+    let rel = rel_rank81(ui, to81 as usize);
+    if can_promote(pt) && (rel_rank81(ui, from81 as usize) <= 2 || rel <= 2) {
         list.push_normal(from81, to81, true, make_piece(us, pt - 8));
         let non_promote = match pt {
             PAWN => all && rel >= 1,

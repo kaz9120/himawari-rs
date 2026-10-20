@@ -603,8 +603,8 @@ impl EvalBoard for SearchBoard {
             |owner, pt| {
                 let s = &sets[owner.index()];
                 if pt == PieceType::GOLD {
-                    // 金の動きをする5駒種（金と成駒4種）
-                    s[pt.0 as usize] | s[2] | s[3] | s[4] | s[5]
+                    // 金の動きをする5駒種（金と成駒4種）の和は、配列盤が添字1に持つ
+                    s[1]
                 } else {
                     s[pt.0 as usize]
                 }
@@ -743,43 +743,77 @@ mod mbconv {
         }
     }
 
+    /// 81升の通し番号から配列盤の添字。7bitの欄をそのまま引けるように128升ぶん持つ（81以上は0）。
+    const IDX128: [u8; 128] = {
+        let mut t = [0u8; 128];
+        let mut i = 0;
+        while i < 81 {
+            t[i] = IDX81[i];
+            i += 1;
+        }
+        t
+    };
+
+    /// coreの手を配列盤の手へ。表を引いて欄を詰め替えるだけで、分岐しない（ADR-0241の第15回）。
+    ///
+    /// coreの符号は下位から行き先7bit・移動元7bit・成り・駒打ち・移動後の駒（bit16〜）、
+    /// 配列盤の符号は行き先8bit・移動元8bit・成り・駒打ち・移動後の駒（bit24〜）である。
+    /// 駒打ちの移動元の欄は打つ駒種で、両者で同じ値なので引かずに写す。
     #[inline(always)]
     pub fn to_mb(m: Move) -> himawari_mailbox::Move {
-        let pa = m.piece_after().0;
-        if m.is_drop() {
-            let c = if pa & 16 != 0 {
-                himawari_mailbox::Color::White
-            } else {
-                himawari_mailbox::Color::Black
-            };
-            himawari_mailbox::Move::drop(m.drop_piece_type().0, IDX81[m.to().index()], c)
+        let b = m.bits();
+        let to = u32::from(IDX128[(b & 0x7F) as usize]);
+        let f = (b >> 7) & 0x7F;
+        let from = if b & 0x8000 != 0 {
+            f
         } else {
-            himawari_mailbox::Move::normal(
-                IDX81[m.from_sq().index()],
-                IDX81[m.to().index()],
-                m.is_promote(),
-                pa,
-            )
-        }
+            u32::from(IDX128[f as usize])
+        };
+        himawari_mailbox::Move::from_raw(
+            to | (from << 8) | ((b & 0xC000) << 2) | (((b >> 16) & 0x1F) << 24),
+        )
     }
 
+    /// 配列盤の手をcoreの手へ。`to_mb` の逆。
     #[inline(always)]
     pub fn to_core(m: himawari_mailbox::Move) -> Move {
-        let to = Square::from_index(SQ81[m.to() as usize]);
-        if m.is_drop() {
-            let c = if m.piece_after() & 16 != 0 {
-                Color::White
-            } else {
-                Color::Black
-            };
-            Move::new_drop(PieceType(m.drop_type()), to, c)
+        let v = m.raw();
+        let to = u32::from(SQ81[(v & 0xFF) as usize]);
+        let f = (v >> 8) & 0xFF;
+        let from = if v & (1 << 17) != 0 {
+            f
         } else {
-            Move::new_move(
-                Square::from_index(SQ81[m.from() as usize]),
-                to,
-                m.is_promote(),
-                Piece(m.piece_after()),
-            )
+            u32::from(SQ81[f as usize])
+        };
+        Move::from_bits(to | (from << 7) | ((v >> 2) & 0xC000) | (((v >> 24) & 0x1F) << 16))
+    }
+}
+
+#[cfg(all(test, mb_search))]
+mod tests {
+    use super::mbconv::{to_core, to_mb};
+    use himawari_core::{MoveList, Position, generate_legal};
+
+    /// 手の変換が、配列盤の手を組み立てる関数と同じ符号を作り、往復でcoreの手に戻る。
+    /// 盤上の手・成り・駒打ちを含む局面で、合法手の全部を確かめる。
+    #[test]
+    fn move_conversion_round_trips() {
+        for sfen in [
+            himawari_core::SFEN_STARTPOS,
+            "lr7/2g3k2/p2Ppp2B/4s1pPp/2Pnn4/PP1+b1P1p1/1S4P1N/6S2/L3KG2L w RGSNL3Pg2p 104",
+            "l6nl/5+P1gk/2np1S3/p1p4Pp/3P2Sp1/1PPb2P1P/P5GS1/R8/LN4bKL w GR5pnsg 1",
+        ] {
+            let pos = Position::from_sfen(sfen).unwrap();
+            let mb = himawari_mailbox::Position::from_sfen(sfen).unwrap();
+            let mut list = MoveList::default();
+            generate_legal(&pos, true, &mut list);
+            let mut ml = himawari_mailbox::MoveList::default();
+            mb.generate_legal(true, &mut ml);
+            assert_eq!(list.len(), ml.len());
+            for (&m, &w) in list.as_slice().iter().zip(ml.as_slice()) {
+                assert_eq!(to_mb(m), w, "to_mb {}", m.to_usi());
+                assert_eq!(to_core(w), m, "to_core {}", m.to_usi());
+            }
         }
     }
 }
