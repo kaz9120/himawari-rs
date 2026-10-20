@@ -80,6 +80,9 @@ const GOLD_LIKE_MASK: [u128; 16] = {
     t
 };
 
+/// 8升ぶんの利き数に1ずつ足す語。
+const ONES64: u64 = 0x0101_0101_0101_0101;
+
 /// 駒番号の無い升の値。盤上と手駒の駒は40枚。
 pub const NO_ID: u8 = 0xFF;
 
@@ -313,32 +316,105 @@ impl Position {
         }
     }
 
-    /// 飛び利きで升iを書き換える前に、戻しの記録を積む。
-    /// 語は 下位16ビットが利きの表の通しの添字（色c×LEN＋i）、16〜23ビットが書き換える前の方向ビット、
-    /// 24ビットが足したか（ADD）である。利き数は足し引きなので、戻しは逆の向きに1を当てる
+    /// 飛び利きの書き換えを1つ、戻しの記録（`ray_log`）へ積む。
+    ///
+    /// 書き換えは「色cの表の添字iから続くn升（1〜8）の利き数に1を足す（ADD）か引き、方向ビットdを反転する」
+    /// の形にそろえてある。方向ビットは、足すときは立っていない升に立て、引くときは立っている升から下ろすので、
+    /// どちらも反転に等しい。書き換えはどれも足し引きと反転だけなので、戻しは逆の操作を順不同で当てればよい。
+    /// 語は 下位10ビットが表の通しの添字（c×LEN＋i）、10〜13ビットがn、14〜16ビットがd、17ビットがADDである
     #[inline(always)]
-    fn log_ray<const ADD: bool>(&mut self, c: usize, i: usize) {
-        let e = (c * LEN + i) as u32 | u32::from(self.longdir[c][i]) << 16 | u32::from(ADD) << 24;
+    fn log_ray<const ADD: bool>(&mut self, c: usize, i: usize, n: u32, d: usize) {
+        let e = (c * LEN + i) as u32 | n << 10 | (d as u32) << 14 | u32::from(ADD) << 17;
         self.ray_log.push(e);
     }
 
-    /// `ray_log` のstartから後ろを逆順に戻す。
+    /// 色cの升iから続くn升（1〜8、同じ列の中）の利き数に1を足すか引き、方向ビットdを反転する。
+    #[inline(always)]
+    fn column_run<const ADD: bool, const LOG: bool>(
+        &mut self,
+        c: usize,
+        i: usize,
+        n: u32,
+        d: usize,
+    ) {
+        debug_assert!((1..=8).contains(&n) && i + 8 <= LEN);
+        let mask = ONES64 >> (64 - 8 * n);
+        // SAFETY: iは盤上の升で、その後ろ8升も配列の内側にある（下の壁が6升以上ある）
+        unsafe {
+            let q = self.count[c].as_mut_ptr().add(i).cast::<u64>();
+            let v = q.read_unaligned();
+            q.write_unaligned(if ADD {
+                v.wrapping_add(mask)
+            } else {
+                v.wrapping_sub(mask)
+            });
+            let q = self.longdir[c].as_mut_ptr().add(i).cast::<u64>();
+            q.write_unaligned(q.read_unaligned() ^ (mask << d));
+        }
+        if LOG {
+            self.log_ray::<ADD>(c, i, n, d);
+        }
+    }
+
+    /// `ray_log` のstartから後ろの書き換えを、逆の操作で戻す。
     #[inline]
     fn replay_ray_log(&mut self, start: usize) {
-        let count = self.count.as_flattened_mut();
-        let longdir = self.longdir.as_flattened_mut();
-        for &e in self.ray_log[start..].iter().rev() {
-            let off = (e & 0xFFFF) as usize;
-            // 足した升は1引き、引いた升は1足す
-            count[off] = count[off].wrapping_add(1u8.wrapping_sub(((e >> 23) & 2) as u8));
-            longdir[off] = (e >> 16) as u8;
+        let count = self.count.as_flattened_mut().as_mut_ptr();
+        let longdir = self.longdir.as_flattened_mut().as_mut_ptr();
+        for &e in self.ray_log[start..].iter() {
+            let off = (e & 0x3FF) as usize;
+            let n = (e >> 10) & 15;
+            let d = (e >> 14) & 7;
+            let add = u64::from((e >> 17) & 1);
+            let mask = ONES64 >> (64 - 8 * n);
+            debug_assert!(off + 8 <= 2 * LEN);
+            // SAFETY: 記録した添字は `column_run` と同じく、後ろ8升が表の内側にある
+            unsafe {
+                let q = count.add(off).cast::<u64>();
+                // 足した升は1引き、引いた升は1足す
+                let v = q.read_unaligned().wrapping_add(mask);
+                q.write_unaligned(v.wrapping_sub((mask & add.wrapping_neg()) << 1));
+                let q = longdir.add(off).cast::<u64>();
+                q.write_unaligned(q.read_unaligned() ^ (mask << d));
+            }
         }
         self.ray_log.truncate(start);
     }
 
     /// 升sの先、方向dへ伸びる色cの飛び利きを足す（ADD）か引く。最初の駒の升まで含める。
+    ///
+    /// 縦の線（上・下）は同じ列の続いた升なので、駒のいる升の集合から長さを引き、語1つでまとめて書く。
     #[inline]
     fn ray<const ADD: bool, const LOG: bool>(&mut self, c: usize, s: u8, d: usize) {
+        if d == UP || d == DOWN {
+            let f = file_of(s);
+            let r = u32::from(rank_of(s));
+            let col = ((self.occ[0] | self.occ[1]) >> (9 * u32::from(f))) as u32 & 0x1FF;
+            if d == UP {
+                if r == 0 {
+                    return;
+                }
+                let o = col & ((1 << r) - 1);
+                let n = if o == 0 {
+                    r
+                } else {
+                    r - (31 - o.leading_zeros())
+                };
+                self.column_run::<ADD, LOG>(c, s as usize - n as usize, n, d);
+            } else {
+                if r == 8 {
+                    return;
+                }
+                let o = col >> (r + 1);
+                let n = if o == 0 {
+                    8 - r
+                } else {
+                    o.trailing_zeros() + 1
+                };
+                self.column_run::<ADD, LOG>(c, s as usize + 1, n, d);
+            }
+            return;
+        }
         let delta = DELTA[d] as u8;
         let b = 1u8 << d;
         let mut t = s.wrapping_add(delta);
@@ -349,7 +425,7 @@ impl Position {
                 break;
             }
             if LOG {
-                self.log_ray::<ADD>(c, i);
+                self.log_ray::<ADD>(c, i, 1, d);
             }
             if ADD {
                 self.count[c][i] += 1;
@@ -386,6 +462,14 @@ impl Position {
     /// 間の升が空きで、bがaから方向dの線上にあることが前提。
     #[inline]
     fn segment<const ADD: bool, const LOG: bool>(&mut self, c: usize, a: u8, b: u8, d: usize) {
+        if d == UP {
+            self.column_run::<ADD, LOG>(c, b as usize, u32::from(a - b), d);
+            return;
+        }
+        if d == DOWN {
+            self.column_run::<ADD, LOG>(c, a as usize + 1, u32::from(b - a), d);
+            return;
+        }
         let delta = DELTA[d] as u8;
         let bit = 1u8 << d;
         let mut t = a;
@@ -393,7 +477,7 @@ impl Position {
             t = t.wrapping_add(delta);
             let i = t as usize;
             if LOG {
-                self.log_ray::<ADD>(c, i);
+                self.log_ray::<ADD>(c, i, 1, d);
             }
             if ADD {
                 self.count[c][i] += 1;
