@@ -551,15 +551,6 @@ impl Position {
         let knight_to = ks.knight_to;
         let occ_all = self.occ[0] | self.occ[1];
         let empty = ALL81 & !occ_all;
-        // 駒打ちの候補の升。coreと同じ駒種の順
-        let drops: [(u8, u128); 6] = [
-            (GOLD, ks.gold_to),
-            (SILVER, ks.silver_to),
-            (KNIGHT, knight_to),
-            (LANCE, ks.lance_to),
-            (ROOK, ks.rook_adj),
-            (BISHOP, ks.bishop_adj),
-        ];
         // 玉の逃げ場: 玉の隣で、相手（玉の側）の駒がなく、手番側の利きもない升（方向のビット）
         let escapes = self.mate_escapes(us, ksq);
         let cand = &tab.cand[k81];
@@ -570,7 +561,7 @@ impl Position {
         {
             return Some(m);
         }
-        self.mate_drops::<COUNT>(&drops, escapes, ksq, near, empty, occ_all, cnt)
+        self.mate_drops::<COUNT>(ks, escapes, ksq, near, empty, occ_all, cnt)
     }
 
     /// 相手玉の逃げ場（方向のビット）。1手詰めの列挙の1段目。
@@ -712,7 +703,7 @@ impl Position {
     #[allow(clippy::too_many_arguments)]
     fn mate_drops<const COUNT: bool>(
         &self,
-        drops: &[(u8, u128); 6],
+        ks: &KingSets,
         escapes: u8,
         ksq: u8,
         near: u128,
@@ -722,7 +713,16 @@ impl Position {
     ) -> Option<Move> {
         let us = self.side;
         let ui = us.index();
-        for &(pt, targets) in drops {
+        // 駒打ちの候補の升。coreと同じ駒種の順。配列を組まずに表から直接読む
+        for pt in [GOLD, SILVER, KNIGHT, LANCE, ROOK, BISHOP] {
+            let targets = match pt {
+                GOLD => ks.gold_to,
+                SILVER => ks.silver_to,
+                KNIGHT => ks.knight_to,
+                LANCE => ks.lance_to,
+                ROOK => ks.rook_adj,
+                _ => ks.bishop_adj,
+            };
             if self.hand_ids[ui][hand_index(pt)] == 0 {
                 continue;
             }
