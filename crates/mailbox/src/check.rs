@@ -45,19 +45,6 @@ pub(crate) struct CheckInfo {
 pub(crate) struct CheckSlot {
     pub(crate) valid: Cell<bool>,
     info: Cell<CheckInfo>,
-    /// 手番側の玉にピンされた手番側の駒の升の集合（81升）。`pins_valid` が真のときだけ読む。
-    /// 指し手生成がノードの中で何度も呼ばれるので、深さごとに1回だけ求める（ADR-0241の第16回）
-    pub(crate) pins: Cell<u128>,
-    pub(crate) pins_valid: Cell<bool>,
-}
-
-impl CheckSlot {
-    /// この深さの欄を全部無効にする。局面を積むたびに呼ぶ。
-    #[inline(always)]
-    pub(crate) fn invalidate(&self) {
-        self.valid.set(false);
-        self.pins_valid.set(false);
-    }
 }
 
 /// SEEで攻め駒を選ぶ順（安い順）。coreの `SEE_ORDER` と同じで、金と成金4種は同じ組。
