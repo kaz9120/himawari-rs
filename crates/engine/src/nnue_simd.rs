@@ -8,7 +8,9 @@ use std::simd::Simd;
 use std::simd::cmp::SimdOrd;
 use std::simd::num::SimdInt;
 
-use crate::nnue::{CONCAT, FT_OUT, HALF, L1_OUT, L1_PAD, L2_OUT, L2_PAD, L3_OUT, NnueNetwork};
+use crate::nnue::{
+    CONCAT, EFF_OUT, FT_OUT, HALF, L1_OUT, L1_PAD, L2_OUT, L2_PAD, L3_OUT, NnueNetwork,
+};
 use crate::value::Value;
 
 const I16_LANES: usize = 16;
@@ -27,6 +29,7 @@ const _: () = assert!(FT_OUT.is_multiple_of(FT_I8_LANES));
 /// 対の積は前半・後半を16レーンずつ突き合わせる（ADR-0171）。
 /// HALFが16の倍数でないと末尾が落ちる。
 const _: () = assert!(HALF.is_multiple_of(I16_LANES));
+const _: () = assert!(EFF_OUT.is_multiple_of(I16_LANES));
 
 /// `dst[k] = src[k] - Σsubs[·][k] + Σadds[·][k]`（i16、ラップ加減算。
 /// ADR-0151群A・群N）。
@@ -83,6 +86,51 @@ pub fn ft_apply<const V: usize, const NS: usize, const NA: usize>(
         }
         for (k, a) in acc.iter().enumerate() {
             dst[k][i] = a.to_array();
+        }
+    }
+}
+
+/// 利きのaccの両視点を、レジスタに置いたまま更新する（ADR-0242の段2）。
+///
+/// `each` は1升ごとに `(引く行, 足す行)` の添字を視点の組で返す。引く行が無い升は
+/// `None` を返す。accは両視点とも64次元なら8本のベクトルに載るので、全部の升を
+/// 当ててから1回だけ書き戻す。巡回加算なので、1行ずつ当てる版とビット一致する。
+#[inline(always)]
+pub fn effect_rows_update(
+    net: &NnueNetwork,
+    acc: &mut [[i16; EFF_OUT]; 2],
+    mut each: impl FnMut() -> Option<(Option<[u32; 2]>, [u32; 2])>,
+) {
+    const CHUNKS: usize = EFF_OUT / I16_LANES;
+    let row = |f: u32| {
+        let at = f as usize * EFF_OUT;
+        &net.eff_w[at..at + EFF_OUT].as_chunks::<I16_LANES>().0[..CHUNKS]
+    };
+    let mut a: [[Simd<i16, I16_LANES>; CHUNKS]; 2] = std::array::from_fn(|c| {
+        let src = &acc[c].as_chunks::<I16_LANES>().0[..CHUNKS];
+        std::array::from_fn(|i| Simd::from_array(src[i]))
+    });
+    while let Some((sub, add)) = each() {
+        for (c, a) in a.iter_mut().enumerate() {
+            let n = row(add[c]);
+            match sub {
+                Some(sub) => {
+                    let o = row(sub[c]);
+                    for ((v, w), x) in a.iter_mut().zip(n).zip(o) {
+                        *v += Simd::from_array(*w) - Simd::from_array(*x);
+                    }
+                }
+                None => {
+                    for (v, w) in a.iter_mut().zip(n) {
+                        *v += Simd::from_array(*w);
+                    }
+                }
+            }
+        }
+    }
+    for (dst, a) in acc.iter_mut().zip(&a) {
+        for (d, v) in dst.as_chunks_mut::<I16_LANES>().0.iter_mut().zip(a) {
+            *d = v.to_array();
         }
     }
 }

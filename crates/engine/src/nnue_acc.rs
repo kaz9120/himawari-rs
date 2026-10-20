@@ -13,7 +13,7 @@ use himawari_core::{Bitboard, Color, DirtyPiece, Piece, PieceType, Position, Squ
 
 use crate::nnue::{
     CONCAT, EFF_BASE, EFF_OUT, EffectLevels, FT_OUT, FtWeight, HALF, NnueNetwork, effect_code,
-    effect_code_index, effect_row, effect_row_add16, effect_row_swap16,
+    effect_code_index,
 };
 use crate::nnue_simd;
 use crate::value::{MAX_PLY, Value};
@@ -516,7 +516,7 @@ fn hand_delta_of(pos: &Position, dirty: &DirtyPiece) -> Option<HandDelta> {
 }
 
 /// 変わった升の行だけを入れ替える（ADR-0237のD2）。`e` は参照の局面の
-/// accと升の語を持っている。
+/// accと升の語を持っている。両視点をまとめて当てる（ADR-0242の段2）。
 fn effect_apply(
     net: &NnueNetwork,
     pos: &Position,
@@ -524,21 +524,21 @@ fn effect_apply(
     e: &mut EffEntry,
     changed: Bitboard,
 ) {
-    for sq in changed {
-        let new = effect_code(pos, levels, sq);
-        let old = e.codes[sq.index()];
-        if old == new {
-            continue;
+    let codes = &mut e.codes;
+    let mut sqs = changed.into_iter();
+    nnue_simd::effect_rows_update(net, &mut e.acc, || {
+        for sq in sqs.by_ref() {
+            let new = effect_code(pos, levels, sq);
+            let old = codes[sq.index()];
+            if old == new {
+                continue;
+            }
+            codes[sq.index()] = new;
+            let idx = |code| [Color::Black, Color::White].map(|c| effect_code_index(c, sq, code));
+            return Some((Some(idx(old)), idx(new)));
         }
-        e.codes[sq.index()] = new;
-        for c in [Color::Black, Color::White] {
-            effect_row_swap16(
-                &mut e.acc[c.index()],
-                effect_row(net, effect_code_index(c, sq, old)),
-                effect_row(net, effect_code_index(c, sq, new)),
-            );
-        }
-    }
+        None
+    });
 }
 
 /// 81升を全計算する（ADR-0237のD3と同じ値になる）。
@@ -546,17 +546,21 @@ fn effect_refresh(net: &NnueNetwork, pos: &Position, levels: &EffectLevels, e: &
     for c in [Color::Black, Color::White] {
         e.acc[c.index()].copy_from_slice(&net.eff_b[..EFF_OUT]);
     }
-    for i in 0..81u8 {
-        let sq = Square::from_index(i);
-        let code = effect_code(pos, levels, sq);
-        e.codes[sq.index()] = code;
-        for c in [Color::Black, Color::White] {
-            effect_row_add16(
-                &mut e.acc[c.index()],
-                effect_row(net, effect_code_index(c, sq, code)),
-            );
+    let codes = &mut e.codes;
+    let mut i = 0u8;
+    nnue_simd::effect_rows_update(net, &mut e.acc, || {
+        if i == 81 {
+            return None;
         }
-    }
+        let sq = Square::from_index(i);
+        i += 1;
+        let code = effect_code(pos, levels, sq);
+        codes[sq.index()] = code;
+        Some((
+            None,
+            [Color::Black, Color::White].map(|c| effect_code_index(c, sq, code)),
+        ))
+    });
 }
 
 /// 1手ぶんの差分の重み行。玉は特徴に含まれないので、引く行も足す行も
