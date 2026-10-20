@@ -343,6 +343,8 @@ impl SearchBoard {
             GenType::NonEvasions => himawari_mailbox::GenType::NonEvasions,
         };
         self.mb.generate(g, all, &mut mbconv::CoreSink(list));
+        // 照合の引数は、照合するビルドでだけ作る。作るだけで確保が走る
+        #[cfg(mb_shadow)]
         self.shadow("generate", &list.as_slice().to_vec(), |p| {
             let mut want = MoveList::default();
             himawari_core::generate(p, gt, all, &mut want);
@@ -358,6 +360,7 @@ impl SearchBoard {
     #[inline(always)]
     pub fn generate_legal(&self, all: bool, list: &mut MoveList) {
         self.mb.generate_legal(all, &mut mbconv::CoreSink(list));
+        #[cfg(mb_shadow)]
         self.shadow("generate_legal", &list.as_slice().to_vec(), |p| {
             let mut want = MoveList::default();
             himawari_core::generate_legal(p, all, &mut want);
