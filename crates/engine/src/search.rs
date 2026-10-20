@@ -793,7 +793,7 @@ impl Worker {
         if let Some(v) = self.shared.eval_hash.probe(key) {
             return v;
         }
-        let v = self.evaluator.evaluate_board(&self.pos);
+        let v = self.evaluator.evaluate(&self.pos);
         self.shared.eval_hash.store(key, v);
         v
     }
@@ -863,7 +863,7 @@ impl Worker {
         }
         // null moveをまたぐと2手前・4手前の手が繋がらない。局面が動いて
         // いない手数が浅いうちも対象にしない
-        if self.pos.state().plies_from_null <= 6 || ply < 18 {
+        if self.pos.plies_from_null() <= 6 || ply < 18 {
             return false;
         }
         let move2 = self.stack[ply + STACK_OFFSET - 2].current_move;
@@ -1649,7 +1649,7 @@ impl Worker {
         self.nodes += 1;
         self.check_limits();
         if ply >= MAX_PLY {
-            return self.evaluator.evaluate_board(&self.pos);
+            return self.evaluator.evaluate(&self.pos);
         }
 
         if let Some(v) = self.terminal_value(ply) {
@@ -1686,7 +1686,7 @@ impl Worker {
         self.stack[ply + STACK_OFFSET].follow_pv = follow_pv;
         // 1手前が取った駒と、1手前の移動先（yaneuraou-search.cpp:2355, 2550）。
         // historyの更新条件が繰り返し読む
-        let prior_capture = self.pos.state().captured;
+        let prior_capture = self.pos.captured();
         let prev_move = self.stack[ply + STACK_OFFSET - 1].current_move;
         let prev_sq = if prev_move.is_special() {
             None
@@ -2815,7 +2815,7 @@ impl Worker {
         self.nodes += 1;
         self.check_limits();
         if ply >= MAX_PLY {
-            return self.evaluator.evaluate_board(&self.pos);
+            return self.evaluator.evaluate(&self.pos);
         }
         if let Some(v) = self.terminal_value(ply) {
             return v;

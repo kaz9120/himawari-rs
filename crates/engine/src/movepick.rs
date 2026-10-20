@@ -11,9 +11,7 @@
 use std::sync::Arc;
 use std::sync::atomic::{AtomicI16, Ordering};
 
-use himawari_core::{
-    Color, GenType, Move, MoveList, Piece, PieceType, Position, Square, piece_value,
-};
+use himawari_core::{Color, GenType, Move, MoveList, Piece, PieceType, Square, piece_value};
 
 use crate::board::SearchBoard;
 
@@ -289,7 +287,7 @@ impl CorrectionHistory {
     /// 4系統の合成前の生の値を取り出す（yaneuraou-search.cpp:728-731）。
     /// 返り値は (歩, 小駒, 先手非歩, 後手非歩)。
     #[inline]
-    pub fn probe(&self, pos: &Position) -> (i32, i32, i32, i32) {
+    pub fn probe(&self, pos: &SearchBoard) -> (i32, i32, i32, i32) {
         let stm = pos.side_to_move().index();
         (
             self.get(pos.pawn_key(), stm, CORR_PAWN),
@@ -309,7 +307,7 @@ impl CorrectionHistory {
 
     /// 4系統をまとめて更新する（yaneuraou-search.cpp:759-762）。
     /// 系統ごとの重みも参照実装のものを使う。
-    pub fn update_all(&self, pos: &Position, bonus: i32) {
+    pub fn update_all(&self, pos: &SearchBoard, bonus: i32) {
         /// 非歩系統の重み（yaneuraou-search.cpp:755）。
         const NON_PAWN_WEIGHT: i32 = 187;
         let stm = pos.side_to_move().index();

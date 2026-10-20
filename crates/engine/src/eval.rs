@@ -6,11 +6,12 @@
 
 use std::sync::Arc;
 
-use himawari_core::{Color, Position};
+use himawari_core::Color;
+#[cfg(test)]
+use himawari_core::Position;
 
-use crate::board::SearchBoard;
 use crate::nnue::NnueNetwork;
-use crate::nnue_acc::NnueState;
+use crate::nnue_acc::{EvalBoard, NnueState};
 use crate::value::Value;
 
 const TEMPO: Value = 20;
@@ -44,14 +45,14 @@ impl Evaluator {
         })
     }
 
-    pub fn new_search(&mut self, _pos: &Position) {
+    pub fn new_search<B: EvalBoard + ?Sized>(&mut self, _pos: &B) {
         match self {
             Evaluator::Material(m) => m.depth = 0,
             Evaluator::Nnue(n) => n.state.reset(),
         }
     }
 
-    pub fn push(&mut self, pos: &Position) {
+    pub fn push<B: EvalBoard + ?Sized>(&mut self, pos: &B) {
         match self {
             Evaluator::Material(m) => m.depth += 1,
             Evaluator::Nnue(n) => n.state.push(pos),
@@ -68,11 +69,11 @@ impl Evaluator {
         }
     }
 
-    /// 手番視点の評価値。
-    pub fn evaluate(&mut self, pos: &Position) -> Value {
+    /// 手番視点の評価値。盤はcoreの局面でも探索の盤（`SearchBoard`）でもよい。
+    pub fn evaluate<B: EvalBoard + ?Sized>(&mut self, pos: &B) -> Value {
         match self {
             Evaluator::Material(_) => {
-                let m = pos.state().material;
+                let m = pos.material();
                 let v = if pos.side_to_move() == Color::Black {
                     m
                 } else {
@@ -81,19 +82,6 @@ impl Evaluator {
                 v + TEMPO
             }
             Evaluator::Nnue(n) => n.state.evaluate(&n.net, pos),
-        }
-    }
-
-    /// 探索の盤の評価値（手番視点）。値は `evaluate(b.position())` と同じである。
-    ///
-    /// 利き数の入力（ADR-0237）の段階の集合を、盤から受け取る。配列盤の研究
-    /// （ADR-0241の段階6）では、配列盤が持つ利き数から作る。
-    pub fn evaluate_board(&mut self, b: &SearchBoard) -> Value {
-        match self {
-            Evaluator::Material(_) => self.evaluate(b.position()),
-            Evaluator::Nnue(n) => n
-                .state
-                .evaluate_with(&n.net, b.position(), || b.effect_levels()),
         }
     }
 }

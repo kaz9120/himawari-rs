@@ -300,6 +300,13 @@ impl Position {
         self.states.last().expect("state stack is never empty")
     }
 
+    /// 積んである状態の全部。最後が今の局面である。
+    /// 配列盤の研究（ADR-0241の第13回）が、千日手の判定に要る過去の局面のキーを写すのに使う。
+    #[inline]
+    pub fn state_history(&self) -> &[StateInfo] {
+        &self.states
+    }
+
     #[inline]
     pub fn checkers(&self) -> Bitboard {
         self.state().checkers

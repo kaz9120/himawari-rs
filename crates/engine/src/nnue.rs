@@ -565,7 +565,11 @@ impl EffectLevels {
 /// 先手と後手の利き数（各2ビット、3で打ち切り）である。視点ごとの特徴の
 /// indexは `effect_code_index` で戻す。
 #[inline]
-pub fn effect_code(pos: &Position, levels: &EffectLevels, sq: Square) -> u16 {
+pub fn effect_code<B: crate::nnue_acc::EvalBoard + ?Sized>(
+    pos: &B,
+    levels: &EffectLevels,
+    sq: Square,
+) -> u16 {
     let pc = pos.piece_on(sq);
     let p = if pc.is_empty() {
         0

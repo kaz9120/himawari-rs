@@ -17,9 +17,11 @@ actdump = []
 # SPSAの対象定数をatomicにしてUSIオプションへ出す（ADR-0143）。
 # 通常のビルドには入らない。
 tune = []
-# 探索の盤の問い合わせを配列盤へ回す（ADR-0241の段階6、研究ブランチだけ）。
+# 探索の盤をcoreから配列盤へ替える（ADR-0241の段階6、研究ブランチだけ）。
 # 既定はcoreのまま。cargo build -p himawari-usi --features himawari-engine/mailbox で作る
 mailbox = ["dep:himawari-mailbox"]
+# mailboxに加えてcoreの局面も並べて持ち、デバッグビルドで配列盤の答えを毎回coreと比べる（照合用）
+mailbox-shadow = ["mailbox"]
 # coreの盤のまま、擬似合法手の生成を合法手で濾す統制群（ADR-0241の第12回）。
 # 配列盤の生成が合法手だけを出すことで木が変わる分を、配列盤なしで再現する
 legal-gen = []

@@ -9,7 +9,7 @@
 //! 持つ（D2）。評価のときに利き数の段階を集合で作り直し、計算済みの祖先と
 //! 比べて、中身か段階が変わった升の行だけを足し引きする。
 
-use himawari_core::{Bitboard, Color, DirtyPiece, PieceType, Position, Square, bonapiece};
+use himawari_core::{Bitboard, Color, DirtyPiece, Piece, PieceType, Position, Square, bonapiece};
 
 use crate::nnue::{
     CONCAT, EFF_BASE, EFF_OUT, EffectLevels, FT_OUT, FtWeight, HALF, NnueNetwork, effect_code,
@@ -17,6 +17,66 @@ use crate::nnue::{
 };
 use crate::nnue_simd;
 use crate::value::{MAX_PLY, Value};
+
+/// 評価関数が盤から読むもの（ADR-0241の第13回）。
+///
+/// coreの局面と探索の盤（`SearchBoard`）が実装する。探索の盤は、配列盤の研究のフィーチャ
+/// `mailbox` ではcoreの局面を持たずに、配列盤から同じ値を返す。
+pub trait EvalBoard {
+    fn side_to_move(&self) -> Color;
+    fn king(&self, c: Color) -> Square;
+    fn hand_count(&self, owner: Color, pt: PieceType) -> u32;
+    fn piece_on(&self, sq: Square) -> Piece;
+    /// 直前の手の差分の材料。
+    fn dirty(&self) -> DirtyPiece;
+    /// 視点cのBonaPiece集合（`bonapiece::bona_piece_bits` と同じ値）。
+    fn bona_piece_bits(&self, c: Color, out: &mut bonapiece::BonaBits);
+    /// 利き数の段階の集合（`EffectLevels::build` と同じ値）。
+    fn effect_levels(&self) -> EffectLevels;
+    /// 駒割り（先手から見た値）。駒割りだけの評価関数が使う。
+    fn material(&self) -> i32;
+    /// 全計算との突き合わせ（テストとデバッグビルド）に使うcoreの局面。無ければ突き合わせない。
+    fn core_position(&self) -> Option<&Position>;
+}
+
+impl EvalBoard for Position {
+    #[inline(always)]
+    fn side_to_move(&self) -> Color {
+        Position::side_to_move(self)
+    }
+    #[inline(always)]
+    fn king(&self, c: Color) -> Square {
+        Position::king(self, c)
+    }
+    #[inline(always)]
+    fn hand_count(&self, owner: Color, pt: PieceType) -> u32 {
+        self.hand(owner).count(pt)
+    }
+    #[inline(always)]
+    fn piece_on(&self, sq: Square) -> Piece {
+        Position::piece_on(self, sq)
+    }
+    #[inline(always)]
+    fn dirty(&self) -> DirtyPiece {
+        self.state().dirty
+    }
+    #[inline(always)]
+    fn bona_piece_bits(&self, c: Color, out: &mut bonapiece::BonaBits) {
+        bonapiece::bona_piece_bits(self, c, out);
+    }
+    #[inline(always)]
+    fn effect_levels(&self) -> EffectLevels {
+        EffectLevels::build(self)
+    }
+    #[inline(always)]
+    fn material(&self) -> i32 {
+        self.state().material
+    }
+    #[inline(always)]
+    fn core_position(&self) -> Option<&Position> {
+        Some(self)
+    }
+}
 
 /// 手駒の増減1件（キャプチャで増、駒打ちで減）。
 #[derive(Clone, Copy)]
@@ -187,8 +247,8 @@ impl NnueState {
     }
 
     /// do_move直後のposで呼ぶ。差分材料だけ積む（計算はしない）。
-    pub fn push(&mut self, pos: &Position) {
-        let dirty = pos.state().dirty;
+    pub fn push<B: EvalBoard + ?Sized>(&mut self, pos: &B) {
+        let dirty = pos.dirty();
         let hand = hand_delta_of(pos, &dirty);
         self.top += 1;
         debug_assert!(
@@ -213,20 +273,10 @@ impl NnueState {
     }
 
     /// 現局面の評価値。必要な視点だけ遡り差分または全計算で作る。
-    pub fn evaluate(&mut self, net: &NnueNetwork, pos: &Position) -> Value {
-        self.evaluate_with(net, pos, || EffectLevels::build(pos))
-    }
-
-    /// `evaluate` と同じ値を返す。利きの段階の集合は、要るときだけ `levels` を呼んで受け取る。
     ///
-    /// 探索の盤（`SearchBoard`）が段階の集合を自前で作れるときに使う（ADR-0241の段階6）。
-    /// `levels` は `EffectLevels::build(pos)` と同じ値を返す契約である。
-    pub fn evaluate_with(
-        &mut self,
-        net: &NnueNetwork,
-        pos: &Position,
-        levels: impl FnOnce() -> EffectLevels,
-    ) -> Value {
+    /// 盤は `EvalBoard` 越しに読む。coreの局面のほか、探索の盤（`SearchBoard`）も渡せる
+    /// （ADR-0241の第13回）。
+    pub fn evaluate<B: EvalBoard + ?Sized>(&mut self, net: &NnueNetwork, pos: &B) -> Value {
         self.ensure_both(net, pos);
         let stm = pos.side_to_move();
         let top = &self.entries[self.top];
@@ -238,14 +288,16 @@ impl NnueState {
         }
         if EFF_OUT != 0 {
             // 利きの部分は祖先からの差分で作る（ADR-0237のD2）
-            self.ensure_effect(net, pos, levels);
+            self.ensure_effect(net, pos);
             let e = &self.eff[self.top];
             for (k, c) in [(0usize, stm), (1, stm.flip())] {
                 let at = EFF_BASE + k * EFF_OUT;
                 crate::nnue::effect_clip16(&e.acc[c.index()], &mut concat[at..at + EFF_OUT]);
             }
-            if cfg!(any(test, debug_assertions)) {
-                self.check_effect(net, pos);
+            if cfg!(any(test, debug_assertions))
+                && let Some(p) = pos.core_position()
+            {
+                self.check_effect(net, p);
             }
         }
         #[cfg(feature = "actdump")]
@@ -259,17 +311,12 @@ impl NnueState {
     /// 変わった升を集める。**比べる相手は祖先の値そのものなので、途中の段の
     /// 材料は要らない。** 遅延で当てる前提（push は印を付けるだけ）と両立する。
     /// 利きの特徴は玉位置に依らないので、玉が動いても遡れる。
-    fn ensure_effect(
-        &mut self,
-        net: &NnueNetwork,
-        pos: &Position,
-        levels: impl FnOnce() -> EffectLevels,
-    ) {
+    fn ensure_effect<B: EvalBoard + ?Sized>(&mut self, net: &NnueNetwork, pos: &B) {
         let top = self.top;
         if self.eff[top].computed {
             return;
         }
-        let levels = levels();
+        let levels = pos.effect_levels();
         // 祖先までの手で、駒が出入りした升
         let mut moved = Bitboard::EMPTY;
         let mut i = top;
@@ -378,7 +425,7 @@ impl NnueState {
     /// 遅いほうの起点から上の区間だけである。** 手前の区間は片色ずつ
     /// 埋め、そこから上を1パスで両色へ書く。玉が動いた視点は遡れないので
     /// 全計算になり、その視点は融合の対象から外れる。
-    fn ensure_both(&mut self, net: &NnueNetwork, pos: &Position) {
+    fn ensure_both<B: EvalBoard + ?Sized>(&mut self, net: &NnueNetwork, pos: &B) {
         let top = self.top;
         let src = [
             self.computed_ancestor(Color::Black),
@@ -432,7 +479,14 @@ impl NnueState {
 
     /// 段 `from` から `to` まで、視点cの差分を1段ずつ適用する。
     /// `from` は計算済みで、`from+1..=to` を埋める。
-    fn apply_range(&mut self, net: &NnueNetwork, pos: &Position, c: Color, from: usize, to: usize) {
+    fn apply_range<B: EvalBoard + ?Sized>(
+        &mut self,
+        net: &NnueNetwork,
+        pos: &B,
+        c: Color,
+        from: usize,
+        to: usize,
+    ) {
         // この区間に視点cの玉移動はないので、玉位置は現局面のもので通る
         let king = pos.king(c);
         for j in from + 1..=to {
@@ -450,7 +504,13 @@ impl NnueState {
 
     /// 同上を両視点まとめて行う（ADR-0151群N）。連鎖の走査とdirtyの
     /// デコードが1回で済み、accへの読み書きが2本のストリームで並ぶ。
-    fn apply_range_both(&mut self, net: &NnueNetwork, pos: &Position, from: usize, to: usize) {
+    fn apply_range_both<B: EvalBoard + ?Sized>(
+        &mut self,
+        net: &NnueNetwork,
+        pos: &B,
+        from: usize,
+        to: usize,
+    ) {
         let views = [
             (Color::Black, pos.king(Color::Black)),
             (Color::White, pos.king(Color::White)),
@@ -478,13 +538,13 @@ impl NnueState {
     ///
     /// キャッシュが空のときは、バイアスを置いて全特徴を足す形になり、
     /// 従来の全計算と同じ経路をたどる。
-    fn refresh_top(&mut self, net: &NnueNetwork, pos: &Position, c: Color) {
+    fn refresh_top<B: EvalBoard + ?Sized>(&mut self, net: &NnueNetwork, pos: &B, c: Color) {
         let king = pos.king(c);
         // 玉位置を固定した特徴インデックスの起点。BonaPieceを足せば
         // そのまま特徴インデックスになる
         let base = bonapiece::halfkp_index(c, king, 0);
         let mut cur = [0u128; BP_BLOCKS];
-        bonapiece::bona_piece_bits(pos, c, &mut cur);
+        pos.bona_piece_bits(c, &mut cur);
 
         // scratch・finny・entriesを同時に借りられないので、いったん取り出して
         // 戻す。takeは空Vecとの交換なので確保は起きず、容量も残る
@@ -536,7 +596,7 @@ impl Default for NnueState {
 }
 
 /// dirtyから手駒の増減を復元する。posはdo_move直後の局面。
-fn hand_delta_of(pos: &Position, dirty: &DirtyPiece) -> Option<HandDelta> {
+fn hand_delta_of<B: EvalBoard + ?Sized>(pos: &B, dirty: &DirtyPiece) -> Option<HandDelta> {
     if dirty.count == 2 {
         // キャプチャ: piece_new[1]が手駒に入った駒（枚数は取った後の値）
         let pc = dirty.piece_new[1];
@@ -545,7 +605,7 @@ fn hand_delta_of(pos: &Position, dirty: &DirtyPiece) -> Option<HandDelta> {
         Some(HandDelta {
             owner,
             kind,
-            slot: pos.hand(owner).count(kind),
+            slot: pos.hand_count(owner, kind),
             added: true,
         })
     } else if dirty.count == 1 && dirty.from[0] == Square::NONE {
@@ -556,7 +616,7 @@ fn hand_delta_of(pos: &Position, dirty: &DirtyPiece) -> Option<HandDelta> {
         Some(HandDelta {
             owner,
             kind,
-            slot: pos.hand(owner).count(kind) + 1,
+            slot: pos.hand_count(owner, kind) + 1,
             added: false,
         })
     } else {
