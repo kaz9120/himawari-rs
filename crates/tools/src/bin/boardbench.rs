@@ -30,9 +30,8 @@ use std::time::Instant;
 use anyhow::Result;
 use clap::Parser;
 
-use himawari_core::{GenType, Move, MoveList, Piece, generate, generate_legal};
+use himawari_core::{GenType, Move, MoveList, Piece};
 use himawari_engine::SearchBoard;
-use himawari_engine::mate::mate_1ply;
 use himawari_tools::exit;
 use himawari_tools::positions::{builtin_positions, parse_position, read_positions};
 
@@ -112,7 +111,7 @@ fn visit(b: &SearchBoard, stage: Stage, list: &MoveList, t: &mut Tally) {
         Stage::Walk => {}
         Stage::Mate => {
             if !b.in_check() {
-                let r = mate_1ply(b);
+                let r = b.mate_1ply();
                 t.calls += 1;
                 t.mix(r.map_or(0, move_bits));
             }
@@ -130,7 +129,7 @@ fn visit(b: &SearchBoard, stage: Stage, list: &MoveList, t: &mut Tally) {
         Stage::Gen | Stage::Legal => {
             if !b.in_check() {
                 let mut pseudo = MoveList::default();
-                generate(b, GenType::NonEvasions, false, &mut pseudo);
+                b.generate(GenType::NonEvasions, false, &mut pseudo);
                 if stage == Stage::Gen {
                     t.mix(pseudo.len() as u64);
                 } else {
@@ -149,7 +148,7 @@ fn visit(b: &SearchBoard, stage: Stage, list: &MoveList, t: &mut Tally) {
 
 fn walk(b: &mut SearchBoard, depth: u32, stage: Stage, t: &mut Tally) {
     let mut list = MoveList::default();
-    generate_legal(b, true, &mut list);
+    b.generate_legal(true, &mut list);
     visit(b, stage, &list, t);
     for &m in list.as_slice() {
         if depth == 0 && !is_capture(b, m) {

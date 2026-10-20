@@ -6,18 +6,20 @@
 //! 探索とミクロな計測の両方が同じ費用を払う。
 //!
 //! 探索が盤に問うことは、すべてこの型のメソッドにしてある（ADR-0241の第12回・第13回）。
-//! 既定のビルドでは、どれもcoreの `Position` の同名の関数へそのまま渡す。
-//! `Deref` で `Position` のほかのメソッドも読めるが、探索と評価関数はそれを使わない。
-//! `DerefMut` は実装しない。局面を可変で借りる経路を、この型の進め戻しに限るためである。
+//! 構成はengineのフィーチャで選び、build.rsが次のcfgへ直す。
 //!
-//! 配列盤の研究（ADR-0241、研究ブランチだけ）のフィーチャは2つある。
-//!
-//! - `mailbox`: coreの局面を持たず、配列盤（`himawari_mailbox::Position`）だけで探索する。
-//!   千日手のために、根の局面を作るときにcoreの過去の局面のキーを写す
-//! - `mailbox-shadow`: `mailbox` に加えてcoreの局面も並べて持ち、同じ手で進め戻す。
+//! - 既定（フィーチャ `mailbox`、cfg `mb_search`）: coreの局面を持たず、配列盤
+//!   （`himawari_mailbox::Position`）だけで探索する。千日手のために、根の局面を作るときに
+//!   coreの過去の局面のキーを写す
+//! - `core-search`: coreの `Position` で探索する。比較と照合のために残す。`mailbox` より優先する。
+//!   この構成だけ `Deref` で `Position` のほかのメソッドも読めるが、探索と評価関数はそれを使わない
+//! - `legal-gen`: `core-search` で、擬似合法手の生成を合法手で濾す統制群
+//! - `mailbox-shadow`（cfg `mb_shadow`）: 配列盤に加えてcoreの局面も並べて持ち、同じ手で進め戻す。
 //!   デバッグビルドでは、配列盤の答えを毎回coreの答えと比べる
+//!
+//! `DerefMut` は実装しない。局面を可変で借りる経路を、この型の進め戻しに限るためである。
 
-#[cfg(not(feature = "mailbox"))]
+#[cfg(not(mb_search))]
 use std::ops::Deref;
 
 use himawari_core::bonapiece::BonaBits;
@@ -32,70 +34,80 @@ use crate::nnue_acc::EvalBoard;
 /// 探索が進め戻す盤面。
 #[derive(Clone)]
 pub struct SearchBoard {
-    #[cfg(any(not(feature = "mailbox"), feature = "mailbox-shadow"))]
+    #[cfg(any(not(mb_search), mb_shadow))]
     pos: Position,
-    #[cfg(feature = "mailbox")]
+    #[cfg(mb_search)]
     mb: himawari_mailbox::Position,
 }
 
 impl SearchBoard {
     pub fn new(pos: Position) -> SearchBoard {
-        #[cfg(feature = "mailbox")]
+        #[cfg(mb_search)]
         let mb = mbconv::from_core(&pos);
         SearchBoard {
-            #[cfg(any(not(feature = "mailbox"), feature = "mailbox-shadow"))]
+            #[cfg(any(not(mb_search), mb_shadow))]
             pos,
-            #[cfg(feature = "mailbox")]
+            #[cfg(mb_search)]
             mb,
         }
     }
 
     /// 包んでいる局面（coreの局面を持つ構成だけ）。
-    #[cfg(any(not(feature = "mailbox"), feature = "mailbox-shadow"))]
+    #[cfg(any(not(mb_search), mb_shadow))]
     #[inline(always)]
     pub fn position(&self) -> &Position {
         &self.pos
     }
 
+    /// いまの局面をcoreの局面として返す。ツールが局面を書き出すときに使う。
+    ///
+    /// 配列盤の構成ではSFENを経由して作るので、過去の局面（千日手の材料）は持たない。
+    pub fn to_position(&self) -> Position {
+        #[cfg(any(not(mb_search), mb_shadow))]
+        return self.pos.clone();
+        #[cfg(all(mb_search, not(mb_shadow)))]
+        Position::from_sfen(&self.mb.to_sfen()).expect("配列盤の出したSFENをcoreが読めない")
+    }
+
     /// 1手進める。
     #[inline(always)]
     pub fn do_move(&mut self, m: Move) {
-        #[cfg(any(not(feature = "mailbox"), feature = "mailbox-shadow"))]
+        #[cfg(any(not(mb_search), mb_shadow))]
         self.pos.do_move(m);
-        #[cfg(feature = "mailbox")]
+        #[cfg(mb_search)]
         self.mb.do_move(mbconv::to_mb(m));
     }
 
     /// `do_move` を戻す。
     #[inline(always)]
     pub fn undo_move(&mut self, m: Move) {
-        #[cfg(any(not(feature = "mailbox"), feature = "mailbox-shadow"))]
+        #[cfg(any(not(mb_search), mb_shadow))]
         self.pos.undo_move(m);
-        #[cfg(feature = "mailbox")]
+        #[cfg(mb_search)]
         self.mb.undo_move(mbconv::to_mb(m));
     }
 
     /// null moveで1手進める。
     #[inline(always)]
     pub fn do_null_move(&mut self) {
-        #[cfg(any(not(feature = "mailbox"), feature = "mailbox-shadow"))]
+        #[cfg(any(not(mb_search), mb_shadow))]
         self.pos.do_null_move();
-        #[cfg(feature = "mailbox")]
+        #[cfg(mb_search)]
         self.mb.do_null_move();
     }
 
     /// `do_null_move` を戻す。
     #[inline(always)]
     pub fn undo_null_move(&mut self) {
-        #[cfg(any(not(feature = "mailbox"), feature = "mailbox-shadow"))]
+        #[cfg(any(not(mb_search), mb_shadow))]
         self.pos.undo_null_move();
-        #[cfg(feature = "mailbox")]
+        #[cfg(mb_search)]
         self.mb.undo_null_move();
     }
 }
 
 /// 盤への問い合わせ。既定ではcoreの同名の関数へそのまま渡す。
-#[cfg(not(feature = "mailbox"))]
+#[cfg(not(mb_search))]
 impl SearchBoard {
     /// 擬似合法手を生成する。
     ///
@@ -242,7 +254,7 @@ impl SearchBoard {
     }
 }
 
-#[cfg(not(feature = "mailbox"))]
+#[cfg(not(mb_search))]
 impl EvalBoard for SearchBoard {
     #[inline(always)]
     fn side_to_move(&self) -> Color {
@@ -286,7 +298,7 @@ impl EvalBoard for SearchBoard {
     }
 }
 
-#[cfg(not(feature = "mailbox"))]
+#[cfg(not(mb_search))]
 impl Deref for SearchBoard {
     type Target = Position;
 
@@ -300,7 +312,7 @@ impl Deref for SearchBoard {
 ///
 /// 返す値はどれもcoreと同じになるように作ってある（等価な版）。
 /// `mailbox-shadow` のデバッグビルドでは毎回coreの答えと比べ、食い違えば局面を添えて止める。
-#[cfg(feature = "mailbox")]
+#[cfg(mb_search)]
 impl SearchBoard {
     /// coreの局面と比べる（`mailbox-shadow` のデバッグビルドだけ）。
     #[inline(always)]
@@ -311,7 +323,7 @@ impl SearchBoard {
         got: &T,
         want: impl FnOnce(&Position) -> T,
     ) {
-        #[cfg(feature = "mailbox-shadow")]
+        #[cfg(mb_shadow)]
         if cfg!(debug_assertions) {
             let w = want(&self.pos);
             assert_eq!(*got, w, "{what}: {}", self.pos.to_sfen());
@@ -527,7 +539,7 @@ impl SearchBoard {
     }
 }
 
-#[cfg(feature = "mailbox")]
+#[cfg(mb_search)]
 impl EvalBoard for SearchBoard {
     #[inline(always)]
     fn side_to_move(&self) -> Color {
@@ -604,16 +616,16 @@ impl EvalBoard for SearchBoard {
     }
     #[inline(always)]
     fn core_position(&self) -> Option<&Position> {
-        #[cfg(feature = "mailbox-shadow")]
+        #[cfg(mb_shadow)]
         return Some(&self.pos);
-        #[cfg(not(feature = "mailbox-shadow"))]
+        #[cfg(not(mb_shadow))]
         None
     }
 }
 
 /// coreの型と配列盤の型の変換。升を81升の通し番号と配列盤の添字の間で直す。
 /// 駒の符号と駒種は両者で同じ（OSL配列）。
-#[cfg(feature = "mailbox")]
+#[cfg(mb_search)]
 mod mbconv {
     use himawari_core::{Color, DirtyPiece, Move, Piece, PieceType, Position, Square};
     use himawari_mailbox::board::{IDX81, SQ81};

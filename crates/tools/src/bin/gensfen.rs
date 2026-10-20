@@ -248,7 +248,7 @@ fn play_one(
                     rec_ply = rec_ply.saturating_add(plies as u16);
                     // PVの初手は元局面のもので、葉では指せない
                     rec_move = Move16::NONE.0;
-                    rec_pos = quiet.pos.position().clone();
+                    rec_pos = quiet.pos.to_position();
                 }
             }
             if let Ok(packed) = pack(&rec_pos) {

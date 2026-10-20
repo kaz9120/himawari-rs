@@ -641,7 +641,7 @@ fn quiet_record(
         ));
     }
     if plies > 0 {
-        match pack(&worker.pos) {
+        match pack(&worker.pos.to_position()) {
             Ok(packed) => {
                 rec.sfen = packed;
                 // score・game_resultはどちらも手番視点である。奇数手
@@ -973,7 +973,7 @@ fn rank(input: &str, output: &str, limit: u64, skip: u64, hash_mb: usize, eval: 
             p.do_move(m);
             worker.set_position(p);
             let plies = 1 + worker.walk_to_quiet(16);
-            let Ok(packed) = pack(&worker.pos) else {
+            let Ok(packed) = pack(&worker.pos.to_position()) else {
                 break;
             };
             let mut child = rec;
