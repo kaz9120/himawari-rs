@@ -5,6 +5,8 @@
 //! 指し手生成は駒番号の一覧から引き、王手・ピン・玉の移動の合法性は利きの配列で決める。
 //! 既存の `himawari-core` には依存しない（照合のテストだけが使う）。
 
+#![feature(portable_simd)]
+
 pub mod board;
 pub mod check;
 pub mod mate;
