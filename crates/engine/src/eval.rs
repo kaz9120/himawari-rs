@@ -8,6 +8,7 @@ use std::sync::Arc;
 
 use himawari_core::{Color, Position};
 
+use crate::board::SearchBoard;
 use crate::nnue::NnueNetwork;
 use crate::nnue_acc::NnueState;
 use crate::value::Value;
@@ -80,6 +81,19 @@ impl Evaluator {
                 v + TEMPO
             }
             Evaluator::Nnue(n) => n.state.evaluate(&n.net, pos),
+        }
+    }
+
+    /// 探索の盤の評価値（手番視点）。値は `evaluate(b.position())` と同じである。
+    ///
+    /// 利き数の入力（ADR-0237）の段階の集合を、盤から受け取る。配列盤の研究
+    /// （ADR-0241の段階6）では、配列盤が持つ利き数から作る。
+    pub fn evaluate_board(&mut self, b: &SearchBoard) -> Value {
+        match self {
+            Evaluator::Material(_) => self.evaluate(b.position()),
+            Evaluator::Nnue(n) => n
+                .state
+                .evaluate_with(&n.net, b.position(), || b.effect_levels()),
         }
     }
 }

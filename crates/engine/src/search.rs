@@ -6,9 +6,7 @@
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicI64, AtomicU64, Ordering};
 
-use himawari_core::{
-    Color, Move, MoveList, Piece, PieceType, Position, Repetition, Square, generate_legal,
-};
+use himawari_core::{Color, Move, MoveList, Piece, PieceType, Position, Repetition, Square};
 
 use crate::board::SearchBoard;
 use crate::eval::Evaluator;
@@ -795,7 +793,7 @@ impl Worker {
         if let Some(v) = self.shared.eval_hash.probe(key) {
             return v;
         }
-        let v = self.evaluator.evaluate(&self.pos);
+        let v = self.evaluator.evaluate_board(&self.pos);
         self.shared.eval_hash.store(key, v);
         v
     }
@@ -1147,7 +1145,7 @@ impl Worker {
         // （yaneuraou-search.cpp:943）
         self.last_iteration_pv.clear();
         let mut list = MoveList::default();
-        generate_legal(&self.pos, false, &mut list);
+        self.pos.generate_legal(false, &mut list);
         self.root_moves = list
             .as_slice()
             .iter()
@@ -1651,7 +1649,7 @@ impl Worker {
         self.nodes += 1;
         self.check_limits();
         if ply >= MAX_PLY {
-            return self.evaluator.evaluate(&self.pos);
+            return self.evaluator.evaluate_board(&self.pos);
         }
 
         if let Some(v) = self.terminal_value(ply) {
@@ -2817,7 +2815,7 @@ impl Worker {
         self.nodes += 1;
         self.check_limits();
         if ply >= MAX_PLY {
-            return self.evaluator.evaluate(&self.pos);
+            return self.evaluator.evaluate_board(&self.pos);
         }
         if let Some(v) = self.terminal_value(ply) {
             return v;
@@ -2878,7 +2876,7 @@ impl Worker {
             // 呼ぶ。王手中も呼ばない。評価関数の呼び出しより手前に置くので、
             // 詰みがあるときはevaluate()を省ける
             if tt_hit.is_none()
-                && let Some(m) = crate::mate::mate_1ply(&self.pos)
+                && let Some(m) = self.pos.mate_1ply()
             {
                 // 次のノードで（指し手がなくなって）詰むという解釈
                 let mate = mate_in(ply + 1);

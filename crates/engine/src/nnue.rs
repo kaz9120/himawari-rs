@@ -518,6 +518,19 @@ impl EffectLevels {
         l
     }
 
+    /// 色ごとの「k+1枚以上」の升の集合（81升の通し番号のビット）から作る。
+    /// 配列盤（ADR-0241の段階6）が升ごとの利き数から作った集合を受け取る口である。
+    #[inline]
+    pub fn from_bits(bits: [[u128; 3]; 2]) -> EffectLevels {
+        let mut l = EffectLevels::EMPTY;
+        for (c, g) in bits.iter().enumerate() {
+            for (k, &b) in g.iter().enumerate() {
+                l.ge[c][k] = Bitboard::from_bits(b);
+            }
+        }
+        l
+    }
+
     #[inline(always)]
     fn add(&mut self, c: Color, x: Bitboard) {
         let g = &mut self.ge[c.index()];

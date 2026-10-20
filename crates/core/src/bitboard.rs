@@ -135,6 +135,13 @@ impl Bitboard {
         self.0
     }
 
+    /// 81升の通し番号のビット列から作る。盤外のビットは落とす。
+    /// 配列盤の研究（ADR-0241の段階6）が、升の集合をcoreの型へ渡すのに使う。
+    #[inline]
+    pub const fn from_bits(bits: u128) -> Bitboard {
+        Bitboard(bits & BOARD)
+    }
+
     /// ビットが1つでもある筋を、筋全体へ広げた集合。二歩マスクの生成に
     /// 使う（ADR-0151群D）。筋ごとの分岐を持たない。
     ///

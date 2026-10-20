@@ -12,8 +12,10 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicI16, Ordering};
 
 use himawari_core::{
-    Color, GenType, Move, MoveList, Piece, PieceType, Position, Square, generate, piece_value,
+    Color, GenType, Move, MoveList, Piece, PieceType, Position, Square, piece_value,
 };
+
+use crate::board::SearchBoard;
 
 // ---- テーブルの寸法 ----
 
@@ -651,7 +653,7 @@ impl MovePicker {
     }
 
     /// 通常探索・静止探索用（movepick.cpp:120-202）。depth <= 0で静止探索。
-    pub fn new(pos: &Position, tt_move: Move, depth: i32, ply: usize, buf: MoveBuf) -> Self {
+    pub fn new(pos: &SearchBoard, tt_move: Move, depth: i32, ply: usize, buf: MoveBuf) -> Self {
         let tt_ok = tt_move != Move::NONE && pos.pseudo_legal(tt_move);
         let stage = if pos.in_check() {
             if tt_ok {
@@ -676,7 +678,7 @@ impl MovePicker {
     /// ProbCut用（movepick.cpp:204-252）。SEEが閾値以上の取る手だけを返す。
     /// 置換表の手は取る手でありさえすれば、SEEを見ずに先に返す
     /// （movepick.cpp:245-248）。ProbCutは王手中に呼ばれない
-    pub fn new_probcut(pos: &Position, tt_move: Move, threshold: i32, buf: MoveBuf) -> Self {
+    pub fn new_probcut(pos: &SearchBoard, tt_move: Move, threshold: i32, buf: MoveBuf) -> Self {
         debug_assert!(!pos.in_check());
         let tt_ok = tt_move != Move::NONE
             && !tt_move.is_drop()
@@ -717,7 +719,7 @@ impl MovePicker {
     /// 取る手のスコア（movepick.cpp:341-342）。
     /// 取った駒の価値を7倍し、capture historyを足す。倍率7は、あとで
     /// `see_ge(m, -value/18)` に渡すためにSEEのスケールへ合わせたもの。
-    fn score_captures(&mut self, pos: &Position, h: &Histories, list: &MoveList) {
+    fn score_captures(&mut self, pos: &SearchBoard, h: &Histories, list: &MoveList) {
         for &m in list {
             let pc = m.piece_after();
             let to = m.to();
@@ -728,7 +730,13 @@ impl MovePicker {
     }
 
     /// 静かな手のスコア（movepick.cpp:362-393）。
-    fn score_quiets(&mut self, pos: &Position, h: &Histories, cont: &[usize; 6], list: &MoveList) {
+    fn score_quiets(
+        &mut self,
+        pos: &SearchBoard,
+        h: &Histories,
+        cont: &[usize; 6],
+        list: &MoveList,
+    ) {
         let pawn_slot = h.shared.pawn.slot(pos.pawn_key());
         let us = pos.side_to_move();
         for &m in list {
@@ -757,7 +765,7 @@ impl MovePicker {
     /// 王手回避のスコア（movepick.cpp:396-421）。
     fn score_evasions(
         &mut self,
-        pos: &Position,
+        pos: &SearchBoard,
         h: &Histories,
         cont: &[usize; 6],
         list: &MoveList,
@@ -784,9 +792,9 @@ impl MovePicker {
     /// 通るのは `next` の呼び出し5〜6回に1回だが、インライン化すると
     /// フレームの確保とレジスタの退避が毎回走る。
     #[inline(never)]
-    fn init_captures(&mut self, pos: &Position, h: &Histories) {
+    fn init_captures(&mut self, pos: &SearchBoard, h: &Histories) {
         let mut list = MoveList::default();
-        generate(pos, GenType::Captures, false, &mut list);
+        pos.generate(GenType::Captures, false, &mut list);
         self.moves.clear();
         self.score_captures(pos, h, &list);
         self.cur = 0;
@@ -801,9 +809,9 @@ impl MovePicker {
     /// 静かな手を生成して並べる（movepick.cpp:519-533）。
     /// 切り出す理由は `init_captures` と同じ。
     #[inline(never)]
-    fn init_quiets(&mut self, pos: &Position, h: &Histories, cont: &[usize; 6]) {
+    fn init_quiets(&mut self, pos: &SearchBoard, h: &Histories, cont: &[usize; 6]) {
         let mut list = MoveList::default();
-        generate(pos, GenType::Quiets, false, &mut list);
+        pos.generate(GenType::Quiets, false, &mut list);
         self.score_quiets(pos, h, cont, &list);
         self.end_generated = self.moves.len();
         self.end_cur = self.end_generated;
@@ -816,9 +824,9 @@ impl MovePicker {
     /// 王手回避を生成して並べる（movepick.cpp:661-668）。
     /// 切り出す理由は `init_captures` と同じ。
     #[inline(never)]
-    fn init_evasions(&mut self, pos: &Position, h: &Histories, cont: &[usize; 6]) {
+    fn init_evasions(&mut self, pos: &SearchBoard, h: &Histories, cont: &[usize; 6]) {
         let mut list = MoveList::default();
-        generate(pos, GenType::Evasions, false, &mut list);
+        pos.generate(GenType::Evasions, false, &mut list);
         self.moves.clear();
         self.score_evasions(pos, h, cont, &list);
         self.cur = 0;
@@ -828,7 +836,7 @@ impl MovePicker {
 
     /// 呼ばれるたびに擬似合法手を1つ返す（movepick.cpp:456-695）。
     /// contは1手前から6手前までのcontinuation historyの面。
-    pub fn next(&mut self, pos: &Position, h: &Histories, cont: &[usize; 6]) -> Option<Move> {
+    pub fn next(&mut self, pos: &SearchBoard, h: &Histories, cont: &[usize; 6]) -> Option<Move> {
         loop {
             match self.stage {
                 Stage::MainTt => {

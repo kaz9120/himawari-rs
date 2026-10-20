@@ -321,11 +321,12 @@ version = "0.56.1"
 dependencies = [
  "criterion",
  "himawari-core",
+ "himawari-mailbox",
 ]
 
 [[package]]
 name = "himawari-mailbox"
-version = "0.55.12"
+version = "0.56.1"
 dependencies = [
  "himawari-core",
  "himawari-engine",

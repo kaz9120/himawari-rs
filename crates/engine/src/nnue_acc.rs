@@ -214,6 +214,19 @@ impl NnueState {
 
     /// 現局面の評価値。必要な視点だけ遡り差分または全計算で作る。
     pub fn evaluate(&mut self, net: &NnueNetwork, pos: &Position) -> Value {
+        self.evaluate_with(net, pos, || EffectLevels::build(pos))
+    }
+
+    /// `evaluate` と同じ値を返す。利きの段階の集合は、要るときだけ `levels` を呼んで受け取る。
+    ///
+    /// 探索の盤（`SearchBoard`）が段階の集合を自前で作れるときに使う（ADR-0241の段階6）。
+    /// `levels` は `EffectLevels::build(pos)` と同じ値を返す契約である。
+    pub fn evaluate_with(
+        &mut self,
+        net: &NnueNetwork,
+        pos: &Position,
+        levels: impl FnOnce() -> EffectLevels,
+    ) -> Value {
         self.ensure_both(net, pos);
         let stm = pos.side_to_move();
         let top = &self.entries[self.top];
@@ -225,7 +238,7 @@ impl NnueState {
         }
         if EFF_OUT != 0 {
             // 利きの部分は祖先からの差分で作る（ADR-0237のD2）
-            self.ensure_effect(net, pos);
+            self.ensure_effect(net, pos, levels);
             let e = &self.eff[self.top];
             for (k, c) in [(0usize, stm), (1, stm.flip())] {
                 let at = EFF_BASE + k * EFF_OUT;
@@ -246,12 +259,17 @@ impl NnueState {
     /// 変わった升を集める。**比べる相手は祖先の値そのものなので、途中の段の
     /// 材料は要らない。** 遅延で当てる前提（push は印を付けるだけ）と両立する。
     /// 利きの特徴は玉位置に依らないので、玉が動いても遡れる。
-    fn ensure_effect(&mut self, net: &NnueNetwork, pos: &Position) {
+    fn ensure_effect(
+        &mut self,
+        net: &NnueNetwork,
+        pos: &Position,
+        levels: impl FnOnce() -> EffectLevels,
+    ) {
         let top = self.top;
         if self.eff[top].computed {
             return;
         }
-        let levels = EffectLevels::build(pos);
+        let levels = levels();
         // 祖先までの手で、駒が出入りした升
         let mut moved = Bitboard::EMPTY;
         let mut i = top;
