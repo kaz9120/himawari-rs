@@ -369,6 +369,10 @@ fn check_stage6_rules(core: &CorePos, mb: &Position) {
                 "piece_sets 色{ci} {pt}: {sfen}"
             );
         }
+        let gold_like = [2u8, 3, 4, 5, 9]
+            .iter()
+            .fold(0u128, |a, &pt| a | bits(core.pieces(c, PieceType(pt))));
+        assert_eq!(sets[ci][1], gold_like, "piece_sets 色{ci} 金の動き: {sfen}");
     }
     for ply in [0usize, 1, 4, 8, 64] {
         assert_eq!(
