@@ -1,6 +1,6 @@
 //! 配列盤の局面。駒番号・手番別の利き数・飛び利きの方向ビットを持つ。
 //!
-//! 利きの差分更新は、盤上の駒の移動をまとめて扱う `transfer` と、駒打ちの `put`・`lift` で行う。
+//! 利きの差分更新は、盤上の駒の移動をまとめて扱う `transfer` と、駒打ちの `put` で行う。
 //! 利きは盤面だけで決まる関数なので、途中の各段が整合していれば結果は全計算と一致する。
 //!
 //! `transfer` は升の空き具合の変化を順に当てる。
@@ -17,7 +17,8 @@
 //! 飛び駒が自分の飛び利きの線に沿って動くとき（滑り）は、その線の利きを全部引き直さない。
 //! 移動元から行き先までの升だけを、前向きの線から後ろ向きの線へ付け替える。
 //!
-//! 戻しは既定で差分（逆向きの `transfer`）である。フィーチャ `copy-undo` を有効にすると、
+//! 戻しは既定で記録による（ADR-0241の第15回）。短い利きは窓を逆の向きに当て直し、飛び利きは進めるときに
+//! 積んだ書き換えの記録（`ray_log`）へ逆の操作を当てる。フィーチャ `copy-undo` を有効にすると、
 //! 進めるたびに利きの表を積み、戻しは表を書き戻して盤だけを戻す（ADR-0241の段階4で比べる）。
 
 use crate::board::*;
@@ -357,6 +358,7 @@ impl Position {
     }
 
     /// `ray_log` のstartから後ろの書き換えを、逆の操作で戻す。
+    #[cfg(not(feature = "copy-undo"))]
     #[inline]
     fn replay_ray_log(&mut self, start: usize) {
         let count = self.count.as_flattened_mut().as_mut_ptr();
@@ -513,10 +515,38 @@ impl Position {
         self.board[s as usize] = p;
     }
 
-    /// 升srcの駒を升dstへ動かし、dstに駒npを置き、srcにleaveを残す。
-    /// dstは空きか取られる駒、leaveは空きか戻ってくる駒（駒取りの戻し）。
+    /// 進めと戻しで、盤上の移動に合わせて駒種ごとの集合（`psets`）を反転する。
+    /// 色cの駒pが81升のビットbfからbtへ動いて駒npになり、btにいた相手の駒cap（空きもある）が消える。
+    /// 反転なので、進めと戻しで同じ呼び出しになる
+    #[inline(always)]
+    fn toggle_piece_sets(&mut self, c: usize, p: u8, np: u8, cap: u8, bf: u128, bt: u128) {
+        let (pt, npt) = (piece_type(p) as usize, piece_type(np) as usize);
+        let ps = &mut self.psets[c];
+        ps[pt] ^= bf;
+        ps[npt] ^= bt;
+        ps[1] ^= (bf & GOLD_LIKE_MASK[pt]) | (bt & GOLD_LIKE_MASK[npt]);
+        if cap != EMPTY {
+            let xt = piece_type(cap) as usize;
+            let ps = &mut self.psets[c ^ 1];
+            ps[xt] ^= bt;
+            ps[1] ^= bt & GOLD_LIKE_MASK[xt];
+        }
+    }
+
+    /// 駒打ちと、その戻しで駒種ごとの集合を反転する。
+    #[inline(always)]
+    fn toggle_drop_sets(&mut self, c: usize, pc: u8, b: u128) {
+        let pt = piece_type(pc) as usize;
+        let ps = &mut self.psets[c];
+        ps[pt] ^= b;
+        ps[1] ^= b & GOLD_LIKE_MASK[pt];
+    }
+
+    /// 升srcの駒を升dstへ動かし、dstに駒npを置く（進めるときだけ使う）。dstは空きか取られる駒である。
+    /// bf・btは移動元と行き先の81升のビットである。盤と駒のいる升の集合を書き換え、利きを差分で直す。
+    /// 駒種ごとの集合（`psets`）は呼び出し側が直す
     #[inline]
-    fn transfer(&mut self, src: u8, dst: u8, np: u8, leave: u8) {
+    fn transfer(&mut self, src: u8, dst: u8, np: u8, bf: u128, bt: u128) {
         let p = self.board[src as usize];
         let c = piece_color(p).index();
         let x = self.board[dst as usize];
@@ -539,19 +569,10 @@ impl Position {
                 self.piece_effect::<false, true>(p, src, axis);
                 self.segment::<false, true>(c, src, dst, d);
                 if lp & (1 << od) != 0 {
-                    if leave != EMPTY {
-                        // 移動元が塞がるので、後ろ向きの線の移動元より先を引く
-                        self.ray::<false, true>(c, src, od);
-                    }
                     self.segment::<true, true>(c, dst, src, od);
                 }
-                self.set_square(src, leave);
-                self.set_square(dst, np);
-                if leave == EMPTY {
-                    self.through::<true, true>(src, c, 1 << od);
-                } else {
-                    self.piece_effect::<true, true>(leave, src, 0);
-                }
+                self.move_on_board(src, dst, np, x, c, bf, bt);
+                self.through::<true, true>(src, c, 1 << od);
                 self.piece_effect::<true, true>(np, dst, axis);
                 if x != EMPTY {
                     // 取った駒の先へ前向きの線が伸びる
@@ -568,23 +589,34 @@ impl Position {
                     self.piece_effect::<false, true>(x, dst, 0);
                 }
                 self.piece_effect::<false, true>(p, src, 0);
-                self.set_square(src, leave);
-                self.set_square(dst, np);
-                if leave == EMPTY {
-                    self.through::<true, true>(src, c, 0);
-                } else {
-                    self.piece_effect::<true, true>(leave, src, 0);
-                }
+                self.move_on_board(src, dst, np, x, c, bf, bt);
+                self.through::<true, true>(src, c, 0);
                 self.piece_effect::<true, true>(np, dst, 0);
             }
         }
     }
 
+    /// 盤の上で駒を動かす（盤と駒のいる升の集合だけ）。進めと戻しの両方で使う。
+    /// 進めるときは src→dst（dstの駒xが消える）、戻すときは引数の役を入れ替えて呼ぶ。
+    #[allow(clippy::too_many_arguments)]
+    #[inline(always)]
+    fn move_on_board(&mut self, src: u8, dst: u8, np: u8, x: u8, c: usize, bf: u128, bt: u128) {
+        self.board[src as usize] = EMPTY;
+        self.board[dst as usize] = np;
+        self.occ[c] ^= bf | bt;
+        if x != EMPTY {
+            self.occ[c ^ 1] ^= bt;
+        }
+    }
+
     /// 空き升sへ駒pを打つ。sを通っていた飛び利きを切り、駒の利きを足す。
     #[inline]
-    fn put(&mut self, s: u8, p: u8) {
+    fn put(&mut self, s: u8, p: u8, b: u128) {
         self.through::<false, true>(s, 2, 0);
-        self.set_square(s, p);
+        self.board[s as usize] = p;
+        let c = piece_color(p).index();
+        self.occ[c] ^= b;
+        self.toggle_drop_sets(c, p, b);
         self.piece_effect::<true, true>(p, s, 0);
     }
 
@@ -741,7 +773,7 @@ impl Position {
             self.on_board[ui] |= 1 << id;
             self.sq_of[id as usize] = to;
             self.id_on[to as usize] = id;
-            self.put(to, pc);
+            self.put(to, pc, 1u128 << to81);
             st.board_key ^= PSQ[pc as usize][to81 as usize];
             if pt == PAWN {
                 self.pawn_files[ui] |= 1 << file_of(to);
@@ -759,7 +791,9 @@ impl Position {
             let np = if m.is_promote() { p - 8 } else { p };
             let id = self.id_on[from as usize];
             let cap = self.board[to as usize];
-            self.transfer(from, to, np, EMPTY);
+            let (bf, bt) = (1u128 << from81, 1u128 << to81);
+            self.transfer(from, to, np, bf, bt);
+            self.toggle_piece_sets(ui, p, np, cap, bf, bt);
             self.id_on[from as usize] = NO_ID;
             if cap != EMPTY {
                 let cid = self.id_on[to as usize];
@@ -859,7 +893,10 @@ impl Position {
             if !cfg!(feature = "copy-undo") {
                 self.short_effect::<false>(pc, to);
             }
-            self.set_square(to, EMPTY);
+            let b = bit81(to);
+            self.board[to as usize] = EMPTY;
+            self.occ[ui] ^= b;
+            self.toggle_drop_sets(ui, pc, b);
             self.id_on[to as usize] = NO_ID;
             self.on_board[ui] &= !(1u64 << id);
             self.hand_ids[ui][hand_index(pt)] |= 1 << id;
@@ -880,8 +917,14 @@ impl Position {
                     self.short_effect::<true>(u.captured, to);
                 }
             }
-            self.set_square(to, u.captured);
-            self.set_square(from, p);
+            let (bf, bt) = (bit81(from), bit81(to));
+            self.board[from as usize] = p;
+            self.board[to as usize] = u.captured;
+            self.occ[ui] ^= bf | bt;
+            if u.captured != EMPTY {
+                self.occ[them] ^= bt;
+            }
+            self.toggle_piece_sets(ui, p, np, u.captured, bf, bt);
             if u.captured != EMPTY {
                 let cid = u.cap_id;
                 self.id_on[to as usize] = cid;
