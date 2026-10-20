@@ -561,6 +561,22 @@ impl Position {
             (BISHOP, ks.bishop_adj),
         ];
         // 玉の逃げ場: 玉の隣で、相手（玉の側）の駒がなく、手番側の利きもない升（方向のビット）
+        let escapes = self.mate_escapes(us, ksq);
+        let cand = &tab.cand[k81];
+        let movers = self.mate_movers::<COUNT>(ui, near, ks.cand_short, occ_all, cnt)
+            & !bit81(self.king[ui]);
+        if let Some(m) =
+            self.mate_board::<COUNT>(cand, movers, escapes, ksq, near, knight_to, occ_all, cnt)
+        {
+            return Some(m);
+        }
+        self.mate_drops::<COUNT>(&drops, escapes, ksq, near, empty, occ_all, cnt)
+    }
+
+    /// 相手玉の逃げ場（方向のビット）。1手詰めの列挙の1段目。
+    #[inline(always)]
+    fn mate_escapes(&self, us: Color, ksq: u8) -> u8 {
+        let ui = us.index();
         let mut escapes = 0u8;
         for (d, &delta) in DELTA.iter().enumerate() {
             let t = (ksq as i32 + delta as i32) as usize;
@@ -569,10 +585,22 @@ impl Position {
                 escapes |= 1 << d;
             }
         }
-        let cand = &tab.cand[k81];
+        escapes
+    }
+
+    /// 回す駒の集合（81升）。1手詰めの列挙の2段目。
+    #[inline(always)]
+    fn mate_movers<const COUNT: bool>(
+        &self,
+        ui: usize,
+        near: u128,
+        cand_short: u128,
+        occ_all: u128,
+        cnt: &mut MateCount,
+    ) -> u128 {
         // 回す駒を先に絞る。短い利きで近傍（桂は王手の升）へ届きうる升の駒と、
         // 近傍の升に届いている手番側の飛び利きの元の駒である。ほかの駒は行き先が近傍に無い
-        let mut movers = self.occ[ui] & ks.cand_short;
+        let mut movers = self.occ[ui] & cand_short;
         let mut nb = near;
         while nb != 0 {
             let t81 = nb.trailing_zeros() as usize;
@@ -606,7 +634,25 @@ impl Position {
                 movers |= 1u128 << first;
             }
         }
-        let movers = movers & !bit81(self.king[ui]);
+        movers
+    }
+
+    /// 盤上の駒の候補を調べる。1手詰めの列挙の3段目。
+    #[inline(always)]
+    #[allow(clippy::too_many_arguments)]
+    fn mate_board<const COUNT: bool>(
+        &self,
+        cand: &[u128; 32],
+        movers: u128,
+        escapes: u8,
+        ksq: u8,
+        near: u128,
+        knight_to: u128,
+        occ_all: u128,
+        cnt: &mut MateCount,
+    ) -> Option<Move> {
+        let us = self.side;
+        let ui = us.index();
         for s in iter81(movers) {
             if COUNT {
                 cnt.pieces_seen += 1;
@@ -658,7 +704,25 @@ impl Position {
                 }
             }
         }
-        for (pt, targets) in drops {
+        None
+    }
+
+    /// 駒打ちの候補を調べる。1手詰めの列挙の4段目。
+    #[inline(always)]
+    #[allow(clippy::too_many_arguments)]
+    fn mate_drops<const COUNT: bool>(
+        &self,
+        drops: &[(u8, u128); 6],
+        escapes: u8,
+        ksq: u8,
+        near: u128,
+        empty: u128,
+        occ_all: u128,
+        cnt: &mut MateCount,
+    ) -> Option<Move> {
+        let us = self.side;
+        let ui = us.index();
+        for &(pt, targets) in drops {
             if self.hand_ids[ui][hand_index(pt)] == 0 {
                 continue;
             }
