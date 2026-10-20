@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.56.5](https://github.com/kaz9120/himawari-rs/compare/v0.56.4...v0.56.5) (2026-10-20)
+
+
+### その他の変更
+
+* build pair で比較元へ戻すとき、ワークスペースの Cargo.toml と Cargo.lock も揃える ([#874](https://github.com/kaz9120/himawari-rs/issues/874)) ([3ff757d](https://github.com/kaz9120/himawari-rs/commit/3ff757d8cca4df22565cb6412a276f58f1ea5083))
+
 ## [0.56.4](https://github.com/kaz9120/himawari-rs/compare/v0.56.3...v0.56.4) (2026-10-20)
 
 
