@@ -90,16 +90,16 @@ pub fn ft_apply<const V: usize, const NS: usize, const NA: usize>(
     }
 }
 
-/// 利きのaccの両視点へ、引く行と足す行をまとめて当てる（ADR-0242の段2）。
+/// 利きのaccの両視点を、レジスタに置いたまま更新する（ADR-0242の段2）。
 ///
-/// 添字は `[視点]` の組で渡す。accは両視点とも64次元なら8本のベクトルで
-/// レジスタに載るので、全部の行を当ててから1回だけ書き戻す。巡回加算なので、
-/// 1行ずつ当てる版と結果はビット一致する。
-pub fn effect_rows_apply(
+/// `each` は1升ごとに `(引く行, 足す行)` の添字を視点の組で返す。引く行が無い升は
+/// `None` を返す。accは両視点とも64次元なら8本のベクトルに載るので、全部の升を
+/// 当ててから1回だけ書き戻す。巡回加算なので、1行ずつ当てる版とビット一致する。
+#[inline(always)]
+pub fn effect_rows_update(
     net: &NnueNetwork,
     acc: &mut [[i16; EFF_OUT]; 2],
-    subs: &[[u32; 2]],
-    adds: &[[u32; 2]],
+    mut each: impl FnMut() -> Option<(Option<[u32; 2]>, [u32; 2])>,
 ) {
     const CHUNKS: usize = EFF_OUT / I16_LANES;
     let row = |f: u32| {
@@ -110,17 +110,21 @@ pub fn effect_rows_apply(
         let src = &acc[c].as_chunks::<I16_LANES>().0[..CHUNKS];
         std::array::from_fn(|i| Simd::from_array(src[i]))
     });
-    for f in subs {
+    while let Some((sub, add)) = each() {
         for (c, a) in a.iter_mut().enumerate() {
-            for (v, w) in a.iter_mut().zip(row(f[c])) {
-                *v -= Simd::from_array(*w);
-            }
-        }
-    }
-    for f in adds {
-        for (c, a) in a.iter_mut().enumerate() {
-            for (v, w) in a.iter_mut().zip(row(f[c])) {
-                *v += Simd::from_array(*w);
+            let n = row(add[c]);
+            match sub {
+                Some(sub) => {
+                    let o = row(sub[c]);
+                    for ((v, w), x) in a.iter_mut().zip(n).zip(o) {
+                        *v += Simd::from_array(*w) - Simd::from_array(*x);
+                    }
+                }
+                None => {
+                    for (v, w) in a.iter_mut().zip(n) {
+                        *v += Simd::from_array(*w);
+                    }
+                }
             }
         }
     }

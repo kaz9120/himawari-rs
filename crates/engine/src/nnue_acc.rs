@@ -516,7 +516,7 @@ fn hand_delta_of(pos: &Position, dirty: &DirtyPiece) -> Option<HandDelta> {
 }
 
 /// 変わった升の行だけを入れ替える（ADR-0237のD2）。`e` は参照の局面の
-/// accと升の語を持っている。行の添字を先に集め、両視点へまとめて当てる（ADR-0242の段2）。
+/// accと升の語を持っている。両視点をまとめて当てる（ADR-0242の段2）。
 fn effect_apply(
     net: &NnueNetwork,
     pos: &Position,
@@ -524,21 +524,21 @@ fn effect_apply(
     e: &mut EffEntry,
     changed: Bitboard,
 ) {
-    let mut subs = [[0u32; 2]; EFF_REFRESH_ABOVE as usize];
-    let mut adds = [[0u32; 2]; EFF_REFRESH_ABOVE as usize];
-    let mut n = 0;
-    for sq in changed {
-        let new = effect_code(pos, levels, sq);
-        let old = e.codes[sq.index()];
-        if old == new {
-            continue;
+    let codes = &mut e.codes;
+    let mut sqs = changed.into_iter();
+    nnue_simd::effect_rows_update(net, &mut e.acc, || {
+        for sq in sqs.by_ref() {
+            let new = effect_code(pos, levels, sq);
+            let old = codes[sq.index()];
+            if old == new {
+                continue;
+            }
+            codes[sq.index()] = new;
+            let idx = |code| [Color::Black, Color::White].map(|c| effect_code_index(c, sq, code));
+            return Some((Some(idx(old)), idx(new)));
         }
-        e.codes[sq.index()] = new;
-        subs[n] = [Color::Black, Color::White].map(|c| effect_code_index(c, sq, old));
-        adds[n] = [Color::Black, Color::White].map(|c| effect_code_index(c, sq, new));
-        n += 1;
-    }
-    nnue_simd::effect_rows_apply(net, &mut e.acc, &subs[..n], &adds[..n]);
+        None
+    });
 }
 
 /// 81升を全計算する（ADR-0237のD3と同じ値になる）。
@@ -546,14 +546,21 @@ fn effect_refresh(net: &NnueNetwork, pos: &Position, levels: &EffectLevels, e: &
     for c in [Color::Black, Color::White] {
         e.acc[c.index()].copy_from_slice(&net.eff_b[..EFF_OUT]);
     }
-    let mut adds = [[0u32; 2]; 81];
-    for (i, f) in adds.iter_mut().enumerate() {
-        let sq = Square::from_index(i as u8);
+    let codes = &mut e.codes;
+    let mut i = 0u8;
+    nnue_simd::effect_rows_update(net, &mut e.acc, || {
+        if i == 81 {
+            return None;
+        }
+        let sq = Square::from_index(i);
+        i += 1;
         let code = effect_code(pos, levels, sq);
-        e.codes[sq.index()] = code;
-        *f = [Color::Black, Color::White].map(|c| effect_code_index(c, sq, code));
-    }
-    nnue_simd::effect_rows_apply(net, &mut e.acc, &[], &adds);
+        codes[sq.index()] = code;
+        Some((
+            None,
+            [Color::Black, Color::White].map(|c| effect_code_index(c, sq, code)),
+        ))
+    });
 }
 
 /// 1手ぶんの差分の重み行。玉は特徴に含まれないので、引く行も足す行も
