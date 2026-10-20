@@ -273,6 +273,10 @@ impl EvalBoard for SearchBoard {
         EffectLevels::build(&self.pos)
     }
     #[inline(always)]
+    fn effect_codes(&self, out: &mut [u16; 81]) {
+        self.pos.effect_codes(out);
+    }
+    #[inline(always)]
     fn material(&self) -> i32 {
         self.pos.state().material
     }
@@ -584,6 +588,15 @@ impl EvalBoard for SearchBoard {
     #[inline(always)]
     fn effect_levels(&self) -> EffectLevels {
         SearchBoard::effect_levels(self)
+    }
+    #[inline(always)]
+    fn effect_codes(&self, out: &mut [u16; 81]) {
+        self.mb.effect_codes(out);
+        self.shadow("effect_codes", &*out, |p| {
+            let mut want = [0u16; 81];
+            EvalBoard::effect_codes(p, &mut want);
+            want
+        });
     }
     #[inline(always)]
     fn material(&self) -> i32 {

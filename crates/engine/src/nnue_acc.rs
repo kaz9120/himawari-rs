@@ -13,7 +13,7 @@ use himawari_core::{Bitboard, Color, DirtyPiece, Piece, PieceType, Position, Squ
 
 use crate::nnue::{
     CONCAT, EFF_BASE, EFF_OUT, EffectLevels, FT_OUT, FtWeight, HALF, NnueNetwork, effect_code,
-    effect_code_index, effect_row, effect_row_add16, effect_row_swap16,
+    effect_code_index,
 };
 use crate::nnue_simd;
 use crate::value::{MAX_PLY, Value};
@@ -33,6 +33,9 @@ pub trait EvalBoard {
     fn bona_piece_bits(&self, c: Color, out: &mut bonapiece::BonaBits);
     /// 利き数の段階の集合（`EffectLevels::build` と同じ値）。
     fn effect_levels(&self) -> EffectLevels;
+    /// 81升の利きの語（`effect_code`）をまとめて書く（ADR-0242の段1を配列盤へ移した形）。
+    /// 配列盤は利き数と駒の配列から直接作れるので、段階の集合を経由しない。
+    fn effect_codes(&self, out: &mut [u16; 81]);
     /// 駒割り（先手から見た値）。駒割りだけの評価関数が使う。
     fn material(&self) -> i32;
     /// 全計算との突き合わせ（テストとデバッグビルド）に使うcoreの局面。無ければ突き合わせない。
@@ -67,6 +70,13 @@ impl EvalBoard for Position {
     #[inline(always)]
     fn effect_levels(&self) -> EffectLevels {
         EffectLevels::build(self)
+    }
+    #[inline(always)]
+    fn effect_codes(&self, out: &mut [u16; 81]) {
+        let levels = EffectLevels::build(self);
+        for (i, o) in out.iter_mut().enumerate() {
+            *o = effect_code(self, &levels, Square::from_index(i as u8));
+        }
     }
     #[inline(always)]
     fn material(&self) -> i32 {
@@ -130,9 +140,11 @@ struct EffEntry {
     acc: [[i16; EFF_OUT]; 2],
     /// 升ごとの中身と段階（`effect_code`）。
     codes: [u16; 81],
-    levels: EffectLevels,
     /// falseの間は中身が未定義で、誰も読まない。
     computed: bool,
+    /// `acc` と `codes` が、ある1つの局面を表している。pushで `computed` を
+    /// 落としても中身は残るので、差分の参照に使える（ADR-0242の段1）。
+    coherent: bool,
 }
 
 impl EffEntry {
@@ -140,8 +152,8 @@ impl EffEntry {
         EffEntry {
             acc: [[0; EFF_OUT]; 2],
             codes: [0; 81],
-            levels: EffectLevels::EMPTY,
             computed: false,
+            coherent: false,
         }
     }
 }
@@ -305,84 +317,43 @@ impl NnueState {
         nnue_simd::forward_hidden(net, &concat)
     }
 
-    /// 利きのaccumulatorを最上段に用意する（ADR-0237のD2）。
+    /// 利きのaccumulatorを最上段に用意する（ADR-0237のD2、ADR-0242の段1・段2）。
     ///
-    /// 計算済みの祖先まで遡り、その間の手で駒が出入りした升と、利き数の段階が
-    /// 変わった升を集める。**比べる相手は祖先の値そのものなので、途中の段の
-    /// 材料は要らない。** 遅延で当てる前提（push は印を付けるだけ）と両立する。
-    /// 利きの特徴は玉位置に依らないので、玉が動いても遡れる。
+    /// 81升の語を盤から受け取り、参照の局面の語と比べて変わった升だけを当てる。
+    /// 参照の候補は、計算済みの祖先と、この段に残る前回の中身（兄弟か従兄弟の
+    /// 局面）の2つで、変わった升が少ないほうを使う。**途中の手の材料は要らない。**
+    /// どちらも40升を超えたら全計算する。利きの特徴は玉位置に依らないので、
+    /// 玉が動いても参照にできる。
     fn ensure_effect<B: EvalBoard + ?Sized>(&mut self, net: &NnueNetwork, pos: &B) {
         let top = self.top;
         if self.eff[top].computed {
             return;
         }
-        let levels = pos.effect_levels();
-        // 祖先までの手で、駒が出入りした升
-        let mut moved = Bitboard::EMPTY;
-        let mut i = top;
-        let anc = loop {
-            if self.eff[i].computed {
-                break Some(i);
+        let mut codes = [0u16; 81];
+        pos.effect_codes(&mut codes);
+        let here = &self.eff[top];
+        let from_here = here.coherent.then(|| codes_diff(&codes, &here.codes));
+        let anc = (0..top).rev().find(|&i| self.eff[i].computed);
+        let from_anc = anc.map(|a| (a, codes_diff(&codes, &self.eff[a].codes)));
+        let far = |c: &Bitboard| c.count() > EFF_REFRESH_ABOVE;
+        match (from_here, from_anc) {
+            // 同数なら、写さずに済むこの段を使う
+            (Some(h), a) if !far(&h) && a.is_none_or(|(_, c)| h.count() <= c.count()) => {
+                effect_apply(net, &codes, &mut self.eff[top], h);
             }
-            if i == 0 {
-                break None;
-            }
-            let d = &self.entries[i].dirty;
-            for j in 0..d.count as usize {
-                for sq in [d.from[j], d.to[j]] {
-                    if sq != Square::NONE {
-                        moved.set(sq);
-                    }
-                }
-            }
-            i -= 1;
-        };
-        let changed = anc.map(|a| moved | levels.diff(&self.eff[a].levels));
-        match (anc, changed) {
-            (Some(a), Some(changed)) if changed.count() <= EFF_REFRESH_ABOVE => {
+            (_, Some((a, c))) if !far(&c) => {
                 let (before, after) = self.eff.split_at_mut(top);
-                let prev = &before[a];
                 let e = &mut after[0];
-                e.acc = prev.acc;
-                e.codes = prev.codes;
-                for sq in changed {
-                    let new = effect_code(pos, &levels, sq);
-                    let old = e.codes[sq.index()];
-                    if old == new {
-                        continue;
-                    }
-                    e.codes[sq.index()] = new;
-                    for c in [Color::Black, Color::White] {
-                        let acc = &mut e.acc[c.index()];
-                        effect_row_swap16(
-                            acc,
-                            effect_row(net, effect_code_index(c, sq, old)),
-                            effect_row(net, effect_code_index(c, sq, new)),
-                        );
-                    }
-                }
+                e.acc = before[a].acc;
+                e.codes = before[a].codes;
+                effect_apply(net, &codes, e, c);
             }
-            _ => {
-                let e = &mut self.eff[top];
-                for c in [Color::Black, Color::White] {
-                    e.acc[c.index()].copy_from_slice(&net.eff_b[..EFF_OUT]);
-                }
-                for i in 0..81u8 {
-                    let sq = Square::from_index(i);
-                    let code = effect_code(pos, &levels, sq);
-                    e.codes[sq.index()] = code;
-                    for c in [Color::Black, Color::White] {
-                        effect_row_add16(
-                            &mut e.acc[c.index()],
-                            effect_row(net, effect_code_index(c, sq, code)),
-                        );
-                    }
-                }
-            }
+            _ => effect_refresh(net, &codes, &mut self.eff[top]),
         }
         let e = &mut self.eff[top];
-        e.levels = levels;
+        e.codes = codes;
         e.computed = true;
+        e.coherent = true;
     }
 
     /// 最上段の利きの段を、全計算（D3）と突き合わせる。テストとデバッグビルド
@@ -391,11 +362,6 @@ impl NnueState {
         let e = &self.eff[self.top];
         let counts = crate::nnue::effect_counts(pos);
         let levels = EffectLevels::build(pos);
-        assert!(
-            e.levels == levels,
-            "段階の集合が食い違う: {}",
-            pos.to_sfen()
-        );
         for i in 0..81u8 {
             let sq = Square::from_index(i);
             assert_eq!(
@@ -622,6 +588,56 @@ fn hand_delta_of<B: EvalBoard + ?Sized>(pos: &B, dirty: &DirtyPiece) -> Option<H
     } else {
         None
     }
+}
+
+/// 2つの局面の利きの語が違う升（ADR-0242の段1）。8升ずつベクトルで比べる。
+#[inline]
+fn codes_diff(a: &[u16; 81], b: &[u16; 81]) -> Bitboard {
+    use std::simd::Simd;
+    use std::simd::cmp::SimdPartialEq;
+    let (ac, at) = a.as_chunks::<8>();
+    let (bc, bt) = b.as_chunks::<8>();
+    let mut m = 0u128;
+    for (k, (x, y)) in ac.iter().zip(bc).enumerate() {
+        let ne = Simd::from_array(*x).simd_ne(Simd::from_array(*y));
+        m |= u128::from(ne.to_bitmask() as u8) << (k * 8);
+    }
+    if at[0] != bt[0] {
+        m |= 1 << 80;
+    }
+    Bitboard::from_bits(m)
+}
+
+/// 変わった升の行だけを入れ替える（ADR-0237のD2）。`e` は参照の局面の
+/// accと升の語を持っている。両視点をまとめて当てる（ADR-0242の段2）。
+fn effect_apply(net: &NnueNetwork, codes: &[u16; 81], e: &mut EffEntry, changed: Bitboard) {
+    let old_codes = &e.codes;
+    let mut sqs = changed.into_iter();
+    nnue_simd::effect_rows_update(net, &mut e.acc, || {
+        let sq = sqs.next()?;
+        let (old, new) = (old_codes[sq.index()], codes[sq.index()]);
+        let idx = |code| [Color::Black, Color::White].map(|c| effect_code_index(c, sq, code));
+        Some((Some(idx(old)), idx(new)))
+    });
+}
+
+/// 81升を全計算する（ADR-0237のD3と同じ値になる）。
+fn effect_refresh(net: &NnueNetwork, codes: &[u16; 81], e: &mut EffEntry) {
+    for c in [Color::Black, Color::White] {
+        e.acc[c.index()].copy_from_slice(&net.eff_b[..EFF_OUT]);
+    }
+    let mut i = 0u8;
+    nnue_simd::effect_rows_update(net, &mut e.acc, || {
+        if i == 81 {
+            return None;
+        }
+        let sq = Square::from_index(i);
+        i += 1;
+        Some((
+            None,
+            [Color::Black, Color::White].map(|c| effect_code_index(c, sq, codes[sq.index()])),
+        ))
+    });
 }
 
 /// 1手ぶんの差分の重み行。玉は特徴に含まれないので、引く行も足す行も

@@ -796,6 +796,37 @@ impl Position {
         out
     }
 
+    /// 81升の利きの語を書く。engineの `effect_code`（ADR-0237のD2）と同じ値になる。
+    ///
+    /// 上位が駒（0は空き、先手の14種を1〜14、後手を15〜28）、下位4ビットが先手と後手の
+    /// 利き数（各2ビット、3で打ち切り）である。配列盤は駒と利き数を升ごとに持つので、
+    /// 読んで詰めるだけで済む。1筋の9升は配列の上で続いている。
+    pub fn effect_codes(&self, out: &mut [u16; 81]) {
+        const KIND: [u16; 32] = {
+            let mut t = [0u16; 32];
+            let mut p = 0;
+            while p < 32 {
+                let pt = p & 15;
+                if pt >= 2 {
+                    let k = (pt - 1) as u16 + if p & 16 != 0 { 14 } else { 0 };
+                    t[p] = k << 4;
+                }
+                p += 1;
+            }
+            t
+        };
+        let cap = |n: u8| u16::from(n.min(3));
+        let (b, w) = (&self.count[0], &self.count[1]);
+        for f in 0..9u8 {
+            let base = crate::board::idx(f, 0) as usize;
+            for r in 0..9 {
+                let i = base + r;
+                out[f as usize * 9 + r] =
+                    KIND[usize::from(self.board[i] & 31)] | cap(b[i]) << 2 | cap(w[i]);
+            }
+        }
+    }
+
     /// coreの `Move16` のビット列から手を復元する。coreの `to_move` と同じ検査をし、同じ場面で `None` を返す。
     ///
     /// 復元できても擬似合法とは限らない。`pseudo_legal` で別に確かめる。

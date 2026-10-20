@@ -444,23 +444,6 @@ pub fn effect_row_add(acc: &mut [i32; EFF_OUT], row: &[i16]) {
     }
 }
 
-/// 差分の経路（D2）のi16のaccへ行を足す。巡回加算にするのは、途中の値が
-/// i16を越えても最後の値が `effect_acc_bound` の内なら正しくなるためである。
-#[inline]
-pub fn effect_row_add16(acc: &mut [i16; EFF_OUT], row: &[i16]) {
-    for (a, &w) in acc.iter_mut().zip(row) {
-        *a = a.wrapping_add(w);
-    }
-}
-
-/// 升の特徴が `old` から `new` へ入れ替わった分を1パスで当てる（D2）。
-#[inline]
-pub fn effect_row_swap16(acc: &mut [i16; EFF_OUT], old: &[i16], new: &[i16]) {
-    for ((a, &o), &n) in acc.iter_mut().zip(old).zip(new) {
-        *a = a.wrapping_add(n.wrapping_sub(o));
-    }
-}
-
 /// 利きのaccumulatorを0〜127へクリップして書く。
 #[inline]
 pub fn effect_clip(acc: &[i32; EFF_OUT], out: &mut [u8]) {
