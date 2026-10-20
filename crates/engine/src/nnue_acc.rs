@@ -9,7 +9,7 @@
 //! 持つ（D2）。評価のときに利き数の段階を集合で作り直し、計算済みの祖先と
 //! 比べて、中身か段階が変わった升の行だけを足し引きする。
 
-use himawari_core::{Bitboard, Color, DirtyPiece, PieceType, Position, Square, bonapiece};
+use himawari_core::{Bitboard, Color, DirtyPiece, Piece, PieceType, Position, Square, bonapiece};
 
 use crate::nnue::{
     CONCAT, EFF_BASE, EFF_OUT, EffectLevels, FT_OUT, FtWeight, HALF, NnueNetwork, effect_code,
@@ -71,8 +71,13 @@ struct EffEntry {
     /// 升ごとの中身と段階（`effect_code`）。
     codes: [u16; 81],
     levels: EffectLevels,
+    /// 盤の配列。`levels` と合わせて、参照にした局面との差を作る（ADR-0242）。
+    board: [Piece; 81],
     /// falseの間は中身が未定義で、誰も読まない。
     computed: bool,
+    /// `acc`・`codes`・`levels`・`board` が、ある1つの局面を表している。
+    /// pushで `computed` を落としても中身は残るので、差分の参照に使える（ADR-0242）。
+    coherent: bool,
 }
 
 impl EffEntry {
@@ -81,7 +86,9 @@ impl EffEntry {
             acc: [[0; EFF_OUT]; 2],
             codes: [0; 81],
             levels: EffectLevels::EMPTY,
+            board: [Piece::EMPTY; 81],
             computed: false,
+            coherent: false,
         }
     }
 }
@@ -240,84 +247,46 @@ impl NnueState {
         nnue_simd::forward_hidden(net, &concat)
     }
 
-    /// 利きのaccumulatorを最上段に用意する（ADR-0237のD2）。
+    /// 利きのaccumulatorを最上段に用意する（ADR-0237のD2、ADR-0242）。
     ///
-    /// 計算済みの祖先まで遡り、その間の手で駒が出入りした升と、利き数の段階が
-    /// 変わった升を集める。**比べる相手は祖先の値そのものなので、途中の段の
-    /// 材料は要らない。** 遅延で当てる前提（push は印を付けるだけ）と両立する。
-    /// 利きの特徴は玉位置に依らないので、玉が動いても遡れる。
+    /// 参照の候補は2つある。計算済みの祖先と、この段に残る前回の中身である。
+    /// 前回の中身は兄弟か従兄弟の局面で、祖先より近いことが多い。どちらも
+    /// 盤と段階を持つので、変わった升は2つの局面の実際の差として作れる。
+    /// **途中の手の材料は要らない。** 近いほうから差分を当て、遠ければ全計算する。
+    /// 利きの特徴は玉位置に依らないので、玉が動いても参照にできる。
     fn ensure_effect(&mut self, net: &NnueNetwork, pos: &Position) {
         let top = self.top;
         if self.eff[top].computed {
             return;
         }
         let levels = EffectLevels::build(pos);
-        // 祖先までの手で、駒が出入りした升
-        let mut moved = Bitboard::EMPTY;
-        let mut i = top;
-        let anc = loop {
-            if self.eff[i].computed {
-                break Some(i);
+        let board = pos.board_ref();
+        let changed_from =
+            |e: &EffEntry| levels.diff(&e.levels) | Bitboard::piece_diff(board, &e.board);
+        let here = &self.eff[top];
+        let from_here = here.coherent.then(|| changed_from(here));
+        let anc = (0..top).rev().find(|&i| self.eff[i].computed);
+        let from_anc = anc.map(|a| (a, changed_from(&self.eff[a])));
+        let far = |c: &Bitboard| c.count() > EFF_REFRESH_ABOVE;
+        match (from_here, from_anc) {
+            // 同数なら、写さずに済むこの段を使う
+            (Some(h), a) if !far(&h) && a.is_none_or(|(_, c)| h.count() <= c.count()) => {
+                effect_apply(net, pos, &levels, &mut self.eff[top], h);
             }
-            if i == 0 {
-                break None;
-            }
-            let d = &self.entries[i].dirty;
-            for j in 0..d.count as usize {
-                for sq in [d.from[j], d.to[j]] {
-                    if sq != Square::NONE {
-                        moved.set(sq);
-                    }
-                }
-            }
-            i -= 1;
-        };
-        let changed = anc.map(|a| moved | levels.diff(&self.eff[a].levels));
-        match (anc, changed) {
-            (Some(a), Some(changed)) if changed.count() <= EFF_REFRESH_ABOVE => {
+            (_, Some((a, c))) if !far(&c) => {
                 let (before, after) = self.eff.split_at_mut(top);
-                let prev = &before[a];
                 let e = &mut after[0];
-                e.acc = prev.acc;
-                e.codes = prev.codes;
-                for sq in changed {
-                    let new = effect_code(pos, &levels, sq);
-                    let old = e.codes[sq.index()];
-                    if old == new {
-                        continue;
-                    }
-                    e.codes[sq.index()] = new;
-                    for c in [Color::Black, Color::White] {
-                        let acc = &mut e.acc[c.index()];
-                        effect_row_swap16(
-                            acc,
-                            effect_row(net, effect_code_index(c, sq, old)),
-                            effect_row(net, effect_code_index(c, sq, new)),
-                        );
-                    }
-                }
+                e.acc = before[a].acc;
+                e.codes = before[a].codes;
+                effect_apply(net, pos, &levels, e, c);
             }
-            _ => {
-                let e = &mut self.eff[top];
-                for c in [Color::Black, Color::White] {
-                    e.acc[c.index()].copy_from_slice(&net.eff_b[..EFF_OUT]);
-                }
-                for i in 0..81u8 {
-                    let sq = Square::from_index(i);
-                    let code = effect_code(pos, &levels, sq);
-                    e.codes[sq.index()] = code;
-                    for c in [Color::Black, Color::White] {
-                        effect_row_add16(
-                            &mut e.acc[c.index()],
-                            effect_row(net, effect_code_index(c, sq, code)),
-                        );
-                    }
-                }
-            }
+            _ => effect_refresh(net, pos, &levels, &mut self.eff[top]),
         }
         let e = &mut self.eff[top];
         e.levels = levels;
+        e.board = *board;
         e.computed = true;
+        e.coherent = true;
     }
 
     /// 最上段の利きの段を、全計算（D3）と突き合わせる。テストとデバッグビルド
@@ -543,6 +512,50 @@ fn hand_delta_of(pos: &Position, dirty: &DirtyPiece) -> Option<HandDelta> {
         })
     } else {
         None
+    }
+}
+
+/// 変わった升の行だけを入れ替える（ADR-0237のD2）。`e` は参照の局面の
+/// accと升の語を持っている。
+fn effect_apply(
+    net: &NnueNetwork,
+    pos: &Position,
+    levels: &EffectLevels,
+    e: &mut EffEntry,
+    changed: Bitboard,
+) {
+    for sq in changed {
+        let new = effect_code(pos, levels, sq);
+        let old = e.codes[sq.index()];
+        if old == new {
+            continue;
+        }
+        e.codes[sq.index()] = new;
+        for c in [Color::Black, Color::White] {
+            effect_row_swap16(
+                &mut e.acc[c.index()],
+                effect_row(net, effect_code_index(c, sq, old)),
+                effect_row(net, effect_code_index(c, sq, new)),
+            );
+        }
+    }
+}
+
+/// 81升を全計算する（ADR-0237のD3と同じ値になる）。
+fn effect_refresh(net: &NnueNetwork, pos: &Position, levels: &EffectLevels, e: &mut EffEntry) {
+    for c in [Color::Black, Color::White] {
+        e.acc[c.index()].copy_from_slice(&net.eff_b[..EFF_OUT]);
+    }
+    for i in 0..81u8 {
+        let sq = Square::from_index(i);
+        let code = effect_code(pos, levels, sq);
+        e.codes[sq.index()] = code;
+        for c in [Color::Black, Color::White] {
+            effect_row_add16(
+                &mut e.acc[c.index()],
+                effect_row(net, effect_code_index(c, sq, code)),
+            );
+        }
     }
 }
 
