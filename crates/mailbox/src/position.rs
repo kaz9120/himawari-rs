@@ -41,6 +41,33 @@ pub(crate) const CHECK_OFFSETS: [i8; 12] = [
     -KNIGHT_STEPS[1],
 ];
 
+/// 駒の短い利きを、3列ぶんの8バイトの窓へまとめて足すための表（ADR-0241の第15回）。
+///
+/// `SHORT_WIN[p][j]` は、升sの駒pが列 j−1（差分 (j−1)·STRIDE）へ持つ短い利きを、
+/// 升 s+(j−1)·STRIDE−4 から8升ぶんの語（リトルエンディアン、1升1バイト）にしたもの。
+/// 短い利きの段の差は±2に収まるので、どの利きも窓の3〜7バイト目に入る。
+/// 利き数は升ごとに255を超えず、引くときはその駒の分が必ず入っているので、
+/// 語のまま足し引きしても隣の升へ桁が溢れない（壁の升の利き数も同じ理由で崩れない）。
+#[cfg(target_endian = "big")]
+compile_error!("SHORT_WIN はリトルエンディアンの語を前提にしている");
+const SHORT_WIN: [[u64; 3]; 32] = {
+    let mut t = [[0u64; 3]; 32];
+    let mut p = 0;
+    while p < 32 {
+        let m = &MOVES[p];
+        let mut k = 0;
+        while k < m.n_short as usize {
+            let o = m.short[k] as i32;
+            let dc = (o + STRIDE / 2).div_euclid(STRIDE);
+            let dr = o - dc * STRIDE;
+            t[p][(dc + 1) as usize] |= 1u64 << (8 * (dr + 4));
+            k += 1;
+        }
+        p += 1;
+    }
+    t
+};
+
 /// 駒番号の無い升の値。盤上と手駒の駒は40枚。
 pub const NO_ID: u8 = 0xFF;
 
@@ -235,14 +262,22 @@ impl Position {
         let c = piece_color(p).index();
         // 駒の符号は32未満。マスクで境界検査を消す
         let m = &MOVES[(p & 31) as usize];
-        for k in 0..m.n_short as usize {
-            // 短い利きは壁の升にも書く（分岐を省く）。壁の値は読まない。
-            // 添字をu8で持つと、256要素の配置では境界検査が消える
-            let t = s.wrapping_add(m.short[k] as u8) as usize;
-            if ADD {
-                self.count[c][t] += 1;
-            } else {
-                self.count[c][t] -= 1;
+        // 短い利きは、3列ぶんの8升の窓を語のまま足し引きする。壁の升にも書くが、壁の値は読まない
+        let win = &SHORT_WIN[(p & 31) as usize];
+        let row = self.count[c].as_mut_ptr();
+        for (j, &w) in win.iter().enumerate() {
+            let at = s as isize + (j as isize - 1) * STRIDE as isize - 4;
+            debug_assert!(at >= 0 && at as usize + 8 <= LEN);
+            // SAFETY: sは盤上の升なので、隣の列の窓 [s±STRIDE−4, s±STRIDE+4) も配列の内側にある
+            // （`every_step_from_board_stays_in_array` と同じ壁の幅による）
+            unsafe {
+                let q = row.offset(at).cast::<u64>();
+                let v = q.read_unaligned();
+                q.write_unaligned(if ADD {
+                    v.wrapping_add(w)
+                } else {
+                    v.wrapping_sub(w)
+                });
             }
         }
         let mut dirs = m.long & !skip;
