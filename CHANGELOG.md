@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.56.1](https://github.com/kaz9120/himawari-rs/compare/v0.56.0...v0.56.1) (2026-10-20)
+
+
+### その他の変更
+
+* 配布物の名前を役割で揃え、評価関数をeval.hmwr・定跡をbook.dbにする ([#860](https://github.com/kaz9120/himawari-rs/issues/860)) ([ee5313a](https://github.com/kaz9120/himawari-rs/commit/ee5313ae948e969634ae5013d7e8e32805e5605e))
+
 ## [0.56.0](https://github.com/kaz9120/himawari-rs/compare/v0.55.14...v0.56.0) (2026-10-20)
 
 
