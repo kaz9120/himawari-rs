@@ -122,20 +122,18 @@ impl Position {
         if rel_rank(us, self.king[ui]) > 2 || self.in_check() {
             return false;
         }
-        let mut count = 0u32;
-        let mut points = 0u32;
-        let mut m = self.on_board[ui];
-        while m != 0 {
-            let id = m.trailing_zeros() as usize;
-            m &= m - 1;
-            let s = self.sq_of[id];
-            let pt = piece_type(self.board[s as usize]);
-            if pt == KING || rel_rank(us, s) > 2 {
-                continue;
-            }
-            count += 1;
-            points += declaration_points(pt);
-        }
+        // 敵陣の三段（81升の通し番号の段で、先手は0〜2、後手は6〜8）
+        let camp = if us == Color::Black {
+            rank_mask(0) | rank_mask(1) | rank_mask(2)
+        } else {
+            rank_mask(6) | rank_mask(7) | rank_mask(8)
+        };
+        let ps = &self.psets[ui];
+        let own = self.occ[ui] & camp & !ps[KING as usize];
+        let big = own
+            & (ps[BISHOP as usize] | ps[ROOK as usize] | ps[HORSE as usize] | ps[DRAGON as usize]);
+        let count = own.count_ones();
+        let mut points = count + 4 * big.count_ones();
         if count < 10 {
             return false;
         }
