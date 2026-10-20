@@ -7,6 +7,10 @@
 
 #![feature(portable_simd)]
 
+/// 生成の並びがcoreの `generate` と同じか（ADR-0241の第16回）。ビルド時の環境変数
+/// `HIMAWARI_MB_ORDER` で決まる（build.rs）。偽の構成では、照合は手の集合で比べる。
+pub const ORDER_MATCHES_CORE: bool = !cfg!(mb_order_type);
+
 pub mod board;
 pub mod check;
 pub mod mate;
