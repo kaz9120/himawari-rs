@@ -119,6 +119,9 @@ pub struct Position {
     /// 持ち主別の駒のいる升の集合（81升の通し番号のビット）。
     /// 空き升の列挙と、生成の順をcoreに揃えるために持つ。利きの計算には使わない。
     pub(crate) occ: [u128; 2],
+    /// 持ち主別・駒種別の駒のいる升の集合（81升）。評価関数の駒の特徴の作り直しに使う。
+    /// 盤を書き換えるたびに差分で直す。駒種0・1（空き・壁）の欄は使わない
+    pub(crate) psets: [[u128; 16]; 2],
     pub(crate) king: [u8; 2],
     /// 生の歩がいる筋のビット（二歩の判定）。
     pub(crate) pawn_files: [u16; 2],
@@ -150,6 +153,7 @@ impl Position {
             on_board: [0; 2],
             hand_ids: [[0; 8]; 2],
             occ: [0; 2],
+            psets: [[0; 16]; 2],
             count: [[0; LEN]; 2],
             longdir: [[0; LEN]; 2],
             king: [0; 2],
@@ -318,11 +322,16 @@ impl Position {
     #[inline]
     fn set_square(&mut self, s: u8, p: u8) {
         let old = self.board[s as usize];
+        let b = bit81(s);
         if old != EMPTY {
-            self.occ[piece_color(old).index()] &= !bit81(s);
+            let c = piece_color(old).index();
+            self.occ[c] &= !b;
+            self.psets[c][piece_type(old) as usize] &= !b;
         }
         if p != EMPTY {
-            self.occ[piece_color(p).index()] |= bit81(s);
+            let c = piece_color(p).index();
+            self.occ[c] |= b;
+            self.psets[c][piece_type(p) as usize] |= b;
         }
         self.board[s as usize] = p;
     }
@@ -933,14 +942,19 @@ impl Position {
             return Err("盤上の駒番号の集合が盤と合わない".into());
         }
         let mut occ = [0u128; 2];
+        let mut psets = [[0u128; 16]; 2];
         for &i in IDX81.iter() {
             let p = self.board[i as usize];
             if p != EMPTY {
                 occ[piece_color(p).index()] |= bit81(i);
+                psets[piece_color(p).index()][piece_type(p) as usize] |= bit81(i);
             }
         }
         if occ != self.occ {
             return Err("駒のいる升の集合の食い違い".into());
+        }
+        if psets != self.psets {
+            return Err("駒種ごとの升の集合の食い違い".into());
         }
         if pawn_files != self.pawn_files {
             return Err("二歩の筋の食い違い".into());

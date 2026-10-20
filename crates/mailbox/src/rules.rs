@@ -176,18 +176,10 @@ impl Position {
 
     /// 持ち主ごと・駒の符号の駒種ごとの、盤上の駒の升の集合（81升の通し番号のビット）。
     ///
-    /// 評価関数の駒の特徴（HalfKP）を作り直すときの材料である。駒番号の表を40枚まで歩いて作る。
-    pub fn piece_sets(&self) -> [[u128; 16]; 2] {
-        let mut out = [[0u128; 16]; 2];
-        for (c, o) in out.iter_mut().enumerate() {
-            let mut m = self.on_board[c];
-            while m != 0 {
-                let id = m.trailing_zeros() as usize;
-                m &= m - 1;
-                let s = self.sq_of[id];
-                o[piece_type(self.board[s as usize]) as usize] |= bit81(s);
-            }
-        }
-        out
+    /// 評価関数の駒の特徴（HalfKP）を作り直すときの材料である。盤を書き換えるたびに差分で持つ集合を返す。
+    /// 添字は `[持ち主][駒種]` で、駒種0・1の欄は常に空である。
+    #[inline]
+    pub fn piece_sets(&self) -> &[[u128; 16]; 2] {
+        &self.psets
     }
 }
