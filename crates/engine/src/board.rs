@@ -140,6 +140,13 @@ impl SearchBoard {
         self.pos.is_legal(m)
     }
 
+    /// 指し手の選び（`MovePicker`）が返した手mが合法か。from_ttは置換表の手か。
+    /// coreの生成は擬似合法手を出すので、どの手も判定する。
+    #[inline(always)]
+    pub fn is_legal_picked(&self, m: Move, _from_tt: bool) -> bool {
+        self.pos.is_legal(m)
+    }
+
     /// mがこの局面の擬似合法手か（置換表・キラーの手の検査）。
     #[inline(always)]
     pub fn pseudo_legal(&self, m: Move) -> bool {
@@ -374,6 +381,24 @@ impl SearchBoard {
         let r = self.mb.is_legal(mbconv::to_mb(m));
         self.shadow("is_legal", &r, |p| p.is_legal(m));
         r
+    }
+
+    /// 指し手の選び（`MovePicker`）が返した手mが合法か。from_ttは置換表の手か。
+    ///
+    /// 配列盤の生成は合法手だけを出すので、置換表の手でなければ判定しない（ADR-0241の第15回）。
+    /// 置換表の手は擬似合法性しか確かめていないので、判定する。
+    #[inline(always)]
+    pub fn is_legal_picked(&self, m: Move, from_tt: bool) -> bool {
+        if from_tt {
+            return self.is_legal(m);
+        }
+        debug_assert!(
+            self.mb.is_legal(mbconv::to_mb(m)),
+            "生成した手が合法でない {}: {}",
+            m.to_usi(),
+            self.to_sfen()
+        );
+        true
     }
 
     /// mがこの局面の擬似合法手か（置換表・キラーの手の検査）。
