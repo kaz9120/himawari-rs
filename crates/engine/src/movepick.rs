@@ -575,6 +575,19 @@ impl MoveBuf {
     }
 }
 
+/// 容量を確保した後の積み込み。容量の検査と伸ばす経路を手ごとに通らない（ADR-0241の第16回）。
+#[inline(always)]
+fn push_reserved(v: &mut Vec<ExtMove>, e: ExtMove) {
+    debug_assert!(v.len() < v.capacity());
+    // SAFETY: 点数付けの前に `reserve(list.len())` で、積む手の数だけ容量を確保してある。
+    // 積むのは手の列の各手について1回だけなので、長さは容量を超えない
+    unsafe {
+        let len = v.len();
+        v.as_mut_ptr().add(len).write(e);
+        v.set_len(len + 1);
+    }
+}
+
 /// 良い静かな手とみなすスコアの下限（movepick.cpp:459）。
 const GOOD_QUIET_THRESHOLD: i32 = -14000;
 /// 静かな手の部分ソートの閾値係数（movepick.cpp:605）。
@@ -720,12 +733,13 @@ impl MovePicker {
     /// 取った駒の価値を7倍し、capture historyを足す。倍率7は、あとで
     /// `see_ge(m, -value/18)` に渡すためにSEEのスケールへ合わせたもの。
     fn score_captures(&mut self, pos: &SearchBoard, h: &Histories, list: &MoveList) {
+        self.moves.reserve(list.len());
         for &m in list {
             let pc = m.piece_after();
             let to = m.to();
             let captured = pos.piece_on(to).piece_type();
             let v = h.capture.get(pc, to, captured) + 7 * piece_value(captured);
-            self.moves.push(ExtMove { m, v });
+            push_reserved(&mut self.moves, ExtMove { m, v });
         }
     }
 
@@ -737,6 +751,7 @@ impl MovePicker {
         cont: &[usize; 6],
         list: &MoveList,
     ) {
+        self.moves.reserve(list.len());
         let pawn_slot = h.shared.pawn.slot(pos.pawn_key());
         let us = pos.side_to_move();
         // 王手になる升を駒種ごとに1回だけ引く。配列盤の盤は呼ぶたびに作り直すので、
@@ -764,7 +779,7 @@ impl MovePicker {
             if self.ply < LOW_PLY_HISTORY_SIZE {
                 v += 8 * h.low_ply.get(self.ply, m) / (1 + self.ply as i32);
             }
-            self.moves.push(ExtMove { m, v });
+            push_reserved(&mut self.moves, ExtMove { m, v });
         }
     }
 
@@ -776,6 +791,7 @@ impl MovePicker {
         cont: &[usize; 6],
         list: &MoveList,
     ) {
+        self.moves.reserve(list.len());
         let us = pos.side_to_move();
         for &m in list {
             let pc = m.piece_after();
@@ -787,7 +803,7 @@ impl MovePicker {
             } else {
                 h.main.get(us, m) + h.cont.get(cont[0], pc, to)
             };
-            self.moves.push(ExtMove { m, v });
+            push_reserved(&mut self.moves, ExtMove { m, v });
         }
     }
 
