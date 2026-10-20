@@ -456,30 +456,64 @@ pub fn ray_to_blocker(s81: usize, d: usize, occ: u128) -> u128 {
     ray & !RAY81[first][d]
 }
 
-/// `SHORT81[p][s81]` は駒pを81升の升s81に置いたときの短い利きの升の集合（盤の上だけ）。
-/// 生成が盤を1升ずつ歩かずに行き先を引くための表（ADR-0241の第15回）。
-pub static SHORT81: [[u128; 81]; 32] = {
-    let mut t = [[0u128; 81]; 32];
+/// 短い利きの型を置く中心の升（5五、81升の通し番号）。上下2段・左右1筋の余白がある。
+const SHORT_CENTER: usize = 40;
+
+/// `SHORT_PAT[p]` は駒pを中心の升に置いたときの短い利きの升の集合。
+const SHORT_PAT: [u128; 32] = {
+    let mut t = [0u128; 32];
+    let c = IDX81[SHORT_CENTER] as i32;
     let mut p = 0;
     while p < 32 {
         let m = &MOVES[p];
-        let mut s = 0;
-        while s < 81 {
-            let i = IDX81[s] as i32;
-            let mut k = 0;
-            while k < m.n_short as usize {
-                let x = i + m.short[k] as i32;
-                if x >= 0 && (x as usize) < LEN && SQ81[x as usize] != 0xFF {
-                    t[p][s] |= 1u128 << SQ81[x as usize];
-                }
-                k += 1;
-            }
-            s += 1;
+        let mut k = 0;
+        while k < m.n_short as usize {
+            t[p] |= 1u128 << SQ81[(c + m.short[k] as i32) as usize];
+            k += 1;
         }
         p += 1;
     }
     t
 };
+
+/// `SHORT_NEAR[s81]` は升s81から左右1筋・上下2段の内側にある盤上の升の集合。
+/// 型をずらしたときに、筋をまたいで回り込んだ升と盤の外の升を落とす。
+const SHORT_NEAR: [u128; 81] = {
+    let mut t = [0u128; 81];
+    let mut s = 0;
+    while s < 81 {
+        let (f, r) = ((s / 9) as i32, (s % 9) as i32);
+        let mut df = -1;
+        while df <= 1 {
+            let mut dr = -2;
+            while dr <= 2 {
+                let (g, q) = (f + df, r + dr);
+                if g >= 0 && g < 9 && q >= 0 && q < 9 {
+                    t[s] |= 1u128 << (g * 9 + q);
+                }
+                dr += 1;
+            }
+            df += 1;
+        }
+        s += 1;
+    }
+    t
+};
+
+/// 駒pを81升の升s81に置いたときの短い利きの升の集合（盤の上だけ）。
+///
+/// 駒と升の組の表（41KB）を引く代わりに、駒ごとの型（512B）をずらして近傍の集合（1.3KB）と
+/// 積を取る。生成と1手詰めが何度も引くので、表を小さくしてL1の取り合いを減らす（ADR-0241の第15回）。
+#[inline(always)]
+pub fn short81(p: u8, s81: usize) -> u128 {
+    let pat = SHORT_PAT[(p & 31) as usize];
+    let shifted = if s81 >= SHORT_CENTER {
+        pat << (s81 - SHORT_CENTER)
+    } else {
+        pat >> (SHORT_CENTER - s81)
+    };
+    shifted & SHORT_NEAR[s81]
+}
 
 /// `REL_RANK81[c][s81]` は手番cから見た段（`rel_rank` の81升の通し番号版）。
 pub const REL_RANK81: [[u8; 81]; 2] = {

@@ -358,7 +358,7 @@ impl Position {
         let k81 = SQ81[k as usize];
         let xray = self.longdir[them][k as usize];
         let kp = make_piece(ctx.us, KING);
-        let cand = SHORT81[kp as usize][k81 as usize] & !self.occ[ui] & target;
+        let cand = short81(kp, k81 as usize) & !self.occ[ui] & target;
         for_each_bit81(cand, |t| {
             // 玉の升に届く飛び利きの延長（玉が線に沿って逃げる升）は、利き数に入っていない
             let d = DIR81[k81 as usize][t as usize];
@@ -392,7 +392,7 @@ impl Position {
                 return;
             }
             let m = &MOVES[(p & 31) as usize];
-            let mut to = SHORT81[(p & 31) as usize][s as usize];
+            let mut to = short81(p, s as usize);
             let mut dirs = m.long;
             while dirs != 0 {
                 let d = dirs.trailing_zeros() as usize;

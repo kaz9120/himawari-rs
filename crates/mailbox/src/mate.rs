@@ -755,7 +755,7 @@ impl Position {
     fn near_targets(&self, s: u8, p: u8, ui: usize, occ_all: u128) -> u128 {
         let m = &MOVES[(p & 31) as usize];
         let s81 = SQ81[s as usize] as usize;
-        let mut out = SHORT81[(p & 31) as usize][s81];
+        let mut out = short81(p, s81);
         let mut dirs = m.long;
         while dirs != 0 {
             let d = dirs.trailing_zeros() as usize;
