@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.56.2](https://github.com/kaz9120/himawari-rs/compare/v0.56.1...v0.56.2) (2026-10-20)
+
+
+### その他の変更
+
+* 利きのaccの差分を、祖先とこの段の前回の中身の近いほうから当てる（ADR-0242の段1、+8.42% NPS） ([#864](https://github.com/kaz9120/himawari-rs/issues/864)) ([f5d66af](https://github.com/kaz9120/himawari-rs/commit/f5d66afdb0c49986dd40ea4ac3e24eb41a30b956))
+
 ## [0.56.1](https://github.com/kaz9120/himawari-rs/compare/v0.56.0...v0.56.1) (2026-10-20)
 
 
