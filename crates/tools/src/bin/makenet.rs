@@ -87,7 +87,9 @@ fn apply_perm(net: NnueNetwork, perm: &[usize]) -> NnueNetwork {
             ft_w[base + j + HALF] = out.ft_w[base + p + HALF];
         }
     }
-    let mut w2 = vec![0i8; out.w2.len()];
+    // HalfKPの後ろに利きの活性の列が続く構成がある（ADR-0237）。そこは
+    // 並べ替えないので、元の値のまま残す
+    let mut w2 = out.w2.clone();
     for row in 0..out.w2.len() / CONCAT {
         let base = row * CONCAT;
         for (j, &p) in perm.iter().enumerate() {
@@ -243,6 +245,20 @@ mod tests {
         let before = forward_hidden(&net, &concat);
         let after = forward_hidden(&apply_perm(net, &perm), &moved);
         assert_eq!(before, after);
+    }
+
+    /// HalfKPの活性より後ろの列（利きの活性、ADR-0237）は動かさない。
+    /// 恒等置換なら第1層の重みは元と同じになる。
+    #[test]
+    fn identity_keeps_every_l1_weight() {
+        let mut net = NnueNetwork::random(11);
+        for (i, w) in net.w2.iter_mut().enumerate() {
+            *w = (i % 61) as i8 - 30;
+        }
+        let net = net.finish();
+        let w2 = net.w2.clone();
+        let identity: Vec<usize> = (0..HALF).collect();
+        assert_eq!(apply_perm(net, &identity).w2, w2);
     }
 
     /// FT側の並べ替えが、accumulatorを同じ置換で並べ替えた状態にする

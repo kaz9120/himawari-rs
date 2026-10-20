@@ -6,17 +6,21 @@
 //! ```text
 //! 256x16           FT→16→1          （隠れ層1つ）
 //! 256x32x32        FT→32→32→1       （隠れ層2つ）
-//! 1024x16x32       FT→16→32→1       （隠れ層2つ。既定）
+//! 1024x16x32       FT→16→32→1       （隠れ層2つ）
 //! 256x32x32x32     FT→32→32→32→1    （隠れ層3つ）
+//! 1024x16x32e64    上に、幅64の利きのaccumulatorを足す（ADR-0237。既定）
 //! ```
+//!
+//! 末尾の `e<E>` は、駒×升×利き数の特徴（ADR-0237のF2）を幅Eの別の
+//! accumulatorで持つ。省くとE=0で、利きの経路はコードごと消える。
 //!
 //! featureで持つと構成の数だけfeatureが要り、組み合わせが積で増える。
 //! 1つの文字列で受ければ構成を足すのにコード変更が要らない。
 
 use std::fmt::Write as _;
 
-/// 既定の構成（ADR-0034・ADR-0036、幅はADR-0159、後段はADR-0170）。
-const DEFAULT_ARCH: &str = "1024x16x32";
+/// 既定の構成（ADR-0034・ADR-0036、幅はADR-0159、後段はADR-0170、利きはADR-0237）。
+const DEFAULT_ARCH: &str = "1024x16x32e64";
 
 /// SIMD実装（`nnue_simd.rs`）が課す倍数の制約。
 /// FTはi16を16レーンで回す。隠れ層の出力は4行同時（ROWS=4）に計算し、
@@ -29,6 +33,10 @@ const L3_MULTIPLE: usize = 8;
 /// この倍数へ切り上げて（ゼロ埋めして）次の層へ渡す。
 const PAD_MULTIPLE: usize = 32;
 
+/// 利きのaccumulatorの幅の倍数。連結ベクトル（HalfKPの活性＋利きの活性
+/// 2視点）を32の倍数に保つため、片視点の幅を16の倍数にする。
+const EFF_MULTIPLE: usize = 16;
+
 /// 次元の上限。桁違いの値を書き間違えたときに、確保量で気づく前に止める。
 const MAX_DIM: usize = 4096;
 
@@ -39,10 +47,21 @@ struct Arch {
     l2: usize,
     /// 隠れ層2つ以下の構成では0。
     l3: usize,
+    /// 利きのaccumulatorの幅（ADR-0237）。0なら持たない。
+    eff: usize,
 }
 
 fn parse(spec: &str) -> Result<Arch, String> {
-    let parts: Vec<&str> = spec.split('x').collect();
+    // 末尾の e<E> を先に切り離す。残りは従来の書式のまま読む
+    let (body, eff) = match spec.split_once('e') {
+        Some((body, e)) => (
+            body,
+            e.parse::<usize>()
+                .map_err(|_| format!("利きの幅が整数でない: {e}"))?,
+        ),
+        None => (spec, 0),
+    };
+    let parts: Vec<&str> = body.split('x').collect();
     let num = |name: &str, s: &str| -> Result<usize, String> {
         s.parse::<usize>()
             .map_err(|_| format!("{name}が整数でない: {s}"))
@@ -53,7 +72,7 @@ fn parse(spec: &str) -> Result<Arch, String> {
         [ft, l1, l2, l3] => (*ft, *l1, *l2, *l3),
         _ => {
             return Err(format!(
-                "`<FT>x<L1>[x<L2>[x<L3>]]` の形で書く（例 256x16、512x16x32）。\
+                "`<FT>x<L1>[x<L2>[x<L3>]][e<E>]` の形で書く（例 256x16、512x16x32、1024x16x32e64）。\
                  渡された値: {spec}"
             ));
         }
@@ -63,6 +82,7 @@ fn parse(spec: &str) -> Result<Arch, String> {
         l1: num("L1", l1)?,
         l2: num("L2", l2)?,
         l3: num("L3", l3)?,
+        eff,
     })
 }
 
@@ -84,6 +104,9 @@ fn validate(a: &Arch) -> Result<(), String> {
     }
     if a.l3 != 0 {
         check("L3", a.l3, L3_MULTIPLE)?;
+    }
+    if a.eff != 0 {
+        check("利きの幅", a.eff, EFF_MULTIPLE)?;
     }
     if a.l2 == 0 && a.l3 != 0 {
         return Err("L2を書かずにL3だけ書くことはできない".to_string());
@@ -159,6 +182,12 @@ fn main() {
         arch.l1.next_multiple_of(PAD_MULTIPLE)
     };
     writeln!(src, "pub const L1_PAD: usize = {l1_pad};").unwrap();
+    writeln!(
+        src,
+        "/// 利きのaccumulatorの幅（片視点、ADR-0237）。0なら利きの特徴を持たない。"
+    )
+    .unwrap();
+    writeln!(src, "pub const EFF_OUT: usize = {};", arch.eff).unwrap();
     // 次の層へ渡すぶんだけ切り上げる。最後の隠れ層は内積で畳むので
     // 切り上げない（余分なゼロ列を持たない）
     let l2_pad = if arch.l3 == 0 {

@@ -90,6 +90,10 @@ jobs:
           # FTを太らせた経路が壊れていないことを、コンパイルとテストで確認する
           - arch: 512x16x64
             args: --workspace
+          # 利きのaccumulatorを持たない構成（ADR-0237より前の既定）。既定が
+          # e64になったので、利きの経路をコードごと消すビルドをここで守る
+          - arch: 1024x16x32
+            args: --workspace
     runs-on: ubuntu-latest
     # testジョブと同じ理由でopt-level=1にする
     env:

@@ -105,3 +105,47 @@ def test_board_layout_matches_cshogi():
     )
     board.push_usi("6i7h")
     assert list(board.pieces) == move(INITIAL, "6i", "7h")
+
+
+def test_f2_counts_stop_at_blockers():
+    """F2の利き数は遮りを入れる（ADR-0237）。影の利きとはここが違う。
+
+    初期局面の1aは、影の利きでは先手の角と香が差す（上のテスト）。実際の
+    利きでは7gの歩と1gの歩に止められ、どちらも届かない。
+    """
+    black, white = sf.exact_counts(INITIAL)
+    assert black[square("1a")] == 0
+    # 角の利きは最初の駒（7gの自分の歩）で止まり、その升は数える
+    assert black[square("7g")] == 2  # 8h角と8i桂
+    assert black[square("5e")] == 0  # 角道は7gで止まっている
+    # 後手の飛車は8cの自分の歩で止まる。8dを差すのは8cの歩だけ
+    assert white[square("8c")] == 1
+    assert white[square("8d")] == 1
+
+
+def test_f2_pawn_push_changes_seven_squares():
+    """7g7fでF2の特徴が入れ替わる升を手で数える（ADR-0237のS）。
+
+    - 7g・7f: 乗っている駒が変わる
+    - 7e: 7fへ進んだ歩が新たに差す
+    - 6f: 6gの歩の1に角が加わって2になる
+    - 5e・4d・3c: 角道が開き、先手の利き数が0から1になる
+
+    7gは歩が抜けても8h角と8i桂の2のままだが、駒が変わるので数える。
+    """
+    after = move(INITIAL, "7g", "7f")
+    assert sf.f2_changes(sf.f2_attributes(INITIAL), sf.f2_attributes(after)) == 7
+
+
+def test_f2_slider_stops_at_the_moved_pawn():
+    """2g2fでは、2h飛の縦の利きが2gを抜けて2fの歩で止まる。
+
+    2fも2gも、前後で先手の利き数は1のままになる。2fは歩が差していたのが
+    飛に代わり、2gは飛の隣接の利きが残る。
+    """
+    after = move(INITIAL, "2g", "2f")
+    before_b, _ = sf.exact_counts(INITIAL)
+    after_b, _ = sf.exact_counts(after)
+    assert (before_b[square("2f")], after_b[square("2f")]) == (1, 1)
+    assert (before_b[square("2g")], after_b[square("2g")]) == (1, 1)
+    assert after_b[square("2e")] == 1  # 2fの歩が差す。飛は2fで止まる

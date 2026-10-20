@@ -4,8 +4,8 @@ import torch
 
 import himawari
 from model import (
-    CONCAT, FT_IN, FT_OUT, FV_SCALE, L1_OUT, L2_OUT, L3_OUT, LAST_HIDDEN,
-    SIGMOID_SCALE, NnueModel,
+    CONCAT, EFF_IN, EFF_OUT, FT_IN, FT_OUT, FV_SCALE, L1_OUT, L2_OUT, L3_OUT,
+    LAST_HIDDEN, SIGMOID_SCALE, NnueModel,
 )
 
 
@@ -24,8 +24,14 @@ def quantize(model: NnueModel) -> dict:
         b4 = model.l4.bias.detach().float() if model.l4 is not None else None
         w_out = model.out.weight.detach().float().squeeze(0)
         b_out = model.out.bias.detach().float().item()
+        # 利きのaccumulator（ADR-0237）。FTと同じ127倍で、i16のまま持つ
+        eff_w = model.eff.weight.detach().float() if model.eff is not None else None
+        eff_b = model.eff_bias.detach().float() if model.eff is not None else None
 
     out_w_scale = SIGMOID_SCALE * FV_SCALE / 127.0
+
+    def ft_q(w):
+        return (w * 127).round().clamp(-32768, 32767).to(torch.int16)
 
     def hidden_w(w):
         return (w * 64).round().clamp(-128, 127).to(torch.int8)
@@ -44,6 +50,8 @@ def quantize(model: NnueModel) -> dict:
         "b4": None if b4 is None else hidden_b(b4),
         "w_out": (w_out * out_w_scale).round().clamp(-128, 127).to(torch.int8),
         "b_out": round(b_out * SIGMOID_SCALE * FV_SCALE),
+        "eff_w": None if eff_w is None else ft_q(eff_w),
+        "eff_b": None if eff_b is None else ft_q(eff_b),
     }
 
 
@@ -71,6 +79,11 @@ def load_into(model: NnueModel, path: str, freeze_ft: bool = False) -> str:
         model.ft_bias.copy_(as_tensor("ft_b", FT_OUT))
         if model.ft_p is not None:
             model.ft_p.weight.zero_()
+        # 利きのaccumulator（ADR-0237）。利きの構成は同じ構成のファイルしか
+        # 読めないので、拡張が返した長さのまま写せる
+        if model.eff is not None and len(w["eff_w"]):
+            model.eff.weight.copy_(as_tensor("eff_w", EFF_IN, EFF_OUT))
+            model.eff_bias.copy_(as_tensor("eff_b", EFF_OUT))
 
         if same_shape:
             model.l2.weight.copy_(as_tensor("w2", L1_OUT, CONCAT))
@@ -112,4 +125,12 @@ def save_hmwr(model: NnueModel, lineage: str, path: str):
         q["b_out"],
         None if q["w4"] is None else q["w4"].flatten().tolist(),
         None if q["b4"] is None else q["b4"].tolist(),
+        **(
+            {}
+            if q["eff_w"] is None
+            else {
+                "eff_w": q["eff_w"].flatten().tolist(),
+                "eff_b": q["eff_b"].tolist(),
+            }
+        ),
     )

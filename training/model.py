@@ -40,7 +40,17 @@ FE_END = FT_IN // 81
 # 第1層の入力幅。片視点のFT出力を2つに割って掛けるので、視点あたり
 # FT_OUT//2 になる（ADR-0171）。Rust側の定数をそのまま使う
 CONCAT = himawari.CONCAT
-HALF = CONCAT // 2
+# HalfKPの片視点の活性の幅。利きのaccumulatorを持つ構成では、CONCATの後ろに
+# 利きの活性が2視点ぶん続くので、CONCAT//2 ではなくFT_OUTから決める
+HALF = FT_OUT // 2
+# 利きのaccumulator（ADR-0237のF2）。構成の末尾の e<E> で幅が決まり、0なら
+# 持たない。古い拡張は定数を持たないので0として扱う
+EFF_IN = getattr(himawari, "EFF_IN", 0)
+EFF_OUT = getattr(himawari, "EFF_OUT", 0)
+# 1局面で立つ利きの特徴の数。升ごとに1つ
+EFF_ACTIVE = 81
+# 利きの特徴の使い方。f2は特徴を立てる処置群、noneは立てない統制群（ADR-0237）
+EFFECT_INPUTS = ("f2", "none")
 # 積の値域合わせ（ADR-0171）。推論側は clip(a)*clip(b) >> 7 で、最大が
 # 127×127/128 = 126 にしかならない。学習側にも同じ127/128を掛けておくと、
 # 活性127・隠れ層64という量子化の係数を1つも変えずに済む
@@ -68,8 +78,19 @@ class NnueModel(nn.Module):
 
     def __init__(self, sparse_ft=True, factorized=False, policy=False,
                  pretrain=False, effect_head=None,
-                 focus_head=None):
+                 focus_head=None, effect_inputs=None):
         super().__init__()
+        # 利きのaccumulatorは構成で決まる（ADR-0237）。持つ構成では、統制群も
+        # 処置群も同じ層を作る。**構造が同じなので、初期化で乱数を消費する
+        # 順序も同じになる**。違いは特徴を立てるかどうかだけである
+        if (EFF_OUT > 0) != (effect_inputs is not None):
+            raise ValueError(
+                f"構成 {ARCH} の利きの幅は{EFF_OUT}。利きの構成では effect_inputs"
+                f"（{'/'.join(EFFECT_INPUTS)}）が要り、それ以外では渡せない"
+            )
+        if effect_inputs is not None and effect_inputs not in EFFECT_INPUTS:
+            raise ValueError(f"effect_inputs が不明: {effect_inputs}")
+        self.eff_on = effect_inputs == "f2"
         self.ft = nn.EmbeddingBag(FT_IN, FT_OUT, mode="sum", sparse=sparse_ft)
         self.ft_p = (
             nn.EmbeddingBag(FE_END, FT_OUT, mode="sum", sparse=sparse_ft)
@@ -77,6 +98,14 @@ class NnueModel(nn.Module):
             else None
         )
         self.ft_bias = nn.Parameter(torch.full((FT_OUT,), 0.5))
+        # 利きの特徴は玉位置に依らないので、factorizerは掛けない（ADR-0237）。
+        # 1局面で81行が立ち、表の大半の行が毎バッチ触られるので密の勾配にする
+        self.eff = (
+            nn.EmbeddingBag(EFF_IN, EFF_OUT, mode="sum") if EFF_OUT else None
+        )
+        self.eff_bias = (
+            nn.Parameter(torch.full((EFF_OUT,), 0.5)) if EFF_OUT else None
+        )
         self.l2 = nn.Linear(CONCAT, L1_OUT)
         # 隠れ層は書いたぶんだけ持つ（ADR-0127）。L2_OUT=0 なら隠れ層1つ
         self.l3 = nn.Linear(L1_OUT, L2_OUT) if L2_OUT else None
@@ -137,6 +166,16 @@ class NnueModel(nn.Module):
         nn.init.uniform_(self.ft.weight, -0.05, 0.05)
         if self.ft_p is not None:
             nn.init.zeros_(self.ft_p.weight)
+        if self.eff is not None:
+            # 統制群も乱数を引いてから捨てる。引かないと以降の層の初期値が
+            # 処置群とずれる（ADR-0237の統制、ADR-0158の教訓）
+            nn.init.uniform_(self.eff.weight, -0.05, 0.05)
+            if not self.eff_on:
+                with torch.no_grad():
+                    self.eff.weight.zero_()
+                # 統制群の表は特徴を受けないので学習もしない。ゼロのまま
+                # 書き出すと、推論側で特徴を数えても足すのは0になる
+                self.eff.weight.requires_grad_(False)
         nn.init.uniform_(self.l2.weight, -0.1, 0.1)
         nn.init.zeros_(self.l2.bias)
         if self.l3 is not None:
@@ -181,13 +220,37 @@ class NnueModel(nn.Module):
         a, b = z[:, :HALF].clamp(0.0, 1.0), z[:, HALF:].clamp(0.0, 1.0)
         return a * b * PAIR_SCALE
 
-    def transform_both(self, stm_idx, stm_off, opp_idx, opp_off):
-        """FT出力を2視点ぶん連結して返す。補助ヘッドもここから生やす。"""
+    def effect_activation(self, idx, n):
+        """利きのaccumulatorを0〜1へクリップして返す（ADR-0237）。対の積は掛けない。
+
+        `idx` は1局面81個ずつ並んだ特徴。統制群は特徴を立てず、バイアスだけの
+        定数になる。推論側の `effect_transform` と同じ形である。
+        """
+        if self.eff_on:
+            if idx is None or idx.numel() != n * EFF_ACTIVE:
+                raise ValueError(
+                    "利きの特徴がバッチに入っていない。ローダに effect_inputs を渡す"
+                )
+            z = self.eff(idx.view(n, EFF_ACTIVE)) + self.eff_bias
+        else:
+            z = self.eff_bias.expand(n, -1)
+        return z.clamp(0.0, 1.0)
+
+    def transform_both(self, stm_idx, stm_off, opp_idx, opp_off,
+                       eff_stm=None, eff_opp=None):
+        """FT出力を2視点ぶん連結して返す。補助ヘッドもここから生やす。
+
+        利きのaccumulatorを持つ構成では、HalfKPの活性の後ろに利きの活性を
+        手番視点・非手番視点の順に連結する（ADR-0237）。
+        """
         z_stm = self.transform(stm_idx, stm_off)
         z_opp = self.transform(opp_idx, opp_off)
-        return torch.cat(
-            [self.pair_activation(z_stm), self.pair_activation(z_opp)], dim=1
-        )
+        parts = [self.pair_activation(z_stm), self.pair_activation(z_opp)]
+        if self.eff is not None:
+            n = stm_off.size(0)
+            parts += [self.effect_activation(eff_stm, n),
+                      self.effect_activation(eff_opp, n)]
+        return torch.cat(parts, dim=1)
 
     def value(self, x):
         """FT出力の連結から評価値を出す（推論と同じ経路）。
@@ -202,8 +265,10 @@ class NnueModel(nn.Module):
                 h = layer(h).clamp(0.0, 1.0)
         return self.out(h).squeeze(1)
 
-    def forward(self, stm_idx, stm_off, opp_idx, opp_off):
-        return self.value(self.transform_both(stm_idx, stm_off, opp_idx, opp_off))
+    def forward(self, stm_idx, stm_off, opp_idx, opp_off, eff_stm=None, eff_opp=None):
+        return self.value(
+            self.transform_both(stm_idx, stm_off, opp_idx, opp_off, eff_stm, eff_opp)
+        )
 
     def clip_ft_weights(self, limit=1.0):
         """畳み込み後のFT重みを±limitへ収める（ADR-0138）。
