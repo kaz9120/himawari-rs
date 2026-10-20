@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.56.6](https://github.com/kaz9120/himawari-rs/compare/v0.56.5...v0.56.6) (2026-10-20)
+
+
+### その他の変更
+
+* net train の学習データの置き場を paths.TRAIN から組む ([#876](https://github.com/kaz9120/himawari-rs/issues/876)) ([f76bb30](https://github.com/kaz9120/himawari-rs/commit/f76bb307dbb803a2b129401e66a19073f3836478)), closes [#850](https://github.com/kaz9120/himawari-rs/issues/850)
+
 ## [0.56.5](https://github.com/kaz9120/himawari-rs/compare/v0.56.4...v0.56.5) (2026-10-20)
 
 
