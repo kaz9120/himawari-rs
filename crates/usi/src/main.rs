@@ -493,7 +493,7 @@ fn probe_book(bopts: &mut BookOptions, pos: &Position, ponder: bool) -> Option<S
 }
 
 /// 配布する評価関数の固定名（ADR-0080の追記）。
-const DEFAULT_EVAL_NAME: &str = "himawari.hmwr";
+const DEFAULT_EVAL_NAME: &str = "eval.hmwr";
 
 /// 読み込む評価関数のパスを決める。EvalFileが空なら、実行ファイルと
 /// 同じフォルダの固定名にする（issue #744）。放流機の更新が上書きコピー

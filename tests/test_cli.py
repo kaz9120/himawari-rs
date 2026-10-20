@@ -475,7 +475,7 @@ def test_net_release_ships_the_fixed_asset_name(capsys, tmp_path):
     net_file.write_bytes(header + len(lineage).to_bytes(4, "little") + lineage + bytes(8))
     assert cli.main(["--dry-run", "net", "release", str(net_file), "16"]) == proc.OK
     out = capsys.readouterr().out
-    assert "| アセット | `himawari.hmwr` |" in out
+    assert "| アセット | `eval.hmwr` |" in out
     assert "| 学習時の名前 | `pool9_2ep.hmwr` |" in out
     assert "--title net-v16: pool9_2ep.hmwr" in out
     assert "-O data/nets/pool9_2ep.hmwr" in out
@@ -502,6 +502,18 @@ def test_book_release_is_dry_by_default(capsys, tmp_path):
     out = capsys.readouterr().out
     assert "dry-runのため作成しない" in out
     assert "| 局面数 | 2 |" in out
+
+
+def test_book_release_ships_the_fixed_asset_name(capsys, tmp_path):
+    """定跡は手元の名前によらず book.db で配る（ADR-0080の追記）。"""
+    db = tmp_path / "main.db"
+    db.write_text("#YANEURAOU-DB2016 1.00\nsfen a\n", encoding="utf-8")
+    assert cli.main(["--dry-run", "book", "release", str(db), "4"]) == proc.OK
+    out = capsys.readouterr().out
+    assert "| アセット | `book.db` |" in out
+    assert "| 手元の名前 | `main.db` |" in out
+    assert "--title book-v4: book.db" in out
+    assert "-p 'book.db'" in out
 
 
 def test_book_release_dry_run_does_not_need_gh(capsys, tmp_path, monkeypatch):
