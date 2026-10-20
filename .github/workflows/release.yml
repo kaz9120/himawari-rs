@@ -22,9 +22,9 @@ permissions:
 
 env:
   # 学習走行に使う評価関数。現行ネットを差し替えたら更新する。
-  # net-v16からアセットは固定名 himawari.hmwr になる（ADR-0080の追記）
+  # net-v16からアセットは固定名 eval.hmwr になる（ADR-0080の追記）
   NET_TAG: net-v16
-  NET_ASSET: himawari.hmwr
+  NET_ASSET: eval.hmwr
 
 jobs:
   build:

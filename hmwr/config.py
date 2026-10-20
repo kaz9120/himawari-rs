@@ -41,7 +41,10 @@ EVAL_FILE = "data/nets/pool1_2ep_f2_reorder.hmwr"
 EVAL_TAG = "net-v16"
 # 配布するネットのアセット名（ADR-0080の追記）。net-v16から固定名で配る。
 # エンジンは EvalFile が空のとき、実行ファイルと同じフォルダのこの名前を読む
-NET_ASSET = "himawari.hmwr"
+NET_ASSET = "eval.hmwr"
+# 配布する定跡のアセット名（ADR-0080の追記）。形式はやねうら王の定跡のまま。
+# エンジンは BookFile が空なら定跡を使わない。置いただけでは読まない
+BOOK_ASSET = "book.db"
 # 学習時の名前で配った最後の版。これ以前のReleaseは書き換えない
 LAST_NAMED_NET = 15
 OPENINGS = "openings/start_sfens_ply24.txt"

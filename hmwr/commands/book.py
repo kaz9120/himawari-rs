@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import argparse
+import shutil
+import tempfile
 from pathlib import Path
 
 from .. import config, paths, proc
@@ -108,11 +110,15 @@ def release(args: argparse.Namespace) -> int:
     )
     size = release_mod.file_size(db)
     gen = _read_gen_log(args.gen_log)
+    # アセットは固定名で配る（ADR-0080の追記）。手元の名前はノートに残す
+    asset_name = config.BOOK_ASSET
 
     notes = [
         "## 定跡", "",
         "| 項目 | 値 |", "|---|---|",
-        f"| アセット | `{db.name}` |",
+        f"| アセット | `{asset_name}` |",
+        f"| 手元の名前 | `{db.name}` |",
+        "| 形式 | やねうら王の定跡（`#YANEURAOU-DB2016`） |",
         f"| 局面数 | {positions} |",
         f"| サイズ | {size} |",
     ]
@@ -124,24 +130,28 @@ def release(args: argparse.Namespace) -> int:
         notes += ["", "## 補足", "", args.notes]
     notes += [
         "", "## 使い方", "", "```",
-        f"gh release download {tag} -D data/book/",
+        f"gh release download {tag} -p '{asset_name}' -D data/book/",
         "```", "",
         "USIオプション `BookFile` にパスを指定する。既定は定跡なし。",
+        "実行ファイルの隣に置いただけでは読まない。",
         "`BookDepth` で定跡を引く手数の上限を決める（既定24）。", "",
         "生成は非決定的である。同じコマンドでも内容が変わるため、",
         "再現ではなくこの成果物を使う。",
     ]
 
     print(f"タグ    : {tag}")
-    print(f"アセット: {db.name}（{positions}局面、{size}）")
-    return release_mod.create(
-        tag,
-        f"{tag}: {db.name} ({positions}局面)",
-        "\n".join(notes) + "\n",
-        [db],
-        apply=args.apply,
-        dry_run=args.dry_run,
-    )
+    print(f"アセット: {asset_name}（{positions}局面、{size}、手元の名前 {db.name}）")
+    with tempfile.TemporaryDirectory() as tmp:
+        asset = Path(tmp) / asset_name
+        shutil.copy2(db, asset)
+        return release_mod.create(
+            tag,
+            f"{tag}: {asset_name} ({positions}局面)",
+            "\n".join(notes) + "\n",
+            [asset],
+            apply=args.apply,
+            dry_run=args.dry_run,
+        )
 
 
 def _read_gen_log(path: str | None) -> dict[str, str]:

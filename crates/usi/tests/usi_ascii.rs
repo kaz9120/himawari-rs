@@ -99,7 +99,7 @@ fn empty_eval_file_falls_back_to_the_name_beside_the_binary() {
     let stdout = assert_ascii(&out.stdout);
     assert!(stdout.contains("cannot open EvalFile"), "{stdout}");
     let exe = Path::new(env!("CARGO_BIN_EXE_himawari"));
-    let expect = exe.with_file_name("himawari.hmwr");
+    let expect = exe.with_file_name("eval.hmwr");
     assert!(
         stdout.contains(&format!("path = {:?}", expect.to_string_lossy())),
         "{stdout}"
