@@ -313,8 +313,8 @@ def train(args: argparse.Namespace) -> int:
     argv = [
         "python3",
         TRAINER,
-        "--data", str(data),
-        "--valid", str(valid),
+        "--data", paths.rel(data),
+        "--valid", paths.rel(valid),
         "--out", str(out),
         *BASE_FLAGS,
         # 29.9億のpsvはRAMに載らない（ADR-0065）
@@ -327,7 +327,7 @@ def train(args: argparse.Namespace) -> int:
         "--log-file", _curve(name),
         "--registry", paths.rel(paths.registry()),
         "--name", name,
-        "--notes", args.notes or f"{data} で学習",
+        "--notes", args.notes or f"{paths.rel(data)} で学習",
     ]
 
     lr = args.lr
@@ -341,7 +341,7 @@ def train(args: argparse.Namespace) -> int:
     if lr:
         argv += ["--peak-lr", lr]
     if rank is not None:
-        argv += ["--rank-data", str(rank)]
+        argv += ["--rank-data", paths.rel(rank)]
     if args.positions:
         argv += ["--positions", str(args.positions)]
     if args.extra:
@@ -420,12 +420,14 @@ def _curve(name: str) -> str:
 def _train_file(value: str, suffix: str) -> Path:
     """名前を data/train/ のファイルへ解決する。区切りか拡張子があればパスとして通す。
 
-    学習器へはリポジトリからの相対パスで渡す。学習の記録の備考に載るので、
+    置き場は `paths.TRAIN` から組む。文字列で組むとテストの退避
+    （tests/conftest.py）が効かず、本物の `data/train/` を読む（#850）。
+    学習器へは `paths.rel` で相対にして渡す。学習の記録の備考に載るので、
     マシンの置き場に依存させない。
     """
     if "/" in value or value.endswith(suffix):
         return Path(value)
-    return Path("data/train") / f"{paths.check_name(value)}{suffix}"
+    return paths.TRAIN / f"{paths.check_name(value)}{suffix}"
 
 
 def _continual_args(data: Path, args: argparse.Namespace, *, dry_run: bool) -> list[str]:
@@ -510,7 +512,7 @@ def probe(args: argparse.Namespace) -> int:
     argv = [
         "python3",
         TRAINER,
-        "--data", str(data),
+        "--data", paths.rel(data),
         *BASE_FLAGS,
         "--focus-head", args.head,
         "--lambda-focus", PROBE_LAMBDA,

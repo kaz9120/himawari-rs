@@ -3,6 +3,8 @@
 学習は回さない。学習器の起動を差し替え、渡された引数だけを見る。
 """
 
+from pathlib import Path
+
 import pytest
 
 from hmwr import cli, paths, proc
@@ -95,6 +97,31 @@ def test_a_checkpoint_without_a_record_needs_adopt(trainer):
     assert cli.main(argv_for(train_dir)) == proc.RUNTIME
     assert cli.main(argv_for(train_dir, "d.psv", "--adopt")) == proc.OK
     assert "--resume" in calls[0]
+
+
+# --- 置き場の解決（#850） -----------------------------------------------
+
+
+def test_a_name_is_resolved_under_the_train_place(trainer):
+    """名前は paths.TRAIN から組む。文字列で組むとテストの退避が効かない（#850）。"""
+    calls, _ = trainer
+    paths.TRAIN.mkdir(parents=True, exist_ok=True)
+    for name in ("d.psv", "v.psv"):
+        (paths.TRAIN / name).write_bytes(b"x")
+
+    assert net._train_file("d", ".psv") == paths.TRAIN / "d.psv"
+    assert cli.main(["net", "train", "x", "--data", "d", "--valid", "v"]) == proc.OK
+    # 学習器へは相対で渡す。学習の記録の備考に載るので、置き場に依存させない
+    argv = calls[0]
+    assert argv[argv.index("--data") + 1] == "data/train/d.psv"
+    assert argv[argv.index("--valid") + 1] == "data/train/v.psv"
+
+
+def test_a_path_is_passed_through_as_given(trainer):
+    """区切りか拡張子があればパスとして通す。名前の解決に巻き込まない。"""
+    _, train_dir = trainer
+    assert net._train_file(str(train_dir / "d.psv"), ".psv") == train_dir / "d.psv"
+    assert net._train_file("data/train/d.psv", ".psv") == Path("data/train/d.psv")
 
 
 # --- py拡張の構成（#804） ----------------------------------------------
