@@ -4,10 +4,17 @@
 //! 積むだけで、evaluateが呼ばれた時点で計算済みの祖先まで遡って
 //! 差分を適用する。自玉が動いた視点は全計算（refresh）する。
 //! 正しさの基準はnnue::evaluate_scalarとの完全一致。
+//!
+//! 利きの特徴（ADR-0237）を持つ構成では、利きのaccumulatorを別のスタックで
+//! 持つ（D2）。評価のときに利き数の段階を集合で作り直し、計算済みの祖先と
+//! 比べて、中身か段階が変わった升の行だけを足し引きする。
 
-use himawari_core::{Color, DirtyPiece, PieceType, Position, Square, bonapiece};
+use himawari_core::{Bitboard, Color, DirtyPiece, PieceType, Position, Square, bonapiece};
 
-use crate::nnue::{CONCAT, FT_OUT, FtWeight, HALF, NnueNetwork};
+use crate::nnue::{
+    CONCAT, EFF_BASE, EFF_OUT, EffectLevels, FT_OUT, FtWeight, HALF, NnueNetwork, effect_code,
+    effect_code_index, effect_row, effect_row_add16, effect_row_swap16,
+};
 use crate::nnue_simd;
 use crate::value::{MAX_PLY, Value};
 
@@ -51,6 +58,37 @@ impl AccEntry {
         }
     }
 }
+
+/// 利きの段（ADR-0237のD2）。`EFF_OUT` が0の構成では確保しない。
+///
+/// 祖先と比べるために、段階の集合と升ごとの語（`effect_code`）を持つ。
+/// accはi16で持ち、巡回加算で足す。読み込み時に `effect_acc_bound` がi16に
+/// 収まることを確かめてあるので、i32で足す全計算（D3）と一致する。
+#[derive(Clone)]
+struct EffEntry {
+    /// 絶対色ごとの利きのaccumulator。
+    acc: [[i16; EFF_OUT]; 2],
+    /// 升ごとの中身と段階（`effect_code`）。
+    codes: [u16; 81],
+    levels: EffectLevels,
+    /// falseの間は中身が未定義で、誰も読まない。
+    computed: bool,
+}
+
+impl EffEntry {
+    fn empty() -> EffEntry {
+        EffEntry {
+            acc: [[0; EFF_OUT]; 2],
+            codes: [0; 81],
+            levels: EffectLevels::EMPTY,
+            computed: false,
+        }
+    }
+}
+
+/// 祖先との差分で変わった升がこれを超えたら、81升を全計算する。
+/// 1升あたり引く行と足す行の2本を払うので、およそ半分で損益が分かれる。
+const EFF_REFRESH_ABOVE: u32 = 40;
 
 /// 積める段数。rootが0段目で、探索は `ply >= MAX_PLY` で即座に返るため、
 /// 実際に積まれるのは最大 `MAX_PLY` 段になる。余白を足して越えを防ぐ。
@@ -99,6 +137,9 @@ pub struct NnueState {
     /// キャッシュとの差分を組み立てる置き場。`scratch` と同じく
     /// 容量を保ったまま使い回す（ADR-0124）
     scratch: Scratch,
+    /// 利きの段（ADR-0237のD2）。`entries` と同じ添字で並ぶ。
+    /// `EFF_OUT` が0の構成では空で、誰も触らない。
+    eff: Vec<EffEntry>,
 }
 
 /// キャッシュ差分で使う作業領域。まとめて `mem::take` できる形に
@@ -126,6 +167,9 @@ impl NnueState {
                 adds: Vec::with_capacity(64),
                 subs: Vec::with_capacity(64),
             },
+            eff: std::iter::repeat_with(EffEntry::empty)
+                .take(if EFF_OUT != 0 { MAX_ENTRIES } else { 0 })
+                .collect(),
         }
     }
 
@@ -137,6 +181,9 @@ impl NnueState {
         root.computed = [false, false];
         root.dirty = DirtyPiece::default();
         root.hand = None;
+        if EFF_OUT != 0 {
+            self.eff[0].computed = false;
+        }
     }
 
     /// do_move直後のposで呼ぶ。差分材料だけ積む（計算はしない）。
@@ -155,6 +202,9 @@ impl NnueState {
         e.computed = [false, false];
         e.dirty = dirty;
         e.hand = hand;
+        if EFF_OUT != 0 {
+            self.eff[self.top].computed = false;
+        }
     }
 
     pub fn pop(&mut self) {
@@ -173,9 +223,135 @@ impl NnueState {
             let acc = &top.acc[c.index()];
             nnue_simd::clip_to_u8(acc, &mut concat[half * HALF..(half + 1) * HALF]);
         }
+        if EFF_OUT != 0 {
+            // 利きの部分は祖先からの差分で作る（ADR-0237のD2）
+            self.ensure_effect(net, pos);
+            let e = &self.eff[self.top];
+            for (k, c) in [(0usize, stm), (1, stm.flip())] {
+                let at = EFF_BASE + k * EFF_OUT;
+                crate::nnue::effect_clip16(&e.acc[c.index()], &mut concat[at..at + EFF_OUT]);
+            }
+            if cfg!(any(test, debug_assertions)) {
+                self.check_effect(net, pos);
+            }
+        }
         #[cfg(feature = "actdump")]
         crate::actdump::record(&concat);
         nnue_simd::forward_hidden(net, &concat)
+    }
+
+    /// 利きのaccumulatorを最上段に用意する（ADR-0237のD2）。
+    ///
+    /// 計算済みの祖先まで遡り、その間の手で駒が出入りした升と、利き数の段階が
+    /// 変わった升を集める。**比べる相手は祖先の値そのものなので、途中の段の
+    /// 材料は要らない。** 遅延で当てる前提（push は印を付けるだけ）と両立する。
+    /// 利きの特徴は玉位置に依らないので、玉が動いても遡れる。
+    fn ensure_effect(&mut self, net: &NnueNetwork, pos: &Position) {
+        let top = self.top;
+        if self.eff[top].computed {
+            return;
+        }
+        let levels = EffectLevels::build(pos);
+        // 祖先までの手で、駒が出入りした升
+        let mut moved = Bitboard::EMPTY;
+        let mut i = top;
+        let anc = loop {
+            if self.eff[i].computed {
+                break Some(i);
+            }
+            if i == 0 {
+                break None;
+            }
+            let d = &self.entries[i].dirty;
+            for j in 0..d.count as usize {
+                for sq in [d.from[j], d.to[j]] {
+                    if sq != Square::NONE {
+                        moved.set(sq);
+                    }
+                }
+            }
+            i -= 1;
+        };
+        let changed = anc.map(|a| moved | levels.diff(&self.eff[a].levels));
+        match (anc, changed) {
+            (Some(a), Some(changed)) if changed.count() <= EFF_REFRESH_ABOVE => {
+                let (before, after) = self.eff.split_at_mut(top);
+                let prev = &before[a];
+                let e = &mut after[0];
+                e.acc = prev.acc;
+                e.codes = prev.codes;
+                for sq in changed {
+                    let new = effect_code(pos, &levels, sq);
+                    let old = e.codes[sq.index()];
+                    if old == new {
+                        continue;
+                    }
+                    e.codes[sq.index()] = new;
+                    for c in [Color::Black, Color::White] {
+                        let acc = &mut e.acc[c.index()];
+                        effect_row_swap16(
+                            acc,
+                            effect_row(net, effect_code_index(c, sq, old)),
+                            effect_row(net, effect_code_index(c, sq, new)),
+                        );
+                    }
+                }
+            }
+            _ => {
+                let e = &mut self.eff[top];
+                for c in [Color::Black, Color::White] {
+                    e.acc[c.index()].copy_from_slice(&net.eff_b[..EFF_OUT]);
+                }
+                for i in 0..81u8 {
+                    let sq = Square::from_index(i);
+                    let code = effect_code(pos, &levels, sq);
+                    e.codes[sq.index()] = code;
+                    for c in [Color::Black, Color::White] {
+                        effect_row_add16(
+                            &mut e.acc[c.index()],
+                            effect_row(net, effect_code_index(c, sq, code)),
+                        );
+                    }
+                }
+            }
+        }
+        let e = &mut self.eff[top];
+        e.levels = levels;
+        e.computed = true;
+    }
+
+    /// 最上段の利きの段を、全計算（D3）と突き合わせる。テストとデバッグビルド
+    /// だけで、評価のたびに呼ぶ。accの値・升ごとの語・段階の集合を見る。
+    fn check_effect(&self, net: &NnueNetwork, pos: &Position) {
+        let e = &self.eff[self.top];
+        let counts = crate::nnue::effect_counts(pos);
+        let levels = EffectLevels::build(pos);
+        assert!(
+            e.levels == levels,
+            "段階の集合が食い違う: {}",
+            pos.to_sfen()
+        );
+        for i in 0..81u8 {
+            let sq = Square::from_index(i);
+            assert_eq!(
+                e.codes[sq.index()],
+                effect_code(pos, &levels, sq),
+                "升の語が食い違う: sq={} {}",
+                sq.to_usi(),
+                pos.to_sfen()
+            );
+        }
+        let mut feats = [0u32; 81];
+        for c in [Color::Black, Color::White] {
+            crate::nnue::effect_active(pos, c, &counts, &mut feats);
+            let full = crate::nnue::effect_accumulate(net, &feats);
+            assert_eq!(
+                e.acc[c.index()].map(i32::from),
+                full,
+                "利きのaccが全計算と食い違う: 視点{c:?} {}",
+                pos.to_sfen()
+            );
+        }
     }
 
     /// 両視点のaccumulatorを最上段に用意する（ADR-0151群N）。
@@ -592,6 +768,75 @@ mod tests {
                 assert_eq!(bits, want, "集合が一致しない: {} 視点{c:?}", pos.to_sfen());
             }
         }
+    }
+
+    /// 評価を飛ばすノードを混ぜた進め戻し。利きの段（ADR-0237のD2）は
+    /// 計算済みの祖先が数手上にある状態から差分を当てるので、その経路を踏む。
+    /// 評価したノードでは、`evaluate` の中の検査が利きのaccまで突き合わせる。
+    fn walk_sparse(
+        net: &NnueNetwork,
+        pos: &mut Position,
+        st: &mut NnueState,
+        rng: &mut Rng,
+        depth: usize,
+    ) -> u64 {
+        let mut n = 0;
+        if rng.next().is_multiple_of(3) || depth == 0 {
+            assert_eq!(
+                st.evaluate(net, pos),
+                evaluate_scalar(net, pos),
+                "差分と全計算が一致しない: {}",
+                pos.to_sfen()
+            );
+            n += 1;
+        }
+        if depth == 0 {
+            return n;
+        }
+        for _ in 0..2 {
+            let mut list = MoveList::default();
+            generate_legal(pos, true, &mut list);
+            if list.is_empty() {
+                return n;
+            }
+            if !pos.in_check() && rng.next().is_multiple_of(8) {
+                pos.do_null_move();
+                st.push(pos);
+                n += walk_sparse(net, pos, st, rng, depth - 1);
+                st.pop();
+                pos.undo_null_move();
+            } else {
+                let m = list.as_slice()[(rng.next() % list.len() as u64) as usize];
+                pos.do_move(m);
+                st.push(pos);
+                n += walk_sparse(net, pos, st, rng, depth - 1);
+                st.pop();
+                pos.undo_move(m);
+            }
+        }
+        n
+    }
+
+    #[test]
+    fn incremental_matches_full_computation_with_skipped_evals() {
+        let net = NnueNetwork::random(13);
+        let mut evaluated = 0;
+        for seed in 1..=8u64 {
+            let mut rng = Rng(seed.wrapping_mul(0xD1B5_4A32_D192_ED03));
+            let mut pos = Position::from_sfen(SFEN_STARTPOS).unwrap();
+            for _ in 0..(rng.next() % 60) {
+                let mut list = MoveList::default();
+                generate_legal(&pos, true, &mut list);
+                if list.is_empty() {
+                    break;
+                }
+                let m = list.as_slice()[(rng.next() % list.len() as u64) as usize];
+                pos.do_move(m);
+            }
+            let mut st = NnueState::new();
+            evaluated += walk_sparse(&net, &mut pos, &mut st, &mut rng, 7);
+        }
+        assert!(evaluated > 300, "評価したノードが少なすぎる: {evaluated}");
     }
 
     #[test]

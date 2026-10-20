@@ -1,0 +1,29 @@
+# ADR-0237 の段階1: 駒×升×利き数の特徴（F2）を立てたネットと立てないネットを、
+# 同じ構造・同じ1億・同じ乱数で学習し、ノード数固定の対局で質の差Qを測る。
+# 研究ブランチ research-effect-inputs の作業木で走らせる。mainの作業木には
+# 利きの構成（e64）も --effect-inputs もない。合計は約7時間の見込み。
+adr = "0237"
+
+[[step]]
+id = "select-dedup"
+run = "hmwr data dedup sel_dedup_100M --in train_7860M_q1 --count 100000000"
+
+[[step]]
+id = "train-ctrl"
+run = "hmwr net train eff_ctrl --arch 1024x16x32e64 --data sel_dedup_100M --valid valid_tanuki_dl430_q1 --rank rank_tanuki_210M --seed 0 --extra=\"--effect-inputs none\" --notes \"ADR-0237 統制、利きの特徴を立てない\""
+
+[[step]]
+id = "train-f2"
+run = "hmwr net train eff_f2 --arch 1024x16x32e64 --data sel_dedup_100M --valid valid_tanuki_dl430_q1 --rank rank_tanuki_210M --seed 0 --extra=\"--effect-inputs f2\" --notes \"ADR-0237 処置、F2の特徴を立てる\""
+
+[[step]]
+id = "rm-data"
+run = "hmwr data rm sel_dedup_100M"
+
+[[step]]
+id = "build"
+run = "hmwr build shapes 1024x16x32e64 --tag adr0237"
+
+[[step]]
+id = "match-q"
+run = "hmwr match run adr0237-q --build shape-1024x16x32e64 --base-net eff_ctrl --cand-net eff_f2 --nodes 300000 --stop pairs:1000 --max-moves 400 --foreground"

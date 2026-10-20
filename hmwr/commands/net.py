@@ -222,7 +222,15 @@ def add_parser(sub: argparse._SubParsersAction) -> None:
     )
     t.add_argument("name", metavar="名前", help="出力名。data/profile/act-<名前>.bin")
     t.add_argument("--positions", metavar="パス", help="局面リスト")
-    t.add_argument("--depth", type=int, metavar="N", help="探索の深さ（既定 16）")
+    limit = t.add_mutually_exclusive_group()
+    limit.add_argument("--depth", type=int, metavar="N", help="探索の深さ（既定 16）")
+    limit.add_argument(
+        "--nodes",
+        type=int,
+        metavar="N",
+        help="深さの代わりに、1局面をこのノード数で打ち切る。"
+        "大差の局面で深さの探索が終わらないときに使う",
+    )
     t.add_argument("--stride", type=int, metavar="N", help="何回の評価につき1つ記録するか")
     t.add_argument("--eval-file", metavar="パス", help="評価関数")
     t.set_defaults(func=actdump)
@@ -779,6 +787,25 @@ ACTDUMP_TARGET = 12500
 # 見積もりが上振れすると目標数に届かずダンプが書かれないので、8割で見込む。
 # 深さを変えたら --stride で渡す
 ACTDUMP_EVALS_PER_POSITION = 190_000
+# ノード数で打ち切るときの、1ノードあたりの評価回数の見込み。pool1_2ep の
+# 深さ16のダンプは84局面・9,533万ノードで3,800万回の評価だった（0.40）。
+# 上と同じく8割で見込む
+ACTDUMP_EVALS_PER_NODE = 0.32
+
+
+def actdump_go(depth: int | None, nodes: int | None) -> str:
+    """1局面に送るgoのコマンド。ノード数を指定したらそちらで打ち切る。"""
+    if nodes:
+        return f"go nodes {nodes}"
+    return f"go depth {depth or ACTDUMP_DEPTH}"
+
+
+def actdump_stride(positions: int, nodes: int | None) -> int:
+    """全局面をちょうど使い切る当たりの間引き。"""
+    per_position = (
+        int(nodes * ACTDUMP_EVALS_PER_NODE) if nodes else ACTDUMP_EVALS_PER_POSITION
+    )
+    return max(1, positions * per_position // ACTDUMP_TARGET)
 
 
 def actdump(args: argparse.Namespace) -> int:
@@ -793,7 +820,7 @@ def actdump(args: argparse.Namespace) -> int:
     name = paths.check_name(args.name)
     positions = Path(args.positions or paths.REPO / ACTDUMP_POSITIONS)
     out = paths.PROFILE / f"act-{name}.bin"
-    depth = args.depth or ACTDUMP_DEPTH
+    go = actdump_go(args.depth, args.nodes)
     eval_file = args.eval_file or config.get("EVAL_FILE")
 
     if not positions.is_file() and not args.dry_run:
@@ -801,7 +828,7 @@ def actdump(args: argparse.Namespace) -> int:
 
     print(f"=== 活性ダンプ: {name} ===")
     print(f"局面    : {paths.rel(positions)}")
-    print(f"深さ    : {depth}")
+    print(f"探索    : {go}")
     print(f"評価関数: {eval_file}")
     print(f"出力    : {paths.rel(out)}")
 
@@ -827,15 +854,13 @@ def actdump(args: argparse.Namespace) -> int:
         raise proc.Fail(f"局面リストが空だ: {paths.rel(positions)}")
     # 間引きが狭いと、リストの先頭だけで目標数に達してリストの残りが
     # 使われない。既定は「全局面をちょうど使い切る」当たりへ置く
-    stride = args.stride or max(
-        1, len(lines) * ACTDUMP_EVALS_PER_POSITION // ACTDUMP_TARGET
-    )
+    stride = args.stride or actdump_stride(len(lines), args.nodes)
     print(f"間引き  : {stride}（{len(lines)}局面ぶんの見積もり）")
 
     usi = ["usi", "setoption name Threads value 1",
            f"setoption name EvalFile value {eval_file}", "isready"]
     for position in lines:
-        usi += ["usinewgame", f"position {position}", f"go depth {depth}"]
+        usi += ["usinewgame", f"position {position}", go]
     usi.append("quit")
 
     out.parent.mkdir(parents=True, exist_ok=True)
@@ -850,13 +875,14 @@ def actdump(args: argparse.Namespace) -> int:
         raise proc.Fail(
             f"ダンプが書かれなかった: {paths.rel(out)}\n"
             f"目標サンプル数に届いていない。--stride を {stride} より小さくするか、"
-            "局面か深さを増やす"
+            "局面か深さ（ノード数）を増やす"
         )
     return code
 
 
-# 評価関数ファイルの形式（ADR-0037）。版によって次元の数が変わる
-NDIMS_BY_VERSION = {2: 3, 3: 4, 5: 4, 7: 4, 9: 4, 4: 5, 6: 5, 8: 5, 10: 5}
+# 評価関数ファイルの形式（ADR-0037）。版によって次元の数が変わる。
+# 版11・12は利きの特徴数と幅の2つを寸法の後ろに持つ（ADR-0237）
+NDIMS_BY_VERSION = {2: 3, 3: 4, 5: 4, 7: 4, 9: 4, 4: 5, 6: 5, 8: 5, 10: 5, 11: 6, 12: 7}
 
 
 def read_lineage(path: Path) -> str:

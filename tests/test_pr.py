@@ -4,7 +4,7 @@ import json
 
 import pytest
 
-from hmwr import cli, proc
+from hmwr import cli, proc, sprt_log
 from hmwr.commands import pr
 
 
@@ -110,6 +110,22 @@ def test_a_trailer_buried_in_an_earlier_paragraph_is_refused():
 def test_non_inferiority_trailer_carries_the_condition():
     result = {**H1, "elo0": "-5", "elo1": "0"}
     assert pr.expected_trailer(result) == TRAILER + "（非劣性 elo0=-5 elo1=0）"
+
+
+@pytest.mark.parametrize(
+    "hyp",
+    [("0", "5"), ("-5", "0"), ("0", "10"), None],
+)
+def test_the_expected_trailer_matches_what_the_log_writes(hyp):
+    """検査する側とトレーラを書く側で、注記の組み立てを1本にする。
+
+    別々に持つと、加速SPRT（elo1=10）のように既定でも非劣性でもない
+    対立仮説で食い違い、正しいトレーラがマージで弾かれる。
+    """
+    result = {k: v for k, v in H1.items() if k not in ("elo0", "elo1")}
+    if hyp is not None:
+        result["elo0"], result["elo1"] = hyp
+    assert pr.expected_trailer(result) == TRAILER + sprt_log.hypothesis_note(hyp)
 
 
 @pytest.mark.parametrize(

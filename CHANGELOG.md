@@ -1,5 +1,33 @@
 # Changelog
 
+## [0.56.1](https://github.com/kaz9120/himawari-rs/compare/v0.56.0...v0.56.1) (2026-10-20)
+
+
+### その他の変更
+
+* 配布物の名前を役割で揃え、評価関数をeval.hmwr・定跡をbook.dbにする ([#860](https://github.com/kaz9120/himawari-rs/issues/860)) ([ee5313a](https://github.com/kaz9120/himawari-rs/commit/ee5313ae948e969634ae5013d7e8e32805e5605e))
+
+## [0.56.0](https://github.com/kaz9120/himawari-rs/compare/v0.55.14...v0.56.0) (2026-10-20)
+
+
+### 棋力向上
+
+* 駒×升×利き数を評価関数の入力に足す（+30.2 Elo、ADR-0237） ([#853](https://github.com/kaz9120/himawari-rs/issues/853)) ([22a42c8](https://github.com/kaz9120/himawari-rs/commit/22a42c8bb53c8a824979d38a503861a3a2a5bf38))
+
+## [0.55.14](https://github.com/kaz9120/himawari-rs/compare/v0.55.13...v0.55.14) (2026-10-19)
+
+
+### その他の変更
+
+* SPRTトレーラの注記をsprt_logへ一本化する ([#851](https://github.com/kaz9120/himawari-rs/issues/851)) ([1e213ba](https://github.com/kaz9120/himawari-rs/commit/1e213ba422f20430b871e59c10fb913b62d0777b)), closes [#849](https://github.com/kaz9120/himawari-rs/issues/849)
+
+## [0.55.13](https://github.com/kaz9120/himawari-rs/compare/v0.55.12...v0.55.13) (2026-10-17)
+
+
+### その他の変更
+
+* profile report --categories に利きの表の維持と規則の漏れの一覧を足す ([#846](https://github.com/kaz9120/himawari-rs/issues/846)) ([b0f3121](https://github.com/kaz9120/himawari-rs/commit/b0f312136766f2a5b013dd7f2a512596e2f0e4a8)), closes [#837](https://github.com/kaz9120/himawari-rs/issues/837)
+
 ## [0.55.12](https://github.com/kaz9120/himawari-rs/compare/v0.55.11...v0.55.12) (2026-10-17)
 
 

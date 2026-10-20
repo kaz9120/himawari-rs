@@ -36,12 +36,15 @@ MATCH_MAX_MOVES = "320"
 # 現行の評価関数。**ここが一次情報の置き場である**（ROADMAPとREADMEはここを指す。
 # ADR-0182）。ネットの世代を替えるときはこの行と EVAL_TAG、配布物のPGOが使う
 # .github/workflows/release.yml の NET_TAG・NET_ASSET を更新する（食い違うとpytestが落ちる）
-EVAL_FILE = "data/nets/pool1_2ep_reorder.hmwr"
+EVAL_FILE = "data/nets/pool1_2ep_f2_reorder.hmwr"
 # EVAL_FILE を配ったReleaseのタグ。EVAL_FILE と一緒に替える
-EVAL_TAG = "net-v15"
+EVAL_TAG = "net-v16"
 # 配布するネットのアセット名（ADR-0080の追記）。net-v16から固定名で配る。
 # エンジンは EvalFile が空のとき、実行ファイルと同じフォルダのこの名前を読む
-NET_ASSET = "himawari.hmwr"
+NET_ASSET = "eval.hmwr"
+# 配布する定跡のアセット名（ADR-0080の追記）。形式はやねうら王の定跡のまま。
+# エンジンは BookFile が空なら定跡を使わない。置いただけでは読まない
+BOOK_ASSET = "book.db"
 # 学習時の名前で配った最後の版。これ以前のReleaseは書き換えない
 LAST_NAMED_NET = 15
 OPENINGS = "openings/start_sfens_ply24.txt"
