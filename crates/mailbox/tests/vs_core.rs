@@ -315,6 +315,7 @@ fn check_stage6(core: &mut CorePos, mb: &mut Position) {
             );
         }
     }
+    check_stage6_rules(core, mb);
     if !core.in_check() {
         core.do_null_move();
         mb.do_null_move();
@@ -329,6 +330,52 @@ fn check_stage6(core: &mut CorePos, mb: &mut Position) {
         mb.undo_null_move();
         assert_eq!(mb.to_sfen(), sfen, "undo_null_moveで戻らない");
         check_state(core, mb);
+    }
+}
+
+/// coreの升の集合を81升のビット列へ。
+fn bits(b: himawari_core::Bitboard) -> u128 {
+    let mut x = 0u128;
+    for sq in b {
+        x |= 1u128 << sq.index();
+    }
+    x
+}
+
+/// 第13回の規則の関数をcoreと比べる。千日手・入玉宣言・`check_squares`・駒種ごとの升の集合。
+///
+/// 千日手は、配列盤とcoreが同じ手順で進んでいれば同じ過去の局面を持つので、そのまま比べられる。
+fn check_stage6_rules(core: &CorePos, mb: &Position) {
+    use himawari_core::{Color as CC, PieceType};
+    let sfen = core.to_sfen();
+    for pt in 2..=15u8 {
+        assert_eq!(
+            mb.check_squares(pt),
+            bits(core.check_squares(PieceType(pt))),
+            "check_squares {pt}: {sfen}"
+        );
+    }
+    assert_eq!(
+        mb.can_declare_win(),
+        core.can_declare_win(),
+        "can_declare_win: {sfen}"
+    );
+    let sets = mb.piece_sets();
+    for (ci, c) in [CC::Black, CC::White].into_iter().enumerate() {
+        for pt in 2..=15u8 {
+            assert_eq!(
+                sets[ci][pt as usize],
+                bits(core.pieces(c, PieceType(pt))),
+                "piece_sets 色{ci} {pt}: {sfen}"
+            );
+        }
+    }
+    for ply in [0usize, 1, 4, 8, 64] {
+        assert_eq!(
+            format!("{:?}", mb.repetition_state(ply)),
+            format!("{:?}", core.repetition_state(ply)),
+            "repetition_state {ply}: {sfen}"
+        );
     }
 }
 
@@ -493,6 +540,81 @@ fn playouts(games: u32, max_ply: u32, seed: u64) {
         MATE_MOVES.load(std::sync::atomic::Ordering::Relaxed)
     );
     assert!(checks > 0 && drops > 0 && mates > 0);
+}
+
+/// coreの過去の局面のキー（千日手の判定の材料）。
+fn history_of(core: &CorePos) -> Vec<himawari_mailbox::HistoryKey> {
+    core.state_history()
+        .iter()
+        .map(|s| himawari_mailbox::HistoryKey {
+            board_key: s.board_key,
+            hand_key: s.hand_key,
+            continuous_check: s.continuous_check,
+            plies_from_null: s.plies_from_null,
+        })
+        .collect()
+}
+
+/// 千日手の判定をcoreと比べる（第13回）。
+///
+/// ランダムな対局では同じ局面がほとんど現れないので、2手前の自分の手を戻す手を4回に3回選び、
+/// 同じ局面を繰り返させる。手順を共有する配列盤のほか、SFENから作って過去の局面のキーを
+/// `import_history` で写した配列盤（探索の根の作り方）でも、同じ判定になることを確かめる。
+#[test]
+fn repetition_matches_core() {
+    let mut rng = Rng(0x5151_2026_1020_0001);
+    let mut seen = std::collections::BTreeMap::new();
+    for g in 0..300usize {
+        let start = CASES[g % CASES.len()];
+        let mut core = CorePos::from_sfen(start).unwrap();
+        let mut mb = Position::from_sfen(start).unwrap();
+        let mut played: Vec<CoreMove> = Vec::new();
+        for _ in 0..120 {
+            let mut fresh = Position::from_sfen(&core.to_sfen()).unwrap();
+            fresh.import_history(&history_of(&core));
+            for ply in [0usize, 1, 4, 8, 64] {
+                let want = format!("{:?}", core.repetition_state(ply));
+                let sfen = core.to_sfen();
+                assert_eq!(
+                    format!("{:?}", mb.repetition_state(ply)),
+                    want,
+                    "手順を共有した配列盤 {ply}: {sfen}"
+                );
+                assert_eq!(
+                    format!("{:?}", fresh.repetition_state(ply)),
+                    want,
+                    "履歴を写した配列盤 {ply}: {sfen}"
+                );
+            }
+            *seen
+                .entry(format!("{:?}", core.repetition_state(64)))
+                .or_insert(0u32) += 1;
+            let mut legal = CoreList::default();
+            generate_legal(&core, true, &mut legal);
+            if legal.is_empty() {
+                break;
+            }
+            let mut pick = None;
+            if played.len() >= 2 && !rng.next().is_multiple_of(4) {
+                let m = played[played.len() - 2];
+                if !m.is_drop() && !m.is_promote() {
+                    pick = legal.as_slice().iter().copied().find(|x| {
+                        !x.is_drop()
+                            && !x.is_promote()
+                            && x.from_sq() == m.to()
+                            && x.to() == m.from_sq()
+                    });
+                }
+            }
+            let m = pick
+                .unwrap_or_else(|| legal.as_slice()[(rng.next() % legal.len() as u64) as usize]);
+            core.do_move(m);
+            mb.do_move(to_mb(m));
+            played.push(m);
+        }
+    }
+    println!("千日手の判定の内訳（ply=64）: {seen:?}");
+    assert!(seen.get("Draw").copied().unwrap_or(0) > 100);
 }
 
 #[test]

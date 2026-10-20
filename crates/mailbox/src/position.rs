@@ -76,7 +76,7 @@ impl Default for DirtyPiece {
 #[derive(Copy, Clone, Debug, Default)]
 pub struct StateInfo {
     pub captured: u8,
-    cap_id: u8,
+    pub(crate) cap_id: u8,
     pub board_key: u64,
     pub hand_key: u64,
     pub pawn_key: u64,
@@ -126,7 +126,7 @@ pub struct Position {
     ply: u32,
     /// 手駒をcoreの `Hand` と同じ詰め方で持った値（hand_keyに使う）。
     hand_raw: [u32; 2],
-    states: Vec<StateInfo>,
+    pub(crate) states: Vec<StateInfo>,
     /// 局面の深さごとの、王手の判定の手がかり（`gives_check` が初めて呼ばれたときに作る）。
     /// 添字は `states` と同じ。進めるたびにその深さの欄を無効にする
     pub(crate) check_slots: Vec<CheckSlot>,
@@ -652,7 +652,7 @@ impl Position {
 
     /// 状態を積み、その深さの王手の手がかりを無効にする。
     #[inline]
-    fn push_state(&mut self, st: StateInfo) {
+    pub(crate) fn push_state(&mut self, st: StateInfo) {
         self.states.push(st);
         let n = self.states.len();
         if self.check_slots.len() < n {

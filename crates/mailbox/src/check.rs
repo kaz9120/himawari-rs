@@ -292,6 +292,12 @@ impl Position {
         ci
     }
 
+    /// 相手玉から8方向の、最初の駒まで（その駒の升を含む）の線。`check_squares` が使う。
+    #[inline]
+    pub(crate) fn check_rays(&self) -> &[u128; 8] {
+        &self.check_info().rays
+    }
+
     /// 相手玉から8方向へ最初の駒まで歩き、線の升の集合と開き王手の駒を求める。
     fn compute_check_info(&self) -> CheckInfo {
         let us = self.side;
