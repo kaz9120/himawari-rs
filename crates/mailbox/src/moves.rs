@@ -4,7 +4,7 @@
 //! bit 24..29: 移動後の駒（先後込み）。移動後の駒はcoreの `Move` と同じく、置換表から来た手を
 //! `pseudo_legal` で確かめるときに、移動元の駒と突き合わせるために持つ。
 
-use crate::board::{Color, make_piece, sfen_of_type, usi_square};
+use crate::board::{Color, SQ81, make_piece, sfen_of_type, usi_square};
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Default)]
 pub struct Move(u32);
@@ -66,6 +66,21 @@ impl Move {
     #[inline]
     pub const fn is_promote(self) -> bool {
         self.0 & PROMOTE != 0
+    }
+
+    /// 置換表に入れるcoreの `Move16` のビット列。升を81升の通し番号に直し、coreと同じ詰め方にする。
+    ///
+    /// 下位から行き先7bit・移動元7bit（駒打ちは駒種）・成り・駒打ちである。
+    #[inline]
+    pub const fn to_move16(self) -> u16 {
+        let to = SQ81[self.to() as usize] as u16;
+        if self.is_drop() {
+            to | ((self.drop_type() as u16) << 7) | 0x8000
+        } else {
+            let from = SQ81[self.from() as usize] as u16;
+            let v = to | (from << 7);
+            if self.is_promote() { v | 0x4000 } else { v }
+        }
     }
 
     /// USI表記（例: "7g7f"、"8h2b+"、"P*5e"）。

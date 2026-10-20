@@ -261,7 +261,79 @@ fn check_stage5(core: &CorePos, mb: &mut Position) {
     }
 }
 
-fn check_node(core: &CorePos, mb: &mut Position) {
+/// 段階6（探索への接続）で使う値をcoreと比べる。
+///
+/// - 置換表の `Move16`: 合法手の詰め方と、復元（`to_move`）の往復。よその局面の手と乱数のビット列も復元させる
+/// - 利き数の段階の集合: engineの `EffectLevels::build` と升ごとに同じ段階
+/// - null move: 進めた後のキー・王手駒・連続王手の数、戻した後の局面
+fn check_stage6(core: &mut CorePos, mb: &mut Position) {
+    use himawari_core::{Move16, Square};
+    let sfen = core.to_sfen();
+    assert_eq!(mb.game_ply(), core.game_ply() as u32, "game_ply: {sfen}");
+    let mut legal = CoreList::default();
+    generate_legal(core, true, &mut legal);
+    let mut bits: Vec<u16> = Vec::new();
+    for &m in legal.as_slice() {
+        let mm = to_mb(m);
+        let b = m.to_move16().0;
+        assert_eq!(mm.to_move16(), b, "to_move16 {}: {sfen}", m.to_usi());
+        assert_eq!(
+            mb.move_from16(b),
+            Some(mm),
+            "move_from16 {}: {sfen}",
+            m.to_usi()
+        );
+        bits.push(b);
+    }
+    PREV_MOVES.with(|p| bits.extend(p.borrow().iter().map(|m| m.to_move16().0)));
+    let mut x = core.key() | 1;
+    for _ in 0..64 {
+        x ^= x << 13;
+        x ^= x >> 7;
+        x ^= x << 17;
+        bits.push(x as u16);
+    }
+    for b in bits {
+        assert_eq!(
+            mb.move_from16(b),
+            core.to_move(Move16(b)).map(to_mb),
+            "move_from16 {b:#06x}: {sfen}"
+        );
+    }
+    let want = himawari_engine::nnue::EffectLevels::build(core);
+    let got = mb.effect_levels();
+    for (ci, c) in [himawari_core::Color::Black, himawari_core::Color::White]
+        .into_iter()
+        .enumerate()
+    {
+        for s in 0..81u8 {
+            let lv = got[ci].iter().map(|g| (g >> s) as u8 & 1).sum::<u8>();
+            assert_eq!(
+                lv,
+                want.level(c, Square::from_index(s)),
+                "effect_levels 色{ci} 升{s}: {sfen}"
+            );
+        }
+    }
+    if !core.in_check() {
+        core.do_null_move();
+        mb.do_null_move();
+        check_state(core, mb);
+        assert_eq!(mb.in_check(), core.in_check(), "null: {sfen}");
+        assert_eq!(
+            mb.game_ply(),
+            core.game_ply() as u32,
+            "null game_ply: {sfen}"
+        );
+        core.undo_null_move();
+        mb.undo_null_move();
+        assert_eq!(mb.to_sfen(), sfen, "undo_null_moveで戻らない");
+        check_state(core, mb);
+    }
+}
+
+fn check_node(core: &mut CorePos, mb: &mut Position) {
+    check_stage6(core, mb);
     check_stage5(core, mb);
     assert_eq!(mb.to_sfen(), core.to_sfen());
     if let Err(e) = mb.check_consistency() {
@@ -393,7 +465,7 @@ fn playouts(games: u32, max_ply: u32, seed: u64) {
         let mut mb = Position::from_sfen(start).unwrap();
         let mut history = Vec::new();
         for _ in 0..max_ply {
-            check_node(&core, &mut mb);
+            check_node(&mut core, &mut mb);
             nodes += 1;
             checks += u64::from(core.in_check());
             let moves = core_moves(&core);
@@ -644,12 +716,12 @@ fn sparse_positions_match_core() {
     let mut positions = 0u32;
     let mut mates = 0u32;
     while positions < 20_000 {
-        let Some(core) = random_position(&mut rng) else {
+        let Some(mut core) = random_position(&mut rng) else {
             continue;
         };
         positions += 1;
         let mut mb = Position::from_sfen(&core.to_sfen()).unwrap();
-        check_node(&core, &mut mb);
+        check_node(&mut core, &mut mb);
         mates += u32::from(mate_1ply(&core).is_some());
     }
     println!(
@@ -671,7 +743,7 @@ fn game_records_match_core() {
         let mut core = CorePos::from_sfen(&sfen).unwrap();
         let mut mb = Position::from_sfen(&sfen).unwrap();
         for usi in &tokens[6..] {
-            check_node(&core, &mut mb);
+            check_node(&mut core, &mut mb);
             nodes += 1;
             mates += u32::from(!core.in_check() && mate_1ply(&core).is_some());
             let Some(cm) = core.move_from_usi(usi) else {

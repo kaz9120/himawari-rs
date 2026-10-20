@@ -729,6 +729,110 @@ impl Position {
         self.assert_consistent();
     }
 
+    /// null moveで1手進める（coreの `do_null_move` と同じ値を積む）。王手されていない局面で呼ぶ。
+    pub fn do_null_move(&mut self) {
+        debug_assert!(!self.in_check());
+        #[cfg(feature = "copy-undo")]
+        self.snapshots.push(EffectSnapshot {
+            count: self.count,
+            longdir: self.longdir,
+        });
+        let prev = *self.state();
+        let mut st = StateInfo {
+            captured: EMPTY,
+            cap_id: NO_ID,
+            board_key: prev.board_key ^ zobrist::SIDE,
+            checkers: 0,
+            plies_from_null: 0,
+            dirty: DirtyPiece::default(),
+            ..prev
+        };
+        // パスなので手番側は王手を掛けていない
+        st.continuous_check[self.side.index()] = 0;
+        self.side = self.side.flip();
+        self.ply += 1;
+        // 手番が替わった側の玉に、相手の利きが当たっていることはない（パスの前は手番側が王手されていない）
+        let k = self.king[self.side.index()];
+        if self.count[self.side.flip().index()][k as usize] != 0 {
+            st.checkers = self.compute_checkers();
+        }
+        self.push_state(st);
+    }
+
+    /// `do_null_move` を戻す。
+    pub fn undo_null_move(&mut self) {
+        self.states
+            .pop()
+            .expect("undo_null_move without do_null_move");
+        #[cfg(feature = "copy-undo")]
+        self.snapshots.pop().expect("snapshot stack");
+        self.side = self.side.flip();
+        self.ply -= 1;
+    }
+
+    /// 手数（coreの `game_ply` と同じ）。
+    #[inline]
+    pub fn game_ply(&self) -> u32 {
+        self.ply
+    }
+
+    /// 色ごとの利き数を、1枚以上・2枚以上・3枚以上の3枚の81升の集合で返す。
+    ///
+    /// 評価関数の利き数の入力（ADR-0237）が使う段階の集合で、engineの `EffectLevels` と同じ中身になる。
+    /// 配列盤は利き数を升ごとに持つので、駒ごとに利きを数え直さずに読むだけで済む。
+    pub fn effect_levels(&self) -> [[u128; 3]; 2] {
+        let mut out = [[0u128; 3]; 2];
+        for (c, o) in out.iter_mut().enumerate() {
+            let cnt = &self.count[c];
+            let (mut g0, mut g1, mut g2) = (0u128, 0u128, 0u128);
+            for (s81, &i) in IDX81.iter().enumerate() {
+                let n = cnt[i as usize];
+                g0 |= u128::from(n >= 1) << s81;
+                g1 |= u128::from(n >= 2) << s81;
+                g2 |= u128::from(n >= 3) << s81;
+            }
+            *o = [g0, g1, g2];
+        }
+        out
+    }
+
+    /// coreの `Move16` のビット列から手を復元する。coreの `to_move` と同じ検査をし、同じ場面で `None` を返す。
+    ///
+    /// 復元できても擬似合法とは限らない。`pseudo_legal` で別に確かめる。
+    pub fn move_from16(&self, bits: u16) -> Option<Move> {
+        let to_i = (bits & 0x7F) as u8;
+        let from_i = ((bits >> 7) & 0x7F) as u8;
+        if to_i >= 81 {
+            return None;
+        }
+        let to = IDX81[to_i as usize];
+        if bits & 0x8000 != 0 {
+            if !(GOLD..=ROOK).contains(&from_i) {
+                return None;
+            }
+            Some(Move::drop(from_i, to, self.side))
+        } else {
+            if from_i >= 81 || from_i == to_i {
+                return None;
+            }
+            let from = IDX81[from_i as usize];
+            let pc = self.board[from as usize];
+            if pc == EMPTY {
+                return None;
+            }
+            let promote = bits & 0x4000 != 0;
+            let after = if promote {
+                if !can_promote(piece_type(pc)) {
+                    return None;
+                }
+                pc - 8
+            } else {
+                pc
+            };
+            Some(Move::normal(from, to, promote, after))
+        }
+    }
+
     /// 不変条件を全部検査する。利きは全計算と、駒番号は盤と手駒と突き合わせる。
     /// 食い違いがあれば説明を返す。
     pub fn check_consistency(&self) -> Result<(), String> {
