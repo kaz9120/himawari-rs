@@ -185,7 +185,7 @@ RUSTFLAGS="-C target-cpu=native" cargo build --release   # 計測・対局用
 `hmwr build pgo` が手順を持つ。Releasesのバイナリも同じ手順で作っている。
 
 ネットワークの次元は環境変数 `HIMAWARI_ARCH` でビルド時に切り替える。書式は
-`<FT>x<L1>[x<L2>[x<L3>]]` で、既定値は `crates/engine/build.rs` の
+`<FT>x<L1>[x<L2>[x<L3>]][e<E>]` で、既定値は `crates/engine/build.rs` の
 `DEFAULT_ARCH` にある。
 
 ```sh

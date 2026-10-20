@@ -21,6 +21,12 @@
 「自分」は駒の持ち主から見た側とする。同じマスでも先手の駒と後手の駒で
 属性は変わる。
 
+もう1つ、`f2` は駒×升×利き数の特徴（ADR-0237のF2）が1手で入れ替わる升の数Sを
+数える。升ごとに「乗っている駒（空きを含む）・先手の利き数・後手の利き数」の
+組を作り、前後で組が変わった升を数える。利き数は遮りを入れた実際の利きで、
+3以上を1つにまとめる。上の3粒度と違い、空き升も、動いた駒・取られた駒の升も
+数に入れる。F2ではそれらの升も特徴が入れ替わるからである。
+
 入力は対局順のpsv（40バイト固定長）で、連続する局面かどうかはgamePlyが
 +1になっていることと、盤面の違いが1〜2マスに収まることで判定する。
 対局の切れ目はまたがない。
@@ -80,7 +86,11 @@ RAYS = {
 # 反転数の分布を出すときの区切り
 BUCKETS = ((0, 0), (1, 1), (2, 2), (3, 3), (4, 4), (5, 5), (6, 10), (11, None))
 HIST_MAX = 128
-GRAINS = ("both9", "split", "own3")
+GRAINS = ("both9", "split", "own3", "f2")
+# 駒トークンの属性で数える粒度の数。f2は升の数で、数え方が別になる
+TOKEN_GRAINS = 3
+# F2の利き数の打ち切り（ADR-0237）。0・1・2・3以上の4段階
+F2_LEVELS = 4
 # 現行のFT更新が1手あたりに触れる行数（ADR-0213の読み方の基準）
 FT_ROWS = "2〜3"
 
@@ -148,6 +158,77 @@ def _build_tables():
 SHORT, SHADOW = _build_tables()
 
 
+def _build_rays():
+    """駒コードとマスから、飛び利きの向きごとのマスの列を引く表を作る。
+
+    影の利き（`SHADOW`）は向きを区別せずに盤端まで並べる。遮りを入れるには
+    向きごとに手前から並べた列が要るので、別に持つ。
+    """
+    rays = {}
+    for kind in range(PAWN, DRAGON + 1):
+        for white in (False, True):
+            code = kind + WHITE if white else kind
+            sign = -1 if white else 1
+            for sq in range(SQUARES):
+                file_, rank = divmod(sq, RANKS)
+                out = []
+                for df, dr in RAYS.get(kind, ()):
+                    line = []
+                    f, r = file_ + sign * df, rank + sign * dr
+                    while (target := _squares(f, r)) is not None:
+                        line.append(target)
+                        f, r = f + sign * df, r + sign * dr
+                    out.append(tuple(line))
+                rays[code * SQUARES + sq] = tuple(out)
+    return rays
+
+
+RAY_LINES = _build_rays()
+
+
+def exact_counts(pieces):
+    """マスごとの実際の利きの数を、先手・後手の2本で返す（ADR-0237）。
+
+    飛び利きは最初に当たった駒の升で止まる（その升は数える）。玉の利きを
+    含め、ピンは無視する。駒は自分の升へ利かない。
+    """
+    black = [0] * SQUARES
+    white = [0] * SQUARES
+    for sq, code in enumerate(pieces):
+        if not code:
+            continue
+        side = white if code > WHITE else black
+        key = code * SQUARES + sq
+        for target in SHORT[key]:
+            side[target] += 1
+        for line in RAY_LINES[key]:
+            for target in line:
+                side[target] += 1
+                if pieces[target]:
+                    break
+    return black, white
+
+
+def f2_attributes(pieces):
+    """升ごとのF2の組を81個の整数で返す（ADR-0237）。
+
+    組は「駒コード・先手の利き数・後手の利き数」で、利き数は3以上を1つに
+    まとめる。視点は盤の向きのまま持つ。視点を反転しても、組が変わる升の
+    集合は同じだからである。
+    """
+    black, white = exact_counts(pieces)
+    cap = F2_LEVELS - 1
+    return [
+        (code * F2_LEVELS + min(b, cap)) * F2_LEVELS + min(w, cap)
+        for code, b, w in zip(pieces, black, white)
+    ]
+
+
+def f2_changes(prev_f2, f2):
+    """F2の特徴が入れ替わった升の数S（ADR-0237）。"""
+    return sum(1 for a, b in zip(prev_f2, f2) if a != b)
+
+
 def counts(pieces):
     """マスごとの利きの数を、色と種別（短い・影）で4本に分けて数える。"""
     black_short = [0] * SQUARES
@@ -201,12 +282,12 @@ def attributes(pieces):
 
 def flips(prev_pieces, prev_attrs, pieces, attrs):
     """同じマスに残った駒のうち、属性が変わった数を粒度ごとに数える。"""
-    out = [0, 0, 0]
+    out = [0] * TOKEN_GRAINS
     for sq in range(SQUARES):
         code = pieces[sq]
         if not code or code != prev_pieces[sq]:
             continue
-        for k in range(3):
+        for k in range(TOKEN_GRAINS):
             if attrs[k][sq] != prev_attrs[k][sq]:
                 out[k] += 1
     return out
@@ -262,19 +343,23 @@ def measure(paths, limit):
     positions = 0
     moves = 0
     breaks = 0
-    prev_pieces = prev_attrs = None
+    prev_pieces = prev_attrs = prev_f2 = None
     prev_ply = -1
     for pieces, ply in _records(paths, limit):
+        pieces = list(pieces)
         attrs = attributes(pieces)
+        f2 = f2_attributes(pieces)
         positions += 1
         if prev_pieces is not None:
             if is_successor(prev_pieces, prev_ply, pieces, ply):
                 moves += 1
-                for k, n in enumerate(flips(prev_pieces, prev_attrs, pieces, attrs)):
+                counted = flips(prev_pieces, prev_attrs, pieces, attrs)
+                counted.append(f2_changes(prev_f2, f2))
+                for k, n in enumerate(counted):
                     hist[k][min(n, HIST_MAX)] += 1
             else:
                 breaks += 1
-        prev_pieces, prev_attrs, prev_ply = pieces, attrs, ply
+        prev_pieces, prev_attrs, prev_f2, prev_ply = pieces, attrs, f2, ply
     return {"hist": hist, "positions": positions, "moves": moves, "breaks": breaks}
 
 
@@ -340,6 +425,10 @@ def report(result, paths, limit):
         "数えたのは、前後で同じマスに同じ駒が残っていて属性が変わったトークンである。"
     )
     lines.append("動いた駒と取られた駒は、属性がなくてもFTが触れるので数に入れない。")
+    lines.append(
+        "f2だけは数え方が違う。駒×升×利き数の特徴（ADR-0237）が入れ替わった升の数Sで、"
+    )
+    lines.append("空き升と、動いた駒・取られた駒の升も数え、遮りを入れた利きで見る。")
     lines.append("")
     widths = (10, 8, 8, 8, 8)
     lines.append(_row("粒度", ("平均", "中央値", "p90", "p99"), widths))

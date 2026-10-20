@@ -12,8 +12,8 @@
 use std::io::{Read, Write};
 
 use crate::nnue::{
-    ARCH, CONCAT, FT_IN, FT_OUT, FtWeight, HALF, L1_OUT, L1_PAD, L2_OUT, L2_PAD, L3_OUT,
-    LAST_HIDDEN, NnueNetwork, ft_w_from_i16, pad_rows,
+    ARCH, CONCAT, EFF_IN, EFF_OUT, FT_IN, FT_OUT, FtWeight, HALF, L1_OUT, L1_PAD, L2_OUT, L2_PAD,
+    L3_OUT, LAST_HIDDEN, NnueNetwork, ft_w_from_i16, pad_rows,
 };
 
 const MAGIC: &[u8; 8] = b"HMWRNNUE";
@@ -35,15 +35,30 @@ const FORMAT_VERSION_TWO_HIDDEN_I8_PAIR: u32 = 7;
 const FORMAT_VERSION_DEEP_I8_PAIR: u32 = 8;
 const FORMAT_VERSION_TWO_HIDDEN_PAIR: u32 = 9;
 const FORMAT_VERSION_DEEP_PAIR: u32 = 10;
+/// 利きのaccumulatorを持つ版（ADR-0237）。版7・版8の並びに、寸法として
+/// 利きの特徴数と幅を足し、FT重みの後ろに利きのバイアスと重み（i16）を
+/// 置く。研究ブランチだけの最小の拡張で、自己記述の形式（Issue #768）が
+/// 入ったらそちらへ移す。
+const FORMAT_VERSION_TWO_HIDDEN_I8_PAIR_EFF: u32 = 11;
+const FORMAT_VERSION_DEEP_I8_PAIR_EFF: u32 = 12;
 
 /// 書き出しに使う版。層の数で決まる。FT重みはi8で書く（ADR-0138）。
 /// FT重みをi16で持つ版9・版10は、読み込みだけを受け付ける。積の有無は
 /// ビルドで固定なので、このブランチは対応する版だけを書き、他は読まない。
-const FORMAT_VERSION: u32 = if L3_OUT != 0 {
-    FORMAT_VERSION_DEEP_I8_PAIR
-} else {
-    FORMAT_VERSION_TWO_HIDDEN_I8_PAIR
+const FORMAT_VERSION: u32 = match (L3_OUT != 0, EFF_OUT != 0) {
+    (true, false) => FORMAT_VERSION_DEEP_I8_PAIR,
+    (false, false) => FORMAT_VERSION_TWO_HIDDEN_I8_PAIR,
+    (true, true) => FORMAT_VERSION_DEEP_I8_PAIR_EFF,
+    (false, true) => FORMAT_VERSION_TWO_HIDDEN_I8_PAIR_EFF,
 };
+
+/// その版が利きのaccumulatorを持つか（ADR-0237）。
+const fn version_is_effect(v: u32) -> bool {
+    matches!(
+        v,
+        FORMAT_VERSION_TWO_HIDDEN_I8_PAIR_EFF | FORMAT_VERSION_DEEP_I8_PAIR_EFF
+    )
+}
 
 /// FT重み列をi16として読む。ファイルの版で1要素のバイト数が変わる
 /// （ADR-0138）。呼び出し側の計算はi16で行い、格納型への変換は最後にする。
@@ -63,6 +78,8 @@ const fn version_is_ft_i8(v: u32) -> bool {
             | FORMAT_VERSION_DEEP_I8
             | FORMAT_VERSION_TWO_HIDDEN_I8_PAIR
             | FORMAT_VERSION_DEEP_I8_PAIR
+            | FORMAT_VERSION_TWO_HIDDEN_I8_PAIR_EFF
+            | FORMAT_VERSION_DEEP_I8_PAIR_EFF
     )
 }
 
@@ -75,7 +92,27 @@ const fn version_is_pair(v: u32) -> bool {
             | FORMAT_VERSION_DEEP_I8_PAIR
             | FORMAT_VERSION_TWO_HIDDEN_PAIR
             | FORMAT_VERSION_DEEP_PAIR
+            | FORMAT_VERSION_TWO_HIDDEN_I8_PAIR_EFF
+            | FORMAT_VERSION_DEEP_I8_PAIR_EFF
     )
+}
+
+/// 利きの寸法がビルドと合うかを確かめる（ADR-0237）。利きのないファイルは
+/// `[0, 0]` を持つ。合わないまま読むと `w2` の列幅がずれ、原因の読めない
+/// 「末尾に余分なバイトがある」になる。
+fn require_effect(eff: [usize; 2]) -> Result<(), String> {
+    let want = if EFF_OUT != 0 {
+        [EFF_IN, EFF_OUT]
+    } else {
+        [0, 0]
+    };
+    if eff == want {
+        return Ok(());
+    }
+    Err(format!(
+        "effect accumulator mismatch (ADR-0237): file [features, width] = {eff:?}, \
+         build {want:?}; build with HIMAWARI_ARCH=...e<width> for effect nets"
+    ))
 }
 
 /// 後段まで読む経路の入口検査。積なしのネットは読めない。
@@ -112,6 +149,10 @@ fn weight_bytes(net: &NnueNetwork) -> Vec<u8> {
         v.extend_from_slice(&x.to_le_bytes());
     }
     for &x in &net.ft_w {
+        v.extend_from_slice(&x.to_le_bytes());
+    }
+    // 利きのaccumulator（ADR-0237）。持たない構成では空なので何も書かない
+    for &x in net.eff_b.iter().chain(&net.eff_w) {
         v.extend_from_slice(&x.to_le_bytes());
     }
 
@@ -161,6 +202,11 @@ pub fn save(net: &NnueNetwork, lineage: &str, w: &mut impl Write) -> std::io::Re
     }
     if L3_OUT != 0 {
         w.write_all(&(L3_OUT as u32).to_le_bytes())?;
+    }
+    if EFF_OUT != 0 {
+        for dim in [EFF_IN, EFF_OUT] {
+            w.write_all(&(dim as u32).to_le_bytes())?;
+        }
     }
     let lb = lineage.as_bytes();
     w.write_all(&(lb.len() as u32).to_le_bytes())?;
@@ -328,9 +374,17 @@ impl<'r, R: Read> HashingReader<'r, R> {
     }
 }
 
+/// ヘッダの中身。`eff` は利きの特徴数と幅で、利きのない版では `[0, 0]`。
+struct Meta {
+    version: u32,
+    dims: Dims,
+    eff: [usize; 2],
+    lineage: String,
+    hash: u64,
+}
+
 /// マジックから重みハッシュまでのヘッダを読む。本体は読まない。
-/// 戻り値は (版, 構成, 学習来歴, 期待ハッシュ)。
-fn read_meta(r: &mut impl Read) -> Result<(u32, Dims, String, u64), String> {
+fn read_meta(r: &mut impl Read) -> Result<Meta, String> {
     let mut magic = [0u8; 8];
     r.read_exact(&mut magic)
         .map_err(|e| format!("read failed: {e}"))?;
@@ -344,16 +398,23 @@ fn read_meta(r: &mut impl Read) -> Result<(u32, Dims, String, u64), String> {
         FORMAT_VERSION_DEEP
         | FORMAT_VERSION_DEEP_I8
         | FORMAT_VERSION_DEEP_I8_PAIR
-        | FORMAT_VERSION_DEEP_PAIR => [u()?, u()?, u()?, u()?, u()?],
+        | FORMAT_VERSION_DEEP_PAIR
+        | FORMAT_VERSION_DEEP_I8_PAIR_EFF => [u()?, u()?, u()?, u()?, u()?],
         FORMAT_VERSION_TWO_HIDDEN
         | FORMAT_VERSION_TWO_HIDDEN_I8
         | FORMAT_VERSION_TWO_HIDDEN_I8_PAIR
-        | FORMAT_VERSION_TWO_HIDDEN_PAIR => [u()?, u()?, u()?, u()?, 0],
+        | FORMAT_VERSION_TWO_HIDDEN_PAIR
+        | FORMAT_VERSION_TWO_HIDDEN_I8_PAIR_EFF => [u()?, u()?, u()?, u()?, 0],
         FORMAT_VERSION_UNIFORM_HIDDEN => {
             let d = [u()?, u()?, u()?];
             [d[0], d[1], d[2], d[2], 0]
         }
         other => return Err(format!("unsupported format version: {other}")),
+    };
+    let eff = if version_is_effect(version) {
+        [u()?, u()?]
+    } else {
+        [0, 0]
     };
     let llen = read_u32(r)? as usize;
     if llen > 4096 {
@@ -367,19 +428,27 @@ fn read_meta(r: &mut impl Read) -> Result<(u32, Dims, String, u64), String> {
     r.read_exact(&mut hash_b)
         .map_err(|e| format!("read failed: {e}"))?;
     let expect_hash = u64::from_le_bytes(hash_b);
-    Ok((version, dims, lineage, expect_hash))
+    Ok(Meta {
+        version,
+        dims,
+        eff,
+        lineage,
+        hash: expect_hash,
+    })
 }
 
 /// ヘッダを読み、(構成, 学習来歴, 検証済みの重み列) を返す。
 fn read_header(r: &mut impl Read) -> Result<(u32, Dims, String, Vec<u8>), String> {
-    let (version, dims, lineage, expect_hash) = read_meta(r)?;
+    let meta = read_meta(r)?;
+    // resizeの経路は利きの重みを写さない。利きのネットは `load` で読む
+    require_effect(meta.eff)?;
     let mut body = Vec::new();
     r.read_to_end(&mut body)
         .map_err(|e| format!("read failed: {e}"))?;
-    if fnv1a(&body) != expect_hash {
+    if fnv1a(&body) != meta.hash {
         return Err("weight hash mismatch (corrupted file)".to_string());
     }
-    Ok((version, dims, lineage, body))
+    Ok((meta.version, meta.dims, meta.lineage, body))
 }
 
 /// 読み込む。戻り値は (ネットワーク, 学習来歴)。
@@ -388,8 +457,15 @@ fn read_header(r: &mut impl Read) -> Result<(u32, Dims, String, Vec<u8>), String
 /// 進める（issue #428）。読み込み中のピークメモリが重みの定常分に
 /// 近づく。既定構成の現行ネットで約247MiBから約125MiBになる。
 pub fn load(r: &mut impl Read) -> Result<(NnueNetwork, String), String> {
-    let (version, dims, lineage, expect_hash) = read_meta(r)?;
+    let Meta {
+        version,
+        dims,
+        eff,
+        lineage,
+        hash: expect_hash,
+    } = read_meta(r)?;
     require_pair(version)?;
+    require_effect(eff)?;
     let expect = [FT_IN, FT_OUT, L1_OUT, L2_OUT, L3_OUT];
     if dims != expect {
         return Err(format!(
@@ -408,6 +484,8 @@ pub fn load(r: &mut impl Read) -> Result<(NnueNetwork, String), String> {
     } else {
         ft_w_from_i16(cur.i16v(n)?)?
     };
+    let eff_b = cur.i16v(EFF_OUT)?;
+    let eff_w = cur.i16v(EFF_IN * EFF_OUT)?;
     let b2 = cur.i32v(L1_OUT)?;
     let w2 = cur.i8v(L1_OUT * CONCAT)?;
     let (b3, w3) = if L2_OUT != 0 {
@@ -428,23 +506,34 @@ pub fn load(r: &mut impl Read) -> Result<(NnueNetwork, String), String> {
     let b_out = cur.i32v(1)?[0];
     cur.finish(expect_hash)?;
 
-    Ok((
-        NnueNetwork {
-            ft_w,
-            ft_b,
-            w2,
-            w2_sparse: Vec::new(),
-            b2,
-            w3,
-            b3,
-            w4,
-            b4,
-            w_out,
-            b_out,
+    let net = NnueNetwork {
+        ft_w,
+        ft_b,
+        w2,
+        w2_sparse: Vec::new(),
+        b2,
+        w3,
+        b3,
+        w4,
+        b4,
+        w_out,
+        b_out,
+        eff_w,
+        eff_b,
+    }
+    .finish();
+    // 利きのaccumulatorは差分の経路でi16に持つ（ADR-0237のD2）。取りうる値が
+    // i16に収まらないネットでは全計算と食い違うので、読み込みで弾く
+    if EFF_OUT != 0 {
+        let bound = crate::nnue::effect_acc_bound(&net);
+        if bound > i64::from(i16::MAX) {
+            return Err(format!(
+                "利きのaccumulatorがi16に収まらない（上限の見積もり{bound}）。\
+                 量子化で利きの重みを小さくする"
+            ));
         }
-        .finish(),
-        lineage,
-    ))
+    }
+    Ok((net, lineage))
 }
 
 /// 別の構成のファイルを読み、いまのビルド構成へ合わせる（ADR-0127）。
@@ -477,6 +566,12 @@ pub fn load_resized(r: &mut impl Read) -> Result<(NnueNetwork, String), String> 
 pub fn load_resized_with_dims(
     r: &mut impl Read,
 ) -> Result<(NnueNetwork, String, [usize; 5]), String> {
+    // 利きの構成は同じ構成のファイルだけを読む（ADR-0237の研究ブランチ）。
+    // 構成の変換は利きの重みを写す口を持たない
+    if EFF_OUT != 0 {
+        let (net, lineage) = load(r)?;
+        return Ok((net, lineage, [FT_IN, FT_OUT, L1_OUT, L2_OUT, L3_OUT]));
+    }
     let (version, dims, lineage, body) = read_header(r)?;
     require_pair(version)?;
     let [ft_in, src_ft, src_l1, src_l2, src_l3] = dims;
@@ -609,6 +704,8 @@ pub fn load_resized_with_dims(
             b4,
             w_out,
             b_out,
+            eff_w: Vec::new(),
+            eff_b: Vec::new(),
         }
         .finish(),
         format!("{lineage} / resized to {ARCH}"),
@@ -634,6 +731,8 @@ mod tests {
         assert_eq!(evaluate_scalar(&net, &pos), evaluate_scalar(&loaded, &pos));
         assert_eq!(net.ft_w, loaded.ft_w);
         assert_eq!(net.w4, loaded.w4);
+        assert_eq!(net.eff_w, loaded.eff_w);
+        assert_eq!(net.eff_b, loaded.eff_b);
         assert_eq!(net.b4, loaded.b4);
         // 隠れ層2はL1_PAD幅のまま往復する（ゼロ埋め列も含めて一致）
         assert_eq!(net.w3, loaded.w3);
@@ -649,7 +748,10 @@ mod tests {
         save(&net, "dims test", &mut buf).unwrap();
         let (_, lineage, dims) = load_resized_with_dims(&mut buf.as_slice()).unwrap();
         assert_eq!(dims, [FT_IN, FT_OUT, L1_OUT, L2_OUT, L3_OUT]);
-        assert!(lineage.contains("resized to"), "来歴に変換の跡が残る");
+        // 利きの構成は同じ構成のファイルだけを読み、変換しない（ADR-0237）
+        if EFF_OUT == 0 {
+            assert!(lineage.contains("resized to"), "来歴に変換の跡が残る");
+        }
     }
 
     /// 積なしのネットは後段まで読む経路で弾く（ADR-0171）。
@@ -692,6 +794,37 @@ mod tests {
             .err()
             .expect("resizeの経路も後段を読むので弾く");
         assert!(err.contains("ADR-0171"), "原因の読める文言にする: {err}");
+    }
+
+    /// 利きの寸法がビルドと違うファイルは弾く（ADR-0237）。利きのないファイルは
+    /// `[0, 0]` を持ち、利きの構成のビルドでだけ弾かれる。
+    #[test]
+    fn effect_dims_must_match_the_build() {
+        assert_eq!(require_effect([0, 0]).is_ok(), EFF_OUT == 0);
+        assert_eq!(require_effect([EFF_IN, 64]).is_ok(), EFF_OUT == 64);
+        let err = require_effect([EFF_IN, 48]).expect_err("幅が違えば弾く");
+        assert!(err.contains("ADR-0237"), "原因の読める文言にする: {err}");
+    }
+
+    /// 利きのaccumulatorがi16に収まらないネットは弾く（ADR-0237のD2）。
+    /// 収まるネットは読める。
+    #[test]
+    fn effect_acc_must_fit_in_i16() {
+        if EFF_OUT == 0 {
+            return;
+        }
+        let mut net = NnueNetwork::random(5);
+        let mut buf = Vec::new();
+        save(&net, "", &mut buf).unwrap();
+        assert!(load(&mut buf.as_slice()).is_ok());
+        // 1升あたり405で81升なら32,805になり、i16の上限を越える
+        net.eff_w.fill(405);
+        net.eff_b.fill(0);
+        assert_eq!(crate::nnue::effect_acc_bound(&net), 81 * 405);
+        let mut buf = Vec::new();
+        save(&net, "", &mut buf).unwrap();
+        let err = load(&mut buf.as_slice()).err().expect("収まらなければ弾く");
+        assert!(err.contains("i16"), "原因の読める文言にする: {err}");
     }
 
     /// ヘッダ・重みの破損を検出してエラーになる。

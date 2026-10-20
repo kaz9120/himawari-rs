@@ -14,8 +14,8 @@ from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 
 from model import (
-    EFFECT_LEN, EFFECT_SCALE, FOCUS_TOPK, NnueModel, effect_loss_fn,
-    focus_loss_fn, loss_fn, top_k_precision,
+    ARCH, EFF_OUT, EFFECT_INPUTS, EFFECT_LEN, EFFECT_SCALE, FOCUS_TOPK, NnueModel,
+    effect_loss_fn, focus_loss_fn, loss_fn, top_k_precision,
 )
 from optim import MaskedAdam
 from dataset import (
@@ -47,7 +47,7 @@ def validate_focus(model, valid_loader, device, prior):
             if batch is None:
                 continue
             stm_i, stm_o, opp_i, opp_o = [x.to(device) for x in batch[:4]]
-            heat = batch[9].to(device)
+            heat = batch[11].to(device)
             n = heat.size(0)
             pred = model.focus(model.transform_both(stm_i, stm_o, opp_i, opp_o))
             loss_sum += focus_loss_fn(pred, heat).item() * n
@@ -78,7 +78,10 @@ def validate(model, valid_loader, device):
             stm_i, stm_o, opp_i, opp_o, targets = [
                 x.to(device) for x in batch[:5]
             ]
-            out = model(stm_i, stm_o, opp_i, opp_o)
+            # 利きの入力特徴（ADR-0237）。抽出させていなければ空で来る。
+            # 古い拡張のPsvDatasetは5本しか返さないので、そのときは渡さない
+            eff = [x.to(device) for x in batch[9:11]]
+            out = model(stm_i, stm_o, opp_i, opp_o, *eff)
             loss = loss_fn(out, targets)
             total_loss += loss.item() * targets.size(0)
             total_n += targets.size(0)
@@ -214,6 +217,14 @@ def main():
              "レコードは対局順なので、境目の1局を除いて学習と検証は別の対局になる",
     )
     p.add_argument(
+        "--effect-inputs",
+        dest="effect_inputs",
+        choices=list(EFFECT_INPUTS),
+        help="利きのaccumulatorへ特徴を立てるか（ADR-0237）。f2は駒×升×利き数の特徴を"
+             "立てる処置群、noneは立てない統制群。利きの構成（e<E>）で省くとf2になる。"
+             "それ以外の構成では渡せない",
+    )
+    p.add_argument(
         "--init-net",
         help="既存の.hmwrを初期値に読む。FTは常に読み、後段は形が一致する層だけ"
              "読む（ADR-0130）",
@@ -294,6 +305,17 @@ def main():
         p.error("--focus-head には正の --lambda-focus が要る（重み0では学べない）")
     if args.lambda_value <= 0 and args.effect_head is None and args.focus_head is None:
         p.error("--lambda-value 0 には別の的が要る（--effect-head か --focus-head を渡す）")
+    # 利きのaccumulatorは構成で決まる（ADR-0237）。利きの構成で省いたら、
+    # 現行の評価関数と同じF2の特徴を立てる。どちらの群かは来歴に残る（下の eff_tag）
+    if EFF_OUT > 0 and args.effect_inputs is None:
+        args.effect_inputs = "f2"
+    if EFF_OUT == 0 and args.effect_inputs is not None:
+        p.error(f"--effect-inputs は利きの構成（e<E>）でだけ使える。いまの構成は {ARCH}")
+    eff_inputs = args.effect_inputs == "f2"
+    if EFF_OUT > 0 and not args.batch_loader:
+        p.error("利きの構成は --batch-loader が要る（逐次のローダは特徴を作らない）")
+    # 来歴に群を残す（ADR-0237）。統制と処置は同じ構成で、ファイルの寸法では見分けられない
+    eff_tag = f" effect_inputs={args.effect_inputs}" if args.effect_inputs else ""
     use_effect = args.effect_head is not None
     use_focus = args.focus_head is not None
     # ヒートマップは.focusにしか入っていない（ADR-0213）
@@ -378,6 +400,7 @@ def main():
             score_limit=args.score_limit, mmap=args.mmap, shuffle=True,
             score_clamp=args.score_clamp, seed=args.seed or 0,
             effect=use_effect, positions=args.positions,
+            effect_inputs=eff_inputs,
         )
         data_n = train_loader.n
     else:
@@ -414,6 +437,7 @@ def main():
             # valid loss を比べられなくなる（ADR-0126）
             valid_loader = PsvBatchLoader(
                 args.valid, args.batch, lambda_=args.lambda_, shuffle=False,
+                effect_inputs=eff_inputs,
             )
             valid_n = valid_loader.n
         else:
@@ -439,7 +463,14 @@ def main():
         pretrain=args.pretrain,
         effect_head=args.effect_head,
         focus_head=args.focus_head,
+        effect_inputs=args.effect_inputs,
     ).to(device)
+    if args.effect_inputs is not None:
+        print(
+            f"利きの入力: {args.effect_inputs}（幅{EFF_OUT}、"
+            f"{'特徴を立てる処置群' if eff_inputs else '特徴を立てない統制群'}）",
+            file=sys.stderr,
+        )
 
     if args.init_net and args.init_checkpoint:
         p.error("--init-net と --init-checkpoint は同時に使えない（初期値は1つ）")
@@ -498,6 +529,9 @@ def main():
     # 焦点ヘッド（ADR-0213）。probeではここだけが学習対象になる
     if model.focus is not None:
         dense_params.extend(model.focus.parameters())
+    # 利きのaccumulator（ADR-0237）。統制群の表は凍結してあり、下で外れる
+    if model.eff is not None:
+        dense_params.extend([model.eff.weight, model.eff_bias])
     ft_params = [model.ft.weight]
     if model.ft_p is not None:
         ft_params.append(model.ft_p.weight)
@@ -620,7 +654,9 @@ def main():
 
     rank_loader = None
     if args.rank_data:
-        rank_loader = RankLoader(args.rank_data, args.rank_batch, seed=args.seed)
+        rank_loader = RankLoader(
+            args.rank_data, args.rank_batch, seed=args.seed, effect_inputs=eff_inputs,
+        )
         print(f"ランキング群: {rank_loader.n}群 ({args.rank_data})", file=sys.stderr)
 
     model.train()
@@ -631,18 +667,19 @@ def main():
             if batch is None:
                 continue
 
-            # 末尾2本は利きラベル（ADR-0133）。抽出させていなければ空で来る。
+            # 8・9本目は利きラベル（ADR-0133）、10・11本目は利きの入力特徴
+            # （ADR-0237）。抽出させていなければ空で来る。
             # .focus のローダはさらにヒートマップを1本足す（ADR-0213）
             tensors = [x.to(device) for x in batch]
             stm_i, stm_o, opp_i, opp_o, targets, mv_from, mv_to, \
-                eff_short, eff_long = tensors[:9]
-            heat = tensors[9] if len(tensors) > 9 else None
+                eff_short, eff_long, eff_stm, eff_opp = tensors[:11]
+            heat = tensors[11] if len(tensors) > 11 else None
             n = targets.size(0)
 
             optimizer_dense.zero_grad()
             if optimizer_ft is not None:
                 optimizer_ft.zero_grad()
-            x = model.transform_both(stm_i, stm_o, opp_i, opp_o)
+            x = model.transform_both(stm_i, stm_o, opp_i, opp_o, eff_stm, eff_opp)
             out = model.value(x)
             # ログとvalidに載せるのは評価値の損失だけにする。合計を載せると
             # λを変えるたびに指標が動き、過去の学習と比べられなくなる
@@ -654,10 +691,10 @@ def main():
             if rank_loader is not None:
                 # 兄弟局面のランキング損失（ADR-0185）。正例の葉が負例の葉
                 # より親視点で良い、をシグモイド空間のヒンジで課す
-                r_si, r_so, r_oi, r_oo, r_par = [
+                r_si, r_so, r_oi, r_oo, r_par, r_es, r_eo = [
                     x.to(device) for x in rank_loader.sample()
                 ]
-                u = model(r_si, r_so, r_oi, r_oo)
+                u = model(r_si, r_so, r_oi, r_oo, r_es, r_eo)
                 sign = 1.0 - 2.0 * r_par
                 upv = torch.sigmoid(u * sign).view(-1, 3)
                 hinge = F.relu(args.rank_margin + upv[:, 1:3] - upv[:, 0:1])
@@ -852,7 +889,7 @@ def main():
                         f"train-v2-pytorch data={data_desc} n={data_n} "
                         f"step={step} valid_loss={vl:.5f} "
                         f"batch={args.batch} peak_lr={args.peak_lr} "
-                        f"lambda={args.lambda_}"
+                        f"lambda={args.lambda_}{eff_tag}"
                     )
                     save_hmwr(model, lineage, best_path)
                     print(
@@ -925,7 +962,7 @@ def main():
         f"epochs={args.epochs} batch={args.batch} "
         f"peak_lr={args.peak_lr} min_lr={args.min_lr} "
         f"warmup={args.warmup_steps} lambda={args.lambda_} "
-        f"steps={step}"
+        f"steps={step}{eff_tag}"
     )
     save_hmwr(model, lineage, args.out)
     print(f"{args.out} を書き出しました", file=sys.stderr)

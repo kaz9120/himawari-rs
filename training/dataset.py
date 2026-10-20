@@ -19,6 +19,30 @@ FOCUS_BYTES = 202
 SQUARES = 81
 #: ヒートマップの向き。盤の向きのまま使うか、手番側から見た向きへ揃えるか
 FOCUS_ORIENTS = ("board", "stm")
+#: `extract_batch` が返す配列の本数。末尾2本が利きの入力特徴（ADR-0237）
+BATCH_ARRAYS = 11
+
+
+def to_tensors(arrays):
+    """抽出結果をテンソルの組にし、11本へ揃える。
+
+    利きの入力特徴（ADR-0237）を持たない古い拡張は9本を返す。足りない分は
+    長さ0で埋め、受け取り側の分解を1通りに保つ。
+    """
+    tensors = [torch.from_numpy(a) for a in arrays]
+    while len(tensors) < BATCH_ARRAYS:
+        tensors.append(torch.zeros(0, dtype=torch.int64))
+    return tuple(tensors)
+
+
+def extract(records, *args, effect_inputs=False):
+    """`extract_batch` を呼ぶ。利きの入力特徴は要るときだけ頼む。
+
+    古い拡張は `effect_inputs` を受けないので、要らないときは渡さない。
+    """
+    if effect_inputs:
+        return himawari.extract_batch(records, *args, effect_inputs=True)
+    return himawari.extract_batch(records, *args)
 
 
 class PsvDataset(Dataset):
@@ -66,7 +90,7 @@ class PsvBatchLoader:
 
     def __init__(self, path, batch, lambda_=0.7, score_limit=0, mmap=False, score_clamp=0,
                  shuffle=True, chunk_positions=1 << 20, seed=0, prefetch=3, effect=False,
-                 positions=None):
+                 positions=None, effect_inputs=False):
         size = os.path.getsize(path)
         if size % 40 != 0:
             raise ValueError(f"ファイルサイズが40の倍数でない: {size}")
@@ -85,6 +109,8 @@ class PsvBatchLoader:
         # 利きラベル（ADR-0133）。使わないときは抽出させない。長さ0の
         # 配列が返るので、受け取り側の分解は9本のままでよい
         self.effect = effect
+        # 利きの入力特徴（ADR-0237）。処置群だけが抽出する
+        self.effect_inputs = effect_inputs
         self.shuffle = shuffle
         self.chunk = max(chunk_positions, batch)
         self.seed = seed
@@ -129,13 +155,13 @@ class PsvBatchLoader:
                 yield carry
 
     def _extract(self, raw):
-        arrays = himawari.extract_batch(
+        arrays = extract(
             raw.tobytes(), self.lambda_, self.score_limit, self.score_clamp,
-            self.effect,
+            self.effect, effect_inputs=self.effect_inputs,
         )
         if len(arrays[4]) == 0:
             return None
-        return tuple(torch.from_numpy(a) for a in arrays)
+        return to_tensors(arrays)
 
     def __iter__(self):
         rng = np.random.default_rng(self.seed + self.epoch)
@@ -173,8 +199,8 @@ class FocusBatchLoader:
 
     レコードは202バイト固定長で、先頭40バイトがpsv、続く81バイトがヒートマップ、
     残りの81バイトが駒ごとの関与フラグである。psvの部分は `PsvBatchLoader` と
-    同じRustの抽出へ流し、ヒートマップを10本目のテンソルとして足す。バッチの形が
-    9本から10本に増えるだけなので、学習ループの受け取り方は変わらない。
+    同じRustの抽出へ流し、ヒートマップを12本目のテンソルとして足す。バッチの形が
+    11本から12本に増えるだけなので、学習ループの受け取り方は変わらない。
 
     抽出はstrictで行う。**黙って落ちるとラベルとの整列が壊れ、別の局面の
     ヒートマップを当てることになる。** 落ちたら即座に失敗させる。
@@ -233,11 +259,11 @@ class FocusBatchLoader:
         return self._heat(self.data).mean(axis=0, dtype=np.float64)
 
     def _extract(self, raw):
-        arrays = himawari.extract_batch(
+        arrays = extract(
             raw[:, :PSV_BYTES].tobytes(), self.lambda_, 0, 0, False, True,
         )
         heat = torch.from_numpy(self._heat(raw).astype(np.float32))
-        return (*(torch.from_numpy(a) for a in arrays), heat)
+        return (*to_tensors(arrays), heat)
 
     def __iter__(self):
         rng = np.random.default_rng(self.seed + self.epoch)
@@ -324,7 +350,7 @@ class GeneratedBatchLoader:
             try:
                 for size, seed in zip(sizes, seeds):
                     arrays = himawari.generate_batch(size, seed, self.max_plies)
-                    q.put(tuple(torch.from_numpy(a) for a in arrays))
+                    q.put(to_tensors(arrays))
             except Exception as e:  # 生産側の例外を消費側へ伝える
                 q.put(e)
             q.put(None)
@@ -384,7 +410,7 @@ class RankLoader:
     評価値を親視点の符号へ戻す。
     """
 
-    def __init__(self, path, groups_per_step, seed=0, prefetch=2):
+    def __init__(self, path, groups_per_step, seed=0, prefetch=2, effect_inputs=False):
         size = os.path.getsize(path)
         if size % 120 != 0:
             raise ValueError(f"ファイルサイズが120の倍数でない: {size}")
@@ -393,15 +419,19 @@ class RankLoader:
         self.rng = np.random.default_rng(seed)
         self.data = np.memmap(path, dtype=np.uint8, mode="r", shape=(self.n, 120))
         self.prefetch = prefetch
+        # 利きの入力特徴（ADR-0237）。処置群は兄弟局面にも同じ特徴を立てる
+        self.effect_inputs = effect_inputs
         self._queue = None
 
     def _sample_now(self):
         idx = np.sort(self.rng.integers(0, self.n, size=self.batch))
         recs = np.array(self.data[idx]).reshape(-1, 40)
         parity = torch.from_numpy(recs[:, 39].astype(np.float32).copy())
-        arrays = himawari.extract_batch(recs.tobytes(), 0.0, 0, 0, False, True)
-        stm_i, stm_o, opp_i, opp_o = (torch.from_numpy(a) for a in arrays[:4])
-        return stm_i, stm_o, opp_i, opp_o, parity
+        arrays = to_tensors(extract(
+            recs.tobytes(), 0.0, 0, 0, False, True, effect_inputs=self.effect_inputs,
+        ))
+        stm_i, stm_o, opp_i, opp_o = arrays[:4]
+        return stm_i, stm_o, opp_i, opp_o, parity, arrays[9], arrays[10]
 
     def _produce(self):
         while True:
