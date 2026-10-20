@@ -598,19 +598,28 @@ const CHECK_SEE_MARGIN: i32 = -75;
 
 /// limit以上のスコアを持つ指し手だけを降順に並べる（movepick.cpp:91-105）。
 /// limit未満の並びは不定になる。
+///
+/// 添字は範囲検査なしで引く（ADR-0241の第16回）。p は `1..len`、sorted_end は p 以下、
+/// q は sorted_end 以下で、q-1 を読むのは q≠0 のときだけなので、どれも len 未満である。
 fn partial_insertion_sort(a: &mut [ExtMove], limit: i32) {
+    let len = a.len();
+    let a = a.as_mut_ptr();
     let mut sorted_end = 0usize;
-    for p in 1..a.len() {
-        if a[p].v >= limit {
-            let tmp = a[p];
-            sorted_end += 1;
-            a[p] = a[sorted_end];
-            let mut q = sorted_end;
-            while q != 0 && a[q - 1].v < tmp.v {
-                a[q] = a[q - 1];
-                q -= 1;
+    // SAFETY: 上の添字の範囲の説明のとおり、読み書きする添字はすべて len 未満である
+    unsafe {
+        for p in 1..len {
+            if (*a.add(p)).v >= limit {
+                let tmp = *a.add(p);
+                sorted_end += 1;
+                debug_assert!(sorted_end <= p);
+                *a.add(p) = *a.add(sorted_end);
+                let mut q = sorted_end;
+                while q != 0 && (*a.add(q - 1)).v < tmp.v {
+                    *a.add(q) = *a.add(q - 1);
+                    q -= 1;
+                }
+                *a.add(q) = tmp;
             }
-            a[q] = tmp;
         }
     }
 }
@@ -719,8 +728,10 @@ impl MovePicker {
     /// 条件を満たす次の手を返す（movepick.cpp:436-445）。TT手は返さない。
     #[inline]
     fn select(&mut self, pred: impl Fn(&ExtMove) -> bool) -> Option<Move> {
+        debug_assert!(self.end_cur <= self.moves.len());
         while self.cur < self.end_cur {
-            let e = self.moves[self.cur];
+            // SAFETY: end_cur は積んだ手の数（moves.len()）以下に保たれる。cur < end_cur なので範囲内
+            let e = unsafe { *self.moves.get_unchecked(self.cur) };
             self.cur += 1;
             if e.m != self.tt_move && pred(&e) {
                 return Some(e.m);
