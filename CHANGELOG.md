@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.56.4](https://github.com/kaz9120/himawari-rs/compare/v0.56.3...v0.56.4) (2026-10-20)
+
+
+### その他の変更
+
+* 利き数の段階の集合を、駒種ごとに集合から引いて作る（ADR-0242の段3、+1.62% NPS） ([#869](https://github.com/kaz9120/himawari-rs/issues/869)) ([3b06280](https://github.com/kaz9120/himawari-rs/commit/3b06280bcff8abbc65ff07fce868ea4b8d128554))
+
 ## [0.56.3](https://github.com/kaz9120/himawari-rs/compare/v0.56.2...v0.56.3) (2026-10-20)
 
 
