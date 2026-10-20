@@ -302,8 +302,13 @@ impl Position {
             }
             GenType::Captures => {
                 self.collect_pins(&mut ctx);
-                self.gen_board(&ctx, enemy, all, false, list);
-                self.gen_king(&ctx, enemy, list);
+                #[cfg(mb_order_type)]
+                self.gen_captures_by_target(&ctx, enemy, all, list);
+                #[cfg(not(mb_order_type))]
+                {
+                    self.gen_board(&ctx, enemy, all, false, list);
+                    self.gen_king(&ctx, enemy, list);
+                }
                 // 空き升への歩の成り。行き先の小さい順に回すと、移動元も同じ順に並ぶ
                 let fwd81 = pawn_delta81(us);
                 let pro = make_piece(us, PRO_PAWN);
@@ -411,6 +416,75 @@ impl Position {
         self.gen_type::<5, L>(ctx, ps[5], target, occ_all, all, list);
         self.gen_type::<HORSE, L>(ctx, ps[HORSE as usize], target, occ_all, all, list);
         self.gen_type::<DRAGON, L>(ctx, ps[DRAGON as usize], target, occ_all, all, list);
+    }
+
+    /// 駒取りを行き先の側から引く（並びの変わる版）。手番側が利いている相手の駒の升を小さい順に回し、
+    /// その升へ利いている手番側の駒から手を作る（ADR-0241の第16回）。
+    ///
+    /// 飛び利きの元の駒は、行き先の升の方向ビットから線の表で引く。短い利きの元の駒は、利き数から
+    /// 飛び利きの本数を引いて残りがあるときだけ、近傍と桂の升を見る。玉で取れるのは、相手の利きが
+    /// 無く、玉の升に届く相手の飛び利きの延長でもない升だけである。
+    #[cfg(mb_order_type)]
+    fn gen_captures_by_target<L: MoveSink>(&self, ctx: &Ctx, enemy: u128, all: bool, list: &mut L) {
+        let us = ctx.us;
+        let ui = us.index();
+        let them = us.flip().index();
+        let occ_all = self.occ[ui] | enemy;
+        let k = self.king[ui];
+        let k81 = SQ81[k as usize];
+        let kp = make_piece(us, KING);
+        let xray = self.longdir[them][k as usize];
+        // 手番側が利いている相手の駒の升
+        let mut hit = 0u128;
+        for_each_bit81(enemy, |t| {
+            hit |= u128::from(self.count[ui][idx81(t as usize) as usize] != 0) << t;
+        });
+        for_each_bit81(hit, |t| {
+            let ti = idx81(t as usize);
+            let dirs = self.longdir[ui][ti as usize];
+            let mut from = 0u128;
+            let mut ds = dirs;
+            while ds != 0 {
+                let d = ds.trailing_zeros() as usize;
+                ds &= ds - 1;
+                let od = opp(d);
+                let h = ray81(t as usize, od) & occ_all;
+                debug_assert!(h != 0);
+                let first = if INCREASING[od] {
+                    h.trailing_zeros()
+                } else {
+                    127 - h.leading_zeros()
+                };
+                from |= 1u128 << first;
+            }
+            if u32::from(self.count[ui][ti as usize]) > dirs.count_ones() {
+                for o in CHECK_OFFSETS {
+                    let x = ti.wrapping_sub(o as u8);
+                    let v = self.board[x as usize];
+                    if v != EMPTY
+                        && v != WALL
+                        && piece_color(v) == us
+                        && short81(v, SQ81[x as usize] as usize) & (1u128 << t) != 0
+                    {
+                        from |= bit81(x);
+                    }
+                }
+            }
+            for_each_bit81(from, |s| {
+                if s == k81 {
+                    let d = dir81(k81 as usize, t as usize);
+                    if self.count[them][ti as usize] == 0 && xray & (1 << d) == 0 {
+                        list.push_normal(k81, t, false, kp);
+                    }
+                    return;
+                }
+                if ctx.pin_mask(s) & (1u128 << t) == 0 {
+                    return;
+                }
+                let pt = piece_type(self.board[idx81(s as usize) as usize]);
+                push_variants(us, pt, s, t, all, list);
+            });
+        });
     }
 
     /// 駒種PTの駒の手を、移動元の升の順に積む（並びの変わる版）。
