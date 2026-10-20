@@ -399,8 +399,13 @@ fn check_node(core: &mut CorePos, mb: &mut Position) {
     }
     for (cg, mg) in kinds {
         for all in [true, false] {
-            let a = core_seq(core, cg, all);
-            let b = mb_seq(mb, mg, all);
+            let mut a = core_seq(core, cg, all);
+            let mut b = mb_seq(mb, mg, all);
+            // 並びの変わる構成（HIMAWARI_MB_ORDER=type）では、手の集合で比べる
+            if !himawari_mailbox::ORDER_MATCHES_CORE {
+                a.sort();
+                b.sort();
+            }
             if a != b {
                 let missing: Vec<_> = a.iter().filter(|m| !b.contains(m)).collect();
                 let extra: Vec<_> = b.iter().filter(|m| !a.contains(m)).collect();

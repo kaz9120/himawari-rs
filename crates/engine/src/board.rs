@@ -352,14 +352,16 @@ impl SearchBoard {
         self.mb.generate(g, all, &mut mbconv::CoreSink(list));
         // 照合の引数は、照合するビルドでだけ作る。作るだけで確保が走る
         #[cfg(mb_shadow)]
-        self.shadow("generate", &list.as_slice().to_vec(), |p| {
+        self.shadow("generate", &mbconv::order_key(list.as_slice()), |p| {
             let mut want = MoveList::default();
             himawari_core::generate(p, gt, all, &mut want);
-            want.as_slice()
+            let want: Vec<Move> = want
+                .as_slice()
                 .iter()
                 .copied()
                 .filter(|&m| p.is_legal(m))
-                .collect::<Vec<Move>>()
+                .collect();
+            mbconv::order_key(&want)
         });
     }
 
@@ -368,10 +370,10 @@ impl SearchBoard {
     pub fn generate_legal(&self, all: bool, list: &mut MoveList) {
         self.mb.generate_legal(all, &mut mbconv::CoreSink(list));
         #[cfg(mb_shadow)]
-        self.shadow("generate_legal", &list.as_slice().to_vec(), |p| {
+        self.shadow("generate_legal", &mbconv::order_key(list.as_slice()), |p| {
             let mut want = MoveList::default();
             himawari_core::generate_legal(p, all, &mut want);
-            want.as_slice().to_vec()
+            mbconv::order_key(want.as_slice())
         });
     }
 
@@ -677,6 +679,17 @@ mod mbconv {
         }
     }
 
+    /// 生成の列を照合するための形。並びがcoreと同じ構成では列のまま、並びの変わる構成
+    /// （`HIMAWARI_MB_ORDER=type`）では符号の順に並べて手の集合として比べる（ADR-0241の第16回）。
+    #[cfg_attr(not(mb_shadow), allow(dead_code))]
+    pub fn order_key(list: &[Move]) -> Vec<u32> {
+        let mut v: Vec<u32> = list.iter().map(|m| m.bits()).collect();
+        if !himawari_mailbox::ORDER_MATCHES_CORE {
+            v.sort_unstable();
+        }
+        v
+    }
+
     /// coreの局面から配列盤を作る。千日手の判定のために、過去の局面のキーも写す。
     pub fn from_core(pos: &Position) -> himawari_mailbox::Position {
         let mut mb = himawari_mailbox::Position::from_sfen(&pos.to_sfen())
@@ -810,7 +823,13 @@ mod tests {
             let mut ml = himawari_mailbox::MoveList::default();
             mb.generate_legal(true, &mut ml);
             assert_eq!(list.len(), ml.len());
-            for (&m, &w) in list.as_slice().iter().zip(ml.as_slice()) {
+            // 並びの変わる構成でも組を作れるよう、配列盤の手をcoreの手の順に並べ直す
+            let mut ml: Vec<himawari_mailbox::Move> = ml.as_slice().to_vec();
+            if !himawari_mailbox::ORDER_MATCHES_CORE {
+                let order: Vec<u32> = list.as_slice().iter().map(|m| m.bits()).collect();
+                ml.sort_by_key(|w| order.iter().position(|&b| b == to_core(*w).bits()));
+            }
+            for (&m, &w) in list.as_slice().iter().zip(ml.iter()) {
                 assert_eq!(to_mb(m), w, "to_mb {}", m.to_usi());
                 assert_eq!(to_core(w), m, "to_core {}", m.to_usi());
             }
