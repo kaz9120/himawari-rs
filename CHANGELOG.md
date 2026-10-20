@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.56.0](https://github.com/kaz9120/himawari-rs/compare/v0.55.14...v0.56.0) (2026-10-20)
+
+
+### 棋力向上
+
+* 駒×升×利き数を評価関数の入力に足す（+30.2 Elo、ADR-0237） ([#853](https://github.com/kaz9120/himawari-rs/issues/853)) ([22a42c8](https://github.com/kaz9120/himawari-rs/commit/22a42c8bb53c8a824979d38a503861a3a2a5bf38))
+
 ## [0.55.14](https://github.com/kaz9120/himawari-rs/compare/v0.55.13...v0.55.14) (2026-10-19)
 
 
