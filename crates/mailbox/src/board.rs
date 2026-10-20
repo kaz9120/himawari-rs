@@ -437,6 +437,77 @@ pub const RAY81: [[u128; 8]; 81] = {
     t
 };
 
+/// 方向dへ進むと81升の通し番号が増えるか（下・左・左上・左下）。線の最初の駒を最下位か最上位のビットで引くのに使う。
+pub const INCREASING: [bool; 8] = [false, true, true, false, true, false, false, true];
+
+/// 81升の升s81から方向dへ、occの最初の駒まで（その駒を含む）の升の集合。
+#[inline(always)]
+pub fn ray_to_blocker(s81: usize, d: usize, occ: u128) -> u128 {
+    let ray = RAY81[s81][d];
+    let hit = ray & occ;
+    if hit == 0 {
+        return ray;
+    }
+    let first = if INCREASING[d] {
+        hit.trailing_zeros()
+    } else {
+        127 - hit.leading_zeros()
+    } as usize;
+    ray & !RAY81[first][d]
+}
+
+/// `SHORT81[p][s81]` は駒pを81升の升s81に置いたときの短い利きの升の集合（盤の上だけ）。
+/// 生成が盤を1升ずつ歩かずに行き先を引くための表（ADR-0241の第15回）。
+pub static SHORT81: [[u128; 81]; 32] = {
+    let mut t = [[0u128; 81]; 32];
+    let mut p = 0;
+    while p < 32 {
+        let m = &MOVES[p];
+        let mut s = 0;
+        while s < 81 {
+            let i = IDX81[s] as i32;
+            let mut k = 0;
+            while k < m.n_short as usize {
+                let x = i + m.short[k] as i32;
+                if x >= 0 && (x as usize) < LEN && SQ81[x as usize] != 0xFF {
+                    t[p][s] |= 1u128 << SQ81[x as usize];
+                }
+                k += 1;
+            }
+            s += 1;
+        }
+        p += 1;
+    }
+    t
+};
+
+/// `REL_RANK81[c][s81]` は手番cから見た段（`rel_rank` の81升の通し番号版）。
+pub const REL_RANK81: [[u8; 81]; 2] = {
+    let mut t = [[0u8; 81]; 2];
+    let mut s = 0;
+    while s < 81 {
+        t[0][s] = (s % 9) as u8;
+        t[1][s] = 8 - (s % 9) as u8;
+        s += 1;
+    }
+    t
+};
+
+/// 81升の集合の各升を、小さい番号から順に81升の通し番号で回す。
+#[inline(always)]
+pub fn for_each_bit81(m: u128, mut f: impl FnMut(u8)) {
+    let mut lo = m as u64;
+    while lo != 0 {
+        f(lo.trailing_zeros() as u8);
+        lo &= lo - 1;
+    }
+    let mut hi = (m >> 64) as u64;
+    while hi != 0 {
+        f(64 + hi.trailing_zeros() as u8);
+        hi &= hi - 1;
+    }
+}
+
 /// SFENの駒文字（大文字）。
 pub fn sfen_of_type(pt: u8) -> &'static str {
     match pt {

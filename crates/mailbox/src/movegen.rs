@@ -110,16 +110,22 @@ struct Ctx {
     us: Color,
     /// 玉以外の駒が行ってよい升。王手中は王手駒の升と合駒の升、それ以外は全部。
     evasion: u128,
-    /// ピンされた駒の升と、その駒が動ける線（玉からピンの方向へ盤の端まで）。
+    /// ピンされた駒の升（81升の通し番号）と、その駒が動ける線（玉からピンの方向へ盤の端まで）。
     pins: [(u8, u128); 8],
     n_pins: usize,
+    /// ピンされた駒の升の集合。ピンの無い駒は線を探さずに済ませる
+    pinned: u128,
 }
 
 impl Ctx {
-    #[inline]
-    fn pin_mask(&self, s: u8) -> u128 {
+    /// 81升の升s81の駒が動ける升の集合。
+    #[inline(always)]
+    fn pin_mask(&self, s81: u8) -> u128 {
+        if self.pinned & (1u128 << s81) == 0 {
+            return ALL81;
+        }
         for k in 0..self.n_pins {
-            if self.pins[k].0 == s {
+            if self.pins[k].0 == s81 {
                 return self.pins[k].1;
             }
         }
@@ -130,18 +136,6 @@ impl Ctx {
 use crate::position::CHECK_OFFSETS;
 
 impl Position {
-    /// 玉の升kから方向dへ盤の端まで歩いた升の集合（kを含まない）。
-    fn line_from(&self, k: u8, d: usize) -> u128 {
-        let mut m = 0u128;
-        let delta = DELTA[d] as i32;
-        let mut t = (k as i32 + delta) as u8;
-        while self.board[t as usize] != WALL {
-            m |= bit81(t);
-            t = (t as i32 + delta) as u8;
-        }
-        m
-    }
-
     /// 手番cの玉から方向dへ歩いて最初の駒の升（無ければNone）。
     #[inline]
     pub(crate) fn first_piece(&self, k: u8, d: usize) -> Option<u8> {
@@ -167,20 +161,33 @@ impl Position {
             && self.longdir[us.flip().index()][x as usize] & (1 << opp(d)) != 0
     }
 
-    /// 玉から8方向を歩き、ピンされた自駒を集める。
+    /// 玉から8方向の最初の駒を、占有の集合と線の表から引き、ピンされた自駒を集める。
     /// 方向dで最初に当たった自駒の升に、相手の飛び利きが方向opp(d)（玉へ向かう向き）で
     /// 届いていればピンである。
     fn collect_pins(&self, ctx: &mut Ctx) {
         let us = ctx.us;
-        let k = self.king[us.index()];
+        let ui = us.index();
         let them = us.flip().index();
+        let k81 = SQ81[self.king[ui] as usize] as usize;
+        let own = self.occ[ui];
+        let occ_all = own | self.occ[them];
         for d in 0..8 {
-            if let Some(t) = self.first_piece(k, d) {
-                let v = self.board[t as usize];
-                if piece_color(v) == us && self.longdir[them][t as usize] & (1 << opp(d)) != 0 {
-                    ctx.pins[ctx.n_pins] = (t, self.line_from(k, d));
-                    ctx.n_pins += 1;
-                }
+            let ray = RAY81[k81][d];
+            let hit = ray & occ_all;
+            if hit == 0 {
+                continue;
+            }
+            let first = if INCREASING[d] {
+                hit.trailing_zeros()
+            } else {
+                127 - hit.leading_zeros()
+            } as u8;
+            if own & (1u128 << first) != 0
+                && self.longdir[them][IDX81[first as usize] as usize] & (1 << opp(d)) != 0
+            {
+                ctx.pins[ctx.n_pins] = (first, ray);
+                ctx.n_pins += 1;
+                ctx.pinned |= 1u128 << first;
             }
         }
     }
@@ -271,6 +278,7 @@ impl Position {
             evasion: ALL81,
             pins: [(0, 0); 8],
             n_pins: 0,
+            pinned: 0,
         };
         let own = self.occ[ui];
         let enemy = self.occ[them];
@@ -298,22 +306,19 @@ impl Position {
                 self.gen_board(&ctx, enemy, all, false, list);
                 self.gen_king(&ctx, enemy, list);
                 // 空き升への歩の成り
-                let fwd = pawn_delta(us);
-                for_each81(own, |s| {
-                    if self.board[s as usize] != make_piece(us, PAWN) {
+                // 81升の番号のまま回す。歩は行き所の無い段にいないので、前の升は同じ筋の盤の上にある
+                let fwd81 = pawn_delta81(us);
+                let pawn = make_piece(us, PAWN);
+                for_each_bit81(own, |s| {
+                    if self.board[IDX81[s as usize] as usize] != pawn {
                         return;
                     }
-                    let t = (s as i32 + fwd) as u8;
-                    if self.board[t as usize] == EMPTY
-                        && rel_rank(us, t) <= 2
-                        && ctx.pin_mask(s) & bit81(t) != 0
+                    let t = (s as i32 + fwd81) as u8;
+                    if empty & (1u128 << t) != 0
+                        && REL_RANK81[ui][t as usize] <= 2
+                        && ctx.pin_mask(s) & (1u128 << t) != 0
                     {
-                        list.push_normal(
-                            SQ81[s as usize],
-                            SQ81[t as usize],
-                            true,
-                            make_piece(us, PRO_PAWN),
-                        );
+                        list.push_normal(s, t, true, make_piece(us, PRO_PAWN));
                     }
                 });
             }
@@ -321,23 +326,19 @@ impl Position {
                 self.collect_pins(&mut ctx);
                 self.gen_board(&ctx, empty, all, true, list);
                 // 歩の静かな手。成りはCaptures側で、不成だけをここで積む
-                let fwd = pawn_delta(us);
-                for_each81(own, |s| {
-                    if self.board[s as usize] != make_piece(us, PAWN) {
+                let fwd81 = pawn_delta81(us);
+                let pawn = make_piece(us, PAWN);
+                for_each_bit81(own, |s| {
+                    if self.board[IDX81[s as usize] as usize] != pawn {
                         return;
                     }
-                    let t = (s as i32 + fwd) as u8;
-                    if self.board[t as usize] != EMPTY || ctx.pin_mask(s) & bit81(t) == 0 {
+                    let t = (s as i32 + fwd81) as u8;
+                    if empty & (1u128 << t) == 0 || ctx.pin_mask(s) & (1u128 << t) == 0 {
                         return;
                     }
-                    let rr = rel_rank(us, t);
+                    let rr = REL_RANK81[ui][t as usize];
                     if rr > 2 || (all && rr >= 1) {
-                        list.push_normal(
-                            SQ81[s as usize],
-                            SQ81[t as usize],
-                            false,
-                            make_piece(us, PAWN),
-                        );
+                        list.push_normal(s, t, false, pawn);
                     }
                 });
                 self.gen_king(&ctx, empty, list);
@@ -350,25 +351,22 @@ impl Position {
         let ui = ctx.us.index();
         let them = ctx.us.flip().index();
         let k = self.king[ui];
-        let xray = self.longdir[them][k as usize];
-        let mut safe = 0u128;
-        for (d, &delta) in DELTA.iter().enumerate() {
-            let t = (k as i32 + delta as i32) as u8;
-            if CAN_MOVE_TO[ui][self.board[t as usize] as usize]
-                && self.count[them][t as usize] == 0
-                && xray & (1 << d) == 0
-            {
-                safe |= bit81(t);
-            }
-        }
-        let kp = make_piece(ctx.us, KING);
         let k81 = SQ81[k as usize];
-        for_each81(safe & target, |t| {
-            list.push_normal(k81, SQ81[t as usize], false, kp)
+        let xray = self.longdir[them][k as usize];
+        let kp = make_piece(ctx.us, KING);
+        let cand = SHORT81[kp as usize][k81 as usize] & !self.occ[ui] & target;
+        for_each_bit81(cand, |t| {
+            // 玉の升に届く飛び利きの延長（玉が線に沿って逃げる升）は、利き数に入っていない
+            let d = DIR81[k81 as usize][t as usize];
+            if self.count[them][IDX81[t as usize] as usize] == 0 && xray & (1 << d) == 0 {
+                list.push_normal(k81, t, false, kp);
+            }
         });
     }
 
     /// 玉以外の盤上の駒の手。skip_pawnsなら歩を飛ばす（Quietsは歩を別に積む）。
+    ///
+    /// 81升の番号のまま回す。短い利きは表、飛び利きは占有の集合と線の表から引くので、盤を歩かない。
     fn gen_board<L: MoveSink>(
         &self,
         ctx: &Ctx,
@@ -379,16 +377,26 @@ impl Position {
     ) {
         let us = ctx.us;
         let ui = us.index();
-        let movers = self.occ[ui] & !bit81(self.king[ui]);
-        let target = target & ctx.evasion;
-        for_each81(movers, |s| {
-            let p = self.board[s as usize];
+        let own = self.occ[ui];
+        let occ_all = own | self.occ[us.flip().index()];
+        let movers = own & !bit81(self.king[ui]);
+        let target = target & ctx.evasion & !own;
+        for_each_bit81(movers, |s| {
+            let p = self.board[IDX81[s as usize] as usize];
             let pt = piece_type(p);
             if skip_pawns && pt == PAWN {
                 return;
             }
-            let to = self.targets_of(s, p, ui) & target & ctx.pin_mask(s);
-            for_each81(to, |t| push_variants(us, pt, s, t, all, list));
+            let m = &MOVES[(p & 31) as usize];
+            let mut to = SHORT81[(p & 31) as usize][s as usize];
+            let mut dirs = m.long;
+            while dirs != 0 {
+                let d = dirs.trailing_zeros() as usize;
+                dirs &= dirs - 1;
+                to |= ray_to_blocker(s as usize, d, occ_all);
+            }
+            let to = to & target & ctx.pin_mask(s);
+            for_each_bit81(to, |t| push_variants(us, pt, s, t, all, list));
         });
     }
 
@@ -430,7 +438,7 @@ impl Position {
                 }
             }
             let pc = make_piece(us, pt);
-            for_each81(mask, |t| list.push_drop(pt, SQ81[t as usize], pc));
+            for_each_bit81(mask, |t| list.push_drop(pt, t, pc));
         }
     }
 }
@@ -444,12 +452,21 @@ pub(crate) const fn pawn_delta(us: Color) -> i32 {
     }
 }
 
-/// 盤上の駒の手を、成り・不成を分けて積む。規約はcoreの `push_variants` と同じ。
+/// 歩が進む向きの、81升の通し番号の差分。
 #[inline]
-fn push_variants<L: MoveSink>(us: Color, pt: u8, from: u8, to: u8, all: bool, list: &mut L) {
-    let (from81, to81) = (SQ81[from as usize], SQ81[to as usize]);
-    let rel = rel_rank(us, to);
-    if can_promote(pt) && (rel_rank(us, from) <= 2 || rel <= 2) {
+const fn pawn_delta81(us: Color) -> i32 {
+    match us {
+        Color::Black => -1,
+        Color::White => 1,
+    }
+}
+
+/// 盤上の駒の手を、成り・不成を分けて積む。規約はcoreの `push_variants` と同じ。升は81升の通し番号。
+#[inline(always)]
+fn push_variants<L: MoveSink>(us: Color, pt: u8, from81: u8, to81: u8, all: bool, list: &mut L) {
+    let ui = us.index();
+    let rel = REL_RANK81[ui][to81 as usize];
+    if can_promote(pt) && (REL_RANK81[ui][from81 as usize] <= 2 || rel <= 2) {
         list.push_normal(from81, to81, true, make_piece(us, pt - 8));
         let non_promote = match pt {
             PAWN => all && rel >= 1,

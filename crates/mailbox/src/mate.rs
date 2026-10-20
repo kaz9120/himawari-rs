@@ -166,25 +166,6 @@ fn bit81_or_zero(i: u8) -> u128 {
     if s == 0xFF { 0 } else { 1u128 << s }
 }
 
-/// 方向dへ進むと81升の通し番号が増えるか（下・左・左上・左下）。線の最初の駒を最下位か最上位のビットで引くのに使う。
-const INCREASING: [bool; 8] = [false, true, true, false, true, false, false, true];
-
-/// 81升の升s81から方向dへ、occの最初の駒まで（その駒を含む）の升の集合。
-#[inline]
-fn ray_to_blocker(s81: usize, d: usize, occ: u128) -> u128 {
-    let ray = RAY81[s81][d];
-    let hit = ray & occ;
-    if hit == 0 {
-        return ray;
-    }
-    let first = if INCREASING[d] {
-        hit.trailing_zeros()
-    } else {
-        127 - hit.leading_zeros()
-    } as usize;
-    ray & !RAY81[first][d]
-}
-
 /// 1手詰めの列挙と判定の仕事の量（`mate_1ply_counted` が足す。ADR-0241の第10回）。
 #[derive(Clone, Copy, Debug, Default)]
 pub struct MateCount {
