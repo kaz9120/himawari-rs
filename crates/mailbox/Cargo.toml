@@ -1,6 +1,6 @@
 [package]
 name = "himawari-mailbox"
-description = "配列盤と利きの配列による盤面表現の研究用試作（ADR-0241、mainへは入れない）"
+description = "配列盤と利きの配列による盤面表現。探索の盤の既定（ADR-0241）"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
