@@ -42,6 +42,6 @@ PVを保持し、MultiPVのランキングと安定ソートに使う。
 ## Consequences
 
 - RootMove化は探索の可読性を上げ、後続ADR（Lazy SMP・ponder）の
-  土台になる
+  前提になる
 - MultiPVのK>1では探索効率が落ちる。それが正常である。検討モード専用で、
   対局時はK=1を前提とする

@@ -21,7 +21,7 @@ P6でlr scheduleやデータ量を変えた実験を複数回す。条件と
 --log-file PATH で学習メトリクスをTSVファイルに書き出す。
 指定なしでは標準エラーのみ（現行動作を維持）。
 
-列定義:
+列の定義は次のとおりである。
 
 ```
 type	step	epoch	samples	loss	lr	skip_pct	sps	elapsed_s
@@ -36,7 +36,7 @@ train行のlossは区間平均。gnuplot・matplotlib・Excelで直接読み込�
 
 --registry PATH で学習完了時に1行追記するTSVファイル。
 
-列:
+列は次のとおりである。
 
 ```
 timestamp	name	data	data_n	epochs	batch	peak_lr	min_lr	warmup	lambda	best_step	best_valid	final_valid	total_steps	elapsed_s	notes

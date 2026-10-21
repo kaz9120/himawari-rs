@@ -14,7 +14,7 @@ main historyは移動後の駒32×移動先81である（`movepick.rs:9-38`、
 
 continuation historyは「直前の手（または2手前の自分の手）が
 これだったとき、この応手が良かったか」をスコアで持つ。
-文脈条件付きのオーダリングでmain historyより解像度が高く、
+文脈条件付きのオーダリングでmain historyより細かく区別でき、
 Stockfish系ではオーダリング改善の主力になっている。
 
 ## 選択肢と比較
@@ -42,7 +42,7 @@ counter/follow-upを1案として扱っており、1SPRTで判定する
 
 ### 実装スケッチ
 
-テーブル（movepick.rs）:
+テーブル（movepick.rs）の変更は次のとおり。
 - `ContinuationHistory { table: Box<[[[[i16; 81]; 32]; 81]; 32]> }` とする。
   外側が条件手の（piece_after 32、to 81）、内側が応手の
   （piece_after 32、to 81）である。約13.4MB/スレッド
@@ -51,7 +51,7 @@ counter/follow-upを1案として扱っており、1SPRTで判定する
 - 保持はHistory/CounterMovesと同じ流儀: スレッドローカル、
   goごとに探索器へ渡し、NewGameでクリア
 
-search.rs:
+search.rsの変更は次のとおり。
 - plyごとの指し手スタック`move_stack`をWorkerに追加
   （do_move時に記録。null moveはMove::NONE）
 - quietスコアは

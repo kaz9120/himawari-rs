@@ -31,16 +31,16 @@ non-PV・非王手・depth>=5で、`probcut_beta = beta + 200`を
 
 ### 実装スケッチ（search.rs）
 
-発動条件（ムーブループ前、NMPの後）:
+発動条件（ムーブループ前、NMPの後）は次のとおり。
 - non-PV、非王手、除外手つき探索中でない（ADR-0050で除外手を渡す仕組み）
 - depth >= 5
 - |beta| < VALUE_MATE_IN_MAX_PLY
 - `probcut_beta = beta + 200`
-- TTに深い情報があり矛盾する場合はスキップ:
+- TTに深い情報があり矛盾する場合はスキップする。
   tt_hitで`tt_depth >= depth - 3`かつ`tt_value < probcut_beta`
   なら発動しない
 
-本体:
+本体は次のとおり。
 - 取る手（SEE >= 0のもの）を生成し、各手について
   1. do_moveしてqsearchを窓`(-probcut_beta, -probcut_beta+1)`で
      実行。`-value >= probcut_beta`でなければ次の手へ

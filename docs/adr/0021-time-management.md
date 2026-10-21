@@ -31,8 +31,8 @@ binc/winc（加算）、movetime、infinite、ponderを渡してくる。
 
 - 計時はgo受信時刻を起点とする。ponder中は消費せず、
   ponderhitで起点を引き継ぐ
-- 1手に使える時間の総枠:
-  `avail = 残り時間 / max(残り想定手数, 16) + byoyomi + inc`。
+- 1手に使える時間の総枠は
+  `avail = 残り時間 / max(残り想定手数, 16) + byoyomi + inc` とする。
   残り想定手数は `max(48 − game_ply / 2, 16)` の簡易式から始める
 - `optimum = avail`、`maximum = min(avail × 3, 残り時間 + byoyomi)`。
   係数はP3でSPRTにより調整する（このADRでは初期値のみ決める）

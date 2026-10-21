@@ -86,12 +86,11 @@ READMEとROADMAPには変わり続ける事実を書かない（[ADR-0182](docs/
 誤った場所へ連れて行く。数値を書くときも同じで、出典（ネットのメタデータ、
 ログ、ADR）に当たる。
 
-文書はtextlintを通してからPRを出す（[ADR-0178](docs/adr/0178-textlint-gate.md)）。
-一文の長さ・読点の数・助詞の重複・冗長表現・誇張表現をCIが見る。
+文書はyomiyasuを通してからPRを出す（[ADR-0244](docs/adr/0244-yomiyasu-gate.md)）。
+AIの文に出やすい語・比喩・直訳、表示されない太字、文末のコロンをCIが見る。
 
 ```
-hmwr doc lint        # docs/ と *.md と .claude/ を検査する
-hmwr doc lint --fix  # 自動で直せるものだけ直す
+hmwr doc lint        # docs/ と *.md と .claude/ と research/ を検査する
 hmwr doc check       # ADRのStatusと索引の一致、相対リンクの行き先を検査する
 ```
 
@@ -99,10 +98,10 @@ hmwr doc check       # ADRのStatusと索引の一致、相対リンクの行き
 PRではpytestが同じ検査を走らせる。週次のGitHub Actionsは、proposedのまま
 30日動いていないADRも挙げて `micro` Issueへ起票する。
 
-強調の中に句点を書かない。`**要点である**。` と書き、`**要点である。**`
-とは書かない。textlintの文の分割器は `。**` で文を切らないため、後者だと
-次の文まで1文として数えられる。原文を変えられない引用は
-`<!-- textlint-disable ja-technical-writing/sentence-length -->` で外す。
+太字の印は、外側が句読点か空白に接するように置く。`だが、**該当は5件**で、`
+のように外側が文字に接すると、GitHubで太字にならず `**` がそのまま出る。
+`**要点である**。` と書き、`**要点である。**` とは書かない。
+原文を変えられない引用は、直前の行に `<!-- yomiyasu-disable-next-line -->` を置いて外す。
 
 ## ADRプロセス
 

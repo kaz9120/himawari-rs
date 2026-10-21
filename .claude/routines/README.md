@@ -55,7 +55,7 @@ Routineのプロンプトは「このディレクトリの手順を実行する�
   **`pip` と打つと入る先が変わる**。`pip` は `/usr/bin/python3` の3.13へ入れるが、
   PATHの先頭は `/usr/local/bin/python3` の3.11である。入れたあとで
   「No module named pytest」になり、テストが1件も走らないまま通り過ぎる
-- Rustのビルドは約40秒、`npm ci` と文書のlintは約45秒で通る
+- Rustのビルドは約40秒、文書のlintは約2秒で通る
 
 Routineを作るときは、MCPのコネクタを付けない（作成の後に
 `clear_mcp_connections` で外す）。既定ではアカウントのコネクタが全部付く。
@@ -71,7 +71,7 @@ push前に、CIと同じ検査をローカルで通す。
 cargo fmt --all --check && cargo clippy --all-targets -- -D warnings
 cargo test --release
 python3 -m pip install --quiet pytest numpy && python3 -m pytest tests -q
-npm ci && ./bin/hmwr doc lint && ./bin/hmwr doc check
+./bin/hmwr doc lint && ./bin/hmwr doc check
 ```
 
 通らない検査があり、直し方が分からなければ、PRを出さずにIssueへ状況を

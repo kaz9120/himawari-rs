@@ -1,6 +1,6 @@
 # 0178: 日本語文書の書き方をtextlintでCIゲートにする
 
-- Status: accepted
+- Status: superseded（[0244](0244-yomiyasu-gate.md)）
 - Date: 2026-08-20
 - 関連ADR: [0053](0053-docs-structure.md), [0001](0001-adr-process.md), [0070](0070-pr-based-workflow.md)
 

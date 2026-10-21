@@ -43,7 +43,7 @@ Stockfishはcapture historyを枝刈り閾値にも使うが、閾値系は
 
 ### 実装スケッチ
 
-テーブル（movepick.rs）:
+テーブル（movepick.rs）は次のとおりである。
 - `CaptureHistory { table: Box<[i16]> }`（フラット確保、
   32×81×16 = 41,472エントリ、約83KB）
 - 添字: 取る側の（piece_after、to）と、取られる駒の
@@ -51,14 +51,14 @@ Stockfishはcapture historyを枝刈り閾値にも使うが、閾値系は
 - 更新はgravity（クランプ±4000、divisor 16384。既存と同一）
 - 保持はスレッドローカル（goごとに渡し・回収・NewGameクリア）
 
-スコアリング:
+スコアリングは次のとおりである。
 - 取る手のスコアを `capture_score(pos, m) + capt_hist.get(...)` に
   変更する。適用箇所は3つあり、いずれも読み取りのみになる
   - CapturesInit（`movepick.rs:286`）
   - QCapturesInit（`movepick.rs:381`）
   - evasionの取る手の部分（`movepick.rs:360`）
 
-更新（main searchのみ）:
+更新（main searchのみ）は次のとおりである。
 - 探索ループでtried_captures（試行した取る手）を記録する
 - best_moveが取る手でカットしたとき、その手にbonus
   （`depth*depth + 2*depth`、quietと同一式）、tried_capturesの

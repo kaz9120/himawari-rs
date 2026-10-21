@@ -49,7 +49,7 @@ eval専用テーブルのほうは用途が明確で干渉しない。
   （確率2^-32）だけ評価値0の偽ヒットになるが、許容する偽ヒット率と
   同水準なので実害なし
 - 保持は`Shared`（TTと同居、`thread.rs`のnew_gameでクリア）
-- 適用箇所は生評価の計算点2つ:
+- 適用箇所は生評価の計算点2つである。
   - qsearch stand pat: probe→ヒットなら`evaluate()`を省略、
     ミスなら計算してstore
   - main searchのTTミス時の`evaluate()`: 同様にprobe/store
