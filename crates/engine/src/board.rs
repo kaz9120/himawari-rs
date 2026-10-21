@@ -349,7 +349,7 @@ impl SearchBoard {
             GenType::Evasions => himawari_mailbox::GenType::Evasions,
             GenType::NonEvasions => himawari_mailbox::GenType::NonEvasions,
         };
-        self.mb.generate(g, all, &mut mbconv::CoreSink(list));
+        self.mb.generate(g, all, &mut mbconv::CoreSink::new(list));
         // 照合の引数は、照合するビルドでだけ作る。作るだけで確保が走る
         #[cfg(mb_shadow)]
         self.shadow("generate", &mbconv::order_key(list.as_slice()), |p| {
@@ -368,7 +368,8 @@ impl SearchBoard {
     /// 合法手を生成する。
     #[inline(always)]
     pub fn generate_legal(&self, all: bool, list: &mut MoveList) {
-        self.mb.generate_legal(all, &mut mbconv::CoreSink(list));
+        self.mb
+            .generate_legal(all, &mut mbconv::CoreSink::new(list));
         #[cfg(mb_shadow)]
         self.shadow("generate_legal", &mbconv::order_key(list.as_slice()), |p| {
             let mut want = MoveList::default();
@@ -654,17 +655,34 @@ mod mbconv {
 
     /// 配列盤の生成に、coreの手の列へ直接書かせる受け手。升は81升の通し番号のまま受け取れるので、
     /// 表を引かずにcoreの手の符号になる（ADR-0241の第15回）。
-    pub struct CoreSink<'a>(pub &'a mut himawari_core::MoveList);
+    ///
+    /// 作るときに、手の列の残りの容量が1回の生成の上限（配列盤の `MAX_MOVES`）以上あることを確かめる。
+    /// 生成は合法手だけを出し、1回で `MAX_MOVES` 手を超えないので、積むときは範囲を検査しない。
+    pub struct CoreSink<'a>(&'a mut himawari_core::MoveList);
+
+    impl<'a> CoreSink<'a> {
+        #[inline(always)]
+        pub fn new(list: &'a mut himawari_core::MoveList) -> Self {
+            assert!(
+                list.len() + himawari_mailbox::movegen::MAX_MOVES
+                    <= himawari_core::MoveList::CAPACITY,
+                "手の列の残りの容量が1回の生成の上限より小さい"
+            );
+            CoreSink(list)
+        }
+    }
 
     impl himawari_mailbox::MoveSink for CoreSink<'_> {
         #[inline(always)]
         fn push_normal(&mut self, from81: u8, to81: u8, promote: bool, piece_after: u8) {
-            self.0.push(Move::new_move(
+            let m = Move::new_move(
                 Square::from_index(from81),
                 Square::from_index(to81),
                 promote,
                 Piece(piece_after),
-            ));
+            );
+            // SAFETY: `new` が残りの容量を確かめた。1回の生成で積むのはMAX_MOVES手以内である
+            unsafe { self.0.push_unchecked(m) };
         }
 
         #[inline(always)]
@@ -674,8 +692,9 @@ mod mbconv {
             } else {
                 Color::Black
             };
-            self.0
-                .push(Move::new_drop(PieceType(pt), Square::from_index(to81), c));
+            let m = Move::new_drop(PieceType(pt), Square::from_index(to81), c);
+            // SAFETY: `push_normal` と同じ
+            unsafe { self.0.push_unchecked(m) };
         }
     }
 

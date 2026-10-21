@@ -169,12 +169,30 @@ impl Position {
         let k81 = SQ81[self.king[ui] as usize] as usize;
         let own = self.occ[ui];
         let occ_all = own | self.occ[them];
+        // 線の上に相手の飛び駒が1枚も無い向きは、最初の駒を探さずに飛ばす
+        let ps = &self.psets[them];
+        let orth = ps[ROOK as usize] | ps[DRAGON as usize];
+        let diag = ps[BISHOP as usize] | ps[HORSE as usize];
+        let lance = ps[LANCE as usize];
+        // 相手の香が玉へ向かって走る線は、玉から相手の陣の側（先手の玉なら上）へ伸びる
+        let lance_dir = if them == Color::White.index() {
+            UP
+        } else {
+            DOWN
+        };
         for (d, &inc) in INCREASING.iter().enumerate() {
             let ray = ray81(k81, d);
-            let hit = ray & occ_all;
-            if hit == 0 {
+            let sliders = if d >= UL {
+                diag
+            } else if d == lance_dir {
+                orth | lance
+            } else {
+                orth
+            };
+            if ray & sliders == 0 {
                 continue;
             }
+            let hit = ray & occ_all;
             let first = if inc {
                 hit.trailing_zeros()
             } else {
@@ -306,7 +324,7 @@ impl Position {
                 self.gen_captures_by_target(&ctx, enemy, all, list);
                 #[cfg(not(mb_order_type))]
                 {
-                    self.gen_board(&ctx, enemy, all, false, list);
+                    self.gen_board_captures(&ctx, enemy, all, list);
                     self.gen_king(&ctx, enemy, list);
                 }
                 // 空き升への歩の成り。行き先の小さい順に回すと、移動元も同じ順に並ぶ
@@ -372,11 +390,18 @@ impl Position {
         let k81 = SQ81[k as usize];
         let xray = self.longdir[them][k as usize];
         let kp = make_piece(ctx.us, KING);
-        let cand = short81(kp, k81 as usize) & !self.occ[ui] & target;
+        let near = short81(kp, k81 as usize);
+        let mut cand = near & !self.occ[ui] & target;
+        // 玉の升に届く飛び利きの延長（玉が線に沿って逃げる升）は、利き数に入っていない。
+        // 延長の升は、玉からその向きの線と玉の近傍の積の1升である
+        let mut dirs = xray;
+        while dirs != 0 {
+            let d = dirs.trailing_zeros() as usize;
+            dirs &= dirs - 1;
+            cand &= !(ray81(k81 as usize, d) & near);
+        }
         for_each_bit81(cand, |t| {
-            // 玉の升に届く飛び利きの延長（玉が線に沿って逃げる升）は、利き数に入っていない
-            let d = dir81(k81 as usize, t as usize);
-            if self.count[them][IDX81[t as usize] as usize] == 0 && xray & (1 << d) == 0 {
+            if self.count[them][idx81(t as usize) as usize] == 0 {
                 list.push_normal(k81, t, false, kp);
             }
         });
@@ -534,14 +559,17 @@ impl Position {
         let ui = us.index();
         let own = self.occ[ui];
         let occ_all = own | self.occ[us.flip().index()];
-        let movers = own & !bit81(self.king[ui]);
+        // 歩を飛ばすときは、歩の升を回す駒から先に外す
+        let pawns = if skip_pawns {
+            self.psets[ui][PAWN as usize]
+        } else {
+            0
+        };
+        let movers = own & !bit81(self.king[ui]) & !pawns;
         let target = target & ctx.evasion & !own;
         for_each_bit81(movers, |s| {
             let p = self.board[idx81(s as usize) as usize];
             let pt = piece_type(p);
-            if skip_pawns && pt == PAWN {
-                return;
-            }
             let m = &MOVES[(p & 31) as usize];
             let mut to = short81(p, s as usize);
             let mut dirs = m.long;
@@ -550,8 +578,48 @@ impl Position {
                 dirs &= dirs - 1;
                 to |= ray_to_blocker(s as usize, d, occ_all);
             }
-            let to = to & target & ctx.pin_mask(s);
-            push_targets(us, pt, s, to, all, list);
+            let to = to & target;
+            if to == 0 {
+                return;
+            }
+            push_targets(us, pt, s, to & ctx.pin_mask(s), all, list);
+        });
+    }
+
+    /// 玉以外の盤上の駒の駒取り（`gen_board` に相手の駒の集合を渡したときと同じ手を同じ順に積む）。
+    ///
+    /// 行き先が相手の駒に限られるので、飛び利きは線の最初の駒の升だけを見る。線の升の集合を作らない。
+    #[cfg(not(mb_order_type))]
+    fn gen_board_captures<L: MoveSink>(&self, ctx: &Ctx, enemy: u128, all: bool, list: &mut L) {
+        let us = ctx.us;
+        let ui = us.index();
+        let own = self.occ[ui];
+        let occ_all = own | enemy;
+        let movers = own & !bit81(self.king[ui]);
+        for_each_bit81(movers, |s| {
+            let p = self.board[idx81(s as usize) as usize];
+            let pt = piece_type(p);
+            let m = &MOVES[(p & 31) as usize];
+            let mut to = short81(p, s as usize);
+            let mut dirs = m.long;
+            while dirs != 0 {
+                let d = dirs.trailing_zeros() as usize;
+                dirs &= dirs - 1;
+                let hit = ray81(s as usize, d) & occ_all;
+                if hit != 0 {
+                    let first = if INCREASING[d] {
+                        hit.trailing_zeros()
+                    } else {
+                        127 - hit.leading_zeros()
+                    };
+                    to |= 1u128 << first;
+                }
+            }
+            let to = to & enemy;
+            if to == 0 {
+                return;
+            }
+            push_targets(us, pt, s, to & ctx.pin_mask(s), all, list);
         });
     }
 
