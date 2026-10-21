@@ -146,30 +146,11 @@ impl Position {
 
     /// 手番側の駒種ptの駒が置けば相手玉へ直接王手になる升（coreの `check_squares` と同じ集合）。
     ///
-    /// 相手玉の升から、相手の駒種ptとして利きを引いた集合である。飛び利きは、ノードごとに持つ
-    /// 王手の手がかり（玉から8方向の最初の駒までの線）をそのまま使う。
+    /// 相手玉の升から、相手の駒種ptとして利きを引いた集合である。ノードごとに持つ王手の手がかりが、
+    /// 駒種ごとの集合を作って持つ（ADR-0241の第17回）。
+    #[inline]
     pub fn check_squares(&self, pt: u8) -> u128 {
-        let them = self.side.flip();
-        let p = make_piece(them, pt);
-        let ksq = self.king[them.index()];
-        let m = &MOVES[(p & 31) as usize];
-        let mut out = 0u128;
-        for k in 0..m.n_short as usize {
-            let t = (ksq as i32 + m.short[k] as i32) as u8;
-            if self.board[t as usize] != WALL {
-                out |= bit81(t);
-            }
-        }
-        let mut dirs = m.long;
-        if dirs != 0 {
-            let rays = self.check_rays();
-            while dirs != 0 {
-                let d = dirs.trailing_zeros() as usize;
-                dirs &= dirs - 1;
-                out |= rays[d];
-            }
-        }
-        out
+        self.check_squares_of(pt)
     }
 
     /// 持ち主ごと・駒の符号の駒種ごとの、盤上の駒の升の集合（81升の通し番号のビット）。

@@ -5,7 +5,7 @@
 //!
 //! - `is_legal`: 擬似合法手の合法性。玉の手は利き数と飛び利きの延長、ほかはピンで決める
 //! - `pseudo_legal`: 置換表から来た手が、この局面の擬似合法手か
-//! - `gives_check`: ノードごとに1回、相手玉から8方向の線と開き王手の駒を求めておき、表を引いて決める
+//! - `gives_check`: ノードごとに1回、駒種ごとの王手の升と開き王手の駒を求めておき、表を引いて決める
 //! - `see_ge`: coreと同じswapの手順。攻め駒は升から8方向と近傍を見て集める
 
 use std::cell::Cell;
@@ -36,6 +36,8 @@ pub(crate) struct CheckInfo {
     rays: [u128; 8],
     /// 動くと開き王手になりうる手番側の駒の升の集合
     blockers: u128,
+    /// 手番側の駒種ごとの、置けば相手玉へ直接王手になる升の集合（coreの `check_squares`）。添字は駒種で、0・1は空
+    sq: [u128; 16],
     /// 相手玉の81升の通し番号
     k81: u8,
 }
@@ -356,12 +358,6 @@ impl Position {
         ci
     }
 
-    /// 相手玉から8方向の、最初の駒まで（その駒の升を含む）の線。`check_squares` が使う。
-    #[inline]
-    pub(crate) fn check_rays(&self) -> &[u128; 8] {
-        &self.check_info().rays
-    }
-
     /// 相手玉から8方向の最初の駒まで（その駒の升を含む）の線と、開き王手の駒を求める。
     fn compute_check_info(&self) -> CheckInfo {
         let us = self.side;
@@ -389,7 +385,33 @@ impl Position {
                 }
             }
         }
+        // 直接王手の升: 相手玉の升から、相手の駒として利きを引く。飛び利きは上の線をそのまま使う
+        let ti = us.flip().index();
+        let short = |pt: u8| short81(make_piece(us.flip(), pt), k81 as usize);
+        let r = &ci.rays;
+        let diag = r[UL] | r[DR] | r[UR] | r[DL];
+        let orth = r[UP] | r[DOWN] | r[LEFT] | r[RIGHT];
+        let gold = short(GOLD);
+        ci.sq[2..=5].fill(gold);
+        ci.sq[GOLD as usize] = gold;
+        ci.sq[PAWN as usize] = short(PAWN);
+        // 相手の香は相手の前へ走る。その線の上の自分の香が玉へ届く
+        ci.sq[LANCE as usize] = r[if ti == 0 { UP } else { DOWN }];
+        ci.sq[KNIGHT as usize] = short(KNIGHT);
+        ci.sq[SILVER as usize] = short(SILVER);
+        ci.sq[BISHOP as usize] = diag;
+        ci.sq[ROOK as usize] = orth;
+        ci.sq[HORSE as usize] = diag | short(HORSE);
+        ci.sq[DRAGON as usize] = orth | short(DRAGON);
+        // 玉の欄はcoreの `check_squares` に合わせて持つ。玉の手は相手玉の近傍へ動けないので直接王手にならない
+        ci.sq[KING as usize] = short(KING);
         ci
+    }
+
+    /// 手番側の駒種ptの駒が置けば相手玉へ直接王手になる升の集合。ノードごとの手がかりから引く。
+    #[inline]
+    pub(crate) fn check_squares_of(&self, pt: u8) -> u128 {
+        self.check_info().sq[(pt & 15) as usize]
     }
 
     /// 合法手mが相手玉への王手になるか（coreの `gives_check` と同じ値）。
@@ -406,20 +428,9 @@ impl Position {
 
     #[inline]
     fn gives_check_with(&self, ci: &CheckInfo, m: Move) -> bool {
-        let ksq = self.king[self.side.flip().index()];
-        let to = m.to();
-        let np = m.piece_after();
-        if short_hit(np, ksq as i32 - to as i32) {
-            return true;
-        }
-        let to81 = SQ81[to as usize];
-        let to_bit = 1u128 << to81;
-        // 玉から行き先への方向。駒は逆向きに走って玉へ届く
-        let dk = DIR81[ci.k81 as usize][to81 as usize];
-        if dk != NO_DIR
-            && MOVES[np as usize].long & (1 << opp(dk as usize)) != 0
-            && ci.rays[dk as usize] & to_bit != 0
-        {
+        let to81 = SQ81[m.to() as usize];
+        // 直接王手: 動いた後の駒種の王手の升に行き先が入る
+        if ci.sq[(m.piece_after() & 15) as usize] & (1u128 << to81) != 0 {
             return true;
         }
         if m.is_drop() {
@@ -430,6 +441,7 @@ impl Position {
         if ci.blockers & (1u128 << from81) == 0 {
             return false;
         }
+        let dk = DIR81[ci.k81 as usize][to81 as usize];
         let df = DIR81[ci.k81 as usize][from81 as usize];
         dk != df && dk != (df ^ 1)
     }

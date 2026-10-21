@@ -551,7 +551,7 @@ impl Position {
                 to |= ray_to_blocker(s as usize, d, occ_all);
             }
             let to = to & target & ctx.pin_mask(s);
-            for_each_bit81(to, |t| push_variants(us, pt, s, t, all, list));
+            push_targets(us, pt, s, to, all, list);
         });
     }
 
@@ -628,8 +628,75 @@ const fn pawn_delta81(us: Color) -> i32 {
     }
 }
 
+/// 升from81の駒種ptの駒の、行き先の集合toへの手を、行き先の小さい順に積む。各升の成り・不成は
+/// `push_variants` と同じで、同じ順に並ぶ。
+///
+/// 成りの升と不成の升を先に集合で決め、行き先ごとに段の表を引かない（ADR-0241の第17回）。
+/// 成れない駒と、行き先がどれも成れない升の駒は、不成の手だけを積む。
+#[cfg(not(mb_order_type))]
+#[inline(always)]
+fn push_targets<L: MoveSink>(us: Color, pt: u8, from81: u8, to: u128, all: bool, list: &mut L) {
+    let pc = make_piece(us, pt);
+    if !can_promote(pt) {
+        for_each_bit81(to, |t| list.push_normal(from81, t, false, pc));
+        return;
+    }
+    let ui = us.index();
+    let zone = zone81(ui);
+    let pro = if zone & (1u128 << from81) != 0 {
+        to
+    } else {
+        to & zone
+    };
+    if pro == 0 {
+        // 敵陣の外の行き先だけ。不成で行き所の無くなる升は敵陣の中なので、ここには来ない
+        for_each_bit81(to, |t| list.push_normal(from81, t, false, pc));
+        return;
+    }
+    // 成れる升のうち、不成も積む升。`push_variants` の成りの枝の条件を段の集合にしたもの
+    let r1 = rank_mask(if us == Color::Black { 0 } else { 8 });
+    let r2 = rank_mask(if us == Color::Black { 1 } else { 7 });
+    let keep = match pt {
+        PAWN => {
+            if all {
+                !r1
+            } else {
+                0
+            }
+        }
+        LANCE => {
+            if all {
+                !r1
+            } else {
+                !(r1 | r2)
+            }
+        }
+        KNIGHT => !(r1 | r2),
+        SILVER => ALL81,
+        _ => {
+            if all {
+                ALL81
+            } else {
+                0
+            }
+        }
+    };
+    let non = (to & !pro) | (pro & keep);
+    let ppc = make_piece(us, pt - 8);
+    for_each_bit81(to, |t| {
+        let b = 1u128 << t;
+        if pro & b != 0 {
+            list.push_normal(from81, t, true, ppc);
+        }
+        if non & b != 0 {
+            list.push_normal(from81, t, false, pc);
+        }
+    });
+}
+
 /// 盤上の駒の手を、成り・不成を分けて積む。規約はcoreの `push_variants` と同じ。升は81升の通し番号。
 #[inline(always)]
+#[cfg(mb_order_type)]
 fn push_variants<L: MoveSink>(us: Color, pt: u8, from81: u8, to81: u8, all: bool, list: &mut L) {
     let ui = us.index();
     let rel = rel_rank81(ui, to81 as usize);

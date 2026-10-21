@@ -315,8 +315,8 @@ impl Position {
 
     /// 飛び利きの書き換えを1つ、戻しの記録（`ray_log`）へ積む。
     ///
-    /// 書き換えは「色cの表の添字iから続くn升（1〜8）の利き数に1を足す（ADD）か引き、方向ビットdを反転する」
-    /// の形にそろえてある。方向ビットは、足すときは立っていない升に立て、引くときは立っている升から下ろすので、
+    /// 書き換えは「色cの表の添字iから始まるn升（1〜8）の利き数に1を足す（ADD）か引き、方向ビットdを反転する」
+    /// の形にそろえてある。n升は、縦（上・下）なら添字の増える向きに続いた升、横と斜めならiから方向dへ進んだ升である。方向ビットは、足すときは立っていない升に立て、引くときは立っている升から下ろすので、
     /// どちらも反転に等しい。書き換えはどれも足し引きと反転だけなので、戻しは逆の操作を順不同で当てればよい。
     /// 語は 下位10ビットが表の通しの添字（c×LEN＋i）、10〜13ビットがn、14〜16ビットがd、17ビットがADDである
     #[inline(always)]
@@ -363,6 +363,23 @@ impl Position {
             let off = (e & 0x3FF) as usize;
             let n = (e >> 10) & 15;
             let d = (e >> 14) & 7;
+            if d >= 2 {
+                // 横と斜め: iから方向dへn升。同じ色の表の盤上の升だけを触る
+                let step = DELTA[d as usize] as isize;
+                let b = 1u8 << d;
+                let add = (e >> 17) & 1 != 0;
+                for k in 0..n as isize {
+                    let at = off as isize + k * step;
+                    debug_assert!(at >= 0 && (at as usize) < 2 * LEN);
+                    // SAFETY: 記録した升は `ray`・`segment` が書いた盤上の升で、表の内側にある
+                    unsafe {
+                        let q = count.offset(at);
+                        *q = if add { *q - 1 } else { *q + 1 };
+                        *longdir.offset(at) ^= b;
+                    }
+                }
+                continue;
+            }
             let add = u64::from((e >> 17) & 1);
             let mask = ONES64 >> (64 - 8 * n);
             debug_assert!(off + 8 <= 2 * LEN);
@@ -413,18 +430,19 @@ impl Position {
             }
             return;
         }
+        // 横と斜めは盤を歩きながら書き、記録は線ごとに1件だけ積む
         let delta = DELTA[d] as u8;
         let b = 1u8 << d;
-        let mut t = s.wrapping_add(delta);
+        let start = s.wrapping_add(delta);
+        let mut t = start;
+        let mut n = 0u32;
         loop {
             let i = t as usize;
             let v = self.board[i];
             if v == WALL {
                 break;
             }
-            if LOG {
-                self.log_ray::<ADD>(c, i, 1, d);
-            }
+            n += 1;
             if ADD {
                 self.count[c][i] += 1;
                 self.longdir[c][i] |= b;
@@ -436,6 +454,9 @@ impl Position {
                 break;
             }
             t = t.wrapping_add(delta);
+        }
+        if LOG && n != 0 {
+            self.log_ray::<ADD>(c, start as usize, n, d);
         }
     }
 
@@ -470,13 +491,13 @@ impl Position {
         }
         let delta = DELTA[d] as u8;
         let bit = 1u8 << d;
+        let start = a.wrapping_add(delta);
         let mut t = a;
+        let mut n = 0u32;
         loop {
             t = t.wrapping_add(delta);
             let i = t as usize;
-            if LOG {
-                self.log_ray::<ADD>(c, i, 1, d);
-            }
+            n += 1;
             if ADD {
                 self.count[c][i] += 1;
                 self.longdir[c][i] |= bit;
@@ -487,6 +508,9 @@ impl Position {
             if i == b as usize {
                 break;
             }
+        }
+        if LOG {
+            self.log_ray::<ADD>(c, start as usize, n, d);
         }
     }
 
