@@ -1024,6 +1024,34 @@ impl Position {
         out.copy_from_slice(&tmp[..81]);
     }
 
+    /// 色cの取られる駒の集合（ADR-0235）。81升の通し番号のビットで返す。
+    ///
+    /// 升にcの駒がいて、相手の利きがあり、cの利きが無いものを集める。駒は自分の升へ
+    /// 利かないので、cの利き数がそのまま「その駒自身を除く守り」になる。ピン・X線・交換の
+    /// 損得は見ない。`effect_codes` と同じく、1筋の9升を16升ぶん読んで9升だけ使う。
+    pub fn hanging(&self, c: Color) -> u128 {
+        use std::simd::Simd;
+        use std::simd::cmp::{SimdPartialEq, SimdPartialOrd};
+        type U8 = Simd<u8, 16>;
+        let us = c.index();
+        let zero = U8::splat(0);
+        let mut out = 0u128;
+        for f in 0..9u8 {
+            let base = crate::board::idx(f, 0) as usize;
+            let p = U8::from_slice(&self.board[base..base + 16]);
+            let mine = U8::from_slice(&self.count[us][base..base + 16]);
+            let theirs = U8::from_slice(&self.count[us ^ 1][base..base + 16]);
+            // 先手の駒は2〜15、後手の駒は18〜31。壁は1、空きは0
+            let own = match c {
+                Color::Black => p.simd_ge(U8::splat(2)) & p.simd_lt(U8::splat(WHITE_BIT)),
+                Color::White => p.simd_ge(U8::splat(WHITE_BIT + 2)),
+            };
+            let m = own & mine.simd_eq(zero) & theirs.simd_ne(zero);
+            out |= u128::from(m.to_bitmask() & 0x1FF) << (f as u32 * 9);
+        }
+        out
+    }
+
     /// coreの `Move16` のビット列から手を復元する。coreの `to_move` と同じ検査をし、同じ場面で `None` を返す。
     ///
     /// 復元できても擬似合法とは限らない。`pseudo_legal` で別に確かめる。

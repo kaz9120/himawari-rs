@@ -256,6 +256,38 @@ impl SearchBoard {
         self.pos.check_squares(pt)
     }
 
+    /// 手番側の取られる駒の集合（ADR-0235）。升に相手の利きがあり、手番側の利きが無い駒を集める。
+    pub fn hanging_pieces(&self) -> Bitboard {
+        let us = self.pos.side_to_move();
+        let occ = self.pos.occupied();
+        let mut r = Bitboard::EMPTY;
+        for sq in self.pos.color_bb(us) {
+            if !self.pos.attackers_to(us.flip(), sq, occ).is_empty()
+                && self.pos.attackers_to(us, sq, occ).is_empty()
+            {
+                r.set(sq);
+            }
+        }
+        r
+    }
+
+    /// 静かな手mで動かした駒が、移動先で取られるか（ADR-0235）。
+    ///
+    /// 動かす駒自身の利きは守りに数えない。移動元を空けて通る飛び利きは見ない。
+    pub fn lands_hanging(&self, m: Move) -> bool {
+        let us = self.pos.side_to_move();
+        let occ = self.pos.occupied();
+        let to = m.to();
+        if self.pos.attackers_to(us.flip(), to, occ).is_empty() {
+            return false;
+        }
+        let mut guards = self.pos.attackers_to(us, to, occ);
+        if !m.is_drop() {
+            guards.clear(m.from_sq());
+        }
+        guards.is_empty()
+    }
+
     pub fn to_sfen(&self) -> String {
         self.pos.to_sfen()
     }
@@ -553,6 +585,52 @@ impl SearchBoard {
     pub fn check_squares(&self, pt: PieceType) -> Bitboard {
         let r = Bitboard::from_bits(self.mb.check_squares(pt.0));
         self.shadow("check_squares", &r, |p| p.check_squares(pt));
+        r
+    }
+
+    /// 手番側の取られる駒の集合（ADR-0235）。升に相手の利きがあり、手番側の利きが無い駒を集める。
+    ///
+    /// 配列盤は升ごとの利き数を持つので、81升の利き数を読むだけで決まる。
+    #[inline(always)]
+    pub fn hanging_pieces(&self) -> Bitboard {
+        let r = Bitboard::from_bits(self.mb.hanging(self.mb.side_to_move()));
+        self.shadow("hanging_pieces", &r, |p| {
+            let us = p.side_to_move();
+            let occ = p.occupied();
+            let mut w = Bitboard::EMPTY;
+            for sq in p.color_bb(us) {
+                if !p.attackers_to(us.flip(), sq, occ).is_empty()
+                    && p.attackers_to(us, sq, occ).is_empty()
+                {
+                    w.set(sq);
+                }
+            }
+            w
+        });
+        r
+    }
+
+    /// 静かな手mで動かした駒が、移動先で取られるか（ADR-0235）。
+    ///
+    /// 動かす駒自身の利きは守りに数えない。盤上の駒を動かす合法手では、動かす駒は必ず
+    /// 移動先へ利いているので、手番側の利き数から1を引けばよい。駒打ちは引かない。
+    /// 移動元を空けて通る飛び利きは見ない。
+    #[inline(always)]
+    pub fn lands_hanging(&self, m: Move) -> bool {
+        let us = self.mb.side_to_move();
+        let i = mbconv::idx(m.to());
+        let r = self.mb.effect_count(us.flip(), i) != 0
+            && self.mb.effect_count(us, i) <= u8::from(!m.is_drop());
+        self.shadow("lands_hanging", &r, |p| {
+            let us = p.side_to_move();
+            let occ = p.occupied();
+            let to = m.to();
+            let mut guards = p.attackers_to(us, to, occ);
+            if !m.is_drop() {
+                guards.clear(m.from_sq());
+            }
+            !p.attackers_to(us.flip(), to, occ).is_empty() && guards.is_empty()
+        });
         r
     }
 
