@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.57.1](https://github.com/kaz9120/himawari-rs/compare/v0.57.0...v0.57.1) (2026-10-21)
+
+
+### その他の変更
+
+* 配列盤の飛び利きの記録・直接王手・成りの判定を軽くする（ADR-0241） ([#884](https://github.com/kaz9120/himawari-rs/issues/884)) ([dd8e25f](https://github.com/kaz9120/himawari-rs/commit/dd8e25fa660fec5b96ae9d1b938efd74e1eafb13))
+
 ## [0.57.0](https://github.com/kaz9120/himawari-rs/compare/v0.56.6...v0.57.0) (2026-10-20)
 
 
