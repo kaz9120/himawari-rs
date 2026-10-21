@@ -559,14 +559,17 @@ impl Position {
         let ui = us.index();
         let own = self.occ[ui];
         let occ_all = own | self.occ[us.flip().index()];
-        let movers = own & !bit81(self.king[ui]);
+        // 歩を飛ばすときは、歩の升を回す駒から先に外す
+        let pawns = if skip_pawns {
+            self.psets[ui][PAWN as usize]
+        } else {
+            0
+        };
+        let movers = own & !bit81(self.king[ui]) & !pawns;
         let target = target & ctx.evasion & !own;
         for_each_bit81(movers, |s| {
             let p = self.board[idx81(s as usize) as usize];
             let pt = piece_type(p);
-            if skip_pawns && pt == PAWN {
-                return;
-            }
             let m = &MOVES[(p & 31) as usize];
             let mut to = short81(p, s as usize);
             let mut dirs = m.long;
