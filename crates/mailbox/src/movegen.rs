@@ -324,7 +324,7 @@ impl Position {
                 self.gen_captures_by_target(&ctx, enemy, all, list);
                 #[cfg(not(mb_order_type))]
                 {
-                    self.gen_board(&ctx, enemy, all, false, list);
+                    self.gen_board_captures(&ctx, enemy, all, list);
                     self.gen_king(&ctx, enemy, list);
                 }
                 // 空き升への歩の成り。行き先の小さい順に回すと、移動元も同じ順に並ぶ
@@ -575,8 +575,48 @@ impl Position {
                 dirs &= dirs - 1;
                 to |= ray_to_blocker(s as usize, d, occ_all);
             }
-            let to = to & target & ctx.pin_mask(s);
-            push_targets(us, pt, s, to, all, list);
+            let to = to & target;
+            if to == 0 {
+                return;
+            }
+            push_targets(us, pt, s, to & ctx.pin_mask(s), all, list);
+        });
+    }
+
+    /// 玉以外の盤上の駒の駒取り（`gen_board` に相手の駒の集合を渡したときと同じ手を同じ順に積む）。
+    ///
+    /// 行き先が相手の駒に限られるので、飛び利きは線の最初の駒の升だけを見る。線の升の集合を作らない。
+    #[cfg(not(mb_order_type))]
+    fn gen_board_captures<L: MoveSink>(&self, ctx: &Ctx, enemy: u128, all: bool, list: &mut L) {
+        let us = ctx.us;
+        let ui = us.index();
+        let own = self.occ[ui];
+        let occ_all = own | enemy;
+        let movers = own & !bit81(self.king[ui]);
+        for_each_bit81(movers, |s| {
+            let p = self.board[idx81(s as usize) as usize];
+            let pt = piece_type(p);
+            let m = &MOVES[(p & 31) as usize];
+            let mut to = short81(p, s as usize);
+            let mut dirs = m.long;
+            while dirs != 0 {
+                let d = dirs.trailing_zeros() as usize;
+                dirs &= dirs - 1;
+                let hit = ray81(s as usize, d) & occ_all;
+                if hit != 0 {
+                    let first = if INCREASING[d] {
+                        hit.trailing_zeros()
+                    } else {
+                        127 - hit.leading_zeros()
+                    };
+                    to |= 1u128 << first;
+                }
+            }
+            let to = to & enemy;
+            if to == 0 {
+                return;
+            }
+            push_targets(us, pt, s, to & ctx.pin_mask(s), all, list);
         });
     }
 
