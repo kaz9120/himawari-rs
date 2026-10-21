@@ -792,16 +792,12 @@ impl MovePicker {
             if check.test(to) && pos.see_ge(m, CHECK_SEE_MARGIN) {
                 v += CHECK_BONUS;
             }
-            // 取られる駒を逃がす手に足し、取られる升へ行く手から引く（ADR-0235の案A）。
-            // 移動元の項は動かす前の駒、移動先の項は動かした後の駒の価値で量る
-            let mut hanging_delta = 0;
+            // 取られる駒を逃がす手に、動かす前の駒の価値で足す（ADR-0235の案B）。
+            // 取られる升へ行く手の減点（案A）は、叩きや捨て駒を後ろへ回して
+            // first move cutoff率を下げたので持たない
             if !m.is_drop() && hanging.test(m.from_sq()) {
-                hanging_delta += piece_value(pos.piece_on(m.from_sq()).piece_type());
+                v += HANGING_SCALE * piece_value(pos.piece_on(m.from_sq()).piece_type());
             }
-            if pos.lands_hanging(m) {
-                hanging_delta -= piece_value(pt);
-            }
-            v += HANGING_SCALE * hanging_delta;
             if self.ply < LOW_PLY_HISTORY_SIZE {
                 v += 8 * h.low_ply.get(self.ply, m) / (1 + self.ply as i32);
             }
