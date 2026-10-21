@@ -169,12 +169,30 @@ impl Position {
         let k81 = SQ81[self.king[ui] as usize] as usize;
         let own = self.occ[ui];
         let occ_all = own | self.occ[them];
+        // 線の上に相手の飛び駒が1枚も無い向きは、最初の駒を探さずに飛ばす
+        let ps = &self.psets[them];
+        let orth = ps[ROOK as usize] | ps[DRAGON as usize];
+        let diag = ps[BISHOP as usize] | ps[HORSE as usize];
+        let lance = ps[LANCE as usize];
+        // 相手の香が玉へ向かって走る線は、玉から相手の陣の側（先手の玉なら上）へ伸びる
+        let lance_dir = if them == Color::White.index() {
+            UP
+        } else {
+            DOWN
+        };
         for (d, &inc) in INCREASING.iter().enumerate() {
             let ray = ray81(k81, d);
-            let hit = ray & occ_all;
-            if hit == 0 {
+            let sliders = if d >= UL {
+                diag
+            } else if d == lance_dir {
+                orth | lance
+            } else {
+                orth
+            };
+            if ray & sliders == 0 {
                 continue;
             }
+            let hit = ray & occ_all;
             let first = if inc {
                 hit.trailing_zeros()
             } else {
@@ -372,11 +390,18 @@ impl Position {
         let k81 = SQ81[k as usize];
         let xray = self.longdir[them][k as usize];
         let kp = make_piece(ctx.us, KING);
-        let cand = short81(kp, k81 as usize) & !self.occ[ui] & target;
+        let near = short81(kp, k81 as usize);
+        let mut cand = near & !self.occ[ui] & target;
+        // 玉の升に届く飛び利きの延長（玉が線に沿って逃げる升）は、利き数に入っていない。
+        // 延長の升は、玉からその向きの線と玉の近傍の積の1升である
+        let mut dirs = xray;
+        while dirs != 0 {
+            let d = dirs.trailing_zeros() as usize;
+            dirs &= dirs - 1;
+            cand &= !(ray81(k81 as usize, d) & near);
+        }
         for_each_bit81(cand, |t| {
-            // 玉の升に届く飛び利きの延長（玉が線に沿って逃げる升）は、利き数に入っていない
-            let d = dir81(k81 as usize, t as usize);
-            if self.count[them][IDX81[t as usize] as usize] == 0 && xray & (1 << d) == 0 {
+            if self.count[them][idx81(t as usize) as usize] == 0 {
                 list.push_normal(k81, t, false, kp);
             }
         });
