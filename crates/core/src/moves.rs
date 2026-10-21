@@ -280,10 +280,27 @@ impl Default for MoveList {
 }
 
 impl MoveList {
+    /// 積める手の数の上限。
+    pub const CAPACITY: usize = MOVE_LIST_CAP;
+
     #[inline]
     pub fn push(&mut self, m: Move) {
         debug_assert!(self.len < MOVE_LIST_CAP);
         self.moves[self.len].write(m);
+        self.len += 1;
+    }
+
+    /// 範囲の検査をせずに積む。
+    ///
+    /// # Safety
+    ///
+    /// 積んだ後の手の数が `CAPACITY` を超えないこと。配列盤の生成の受け手が、
+    /// 生成の前に1回だけ残りの容量を確かめてから使う（ADR-0241の第17回）。
+    #[inline(always)]
+    pub unsafe fn push_unchecked(&mut self, m: Move) {
+        debug_assert!(self.len < MOVE_LIST_CAP);
+        // SAFETY: 呼び出し側がlen < MOVE_LIST_CAPを保証する
+        unsafe { self.moves.get_unchecked_mut(self.len).write(m) };
         self.len += 1;
     }
 
