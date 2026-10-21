@@ -595,6 +595,9 @@ const QUIET_SORT_COEF: i32 = -3560;
 /// 静かな王手へのボーナスと、その資格を測るSEEの下限（movepick.cpp:371）。
 const CHECK_BONUS: i32 = 16384;
 const CHECK_SEE_MARGIN: i32 = -75;
+/// 取られる駒の項（ADR-0235）で駒価値に掛ける係数。飛（990）が逃げる手を、
+/// 王手のボーナス（16384）と同じ大きさにする尺度である。
+const HANGING_SCALE: i32 = 16;
 
 /// limit以上のスコアを持つ指し手だけを降順に並べる（movepick.cpp:91-105）。
 /// limit未満の並びは不定になる。
@@ -768,6 +771,8 @@ impl MovePicker {
         // 王手になる升を駒種ごとに1回だけ引く。配列盤の盤は呼ぶたびに作り直すので、
         // 手ごとに引くと重い（ADR-0241の第15回）
         let mut checks: [Option<Bitboard>; 16] = [None; 16];
+        // 手番側の取られる駒の集合。配列盤では81升の利き数を読むだけで決まる（ADR-0235）
+        let hanging = pos.hanging_pieces();
         for &m in list {
             let pc = m.piece_after();
             let to = m.to();
@@ -787,6 +792,16 @@ impl MovePicker {
             if check.test(to) && pos.see_ge(m, CHECK_SEE_MARGIN) {
                 v += CHECK_BONUS;
             }
+            // 取られる駒を逃がす手に足し、取られる升へ行く手から引く（ADR-0235の案A）。
+            // 移動元の項は動かす前の駒、移動先の項は動かした後の駒の価値で量る
+            let mut hanging_delta = 0;
+            if !m.is_drop() && hanging.test(m.from_sq()) {
+                hanging_delta += piece_value(pos.piece_on(m.from_sq()).piece_type());
+            }
+            if pos.lands_hanging(m) {
+                hanging_delta -= piece_value(pt);
+            }
+            v += HANGING_SCALE * hanging_delta;
             if self.ply < LOW_PLY_HISTORY_SIZE {
                 v += 8 * h.low_ply.get(self.ply, m) / (1 + self.ply as i32);
             }
