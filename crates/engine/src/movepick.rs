@@ -550,10 +550,33 @@ enum Stage {
 }
 
 /// 採点済みの指し手（参照実装のExtMove）。
+///
+/// 手と点数を、並べ替えの鍵になる1語に詰めて持つ（ADR-0243）。上位32ビットが点数
+/// （符号ビットを反転して、符号なしの比較で点数の順になる形）、下位32ビットが手の符号の否定である。
+/// 鍵が大きいほど先に返す。点数の降順に並び、同点なら手の符号の昇順に並ぶ。
+/// 順序が全順序なので、並びは生成の順に依存しない
 #[derive(Clone, Copy)]
 struct ExtMove {
-    m: Move,
-    v: i32,
+    k: u64,
+}
+
+impl ExtMove {
+    #[inline(always)]
+    fn new(m: Move, v: i32) -> ExtMove {
+        ExtMove {
+            k: (u64::from(v as u32 ^ 0x8000_0000) << 32) | u64::from(!m.bits()),
+        }
+    }
+
+    #[inline(always)]
+    fn m(&self) -> Move {
+        Move::from_bits(!(self.k as u32))
+    }
+
+    #[inline(always)]
+    fn v(&self) -> i32 {
+        ((self.k >> 32) as u32 ^ 0x8000_0000) as i32
+    }
 }
 
 /// ノード1つで生成される手を見込んだ初期容量。
@@ -596,33 +619,40 @@ const QUIET_SORT_COEF: i32 = -3560;
 const CHECK_BONUS: i32 = 16384;
 const CHECK_SEE_MARGIN: i32 = -75;
 
-/// limit以上のスコアを持つ指し手だけを降順に並べる（movepick.cpp:91-105）。
-/// limit未満の並びは不定になる。
-///
-/// 添字は範囲検査なしで引く（ADR-0241の第16回）。p は `1..len`、sorted_end は p 以下、
-/// q は sorted_end 以下で、q-1 を読むのは q≠0 のときだけなので、どれも len 未満である。
-fn partial_insertion_sort(a: &mut [ExtMove], limit: i32) {
-    let len = a.len();
-    let a = a.as_mut_ptr();
-    let mut sorted_end = 0usize;
-    // SAFETY: 上の添字の範囲の説明のとおり、読み書きする添字はすべて len 未満である
-    unsafe {
-        for p in 1..len {
-            if (*a.add(p)).v >= limit {
-                let tmp = *a.add(p);
-                sorted_end += 1;
-                debug_assert!(sorted_end <= p);
-                *a.add(p) = *a.add(sorted_end);
-                let mut q = sorted_end;
-                while q != 0 && (*a.add(q - 1)).v < tmp.v {
-                    *a.add(q) = *a.add(q - 1);
-                    q -= 1;
-                }
-                *a.add(q) = tmp;
-            }
+/// 鍵の順（点数の降順・同点なら手の符号の昇順）に挿入ソートで並べる（ADR-0243）。
+/// 取る手・王手回避と、静かな手の閾値以上の手に使う。どれも数が少ない。
+fn insertion_sort_key(a: &mut [ExtMove]) {
+    for i in 1..a.len() {
+        let t = a[i];
+        let mut j = i;
+        while j > 0 && a[j - 1].k < t.k {
+            a[j] = a[j - 1];
+            j -= 1;
         }
+        a[j] = t;
     }
 }
+
+/// limit以上の点数の手を先頭へ集め、鍵の順に並べる。並べた手の数を返す（movepick.cpp:91-105の置き換え。ADR-0243）。
+///
+/// 参照実装の部分挿入ソートは、limit未満の手を並べずに残す。残り方は生成の順で決まるので、
+/// 生成を作り替えると探索の木が変わった（Issue #872）。ここではlimit未満の手も鍵の順で返す。
+/// ただし先には並べず、`MovePicker::extend_sorted` が返す直前に少しずつ並べる
+fn sort_above(a: &mut [ExtMove], limit: i32) -> usize {
+    let mut n = 0;
+    for p in 0..a.len() {
+        if a[p].v() >= limit {
+            a.swap(n, p);
+            n += 1;
+        }
+    }
+    insertion_sort_key(&mut a[..n]);
+    n
+}
+
+/// 静かな手の並んでいない範囲を、一度に並べる手の数。
+/// 返す手が少ないノードで全部を並べないよう、先頭から少しずつ選んで並べる。
+const EXTEND_CHUNK: usize = 8;
 
 pub struct MovePicker {
     stage: Stage,
@@ -643,6 +673,9 @@ pub struct MovePicker {
     end_generated: usize,
     /// ProbCut用。SEEがこの値以上の取る手だけを返す（movepick.cpp:684）。
     threshold: i32,
+    /// 静かな手のうち、鍵の順に並べ終えた範囲の終わり（ADR-0243）。ここから `end_generated` までは、
+    /// `select` が読む前に `extend_sorted` で並べる。取る手と王手回避は全部を先に並べる
+    sorted_to: usize,
 }
 
 impl MovePicker {
@@ -671,6 +704,7 @@ impl MovePicker {
             end_captures: 0,
             end_generated: 0,
             threshold,
+            sorted_to: usize::MAX,
         }
     }
 
@@ -730,14 +764,54 @@ impl MovePicker {
     fn select(&mut self, pred: impl Fn(&ExtMove) -> bool) -> Option<Move> {
         debug_assert!(self.end_cur <= self.moves.len());
         while self.cur < self.end_cur {
+            if self.cur >= self.sorted_to {
+                self.extend_sorted();
+            }
             // SAFETY: end_cur は積んだ手の数（moves.len()）以下に保たれる。cur < end_cur なので範囲内
             let e = unsafe { *self.moves.get_unchecked(self.cur) };
             self.cur += 1;
-            if e.m != self.tt_move && pred(&e) {
-                return Some(e.m);
+            if e.m() != self.tt_move && pred(&e) {
+                return Some(e.m());
             }
         }
         None
+    }
+
+    /// 良い静かな手を次に1手返す。
+    ///
+    /// 静かな手は点数の降順に並ぶので、悪い静かな手に当たったら残りもすべて悪い静かな手である。
+    /// そこで止めて、残りは悪い静かな手の段まで並べずにおく（ADR-0243）。返す手の順は、
+    /// 全部を見て良い手だけを拾う形と変わらない。
+    #[inline]
+    fn select_good_quiet(&mut self) -> Option<Move> {
+        while self.cur < self.end_cur {
+            if self.cur >= self.sorted_to {
+                self.extend_sorted();
+            }
+            let e = self.moves[self.cur];
+            if e.v() <= GOOD_QUIET_THRESHOLD {
+                return None;
+            }
+            self.cur += 1;
+            if e.m() != self.tt_move {
+                return Some(e.m());
+            }
+        }
+        None
+    }
+
+    /// 静かな手の並んでいない範囲の先頭から、鍵の順で最大 `EXTEND_CHUNK` 手を選んで並べる（ADR-0243）。
+    #[inline(never)]
+    fn extend_sorted(&mut self) {
+        let (cur, end) = (self.cur, self.end_generated);
+        debug_assert!(cur < end && end <= self.moves.len());
+        let rem = &mut self.moves[cur..end];
+        let n = rem.len().min(EXTEND_CHUNK);
+        if rem.len() > n {
+            rem.select_nth_unstable_by_key(n - 1, |e| std::cmp::Reverse(e.k));
+        }
+        insertion_sort_key(&mut rem[..n]);
+        self.sorted_to = cur + n;
     }
 
     /// 取る手のスコア（movepick.cpp:341-342）。
@@ -750,7 +824,7 @@ impl MovePicker {
             let to = m.to();
             let captured = pos.piece_on(to).piece_type();
             let v = h.capture.get(pc, to, captured) + 7 * piece_value(captured);
-            push_reserved(&mut self.moves, ExtMove { m, v });
+            push_reserved(&mut self.moves, ExtMove::new(m, v));
         }
     }
 
@@ -790,7 +864,7 @@ impl MovePicker {
             if self.ply < LOW_PLY_HISTORY_SIZE {
                 v += 8 * h.low_ply.get(self.ply, m) / (1 + self.ply as i32);
             }
-            push_reserved(&mut self.moves, ExtMove { m, v });
+            push_reserved(&mut self.moves, ExtMove::new(m, v));
         }
     }
 
@@ -814,7 +888,7 @@ impl MovePicker {
             } else {
                 h.main.get(us, m) + h.cont.get(cont[0], pc, to)
             };
-            push_reserved(&mut self.moves, ExtMove { m, v });
+            push_reserved(&mut self.moves, ExtMove::new(m, v));
         }
     }
 
@@ -836,7 +910,8 @@ impl MovePicker {
         self.end_generated = self.end_captures;
         self.end_cur = self.end_captures;
         // 取る手は数が多くないので全数ソートでよい
-        partial_insertion_sort(&mut self.moves, i32::MIN);
+        insertion_sort_key(&mut self.moves);
+        self.sorted_to = usize::MAX;
     }
 
     /// 静かな手を生成して並べる（movepick.cpp:519-533）。
@@ -848,10 +923,11 @@ impl MovePicker {
         self.score_quiets(pos, h, cont, &list);
         self.end_generated = self.moves.len();
         self.end_cur = self.end_generated;
-        partial_insertion_sort(
+        let n = sort_above(
             &mut self.moves[self.cur..self.end_cur],
             QUIET_SORT_COEF * self.depth,
         );
+        self.sorted_to = self.cur + n;
     }
 
     /// 王手回避を生成して並べる（movepick.cpp:661-668）。
@@ -864,7 +940,8 @@ impl MovePicker {
         self.score_evasions(pos, h, cont, &list);
         self.cur = 0;
         self.end_cur = self.moves.len();
-        partial_insertion_sort(&mut self.moves, i32::MIN);
+        insertion_sort_key(&mut self.moves);
+        self.sorted_to = usize::MAX;
     }
 
     /// 直前に `next` が返した手が置換表の手か（生成した列の手でないか）。
@@ -915,10 +992,10 @@ impl MovePicker {
                     // 閾値はスコアに応じて動く（movepick.cpp:512）
                     while self.cur < self.end_cur {
                         let e = self.moves[self.cur];
-                        if e.m != self.tt_move {
-                            if pos.see_ge(e.m, -e.v / 18) {
+                        if e.m() != self.tt_move {
+                            if pos.see_ge(e.m(), -e.v() / 18) {
                                 self.cur += 1;
-                                return Some(e.m);
+                                return Some(e.m());
                             }
                             self.moves.swap(self.end_bad_captures, self.cur);
                             self.end_bad_captures += 1;
@@ -935,7 +1012,7 @@ impl MovePicker {
                 }
                 Stage::GoodQuiet => {
                     if !self.skip_quiets
-                        && let Some(m) = self.select(|e| e.v > GOOD_QUIET_THRESHOLD)
+                        && let Some(m) = self.select_good_quiet()
                     {
                         return Some(m);
                     }
@@ -958,7 +1035,7 @@ impl MovePicker {
                         self.stage = Stage::Done;
                         return None;
                     }
-                    let m = self.select(|e| e.v <= GOOD_QUIET_THRESHOLD);
+                    let m = self.select(|e| e.v() <= GOOD_QUIET_THRESHOLD);
                     if m.is_none() {
                         self.stage = Stage::Done;
                     }
@@ -988,7 +1065,7 @@ impl MovePicker {
                     // 閾値以上のSEEを持つ取る手だけを良い順に返す
                     // （movepick.cpp:684-685）
                     let th = self.threshold;
-                    let m = self.select(|e| pos.see_ge(e.m, th));
+                    let m = self.select(|e| pos.see_ge(e.m(), th));
                     if m.is_none() {
                         self.stage = Stage::Done;
                     }
@@ -1036,32 +1113,53 @@ mod tests {
         );
     }
 
-    /// 部分挿入ソートがlimit以上の要素を降順に並べること（movepick.cpp:91）。
-    #[test]
-    fn partial_insertion_sort_orders_above_limit() {
-        let mk = |v: i32| ExtMove { m: Move::NONE, v };
-        let mut a: Vec<ExtMove> = [5, -100, 30, 7, -50, 12].iter().map(|&v| mk(v)).collect();
-        partial_insertion_sort(&mut a, 0);
-        // limit以上の4要素が先頭に降順で並ぶ
-        assert_eq!(
-            a.iter().take(4).map(|e| e.v).collect::<Vec<_>>(),
-            vec![30, 12, 7, 5]
-        );
-        // 残りはlimit未満の2要素（順序は不定）
-        let mut rest: Vec<i32> = a.iter().skip(4).map(|e| e.v).collect();
-        rest.sort_unstable();
-        assert_eq!(rest, vec![-100, -50]);
+    fn mk(v: i32, bits: u32) -> ExtMove {
+        ExtMove::new(Move::from_bits(bits), v)
     }
 
-    /// limitをi32::MINにすると全数が降順に並ぶこと。
+    /// 手と点数を鍵に詰めて、そのまま取り出せること（ADR-0243）。
     #[test]
-    fn partial_insertion_sort_full() {
-        let mk = |v: i32| ExtMove { m: Move::NONE, v };
-        let mut a: Vec<ExtMove> = [3, 1, 4, 1, 5, 9, 2, 6].iter().map(|&v| mk(v)).collect();
-        partial_insertion_sort(&mut a, i32::MIN);
+    fn ext_move_roundtrip() {
+        for v in [i32::MIN, -14000, -1, 0, 1, 1 << 28, i32::MAX] {
+            for bits in [0u32, 1, 0x1234_5678, u32::MAX] {
+                let e = mk(v, bits);
+                assert_eq!(e.v(), v);
+                assert_eq!(e.m().bits(), bits);
+            }
+        }
+    }
+
+    /// limit以上の手が点数の降順で先頭に並び、同点は手の符号の昇順になること。
+    #[test]
+    fn sort_above_orders_by_score_then_move() {
+        let mut a: Vec<ExtMove> = [(5, 3), (-100, 1), (30, 2), (5, 1), (-50, 4), (12, 9)]
+            .iter()
+            .map(|&(v, b)| mk(v, b))
+            .collect();
+        let n = sort_above(&mut a, 0);
+        assert_eq!(n, 4);
         assert_eq!(
-            a.iter().map(|e| e.v).collect::<Vec<_>>(),
-            vec![9, 6, 5, 4, 3, 2, 1, 1]
+            a.iter()
+                .take(4)
+                .map(|e| (e.v(), e.m().bits()))
+                .collect::<Vec<_>>(),
+            vec![(30, 2), (12, 9), (5, 1), (5, 3)]
+        );
+    }
+
+    /// 入力の並びが違っても、並べた結果が同じになること（生成の順に依存しない）。
+    #[test]
+    fn insertion_sort_key_ignores_input_order() {
+        let src = [(3, 7), (1, 2), (3, 1), (9, 5), (1, 1), (-2, 8)];
+        let mut a: Vec<ExtMove> = src.iter().map(|&(v, b)| mk(v, b)).collect();
+        let mut b: Vec<ExtMove> = src.iter().rev().map(|&(v, b)| mk(v, b)).collect();
+        insertion_sort_key(&mut a);
+        insertion_sort_key(&mut b);
+        let key = |x: &Vec<ExtMove>| x.iter().map(|e| e.k).collect::<Vec<_>>();
+        assert_eq!(key(&a), key(&b));
+        assert_eq!(
+            a.iter().map(|e| (e.v(), e.m().bits())).collect::<Vec<_>>(),
+            vec![(9, 5), (3, 1), (3, 7), (1, 1), (1, 2), (-2, 8)]
         );
     }
 

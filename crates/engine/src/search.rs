@@ -716,7 +716,7 @@ impl Worker {
     }
 
     /// メインは深さ1を終えるまでstopを無視する。`iterate` は打ち切り時に
-    /// `root_moves[0]` を返すが、root手は生成順に並んでいるため、深さ1の
+    /// `root_moves[0]` を返すが、root手は手の符号の順に並んでいるため、深さ1の
     /// 途中で止まると探索していない手が出てしまう。
     ///
     /// ヘルパーには同じ保護を掛けない。メインはbestmoveの前に全ヘルパーの
@@ -1159,6 +1159,9 @@ impl Worker {
                 mean_squared_score: MEAN_SQUARED_NONE,
             })
             .collect();
+        // root手の初めの並びを、生成の順でなく手の符号の順にする（ADR-0243）。
+        // 以後の並べ替えは安定ソートなので、同点の前後もここで決まる
+        self.root_moves.sort_unstable_by_key(|rm| rm.mv.bits());
         if self.root_moves.is_empty() {
             return SearchResult {
                 best: Move::RESIGN,
