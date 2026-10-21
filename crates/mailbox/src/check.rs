@@ -49,23 +49,6 @@ pub(crate) struct CheckSlot {
     info: Cell<CheckInfo>,
 }
 
-/// SEEで攻め駒を選ぶ順（安い順）。coreの `SEE_ORDER` と同じで、金と成金4種は同じ組。
-#[inline]
-const fn see_rank(pt: u8) -> u8 {
-    match pt {
-        PAWN => 0,
-        LANCE => 1,
-        KNIGHT => 2,
-        SILVER => 3,
-        GOLD | 2..=5 => 4,
-        BISHOP => 5,
-        HORSE => 6,
-        ROOK => 7,
-        DRAGON => 8,
-        _ => 9,
-    }
-}
-
 /// 81升の通し番号が増える向きの方向（下・左・左上・左下）のビット。
 const INCREASING81: u8 = (1 << DOWN) | (1 << LEFT) | (1 << UL) | (1 << DL);
 
@@ -487,17 +470,23 @@ impl Position {
             && !matches!(dir_between(ksq, to), Some(e) if e == d || e == opp(d))
     }
 
-    /// 攻め駒の集合から最も安い駒を選ぶ。同じ組なら小さい升。(升, 価値, 玉か)
+    /// 色ciの攻め駒の集合から最も安い駒を選ぶ。同じ組なら小さい升。(升, 価値, 玉か)
+    ///
+    /// 安い組から順に、駒種ごとの集合との積を見る。攻め駒を1枚ずつ盤から引かない（ADR-0241の第17回）。
     #[inline]
-    fn least_valuable(&self, att: u128) -> (u8, i32, bool) {
-        let mut best = (0u8, u8::MAX);
-        for s in iter81(att) {
-            let r = see_rank(piece_type(self.board[s as usize]));
-            if r < best.1 {
-                best = (s, r);
+    fn least_valuable(&self, ci: usize, att: u128) -> (u8, i32, bool) {
+        // 組の順はcoreの `SEE_ORDER` と同じ。駒種1の欄は金と成金4種の和
+        const ORDER: [u8; 10] = [
+            PAWN, LANCE, KNIGHT, SILVER, 1, BISHOP, HORSE, ROOK, DRAGON, KING,
+        ];
+        let ps = &self.psets[ci];
+        for (r, &pt) in ORDER.iter().enumerate() {
+            let x = att & ps[pt as usize];
+            if x != 0 {
+                return (IDX81[x.trailing_zeros() as usize], SEE_VALUE[r], r == 9);
             }
         }
-        (best.0, SEE_VALUE[best.1 as usize], best.1 == 9)
+        unreachable!("攻め駒の集合が空でない")
     }
 
     /// mの静的交換評価がthreshold以上か（coreの `see_ge` と同じ手順と値）。
@@ -554,7 +543,7 @@ impl Position {
                 break;
             }
             res = !res;
-            let (best, val, is_king) = self.least_valuable(a);
+            let (best, val, is_king) = self.least_valuable(stm.index(), a);
             if is_king {
                 let mut rest = att;
                 rest[stm.index()] &= !bit81(best);

@@ -639,8 +639,13 @@ impl Position {
                 cnt.pieces_kept += 1;
             }
             let pt = piece_type(p);
-            let targets =
-                self.near_targets(s, p, ui, occ_all) & if pt == KNIGHT { knight_to } else { near };
+            let targets = self.near_targets(
+                s,
+                p,
+                ui,
+                occ_all,
+                if pt == KNIGHT { knight_to } else { near },
+            );
             // 移動元に手番側の飛び利きが当たっていれば、動かすと利きが伸びうる。
             // その手は利き数で決めず、玉に取られるかを升の利きで調べ直す（coreの `opens_line`）
             let open = self.longdir[ui][s as usize] != 0;
@@ -731,10 +736,10 @@ impl Position {
         None
     }
 
-    /// 升sの駒pの行き先の集合（`targets_of` と同じ値）。
-    /// 飛び利きは盤を歩かず、81升の線の集合と占有の積から最初の駒を引く。
+    /// 升sの駒pの行き先のうち、集合wantに入る升（`targets_of` とwantの積と同じ値）。
+    /// 飛び利きは盤を歩かず、81升の線の集合と占有の積から最初の駒を引く。線がwantと交わらない向きは引かない。
     #[inline]
-    fn near_targets(&self, s: u8, p: u8, ui: usize, occ_all: u128) -> u128 {
+    fn near_targets(&self, s: u8, p: u8, ui: usize, occ_all: u128, want: u128) -> u128 {
         let m = &MOVES[(p & 31) as usize];
         let s81 = SQ81[s as usize] as usize;
         let mut out = short81(p, s81);
@@ -742,10 +747,13 @@ impl Position {
         while dirs != 0 {
             let d = dirs.trailing_zeros() as usize;
             dirs &= dirs - 1;
+            if ray81(s81, d) & want == 0 {
+                continue;
+            }
             out |= ray_to_blocker(s81, d, occ_all);
         }
-        let out = out & !self.occ[ui];
-        debug_assert_eq!(out, self.targets_of(s, p, ui), "near_targets");
+        let out = out & !self.occ[ui] & want;
+        debug_assert_eq!(out, self.targets_of(s, p, ui) & want, "near_targets");
         out
     }
 

@@ -140,7 +140,7 @@ ttPv項の再挑戦は、cutNode を導入して反対方向の項を揃えて�
 
 ## Consequences
 
-以後のLMR項追加が1項=1SPRTで積めるようになる。ROADMAPの候補に残る項目は、すべてこの土台の上に乗る。rootDelta・
+以後のLMR項追加が1項=1SPRTで積めるようになる。ROADMAPの候補に残る項目は、すべてこの固定小数点化を前提にする。rootDelta・
 moveCount・correction値・cutNode・ttCapture・cutoffCnt・ttMove一致・
 statScore・allNodeである。
 [ADR-0055](0055-lmr-terms.md)で棄却したimproving項とhistory項も、

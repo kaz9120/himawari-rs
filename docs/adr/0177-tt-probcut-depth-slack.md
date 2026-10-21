@@ -152,7 +152,7 @@ TT-ProbCutは `beta + 416` を返す。**詰みスコアではないが、親か
   ことが実測された。今後この指標を持ち出す提案は、まず「探索木から手が消えて
   いるか」を確かめる
 - **2,045局面のcorpusは `data/logs/matescan-corpus.tsv` に残す**。詰み検出率を
-  測る土台としては使える。ただし[ADR-0089](0089-improvement-criteria.md)の
+  測る材料としては使える。ただし[ADR-0089](0089-improvement-criteria.md)の
   「終盤の正確さ」の代理指標としては、本ADRの結果から使えないことが分かった
 - **ROADMAPの候補「TT-ProbCutが詰み検出率を落とす」を消す**。測って棄却した
   ので、候補として残さない（[ADR-0001](0001-adr-process.md)の運用）

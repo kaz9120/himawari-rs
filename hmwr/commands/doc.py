@@ -3,9 +3,8 @@
 from __future__ import annotations
 
 import argparse
-import shutil
 
-from .. import doccheck, paths, proc
+from .. import doccheck, doclint, proc
 
 
 def add_parser(sub: argparse._SubParsersAction) -> None:
@@ -15,10 +14,10 @@ def add_parser(sub: argparse._SubParsersAction) -> None:
     t = ss.add_parser(
         "lint",
         help="日本語文書の書き方を検査する",
-        description="一文の長さ・読点の数・助詞の重複・冗長表現・誇張表現を見る。"
-        "CIと同じ検査なので、PRを出す前にここで通す。",
+        description="yomiyasuで、AIの文に出やすい語・比喩・直訳、表示されない太字、"
+        "文末のコロンを見る。CIと同じ検査なので、PRを出す前にここで通す。",
     )
-    t.add_argument("--fix", action="store_true", help="自動で直せるものを直す")
+    t.add_argument("files", nargs="*", help="検査する文書（省くと docs/ と *.md と .claude/ と research/）")
     t.set_defaults(func=lint)
 
     t = ss.add_parser(
@@ -35,14 +34,10 @@ def add_parser(sub: argparse._SubParsersAction) -> None:
 
 
 def lint(args: argparse.Namespace) -> int:
-    if shutil.which("npm") is None:
-        raise proc.Fail("npm がない。Node 22以降を入れる")
-    if not (paths.REPO / "node_modules").is_dir() and not args.dry_run:
-        proc.run(["npm", "ci"], dry_run=args.dry_run)
-    return proc.run(
-        ["npm", "run", "lint:fix" if args.fix else "lint"],
-        dry_run=args.dry_run,
-    )
+    if doclint.main(args.files):
+        return proc.JUDGE
+    print("文書の書き方: 問題なし")
+    return proc.OK
 
 
 def check(args: argparse.Namespace) -> int:

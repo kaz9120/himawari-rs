@@ -45,12 +45,12 @@ P7の構造実験にも自動微分で即対応できる。ADR-0039で想定済�
 
 ### 移行の範囲
 
-Pythonに移すもの:
+Pythonに移すものは次のとおりである。
 - 学習ループ全体（optimizer, lr schedule, checkpoint, logging）
 - モデル定義（HalfKP + 利き入力 + 隠れ層）
 - 量子化・.hmwr書き出し
 
-Rustに残すもの:
+Rustに残すものは次のとおりである。
 - 推論エンジン（engine crateのnnueモジュール）
 - PSVツール（psv shuffle, psv head, psv stat）
 - SPRT対局（selfplay）

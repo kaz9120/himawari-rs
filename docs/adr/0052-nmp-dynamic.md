@@ -51,7 +51,7 @@ betaをどれだけ超えているかを考慮しない。評価が大差の局�
 
 ### 実装スケッチ（search.rs）
 
-- リダクション式を変更:
+- リダクション式を次のように変更する。
   `let r = NMP_BASE_REDUCTION + depth / 4 + margin_term;`
   `margin_term = ((static_eval - beta) / 200).clamp(0, 3) as u32`
   （static_evalは補正後。ADR-0046の値をそのまま使う）

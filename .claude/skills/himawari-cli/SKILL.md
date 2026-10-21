@@ -416,8 +416,7 @@ strengthでは `data/sprt/<名前>.result` がH1であることと、本文の�
 ### 文書を書いたら
 
 ```
-hmwr doc lint          CIと同じ検査を回す
-hmwr doc lint --fix    自動で直せるものを直す
+hmwr doc lint          CIと同じ検査を回す（ファイルを渡すとそれだけ見る）
 hmwr doc check         ADRのStatusと索引の一致、相対リンクの行き先を見る
 ```
 

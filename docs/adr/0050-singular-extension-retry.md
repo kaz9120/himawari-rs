@@ -42,7 +42,7 @@ double extension・negative extension・multi-cutは入れない。
 
 ### 実装スケッチ（search.rs）
 
-発動条件（すべて満たすとき、TT手に対して検証探索）:
+発動条件は次のとおりで、すべて満たすときにTT手に対して検証探索を行う。
 - depth >= 7
 - root/除外手つき探索中でない
 - TT手あり、かつ`pos.is_legal(tt_move)`
@@ -50,7 +50,7 @@ double extension・negative extension・multi-cutは入れない。
 - TTのdepth >= depth - 3
 - |TT値| が詰みスコアでない
 
-検証探索:
+検証探索は次のとおりである。
 - `singular_beta = tt_value - 2 * depth`（cpスケール）
 - TT手を除外した`search(depth/2, singular_beta-1, singular_beta)`
   をnon-PVで実行
@@ -58,7 +58,7 @@ double extension・negative extension・multi-cutは入れない。
   TT手の探索深さを+1する（王手延長とは重複させず、
   `max(王手延長, singular延長)`とする）
 
-除外手（excluded move）の受け渡し:
+除外手（excluded move）の受け渡しは次のとおりである。
 - 探索関数に除外手を渡す（plyごとのスタックでもパラメータでも、
   既存の流儀に合わせる）
 - 除外手つき探索では次の5つを行う
