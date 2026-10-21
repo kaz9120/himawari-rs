@@ -26,8 +26,8 @@ description: 実験キューで走り終えた実験の結果を、ADRへ記録�
    事前登録」の節を読む。対局の数値は `data/sprt/<対局名>.result` が正で、
    表はそこから作られている
 
-2. ブランチを切る。名前は `docs-<specの名前>-result` にする（例:
-   `docs-adr0228-ek-batch-result`）。specの名前は `adrNNNN-` で始まるので、
+2. ブランチを切る。名前は `docs-<specの名前>-result` にする
+   （例は `docs-adr0228-ek-batch-result`）。specの名前は `adrNNNN-` で始まるので、
    ADRの番号も入る。番号だけにしないのは、1つのADRにspecが複数あると
    衝突するためである（ADR-0228は4本）。専用のworktreeで走っているときは、
    いまのHEAD（origin/main）から切る

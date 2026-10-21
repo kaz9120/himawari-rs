@@ -59,7 +59,7 @@ board_key/hand_keyと同じ扱いなのでundo系は変更不要
 
 ### 実装スケッチ
 
-歩構造キー（core側）:
+歩構造キー（core側）は次のとおりである。
 - `StateInfo`に`pawn_key: u64`を追加（`position.rs:61-72`）
 - 盤上の歩は既存`zobrist::PSQ`の歩エントリをそのまま流用してXOR
 - 持ち歩は新テーブル`HAND_PAWN[2][19]`（zobrist.rsに追加）を
@@ -69,21 +69,21 @@ board_key/hand_keyと同じ扱いなのでundo系は変更不要
 - 検証: 全計算関数`compute_pawn_key()`を用意し、perft系テストで
   差分=全計算の一致をdebug_assertする（board_keyと同じ流儀）
 
-correction historyテーブル（engine側）:
+correction historyテーブル（engine側）は次のとおりである。
 - `CorrectionHistory { table: Box<[[i16; 16384]; 2]> }`
   （手番 × pawn_key下位14bit。64KB/スレッド）
 - 保持はHistory/CounterMovesと同じ流儀: thread.rsのスレッド
   ローカルに置き、goごとに探索器へ渡し、NewGameでクリア
   （`thread.rs:138-159`）
 
-適用（search.rs）:
+適用（search.rs）は次のとおりである。
 - 生の静的評価`raw`（evaluateまたはTT再利用）に
   `corrected = raw + entry/8`を加えた値を、上記5箇所すべてで使う
 - `eval_stack`には補正後を保存する（improvingも補正後で判定）
 - TTには従来どおり生値を保存する（補正テーブルは時間とともに
   変わるため、TTヒット時に再補正する）
 
-更新（search()のノード終了時）:
+更新（search()のノード終了時）は次のとおりである。
 - 条件: 王手中でない、best_moveがない or 静かな手、
   詰みスコアでない、boundが矛盾しない
   （`best >= beta && best <= corrected`の場合と

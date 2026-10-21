@@ -33,7 +33,7 @@ qsearch同士の再訪（数が最も多い）を活かせず中途半端。
 
 ### 実装スケッチ（search.rs）
 
-probe（qsearch入口、stand patの前）:
+probe（qsearch入口、stand patの前）は次のとおりである。
 - `pos.key()`でTTをprobeし、ヒットしたら`value_from_tt`で
   ply補正のうえboundを検査。non-PVでは
   lower boundかつ値>=beta、upper boundかつ値<=alpha、
@@ -43,7 +43,7 @@ probe（qsearch入口、stand patの前）:
 - TT手はpickerの先頭で試す（qsearch用MovePickerにtt_moveを
   渡す。既存のTtMoveステージの流儀を踏襲）
 
-store（qsearch出口）:
+store（qsearch出口）は次のとおりである。
 - depth 0、boundはfail-high/low/exactに応じて設定、
   eval欄は生評価（王手中はVALUE_NONE）
 - 王手回避で手がない（詰み）の値もそのまま保存してよい

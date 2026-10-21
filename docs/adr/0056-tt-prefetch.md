@@ -73,7 +73,7 @@ pub fn prefetch(&self, key: u64) {
 メソッド本体が空になる。prefetchはCPUへのヒントであり、
 空でも正しさに影響しない。
 
-search.rsの挿入箇所（main search・qsearch両方のムーブループ）:
+search.rsの挿入箇所（main search・qsearch両方のムーブループ）は次のとおり。
 
 ```rust
 self.pos.do_move(mv, &gives_check);

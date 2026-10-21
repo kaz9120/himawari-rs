@@ -74,7 +74,7 @@ PieceType::LANCE => {
 
 ### SPRTの条件（着手時に確定。[ADR-0163](0163-sprt-hypothesis-choice.md)）
 
-当初は**既定条件（elo0=0、elo1=5）**で始めた。[ADR-0173](0173-knight-non-promotion-movegen.md)が
+当初は**既定条件**（elo0=0、elo1=5）で始めた。[ADR-0173](0173-knight-non-promotion-movegen.md)が
 同じ型の修正で+11.2 Eloを得ており、規模は4分の1でも棋力向上を主張する側で
 測る根拠になると考えたためである。
 

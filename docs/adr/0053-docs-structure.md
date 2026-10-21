@@ -72,7 +72,7 @@ data/
 - 物理的な移設は実行中のSPRT（EvalFileがdata/直下を参照）の
   完了後に行い、DATASETS.md・README.mdのパスも同時に更新する
 
-運用ルール:
+運用ルールは次のとおりである。
 - 同じ情報を2文書に書かない。参照はリンクで行う
   （例: ROADMAPの現在地からRESULTSの該当行へ）
 - RESULTS.mdはappend-only。訂正が必要なら訂正行を追記する
