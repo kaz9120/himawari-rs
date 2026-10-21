@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.57.2](https://github.com/kaz9120/himawari-rs/compare/v0.57.1...v0.57.2) (2026-10-21)
+
+
+### その他の変更
+
+* 配列盤の生成・1手詰め・SEEを、木を変えずに軽くする（ADR-0241、+3.1% NPS） ([#887](https://github.com/kaz9120/himawari-rs/issues/887)) ([35b9ea9](https://github.com/kaz9120/himawari-rs/commit/35b9ea9e325807afcd9e6fe776fe3a71b26b44df))
+
 ## [0.57.1](https://github.com/kaz9120/himawari-rs/compare/v0.57.0...v0.57.1) (2026-10-21)
 
 
