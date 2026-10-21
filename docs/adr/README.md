@@ -342,7 +342,7 @@ ROADMAPの注力を決めた判断。いまの注力は0229にある。
 | [0175](0175-sprt-until-decision.md) | SPRTを判定が出るまで走らせ、完了をファイルで検知する | 2026-08-18 |  | accepted |
 | [0176](0176-lance-non-promotion-rank.md) | 香の不成を2段目から3段目以降へ移す | 2026-08-18 | +1.7 | accepted |
 | [0177](0177-tt-probcut-depth-slack.md) | TT-ProbCutの深さ差を4から2へ狭める | 2026-08-19 | −3.1 | rejected |
-| [0178](0178-textlint-gate.md) | 日本語文書の書き方をtextlintでCIゲートにする | 2026-08-20 |  | accepted |
+| [0178](0178-textlint-gate.md) | 日本語文書の書き方をtextlintでCIゲートにする | 2026-08-20 |  | superseded（[0244](0244-yomiyasu-gate.md)） |
 | [0179](0179-hmwr-cli.md) | 日常操作をhmwrコマンドひとつの入口にまとめる | 2026-08-20 |  | superseded |
 | [0180](0180-hmwr-cli-in-python.md) | hmwrを独立コマンドにし、実処理をPythonへ移す | 2026-08-20 |  | accepted |
 | [0181](0181-agent-surface.md) | エージェント向けの設定を実態へ合わせ、規律を設定ファイルへ移す | 2026-08-20 |  | accepted |
@@ -407,6 +407,7 @@ ROADMAPの注力を決めた判断。いまの注力は0229にある。
 | [0240](0240-effect-maintenance-research.md) | 利きの表の維持費を削る研究を、研究ブランチで回を重ねて進める | 2026-10-18 |  | proposed（2026-10-20に凍結。配列盤へ集中） |
 | [0241](0241-mailbox-board-research.md) | Bitboardをやめて配列盤と利きの配列で持つ案（案F）を、研究ブランチで段階を踏んで試す | 2026-10-18 | +5.0（非劣性） | accepted（探索の盤を配列盤へ置き換えた） |
 | [0242](0242-effect-acc-speed.md) | 利き数入力の差分更新を、探索を変えない手直しで段ごとに速くする | 2026-10-20 |  | accepted（段1〜3を入れた。+8.42%・+1.01%・+1.62% NPS。以降はADR-0241へ移した） |
+| [0244](0244-yomiyasu-gate.md) | 日本語文書のCIゲートをtextlintからyomiyasuへ替える | 2026-10-22 |  | accepted |
 
 ## バックログ
 

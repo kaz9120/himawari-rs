@@ -34,11 +34,9 @@ floodgateの負け141局の全量解析（[ADR-0152](0152-floodgate-cycle.md)の
 - 例外は4回目の同一局面（強制千日手）のみ。`repetition` を負値にして
   plyに関係なく成立させる
 - 優等・劣等については探索部にコメントで理由が書かれている。
-  <!-- textlint-disable ja-technical-writing/sentence-length -->
 「優等局面・劣等局面はrootより遡って判定しない。USIで出力する評価値が
   VALUE_SUPERIORになるのはちょっと嫌だし、優等局面に突入するからと言って
   即詰みを逃がすのもちょっと嫌」（yaneuraou-search.cpp、issue #264参照）
-<!-- textlint-enable ja-technical-writing/sentence-length -->
 
 探索経路内の優等・劣等は「この探索の中で同じ盤面に手得で戻れる」という
 意味を持つので、判定として正しい。rootを跨いだ比較だけが無意味になる。

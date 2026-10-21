@@ -2,7 +2,7 @@
 # Stopフックで、このブランチのコミットを検査する（ADR-0181）。
 #
 #   check_commits.sh parens   本文の入れ子の半角括弧（release-pleaseが黙って止まる）
-#   check_commits.sh subject  件名のtextlint（CHANGELOGへ載ってdocsジョブを壊す）
+#   check_commits.sh subject  件名の書き方をyomiyasuで見る（release-pleaseがCHANGELOGへ載せる）
 #
 # 違反を見つけたら終了コード2でセッションの終わりを止め、理由をエージェントへ返す。
 # 検査そのものが動かなかったときは、警告を出して0で抜ける。検査の不調で
@@ -43,17 +43,17 @@ parens)
 subject)
 	subjects=$(commits %s) || exit 0
 	[ -z "$subjects" ] && exit 0
-	[ -x node_modules/.bin/textlint ] || warn 'textlintが入っていない。npm ci で入る'
-	out=$(printf '%s\n' "$subjects" | node_modules/.bin/textlint --config .textlintrc.commit.json --stdin --stdin-filename commit.md 2>&1)
+	[ -f hmwr/doclint.py ] || warn 'hmwr/doclint.py がない'
+	out=$(printf '%s\n' "$subjects" | python3 hmwr/doclint.py - 2>&1)
 	code=$?
 	case $code in
 	0) ;;
 	1)
 		printf '%s\n' "$out" >&2
-		echo 'コミット件名がtextlintに引っかかっている。件名はrelease-please経由でCHANGELOGへ載るので、後からdocsジョブを全PR巻き添えで壊す。git commit --amend で直す（CLAUDE.md「コミット規律」）' >&2
+		echo 'コミット件名がyomiyasuに引っかかっている。件名はrelease-please経由でCHANGELOGへ載り、後から直せない。git commit --amend で直す（CLAUDE.md「コミット規律」）' >&2
 		exit 2
 		;;
-	*) warn "textlintが終了コード $code で落ちた: $out" ;;
+	*) warn "yomiyasuが終了コード $code で落ちた: $out" ;;
 	esac
 	;;
 *)

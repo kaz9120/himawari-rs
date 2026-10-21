@@ -22,14 +22,10 @@
 
 進行度を1本の軸で持たない例もある。
 
-<!-- textlint-disable ja-technical-writing/ja-no-successive-word -->
-
 | チーム | 中身 | 要約にある結果 |
 |---|---|---|
 | 元気もりもりニンニクパワー | 進行をphase（駒交換）・danger（玉の危険）・nyugyoku（入玉）の3軸で数える。通常と入玉で別のモデルにする | 詰み探索を掛ける局面の選別に使う |
 | ねね将棋 | 局面の性質（戦型・入玉・手数・評価値の差）からDNNで8つのNNUEの混合重みを出す | 評価の損失は改善した。対局での勝率向上は確認できていない |
-
-<!-- textlint-enable ja-technical-writing/ja-no-successive-word -->
 
 **LayerStackそのものの寄与は、要約に数字がない**。六角堂狸の前年比+85.48は、知識蒸留と
 アンサンブルを含めた全体の値である。起動前に原文（`source_urls`）で、LayerStackだけを

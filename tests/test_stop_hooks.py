@@ -10,7 +10,8 @@ from pathlib import Path
 
 import pytest
 
-HOOKS = Path(__file__).resolve().parent.parent / ".claude" / "hooks"
+REPO = Path(__file__).resolve().parent.parent
+HOOKS = REPO / ".claude" / "hooks"
 SCRIPTS = ("branch_commits.sh", "check_commits.sh")
 IDENT = ["-c", "user.name=t", "-c", "user.email=t@t"]
 
@@ -72,8 +73,28 @@ def test_broken_check_warns_without_blocking(tmp_path):
     assert "実行できなかった" in r.stderr
 
 
-def test_missing_textlint_warns(repo, tmp_path):
+def test_missing_doclint_warns(repo, tmp_path):
     _git(repo, "commit", "-q", "--allow-empty", "-m", "fix: x")
     r = _check(repo, "subject", cwd=tmp_path)
     assert r.returncode == 0
-    assert "textlintが入っていない" in r.stderr
+    assert "hmwr/doclint.py がない" in r.stderr
+
+
+def _install_doclint(root: Path) -> None:
+    shutil.copytree(REPO / "hmwr" / "vendor", root / "hmwr" / "vendor")
+    shutil.copy(REPO / "hmwr" / "doclint.py", root / "hmwr" / "doclint.py")
+
+
+def test_subject_with_slop_word_stops(repo, tmp_path):
+    _install_doclint(repo)
+    _git(repo, "commit", "-q", "--allow-empty", "-m", "docs: 探索の土台を整える")
+    r = _check(repo, "subject", cwd=tmp_path)
+    assert r.returncode == 2
+    assert "slop_vocabulary" in r.stderr
+
+
+def test_clean_subject_passes(repo, tmp_path):
+    _install_doclint(repo)
+    _git(repo, "commit", "-q", "--allow-empty", "-m", "fix: 台帳へ足すときの一時ファイルを減らす")
+    r = _check(repo, "subject", cwd=tmp_path)
+    assert (r.returncode, r.stderr) == (0, "")

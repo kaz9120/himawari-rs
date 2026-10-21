@@ -373,9 +373,7 @@ LMR_DEPTH_HIST_DIVISOR	3608	3788
 ### 時期の変更（2026-10-20）
 
 オーナーの判断で、第4回は配列盤（ADR-0241）をmainへ入れた直後ではなく、利きを引く探索の改善（[ADR-0234](0234-king-danger-rfp.md)・[ADR-0235](0235-quiet-ordering-hanging.md)など）の後に回す。
-<!-- textlint-disable ja-technical-writing/no-exclamation-question-mark -->
 オーナーの言葉は「SPSAのタイミングも利きを引く探索の改善の後の方が良いのでは？結構コスト高いし」である。
-<!-- textlint-enable ja-technical-writing/no-exclamation-question-mark -->
 
 理由は2つある。26定数の多くはRFP・futility・LMR・SEEの閾値で、ADR-0234・0235はその効き方を変える。先に合わせると、改善を入れた後で合わせ直す二度手間になる。
 配列盤で変わる探索の木は、並べ替えの順序の差だけである。評価関数も同じなので、いま回しても回収は大きくないと見る（第3回の回収は+5.8）。

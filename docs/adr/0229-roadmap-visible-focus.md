@@ -34,8 +34,6 @@
 選手権の第20〜36回のアピール文書を要約した（`research/wcsc_appeals/`）。
 今回の判断に効いたのは次の取り組みである。
 
-<!-- textlint-disable ja-technical-writing/ja-no-successive-word -->
-
 | チーム（回） | 取り組み | 本ADRでの使いどころ |
 |---|---|---|
 | Miacis（30） | 評価値を51分割の分布で出し、分布の広さを難しさの目印にする | 難しさを出す出力 |
@@ -45,8 +43,6 @@
 | 技巧（26・27）・山田将棋（21〜36） | 配列盤やbyteboardで利き数を持ち、差分で更新する | 利きの土台 |
 | 水匠（35・36） | 事実はエンジンが確定し、LLMは日本語にするだけの解説 | 解説への出口 |
 | 習甦（32） | 宣言法に沿った入玉の報酬を学習に足す | 入玉の点数 |
-
-<!-- textlint-enable ja-technical-writing/ja-no-successive-word -->
 
 ## 選択肢と比較
 

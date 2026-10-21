@@ -143,7 +143,7 @@ jobs:
       - run: cargo test -p himawari-engine --features tune --lib
 
   # required checkの集約。ほかの全ジョブが成功したときだけ成功する。
-  # 下のdocsとavx2も含める。外していた間、textlintが落ちたリリースPRが
+  # 下のdocsとavx2も含める。外していた間、文書のlintが落ちたリリースPRが
   # 自動マージされた（#751）。ジョブを足したらここへも足す
   check:
     needs: [lint, ruff, test, test-release, test-arch, test-board, test-tune, docs, avx2]
@@ -157,18 +157,13 @@ jobs:
             [ "$r" = "success" ] || exit 1
           done
 
-  # 日本語文書のlint（ADR-0178）。CLAUDE.mdの書き方の規約のうち、
-  # 機械が判定できるものをここで見る
+  # 日本語文書のlint（ADR-0244）。同梱したyomiyasuで、AIの文に出やすい
+  # 書き方を見る。標準ライブラリだけで動くので、ランナーのPythonで回す
   docs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        with:
-          node-version: 22
-          cache: npm
-      - run: npm ci
-      - run: npm run lint
+      - run: ./bin/hmwr doc lint
 
 
   # NNUE推論のAVX2経路を検証する（ADR-0099）。既定のx86-64ターゲットは
