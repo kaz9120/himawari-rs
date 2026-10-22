@@ -445,8 +445,20 @@ def test_net_defaults_to_the_current_validation_set(capsys):
     _, evaluate = dry(capsys, ["net", "eval", "a.hmwr"])
     _, shapes = dry(capsys, ["net", "shapes", "256x16"])
     for lines in (train, evaluate, shapes):
-        assert any(config.TRAIN_VALID in x for x in lines)
-    assert any(f"--data {config.TRAIN_DATA}" in x for x in shapes)
+        assert any(paths.rel(config.train_valid()) in x for x in lines)
+    assert any(f"--data {paths.rel(config.train_data())}" in x for x in shapes)
+
+
+def test_net_resolves_the_default_validation_set_under_the_train_place(capsys):
+    """既定の検証集合は参照の時点で paths.TRAIN から組む（#877）。
+
+    文字列の定数だとテストの退避（tests/conftest.py）が届かず、本物の
+    `data/train/` を検査してしまう。退避した置き場を指していることを、
+    ファイルがないと言うときのパスで見る。
+    """
+    assert cli.main(["net", "eval", "a.hmwr"]) == proc.RUNTIME
+    assert str(paths.TRAIN / config.TRAIN_VALID_FILE) in capsys.readouterr().err
+
 
 def test_net_eval_uses_each_validation_set(capsys):
     _, lines = dry(capsys, ["net", "eval", "a.hmwr", "--valid", "v1.psv,v2.psv"])

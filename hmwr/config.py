@@ -11,6 +11,7 @@ from __future__ import annotations
 import os
 import platform
 from functools import lru_cache
+from pathlib import Path
 
 from . import paths, proc
 
@@ -51,9 +52,9 @@ OPENINGS = "openings/start_sfens_ply24.txt"
 
 # 学習の既定の学習データと検証集合。現行の評価関数を学習したときの組（ADR-0228）。
 # 評価関数の世代を替えて検証集合も替えたら、ここも揃える。net train・eval・shapesの
-# 既定がここを読む
-TRAIN_DATA = "data/train/pool1.psv"
-TRAIN_VALID = "data/train/valid_tanuki_dl430_q1.psv"
+# 既定が下の2つの関数を読む
+TRAIN_DATA_FILE = "pool1.psv"
+TRAIN_VALID_FILE = "valid_tanuki_dl430_q1.psv"
 
 # 計測・対局のビルドフラグ（ADR-0003）
 RUSTFLAGS = "-C target-cpu=native"
@@ -72,6 +73,20 @@ DEFAULTS = {
     "SPRT_ADJUDICATE": SPRT_ADJUDICATE,
     "SPRT_MAX_PAIRS": SPRT_MAX_PAIRS,
 }
+
+
+def train_data() -> Path:
+    """既定の学習データ。参照の時点で `paths.TRAIN` から組む。"""
+    return paths.TRAIN / TRAIN_DATA_FILE
+
+
+def train_valid() -> Path:
+    """既定の検証集合。参照の時点で `paths.TRAIN` から組む。
+
+    文字列の定数にすると読み込みの時点で値が固まり、テストの退避
+    （tests/conftest.py）が届かず本物の `data/train/` を指す（#850・#877）。
+    """
+    return paths.TRAIN / TRAIN_VALID_FILE
 
 
 @lru_cache(maxsize=1)
