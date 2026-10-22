@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.57.3](https://github.com/kaz9120/himawari-rs/compare/v0.57.2...v0.57.3) (2026-10-22)
+
+
+### その他の変更
+
+* 既定の学習データと検証集合を参照の時点で paths.TRAIN から組む ([#890](https://github.com/kaz9120/himawari-rs/issues/890)) ([5dd386b](https://github.com/kaz9120/himawari-rs/commit/5dd386b02303359c9194029b8db18d2a2dab413d)), closes [#877](https://github.com/kaz9120/himawari-rs/issues/877)
+
 ## [0.57.2](https://github.com/kaz9120/himawari-rs/compare/v0.57.1...v0.57.2) (2026-10-21)
 
 
