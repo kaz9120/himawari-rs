@@ -407,7 +407,7 @@ ROADMAPの注力を決めた判断。いまの注力は0229にある。
 | [0240](0240-effect-maintenance-research.md) | 利きの表の維持費を削る研究を、研究ブランチで回を重ねて進める | 2026-10-18 |  | proposed（2026-10-20に凍結。配列盤へ集中） |
 | [0241](0241-mailbox-board-research.md) | Bitboardをやめて配列盤と利きの配列で持つ案（案F）を、研究ブランチで段階を踏んで試す | 2026-10-18 | +5.0（非劣性） | accepted（探索の盤を配列盤へ置き換えた） |
 | [0242](0242-effect-acc-speed.md) | 利き数入力の差分更新を、探索を変えない手直しで段ごとに速くする | 2026-10-20 |  | accepted（段1〜3を入れた。+8.42%・+1.01%・+1.62% NPS。以降はADR-0241へ移した） |
-| [0243](0243-order-independent-movepick.md) | 手の並べ替えを、生成の順に依存しない形にする | 2026-10-21 |  | proposed |
+| [0243](0243-order-independent-movepick.md) | 手の並べ替えを、生成の順に依存しない形にする | 2026-10-21 | −5.2 | rejected（見送り。非劣性のSPRTは10,000ペアで中点以下） |
 | [0244](0244-yomiyasu-gate.md) | 日本語文書のCIゲートをtextlintからyomiyasuへ替える | 2026-10-22 |  | accepted |
 
 ## バックログ
