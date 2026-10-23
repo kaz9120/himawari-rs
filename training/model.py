@@ -47,9 +47,14 @@ HALF = FT_OUT // 2
 # 持たない。古い拡張は定数を持たないので0として扱う
 EFF_IN = getattr(himawari, "EFF_IN", 0)
 EFF_OUT = getattr(himawari, "EFF_OUT", 0)
-# 1局面で立つ利きの特徴の数。升ごとに1つ
-EFF_ACTIVE = 81
-# 利きの特徴の使い方。f2は特徴を立てる処置群、noneは立てない統制群（ADR-0237）
+# 表し方を替えた構成（ADR-0245）。側の入力を `side_feat` の種類で作り、対の積を掛けることがある。
+# 学習側は表の末尾に詰め物の行（添字 EFF_IN）を1本足して持ち、書き出しで落とす
+EFF_GENERIC = getattr(himawari, "EFF_GENERIC", False)
+EFF_PAIR = getattr(himawari, "EFF_PAIR", False)
+# 1局面1視点で並ぶ利きの特徴の数。F2は升ごとに1つで81、表し方を替えた構成は上限の数
+EFF_ACTIVE = getattr(himawari, "EFF_ACTIVE", 81)
+# 利きの特徴の使い方。f2は特徴を立てる処置群、noneは立てない統制群（ADR-0237）。
+# 表し方を替えた構成（ADR-0245）でも、f2は「構成の表し方で立てる」の意味になる
 EFFECT_INPUTS = ("f2", "none")
 # 積の値域合わせ（ADR-0171）。推論側は clip(a)*clip(b) >> 7 で、最大が
 # 127×127/128 = 126 にしかならない。学習側にも同じ127/128を掛けておくと、
@@ -78,7 +83,7 @@ class NnueModel(nn.Module):
 
     def __init__(self, sparse_ft=True, factorized=False, policy=False,
                  pretrain=False, effect_head=None,
-                 focus_head=None, effect_inputs=None):
+                 focus_head=None, effect_inputs=None, halfkp_inputs=True):
         super().__init__()
         # 利きのaccumulatorは構成で決まる（ADR-0237）。持つ構成では、統制群も
         # 処置群も同じ層を作る。**構造が同じなので、初期化で乱数を消費する
@@ -91,6 +96,9 @@ class NnueModel(nn.Module):
         if effect_inputs is not None and effect_inputs not in EFFECT_INPUTS:
             raise ValueError(f"effect_inputs が不明: {effect_inputs}")
         self.eff_on = effect_inputs == "f2"
+        # HalfKPの特徴を立てない置き換えの群（ADR-0245）。FTの表を0で凍結し、主の
+        # accumulatorをバイアスだけの定数にする。推論側はFTの0の行を足すだけになる
+        self.halfkp_on = halfkp_inputs
         self.ft = nn.EmbeddingBag(FT_IN, FT_OUT, mode="sum", sparse=sparse_ft)
         self.ft_p = (
             nn.EmbeddingBag(FE_END, FT_OUT, mode="sum", sparse=sparse_ft)
@@ -101,7 +109,12 @@ class NnueModel(nn.Module):
         # 利きの特徴は玉位置に依らないので、factorizerは掛けない（ADR-0237）。
         # 1局面で81行が立ち、表の大半の行が毎バッチ触られるので密の勾配にする
         self.eff = (
-            nn.EmbeddingBag(EFF_IN, EFF_OUT, mode="sum") if EFF_OUT else None
+            nn.EmbeddingBag(
+                EFF_IN + 1 if EFF_GENERIC else EFF_IN, EFF_OUT, mode="sum",
+                padding_idx=EFF_IN if EFF_GENERIC else None,
+            )
+            if EFF_OUT
+            else None
         )
         self.eff_bias = (
             nn.Parameter(torch.full((EFF_OUT,), 0.5)) if EFF_OUT else None
@@ -166,10 +179,21 @@ class NnueModel(nn.Module):
         nn.init.uniform_(self.ft.weight, -0.05, 0.05)
         if self.ft_p is not None:
             nn.init.zeros_(self.ft_p.weight)
+        if not self.halfkp_on:
+            # 乱数は引いてから捨てる。以降の層の初期値を処置群と揃える（ADR-0237の統制と同じ）
+            with torch.no_grad():
+                self.ft.weight.zero_()
+            self.ft.weight.requires_grad_(False)
+            if self.ft_p is not None:
+                self.ft_p.weight.requires_grad_(False)
         if self.eff is not None:
             # 統制群も乱数を引いてから捨てる。引かないと以降の層の初期値が
             # 処置群とずれる（ADR-0237の統制、ADR-0158の教訓）
             nn.init.uniform_(self.eff.weight, -0.05, 0.05)
+            if EFF_GENERIC:
+                # 詰め物の行は0に保つ（padding_idxは勾配を止めるだけで、初期値は引いた乱数のまま）
+                with torch.no_grad():
+                    self.eff.weight[EFF_IN].zero_()
             if not self.eff_on:
                 with torch.no_grad():
                     self.eff.weight.zero_()
@@ -234,6 +258,10 @@ class NnueModel(nn.Module):
             z = self.eff(idx.view(n, EFF_ACTIVE)) + self.eff_bias
         else:
             z = self.eff_bias.expand(n, -1)
+        if EFF_PAIR:
+            # 側でも前半と後半を掛ける（ADR-0245）。推論側の `side_feat::fill` と同じ形
+            h = EFF_OUT // 2
+            return z[:, :h].clamp(0.0, 1.0) * z[:, h:].clamp(0.0, 1.0) * PAIR_SCALE
         return z.clamp(0.0, 1.0)
 
     def transform_both(self, stm_idx, stm_off, opp_idx, opp_off,

@@ -225,6 +225,14 @@ def main():
              "それ以外の構成では渡せない",
     )
     p.add_argument(
+        "--halfkp-inputs",
+        dest="halfkp_inputs",
+        choices=["on", "none"],
+        default="on",
+        help="HalfKPの特徴を立てるか（ADR-0245）。noneはFTの表を0で凍結し、主のaccumulatorを"
+             "バイアスだけの定数にする置き換えの群。入力は側のaccumulatorだけになる",
+    )
+    p.add_argument(
         "--init-net",
         help="既存の.hmwrを初期値に読む。FTは常に読み、後段は形が一致する層だけ"
              "読む（ADR-0130）",
@@ -316,6 +324,12 @@ def main():
         p.error("利きの構成は --batch-loader が要る（逐次のローダは特徴を作らない）")
     # 来歴に群を残す（ADR-0237）。統制と処置は同じ構成で、ファイルの寸法では見分けられない
     eff_tag = f" effect_inputs={args.effect_inputs}" if args.effect_inputs else ""
+    if args.halfkp_inputs == "none":
+        if EFF_OUT == 0:
+            p.error("--halfkp-inputs none は側のaccumulatorを持つ構成（e<E>）でだけ使える（入力がなくなる）")
+        if args.init_net or args.init_checkpoint:
+            p.error("--halfkp-inputs none はゼロから学習するときだけ使える（読んだFTを捨てることになる）")
+        eff_tag += " halfkp_inputs=none"
     use_effect = args.effect_head is not None
     use_focus = args.focus_head is not None
     # ヒートマップは.focusにしか入っていない（ADR-0213）
@@ -464,7 +478,10 @@ def main():
         effect_head=args.effect_head,
         focus_head=args.focus_head,
         effect_inputs=args.effect_inputs,
+        halfkp_inputs=args.halfkp_inputs == "on",
     ).to(device)
+    if args.halfkp_inputs == "none":
+        print("HalfKPの入力: 立てない（FTの表を0で凍結、ADR-0245の置き換えの群）", file=sys.stderr)
     if args.effect_inputs is not None:
         print(
             f"利きの入力: {args.effect_inputs}（幅{EFF_OUT}、"

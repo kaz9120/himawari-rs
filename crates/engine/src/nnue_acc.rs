@@ -12,8 +12,8 @@
 use himawari_core::{Bitboard, Color, DirtyPiece, Piece, PieceType, Position, Square, bonapiece};
 
 use crate::nnue::{
-    CONCAT, EFF_BASE, EFF_OUT, EffectLevels, FT_OUT, FtWeight, HALF, NnueNetwork, effect_code,
-    effect_code_index,
+    CONCAT, EFF_BASE, EFF_GENERIC, EFF_OUT, EffectLevels, FT_OUT, FtWeight, HALF, NnueNetwork,
+    effect_code, effect_code_index,
 };
 use crate::nnue_simd;
 use crate::value::{MAX_PLY, Value};
@@ -298,7 +298,10 @@ impl NnueState {
             let acc = &top.acc[c.index()];
             nnue_simd::clip_to_u8(acc, &mut concat[half * HALF..(half + 1) * HALF]);
         }
-        if EFF_OUT != 0 {
+        if EFF_GENERIC {
+            // 表し方を替えた構成は、評価のたびに作り直す（ADR-0245）
+            crate::side_feat::fill(net, pos, &mut concat);
+        } else if EFF_OUT != 0 {
             // 利きの部分は祖先からの差分で作る（ADR-0237のD2）
             self.ensure_effect(net, pos);
             let e = &self.eff[self.top];

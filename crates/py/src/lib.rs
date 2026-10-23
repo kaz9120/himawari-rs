@@ -6,9 +6,10 @@ use rayon::prelude::*;
 use himawari_core::packed_sfen::{PSV_BYTES, PackedSfenValue, unpack};
 
 use himawari_engine::nnue::{
-    ARCH, CONCAT, EFF_IN, EFF_OUT, EFFECT_LEN, FT_IN, FT_OUT, L1_OUT, L1_PAD, L2_OUT, L2_PAD,
-    L3_OUT, LAST_HIDDEN, MOVE_FROM_CLASSES, MOVE_NONE, MOVE_TO_CLASSES, NnueNetwork, effect_active,
-    effect_counts, effect_labels, evaluate_scalar, halfkp_active, move_labels,
+    ARCH, CONCAT, EFF_ACT, EFF_GENERIC, EFF_IN, EFF_MAX_ACTIVE, EFF_OUT, EFF_PAIR, EFFECT_LEN,
+    FT_IN, FT_OUT, L1_OUT, L1_PAD, L2_OUT, L2_PAD, L3_OUT, LAST_HIDDEN, MOVE_FROM_CLASSES,
+    MOVE_NONE, MOVE_TO_CLASSES, NnueNetwork, effect_active, effect_counts, effect_labels,
+    evaluate_scalar, halfkp_active, move_labels,
 };
 use himawari_engine::nnue_io;
 use himawari_engine::posgen::{chunk_specs, generate_chunk};
@@ -30,8 +31,9 @@ struct Sample {
     move_from: i64,
     move_to: i64,
     effect: Option<([u8; EFFECT_LEN], [u8; EFFECT_LEN])>,
-    /// 利きの入力特徴（ADR-0237のF2）。手番視点・非手番視点の順に81個ずつ。
-    eff_inputs: Option<([u32; 81], [u32; 81])>,
+    /// 側の入力特徴。手番視点・非手番視点の順に `EFF_ACTIVE` 個ずつ。F2は81個で、
+    /// 表し方を替えた構成（ADR-0245）は上限の個数まで詰め物（`EFF_IN`）で埋める。
+    eff_inputs: Option<(Vec<u32>, Vec<u32>)>,
 }
 
 /// 1レコードを特徴・教師信号・指し手ラベルに変換する。
@@ -88,16 +90,25 @@ fn extract_one(
     })
 }
 
-/// 利きの入力特徴を手番視点・非手番視点の順に返す（ADR-0237）。推論と同じ
-/// `effect_active` を通すので、学習と推論で特徴の作り方がずれない。
-fn effect_inputs(pos: &himawari_core::Position) -> ([u32; 81], [u32; 81]) {
-    let counts = effect_counts(pos);
+/// 1局面1視点あたりの側の入力特徴の数。F2は升ごとに1つで81、表し方を替えた構成は上限。
+const EFF_ACTIVE: usize = if EFF_GENERIC { EFF_MAX_ACTIVE } else { 81 };
+
+/// 側の入力特徴を手番視点・非手番視点の順に返す（ADR-0237・0245）。推論と同じ
+/// `effect_active`・`side_feat` を通すので、学習と推論で特徴の作り方がずれない。
+fn effect_inputs(pos: &himawari_core::Position) -> (Vec<u32>, Vec<u32>) {
     let stm = pos.side_to_move();
+    if EFF_GENERIC {
+        return (
+            himawari_engine::side_feat::active_padded(pos, stm),
+            himawari_engine::side_feat::active_padded(pos, stm.flip()),
+        );
+    }
+    let counts = effect_counts(pos);
     let mut a = [0u32; 81];
     let mut b = [0u32; 81];
     effect_active(pos, stm, &counts, &mut a);
     effect_active(pos, stm.flip(), &counts, &mut b);
-    (a, b)
+    (a.to_vec(), b.to_vec())
 }
 
 #[pyfunction]
@@ -128,7 +139,7 @@ fn extract_features(
 /// ラベルで、取れなかった局面は-1になる（ADR-0129）。末尾2本は利き数の
 /// ラベルで、1局面あたり `EFFECT_LEN` 個ずつ並ぶ（ADR-0133）。`effect` が
 /// 偽なら長さ0で返る。最後の2本は利きの入力特徴（ADR-0237）で、1局面あたり
-/// 81個ずつ並ぶ。`effect_inputs` が偽なら長さ0で返る。
+/// `EFF_ACTIVE` 個ずつ並ぶ（F2は81）。`effect_inputs` が偽なら長さ0で返る。
 /// 抽出はrayonで並列に行い、その間GILを解放する。
 type BatchArrays<'py> = (
     Bound<'py, PyArray1<i64>>,
@@ -206,7 +217,7 @@ fn extract_batch<'py>(
         let eff_cap = if effect { n * EFFECT_LEN } else { 0 };
         let mut eff_short: Vec<u8> = Vec::with_capacity(eff_cap);
         let mut eff_long: Vec<u8> = Vec::with_capacity(eff_cap);
-        let in_cap = if effect_inputs { n * 81 } else { 0 };
+        let in_cap = if effect_inputs { n * EFF_ACTIVE } else { 0 };
         let mut eff_stm: Vec<i64> = Vec::with_capacity(in_cap);
         let mut eff_opp: Vec<i64> = Vec::with_capacity(in_cap);
 
@@ -537,5 +548,10 @@ fn himawari(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add("EFFECT_LEN", EFFECT_LEN)?;
     m.add("EFF_IN", EFF_IN)?;
     m.add("EFF_OUT", EFF_OUT)?;
+    // 表し方を替えた構成（ADR-0245）。学習側は詰め物の行 `EFF_IN` を足して持つ
+    m.add("EFF_GENERIC", EFF_GENERIC)?;
+    m.add("EFF_PAIR", EFF_PAIR)?;
+    m.add("EFF_ACT", EFF_ACT)?;
+    m.add("EFF_ACTIVE", EFF_ACTIVE)?;
     Ok(())
 }

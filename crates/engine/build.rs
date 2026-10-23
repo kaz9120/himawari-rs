@@ -14,6 +14,19 @@
 //! 末尾の `e<E>` は、駒×升×利き数の特徴（ADR-0237のF2）を幅Eの別の
 //! accumulatorで持つ。省くとE=0で、利きの経路はコードごと消える。
 //!
+//! 側のaccumulatorの入力と活性は、`e<E>` の後ろで替えられる（ADR-0245）。
+//!
+//! ```text
+//! 1024x16x32e64p              活性に対の積を掛ける（片視点E/2を出す）
+//! 1024x16x32e64-thermo        入力を温度計の形にする
+//! 1024x16x32e64-f2_threat     F2に脅威の特徴を足す
+//! 1024x16x32e1024p-f2_hand    幅1024で対の積を掛け、F2と持ち駒を入れる
+//! ```
+//!
+//! 種類は `_` でつなぐ（構成名はビルドやネットの名前に入るので、`hmwr` が名前に許す文字に限る）。
+//! 表し方を書かない `e<E>` はF2で、従来の差分の経路を通る。表し方か `p` を書くと、
+//! 評価のたびに作り直す経路（`side_feat`）を通る。
+//!
 //! featureで持つと構成の数だけfeatureが要り、組み合わせが積で増える。
 //! 1つの文字列で受ければ構成を足すのにコード変更が要らない。
 
@@ -37,6 +50,22 @@ const PAD_MULTIPLE: usize = 32;
 /// 2視点）を32の倍数に保つため、片視点の幅を16の倍数にする。
 const EFF_MULTIPLE: usize = 16;
 
+/// 側の入力の種類（ADR-0245）。名前・表の行数・1視点で立つ数の上限。
+/// 並びの順が `side_feat` の種類の番号になる。**行数と上限は `side_feat` の
+/// 定義と合わせる。** 合っていないとテストが落ちる。
+const SIDE_KINDS: &[(&str, usize, usize)] = &[
+    ("f2", 81 * 29 * 16, 81),
+    ("l2", 81 * 29 * 4, 81),
+    ("thermo", 81 * 29 + 81 * 2 * 3, 81 + 81 * 2 * 3),
+    ("minatt", 81 * 29 * 11 * 11, 81),
+    ("threat", 28 * 81 * 11 * 2, 38),
+    ("escape", 2 * 8 * 5, 16),
+    ("drop", 2 * 7 * 4, 2 * 7 * 4),
+    ("mobility", 28 * 8, 38 * 8),
+    ("kw5", 2 * 29 * 16 * 25, 50),
+    ("hand", 2 * 7 * 18, 38),
+];
+
 /// 次元の上限。桁違いの値を書き間違えたときに、確保量で気づく前に止める。
 const MAX_DIM: usize = 4096;
 
@@ -49,17 +78,42 @@ struct Arch {
     l3: usize,
     /// 利きのaccumulatorの幅（ADR-0237）。0なら持たない。
     eff: usize,
+    /// 側のaccumulatorの活性に対の積を掛けるか（ADR-0245）。
+    eff_pair: bool,
+    /// 側の入力の種類（`SIDE_KINDS` の番号）。空ならF2の従来の経路。
+    eff_kinds: Vec<usize>,
 }
 
 fn parse(spec: &str) -> Result<Arch, String> {
-    // 末尾の e<E> を先に切り離す。残りは従来の書式のまま読む
-    let (body, eff) = match spec.split_once('e') {
-        Some((body, e)) => (
-            body,
-            e.parse::<usize>()
-                .map_err(|_| format!("利きの幅が整数でない: {e}"))?,
-        ),
-        None => (spec, 0),
+    // 末尾の e<E>[p][-<種類>[_<種類>…]] を先に切り離す。残りは従来の書式のまま読む
+    let (body, eff, eff_pair, eff_kinds) = match spec.split_once('e') {
+        Some((body, e)) => {
+            let (e, kinds) = match e.split_once('-') {
+                Some((e, k)) => (e, Some(k)),
+                None => (e, None),
+            };
+            let (e, pair) = match e.strip_suffix('p') {
+                Some(e) => (e, true),
+                None => (e, false),
+            };
+            let eff = e
+                .parse::<usize>()
+                .map_err(|_| format!("利きの幅が整数でない: {e}"))?;
+            let kinds = match kinds {
+                None => Vec::new(),
+                Some(k) => k
+                    .split('_')
+                    .map(|name| {
+                        SIDE_KINDS
+                            .iter()
+                            .position(|(n, _, _)| *n == name)
+                            .ok_or_else(|| format!("側の入力の種類が不明: {name}"))
+                    })
+                    .collect::<Result<Vec<_>, _>>()?,
+            };
+            (body, eff, pair, kinds)
+        }
+        None => (spec, 0, false, Vec::new()),
     };
     let parts: Vec<&str> = body.split('x').collect();
     let num = |name: &str, s: &str| -> Result<usize, String> {
@@ -83,6 +137,8 @@ fn parse(spec: &str) -> Result<Arch, String> {
         l2: num("L2", l2)?,
         l3: num("L3", l3)?,
         eff,
+        eff_pair,
+        eff_kinds,
     })
 }
 
@@ -107,6 +163,20 @@ fn validate(a: &Arch) -> Result<(), String> {
     }
     if a.eff != 0 {
         check("利きの幅", a.eff, EFF_MULTIPLE)?;
+    }
+    // 対の積は片視点E/2を出す。連結ベクトルを32の倍数に保つには、E/2も16の倍数が要る
+    if a.eff_pair && !a.eff.is_multiple_of(2 * EFF_MULTIPLE) {
+        return Err(format!(
+            "対の積を掛ける側の幅は{}の倍数にする（{}が渡された）",
+            2 * EFF_MULTIPLE,
+            a.eff
+        ));
+    }
+    let mut seen = a.eff_kinds.clone();
+    seen.sort_unstable();
+    seen.dedup();
+    if seen.len() != a.eff_kinds.len() {
+        return Err("側の入力の種類が重複している".to_string());
     }
     if a.l2 == 0 && a.l3 != 0 {
         return Err("L2を書かずにL3だけ書くことはできない".to_string());
@@ -202,6 +272,42 @@ fn main() {
     )
     .unwrap();
     writeln!(src, "pub const EFF_OUT: usize = {};", arch.eff).unwrap();
+    // 側の入力（ADR-0245）。種類を書かなければF2だけで、対の積も掛けない従来の経路
+    let generic = arch.eff_pair || !arch.eff_kinds.is_empty();
+    let kinds = if arch.eff_kinds.is_empty() {
+        vec![0]
+    } else {
+        arch.eff_kinds.clone()
+    };
+    let eff_in: usize = kinds.iter().map(|&k| SIDE_KINDS[k].1).sum();
+    let eff_max: usize = kinds.iter().map(|&k| SIDE_KINDS[k].2).sum();
+    writeln!(
+        src,
+        "/// 側のaccumulatorの入力を、評価のたびに作り直す経路で持つか（ADR-0245）。\n\
+         /// 偽ならF2を差分で持つ従来の経路（ADR-0237・0242）。"
+    )
+    .unwrap();
+    writeln!(src, "pub const EFF_GENERIC: bool = {generic};").unwrap();
+    writeln!(
+        src,
+        "/// 側のaccumulatorの活性に対の積を掛けるか（ADR-0245）。"
+    )
+    .unwrap();
+    writeln!(src, "pub const EFF_PAIR: bool = {};", arch.eff_pair).unwrap();
+    writeln!(
+        src,
+        "/// 側の入力の種類の番号（`side_feat::KIND_*`）。並びの順に表の行が続く。"
+    )
+    .unwrap();
+    writeln!(src, "pub const EFF_KINDS: &[usize] = &{kinds:?};").unwrap();
+    writeln!(src, "/// 側の特徴の総数（表の行数）。").unwrap();
+    writeln!(src, "pub const EFF_IN: usize = {eff_in};").unwrap();
+    writeln!(
+        src,
+        "/// 1視点で立つ側の特徴の数の上限。学習側はこの数へ詰め物をして揃える。"
+    )
+    .unwrap();
+    writeln!(src, "pub const EFF_MAX_ACTIVE: usize = {eff_max};").unwrap();
     // 次の層へ渡すぶんだけ切り上げる。最後の隠れ層は内積で畳むので
     // 切り上げない（余分なゼロ列を持たない）
     let l2_pad = if arch.l3 == 0 {
