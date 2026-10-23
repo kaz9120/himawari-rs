@@ -523,8 +523,9 @@ pub fn load(r: &mut impl Read) -> Result<(NnueNetwork, String), String> {
     }
     .finish();
     // 利きのaccumulatorは差分の経路でi16に持つ（ADR-0237のD2）。取りうる値が
-    // i16に収まらないネットでは全計算と食い違うので、読み込みで弾く
-    if EFF_OUT != 0 {
+    // i16に収まらないネットでは全計算と食い違うので、読み込みで弾く。表し方を替えた
+    // 構成（ADR-0245）は評価のたびにi32で作り直すので、この制約を持たない
+    if EFF_OUT != 0 && !crate::nnue::EFF_GENERIC {
         let bound = crate::nnue::effect_acc_bound(&net);
         if bound > i64::from(i16::MAX) {
             return Err(format!(
@@ -810,7 +811,7 @@ mod tests {
     /// 収まるネットは読める。
     #[test]
     fn effect_acc_must_fit_in_i16() {
-        if EFF_OUT == 0 {
+        if EFF_OUT == 0 || crate::nnue::EFF_GENERIC {
             return;
         }
         let mut net = NnueNetwork::random(5);

@@ -24,7 +24,9 @@ include!(concat!(env!("OUT_DIR"), "/arch.rs"));
 /// 出す活性は `FT_OUT / 2` 次元になる（ADR-0171）。両視点でその2倍。
 /// 利きのaccumulator（ADR-0237）を持つ構成では、その後ろへ `EFF_OUT` 次元を
 /// 2視点ぶん連結する。`EFF_OUT` が0の既定構成では `FT_OUT` のままである。
-pub const CONCAT: usize = FT_OUT + 2 * EFF_OUT;
+pub const CONCAT: usize = FT_OUT + 2 * EFF_ACT;
+/// 側のaccumulatorが片視点で出す活性の幅。対の積を掛ける構成（ADR-0245）では半分になる。
+pub const EFF_ACT: usize = if EFF_PAIR { EFF_OUT / 2 } else { EFF_OUT };
 /// 連結ベクトルのうち、HalfKPの片視点ぶんの幅。
 pub const HALF: usize = FT_OUT / 2;
 /// 連結ベクトルのうち、利きの活性が始まる位置（ADR-0237）。
@@ -33,8 +35,9 @@ pub const EFF_BASE: usize = FT_OUT;
 pub const EFF_PIECES: usize = 29;
 /// 利き数の段階。0・1・2・3以上の4つ（技巧の3で打ち切り、ADR-0237）。
 pub const EFF_LEVELS: usize = 4;
-/// 利きの特徴の総数。升×乗るもの×自分の利き数×相手の利き数。
-pub const EFF_IN: usize = 81 * EFF_PIECES * EFF_LEVELS * EFF_LEVELS;
+// 側の特徴の総数 `EFF_IN` はbuild.rsが構成名から作る（ADR-0245）。表し方を書かない
+// 構成ではF2だけで、升×乗るもの×自分の利き数×相手の利き数になる
+const _: () = assert!(EFF_GENERIC || EFF_IN == 81 * EFF_PIECES * EFF_LEVELS * EFF_LEVELS);
 /// 評価値スケール（ADR-0036）。
 pub const FV_SCALE: i32 = 16;
 /// 入力特徴の総数。
@@ -646,6 +649,10 @@ static WHITE_CODE: [u16; 512] = {
 #[inline]
 pub fn fill_effect(net: &NnueNetwork, pos: &Position, concat: &mut [u8; CONCAT]) {
     if EFF_OUT == 0 {
+        return;
+    }
+    if EFF_GENERIC {
+        crate::side_feat::fill(net, pos, concat);
         return;
     }
     let counts = effect_counts(pos);
@@ -1306,10 +1313,13 @@ mod tests {
         if EFF_OUT == 0 {
             return;
         }
-        net.eff_b.fill(2000);
+        // 表し方を替えた構成（ADR-0245）は数百の行が立つので、行の和に負けない大きさにする
+        net.eff_b.fill(20000);
         fill_effect(&net, &pos, &mut concat);
+        // 対の積は127×127/128を四捨五入して126が上限になる（`pair_activation`）
+        let top = if EFF_PAIR { 126 } else { 127 };
         assert!(
-            concat[EFF_BASE..].iter().all(|&x| x == 127),
+            concat[EFF_BASE..].iter().all(|&x| x == top),
             "バイアスで飽和する"
         );
         // 第1層の利きの列だけを動かすと評価値が変わる。HalfKPの列は触らない

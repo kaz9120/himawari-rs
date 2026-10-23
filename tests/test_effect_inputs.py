@@ -28,6 +28,10 @@ if not hasattr(himawari, "EFF_IN"):
 
 from hmwr.tools import shadow_flips as sf  # noqa: E402
 
+# 表し方を替えた構成（ADR-0245）。側の活性の片視点の幅は、対の積を掛けると半分になる
+GENERIC = getattr(himawari, "EFF_GENERIC", False)
+EFF_ACT = getattr(himawari, "EFF_ACT", getattr(himawari, "EFF_OUT", 0))
+
 TRAINING = Path(__file__).resolve().parent.parent / "training"
 
 PSV_BYTES = 40
@@ -99,6 +103,8 @@ def python_features(pieces, color):
 
 
 def test_rust_features_match_python():
+    if GENERIC:
+        pytest.skip("Pythonで別に組むのはF2だけ。表し方を替えた構成はRustのテストが対称性を見る")
     records, boards = positions()
     arrays = himawari.extract_batch(records, 0.7, 0, 0, False, True, effect_inputs=True)
     eff_stm, eff_opp = arrays[9], arrays[10]
@@ -117,9 +123,12 @@ def test_features_are_off_unless_asked():
     assert len(arrays[9]) == 0 and len(arrays[10]) == 0
 
 
-@pytest.mark.parametrize("mode", ["f2", "none"])
-def test_quantized_net_matches_the_model(mode, tmp_path):
-    """模型の出力と、書き出したネットの推論側の評価値が一致する（ADR-0237）。"""
+@pytest.mark.parametrize("mode,halfkp", [("f2", True), ("none", True), ("f2", False)])
+def test_quantized_net_matches_the_model(mode, halfkp, tmp_path):
+    """模型の出力と、書き出したネットの推論側の評価値が一致する（ADR-0237）。
+
+    HalfKPを立てない置き換えの群（ADR-0245）も、同じ一致を求める。
+    """
     torch = pytest.importorskip("torch")
     if himawari.EFF_OUT == 0:
         pytest.skip("利きの構成（e<E>）の拡張でだけ測れる")
@@ -129,14 +138,14 @@ def test_quantized_net_matches_the_model(mode, tmp_path):
     from quantize import save_hmwr
 
     torch.manual_seed(3)
-    model = NnueModel(sparse_ft=False, effect_inputs=mode)
+    model = NnueModel(sparse_ft=False, effect_inputs=mode, halfkp_inputs=halfkp)
     with torch.no_grad():
         # 利きの経路が評価値に効く大きさにする。既定の初期値のままでは
         # 量子化の誤差に埋もれ、経路が切れていても一致してしまう
         if mode == "f2":
             model.eff.weight.uniform_(-0.1, 0.1)
         model.eff_bias.uniform_(0.2, 0.8)
-        cols = model.l2.weight[:, -2 * himawari.EFF_OUT :]
+        cols = model.l2.weight[:, -2 * EFF_ACT :]
         cols.uniform_(-1.5, 1.5)
         model.clip_weights()
         # 重みを量子化の格子へ寄せる。残る差は活性の丸め（u8への切り捨てと
@@ -159,7 +168,7 @@ def test_quantized_net_matches_the_model(mode, tmp_path):
         want = model(stm_i, stm_o, opp_i, opp_o, arrays[9], arrays[10]) * SIGMOID_SCALE
         # 利きの活性を0にした出力。経路が効いていることの対照にする
         x = model.transform_both(stm_i, stm_o, opp_i, opp_o, arrays[9], arrays[10])
-        x[:, -2 * himawari.EFF_OUT :] = 0
+        x[:, -2 * EFF_ACT :] = 0
         blind = model.value(x) * SIGMOID_SCALE
 
     path = tmp_path / "eff.hmwr"
@@ -171,8 +180,12 @@ def test_quantized_net_matches_the_model(mode, tmp_path):
     # 重みを格子へ寄せたので、残る差は活性の丸めだけで平均1点前後（歩=90、
     # 2026-10-18の実測で平均0.9〜1.0、最大3〜4）。利きの経路の寄与は平均70点
     # 前後あるので、経路が切れていれば平均誤差がそこまで開く
-    assert err.mean() < 2.0, f"平均誤差 {err.mean():.2f} 最大 {err.max():.2f}"
-    assert err.max() < 8.0, f"最大誤差 {err.max():.2f}"
+    # 側に対の積を掛ける構成（ADR-0245）は、側の活性も積の丸め（1/128刻み）を含む。上で利きの
+    # 列へ置いた±1.5の重みがその丸めを広げるので、特徴を立てない組でも平均3〜4.5点ずれる
+    # （2026-10-23の実測、FT1024で最大12〜13）。経路が切れたときの差は200点前後で、桁が違う
+    mean_tol, max_tol = (6.0, 16.0) if getattr(himawari, "EFF_PAIR", False) else (2.0, 8.0)
+    assert err.mean() < mean_tol, f"平均誤差 {err.mean():.2f} 最大 {err.max():.2f}"
+    assert err.max() < max_tol, f"最大誤差 {err.max():.2f}"
     assert effect.mean() > 10 * err.mean(), (
         f"利きの寄与 {effect.mean():.2f} が量子化の誤差 {err.mean():.2f} に埋もれている"
     )
