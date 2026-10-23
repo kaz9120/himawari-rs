@@ -17,4 +17,4 @@ run = "hmwr build shapes 1024x16x32e64 1024x16x32e64-thermo --tag adr0245"
 
 [[step]]
 id = "match-q"
-run = "hmwr match run adr0245-a2-q --base-build adr0245-1024x16x32e64 --cand-build adr0245-1024x16x32e64-thermo --base-net eff_ctrl --cand-net adr0245_a2 --nodes 300000 --stop pairs:1000 --max-moves 400 --foreground"
+run = "hmwr match run adr0245-a2-q --base-build shape-1024x16x32e64 --cand-build shape-1024x16x32e64-thermo --base-net eff_ctrl --cand-net adr0245_a2 --nodes 300000 --stop pairs:1000 --max-moves 400 --foreground"
