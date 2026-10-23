@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.57.4](https://github.com/kaz9120/himawari-rs/compare/v0.57.3...v0.57.4) (2026-10-23)
+
+
+### その他の変更
+
+* 側のaccumulatorの入力の表し方を構成名で替え、ADR-0245の12案を置く ([#894](https://github.com/kaz9120/himawari-rs/issues/894)) ([3998dca](https://github.com/kaz9120/himawari-rs/commit/3998dca6247bccd0d6b1edc9f7b709c079039744))
+
 ## [0.57.3](https://github.com/kaz9120/himawari-rs/compare/v0.57.2...v0.57.3) (2026-10-22)
 
 
