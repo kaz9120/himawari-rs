@@ -1,0 +1,20 @@
+# ADR-0245 のA1。升・駒・利き2段階（構成 1024x16x32e64-l2）。
+# 1億局面で学習し、原点のeff_ctrl（ADR-0237の統制）と1手30万ノード固定で1,000ペア指す。
+# 学習データは同じ条件なら作り直さないので、どのspecからでも始められる。
+adr = "0245"
+
+[[step]]
+id = "select-dedup"
+run = "hmwr data dedup sel_dedup_100M --in train_7860M_q1 --count 100000000"
+
+[[step]]
+id = "train"
+run = "hmwr net train adr0245_a1 --arch 1024x16x32e64-l2 --data sel_dedup_100M --valid valid_tanuki_dl430_q1 --rank rank_tanuki_210M --seed 0 --notes \"ADR-0245 A1 升・駒・利き2段階\""
+
+[[step]]
+id = "build"
+run = "hmwr build shapes 1024x16x32e64 1024x16x32e64-l2 --tag adr0245"
+
+[[step]]
+id = "match-q"
+run = "hmwr match run adr0245-a1-q --base-build adr0245-1024x16x32e64 --cand-build adr0245-1024x16x32e64-l2 --base-net eff_ctrl --cand-net adr0245_a1 --nodes 300000 --stop pairs:1000 --max-moves 400 --foreground"
