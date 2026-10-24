@@ -123,8 +123,11 @@ def test_features_are_off_unless_asked():
     assert len(arrays[9]) == 0 and len(arrays[10]) == 0
 
 
-@pytest.mark.parametrize("mode,halfkp", [("f2", True), ("none", True), ("f2", False)])
-def test_quantized_net_matches_the_model(mode, halfkp, tmp_path):
+@pytest.mark.parametrize(
+    "mode,halfkp,factorized",
+    [("f2", True, False), ("none", True, False), ("f2", False, False), ("f2", False, True)],
+)
+def test_quantized_net_matches_the_model(mode, halfkp, factorized, tmp_path):
     """模型の出力と、書き出したネットの推論側の評価値が一致する（ADR-0237）。
 
     HalfKPを立てない置き換えの群（ADR-0245）も、同じ一致を求める。
@@ -132,13 +135,15 @@ def test_quantized_net_matches_the_model(mode, halfkp, tmp_path):
     torch = pytest.importorskip("torch")
     if himawari.EFF_OUT == 0:
         pytest.skip("利きの構成（e<E>）の拡張でだけ測れる")
+    if factorized and getattr(himawari, "EFF_KP_BASE", -1) < 0:
+        pytest.skip("側にHalfKPを持つ構成（ADR-0245の習甦方式）でだけ、側のfactorizerを確かめる")
     sys.path.insert(0, str(TRAINING))
     from dataset import to_tensors
     from model import FV_SCALE, SIGMOID_SCALE, NnueModel
     from quantize import save_hmwr
 
     torch.manual_seed(3)
-    model = NnueModel(sparse_ft=False, effect_inputs=mode, halfkp_inputs=halfkp)
+    model = NnueModel(sparse_ft=False, factorized=factorized, effect_inputs=mode, halfkp_inputs=halfkp)
     with torch.no_grad():
         # 利きの経路が評価値に効く大きさにする。既定の初期値のままでは
         # 量子化の誤差に埋もれ、経路が切れていても一致してしまう
@@ -155,6 +160,10 @@ def test_quantized_net_matches_the_model(mode, halfkp, tmp_path):
                 (model.eff_bias, 127), (model.l2.weight, 64), (model.l3.weight, 64),
                 (model.l2.bias, 64 * 127), (model.l3.bias, 64 * 127),
                 (model.out.weight, out_scale), (model.out.bias, SIGMOID_SCALE * FV_SCALE)]
+        # 側に入れたHalfKPのfactorizer（ADR-0245）。畳み込みの取り違えが評価値に出る大きさにする
+        if model.eff_p is not None:
+            model.eff_p.weight.uniform_(-0.1, 0.1)
+            snap.append((model.eff_p.weight, 127))
         for t, scale in snap:
             t.copy_((t * scale).round() / scale)
     model.eval()
@@ -182,8 +191,10 @@ def test_quantized_net_matches_the_model(mode, halfkp, tmp_path):
     # 前後あるので、経路が切れていれば平均誤差がそこまで開く
     # 側に対の積を掛ける構成（ADR-0245）は、側の活性も積の丸め（1/128刻み）を含む。上で利きの
     # 列へ置いた±1.5の重みがその丸めを広げるので、特徴を立てない組でも平均3〜4.5点ずれる
-    # （2026-10-23の実測、FT1024で最大12〜13）。経路が切れたときの差は200点前後で、桁が違う
-    mean_tol, max_tol = (6.0, 16.0) if getattr(himawari, "EFF_PAIR", False) else (2.0, 8.0)
+    # （2026-10-23の実測、FT1024で最大12〜13）。経路が切れたときの差は200点前後で、桁が違う。
+    # 側の幅が1024で対の積を掛ける構成は丸めが512次元ぶん重なり、最大が17点台まで開く
+    # （2026-10-24の実測、1024x16x32e1024p-kp_ke）
+    mean_tol, max_tol = (6.0, 24.0) if getattr(himawari, "EFF_PAIR", False) else (2.0, 8.0)
     assert err.mean() < mean_tol, f"平均誤差 {err.mean():.2f} 最大 {err.max():.2f}"
     assert err.max() < max_tol, f"最大誤差 {err.max():.2f}"
     assert effect.mean() > 10 * err.mean(), (

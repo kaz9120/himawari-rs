@@ -553,5 +553,10 @@ fn himawari(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add("EFF_PAIR", EFF_PAIR)?;
     m.add("EFF_ACT", EFF_ACT)?;
     m.add("EFF_ACTIVE", EFF_ACTIVE)?;
+    // 側の表のうちHalfKPの区画の起点（ADR-0245の習甦方式）。無ければ-1
+    m.add(
+        "EFF_KP_BASE",
+        himawari_engine::side_feat::KP_BASE.map_or(-1, |b| b as i64),
+    )?;
     Ok(())
 }

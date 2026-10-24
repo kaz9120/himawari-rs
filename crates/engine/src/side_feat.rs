@@ -8,7 +8,7 @@
 //! ピンは無視する。その升の駒自身の利きは数えない。ADR-0237のF2と同じ数え方である。
 
 use himawari_core::attacks::attacks;
-use himawari_core::{Bitboard, Color, Piece, PieceType, Square};
+use himawari_core::{Bitboard, Color, Piece, PieceType, Square, bonapiece};
 
 use crate::nnue::{
     CONCAT, EFF_ACT, EFF_BASE, EFF_IN, EFF_KINDS, EFF_MAX_ACTIVE, EFF_OUT, EFF_PAIR, EFF_PIECES,
@@ -29,7 +29,9 @@ pub const KIND_KW5: usize = 8;
 pub const KIND_HAND: usize = 9;
 /// 習甦方式の玉×升×利き（ADR-0245の追記）。升に乗る駒は見ない。
 pub const KIND_KE: usize = 10;
-pub const KINDS: usize = 11;
+/// HalfKP（玉×BonaPiece）を側に入れる（ADR-0245の習甦方式）。主のHalfKPと同じ添字。
+pub const KIND_KP: usize = 11;
+pub const KINDS: usize = 12;
 
 /// 最小の攻め駒の階級の数。なし・歩・香・桂・銀・金と成り駒・角・飛・馬・龍・玉。
 const ATT_CLASSES: usize = 11;
@@ -51,6 +53,7 @@ pub const ROWS: [usize; KINDS] = [
     2 * EFF_PIECES * 16 * 25,
     2 * HAND * HAND_MAX,
     81 * 81 * 16,
+    81 * bonapiece::FE_END as usize,
 ];
 
 /// 種類ごとの、1視点で立つ数の上限。
@@ -66,6 +69,7 @@ pub const MAX_ACTIVE: [usize; KINDS] = [
     50,
     38,
     81,
+    38,
 ];
 
 const _: () = {
@@ -80,6 +84,20 @@ const _: () = {
         max == EFF_MAX_ACTIVE,
         "build.rsの SIDE_KINDS と MAX_ACTIVE が食い違う"
     );
+};
+
+/// 構成の表の中で、HalfKP（`KIND_KP`）が始まる行。含まない構成では `None`。
+/// 学習側は、この区画にだけ玉位置に依らない駒の成分（factorizer、ADR-0066）を足す。
+pub const KP_BASE: Option<usize> = {
+    let (mut base, mut i, mut found) = (0, 0, None);
+    while i < EFF_KINDS.len() {
+        if EFF_KINDS[i] == KIND_KP {
+            found = Some(base);
+        }
+        base += ROWS[EFF_KINDS[i]];
+        i += 1;
+    }
+    found
 };
 
 /// 特徴を作るのに要る盤の情報。升ごとの利き数と最小の攻め駒を、色ごとに1回だけ数える。
@@ -365,6 +383,34 @@ impl SideBoard {
                     push(((kv * 81 + v) * 4 + own) * 4 + opp);
                 }
             }
+            KIND_KP => {
+                // 主のHalfKPと同じ添字（`halfkp_index`）。玉の無い局面では立てない
+                let ks = self.king[ci];
+                if ks.is_none() {
+                    return;
+                }
+                for sq in self.occ {
+                    let pc = self.pc[sq.index()];
+                    if pc.piece_type() == PieceType::KING {
+                        continue;
+                    }
+                    push(
+                        bonapiece::halfkp_index(c, ks, bonapiece::board_bona_piece(c, pc, sq))
+                            as usize,
+                    );
+                }
+                for owner in [Color::Black, Color::White] {
+                    for (hi, &pt) in PieceType::HAND_KINDS.iter().enumerate() {
+                        for i in 1..=u32::from(self.hand[owner.index()][hi]) {
+                            push(bonapiece::halfkp_index(
+                                c,
+                                ks,
+                                bonapiece::hand_bona_piece(c, owner, pt, i),
+                            ) as usize);
+                        }
+                    }
+                }
+            }
             _ => unreachable!("側の入力の種類が不明: {k}"),
         }
     }
@@ -484,6 +530,22 @@ mod tests {
                 let mut got = Vec::new();
                 sb.kind(KIND_F2, c, 0, &mut got);
                 let mut want = want.to_vec();
+                want.sort_unstable();
+                got.sort_unstable();
+                assert_eq!(got, want, "{}", pos.to_sfen());
+            }
+        }
+    }
+
+    #[test]
+    fn kp_kind_matches_halfkp_active() {
+        for pos in positions() {
+            let sb = SideBoard::new(&pos);
+            for c in [Color::Black, Color::White] {
+                let mut want = Vec::new();
+                crate::nnue::halfkp_active(&pos, c, &mut want);
+                let mut got = Vec::new();
+                sb.kind(KIND_KP, c, 0, &mut got);
                 want.sort_unstable();
                 got.sort_unstable();
                 assert_eq!(got, want, "{}", pos.to_sfen());

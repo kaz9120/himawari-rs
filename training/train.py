@@ -549,6 +549,8 @@ def main():
     # 利きのaccumulator（ADR-0237）。統制群の表は凍結してあり、下で外れる
     if model.eff is not None:
         dense_params.extend([model.eff.weight, model.eff_bias])
+    if model.eff_p is not None:
+        dense_params.append(model.eff_p.weight)
     ft_params = [model.ft.weight]
     if model.ft_p is not None:
         ft_params.append(model.ft_p.weight)
