@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.57.6](https://github.com/kaz9120/himawari-rs/compare/v0.57.5...v0.57.6) (2026-10-24)
+
+
+### その他の変更
+
+* 側の入力にHalfKPを足し、純粋な習甦形式のA12と統制のA13を置く ([#916](https://github.com/kaz9120/himawari-rs/issues/916)) ([ff25cd6](https://github.com/kaz9120/himawari-rs/commit/ff25cd67adb4ac28eee04c845b5bd6984dbeaf42))
+
 ## [0.57.5](https://github.com/kaz9120/himawari-rs/compare/v0.57.4...v0.57.5) (2026-10-24)
 
 
