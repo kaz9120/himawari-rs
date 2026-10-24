@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.57.5](https://github.com/kaz9120/himawari-rs/compare/v0.57.4...v0.57.5) (2026-10-24)
+
+
+### その他の変更
+
+* 習甦方式の玉×升×利きを側の入力の種類に足し、ADR-0245へ2案を追記する ([#912](https://github.com/kaz9120/himawari-rs/issues/912)) ([9390d3c](https://github.com/kaz9120/himawari-rs/commit/9390d3c8b72881408ede56caf1a7e44a9239a039))
+
 ## [0.57.4](https://github.com/kaz9120/himawari-rs/compare/v0.57.3...v0.57.4) (2026-10-23)
 
 
