@@ -301,14 +301,10 @@ mod tests {
                 .collect();
             let mut got = vec![0u8; SUB_OUT];
             forward(&net, &inp, &mut got);
-            for o in 0..SUB_OUT {
+            for (o, &g) in got.iter().enumerate() {
                 let v = b2[o] + (0..HID).map(|j| w2[o * HID + j] * h[j]).sum::<f32>();
                 let want = (v.clamp(0.0, 1.0) * 127.0).round() as i32;
-                assert!(
-                    (i32::from(got[o]) - want).abs() <= 1,
-                    "{o}: {} {want}",
-                    got[o]
-                );
+                assert!((i32::from(g) - want).abs() <= 1, "{o}: {g} {want}");
             }
         }
     }
