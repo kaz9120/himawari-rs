@@ -315,6 +315,8 @@ impl NnueState {
                 self.check_effect(net, p);
             }
         }
+        // 玉の近傍の部分モデル（ADR-0246）。持たない構成では何もしない
+        crate::submodel::fill(&net.sub, pos, &mut concat);
         #[cfg(feature = "actdump")]
         crate::actdump::record(&concat);
         nnue_simd::forward_hidden(net, &concat)

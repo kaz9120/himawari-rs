@@ -31,6 +31,13 @@ from hmwr.tools import shadow_flips as sf  # noqa: E402
 # 表し方を替えた構成（ADR-0245）。側の活性の片視点の幅は、対の積を掛けると半分になる
 GENERIC = getattr(himawari, "EFF_GENERIC", False)
 EFF_ACT = getattr(himawari, "EFF_ACT", getattr(himawari, "EFF_OUT", 0))
+# 玉の近傍の部分モデル（ADR-0246）。連結ベクトルの末尾に SUB_SLOT 列を持ち、利きの列はその手前に並ぶ
+SUB_OUT = getattr(himawari, "SUB_OUT", 0)
+SUB_LEN = getattr(himawari, "SUB_LEN", 0) if SUB_OUT else 0
+SUB_SLOT = getattr(himawari, "SUB_SLOT", 0)
+_EFF_END = himawari.CONCAT - SUB_SLOT
+EFF_COLS = slice(_EFF_END - 2 * EFF_ACT, _EFF_END)
+SUB_COLS = slice(_EFF_END, _EFF_END + 2 * SUB_OUT)
 
 TRAINING = Path(__file__).resolve().parent.parent / "training"
 
@@ -108,10 +115,12 @@ def test_rust_features_match_python():
     records, boards = positions()
     arrays = himawari.extract_batch(records, 0.7, 0, 0, False, True, effect_inputs=True)
     eff_stm, eff_opp = arrays[9], arrays[10]
-    assert len(eff_stm) == len(boards) * SQUARES
+    # 部分モデル（ADR-0246）を持つ構成では、1行の後ろに玉の窓がつながる
+    row = SQUARES + SUB_LEN
+    assert len(eff_stm) == len(boards) * row
     for i, (pieces, turn) in enumerate(boards):
-        got_stm = eff_stm[i * SQUARES : (i + 1) * SQUARES].tolist()
-        got_opp = eff_opp[i * SQUARES : (i + 1) * SQUARES].tolist()
+        got_stm = eff_stm[i * row : i * row + SQUARES].tolist()
+        got_opp = eff_opp[i * row : i * row + SQUARES].tolist()
         assert got_stm == python_features(pieces, turn), f"手番視点 {i}"
         assert got_opp == python_features(pieces, 1 - turn), f"非手番視点 {i}"
 
@@ -150,8 +159,14 @@ def test_quantized_net_matches_the_model(mode, halfkp, factorized, tmp_path):
         if mode == "f2":
             model.eff.weight.uniform_(-0.1, 0.1)
         model.eff_bias.uniform_(0.2, 0.8)
-        cols = model.l2.weight[:, -2 * EFF_ACT :]
+        cols = model.l2.weight[:, EFF_COLS]
         cols.uniform_(-1.5, 1.5)
+        # 部分モデル（ADR-0246）の列も、経路が切れていれば分かる大きさにする
+        if model.sub is not None:
+            model.l2.weight[:, SUB_COLS].uniform_(-1.5, 1.5)
+            # 既定の初期値では出力の多くが0でクリップされ、寄与が小さい。中間と出力を0〜1の中ほどへ寄せる
+            model.sub.l1.bias.uniform_(0.2, 0.8)
+            model.sub.l2.bias.uniform_(0.2, 0.8)
         model.clip_weights()
         # 重みを量子化の格子へ寄せる。残る差は活性の丸め（u8への切り捨てと
         # 隠れ層の >>6）だけになり、利きの経路の取り違えと区別しやすくなる
@@ -177,8 +192,11 @@ def test_quantized_net_matches_the_model(mode, halfkp, factorized, tmp_path):
         want = model(stm_i, stm_o, opp_i, opp_o, arrays[9], arrays[10]) * SIGMOID_SCALE
         # 利きの活性を0にした出力。経路が効いていることの対照にする
         x = model.transform_both(stm_i, stm_o, opp_i, opp_o, arrays[9], arrays[10])
-        x[:, -2 * EFF_ACT :] = 0
+        x_sub = x.clone()
+        x[:, EFF_COLS] = 0
         blind = model.value(x) * SIGMOID_SCALE
+        x_sub[:, SUB_COLS] = 0
+        blind_sub = model.value(x_sub) * SIGMOID_SCALE
 
     path = tmp_path / "eff.hmwr"
     save_hmwr(model, f"test {mode}", str(path))
@@ -200,6 +218,11 @@ def test_quantized_net_matches_the_model(mode, halfkp, factorized, tmp_path):
     assert effect.mean() > 10 * err.mean(), (
         f"利きの寄与 {effect.mean():.2f} が量子化の誤差 {err.mean():.2f} に埋もれている"
     )
+    if SUB_OUT:
+        sub = (blind_sub - want).abs()
+        assert sub.mean() > 10 * err.mean(), (
+            f"部分モデルの寄与 {sub.mean():.2f} が量子化の誤差 {err.mean():.2f} に埋もれている"
+        )
 
 
 def test_groups_start_from_the_same_weights():

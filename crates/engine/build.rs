@@ -21,7 +21,11 @@
 //! 1024x16x32e64-thermo        入力を温度計の形にする
 //! 1024x16x32e64-f2_threat     F2に脅威の特徴を足す
 //! 1024x16x32e1024p-f2_hand    幅1024で対の積を掛け、F2と持ち駒を入れる
+//! 1024x16x32e64k8             玉の近傍の部分モデル（出力8）を足す（ADR-0246）
 //! ```
+//!
+//! `k<K>` は `p` の後ろ、種類の前に書く（`e64pk8-f2_hand`）。部分モデルは
+//! 側のaccumulatorと別の入口で、連結ベクトルの末尾に両玉ぶんの出力が並ぶ。
 //!
 //! 種類は `_` でつなぐ（構成名はビルドやネットの名前に入るので、`hmwr` が名前に許す文字に限る）。
 //! 表し方を書かない `e<E>` はF2で、従来の差分の経路を通る。表し方か `p` を書くと、
@@ -84,15 +88,25 @@ struct Arch {
     eff_pair: bool,
     /// 側の入力の種類（`SIDE_KINDS` の番号）。空ならF2の従来の経路。
     eff_kinds: Vec<usize>,
+    /// 玉の近傍の部分モデルの出力の幅（ADR-0246）。0なら持たない。
+    sub: usize,
 }
 
 fn parse(spec: &str) -> Result<Arch, String> {
-    // 末尾の e<E>[p][-<種類>[_<種類>…]] を先に切り離す。残りは従来の書式のまま読む
-    let (body, eff, eff_pair, eff_kinds) = match spec.split_once('e') {
+    // 末尾の e<E>[p][k<K>][-<種類>[_<種類>…]] を先に切り離す。残りは従来の書式のまま読む
+    let (body, eff, eff_pair, eff_kinds, sub) = match spec.split_once('e') {
         Some((body, e)) => {
             let (e, kinds) = match e.split_once('-') {
                 Some((e, k)) => (e, Some(k)),
                 None => (e, None),
+            };
+            let (e, sub) = match e.split_once('k') {
+                Some((e, k)) => (
+                    e,
+                    k.parse::<usize>()
+                        .map_err(|_| format!("部分モデルの幅が整数でない: {k}"))?,
+                ),
+                None => (e, 0),
             };
             let (e, pair) = match e.strip_suffix('p') {
                 Some(e) => (e, true),
@@ -113,9 +127,9 @@ fn parse(spec: &str) -> Result<Arch, String> {
                     })
                     .collect::<Result<Vec<_>, _>>()?,
             };
-            (body, eff, pair, kinds)
+            (body, eff, pair, kinds, sub)
         }
-        None => (spec, 0, false, Vec::new()),
+        None => (spec, 0, false, Vec::new(), 0),
     };
     let parts: Vec<&str> = body.split('x').collect();
     let num = |name: &str, s: &str| -> Result<usize, String> {
@@ -141,6 +155,7 @@ fn parse(spec: &str) -> Result<Arch, String> {
         eff,
         eff_pair,
         eff_kinds,
+        sub,
     })
 }
 
@@ -172,6 +187,12 @@ fn validate(a: &Arch) -> Result<(), String> {
             "対の積を掛ける側の幅は{}の倍数にする（{}が渡された）",
             2 * EFF_MULTIPLE,
             a.eff
+        ));
+    }
+    if a.sub > 64 {
+        return Err(format!(
+            "部分モデルの幅は64以下にする（{}が渡された）",
+            a.sub
         ));
     }
     let mut seen = a.eff_kinds.clone();
@@ -310,6 +331,12 @@ fn main() {
     )
     .unwrap();
     writeln!(src, "pub const EFF_MAX_ACTIVE: usize = {eff_max};").unwrap();
+    writeln!(
+        src,
+        "/// 玉の近傍の部分モデルの出力の幅（片玉、ADR-0246）。0なら持たない。"
+    )
+    .unwrap();
+    writeln!(src, "pub const SUB_OUT: usize = {};", arch.sub).unwrap();
     // 次の層へ渡すぶんだけ切り上げる。最後の隠れ層は内積で畳むので
     // 切り上げない（余分なゼロ列を持たない）
     let l2_pad = if arch.l3 == 0 {

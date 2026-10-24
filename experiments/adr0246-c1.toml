@@ -1,0 +1,20 @@
+# ADR-0246 のC1。F2に玉の近傍5×5の部分モデルを足す（構成 1024x16x32e64k8）。
+# 1億局面で学習し、原点のeff_ctrl（ADR-0237の統制）と1手30万ノード固定で1,000ペア指す。
+# 条件はADR-0245と同じで、A0（F2だけ）とA9（窓を線形に足す）と並べて読む。
+adr = "0246"
+
+[[step]]
+id = "select-dedup"
+run = "hmwr data dedup sel_dedup_100M --in train_7860M_q1 --count 100000000"
+
+[[step]]
+id = "train"
+run = "hmwr net train adr0246_c1 --arch 1024x16x32e64k8 --data sel_dedup_100M --valid valid_tanuki_dl430_q1 --rank rank_tanuki_210M --seed 0 --notes \"ADR-0246 C1 F2と玉の近傍5×5の部分モデル\""
+
+[[step]]
+id = "build"
+run = "hmwr build shapes 1024x16x32e64 1024x16x32e64k8 --tag adr0246"
+
+[[step]]
+id = "match-q"
+run = "hmwr match run adr0246-c1-q --base-build shape-1024x16x32e64 --cand-build shape-1024x16x32e64k8 --base-net eff_ctrl --cand-net adr0246_c1 --nodes 300000 --stop pairs:1000 --max-moves 400 --foreground"

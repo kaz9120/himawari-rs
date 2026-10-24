@@ -13,8 +13,9 @@ use std::io::{Read, Write};
 
 use crate::nnue::{
     ARCH, CONCAT, EFF_IN, EFF_OUT, FT_IN, FT_OUT, FtWeight, HALF, L1_OUT, L1_PAD, L2_OUT, L2_PAD,
-    L3_OUT, LAST_HIDDEN, NnueNetwork, ft_w_from_i16, pad_rows,
+    L3_OUT, LAST_HIDDEN, NnueNetwork, SUB_OUT, ft_w_from_i16, pad_rows,
 };
+use crate::submodel::SUB_PARAMS;
 
 const MAGIC: &[u8; 8] = b"HMWRNNUE";
 /// 隠れ層を3つ持つ4層構成の版（ADR-0127）。
@@ -41,22 +42,42 @@ const FORMAT_VERSION_DEEP_PAIR: u32 = 10;
 /// 入ったらそちらへ移す。
 const FORMAT_VERSION_TWO_HIDDEN_I8_PAIR_EFF: u32 = 11;
 const FORMAT_VERSION_DEEP_I8_PAIR_EFF: u32 = 12;
+/// 玉の近傍の部分モデルを持つ版（ADR-0246）。版11・版12の寸法の後ろに部分モデルの
+/// 出力の幅を足し、利きの重みの後ろに部分モデルの重み（学習側の形のf32）を置く。
+const FORMAT_VERSION_TWO_HIDDEN_I8_PAIR_EFF_SUB: u32 = 13;
+const FORMAT_VERSION_DEEP_I8_PAIR_EFF_SUB: u32 = 14;
 
 /// 書き出しに使う版。層の数で決まる。FT重みはi8で書く（ADR-0138）。
 /// FT重みをi16で持つ版9・版10は、読み込みだけを受け付ける。積の有無は
 /// ビルドで固定なので、このブランチは対応する版だけを書き、他は読まない。
-const FORMAT_VERSION: u32 = match (L3_OUT != 0, EFF_OUT != 0) {
-    (true, false) => FORMAT_VERSION_DEEP_I8_PAIR,
-    (false, false) => FORMAT_VERSION_TWO_HIDDEN_I8_PAIR,
-    (true, true) => FORMAT_VERSION_DEEP_I8_PAIR_EFF,
-    (false, true) => FORMAT_VERSION_TWO_HIDDEN_I8_PAIR_EFF,
+const FORMAT_VERSION: u32 = match (L3_OUT != 0, EFF_OUT != 0, SUB_OUT != 0) {
+    (true, false, _) => FORMAT_VERSION_DEEP_I8_PAIR,
+    (false, false, _) => FORMAT_VERSION_TWO_HIDDEN_I8_PAIR,
+    (true, true, false) => FORMAT_VERSION_DEEP_I8_PAIR_EFF,
+    (false, true, false) => FORMAT_VERSION_TWO_HIDDEN_I8_PAIR_EFF,
+    (true, true, true) => FORMAT_VERSION_DEEP_I8_PAIR_EFF_SUB,
+    (false, true, true) => FORMAT_VERSION_TWO_HIDDEN_I8_PAIR_EFF_SUB,
 };
+
+// 構成名の `k<K>` は `e<E>` の後ろにしか書けないので、部分モデルは利きのaccumulatorと組で持つ
+const _: () = assert!(SUB_OUT == 0 || EFF_OUT != 0);
 
 /// その版が利きのaccumulatorを持つか（ADR-0237）。
 const fn version_is_effect(v: u32) -> bool {
     matches!(
         v,
-        FORMAT_VERSION_TWO_HIDDEN_I8_PAIR_EFF | FORMAT_VERSION_DEEP_I8_PAIR_EFF
+        FORMAT_VERSION_TWO_HIDDEN_I8_PAIR_EFF
+            | FORMAT_VERSION_DEEP_I8_PAIR_EFF
+            | FORMAT_VERSION_TWO_HIDDEN_I8_PAIR_EFF_SUB
+            | FORMAT_VERSION_DEEP_I8_PAIR_EFF_SUB
+    )
+}
+
+/// その版が玉の近傍の部分モデルを持つか（ADR-0246）。
+const fn version_is_sub(v: u32) -> bool {
+    matches!(
+        v,
+        FORMAT_VERSION_TWO_HIDDEN_I8_PAIR_EFF_SUB | FORMAT_VERSION_DEEP_I8_PAIR_EFF_SUB
     )
 }
 
@@ -80,6 +101,8 @@ const fn version_is_ft_i8(v: u32) -> bool {
             | FORMAT_VERSION_DEEP_I8_PAIR
             | FORMAT_VERSION_TWO_HIDDEN_I8_PAIR_EFF
             | FORMAT_VERSION_DEEP_I8_PAIR_EFF
+            | FORMAT_VERSION_TWO_HIDDEN_I8_PAIR_EFF_SUB
+            | FORMAT_VERSION_DEEP_I8_PAIR_EFF_SUB
     )
 }
 
@@ -94,6 +117,8 @@ const fn version_is_pair(v: u32) -> bool {
             | FORMAT_VERSION_DEEP_PAIR
             | FORMAT_VERSION_TWO_HIDDEN_I8_PAIR_EFF
             | FORMAT_VERSION_DEEP_I8_PAIR_EFF
+            | FORMAT_VERSION_TWO_HIDDEN_I8_PAIR_EFF_SUB
+            | FORMAT_VERSION_DEEP_I8_PAIR_EFF_SUB
     )
 }
 
@@ -112,6 +137,17 @@ fn require_effect(eff: [usize; 2]) -> Result<(), String> {
     Err(format!(
         "effect accumulator mismatch (ADR-0237): file [features, width] = {eff:?}, \
          build {want:?}; build with HIMAWARI_ARCH=...e<width> for effect nets"
+    ))
+}
+
+/// 部分モデルの出力の幅がビルドと合うかを確かめる（ADR-0246）。持たないファイルは0。
+fn require_sub(sub: usize) -> Result<(), String> {
+    if sub == SUB_OUT {
+        return Ok(());
+    }
+    Err(format!(
+        "king-window submodel mismatch (ADR-0246): file width {sub}, build {SUB_OUT}; \
+         build with HIMAWARI_ARCH=...k<width> for submodel nets"
     ))
 }
 
@@ -153,6 +189,10 @@ fn weight_bytes(net: &NnueNetwork) -> Vec<u8> {
     }
     // 利きのaccumulator（ADR-0237）。持たない構成では空なので何も書かない
     for &x in net.eff_b.iter().chain(&net.eff_w) {
+        v.extend_from_slice(&x.to_le_bytes());
+    }
+    // 部分モデル（ADR-0246）。持たない構成では空
+    for &x in &net.sub.raw {
         v.extend_from_slice(&x.to_le_bytes());
     }
 
@@ -207,6 +247,9 @@ pub fn save(net: &NnueNetwork, lineage: &str, w: &mut impl Write) -> std::io::Re
         for dim in [EFF_IN, EFF_OUT] {
             w.write_all(&(dim as u32).to_le_bytes())?;
         }
+    }
+    if SUB_OUT != 0 {
+        w.write_all(&(SUB_OUT as u32).to_le_bytes())?;
     }
     let lb = lineage.as_bytes();
     w.write_all(&(lb.len() as u32).to_le_bytes())?;
@@ -379,6 +422,8 @@ struct Meta {
     version: u32,
     dims: Dims,
     eff: [usize; 2],
+    /// 部分モデルの出力の幅（ADR-0246）。持たない版では0。
+    sub: usize,
     lineage: String,
     hash: u64,
 }
@@ -399,12 +444,14 @@ fn read_meta(r: &mut impl Read) -> Result<Meta, String> {
         | FORMAT_VERSION_DEEP_I8
         | FORMAT_VERSION_DEEP_I8_PAIR
         | FORMAT_VERSION_DEEP_PAIR
-        | FORMAT_VERSION_DEEP_I8_PAIR_EFF => [u()?, u()?, u()?, u()?, u()?],
+        | FORMAT_VERSION_DEEP_I8_PAIR_EFF
+        | FORMAT_VERSION_DEEP_I8_PAIR_EFF_SUB => [u()?, u()?, u()?, u()?, u()?],
         FORMAT_VERSION_TWO_HIDDEN
         | FORMAT_VERSION_TWO_HIDDEN_I8
         | FORMAT_VERSION_TWO_HIDDEN_I8_PAIR
         | FORMAT_VERSION_TWO_HIDDEN_PAIR
-        | FORMAT_VERSION_TWO_HIDDEN_I8_PAIR_EFF => [u()?, u()?, u()?, u()?, 0],
+        | FORMAT_VERSION_TWO_HIDDEN_I8_PAIR_EFF
+        | FORMAT_VERSION_TWO_HIDDEN_I8_PAIR_EFF_SUB => [u()?, u()?, u()?, u()?, 0],
         FORMAT_VERSION_UNIFORM_HIDDEN => {
             let d = [u()?, u()?, u()?];
             [d[0], d[1], d[2], d[2], 0]
@@ -416,6 +463,7 @@ fn read_meta(r: &mut impl Read) -> Result<Meta, String> {
     } else {
         [0, 0]
     };
+    let sub = if version_is_sub(version) { u()? } else { 0 };
     let llen = read_u32(r)? as usize;
     if llen > 4096 {
         return Err("lineage is too long".to_string());
@@ -432,6 +480,7 @@ fn read_meta(r: &mut impl Read) -> Result<Meta, String> {
         version,
         dims,
         eff,
+        sub,
         lineage,
         hash: expect_hash,
     })
@@ -442,6 +491,7 @@ fn read_header(r: &mut impl Read) -> Result<(u32, Dims, String, Vec<u8>), String
     let meta = read_meta(r)?;
     // resizeの経路は利きの重みを写さない。利きのネットは `load` で読む
     require_effect(meta.eff)?;
+    require_sub(meta.sub)?;
     let mut body = Vec::new();
     r.read_to_end(&mut body)
         .map_err(|e| format!("read failed: {e}"))?;
@@ -461,11 +511,13 @@ pub fn load(r: &mut impl Read) -> Result<(NnueNetwork, String), String> {
         version,
         dims,
         eff,
+        sub,
         lineage,
         hash: expect_hash,
     } = read_meta(r)?;
     require_pair(version)?;
     require_effect(eff)?;
+    require_sub(sub)?;
     let expect = [FT_IN, FT_OUT, L1_OUT, L2_OUT, L3_OUT];
     if dims != expect {
         return Err(format!(
@@ -486,6 +538,12 @@ pub fn load(r: &mut impl Read) -> Result<(NnueNetwork, String), String> {
     };
     let eff_b = cur.i16v(EFF_OUT)?;
     let eff_w = cur.i16v(EFF_IN * EFF_OUT)?;
+    let sub = crate::submodel::SubNet::from_raw(
+        cur.i32v(SUB_PARAMS)?
+            .into_iter()
+            .map(|x| f32::from_bits(x as u32))
+            .collect(),
+    );
     let b2 = cur.i32v(L1_OUT)?;
     let w2 = cur.i8v(L1_OUT * CONCAT)?;
     let (b3, w3) = if L2_OUT != 0 {
@@ -520,6 +578,7 @@ pub fn load(r: &mut impl Read) -> Result<(NnueNetwork, String), String> {
         b_out,
         eff_w,
         eff_b,
+        sub,
     }
     .finish();
     // 利きのaccumulatorは差分の経路でi16に持つ（ADR-0237のD2）。取りうる値が
@@ -707,6 +766,7 @@ pub fn load_resized_with_dims(
             b_out,
             eff_w: Vec::new(),
             eff_b: Vec::new(),
+            sub: crate::submodel::SubNet::default(),
         }
         .finish(),
         format!("{lineage} / resized to {ARCH}"),
@@ -734,6 +794,7 @@ mod tests {
         assert_eq!(net.w4, loaded.w4);
         assert_eq!(net.eff_w, loaded.eff_w);
         assert_eq!(net.eff_b, loaded.eff_b);
+        assert_eq!(net.sub.raw, loaded.sub.raw);
         assert_eq!(net.b4, loaded.b4);
         // 隠れ層2はL1_PAD幅のまま往復する（ゼロ埋め列も含めて一致）
         assert_eq!(net.w3, loaded.w3);

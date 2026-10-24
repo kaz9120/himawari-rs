@@ -8,11 +8,11 @@ use himawari_core::packed_sfen::{PSV_BYTES, PackedSfenValue, unpack};
 use himawari_engine::nnue::{
     ARCH, CONCAT, EFF_ACT, EFF_GENERIC, EFF_IN, EFF_MAX_ACTIVE, EFF_OUT, EFF_PAIR, EFFECT_LEN,
     FT_IN, FT_OUT, L1_OUT, L1_PAD, L2_OUT, L2_PAD, L3_OUT, LAST_HIDDEN, MOVE_FROM_CLASSES,
-    MOVE_NONE, MOVE_TO_CLASSES, NnueNetwork, effect_active, effect_counts, effect_labels,
+    MOVE_NONE, MOVE_TO_CLASSES, NnueNetwork, SUB_OUT, effect_active, effect_counts, effect_labels,
     evaluate_scalar, halfkp_active, move_labels,
 };
-use himawari_engine::nnue_io;
 use himawari_engine::posgen::{chunk_specs, generate_chunk};
+use himawari_engine::{nnue_io, submodel};
 
 const SIGMOID_SCALE: f32 = 600.0;
 /// 評価値スケール（ADR-0036）。量子化を戻すのに使う
@@ -77,7 +77,7 @@ fn extract_one(
     let (move_from, move_to) = move_labels(rec.move16, stm);
     // posが生きているあいだに計算する。展開し直すと局面を2度作ることになる
     let effect = effect.then(|| effect_labels(&pos));
-    let eff_inputs = eff_inputs.then(|| effect_inputs(&pos));
+    let eff_inputs = eff_inputs.then(|| side_inputs(&pos));
 
     Some(Sample {
         stm: stm_feats,
@@ -109,6 +109,21 @@ fn effect_inputs(pos: &himawari_core::Position) -> (Vec<u32>, Vec<u32>) {
     effect_active(pos, stm, &counts, &mut a);
     effect_active(pos, stm.flip(), &counts, &mut b);
     (a.to_vec(), b.to_vec())
+}
+
+/// 側の入力特徴の後ろへ、その視点の玉の窓（ADR-0246）を `SUB_LEN` 個つなぐ。
+/// 学習側は1行を `EFF_ACTIVE` 個と `SUB_LEN` 個に割って使う。持たない構成では何もしない。
+fn side_inputs(pos: &himawari_core::Position) -> (Vec<u32>, Vec<u32>) {
+    let (mut a, mut b) = effect_inputs(pos);
+    if SUB_OUT != 0 {
+        let stm = pos.side_to_move();
+        let mut w = [0u16; submodel::SUB_LEN];
+        for (v, c) in [(&mut a, stm), (&mut b, stm.flip())] {
+            submodel::inputs(pos, c, &mut w);
+            v.extend(w.iter().map(|&x| u32::from(x)));
+        }
+    }
+    (a, b)
 }
 
 #[pyfunction]
@@ -353,7 +368,7 @@ fn check_len(name: &str, got: usize, want: usize) -> PyResult<()> {
 }
 
 #[pyfunction]
-#[pyo3(signature = (path, lineage, ft_w, ft_b, w2, b2, w3, b3, w_out, b_out, w4=None, b4=None, eff_w=None, eff_b=None))]
+#[pyo3(signature = (path, lineage, ft_w, ft_b, w2, b2, w3, b3, w_out, b_out, w4=None, b4=None, eff_w=None, eff_b=None, sub_w=None))]
 // 引数の並びがそのままPython側の呼び出し規約になる（上のsignature）。層ごとの
 // 重みとバイアスを構造体へまとめるには、受け渡す型をpyclassにしてquantize.pyの
 // 呼び出しも書き換えることになるので、平らな引数で受ける
@@ -375,6 +390,8 @@ fn save_hmwr(
     // 利きのaccumulatorを持つ構成でだけ渡す（ADR-0237）
     eff_w: Option<Vec<i16>>,
     eff_b: Option<Vec<i16>>,
+    // 玉の近傍の部分モデルを持つ構成でだけ渡す（ADR-0246）。学習側の形のf32
+    sub_w: Option<Vec<f32>>,
 ) -> PyResult<()> {
     check_len("ft_w", ft_w.len(), FT_IN * FT_OUT)?;
     // 学習側は常にi16で渡す。i8ビルドでは範囲検査を通してから格納する
@@ -407,6 +424,8 @@ fn save_hmwr(
     let eff_b = eff_b.unwrap_or_default();
     check_len("eff_w", eff_w.len(), EFF_IN * EFF_OUT)?;
     check_len("eff_b", eff_b.len(), EFF_OUT)?;
+    let sub_w = sub_w.unwrap_or_default();
+    check_len("sub_w", sub_w.len(), submodel::SUB_PARAMS)?;
     let net = NnueNetwork {
         ft_w,
         ft_b,
@@ -422,6 +441,7 @@ fn save_hmwr(
         b_out,
         eff_w,
         eff_b,
+        sub: submodel::SubNet::from_raw(sub_w),
     }
     .finish();
     let mut f = std::fs::File::create(path)
@@ -483,6 +503,7 @@ fn load_hmwr<'py>(py: Python<'py>, path: &str) -> PyResult<Bound<'py, PyDict>> {
         let scaled: Vec<f32> = v.iter().map(|&x| f32::from(x) / 127.0).collect();
         d.set_item(key, scaled.into_pyarray(py))?;
     }
+    d.set_item("sub_w", net.sub.raw.clone().into_pyarray(py))?;
     d.set_item("lineage", lineage)?;
     d.set_item(
         "src_arch",
@@ -553,6 +574,22 @@ fn himawari(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add("EFF_PAIR", EFF_PAIR)?;
     m.add("EFF_ACT", EFF_ACT)?;
     m.add("EFF_ACTIVE", EFF_ACTIVE)?;
+    // 玉の近傍の部分モデル（ADR-0246）。SUB_OUTが0なら持たない
+    m.add("SUB_OUT", SUB_OUT)?;
+    m.add("SUB_LEN", submodel::SUB_LEN)?;
+    m.add("SUB_SLOT", submodel::SUB_SLOT)?;
+    m.add("SUB_WIN", submodel::WIN)?;
+    m.add("SUB_TOKENS", submodel::TOKENS)?;
+    m.add("SUB_EMB", submodel::EMB)?;
+    m.add("SUB_EXTRA", submodel::EXTRA)?;
+    m.add("SUB_HID", submodel::HID)?;
+    m.add(
+        "SUB_HAND_SCALE",
+        himawari_core::PieceType::HAND_KINDS
+            .iter()
+            .map(|&pt| submodel::hand_scale(pt))
+            .collect::<Vec<f32>>(),
+    )?;
     // 側の表のうちHalfKPの区画の起点（ADR-0245の習甦方式）。無ければ-1
     m.add(
         "EFF_KP_BASE",

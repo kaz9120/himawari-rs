@@ -24,7 +24,8 @@ include!(concat!(env!("OUT_DIR"), "/arch.rs"));
 /// 出す活性は `FT_OUT / 2` 次元になる（ADR-0171）。両視点でその2倍。
 /// 利きのaccumulator（ADR-0237）を持つ構成では、その後ろへ `EFF_OUT` 次元を
 /// 2視点ぶん連結する。`EFF_OUT` が0の既定構成では `FT_OUT` のままである。
-pub const CONCAT: usize = FT_OUT + 2 * EFF_ACT;
+/// 玉の近傍の部分モデル（ADR-0246）を持つ構成では、さらに末尾へ両玉の出力が続く。
+pub const CONCAT: usize = FT_OUT + 2 * EFF_ACT + crate::submodel::SUB_SLOT;
 /// 側のaccumulatorが片視点で出す活性の幅。対の積を掛ける構成（ADR-0245）では半分になる。
 pub const EFF_ACT: usize = if EFF_PAIR { EFF_OUT / 2 } else { EFF_OUT };
 /// 連結ベクトルのうち、HalfKPの片視点ぶんの幅。
@@ -88,6 +89,8 @@ pub struct NnueNetwork {
     /// `EFF_OUT` が0の構成では空。
     pub eff_w: Vec<i16>,
     pub eff_b: Vec<i16>,
+    /// 玉の近傍の部分モデル（ADR-0246）。持たない構成では空。
+    pub sub: crate::submodel::SubNet,
 }
 
 /// 出力層の入力次元。層を1つ挟むかで変わる。
@@ -179,10 +182,12 @@ impl NnueNetwork {
             b_out: 0,
             eff_w: Vec::new(),
             eff_b: Vec::new(),
+            sub: crate::submodel::SubNet::default(),
         };
         // 利きの重みは最後に引く。既定構成（EFF_OUT=0）の乱数列を変えない
         net.eff_w = r.i16v(EFF_IN * EFF_OUT, 16);
         net.eff_b = r.i16v(EFF_OUT, 128);
+        net.sub = crate::submodel::SubNet::random(seed ^ 0x5b);
         net.finish()
     }
 }
@@ -710,6 +715,7 @@ pub fn evaluate_scalar(net: &NnueNetwork, pos: &Position) -> Value {
         }
     }
     fill_effect(net, pos, &mut concat);
+    crate::submodel::fill(&net.sub, pos, &mut concat);
 
     forward_hidden(net, &concat)
 }
@@ -1319,7 +1325,9 @@ mod tests {
         // 対の積は127×127/128を四捨五入して126が上限になる（`pair_activation`）
         let top = if EFF_PAIR { 126 } else { 127 };
         assert!(
-            concat[EFF_BASE..].iter().all(|&x| x == top),
+            concat[EFF_BASE..EFF_BASE + 2 * EFF_ACT]
+                .iter()
+                .all(|&x| x == top),
             "バイアスで飽和する"
         );
         // 第1層の利きの列だけを動かすと評価値が変わる。HalfKPの列は触らない
@@ -1327,7 +1335,7 @@ mod tests {
         let mut moved = false;
         for scale in [1i8, -1, 3, -3] {
             for (i, w) in net.w2.iter_mut().enumerate() {
-                if i % CONCAT >= EFF_BASE {
+                if (EFF_BASE..EFF_BASE + 2 * EFF_ACT).contains(&(i % CONCAT)) {
                     *w = scale;
                 }
             }

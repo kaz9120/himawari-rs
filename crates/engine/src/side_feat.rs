@@ -464,7 +464,7 @@ pub fn accumulate(net: &NnueNetwork, feats: &[u32]) -> [i32; EFF_OUT] {
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use super::*;
     use himawari_core::{MoveList, Position, generate_legal};
 
@@ -573,7 +573,8 @@ mod tests {
     }
 
     /// SFENの盤を180度回し、駒の先後と持ち駒の先後、手番を入れ替える。
-    fn flip_sfen(sfen: &str) -> String {
+    /// 盤を180度回して先後を入れ替えたSFEN。部分モデルのテストも使う。
+    pub(crate) fn flip_sfen(sfen: &str) -> String {
         let parts: Vec<&str> = sfen.split_whitespace().collect();
         let swap = |ch: char| {
             if ch.is_ascii_uppercase() {
