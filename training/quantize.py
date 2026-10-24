@@ -54,6 +54,8 @@ def quantize(model: NnueModel) -> dict:
         "b_out": round(b_out * SIGMOID_SCALE * FV_SCALE),
         "eff_w": None if eff_w is None else ft_q(eff_w),
         "eff_b": None if eff_b is None else ft_q(eff_b),
+        # 玉の近傍の部分モデル（ADR-0246）はf32のまま載せる
+        "sub_w": None if model.sub is None else model.sub.raw_weights(),
     }
 
 
@@ -88,6 +90,8 @@ def load_into(model: NnueModel, path: str, freeze_ft: bool = False) -> str:
             if model.eff_p is not None:
                 model.eff_p.weight.zero_()
             model.eff_bias.copy_(as_tensor("eff_b", EFF_OUT))
+        if model.sub is not None and len(w["sub_w"]):
+            model.sub.load_raw(torch.from_numpy(w["sub_w"]).float())
 
         if same_shape:
             model.l2.weight.copy_(as_tensor("w2", L1_OUT, CONCAT))
@@ -137,4 +141,5 @@ def save_hmwr(model: NnueModel, lineage: str, path: str):
                 "eff_b": q["eff_b"].tolist(),
             }
         ),
+        **({} if q["sub_w"] is None else {"sub_w": q["sub_w"].tolist()}),
     )

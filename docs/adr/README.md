@@ -410,6 +410,7 @@ ROADMAPの注力を決めた判断。いまの注力は0229にある。
 | [0243](0243-order-independent-movepick.md) | 手の並べ替えを、生成の順に依存しない形にする | 2026-10-21 | −5.2 | rejected（見送り。非劣性のSPRTは10,000ペアで中点以下） |
 | [0244](0244-yomiyasu-gate.md) | 日本語文書のCIゲートをtextlintからyomiyasuへ替える | 2026-10-22 |  | accepted |
 | [0245](0245-input-variants-screening.md) | 評価関数の入力の表し方を、ノード数固定の対局で並べて測る | 2026-10-23 |  | proposed |
+| [0246](0246-king-window-submodel.md) | 玉の近傍5×5を小さなNNで読む部分モデルを、ノード数固定の対局で測る | 2026-10-24 |  | proposed |
 
 ## バックログ
 

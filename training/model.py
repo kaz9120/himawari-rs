@@ -56,6 +56,18 @@ EFF_ACTIVE = getattr(himawari, "EFF_ACTIVE", 81)
 # 側の表のうち、HalfKP（玉×BonaPiece）の区画の起点（ADR-0245の習甦方式）。無ければ-1。
 # factorizerを使う学習では、この区画にも玉位置に依らない駒の成分を足す（ADR-0066）
 EFF_KP_BASE = getattr(himawari, "EFF_KP_BASE", -1)
+# 玉の近傍の部分モデル（ADR-0246）。構成名の k<K> で出力の幅が決まり、0なら持たない。
+# 入力は側の入力の1行の後ろに玉1つぶん SUB_LEN 個つながって届く。前の SUB_WIN 個が
+# 升のトークン、続く7個が相手の持ち駒の枚数、最後が玉の側の手番かである
+SUB_OUT = getattr(himawari, "SUB_OUT", 0)
+SUB_LEN = getattr(himawari, "SUB_LEN", 0) if SUB_OUT else 0
+SUB_SLOT = getattr(himawari, "SUB_SLOT", 0)
+SUB_WIN = getattr(himawari, "SUB_WIN", 25)
+SUB_TOKENS = getattr(himawari, "SUB_TOKENS", 480)
+SUB_EMB = getattr(himawari, "SUB_EMB", 16)
+SUB_EXTRA = getattr(himawari, "SUB_EXTRA", 8)
+SUB_HID = getattr(himawari, "SUB_HID", 32)
+SUB_HAND_SCALE = getattr(himawari, "SUB_HAND_SCALE", [1.0] * 7)
 # 利きの特徴の使い方。f2は特徴を立てる処置群、noneは立てない統制群（ADR-0237）。
 # 表し方を替えた構成（ADR-0245）でも、f2は「構成の表し方で立てる」の意味になる
 EFFECT_INPUTS = ("f2", "none")
@@ -129,6 +141,9 @@ class NnueModel(nn.Module):
             if factorized and EFF_KP_BASE >= 0
             else None
         )
+        # 玉の近傍の部分モデル（ADR-0246）。乱数は後段の初期化の後で引くので、
+        # 持たない構成の乱数の消費順は変わらない
+        self.sub = SubModel() if SUB_OUT else None
         self.l2 = nn.Linear(CONCAT, L1_OUT)
         # 隠れ層は書いたぶんだけ持つ（ADR-0127）。L2_OUT=0 なら隠れ層1つ
         self.l3 = nn.Linear(L1_OUT, L2_OUT) if L2_OUT else None
@@ -231,6 +246,8 @@ class NnueModel(nn.Module):
             if head is not None:
                 nn.init.uniform_(head.weight, -0.05, 0.05)
                 nn.init.zeros_(head.bias)
+        if self.sub is not None:
+            self.sub.init_weights()
 
     def transform(self, idx, off):
         z = self.ft(idx, off)
@@ -272,11 +289,11 @@ class NnueModel(nn.Module):
         定数になる。推論側の `effect_transform` と同じ形である。
         """
         if self.eff_on:
-            if idx is None or idx.numel() != n * EFF_ACTIVE:
+            if idx is None or idx.numel() != n * (EFF_ACTIVE + SUB_LEN):
                 raise ValueError(
                     "利きの特徴がバッチに入っていない。ローダに effect_inputs を渡す"
                 )
-            v = idx.view(n, EFF_ACTIVE)
+            v = idx.view(n, EFF_ACTIVE + SUB_LEN)[:, :EFF_ACTIVE]
             z = self.eff(v) + self.eff_bias
             if self.eff_p is not None:
                 kp = (v >= EFF_KP_BASE) & (v < EFF_KP_BASE + 81 * FE_END)
@@ -303,6 +320,16 @@ class NnueModel(nn.Module):
             n = stm_off.size(0)
             parts += [self.effect_activation(eff_stm, n),
                       self.effect_activation(eff_opp, n)]
+        if self.sub is not None:
+            # 手番側の玉・非手番側の玉の順。余りの列は0で、推論側も0を置く
+            n = stm_off.size(0)
+            for idx in (eff_stm, eff_opp):
+                if idx is None:
+                    raise ValueError("部分モデルの入力がバッチに入っていない。ローダに effect_inputs を渡す")
+                parts.append(self.sub(idx.view(n, EFF_ACTIVE + SUB_LEN)[:, EFF_ACTIVE:]))
+            pad = SUB_SLOT - 2 * SUB_OUT
+            if pad:
+                parts.append(z_stm.new_zeros(n, pad))
         return torch.cat(parts, dim=1)
 
     def value(self, x):
@@ -347,6 +374,58 @@ class NnueModel(nn.Module):
             if self.l4 is not None:
                 self.l4.weight.clamp_(-HIDDEN_W_LIMIT, HIDDEN_W_LIMIT)
             self.out.weight.clamp_(-OUT_W_LIMIT, OUT_W_LIMIT)
+
+
+class SubModel(nn.Module):
+    """玉の近傍の部分モデル（ADR-0246）。推論側は `crates/engine/src/submodel.rs`。
+
+    升のトークンを16次元へ埋め込んで位置の順に並べ、相手の持ち駒と手番を足して
+    32→`SUB_OUT` のMLPに通す。出力は0〜1へクリップし、FTの活性と同じ縮尺（1が127）で
+    連結ベクトルへ入る。推論側は埋め込みと第1層を畳み込んだ表で同じ値を出す。
+    """
+
+    def __init__(self):
+        super().__init__()
+        self.emb = nn.Embedding(SUB_TOKENS, SUB_EMB)
+        self.l1 = nn.Linear(SUB_WIN * SUB_EMB + SUB_EXTRA, SUB_HID)
+        self.l2 = nn.Linear(SUB_HID, SUB_OUT)
+        self.register_buffer(
+            "hand_scale", torch.tensor(SUB_HAND_SCALE, dtype=torch.float32),
+            persistent=False,
+        )
+
+    def init_weights(self):
+        nn.init.uniform_(self.emb.weight, -0.5, 0.5)
+        nn.init.uniform_(self.l1.weight, -0.1, 0.1)
+        nn.init.zeros_(self.l1.bias)
+        nn.init.uniform_(self.l2.weight, -0.3, 0.3)
+        nn.init.zeros_(self.l2.bias)
+
+    def forward(self, v):
+        """`v` は1局面1玉ぶん `SUB_LEN` 個の整数（推論側の `submodel::inputs` と同じ並び）。"""
+        n = v.size(0)
+        tok = self.emb(v[:, :SUB_WIN]).view(n, SUB_WIN * SUB_EMB)
+        hand = v[:, SUB_WIN:SUB_WIN + 7].float() / self.hand_scale
+        stm = v[:, SUB_WIN + 7:SUB_WIN + 8].float()
+        h = self.l1(torch.cat([tok, hand, stm], dim=1)).clamp(0.0, 1.0)
+        return self.l2(h).clamp(0.0, 1.0)
+
+    def raw_weights(self):
+        """推論側のファイルの形（埋め込み・第1層の重みとバイアス・第2層の重みとバイアスの順）で返す。"""
+        return torch.cat([
+            p.detach().float().flatten()
+            for p in (self.emb.weight, self.l1.weight, self.l1.bias,
+                      self.l2.weight, self.l2.bias)
+        ])
+
+    def load_raw(self, raw):
+        """`raw_weights` の逆。"""
+        at = 0
+        with torch.no_grad():
+            for p in (self.emb.weight, self.l1.weight, self.l1.bias,
+                      self.l2.weight, self.l2.bias):
+                p.copy_(raw[at:at + p.numel()].view_as(p))
+                at += p.numel()
 
 
 def loss_fn(output, target):

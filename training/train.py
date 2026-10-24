@@ -551,6 +551,9 @@ def main():
         dense_params.extend([model.eff.weight, model.eff_bias])
     if model.eff_p is not None:
         dense_params.append(model.eff_p.weight)
+    if model.sub is not None:
+        # 玉の近傍の部分モデル（ADR-0246）。小さい密の層なので、後段と同じ最適化器で回す
+        dense_params.extend(model.sub.parameters())
     ft_params = [model.ft.weight]
     if model.ft_p is not None:
         ft_params.append(model.ft_p.weight)
