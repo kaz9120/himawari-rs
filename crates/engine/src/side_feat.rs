@@ -27,7 +27,9 @@ pub const KIND_DROP: usize = 6;
 pub const KIND_MOBILITY: usize = 7;
 pub const KIND_KW5: usize = 8;
 pub const KIND_HAND: usize = 9;
-pub const KINDS: usize = 10;
+/// 習甦方式の玉×升×利き（ADR-0245の追記）。升に乗る駒は見ない。
+pub const KIND_KE: usize = 10;
+pub const KINDS: usize = 11;
 
 /// 最小の攻め駒の階級の数。なし・歩・香・桂・銀・金と成り駒・角・飛・馬・龍・玉。
 const ATT_CLASSES: usize = 11;
@@ -48,6 +50,7 @@ pub const ROWS: [usize; KINDS] = [
     28 * 8,
     2 * EFF_PIECES * 16 * 25,
     2 * HAND * HAND_MAX,
+    81 * 81 * 16,
 ];
 
 /// 種類ごとの、1視点で立つ数の上限。
@@ -62,6 +65,7 @@ pub const MAX_ACTIVE: [usize; KINDS] = [
     38 * 8,
     50,
     38,
+    81,
 ];
 
 const _: () = {
@@ -345,6 +349,20 @@ impl SideBoard {
                             push((tag * HAND + hi) * HAND_MAX + i);
                         }
                     }
+                }
+            }
+            KIND_KE => {
+                // 視点側の玉の升と、升ごとの自分の利き・相手の利き（3で打ち切り）の組
+                let ks = self.king[ci];
+                if ks.is_none() {
+                    return;
+                }
+                let kv = view(ks, c).index();
+                for i in 0..81 {
+                    let v = view(Square::from_index(i as u8), c).index();
+                    let own = usize::from(self.cnt[ci][i].min(3));
+                    let opp = usize::from(self.cnt[oi][i].min(3));
+                    push(((kv * 81 + v) * 4 + own) * 4 + opp);
                 }
             }
             _ => unreachable!("側の入力の種類が不明: {k}"),
