@@ -53,6 +53,9 @@ EFF_GENERIC = getattr(himawari, "EFF_GENERIC", False)
 EFF_PAIR = getattr(himawari, "EFF_PAIR", False)
 # 1局面1視点で並ぶ利きの特徴の数。F2は升ごとに1つで81、表し方を替えた構成は上限の数
 EFF_ACTIVE = getattr(himawari, "EFF_ACTIVE", 81)
+# 側の表のうち、HalfKP（玉×BonaPiece）の区画の起点（ADR-0245の習甦方式）。無ければ-1。
+# factorizerを使う学習では、この区画にも玉位置に依らない駒の成分を足す（ADR-0066）
+EFF_KP_BASE = getattr(himawari, "EFF_KP_BASE", -1)
 # 利きの特徴の使い方。f2は特徴を立てる処置群、noneは立てない統制群（ADR-0237）。
 # 表し方を替えた構成（ADR-0245）でも、f2は「構成の表し方で立てる」の意味になる
 EFFECT_INPUTS = ("f2", "none")
@@ -118,6 +121,13 @@ class NnueModel(nn.Module):
         )
         self.eff_bias = (
             nn.Parameter(torch.full((EFF_OUT,), 0.5)) if EFF_OUT else None
+        )
+        # 側に入れたHalfKPのfactorizer（ADR-0245）。主のFTと同じく、学習時だけ駒単独の
+        # 成分を81の玉位置で共有し、書き出しで畳み込む。末尾は詰め物の行
+        self.eff_p = (
+            nn.EmbeddingBag(FE_END + 1, EFF_OUT, mode="sum", padding_idx=FE_END)
+            if factorized and EFF_KP_BASE >= 0
+            else None
         )
         self.l2 = nn.Linear(CONCAT, L1_OUT)
         # 隠れ層は書いたぶんだけ持つ（ADR-0127）。L2_OUT=0 なら隠れ層1つ
@@ -194,6 +204,8 @@ class NnueModel(nn.Module):
                 # 詰め物の行は0に保つ（padding_idxは勾配を止めるだけで、初期値は引いた乱数のまま）
                 with torch.no_grad():
                     self.eff.weight[EFF_IN].zero_()
+            if self.eff_p is not None:
+                nn.init.zeros_(self.eff_p.weight)
             if not self.eff_on:
                 with torch.no_grad():
                     self.eff.weight.zero_()
@@ -226,6 +238,15 @@ class NnueModel(nn.Module):
             z = z + self.ft_p(idx % FE_END, off)
         return z + self.ft_bias
 
+    def folded_eff_weight(self):
+        """側の表から詰め物の行を落とし、HalfKPの区画にfactorizerを畳み込んで返す（書き出し用）。"""
+        w = self.eff.weight.detach().float()[:EFF_IN].clone()
+        if self.eff_p is not None:
+            virtual = self.eff_p.weight.detach().float()[:FE_END]
+            seg = w[EFF_KP_BASE:EFF_KP_BASE + 81 * FE_END].view(81, FE_END, EFF_OUT)
+            seg += virtual.unsqueeze(0)
+        return w
+
     def folded_ft_weight(self):
         """仮想特徴を畳み込んだFT重みを返す（書き出し用）。"""
         w = self.ft.weight.detach().float()
@@ -255,7 +276,11 @@ class NnueModel(nn.Module):
                 raise ValueError(
                     "利きの特徴がバッチに入っていない。ローダに effect_inputs を渡す"
                 )
-            z = self.eff(idx.view(n, EFF_ACTIVE)) + self.eff_bias
+            v = idx.view(n, EFF_ACTIVE)
+            z = self.eff(v) + self.eff_bias
+            if self.eff_p is not None:
+                kp = (v >= EFF_KP_BASE) & (v < EFF_KP_BASE + 81 * FE_END)
+                z = z + self.eff_p(torch.where(kp, (v - EFF_KP_BASE) % FE_END, FE_END))
         else:
             z = self.eff_bias.expand(n, -1)
         if EFF_PAIR:

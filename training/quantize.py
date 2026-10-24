@@ -26,7 +26,8 @@ def quantize(model: NnueModel) -> dict:
         b_out = model.out.bias.detach().float().item()
         # 利きのaccumulator（ADR-0237）。FTと同じ127倍で、i16のまま持つ
         # 表し方を替えた構成（ADR-0245）は末尾に詰め物の行を持つので、EFF_IN行で切る
-        eff_w = model.eff.weight.detach().float()[:EFF_IN] if model.eff is not None else None
+        # 側に入れたHalfKPのfactorizerもここで畳み込む（ADR-0245）
+        eff_w = model.folded_eff_weight() if model.eff is not None else None
         eff_b = model.eff_bias.detach().float() if model.eff is not None else None
 
     out_w_scale = SIGMOID_SCALE * FV_SCALE / 127.0
@@ -84,6 +85,8 @@ def load_into(model: NnueModel, path: str, freeze_ft: bool = False) -> str:
         # 読めないので、拡張が返した長さのまま写せる
         if model.eff is not None and len(w["eff_w"]):
             model.eff.weight[:EFF_IN].copy_(as_tensor("eff_w", EFF_IN, EFF_OUT))
+            if model.eff_p is not None:
+                model.eff_p.weight.zero_()
             model.eff_bias.copy_(as_tensor("eff_b", EFF_OUT))
 
         if same_shape:
