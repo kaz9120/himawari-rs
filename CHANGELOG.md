@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.57.7](https://github.com/kaz9120/himawari-rs/compare/v0.57.6...v0.57.7) (2026-10-24)
+
+
+### その他の変更
+
+* 玉の近傍5×5の部分モデルを構成名のk&lt;K&gt;で足し、ADR-0246とC1のspecを置く ([#924](https://github.com/kaz9120/himawari-rs/issues/924)) ([8b475eb](https://github.com/kaz9120/himawari-rs/commit/8b475eb797ce290b7dd3f1fbba7c08890f5e2319))
+
 ## [0.57.6](https://github.com/kaz9120/himawari-rs/compare/v0.57.5...v0.57.6) (2026-10-24)
 
 
