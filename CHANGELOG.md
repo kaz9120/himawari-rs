@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.57.8](https://github.com/kaz9120/himawari-rs/compare/v0.57.7...v0.57.8) (2026-10-26)
+
+
+### その他の変更
+
+* f2_minattの構成で、F2と最小の攻め駒を升の語の差分で持つ（ADR-0248） ([#964](https://github.com/kaz9120/himawari-rs/issues/964)) ([9458ff0](https://github.com/kaz9120/himawari-rs/commit/9458ff0b1c43d7711e7e479cc11f94dd34334ee4))
+
 ## [0.57.7](https://github.com/kaz9120/himawari-rs/compare/v0.57.6...v0.57.7) (2026-10-24)
 
 
