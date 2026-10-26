@@ -649,6 +649,96 @@ static WHITE_CODE: [u16; 512] = {
     t
 };
 
+/// 側の入力がF2と最小の攻め駒の組（`-f2_minatt`）で、両方を升の語の差分で持つ構成か（ADR-0248）。
+///
+/// 升の語は `nnue_acc::EvalBoard::side_codes` が作る16ビットで、下位9ビットがF2の語
+/// （`effect_code`）、上位7ビットが `先手の階級 * 11 + 後手の階級` である。対の積を掛ける構成は含めない。
+pub const SIDE_MINATT_INC: bool = EFF_GENERIC
+    && !EFF_PAIR
+    && EFF_KINDS.len() == 2
+    && EFF_KINDS[0] == crate::side_feat::KIND_F2
+    && EFF_KINDS[1] == crate::side_feat::KIND_MINATT;
+
+/// F2の表の行数。最小の攻め駒の行はこの後ろに続く（`side_feat::ROWS` の順）。
+const F2_ROWS: u32 = (81 * EFF_PIECES * EFF_LEVELS * EFF_LEVELS) as u32;
+/// 最小の攻め駒の階級の数（`side_feat` と同じ）。
+const MINATT_CLASSES: u32 = 11;
+/// 最小の攻め駒の表で、1升が持つ行数。
+const MINATT_PER_SQ: u32 = EFF_PIECES as u32 * MINATT_CLASSES * MINATT_CLASSES;
+
+/// `side_codes` の語のうちF2の部分を、視点cの特徴のindexへ戻す。
+#[inline(always)]
+pub fn side_f2_index(c: Color, sq: Square, code: u16) -> u32 {
+    effect_code_index(c, sq, code & 0x1FF)
+}
+
+/// `side_codes` の語のうち最小の攻め駒の部分を、視点cの特徴のindexへ戻す。
+/// `side_feat` の `KIND_MINATT` と同じ値になる。
+#[inline(always)]
+pub fn side_minatt_index(c: Color, sq: Square, code: u16) -> u32 {
+    let k = usize::from(code >> 4);
+    match c {
+        Color::Black => {
+            let (p, m) = (k as u32 & 31, k as u32 >> 5);
+            F2_ROWS + sq.index() as u32 * MINATT_PER_SQ + p * MINATT_CLASSES * MINATT_CLASSES + m
+        }
+        Color::White => {
+            F2_ROWS + sq.inv().index() as u32 * MINATT_PER_SQ + u32::from(WHITE_MINATT[k & 4095])
+        }
+    }
+}
+
+/// 後手の視点の、升の中で閉じた最小の攻め駒の行。添字は `語 >> 4`（駒5ビット＋階級の組7ビット）で、
+/// 駒の先後と、両者の階級を入れ替える。
+static WHITE_MINATT: [u16; 4096] = {
+    let mut t = [0u16; 4096];
+    let mut k = 0;
+    while k < 4096 {
+        let (p, m) = (k & 31, k >> 5);
+        if p <= 28 && m < 121 {
+            let p = if p == 0 {
+                0
+            } else if p <= 14 {
+                p + 14
+            } else {
+                p - 14
+            };
+            let (b, w) = (m / 11, m % 11);
+            t[k] = (p * 121 + w * 11 + b) as u16;
+        }
+        k += 1;
+    }
+    t
+};
+
+/// `SIDE_MINATT_INC` の構成で、側のaccumulatorが取りうる値の上限（絶対値）を重みから見積もる。
+///
+/// 1升に立つのはF2と最小の攻め駒の1つずつなので、升ごとに各表の最大の絶対値を足す。
+/// i16に収まれば、差分の経路をi16の巡回加算で持っても、i32で作り直す値と一致する。
+pub fn side_minatt_acc_bound(net: &NnueNetwork) -> i64 {
+    if !SIDE_MINATT_INC {
+        unreachable!("f2_minatt の構成でだけ呼ぶ");
+    }
+    const WIDTH: usize = if EFF_OUT == 0 { 1 } else { EFF_OUT };
+    let mut sum: Vec<i64> = net.eff_b.iter().map(|&b| i64::from(b).abs()).collect();
+    let f2 = F2_ROWS as usize * WIDTH;
+    let blocks = net.eff_w[..f2]
+        .chunks(EFF_PIECES * EFF_LEVELS * EFF_LEVELS * WIDTH)
+        .chain(net.eff_w[f2..].chunks(MINATT_PER_SQ as usize * WIDTH));
+    for rows in blocks {
+        let mut most = vec![0i64; EFF_OUT];
+        for row in rows.chunks(WIDTH) {
+            for (m, &w) in most.iter_mut().zip(row) {
+                *m = (*m).max(i64::from(w).abs());
+            }
+        }
+        for (s, m) in sum.iter_mut().zip(&most) {
+            *s += m;
+        }
+    }
+    sum.into_iter().max().unwrap_or(0)
+}
+
 /// 連結ベクトルの利きの部分（両視点）を埋める（ADR-0237）。手番視点が先に並ぶ。
 /// `EFF_OUT` が0の構成では何もしない。
 #[inline]

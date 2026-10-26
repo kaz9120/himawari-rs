@@ -584,8 +584,13 @@ pub fn load(r: &mut impl Read) -> Result<(NnueNetwork, String), String> {
     // 利きのaccumulatorは差分の経路でi16に持つ（ADR-0237のD2）。取りうる値が
     // i16に収まらないネットでは全計算と食い違うので、読み込みで弾く。表し方を替えた
     // 構成（ADR-0245）は評価のたびにi32で作り直すので、この制約を持たない
-    if EFF_OUT != 0 && !crate::nnue::EFF_GENERIC {
-        let bound = crate::nnue::effect_acc_bound(&net);
+    // F2と最小の攻め駒の組（ADR-0248）も差分の経路でi16に持つので、同じ検査をする
+    if EFF_OUT != 0 && (!crate::nnue::EFF_GENERIC || crate::nnue::SIDE_MINATT_INC) {
+        let bound = if crate::nnue::SIDE_MINATT_INC {
+            crate::nnue::side_minatt_acc_bound(&net)
+        } else {
+            crate::nnue::effect_acc_bound(&net)
+        };
         if bound > i64::from(i16::MAX) {
             return Err(format!(
                 "利きのaccumulatorがi16に収まらない（上限の見積もり{bound}）。\

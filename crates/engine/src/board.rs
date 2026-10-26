@@ -634,6 +634,15 @@ impl EvalBoard for SearchBoard {
         });
     }
     #[inline(always)]
+    fn side_codes(&self, out: &mut [u16; 81]) {
+        self.mb.effect_minatt_codes(out);
+        self.shadow("side_codes", &*out, |p| {
+            let mut want = [0u16; 81];
+            EvalBoard::side_codes(p, &mut want);
+            want
+        });
+    }
+    #[inline(always)]
     fn material(&self) -> i32 {
         self.mb.state().material
     }

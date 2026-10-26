@@ -2,7 +2,8 @@
 //!
 //! 構成名の `e<E>` の後ろに書いた種類（`-f2_threat` など）の特徴を、種類の並びの順に
 //! 表の行を続けて立てる。評価のたびに盤から作り直し、差分は持たない。学習側（PyO3）も
-//! 同じ関数を通すので、学習と推論で特徴の作り方がずれない。
+//! 同じ関数を通すので、学習と推論で特徴の作り方がずれない。ただし `-f2_minatt` の構成は、
+//! 推論で升の語の差分を使う（ADR-0248、`nnue::SIDE_MINATT_INC`）。ここの作り直しはその正解器になる。
 //!
 //! 視点ごとに盤を反転し、自他は視点から見る。利きは盤上の生の利きで、玉の利きを含め、
 //! ピンは無視する。その升の駒自身の利きは数えない。ADR-0237のF2と同じ数え方である。
@@ -413,6 +414,23 @@ impl SideBoard {
             }
             _ => unreachable!("側の入力の種類が不明: {k}"),
         }
+    }
+}
+
+/// 81升の語を、F2の語（`nnue::effect_code`）に両者の最小の攻め駒の階級を足して書く（ADR-0248）。
+///
+/// 上位7ビットが `先手の階級 * 11 + 後手の階級` で、下位9ビットがF2の語である。
+/// 差分の経路（`nnue::SIDE_MINATT_INC`）がこの語を祖先と比べる。`SideBoard` から作るので遅いが、
+/// 学習と同じ数え方の正解器になる。配列盤は `effect_minatt_codes` で同じ値を速く作る。
+pub fn f2_minatt_codes<B: EvalBoard + ?Sized>(b: &B, out: &mut [u16; 81]) {
+    let s = SideBoard::new(b);
+    for (i, o) in out.iter_mut().enumerate() {
+        let lv = |n: u8| u16::from(n.min(3));
+        let m = u16::from(s.minatt[0][i]) * ATT_CLASSES as u16 + u16::from(s.minatt[1][i]);
+        *o = m << 9
+            | (code(s.pc[i], Color::Black) as u16) << 4
+            | lv(s.cnt[0][i]) << 2
+            | lv(s.cnt[1][i]);
     }
 }
 
