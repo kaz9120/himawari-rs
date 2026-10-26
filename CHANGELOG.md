@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.57.9](https://github.com/kaz9120/himawari-rs/compare/v0.57.8...v0.57.9) (2026-10-26)
+
+
+### その他の変更
+
+* clean.py の掃除対象を paths.py の置き場の定数から引く ([#966](https://github.com/kaz9120/himawari-rs/issues/966)) ([5fd98d8](https://github.com/kaz9120/himawari-rs/commit/5fd98d84563162320079306187c69aec7051ec35)), closes [#953](https://github.com/kaz9120/himawari-rs/issues/953)
+
 ## [0.57.8](https://github.com/kaz9120/himawari-rs/compare/v0.57.7...v0.57.8) (2026-10-26)
 
 
