@@ -69,27 +69,26 @@ def _candidates(days: int) -> list[tuple[str, Path]]:
         return p.stat().st_mtime < cutoff
 
     found: list[tuple[str, Path]] = []
-    for p in sorted((paths.REPO / "data/sprt").glob("*.jsonl")):
+    for p in sorted(paths.SPRT.glob("*.jsonl")):
         if old(p):
             found.append(("sprt棋譜", p))
-    for p in sorted((paths.REPO / "data/sprt").glob("*.cond")):
+    for p in sorted(paths.SPRT.glob("*.cond")):
         # 対局条件の記録は棋譜と対で意味を持つ。棋譜と同じ基準で消す
         if old(p):
             found.append(("対局条件", p))
     builds = _spec_builds()
-    for p in sorted((paths.REPO / "data/bin").iterdir()):
+    for p in sorted(paths.BIN.iterdir()):
         if old(p) and p.name not in builds:
             found.append(("バイナリ", p))
-    for p in sorted((paths.REPO / "data/nets").iterdir()):
+    for p in sorted(paths.NETS.iterdir()):
         name = p.name.removesuffix(".best").removesuffix(".hmwr")
         if old(p) and name not in stems:
             found.append(("ネット", p))
-    ckpt = paths.REPO / "training/checkpoints"
-    if ckpt.is_dir():
-        for p in sorted(ckpt.iterdir()):
+    if paths.CHECKPOINTS.is_dir():
+        for p in sorted(paths.CHECKPOINTS.iterdir()):
             if old(p) and p.name not in stems:
                 found.append(("チェックポイント", p))
-    for p in sorted((paths.REPO / "data/logs").iterdir()):
+    for p in sorted(paths.LOGS.iterdir()):
         if old(p):
             found.append(("ログ", p))
     if paths.STATUS.is_dir():
@@ -98,7 +97,7 @@ def _candidates(days: int) -> list[tuple[str, Path]]:
         for p in sorted(paths.STATUS.glob("*.json")):
             if old(p):
                 found.append(("状態ファイル", p))
-    for p in sorted((paths.REPO / "data/train").glob("*.stop")):
+    for p in sorted(paths.TRAIN.glob("*.stop")):
         if old(p):
             found.append(("停止ファイル", p))
     found += _merged_worktrees()
