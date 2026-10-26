@@ -19,16 +19,15 @@ run = "hmwr match run x --build bench-himawari --base-net a --cand-net b --stop 
 '''
 
 
-def test_old_builds_are_cleaned_unless_a_spec_names_them(tmp_path, monkeypatch):
-    for sub in ("data/sprt", "data/bin", "data/nets", "data/logs", "data/train"):
-        (tmp_path / sub).mkdir(parents=True)
-    monkeypatch.setattr(paths, "REPO", tmp_path)
-    monkeypatch.setattr(paths, "STATUS", tmp_path / "data/status")
+def test_old_builds_are_cleaned_unless_a_spec_names_them(monkeypatch):
+    # 置き場はconftestのautouse fixtureが一時ディレクトリへ移してある
+    for place in (paths.SPRT, paths.BIN, paths.NETS, paths.LOGS, paths.TRAIN):
+        place.mkdir(parents=True)
     monkeypatch.setattr(spec, "names", lambda: ["x"])
     monkeypatch.setattr(spec, "load", lambda name, ref="origin/main": spec.parse(SPEC, name))
     past = time.time() - 60 * 86400
     for name in ("bench-himawari", "base-old"):
-        p = tmp_path / "data/bin" / name
+        p = paths.BIN / name
         p.write_bytes(b"x")
         os.utime(p, (past, past))
 
