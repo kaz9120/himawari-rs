@@ -81,6 +81,10 @@ const GOLD_LIKE_MASK: [u128; 16] = {
     t
 };
 
+/// 駒種ごとの最小の攻め駒の階級（ADR-0248、engineの `side_feat` と同じ）。0は駒でない。
+/// 成駒4種と金は5、歩1・香2・桂3・銀4・角6・飛7・馬8・龍9・玉10。
+const ATT_CLASS: [u8; 16] = [0, 0, 5, 5, 5, 5, 8, 9, 10, 5, 1, 2, 3, 4, 6, 7];
+
 /// 8升ぶんの利き数に1ずつ足す語。
 const ONES64: u64 = 0x0101_0101_0101_0101;
 
@@ -1046,6 +1050,96 @@ impl Position {
             tmp[at..at + 16].copy_from_slice(code.as_array());
         }
         out.copy_from_slice(&tmp[..81]);
+    }
+
+    /// 81升の利きの語に、両者の最小の攻め駒の階級を足した語を書く（ADR-0248）。
+    ///
+    /// 下位9ビットは `effect_codes` と同じ語で、上位7ビットが `先手の階級 * 11 + 後手の階級` である。
+    /// 階級はengineの `side_feat` と同じで、0は利きなし、1〜10が歩・香・桂・銀・金と成駒・角・飛・馬・龍・玉。
+    ///
+    /// 色ごとに、階級の高い駒から順に利き先へ階級を書き、低い駒で上書きする。最後に書いた駒が
+    /// その升の最小の攻め駒になるので、比べる手間が要らない。短い利きは3列ぶんの窓（`SHORT_WIN`）で
+    /// まとめて書き、飛び利きは駒に当たるまで升をたどる。
+    pub fn effect_minatt_codes(&self, out: &mut [u16; 81]) {
+        use std::simd::Simd;
+        use std::simd::cmp::SimdOrd;
+        use std::simd::num::SimdUint;
+        type U8 = Simd<u8, 16>;
+        type U16 = Simd<u16, 16>;
+        let mut ma = [[0u8; LEN]; 2];
+        for (ci, m) in ma.iter_mut().enumerate() {
+            let col = if ci == 0 { Color::Black } else { Color::White };
+            let ps = &self.psets[ci];
+            // 金の動きの5駒種は `psets[c][1]` にまとまっており、利きは金と同じ
+            let order = [
+                (ps[KING as usize], KING),
+                (ps[DRAGON as usize], DRAGON),
+                (ps[HORSE as usize], HORSE),
+                (ps[ROOK as usize], ROOK),
+                (ps[BISHOP as usize], BISHOP),
+                (ps[1], GOLD),
+                (ps[SILVER as usize], SILVER),
+                (ps[KNIGHT as usize], KNIGHT),
+                (ps[LANCE as usize], LANCE),
+                (ps[PAWN as usize], PAWN),
+            ];
+            for (set, pt) in order {
+                let p = make_piece(col, pt);
+                let cl = ATT_CLASS[pt as usize];
+                for_each81(set, |s| self.paint_attacks(m, p, s, cl));
+            }
+        }
+        // 1筋の9升を16升ぶん読み、9升だけ使う（`effect_codes` と同じ）
+        let mut tmp = [0u16; 9 * 8 + 16];
+        let three = U8::splat(3);
+        for f in 0..9u8 {
+            let base = crate::board::idx(f, 0) as usize;
+            let p = U8::from_slice(&self.board[base..base + 16]);
+            let cb = U8::from_slice(&self.count[0][base..base + 16]).simd_min(three);
+            let cw = U8::from_slice(&self.count[1][base..base + 16]).simd_min(three);
+            let mb = U8::from_slice(&ma[0][base..base + 16]).cast::<u16>();
+            let mw = U8::from_slice(&ma[1][base..base + 16]).cast::<u16>();
+            let kind = (p & U8::splat(15)).saturating_sub(U8::splat(1))
+                + ((p >> U8::splat(4)) & U8::splat(1)) * U8::splat(14);
+            let code: U16 = (kind.cast::<u16>() << U16::splat(4))
+                | (cb.cast::<u16>() << U16::splat(2))
+                | cw.cast::<u16>()
+                | ((mb * U16::splat(11) + mw) << U16::splat(9));
+            let at = f as usize * 9;
+            tmp[at..at + 16].copy_from_slice(code.as_array());
+        }
+        out.copy_from_slice(&tmp[..81]);
+    }
+
+    /// 升sの駒pの利き先へ、階級clを書く（`effect_minatt_codes` の下請け）。
+    /// 壁の升にも書くが、読む側は盤の升しか見ない。
+    #[inline(always)]
+    fn paint_attacks(&self, m: &mut [u8; LEN], p: u8, s: u8, cl: u8) {
+        let fill = ONES64 * u64::from(cl);
+        for (j, &w) in SHORT_WIN[p as usize].iter().enumerate() {
+            if w == 0 {
+                continue;
+            }
+            // 窓の語は利く升のバイトが1なので、0xFFを掛けるとその升だけのマスクになる
+            let mask = w * 0xFF;
+            let at = (i32::from(s) + (j as i32 - 1) * STRIDE - 4) as usize;
+            let cur = u64::from_le_bytes(m[at..at + 8].try_into().unwrap());
+            let v = (cur & !mask) | (fill & mask);
+            m[at..at + 8].copy_from_slice(&v.to_le_bytes());
+        }
+        let mut dirs = MOVES[p as usize].long;
+        while dirs != 0 {
+            let step = i32::from(DELTA[dirs.trailing_zeros() as usize]);
+            dirs &= dirs - 1;
+            let mut i = i32::from(s) + step;
+            loop {
+                m[i as usize] = cl;
+                if self.board[i as usize] != EMPTY {
+                    break;
+                }
+                i += step;
+            }
+        }
     }
 
     /// coreの `Move16` のビット列から手を復元する。coreの `to_move` と同じ検査をし、同じ場面で `None` を返す。

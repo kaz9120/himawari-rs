@@ -13,7 +13,7 @@ use himawari_core::{Bitboard, Color, DirtyPiece, Piece, PieceType, Position, Squ
 
 use crate::nnue::{
     CONCAT, EFF_BASE, EFF_GENERIC, EFF_OUT, EffectLevels, FT_OUT, FtWeight, HALF, NnueNetwork,
-    effect_code, effect_code_index,
+    SIDE_MINATT_INC, effect_code, effect_code_index, side_f2_index, side_minatt_index,
 };
 use crate::nnue_simd;
 use crate::value::{MAX_PLY, Value};
@@ -36,6 +36,11 @@ pub trait EvalBoard {
     /// 81升の利きの語（`effect_code`）をまとめて書く（ADR-0242の段1を配列盤へ移した形）。
     /// 配列盤は利き数と駒の配列から直接作れるので、段階の集合を経由しない。
     fn effect_codes(&self, out: &mut [u16; 81]);
+    /// 81升の、F2と最小の攻め駒の語（`side_feat::f2_minatt_codes` と同じ値、ADR-0248）。
+    /// 既定の実装は盤から数え直す正解器で遅い。探索の配列盤は速い版で上書きする。
+    fn side_codes(&self, out: &mut [u16; 81]) {
+        crate::side_feat::f2_minatt_codes(self, out);
+    }
     /// 駒割り（先手から見た値）。駒割りだけの評価関数が使う。
     fn material(&self) -> i32;
     /// 全計算との突き合わせ（テストとデバッグビルド）に使うcoreの局面。無ければ突き合わせない。
@@ -298,11 +303,12 @@ impl NnueState {
             let acc = &top.acc[c.index()];
             nnue_simd::clip_to_u8(acc, &mut concat[half * HALF..(half + 1) * HALF]);
         }
-        if EFF_GENERIC {
+        if EFF_GENERIC && !SIDE_MINATT_INC {
             // 表し方を替えた構成は、評価のたびに作り直す（ADR-0245）
             crate::side_feat::fill(net, pos, &mut concat);
         } else if EFF_OUT != 0 {
-            // 利きの部分は祖先からの差分で作る（ADR-0237のD2）
+            // 利きの部分は祖先からの差分で作る（ADR-0237のD2）。F2と最小の攻め駒の組も
+            // 同じ升の語の差分で持つ（ADR-0248）
             self.ensure_effect(net, pos);
             let e = &self.eff[self.top];
             for (k, c) in [(0usize, stm), (1, stm.flip())] {
@@ -335,7 +341,11 @@ impl NnueState {
             return;
         }
         let mut codes = [0u16; 81];
-        pos.effect_codes(&mut codes);
+        if SIDE_MINATT_INC {
+            pos.side_codes(&mut codes);
+        } else {
+            pos.effect_codes(&mut codes);
+        }
         let here = &self.eff[top];
         let from_here = here.coherent.then(|| codes_diff(&codes, &here.codes));
         let anc = (0..top).rev().find(|&i| self.eff[i].computed);
@@ -365,6 +375,25 @@ impl NnueState {
     /// だけで、評価のたびに呼ぶ。accの値・升ごとの語・段階の集合を見る。
     fn check_effect(&self, net: &NnueNetwork, pos: &Position) {
         let e = &self.eff[self.top];
+        if SIDE_MINATT_INC {
+            let mut want = [0u16; 81];
+            crate::side_feat::f2_minatt_codes(pos, &mut want);
+            assert_eq!(e.codes, want, "升の語が食い違う: {}", pos.to_sfen());
+            let sb = crate::side_feat::SideBoard::new(pos);
+            let mut feats = Vec::new();
+            for c in [Color::Black, Color::White] {
+                feats.clear();
+                sb.active(c, &mut feats);
+                let full = crate::side_feat::accumulate(net, &feats);
+                assert_eq!(
+                    e.acc[c.index()].map(i32::from),
+                    full,
+                    "側のaccが作り直しと食い違う: 視点{c:?} {}",
+                    pos.to_sfen()
+                );
+            }
+            return;
+        }
         let counts = crate::nnue::effect_counts(pos);
         let levels = EffectLevels::build(pos);
         for i in 0..81u8 {
@@ -618,6 +647,30 @@ fn codes_diff(a: &[u16; 81], b: &[u16; 81]) -> Bitboard {
 fn effect_apply(net: &NnueNetwork, codes: &[u16; 81], e: &mut EffEntry, changed: Bitboard) {
     let old_codes = &e.codes;
     let mut sqs = changed.into_iter();
+    if SIDE_MINATT_INC {
+        // 語が変わった升で、F2の行と最小の攻め駒の行のうち変わったほうだけを入れ替える
+        // （ADR-0248）。F2の行は下位9ビット、最小の攻め駒の行は駒と階級（4ビット目から上）で決まる
+        let mut pending = None;
+        nnue_simd::effect_rows_update(net, &mut e.acc, || {
+            if let Some(p) = pending.take() {
+                return Some(p);
+            }
+            loop {
+                let sq = sqs.next()?;
+                let (old, new) = (old_codes[sq.index()], codes[sq.index()]);
+                let ma = ((old ^ new) & !0xF != 0)
+                    .then(|| (Some(side_minatt_pair(sq, old)), side_minatt_pair(sq, new)));
+                if (old ^ new) & 0x1FF != 0 {
+                    pending = ma;
+                    return Some((Some(side_f2_pair(sq, old)), side_f2_pair(sq, new)));
+                }
+                if ma.is_some() {
+                    return ma;
+                }
+            }
+        });
+        return;
+    }
     nnue_simd::effect_rows_update(net, &mut e.acc, || {
         let sq = sqs.next()?;
         let (old, new) = (old_codes[sq.index()], codes[sq.index()]);
@@ -635,10 +688,46 @@ fn effect_code_pair(sq: Square, code: u16) -> [u32; 2] {
     ]
 }
 
+/// `side_codes` の語のF2の部分の、両視点の特徴の添字（ADR-0248）。
+#[inline(always)]
+fn side_f2_pair(sq: Square, code: u16) -> [u32; 2] {
+    [
+        side_f2_index(Color::Black, sq, code),
+        side_f2_index(Color::White, sq, code),
+    ]
+}
+
+/// `side_codes` の語の最小の攻め駒の部分の、両視点の特徴の添字（ADR-0248）。
+#[inline(always)]
+fn side_minatt_pair(sq: Square, code: u16) -> [u32; 2] {
+    [
+        side_minatt_index(Color::Black, sq, code),
+        side_minatt_index(Color::White, sq, code),
+    ]
+}
+
 /// 81升を全計算する（ADR-0237のD3と同じ値になる）。
 fn effect_refresh(net: &NnueNetwork, codes: &[u16; 81], e: &mut EffEntry) {
     for c in [Color::Black, Color::White] {
         e.acc[c.index()].copy_from_slice(&net.eff_b[..EFF_OUT]);
+    }
+    if SIDE_MINATT_INC {
+        // 1升にF2と最小の攻め駒の2行を足す（ADR-0248）
+        let mut i = 0u8;
+        nnue_simd::effect_rows_update(net, &mut e.acc, || {
+            if i == 162 {
+                return None;
+            }
+            let sq = Square::from_index(i / 2);
+            let code = codes[sq.index()];
+            i += 1;
+            Some(if i % 2 == 1 {
+                (None, side_f2_pair(sq, code))
+            } else {
+                (None, side_minatt_pair(sq, code))
+            })
+        });
+        return;
     }
     let mut i = 0u8;
     nnue_simd::effect_rows_update(net, &mut e.acc, || {
@@ -942,6 +1031,160 @@ mod tests {
             evaluated += walk_sparse(&net, &mut pos, &mut st, &mut rng, 7);
         }
         assert!(evaluated > 300, "評価したノードが少なすぎる: {evaluated}");
+    }
+
+    /// 探索の盤（既定では配列盤）とcoreの局面を並べて進め戻し、探索の盤で差分に積んだ評価値が
+    /// coreの局面の全計算と一致すること（ADR-0248）。配列盤は `core_position` を返さないので、
+    /// `evaluate` の中の検査は働かない。ここで外から `check_effect` を呼ぶ。評価を飛ばすノードも混ぜる。
+    fn walk_board(
+        net: &NnueNetwork,
+        pos: &mut Position,
+        sb: &mut crate::board::SearchBoard,
+        st: &mut NnueState,
+        rng: &mut Rng,
+        depth: usize,
+    ) -> u64 {
+        let mut n = 0;
+        if rng.next().is_multiple_of(3) || depth == 0 {
+            assert_eq!(
+                st.evaluate(net, sb),
+                evaluate_scalar(net, pos),
+                "探索の盤の差分と全計算が一致しない: {}",
+                pos.to_sfen()
+            );
+            // 評価値は活性のクリップで差を吸収しうるので、側のaccと升の語もcoreの局面で突き合わせる
+            if EFF_OUT != 0 && (!EFF_GENERIC || SIDE_MINATT_INC) {
+                st.check_effect(net, pos);
+            }
+            n += 1;
+        }
+        if depth == 0 {
+            return n;
+        }
+        for _ in 0..2 {
+            let mut list = MoveList::default();
+            generate_legal(pos, true, &mut list);
+            if list.is_empty() {
+                return n;
+            }
+            if !pos.in_check() && rng.next().is_multiple_of(8) {
+                pos.do_null_move();
+                sb.do_null_move();
+                st.push(sb);
+                n += walk_board(net, pos, sb, st, rng, depth - 1);
+                st.pop();
+                sb.undo_null_move();
+                pos.undo_null_move();
+            } else {
+                let m = list.as_slice()[(rng.next() % list.len() as u64) as usize];
+                pos.do_move(m);
+                sb.do_move(m);
+                st.push(sb);
+                n += walk_board(net, pos, sb, st, rng, depth - 1);
+                st.pop();
+                sb.undo_move(m);
+                pos.undo_move(m);
+            }
+        }
+        n
+    }
+
+    #[test]
+    fn search_board_incremental_matches_full_computation() {
+        let net = NnueNetwork::random(17);
+        let mut evaluated = 0;
+        for seed in 1..=8u64 {
+            let mut rng = Rng(seed.wrapping_mul(0xA076_1D64_78BD_642F));
+            let mut pos = Position::from_sfen(SFEN_STARTPOS).unwrap();
+            for _ in 0..(rng.next() % 90) {
+                let mut list = MoveList::default();
+                generate_legal(&pos, true, &mut list);
+                if list.is_empty() {
+                    break;
+                }
+                let m = list.as_slice()[(rng.next() % list.len() as u64) as usize];
+                pos.do_move(m);
+            }
+            let mut sb = crate::board::SearchBoard::new(pos.clone());
+            let mut st = NnueState::new();
+            evaluated += walk_board(&net, &mut pos, &mut sb, &mut st, &mut rng, 7);
+        }
+        assert!(evaluated > 300, "評価したノードが少なすぎる: {evaluated}");
+    }
+
+    /// 探索の盤が作るF2と最小の攻め駒の語（配列盤では `effect_minatt_codes`）が、
+    /// `side_feat` から作る正解器と一致すること（ADR-0248）。構成に依らず走る。
+    #[test]
+    fn search_board_side_codes_match_side_feat() {
+        let mut rng = Rng(0x5DEE_CE66_D1CE_4E5B);
+        let mut checked = 0;
+        for _ in 0..200 {
+            let mut pos = Position::from_sfen(SFEN_STARTPOS).unwrap();
+            let mut sb = crate::board::SearchBoard::new(pos.clone());
+            for _ in 0..(rng.next() % 160) {
+                let mut list = MoveList::default();
+                generate_legal(&pos, true, &mut list);
+                if list.is_empty() {
+                    break;
+                }
+                let m = list.as_slice()[(rng.next() % list.len() as u64) as usize];
+                pos.do_move(m);
+                sb.do_move(m);
+                let (mut got, mut want) = ([0u16; 81], [0u16; 81]);
+                sb.side_codes(&mut got);
+                crate::side_feat::f2_minatt_codes(&pos, &mut want);
+                assert_eq!(got, want, "升の語が食い違う: {}", pos.to_sfen());
+                checked += 1;
+            }
+        }
+        assert!(checked > 5000, "確かめた局面が少なすぎる: {checked}");
+    }
+
+    /// 語の最小の攻め駒の部分から戻した添字が、`side_feat` の `KIND_MINATT` と一致すること。
+    /// 構成に依らず、添字の式だけを確かめる。
+    #[test]
+    fn side_minatt_index_matches_side_feat() {
+        let base = (81 * crate::nnue::EFF_PIECES * 16) as u32;
+        let mut rng = Rng(0x1357_9BDF_2468_ACE0);
+        for _ in 0..200 {
+            let mut pos = Position::from_sfen(SFEN_STARTPOS).unwrap();
+            for _ in 0..(rng.next() % 120) {
+                let mut list = MoveList::default();
+                generate_legal(&pos, true, &mut list);
+                if list.is_empty() {
+                    break;
+                }
+                let m = list.as_slice()[(rng.next() % list.len() as u64) as usize];
+                pos.do_move(m);
+            }
+            let mut codes = [0u16; 81];
+            crate::side_feat::f2_minatt_codes(&pos, &mut codes);
+            let sb = crate::side_feat::SideBoard::new(&pos);
+            for c in [Color::Black, Color::White] {
+                let mut want = Vec::new();
+                sb.kind(crate::side_feat::KIND_MINATT, c, base, &mut want);
+                let mut got: Vec<u32> = (0..81u8)
+                    .map(|i| {
+                        let sq = Square::from_index(i);
+                        side_minatt_index(c, sq, codes[sq.index()])
+                    })
+                    .collect();
+                let mut f2_want = Vec::new();
+                sb.kind(crate::side_feat::KIND_F2, c, 0, &mut f2_want);
+                let mut f2_got: Vec<u32> = (0..81u8)
+                    .map(|i| {
+                        let sq = Square::from_index(i);
+                        side_f2_index(c, sq, codes[sq.index()])
+                    })
+                    .collect();
+                want.sort_unstable();
+                got.sort_unstable();
+                f2_want.sort_unstable();
+                f2_got.sort_unstable();
+                assert_eq!(got, want, "最小の攻め駒の添字: {}", pos.to_sfen());
+                assert_eq!(f2_got, f2_want, "F2の添字: {}", pos.to_sfen());
+            }
+        }
     }
 
     #[test]

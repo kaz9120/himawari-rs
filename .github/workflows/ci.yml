@@ -96,6 +96,10 @@ jobs:
           # e64になったので、利きの経路をコードごと消すビルドをここで守る
           - arch: 1024x16x32
             args: --workspace
+          # F2と最小の攻め駒を升の語の差分で持つ構成（ADR-0248）。差分の累積が
+          # side_featの作り直しと一致することを、engineの単体テストで守る
+          - arch: 1024x16x32e64-f2_minatt
+            args: -p himawari-engine --lib
     runs-on: ubuntu-latest
     # testジョブと同じ理由でopt-level=1にする
     env:
