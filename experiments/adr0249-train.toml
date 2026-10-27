@@ -1,0 +1,12 @@
+# ADR-0249 の本番の学習。F2＋最小の攻め駒（構成 1024x16x32e64-f2_minatt）を、
+# 現行の pool1_2ep_f2 と同じ母集団・同じレシピ（2周）で学習する。約38時間の見込み。
+# 並べ替えとSPRTは対話セッションで行う（running-sprt スキル）。
+adr = "0249"
+
+[[step]]
+id = "train"
+run = "hmwr net train pool1_2ep_minatt --arch 1024x16x32e64-f2_minatt --data pool1 --valid valid_tanuki_dl430_q1 --rank rank_tanuki_210M --seed 0 --extra=\"--epochs 2\" --notes \"ADR-0249 本番の学習、F2と最小の攻め駒\""
+
+[[step]]
+id = "build"
+run = "hmwr build shapes 1024x16x32e64-f2_minatt --tag adr0249"
