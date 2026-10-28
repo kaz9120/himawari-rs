@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.57.10](https://github.com/kaz9120/himawari-rs/compare/v0.57.9...v0.57.10) (2026-10-28)
+
+
+### その他の変更
+
+* f2_minatt構成の側のaccumulatorをi32で持つ ([#974](https://github.com/kaz9120/himawari-rs/issues/974)) ([0b1889d](https://github.com/kaz9120/himawari-rs/commit/0b1889d45caaafd2ab645ebf7d1047b89f8eed2f))
+
 ## [0.57.9](https://github.com/kaz9120/himawari-rs/compare/v0.57.8...v0.57.9) (2026-10-26)
 
 
