@@ -323,6 +323,13 @@ fn main() {
     )
     .unwrap();
     writeln!(src, "pub const EFF_KINDS: &[usize] = &{kinds:?};").unwrap();
+    // F2と最小の攻め駒の組（`nnue::SIDE_MINATT_INC`）は、側のaccをi32で持つ（ADR-0249）。
+    // 要素の型を切り替えるのでcfgで渡す。条件は `SIDE_MINATT_INC` と同じで、nnue.rsが一致を確かめる
+    println!("cargo::rustc-check-cfg=cfg(eff_acc32)");
+    let kind = |name: &str| SIDE_KINDS.iter().position(|k| k.0 == name).unwrap();
+    if !arch.eff_pair && arch.eff_kinds == [kind("f2"), kind("minatt")] {
+        println!("cargo::rustc-cfg=eff_acc32");
+    }
     writeln!(src, "/// 側の特徴の総数（表の行数）。").unwrap();
     writeln!(src, "pub const EFF_IN: usize = {eff_in};").unwrap();
     writeln!(

@@ -464,12 +464,45 @@ pub fn effect_clip(acc: &[i32; EFF_OUT], out: &mut [u8]) {
     }
 }
 
-/// 同上をi16のaccから書く（D2）。
+/// 差分で持つ側のaccの要素の型。F2だけの構成はi16（ADR-0237のD2）、
+/// F2と最小の攻め駒の組（`SIDE_MINATT_INC`）はi32で持つ（ADR-0249）。
+#[cfg(not(eff_acc32))]
+pub type EffAcc = i16;
+/// 差分で持つ側のaccの要素の型。F2だけの構成はi16（ADR-0237のD2）、
+/// F2と最小の攻め駒の組（`SIDE_MINATT_INC`）はi32で持つ（ADR-0249）。
+#[cfg(eff_acc32)]
+pub type EffAcc = i32;
+
+/// 差分で持つ側のaccを0〜127へクリップして書く（D2）。
+#[cfg(not(eff_acc32))]
 #[inline]
-pub fn effect_clip16(acc: &[i16; EFF_OUT], out: &mut [u8]) {
+pub fn effect_clip_acc(acc: &[EffAcc; EFF_OUT], out: &mut [u8]) {
     debug_assert_eq!(out.len(), EFF_OUT);
     for (o, &a) in out.iter_mut().zip(acc) {
         *o = a.clamp(0, 127) as u8;
+    }
+}
+
+/// 差分で持つ側のaccを0〜127へクリップして書く（ADR-0249）。
+#[cfg(eff_acc32)]
+#[inline]
+pub fn effect_clip_acc(acc: &[EffAcc; EFF_OUT], out: &mut [u8]) {
+    effect_clip(acc, out);
+}
+
+/// 差分で持つ側のaccへバイアスを写す。
+#[cfg(not(eff_acc32))]
+#[inline]
+pub fn effect_acc_bias(net: &NnueNetwork, acc: &mut [EffAcc; EFF_OUT]) {
+    acc.copy_from_slice(&net.eff_b[..EFF_OUT]);
+}
+
+/// 差分で持つ側のaccへバイアスを写す（i32へ広げる。ADR-0249）。
+#[cfg(eff_acc32)]
+#[inline]
+pub fn effect_acc_bias(net: &NnueNetwork, acc: &mut [EffAcc; EFF_OUT]) {
+    for (a, &b) in acc.iter_mut().zip(&net.eff_b[..EFF_OUT]) {
+        *a = i32::from(b);
     }
 }
 
@@ -659,6 +692,14 @@ pub const SIDE_MINATT_INC: bool = EFF_GENERIC
     && EFF_KINDS[0] == crate::side_feat::KIND_F2
     && EFF_KINDS[1] == crate::side_feat::KIND_MINATT;
 
+// build.rsが出すcfg `eff_acc32`（側のaccをi32で持つ）は、この構成と一致させる
+const _: () = assert!(SIDE_MINATT_INC == cfg!(eff_acc32));
+
+/// i32の側のaccが溢れないこと。1升に立つのはF2と最小の攻め駒の1つずつで、81升の
+/// 162行とバイアスをi16の最大の絶対値で足しても、i32に十分収まる。だから読み込みで
+/// 重みを検査しなくても、差分の値はi32で作り直す値と一致する（ADR-0249）。
+const _: () = assert!((162 + 1) * 32768 < i32::MAX as i64);
+
 /// F2の表の行数。最小の攻め駒の行はこの後ろに続く（`side_feat::ROWS` の順）。
 const F2_ROWS: u32 = (81 * EFF_PIECES * EFF_LEVELS * EFF_LEVELS) as u32;
 /// 最小の攻め駒の階級の数（`side_feat` と同じ）。
@@ -714,7 +755,8 @@ static WHITE_MINATT: [u16; 4096] = {
 /// `SIDE_MINATT_INC` の構成で、側のaccumulatorが取りうる値の上限（絶対値）を重みから見積もる。
 ///
 /// 1升に立つのはF2と最小の攻め駒の1つずつなので、升ごとに各表の最大の絶対値を足す。
-/// i16に収まれば、差分の経路をi16の巡回加算で持っても、i32で作り直す値と一致する。
+/// accはi32で持つので読み込みでは使わない。テストで、i16を超えるネットを作れたことを確かめる。
+#[cfg(test)]
 pub fn side_minatt_acc_bound(net: &NnueNetwork) -> i64 {
     if !SIDE_MINATT_INC {
         unreachable!("f2_minatt の構成でだけ呼ぶ");
