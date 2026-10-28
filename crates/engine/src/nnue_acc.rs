@@ -1121,8 +1121,9 @@ mod tests {
             return;
         }
         let mut net = NnueNetwork::random(19);
+        // デバッグビルドでは掛け算の桁あふれで落ちるので、i16の端で止める
         for w in &mut net.eff_w {
-            *w *= 3000;
+            *w = w.saturating_mul(3000);
         }
         assert!(crate::nnue::side_minatt_acc_bound(&net) > 100 * i64::from(i16::MAX));
         let (mut evaluated, mut widest) = (0, 0i64);
