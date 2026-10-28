@@ -583,14 +583,10 @@ pub fn load(r: &mut impl Read) -> Result<(NnueNetwork, String), String> {
     .finish();
     // 利きのaccumulatorは差分の経路でi16に持つ（ADR-0237のD2）。取りうる値が
     // i16に収まらないネットでは全計算と食い違うので、読み込みで弾く。表し方を替えた
-    // 構成（ADR-0245）は評価のたびにi32で作り直すので、この制約を持たない
-    // F2と最小の攻め駒の組（ADR-0248）も差分の経路でi16に持つので、同じ検査をする
-    if EFF_OUT != 0 && (!crate::nnue::EFF_GENERIC || crate::nnue::SIDE_MINATT_INC) {
-        let bound = if crate::nnue::SIDE_MINATT_INC {
-            crate::nnue::side_minatt_acc_bound(&net)
-        } else {
-            crate::nnue::effect_acc_bound(&net)
-        };
+    // 構成（ADR-0245）は評価のたびにi32で作り直すので、この制約を持たない。
+    // F2と最小の攻め駒の組は差分の経路をi32で持ち、どの重みでも溢れない（ADR-0249）
+    if EFF_OUT != 0 && !crate::nnue::EFF_GENERIC {
+        let bound = crate::nnue::effect_acc_bound(&net);
         if bound > i64::from(i16::MAX) {
             return Err(format!(
                 "利きのaccumulatorがi16に収まらない（上限の見積もり{bound}）。\
@@ -892,6 +888,20 @@ mod tests {
         save(&net, "", &mut buf).unwrap();
         let err = load(&mut buf.as_slice()).err().expect("収まらなければ弾く");
         assert!(err.contains("i16"), "原因の読める文言にする: {err}");
+    }
+
+    /// F2と最小の攻め駒の組は側のaccをi32で持つので、i16に収まらないネットも読める（ADR-0249）。
+    #[test]
+    fn side_minatt_acc_beyond_i16_loads() {
+        if !crate::nnue::SIDE_MINATT_INC {
+            return;
+        }
+        let mut net = NnueNetwork::random(5);
+        net.eff_w.fill(405);
+        assert!(crate::nnue::side_minatt_acc_bound(&net) > i64::from(i16::MAX));
+        let mut buf = Vec::new();
+        save(&net, "", &mut buf).unwrap();
+        assert!(load(&mut buf.as_slice()).is_ok());
     }
 
     /// ヘッダ・重みの破損を検出してエラーになる。
