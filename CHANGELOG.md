@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.57.11](https://github.com/kaz9120/himawari-rs/compare/v0.57.10...v0.57.11) (2026-10-30)
+
+
+### その他の変更
+
+* 探索木を変えずに4スレッドのNPSを13.99%上げる ([#979](https://github.com/kaz9120/himawari-rs/issues/979)) ([3a0bed1](https://github.com/kaz9120/himawari-rs/commit/3a0bed1158c7c628f5d683b3aa93c9367be99fe3))
+
 ## [0.57.10](https://github.com/kaz9120/himawari-rs/compare/v0.57.9...v0.57.10) (2026-10-28)
 
 
