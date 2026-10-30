@@ -397,6 +397,12 @@ impl Position {
         self.check_info().sq[(pt & 15) as usize]
     }
 
+    /// `check_squares` を駒種の添字（0〜15、0・1は空）で並べた表。手ごとに引く呼び出しを
+    /// ループの外へ出すときに使う（engineのADR-0251）。
+    pub fn check_squares_all(&self) -> [u128; 16] {
+        self.check_info().sq
+    }
+
     /// 合法手mが相手玉への王手になるか（coreの `gives_check` と同じ値）。
     ///
     /// 直接王手の飛び利きは、指す前の盤の線で決める。coreの `gives_check` と同じ理由で、指す前と後で

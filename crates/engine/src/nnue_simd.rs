@@ -92,6 +92,50 @@ pub fn ft_apply<const V: usize, const NS: usize, const NA: usize>(
     }
 }
 
+/// `ft_apply` の両視点版に、`clip_to_u8` を畳んだもの（ADR-0251）。
+///
+/// 評価する段のaccを作るときに使う。accの前半と後半のチャンクを同じ周で作り、
+/// レジスタに残っているうちに対の積を `out` へ書く。書いたaccを読み直す4KBの
+/// パスが消える。演算は `ft_apply` と `clip_to_u8` を順に呼んだときと同じで、
+/// 結果はビット一致する。`out[k]` は視点 `k` の活性の置き場である。
+pub fn ft_apply_out<const NS: usize, const NA: usize>(
+    dst: [&mut [i16; FT_OUT]; 2],
+    src: [&[i16; FT_OUT]; 2],
+    subs: [[&[i8]; 2]; NS],
+    adds: [[&[i8]; 2]; NA],
+    out: [&mut [u8]; 2],
+) {
+    const HALF_CHUNKS: usize = FT_CHUNKS / 2;
+    let subs = subs.map(|ws| ws.map(|w| &w.as_chunks::<FT_I8_LANES>().0[..FT_CHUNKS]));
+    let adds = adds.map(|ws| ws.map(|w| &w.as_chunks::<FT_I8_LANES>().0[..FT_CHUNKS]));
+    let dst = dst.map(|d| d.as_chunks_mut::<FT_I8_LANES>().0);
+    let src = src.map(|s| &s.as_chunks::<FT_I8_LANES>().0[..FT_CHUNKS]);
+    let out = out.map(|o| &mut o.as_chunks_mut::<FT_I8_LANES>().0[..HALF_CHUNKS]);
+    let zero = Simd::<i16, FT_I8_LANES>::splat(0);
+    let max = Simd::<i16, FT_I8_LANES>::splat(127);
+    for i in 0..HALF_CHUNKS {
+        for k in 0..2 {
+            let [mut lo, mut hi] =
+                [i, i + HALF_CHUNKS].map(|j| Simd::<i16, FT_I8_LANES>::from_array(src[k][j]));
+            for w in &subs {
+                lo -= Simd::<i8, FT_I8_LANES>::from_array(w[k][i]).cast();
+                hi -= Simd::<i8, FT_I8_LANES>::from_array(w[k][i + HALF_CHUNKS]).cast();
+            }
+            for w in &adds {
+                lo += Simd::<i8, FT_I8_LANES>::from_array(w[k][i]).cast();
+                hi += Simd::<i8, FT_I8_LANES>::from_array(w[k][i + HALF_CHUNKS]).cast();
+            }
+            dst[k][i] = lo.to_array();
+            dst[k][i + HALF_CHUNKS] = hi.to_array();
+            let a = lo.simd_clamp(zero, max);
+            let b = hi.simd_clamp(zero, max);
+            out[k][i] = ((a * b + Simd::splat(64)) >> Simd::splat(7))
+                .cast::<u8>()
+                .to_array();
+        }
+    }
+}
+
 /// 利きのaccの両視点を、レジスタに置いたまま更新する（ADR-0242の段2）。
 ///
 /// `each` は1升ごとに `(引く行, 足す行)` の添字を視点の組で返す。引く行が無い升は
@@ -387,7 +431,14 @@ fn affine_relu(w: &[i8], b: &[i32], x: &[u8], out: &mut [u8]) {
 /// 値が変わらない。
 #[cfg(all(target_arch = "aarch64", target_feature = "dotprod"))]
 #[inline]
-fn affine_rows<const R: usize>(w: &[i8], b: &[i32], x: &[u8], out: &mut [u8], o: usize) {
+fn affine_rows<const R: usize>(
+    w: &[i8],
+    b: &[i32],
+    x: &[u8],
+    stride: usize,
+    out: &mut [u8],
+    o: usize,
+) {
     use std::arch::aarch64::{int32x4_t, vaddvq_s32, vdotq_s32, vdupq_n_s32, vld1q_s8};
 
     let cols = x.len();
@@ -403,7 +454,7 @@ fn affine_rows<const R: usize>(w: &[i8], b: &[i32], x: &[u8], out: &mut [u8], o:
         unsafe {
             let xv = vld1q_s8(x.as_ptr().add(k).cast::<i8>());
             for (r, a) in acc.iter_mut().enumerate() {
-                *a = vdotq_s32(*a, vld1q_s8(w.as_ptr().add((o + r) * cols + k)), xv);
+                *a = vdotq_s32(*a, vld1q_s8(w.as_ptr().add((o + r) * stride + k)), xv);
             }
         }
     }
@@ -425,23 +476,34 @@ fn affine_rows<const R: usize>(w: &[i8], b: &[i32], x: &[u8], out: &mut [u8], o:
 /// ため結果は一致する。
 #[cfg(all(target_arch = "aarch64", target_feature = "dotprod"))]
 fn affine_relu(w: &[i8], b: &[i32], x: &[u8], out: &mut [u8]) {
+    affine_relu_strided(w, b, x, x.len(), out);
+}
+
+/// 同上で、重みの行の幅 `stride` を入力の長さと別に受ける（ADR-0251）。
+///
+/// パディングした列（入力も重みもゼロ）を読まずに済ませるときに使う。`x` は
+/// 実際に積和する列だけを渡し、`stride` は重みの1行の幅にする。読まない列の積は
+/// ゼロなので、パディングまで積和した結果と一致する。
+#[cfg(all(target_arch = "aarch64", target_feature = "dotprod"))]
+fn affine_relu_strided(w: &[i8], b: &[i32], x: &[u8], stride: usize, out: &mut [u8]) {
     let cols = x.len();
     debug_assert!(cols.is_multiple_of(16));
-    debug_assert_eq!(w.len(), out.len() * cols);
+    debug_assert!(cols <= stride);
+    debug_assert_eq!(w.len(), out.len() * stride);
     debug_assert_eq!(b.len(), out.len());
 
     let n = out.len();
     let mut o = 0;
     while o + 8 <= n {
-        affine_rows::<8>(w, b, x, out, o);
+        affine_rows::<8>(w, b, x, stride, out, o);
         o += 8;
     }
     while o + 4 <= n {
-        affine_rows::<4>(w, b, x, out, o);
+        affine_rows::<4>(w, b, x, stride, out, o);
         o += 4;
     }
     while o < n {
-        affine_rows::<1>(w, b, x, out, o);
+        affine_rows::<1>(w, b, x, stride, out, o);
         o += 1;
     }
 }
@@ -527,6 +589,19 @@ static NNZ_LUT: [[u16; 8]; 256] = {
     t
 };
 
+/// バイトマスクの立っているビットの数（ADR-0251）。`count_ones` はベクトルレジスタを
+/// 経由する4命令になるので、表を1回引く形にする。
+#[cfg(all(target_arch = "aarch64", target_feature = "dotprod"))]
+static NNZ_COUNT: [u8; 256] = {
+    let mut t = [0u8; 256];
+    let mut m = 0usize;
+    while m < 256 {
+        t[m] = (m as u8).count_ones() as u8;
+        m += 1;
+    }
+    t
+};
+
 /// 活性のうち非ゼロを含む4列チャンクを列挙する（ADR-0151群L）。
 ///
 /// 16チャンク（64バイト）ずつ見て、チャンクごとの非ゼロ判定を1ビットに
@@ -578,7 +653,7 @@ fn find_nnz(x: &[u8; CONCAT], nnz: &mut [MaybeUninit<u16>; NNZ_CHUNKS + 8]) -> u
                     nnz.as_mut_ptr().add(count).cast::<u16>(),
                     vaddq_u16(vld1q_u16(NNZ_LUT[mask].as_ptr()), base),
                 );
-                count += mask.count_ones() as usize;
+                count += usize::from(NNZ_COUNT[mask]);
             }
             k += 16;
         }
@@ -636,12 +711,87 @@ fn affine_relu_l1_sparse(wt: &[i8], b: &[i32], x: &[u8; CONCAT], out: &mut [u8])
                 *a = vdotq_s32(*a, vld1q_s8(base.add(r * 16)), xv);
             }
         }
+        if L1_OUT.is_multiple_of(16) {
+            // 16出力ずつ、バイアス・シフト・clipをベクトルのまま当てる（ADR-0251）
+            for (g, o) in out.as_chunks_mut::<16>().0.iter_mut().enumerate() {
+                let v = [0, 1, 2, 3].map(|r| acc[4 * g + r]);
+                *o = std::mem::transmute::<std::arch::aarch64::uint8x16_t, [u8; 16]>(
+                    relu_narrow16(v, b.as_ptr().add(16 * g)),
+                );
+            }
+            return;
+        }
         for (r, a) in acc.iter().enumerate() {
             vst1q_s32(sums.as_mut_ptr().add(r * 4), *a);
         }
     }
     for (o, h) in out.iter_mut().enumerate() {
         *h = clip((b[o] + sums[o]) >> 6);
+    }
+}
+
+/// 4出力ずつ和を持つ4本のベクトルから、16出力の `clip((b + sum) >> 6)` を作る（ADR-0251）。
+///
+/// 符号付きから符号なしへの飽和縮小で負を0にし、u8への飽和縮小のあと127で抑える。
+/// 1出力ずつ水平加算してスカラーでclipするのと同じ値になる。
+///
+/// # Safety
+/// `b` から16個のi32が読めること。
+#[cfg(all(target_arch = "aarch64", target_feature = "dotprod"))]
+#[inline(always)]
+unsafe fn relu_narrow16(
+    v: [std::arch::aarch64::int32x4_t; 4],
+    b: *const i32,
+) -> std::arch::aarch64::uint8x16_t {
+    use std::arch::aarch64::{
+        vaddq_s32, vdupq_n_u8, vld1q_s32, vminq_u8, vqmovn_high_u16, vqmovn_u16, vqmovun_high_s32,
+        vqmovun_s32, vshrq_n_s32,
+    };
+    // SAFETY: 呼び出し側の約束により b から16個読める
+    unsafe {
+        let s = |k: usize| vshrq_n_s32::<6>(vaddq_s32(v[k], vld1q_s32(b.add(4 * k))));
+        let lo = vqmovun_high_s32(vqmovun_s32(s(0)), s(1));
+        let hi = vqmovun_high_s32(vqmovun_s32(s(2)), s(3));
+        vminq_u8(vqmovn_high_u16(vqmovn_u16(lo), hi), vdupq_n_u8(127))
+    }
+}
+
+/// 出力が16の倍数の全結合層＋clipped ReLU（SDOT版、ADR-0251）。
+///
+/// 1行の積和を1本のベクトルに溜め、4行ぶんをペア加算で畳むと、4出力の和が
+/// 1本に並ぶ。出力ごとの水平加算とスカラーのclipが要らない。`x` は積和する列、
+/// `stride` は重みの1行の幅で、`affine_relu_strided` と同じ値を返す。
+#[cfg(all(target_arch = "aarch64", target_feature = "dotprod"))]
+fn affine_relu16(w: &[i8], b: &[i32], x: &[u8], stride: usize, out: &mut [u8]) {
+    use std::arch::aarch64::{int32x4_t, vdotq_s32, vdupq_n_s32, vld1q_s8, vpaddq_s32};
+
+    let cols = x.len();
+    debug_assert!(cols.is_multiple_of(16) && cols <= stride);
+    debug_assert!(out.len().is_multiple_of(16));
+    assert!(w.len() >= out.len() * stride && b.len() >= out.len());
+    for (g, o) in out.as_chunks_mut::<16>().0.iter_mut().enumerate() {
+        // SAFETY: dotprodはtarget_featureで有効。重みは (16g+r)*stride+k+16 <= w.len() の
+        // 範囲を読み、上のassertと cols <= stride から従う。活性は0..127なので
+        // i8として読んでも値が変わらない
+        unsafe {
+            let mut acc: [int32x4_t; 16] = [vdupq_n_s32(0); 16];
+            for k in (0..cols).step_by(16) {
+                let xv = vld1q_s8(x.as_ptr().add(k).cast::<i8>());
+                for (r, a) in acc.iter_mut().enumerate() {
+                    *a = vdotq_s32(*a, vld1q_s8(w.as_ptr().add((16 * g + r) * stride + k)), xv);
+                }
+            }
+            let quad = |r: usize| {
+                vpaddq_s32(
+                    vpaddq_s32(acc[r], acc[r + 1]),
+                    vpaddq_s32(acc[r + 2], acc[r + 3]),
+                )
+            };
+            *o = std::mem::transmute::<std::arch::aarch64::uint8x16_t, [u8; 16]>(relu_narrow16(
+                [quad(0), quad(4), quad(8), quad(12)],
+                b.as_ptr().add(16 * g),
+            ));
+        }
     }
 }
 
@@ -671,6 +821,29 @@ fn l1(net: &NnueNetwork, x: &[u8; CONCAT], out: &mut [u8]) {
     affine_relu(&net.w2, &net.b2, x, out);
 }
 
+/// 第2層。SDOT経路では、パディングした列を読まない（ADR-0251）。
+///
+/// 第1層の出力は `L1_OUT` 個で、`L1_PAD` まではゼロで埋めてある。SDOTは16列
+/// ずつ積和するので、`L1_OUT` を16へ切り上げた列までで足りる。
+#[cfg(all(target_arch = "aarch64", target_feature = "dotprod"))]
+#[inline]
+fn l2(net: &NnueNetwork, h2: &[u8; L1_PAD], out: &mut [u8]) {
+    const COLS: usize = L1_OUT.next_multiple_of(16);
+    const _: () = assert!(COLS <= L1_PAD);
+    if L2_OUT.is_multiple_of(16) {
+        affine_relu16(&net.w3, &net.b3, &h2[..COLS], L1_PAD, out);
+    } else {
+        affine_relu_strided(&net.w3, &net.b3, &h2[..COLS], L1_PAD, out);
+    }
+}
+
+/// 同上（SDOT以外の経路。パディングまで積和する）。
+#[cfg(not(all(target_arch = "aarch64", target_feature = "dotprod")))]
+#[inline]
+fn l2(net: &NnueNetwork, h2: &[u8; L1_PAD], out: &mut [u8]) {
+    affine_relu(&net.w3, &net.b3, h2, out);
+}
+
 /// 連結ベクトルから評価値まで（SIMD版）。
 pub fn forward_hidden(net: &NnueNetwork, concat: &[u8; CONCAT]) -> Value {
     // 次の層の入力はパディングした幅で渡す。実次元より後ろはゼロのままで、
@@ -683,7 +856,7 @@ pub fn forward_hidden(net: &NnueNetwork, concat: &[u8; CONCAT]) -> Value {
     let last: &[u8] = if L2_OUT == 0 {
         &h2[..L1_OUT]
     } else {
-        affine_relu(&net.w3, &net.b3, &h2, &mut h3[..L2_OUT]);
+        l2(net, &h2, &mut h3[..L2_OUT]);
         if L3_OUT != 0 {
             affine_relu(&net.w4, &net.b4, &h3, &mut h4);
             &h4
@@ -845,6 +1018,64 @@ mod tests {
                 }
                 assert_eq!(got, want, "ns={ns}, na={na}");
             }
+        }
+    }
+
+    /// 活性を畳んだ両視点の適用が、`ft_apply` と `clip_to_u8` を順に呼んだ結果と
+    /// 一致すること（ADR-0251）。値が0〜127の外へ出る行も混ぜる。
+    #[test]
+    fn ft_apply_out_matches_apply_then_clip() {
+        let net = NnueNetwork::random(13);
+        let row = |i: usize| &net.ft_w[i * FT_OUT..(i + 1) * FT_OUT];
+        let src: [[i16; FT_OUT]; 2] = [
+            std::array::from_fn(|i| (i as i16 % 300) - 120),
+            std::array::from_fn(|i| 200 - (i as i16 % 260)),
+        ];
+        let s = [[row(0), row(4)], [row(1), row(5)]];
+        let a = [[row(2), row(6)], [row(3), row(7)]];
+        for (ns, na) in [(0, 0), (1, 1), (2, 2), (0, 1), (1, 2), (2, 1)] {
+            let mut want = [[0i16; FT_OUT]; 2];
+            let mut want_out = [[0u8; HALF]; 2];
+            let mut got = [[0i16; FT_OUT]; 2];
+            let mut got_out = [[0u8; HALF]; 2];
+            {
+                let [d0, d1] = &mut want;
+                let [s0, s1] = &src;
+                let [g0, g1] = &mut got;
+                let [o0, o1] = &mut got_out;
+                let (dst, out) = ([g0, g1], [&mut o0[..], &mut o1[..]]);
+                match (ns, na) {
+                    (0, 0) => {
+                        ft_apply([d0, d1], [s0, s1], [], []);
+                        ft_apply_out(dst, [s0, s1], [], [], out);
+                    }
+                    (1, 1) => {
+                        ft_apply([d0, d1], [s0, s1], [s[0]], [a[0]]);
+                        ft_apply_out(dst, [s0, s1], [s[0]], [a[0]], out);
+                    }
+                    (2, 2) => {
+                        ft_apply([d0, d1], [s0, s1], [s[0], s[1]], [a[0], a[1]]);
+                        ft_apply_out(dst, [s0, s1], [s[0], s[1]], [a[0], a[1]], out);
+                    }
+                    (0, 1) => {
+                        ft_apply([d0, d1], [s0, s1], [], [a[0]]);
+                        ft_apply_out(dst, [s0, s1], [], [a[0]], out);
+                    }
+                    (1, 2) => {
+                        ft_apply([d0, d1], [s0, s1], [s[0]], [a[0], a[1]]);
+                        ft_apply_out(dst, [s0, s1], [s[0]], [a[0], a[1]], out);
+                    }
+                    _ => {
+                        ft_apply([d0, d1], [s0, s1], [s[0], s[1]], [a[0]]);
+                        ft_apply_out(dst, [s0, s1], [s[0], s[1]], [a[0]], out);
+                    }
+                }
+            }
+            for k in 0..2 {
+                clip_to_u8(&want[k], &mut want_out[k]);
+            }
+            assert_eq!(got, want, "acc: ns={ns}, na={na}");
+            assert_eq!(got_out, want_out, "活性: ns={ns}, na={na}");
         }
     }
 

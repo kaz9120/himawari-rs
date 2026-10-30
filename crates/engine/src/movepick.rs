@@ -8,12 +8,11 @@
 //! テーブルの次元・値域・初期値は参照実装の `history.h` と
 //! `yaneuraou-search.cpp` を出典とする（ADR-0074）。
 
+use std::mem::MaybeUninit;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicI16, Ordering};
 
-use himawari_core::{
-    Bitboard, Color, GenType, Move, MoveList, Piece, PieceType, Square, piece_value,
-};
+use himawari_core::{Color, GenType, Move, MoveList, Piece, PieceType, Square, piece_value};
 
 use crate::board::SearchBoard;
 
@@ -118,6 +117,13 @@ impl History {
         i32::from(self.table[Self::index(c, m)])
     }
 
+    /// 手番cの面。16bitの手で引けば添字の検査が要らない（ADR-0251）。
+    #[inline]
+    pub fn row(&self, c: Color) -> &[i16; UINT16_HISTORY_SIZE] {
+        let at = c.index() * UINT16_HISTORY_SIZE;
+        self.table[at..at + UINT16_HISTORY_SIZE].try_into().unwrap()
+    }
+
     pub fn update(&mut self, c: Color, m: Move, bonus: i32) {
         stats_update(&mut self.table[Self::index(c, m)], bonus, D_BUTTERFLY);
     }
@@ -151,6 +157,13 @@ impl LowPlyHistory {
     #[inline]
     pub fn get(&self, ply: usize, m: Move) -> i32 {
         i32::from(self.table[Self::index(ply, m)])
+    }
+
+    /// plyの面（ADR-0251）。`History::row` と同じく16bitの手で引く。
+    #[inline]
+    pub fn row(&self, ply: usize) -> &[i16; UINT16_HISTORY_SIZE] {
+        let at = ply * UINT16_HISTORY_SIZE;
+        self.table[at..at + UINT16_HISTORY_SIZE].try_into().unwrap()
     }
 
     pub fn update(&mut self, ply: usize, m: Move, bonus: i32) {
@@ -226,6 +239,14 @@ impl PawnHistory {
     #[inline]
     pub fn get(&self, slot: usize, pc: Piece, to: Square) -> i32 {
         i32::from(self.table[slot + pc.index() * SQUARE_NB + to.index()].load(Ordering::Relaxed))
+    }
+
+    /// スロットの面。`駒 * 81 + 升` で引く（ADR-0251）。
+    #[inline]
+    pub fn row(&self, slot: usize) -> &[AtomicI16; PIECE_NB * SQUARE_NB] {
+        self.table[slot..slot + PIECE_NB * SQUARE_NB]
+            .try_into()
+            .unwrap()
     }
 
     pub fn update(&self, slot: usize, pc: Piece, to: Square, bonus: i32) {
@@ -482,6 +503,12 @@ impl ContinuationHistory {
     #[inline]
     pub fn get(&self, base: usize, pc: Piece, to: Square) -> i32 {
         i32::from(self.table[base + pc.index() * SQUARE_NB + to.index()])
+    }
+
+    /// 面 `base` を `駒 * 81 + 升` で引ける形で返す（ADR-0251）。
+    #[inline]
+    pub fn row(&self, base: usize) -> &[i16; CONT_STRIDE] {
+        self.table[base..base + CONT_STRIDE].try_into().unwrap()
     }
 
     pub fn update(&mut self, base: usize, pc: Piece, to: Square, bonus: i32) {
@@ -788,34 +815,52 @@ impl MovePicker {
         list: &MoveList,
     ) {
         self.moves.reserve(list.len());
-        let pawn_slot = h.shared.pawn.slot(pos.pawn_key());
-        let us = pos.side_to_move();
-        // 王手になる升を駒種ごとに1回だけ引く。配列盤の盤は呼ぶたびに作り直すので、
-        // 手ごとに引くと重い（ADR-0241の第15回）
-        let mut checks: [Option<Bitboard>; 16] = [None; 16];
-        for &m in list {
-            let pc = m.piece_after();
-            let to = m.to();
-            let mut v = 2 * h.main.get(us, m);
-            v += 2 * h.shared.pawn.get(pawn_slot, pc, to);
-            v += h.cont.get(cont[0], pc, to);
-            v += h.cont.get(cont[1], pc, to);
-            v += h.cont.get(cont[2], pc, to);
-            v += h.cont.get(cont[3], pc, to);
-            v += h.cont.get(cont[5], pc, to);
-            // 王手になる手へのボーナス。直接王手になるマスは
-            // Positionのノード内キャッシュが駒種ごとに1回だけ引く
-            // （ADR-0151群O）
-            let pt = pc.piece_type();
-            let check =
-                *checks[usize::from(pt.0) & 15].get_or_insert_with(|| pos.check_squares(pt));
-            if check.test(to) && pos.see_ge(m, CHECK_SEE_MARGIN) {
-                v += CHECK_BONUS;
+        // 表の面はノードで決まるので、手のループの外で引いておく。手ごとに
+        // 添字を1回だけ確かめれば、各面の読み出しの検査は消える（ADR-0251）
+        let main = h.main.row(pos.side_to_move());
+        let pawn = h.shared.pawn.row(h.shared.pawn.slot(pos.pawn_key()));
+        let conts = [0, 1, 2, 3, 5].map(|k| h.cont.row(cont[k]));
+        let low = (self.ply < LOW_PLY_HISTORY_SIZE)
+            .then(|| (h.low_ply.row(self.ply), 1 + self.ply as i32));
+        // 王手になる升は駒種ごとの表を1回で受け取る。直接王手になるマスは
+        // Positionのノード内キャッシュが持つ（ADR-0151群O）。手のループの中で
+        // 関数を呼ばないので、表の面や長さがレジスタに残る（ADR-0251）
+        let checks = pos.check_squares_all();
+        let start = self.moves.len();
+        // 王手になる手の位置。王手のボーナスはSEEを見て足すので、ループの後で当てる
+        let mut cands = [MaybeUninit::<u16>::uninit(); MoveList::CAPACITY];
+        let mut nc = 0usize;
+        {
+            let out = &mut self.moves.spare_capacity_mut()[..list.len()];
+            for (k, (&m, o)) in list.as_slice().iter().zip(out.iter_mut()).enumerate() {
+                let pc = m.piece_after();
+                let to = m.to();
+                let i = pc.index() * SQUARE_NB + to.index();
+                assert!(i < CONT_STRIDE, "駒と升の添字が面を超えた: {i}");
+                let m16 = usize::from(m.to_move16().0);
+                let mut v = 2 * i32::from(main[m16]);
+                v += 2 * i32::from(pawn[i].load(Ordering::Relaxed));
+                for row in &conts {
+                    v += i32::from(row[i]);
+                }
+                if let Some((row, div)) = low {
+                    v += 8 * i32::from(row[m16]) / div;
+                }
+                o.write(ExtMove { m, v });
+                cands[nc].write(k as u16);
+                nc += usize::from(checks[usize::from(pc.piece_type().0) & 15].test(to));
             }
-            if self.ply < LOW_PLY_HISTORY_SIZE {
-                v += 8 * h.low_ply.get(self.ply, m) / (1 + self.ply as i32);
+        }
+        // SAFETY: 直前のループが、確保済みの容量の先頭から list.len() 個を書いた
+        unsafe { self.moves.set_len(start + list.len()) };
+        // 王手になる手へのボーナス（movepick.cpp:371）
+        for k in &cands[..nc] {
+            // SAFETY: 先頭からnc個は上のループが書いた
+            let k = unsafe { k.assume_init() };
+            let e = &mut self.moves[start + usize::from(k)];
+            if pos.see_ge(e.m, CHECK_SEE_MARGIN) {
+                e.v += CHECK_BONUS;
             }
-            push_reserved(&mut self.moves, ExtMove { m, v });
         }
     }
 

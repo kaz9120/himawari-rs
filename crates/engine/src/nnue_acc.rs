@@ -304,18 +304,20 @@ impl NnueState {
     /// 盤は `EvalBoard` 越しに読む。coreの局面のほか、探索の盤（`SearchBoard`）も渡せる
     /// （ADR-0241の第13回）。
     pub fn evaluate<B: EvalBoard + ?Sized>(&mut self, net: &NnueNetwork, pos: &B) -> Value {
-        self.ensure_both(net, pos);
         let stm = pos.side_to_move();
-        let top = &self.entries[self.top];
-        let concat = &mut *self.concat;
-        for (half, c) in [(0usize, stm), (1, stm.flip())] {
-            debug_assert!(top.computed[c.index()], "未計算のaccを読もうとした");
-            let acc = &top.acc[c.index()];
-            nnue_simd::clip_to_u8(acc, &mut concat[half * HALF..(half + 1) * HALF]);
+        // 最上段を差分で作るときは、活性も同じパスで書く（ADR-0251）
+        if !self.ensure_both(net, pos, Some(stm)) {
+            let top = &self.entries[self.top];
+            let concat = &mut *self.concat;
+            for (half, c) in [(0usize, stm), (1, stm.flip())] {
+                debug_assert!(top.computed[c.index()], "未計算のaccを読もうとした");
+                let acc = &top.acc[c.index()];
+                nnue_simd::clip_to_u8(acc, &mut concat[half * HALF..(half + 1) * HALF]);
+            }
         }
         if EFF_GENERIC && !SIDE_MINATT_INC {
             // 表し方を替えた構成は、評価のたびに作り直す（ADR-0245）
-            crate::side_feat::fill(net, pos, concat);
+            crate::side_feat::fill(net, pos, &mut self.concat);
         } else if EFF_OUT != 0 {
             // 利きの部分は祖先からの差分で作る（ADR-0237のD2）。F2と最小の攻め駒の組も
             // 同じ升の語の差分で持つ（ADR-0248）
@@ -440,7 +442,15 @@ impl NnueState {
     ///
     /// 遡れない視点は、最上段より `REFRESH_BACK` 段上（玉の動いた段より上へは
     /// 行かない）でキャッシュから作り、そこから差分で上げる（ADR-0250）。
-    fn ensure_both<B: EvalBoard + ?Sized>(&mut self, net: &NnueNetwork, pos: &B) {
+    ///
+    /// `stm` を渡すと、最上段を差分で作るときに活性を連結ベクトルへ書き、trueを返す
+    /// （ADR-0251）。falseなら活性は書いていない。
+    fn ensure_both<B: EvalBoard + ?Sized>(
+        &mut self,
+        net: &NnueNetwork,
+        pos: &B,
+        stm: Option<Color>,
+    ) -> bool {
         let top = self.top;
         let [b, w] = [Color::Black, Color::White].map(|c| match self.computed_ancestor(c) {
             Ok(i) => i,
@@ -458,7 +468,7 @@ impl NnueState {
         if w < join {
             self.apply_range(net, pos, Color::White, w, join);
         }
-        self.apply_range_both(net, pos, join, top);
+        self.apply_range_both(net, pos, join, top, stm)
     }
 
     /// 視点cのaccが計算済みで最上段にいちばん近い段を `Ok` で返す。
@@ -511,7 +521,8 @@ impl NnueState {
         pos: &B,
         from: usize,
         to: usize,
-    ) {
+        stm: Option<Color>,
+    ) -> bool {
         let views = [
             (Color::Black, pos.king(Color::Black)),
             (Color::White, pos.king(Color::White)),
@@ -524,9 +535,22 @@ impl NnueState {
             let rows = diff_rows(net, views, &e.dirty, e.hand);
             let [d0, d1] = &mut e.acc;
             let [s0, s1] = &prev.acc;
-            apply_rows([d0, d1], [s0, s1], &rows);
             e.computed = [true, true];
+            match stm {
+                Some(stm) if j == to => {
+                    let (h0, h1) = self.concat[..2 * HALF].split_at_mut(HALF);
+                    let out = if stm == Color::Black {
+                        [h0, h1]
+                    } else {
+                        [h1, h0]
+                    };
+                    apply_rows_out([d0, d1], [s0, s1], &rows, out);
+                    return true;
+                }
+                _ => apply_rows([d0, d1], [s0, s1], &rows),
+            }
         }
+        false
     }
 
     /// 最上段の視点cを、同じ玉位置のキャッシュとの差分で作る（ADR-0156）。
@@ -880,6 +904,28 @@ fn apply_rows<const V: usize>(
         (1, 2) => nnue_simd::ft_apply(dst, src, [s[0]], [a[0], a[1]]),
         (2, 0) => nnue_simd::ft_apply(dst, src, [s[0], s[1]], []),
         (2, 1) => nnue_simd::ft_apply(dst, src, [s[0], s[1]], [a[0]]),
+        _ => unreachable!("差分の行数が上限を超えた: ns={}, na={}", r.ns, r.na),
+    }
+}
+
+/// `apply_rows` の両視点版で、活性も書く（ADR-0251）。`out[k]` は視点 `k` の置き場。
+fn apply_rows_out(
+    dst: [&mut [i16; FT_OUT]; 2],
+    src: [&[i16; FT_OUT]; 2],
+    r: &DiffRows<'_, 2>,
+    out: [&mut [u8]; 2],
+) {
+    let (s, a) = (r.subs, r.adds);
+    match (r.ns, r.na) {
+        (0, 0) => nnue_simd::ft_apply_out(dst, src, [], [], out),
+        (1, 1) => nnue_simd::ft_apply_out(dst, src, [s[0]], [a[0]], out),
+        (2, 2) => nnue_simd::ft_apply_out(dst, src, [s[0], s[1]], [a[0], a[1]], out),
+        (0, 1) => nnue_simd::ft_apply_out(dst, src, [], [a[0]], out),
+        (0, 2) => nnue_simd::ft_apply_out(dst, src, [], [a[0], a[1]], out),
+        (1, 0) => nnue_simd::ft_apply_out(dst, src, [s[0]], [], out),
+        (1, 2) => nnue_simd::ft_apply_out(dst, src, [s[0]], [a[0], a[1]], out),
+        (2, 0) => nnue_simd::ft_apply_out(dst, src, [s[0], s[1]], [], out),
+        (2, 1) => nnue_simd::ft_apply_out(dst, src, [s[0], s[1]], [a[0]], out),
         _ => unreachable!("差分の行数が上限を超えた: ns={}, na={}", r.ns, r.na),
     }
 }
