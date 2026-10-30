@@ -164,6 +164,10 @@ impl EffEntry {
     }
 }
 
+/// 差分で遡れない視点を、最上段から何段下でキャッシュから作るか（ADR-0250）。
+/// 作った段から最上段までは差分で上げる。
+const REFRESH_BACK: usize = 1;
+
 /// 祖先との差分で変わった升がこれを超えたら、81升を全計算する。
 /// 1升あたり引く行と足す行の2本を払うので、およそ半分で損益が分かれる。
 const EFF_REFRESH_ABOVE: u32 = 40;
@@ -218,6 +222,10 @@ pub struct NnueState {
     /// 利きの段（ADR-0237のD2）。`entries` と同じ添字で並ぶ。
     /// `EFF_OUT` が0の構成では空で、誰も触らない。
     eff: Vec<EffEntry>,
+    /// 隠れ層へ渡す連結ベクトルの置き場（ADR-0250）。評価のたびにゼロ埋めすると
+    /// 1KBあまりのmemsetが走るので使い回す。各部分が書く範囲は構成で決まり、
+    /// 毎回同じ範囲を上書きする。どこも書かない余白は確保時のゼロのまま残る
+    concat: Box<[u8; CONCAT]>,
 }
 
 /// キャッシュ差分で使う作業領域。まとめて `mem::take` できる形に
@@ -248,6 +256,7 @@ impl NnueState {
             eff: std::iter::repeat_with(EffEntry::empty)
                 .take(if EFF_OUT != 0 { MAX_ENTRIES } else { 0 })
                 .collect(),
+            concat: Box::new([0; CONCAT]),
         }
     }
 
@@ -298,7 +307,7 @@ impl NnueState {
         self.ensure_both(net, pos);
         let stm = pos.side_to_move();
         let top = &self.entries[self.top];
-        let mut concat = [0u8; CONCAT];
+        let concat = &mut *self.concat;
         for (half, c) in [(0usize, stm), (1, stm.flip())] {
             debug_assert!(top.computed[c.index()], "未計算のaccを読もうとした");
             let acc = &top.acc[c.index()];
@@ -306,11 +315,12 @@ impl NnueState {
         }
         if EFF_GENERIC && !SIDE_MINATT_INC {
             // 表し方を替えた構成は、評価のたびに作り直す（ADR-0245）
-            crate::side_feat::fill(net, pos, &mut concat);
+            crate::side_feat::fill(net, pos, concat);
         } else if EFF_OUT != 0 {
             // 利きの部分は祖先からの差分で作る（ADR-0237のD2）。F2と最小の攻め駒の組も
             // 同じ升の語の差分で持つ（ADR-0248）
             self.ensure_effect(net, pos);
+            let concat = &mut *self.concat;
             let e = &self.eff[self.top];
             for (k, c) in [(0usize, stm), (1, stm.flip())] {
                 let at = EFF_BASE + k * EFF_OUT;
@@ -322,11 +332,12 @@ impl NnueState {
                 self.check_effect(net, p);
             }
         }
+        let concat = &mut *self.concat;
         // 玉の近傍の部分モデル（ADR-0246）。持たない構成では何もしない
-        crate::submodel::fill(&net.sub, pos, &mut concat);
+        crate::submodel::fill(&net.sub, pos, concat);
         #[cfg(feature = "actdump")]
-        crate::actdump::record(&concat);
-        nnue_simd::forward_hidden(net, &concat)
+        crate::actdump::record(concat);
+        nnue_simd::forward_hidden(net, concat)
     }
 
     /// 利きのaccumulatorを最上段に用意する（ADR-0237のD2、ADR-0242の段1・段2）。
@@ -426,53 +437,42 @@ impl NnueState {
     /// 遅いほうの起点から上の区間だけである。** 手前の区間は片色ずつ
     /// 埋め、そこから上を1パスで両色へ書く。玉が動いた視点は遡れないので
     /// 全計算になり、その視点は融合の対象から外れる。
+    ///
+    /// 遡れない視点は、最上段より `REFRESH_BACK` 段上（玉の動いた段より上へは
+    /// 行かない）でキャッシュから作り、そこから差分で上げる（ADR-0250）。
     fn ensure_both<B: EvalBoard + ?Sized>(&mut self, net: &NnueNetwork, pos: &B) {
         let top = self.top;
-        let src = [
-            self.computed_ancestor(Color::Black),
-            self.computed_ancestor(Color::White),
-        ];
-        match src {
-            [Some(b), Some(w)] => {
-                let join = b.max(w);
-                // 起点がずれている片色だけ、合流点まで先に埋める
-                if b < join {
-                    self.apply_range(net, pos, Color::Black, b, join);
-                }
-                if w < join {
-                    self.apply_range(net, pos, Color::White, w, join);
-                }
-                self.apply_range_both(net, pos, join, top);
+        let [b, w] = [Color::Black, Color::White].map(|c| match self.computed_ancestor(c) {
+            Ok(i) => i,
+            Err(k) => {
+                let r = k.max(top.saturating_sub(REFRESH_BACK));
+                self.refresh_at(net, pos, c, r);
+                r
             }
-            [Some(b), None] => {
-                self.apply_range(net, pos, Color::Black, b, top);
-                self.refresh_top(net, pos, Color::White);
-            }
-            [None, Some(w)] => {
-                self.refresh_top(net, pos, Color::Black);
-                self.apply_range(net, pos, Color::White, w, top);
-            }
-            [None, None] => {
-                self.refresh_top(net, pos, Color::Black);
-                self.refresh_top(net, pos, Color::White);
-            }
+        });
+        let join = b.max(w);
+        // 起点がずれている片色だけ、合流点まで先に埋める
+        if b < join {
+            self.apply_range(net, pos, Color::Black, b, join);
         }
+        if w < join {
+            self.apply_range(net, pos, Color::White, w, join);
+        }
+        self.apply_range_both(net, pos, join, top);
     }
 
-    /// 視点cのaccが計算済みで最上段にいちばん近い段。玉移動を跨いだら
-    /// 遡れないのでNone（全計算になる）。
-    fn computed_ancestor(&self, c: Color) -> Option<usize> {
+    /// 視点cのaccが計算済みで最上段にいちばん近い段を `Ok` で返す。
+    /// 無ければ、キャッシュから作れるいちばん下の段を `Err` で返す。視点cの玉が
+    /// 動いた段か、rootである。それより下は玉位置が違うので、同じキャッシュを使えない。
+    fn computed_ancestor(&self, c: Color) -> Result<usize, usize> {
         let mut i = self.top;
         loop {
             if self.entries[i].computed[c.index()] {
-                return Some(i);
+                return Ok(i);
             }
             let d = &self.entries[i].dirty;
-            if d.king_moved && d.piece_new[0].color() == c {
-                return None;
-            }
-            if i == 0 {
-                return None;
+            if (d.king_moved && d.piece_new[0].color() == c) || i == 0 {
+                return Err(i);
             }
             i -= 1;
         }
@@ -539,13 +539,28 @@ impl NnueState {
     ///
     /// キャッシュが空のときは、バイアスを置いて全特徴を足す形になり、
     /// 従来の全計算と同じ経路をたどる。
-    fn refresh_top<B: EvalBoard + ?Sized>(&mut self, net: &NnueNetwork, pos: &B, c: Color) {
+    ///
+    /// 作る段 `at` は最上段より下でもよい（ADR-0250）。置換表に評価値があると
+    /// 途中の段は評価されず、計算済みの段が無いまま葉に着く。最上段で作ると、
+    /// 葉の兄弟が1つずつ全計算をやり直す。親の段で作れば、兄弟は差分1段で済む。
+    /// `at` の集合は、現局面の集合から上の段の差分を戻して作る。`at` より上に
+    /// 視点cの玉の移動は無いので、玉位置は現局面のもので通る。
+    fn refresh_at<B: EvalBoard + ?Sized>(
+        &mut self,
+        net: &NnueNetwork,
+        pos: &B,
+        c: Color,
+        at: usize,
+    ) {
         let king = pos.king(c);
         // 玉位置を固定した特徴インデックスの起点。BonaPieceを足せば
         // そのまま特徴インデックスになる
         let base = bonapiece::halfkp_index(c, king, 0);
         let mut cur = [0u128; BP_BLOCKS];
         pos.bona_piece_bits(c, &mut cur);
+        for e in &self.entries[at + 1..=self.top] {
+            undo_bits(&mut cur, c, &e.dirty, e.hand);
+        }
 
         // scratch・finny・entriesを同時に借りられないので、いったん取り出して
         // 戻す。takeは空Vecとの交換なので確保は起きず、容量も残る
@@ -577,10 +592,14 @@ impl NnueState {
             }
             *had = now;
         }
-        nnue_simd::ft_update(&mut e.acc, &net.ft_w, &s.adds, &s.subs);
-
-        let top = &mut self.entries[self.top];
-        top.acc[c.index()] = e.acc;
+        let top = &mut self.entries[at];
+        nnue_simd::ft_update(
+            &mut e.acc,
+            &mut top.acc[c.index()],
+            &net.ft_w,
+            &s.adds,
+            &s.subs,
+        );
         top.computed[c.index()] = true;
 
         s.adds.clear();
@@ -593,6 +612,34 @@ impl NnueState {
 impl Default for NnueState {
     fn default() -> Self {
         NnueState::new()
+    }
+}
+
+/// 1手ぶんの差分を、視点cのBonaPiece集合から戻す（ADR-0250）。足し引きの
+/// 条件は `diff_rows` と同じで、玉は特徴に含まれないので飛ばす。
+fn undo_bits(
+    bits: &mut bonapiece::BonaBits,
+    c: Color,
+    dirty: &DirtyPiece,
+    hand: Option<HandDelta>,
+) {
+    for j in 0..dirty.count as usize {
+        let old = dirty.piece_old[j];
+        let from = dirty.from[j];
+        if from != Square::NONE && !old.is_empty() && old.piece_type() != PieceType::KING {
+            bonapiece::toggle_bona_bit(bits, bonapiece::board_bona_piece(c, old, from));
+        }
+        let new = dirty.piece_new[j];
+        let to = dirty.to[j];
+        if to != Square::NONE && !new.is_empty() && new.piece_type() != PieceType::KING {
+            bonapiece::toggle_bona_bit(bits, bonapiece::board_bona_piece(c, new, to));
+        }
+    }
+    if let Some(hd) = hand {
+        bonapiece::toggle_bona_bit(
+            bits,
+            bonapiece::hand_bona_piece(c, hd.owner, hd.kind, hd.slot),
+        );
     }
 }
 

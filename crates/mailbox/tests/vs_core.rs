@@ -392,6 +392,7 @@ fn check_node(core: &mut CorePos, mb: &mut Position) {
     }
     check_state(core, mb);
     assert_eq!(mb.in_check(), core.in_check(), "{}", core.to_sfen());
+    check_key_after(mb);
     let mut kinds = vec![(None, None)];
     if !core.in_check() {
         kinds.push((Some(CoreGen::Captures), Some(GenType::Captures)));
@@ -415,6 +416,18 @@ fn check_node(core: &mut CorePos, mb: &mut Position) {
                 );
             }
         }
+    }
+}
+
+/// 進める前に求めたキー（`key_after`）が、進めた後の `key` と一致する（ADR-0250）。
+fn check_key_after(mb: &mut Position) {
+    let mut list = MoveList::default();
+    mb.generate_legal(true, &mut list);
+    for &m in list.as_slice() {
+        let want = mb.key_after(m);
+        mb.do_move(m);
+        assert_eq!(mb.key(), want, "key_after: {} {}", m.to_usi(), mb.to_sfen());
+        mb.undo_move(m);
     }
 }
 

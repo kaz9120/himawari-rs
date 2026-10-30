@@ -307,6 +307,27 @@ impl CorrectionHistory {
         )
     }
 
+    /// `probe(pos)` が読む4か所を先読みさせる（ADR-0250）。
+    #[inline(always)]
+    pub fn prefetch(&self, pos: &SearchBoard) {
+        let stm = pos.side_to_move().index();
+        let keys = [
+            (pos.pawn_key(), CORR_PAWN),
+            (pos.minor_piece_key(), CORR_MINOR),
+            (
+                pos.non_pawn_key(himawari_core::Color::Black),
+                CORR_NON_PAWN_BLACK,
+            ),
+            (
+                pos.non_pawn_key(himawari_core::Color::White),
+                CORR_NON_PAWN_WHITE,
+            ),
+        ];
+        for (key, kind) in keys {
+            crate::prefetch::line(self.table.as_ptr().wrapping_add(self.index(key, stm, kind)));
+        }
+    }
+
     /// 4系統をまとめて更新する（yaneuraou-search.cpp:759-762）。
     /// 系統ごとの重みも参照実装のものを使う。
     pub fn update_all(&self, pos: &SearchBoard, bonus: i32) {
@@ -402,6 +423,16 @@ impl ContinuationCorrectionHistory {
     #[inline]
     pub fn get(&self, base: usize, pc: Piece, to: Square) -> i32 {
         i32::from(self.table[base + pc.index() * SQUARE_NB + to.index()])
+    }
+
+    /// `get(base, pc, to)` が読む要素を先読みさせる（ADR-0250）。
+    #[inline(always)]
+    pub fn prefetch(&self, base: usize, pc: Piece, to: Square) {
+        crate::prefetch::line(
+            self.table
+                .as_ptr()
+                .wrapping_add(base + pc.index() * SQUARE_NB + to.index()),
+        );
     }
 
     pub fn update(&mut self, base: usize, pc: Piece, to: Square, bonus: i32) {
@@ -602,26 +633,20 @@ const CHECK_SEE_MARGIN: i32 = -75;
 /// 添字は範囲検査なしで引く（ADR-0241の第16回）。p は `1..len`、sorted_end は p 以下、
 /// q は sorted_end 以下で、q-1 を読むのは q≠0 のときだけなので、どれも len 未満である。
 fn partial_insertion_sort(a: &mut [ExtMove], limit: i32) {
-    let len = a.len();
-    let a = a.as_mut_ptr();
+    if a.len() < 2 {
+        return;
+    }
+    // limit以上の手を、見つけた順に先頭の後ろへ寄せる。挿入ソート版は1手ずつ
+    // 入れ替えてから挿入していたので、入れ替えの並びはこれと同じになる
     let mut sorted_end = 0usize;
-    // SAFETY: 上の添字の範囲の説明のとおり、読み書きする添字はすべて len 未満である
-    unsafe {
-        for p in 1..len {
-            if (*a.add(p)).v >= limit {
-                let tmp = *a.add(p);
-                sorted_end += 1;
-                debug_assert!(sorted_end <= p);
-                *a.add(p) = *a.add(sorted_end);
-                let mut q = sorted_end;
-                while q != 0 && (*a.add(q - 1)).v < tmp.v {
-                    *a.add(q) = *a.add(q - 1);
-                    q -= 1;
-                }
-                *a.add(q) = tmp;
-            }
+    for p in 1..a.len() {
+        if a[p].v >= limit {
+            sorted_end += 1;
+            a.swap(p, sorted_end);
         }
     }
+    // 挿入ソートは同点を後ろへ置く安定ソートなので、安定ソートで同じ並びになる
+    a[..=sorted_end].sort_by_key(|e| std::cmp::Reverse(e.v));
 }
 
 pub struct MovePicker {

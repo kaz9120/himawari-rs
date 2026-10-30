@@ -4,6 +4,8 @@
 //! （nnue.rs）が正解器で、両者のビット一致をテストで要求する。
 //! 整数加算はスカラー側のwrapping_addと同じくラップ動作。
 
+#[cfg(all(target_arch = "aarch64", target_feature = "dotprod"))]
+use std::mem::MaybeUninit;
 use std::simd::Simd;
 use std::simd::cmp::SimdOrd;
 use std::simd::num::SimdInt;
@@ -174,8 +176,23 @@ pub fn ft_refresh(acc: &mut [i16; FT_OUT], bias: &[i16], w: &[i8], features: &[u
 /// 加減算はラップなので、1行ずつ適用した結果とビット一致する。
 ///
 /// 重みはi8で持つ（ADR-0138）。
-pub fn ft_update(acc: &mut [i16; FT_OUT], w: &[i8], adds: &[u32], subs: &[u32]) {
-    for (i, a) in acc.as_chunks_mut::<FT_I8_LANES>().0.iter_mut().enumerate() {
+///
+/// 結果は `acc` と `copy` の両方へ書く。キャッシュを更新したあとに探索の段へ
+/// 2KBを写し直すmemcpyを、同じパスに畳む（ADR-0250）。
+pub fn ft_update(
+    acc: &mut [i16; FT_OUT],
+    copy: &mut [i16; FT_OUT],
+    w: &[i8],
+    adds: &[u32],
+    subs: &[u32],
+) {
+    for (i, (a, out)) in acc
+        .as_chunks_mut::<FT_I8_LANES>()
+        .0
+        .iter_mut()
+        .zip(copy.as_chunks_mut::<FT_I8_LANES>().0)
+        .enumerate()
+    {
         let mut v = Simd::from_array(*a);
         for &f in adds {
             let base = f as usize * FT_OUT + i * FT_I8_LANES;
@@ -190,6 +207,7 @@ pub fn ft_update(acc: &mut [i16; FT_OUT], w: &[i8], adds: &[u32], subs: &[u32]) 
             v -= wide;
         }
         *a = v.to_array();
+        *out = *a;
     }
 }
 
@@ -516,10 +534,11 @@ static NNZ_LUT: [[u16; 8]; 256] = {
 /// 活性の並びは呼び出しごとに変わるので、分岐で書くと予測が外れ続ける
 /// （ベンチで実測: 分岐版112.7ns、この版99.6ns、密127.6ns）。
 ///
-/// 戻り値は `nnz` に書いた個数。
+/// 戻り値は `nnz` に書いた個数。先頭からその個数までが初期化済みになる。
+/// 置き場は未初期化で受ける。ゼロ埋めのmemsetが評価のたびに走るのを避ける（ADR-0250）。
 #[cfg(all(target_arch = "aarch64", target_feature = "dotprod"))]
 #[inline]
-fn find_nnz(x: &[u8; CONCAT], nnz: &mut [u16; NNZ_CHUNKS + 8]) -> usize {
+fn find_nnz(x: &[u8; CONCAT], nnz: &mut [MaybeUninit<u16>; NNZ_CHUNKS + 8]) -> usize {
     use std::arch::aarch64::{
         vaddq_u16, vaddv_u8, vandq_u8, vceqzq_u32, vcombine_u8, vcombine_u16, vdupq_n_u16,
         vget_high_u8, vget_low_u8, vld1q_u8, vld1q_u16, vld1q_u32, vmovn_u16, vmovn_u32, vmvnq_u8,
@@ -556,7 +575,7 @@ fn find_nnz(x: &[u8; CONCAT], nnz: &mut [u16; NNZ_CHUNKS + 8]) -> usize {
                 let mask = usize::from(vaddv_u8(mask));
                 let base = vdupq_n_u16((k + half * 8) as u16);
                 vst1q_u16(
-                    nnz.as_mut_ptr().add(count),
+                    nnz.as_mut_ptr().add(count).cast::<u16>(),
                     vaddq_u16(vld1q_u16(NNZ_LUT[mask].as_ptr()), base),
                 );
                 count += mask.count_ones() as usize;
@@ -570,7 +589,7 @@ fn find_nnz(x: &[u8; CONCAT], nnz: &mut [u16; NNZ_CHUNKS + 8]) -> usize {
         // SAFETY: k < NNZ_CHUNKS なので4バイトの読み出しは範囲内。
         // 活性の並びは整列を保証しないので非整列で読む
         let v = unsafe { x.as_ptr().add(k * 4).cast::<u32>().read_unaligned() };
-        nnz[count] = k as u16;
+        nnz[count].write(k as u16);
         count += usize::from(v != 0);
         k += 1;
     }
@@ -596,8 +615,10 @@ fn affine_relu_l1_sparse(wt: &[i8], b: &[i32], x: &[u8; CONCAT], out: &mut [u8])
     debug_assert_eq!(b.len(), L1_OUT);
     debug_assert_eq!(out.len(), L1_OUT);
 
-    let mut nnz = [0u16; NNZ_CHUNKS + 8];
+    let mut nnz = [MaybeUninit::<u16>::uninit(); NNZ_CHUNKS + 8];
     let count = find_nnz(x, &mut nnz);
+    // SAFETY: find_nnzは先頭からcount個を書いてある
+    let nnz = unsafe { std::slice::from_raw_parts(nnz.as_ptr().cast::<u16>(), count) };
 
     let mut sums = [0i32; L1_OUT];
     // SAFETY: nnzの要素は 0..NNZ_CHUNKS で、チャンクkの重みは
@@ -606,7 +627,7 @@ fn affine_relu_l1_sparse(wt: &[i8], b: &[i32], x: &[u8; CONCAT], out: &mut [u8])
     // sumsの L1_OUT 要素ちょうど
     unsafe {
         let mut acc: [int32x4_t; L1_ACCS] = [vdupq_n_s32(0); L1_ACCS];
-        for &k in &nnz[..count] {
+        for &k in nnz {
             let k = usize::from(k);
             let v = x.as_ptr().add(k * 4).cast::<u32>().read_unaligned();
             let xv = vreinterpretq_s8_u32(vdupq_n_u32(v));

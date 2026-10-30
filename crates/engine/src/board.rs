@@ -69,6 +69,20 @@ impl SearchBoard {
         Position::from_sfen(&self.mb.to_sfen()).expect("配列盤の出したSFENをcoreが読めない")
     }
 
+    /// 置換表の先読みに使うキー（ADR-0250）。配列盤の構成ではmで進めた後の
+    /// `key()` を、局面を変えずに求める。coreの局面には同じ計算がないので、
+    /// いまの局面のキーを返す。先読みが外れるだけで、探索の結果は変わらない。
+    #[inline(always)]
+    pub fn prefetch_key(&self, m: Move) -> u64 {
+        #[cfg(mb_search)]
+        return self.mb.key_after(mbconv::to_mb(m));
+        #[cfg(not(mb_search))]
+        {
+            let _ = m;
+            self.pos.key()
+        }
+    }
+
     /// 1手進める。
     #[inline(always)]
     pub fn do_move(&mut self, m: Move) {
