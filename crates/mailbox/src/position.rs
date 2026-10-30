@@ -265,6 +265,33 @@ impl Position {
         st.board_key ^ st.hand_key.wrapping_mul(zobrist::HAND_MIX)
     }
 
+    /// 擬似合法手mで進めた後の `key()`。局面は変えない。探索が進める前に置換表を
+    /// 先読みさせるために使う（ADR-0250）。キーの足し引きは `do_move` と同じである。
+    #[inline]
+    pub fn key_after(&self, m: Move) -> u64 {
+        let ui = self.side.index();
+        let mut board_key = self.state().board_key ^ zobrist::SIDE;
+        let mut hand = self.hand_raw;
+        let to81 = SQ81[m.to() as usize];
+        if m.is_drop() {
+            let pt = m.drop_type();
+            hand[ui] -= 1 << HAND_SHIFT[pt as usize];
+            board_key ^= PSQ[make_piece(self.side, pt) as usize][to81 as usize];
+        } else {
+            let p = self.board[m.from() as usize];
+            let np = if m.is_promote() { p - 8 } else { p };
+            let cap = self.board[m.to() as usize];
+            if cap != EMPTY {
+                hand[ui] += 1 << HAND_SHIFT[(piece_type(cap) | 8) as usize];
+                board_key ^= PSQ[cap as usize][to81 as usize];
+            }
+            board_key ^=
+                PSQ[p as usize][SQ81[m.from() as usize] as usize] ^ PSQ[np as usize][to81 as usize];
+        }
+        let hand_key = u64::from(hand[0]) | (u64::from(hand[1]) << 32);
+        board_key ^ hand_key.wrapping_mul(zobrist::HAND_MIX)
+    }
+
     #[inline]
     pub fn checkers(&self) -> u128 {
         self.state().checkers

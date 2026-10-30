@@ -654,8 +654,37 @@ impl Worker {
     /// ここと `unmake_move` に足す。
     #[inline(always)]
     fn make_move(&mut self, m: Move) {
+        // do_moveとpushの間も読み込みが進む
+        self.prefetch_child(m);
+        self.make_move_prefetched(m);
+    }
+
+    /// `make_move` から、置換表とeval hashの先読みを除いたもの。手を選んだ時点で
+    /// `prefetch_child` を済ませた指し手ループが使う（ADR-0250）。
+    #[inline(always)]
+    fn make_move_prefetched(&mut self, m: Move) {
         self.pos.do_move(m);
+        self.shared.hists.corr.prefetch(&self.pos);
         self.evaluator.push(&self.pos);
+    }
+
+    /// mで進めた子ノードが引く置換表とeval hashを、進める前に先読みさせる
+    /// （ADR-0250）。
+    #[inline(always)]
+    fn prefetch_child(&self, m: Move) {
+        let key = self.pos.prefetch_key(m);
+        self.shared.tt.prefetch(key);
+        self.shared.eval_hash.prefetch(key);
+    }
+
+    /// 進めた局面で引く置換表とeval hashとcorrection historyを先読みさせる
+    /// （ADR-0250）。子ノードがprobeに着くまでの間に読み込みを済ませる。
+    #[inline(always)]
+    fn prefetch_tables(&self) {
+        let key = self.pos.key();
+        self.shared.tt.prefetch(key);
+        self.shared.eval_hash.prefetch(key);
+        self.shared.hists.corr.prefetch(&self.pos);
     }
 
     /// `make_move` を戻す。進めたのと逆の順で戻す。
@@ -669,6 +698,7 @@ impl Worker {
     #[inline(always)]
     fn make_null_move(&mut self) {
         self.pos.do_null_move();
+        self.prefetch_tables();
         self.evaluator.push(&self.pos);
     }
 
@@ -807,6 +837,13 @@ impl Worker {
         e.current_move = m;
         e.cont_base = ContinuationHistory::base(in_check, capture, m.piece_after(), m.to());
         e.cont_corr_base = ContinuationCorrectionHistory::base(m);
+        // 子の `correction_value` が引く2か所を先読みさせる（ADR-0250）。
+        // 子から見た1手前の手がm、2手前・4手前がこのplyの1つ下と3つ下になる
+        let (pc, to) = (m.piece_after(), m.to());
+        for back in [1, 3] {
+            let base = self.stack[ply + STACK_OFFSET - back].cont_corr_base;
+            self.hist.corr_cont.prefetch(base, pc, to);
+        }
     }
 
     /// 1手前から6手前までのcontinuation historyの面（ADR-0109）。
@@ -1883,6 +1920,8 @@ impl Worker {
                 if !self.pos.is_legal_picked(m, picker.last_from_tt()) {
                     continue;
                 }
+                // 枝刈りの判定の間に、子が引く表の読み込みを進めさせる（ADR-0250）
+                self.prefetch_child(m);
                 count += 1;
                 // 1手先のノードが更新条件で読む（yaneuraou-search.cpp:3520）
                 self.stack[ply + STACK_OFFSET].move_count = count;
@@ -1937,7 +1976,7 @@ impl Worker {
                 let mut r = self.reduction_amount::<PV>(&node, m, &cont, r, alpha, depth, count);
 
                 self.set_current_move(ply, m, is_capture);
-                self.make_move(m);
+                self.make_move_prefetched(m);
 
                 let mut value = -VALUE_INFINITE;
                 if depth >= 2 && count > 1 {
@@ -2974,6 +3013,7 @@ impl Worker {
                 if !self.pos.is_legal_picked(m, picker.last_from_tt()) {
                     continue;
                 }
+                self.prefetch_child(m);
                 count += 1;
                 // capture_stage(m) は将棋版では単なるcapture(m)（position.h:1317-1320）
                 let capture = !m.is_drop() && !self.pos.piece_on(m.to()).is_empty();
@@ -3030,7 +3070,7 @@ impl Worker {
                 }
 
                 self.set_current_move(ply, m, capture);
-                self.make_move(m);
+                self.make_move_prefetched(m);
                 let value = -self.qsearch::<PV>(-beta, -alpha, ply + 1);
                 self.unmake_move(m);
                 if self.stopped() {

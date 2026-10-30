@@ -57,6 +57,13 @@ impl EvalHash {
         }
     }
 
+    /// `probe(key)` が読むスロットを先読みさせる（ADR-0250）。
+    #[inline(always)]
+    pub fn prefetch(&self, key: u64) {
+        let slot = key as usize & (EVAL_HASH_SIZE - 1);
+        crate::prefetch::line(self.table.as_ptr().wrapping_add(slot));
+    }
+
     /// 生評価をkey下位23bitのスロットへ格納する（上書き）。
     #[inline]
     pub fn store(&self, key: u64, eval: Value) {
@@ -210,6 +217,13 @@ impl Tt {
     #[inline]
     fn cluster_index(&self, key: u64) -> usize {
         ((u128::from(key) * self.clusters.len() as u128) >> 64) as usize
+    }
+
+    /// `probe(key)` が読むクラスタを先読みさせる（ADR-0250）。
+    /// クラスタは1キャッシュラインなので1回で足りる。
+    #[inline(always)]
+    pub fn prefetch(&self, key: u64) {
+        crate::prefetch::line(self.clusters.as_ptr().wrapping_add(self.cluster_index(key)));
     }
 
     pub fn probe(&self, key: u64) -> Option<TtData> {

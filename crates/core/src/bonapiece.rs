@@ -153,6 +153,18 @@ pub const fn block_base(b: usize) -> u32 {
     }
 }
 
+/// BonaPiece `bp` のビットを反転する。集合へ足すのにも引くのにも使える
+/// （ADR-0250）。反転は順序に依らないので、何手ぶんかの差分を戻す順も問わない。
+#[inline]
+pub fn toggle_bona_bit(bits: &mut BonaBits, bp: u16) {
+    if bp < F_PAWN {
+        bits[0] ^= 1 << bp;
+    } else {
+        let i = u32::from(bp - F_PAWN);
+        bits[1 + (i / 81) as usize] ^= 1 << (i % 81);
+    }
+}
+
 /// 81升のビット並びを180度回す。`Square::inv`（80 - sq）と同じ写像。
 #[inline]
 const fn rev81(x: u128) -> u128 {

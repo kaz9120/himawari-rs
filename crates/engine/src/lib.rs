@@ -12,6 +12,7 @@ pub mod nnue_acc;
 pub mod nnue_io;
 pub mod nnue_simd;
 pub mod posgen;
+pub mod prefetch;
 pub mod search;
 pub mod side_feat;
 pub mod submodel;
