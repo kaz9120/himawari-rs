@@ -52,7 +52,7 @@ NPSだけを見る。
 
 **ソフトウェアprefetchは使えない**。[ADR-0056](0056-tt-prefetch.md)でTTのprobeへ入れ、
 144局で-33.9・LLR -0.24で打ち切っている。Apple Siliconの統合メモリはレイテンシが小さく、
-prefetch命令の利得が出なかった。
+prefetch命令の利得が出なかった。この判断は[ADR-0250](0250-nps-4threads.md)の測定で覆った。
 
 `score_quiets` は1手あたりhistoryを7回引く。continuation historyは巨大でランダム
 アクセスなので、キャッシュミスが主因のはずだと考えたが、**同じ理由で効かない**。
