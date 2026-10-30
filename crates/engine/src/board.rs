@@ -75,7 +75,17 @@ impl SearchBoard {
     #[inline(always)]
     pub fn prefetch_key(&self, m: Move) -> u64 {
         #[cfg(mb_search)]
-        return self.mb.key_after(mbconv::to_mb(m));
+        {
+            // coreの手は81升の通し番号と移動後の駒を持つので、配列盤の手へ直さずに渡す
+            let b = m.bits();
+            self.mb.key_after81(
+                (b & 0x7F) as u8,
+                ((b >> 7) & 0x7F) as u8,
+                b & 0x8000 != 0,
+                b & 0x4000 != 0,
+                ((b >> 16) & 0x1F) as u8,
+            )
+        }
         #[cfg(not(mb_search))]
         {
             let _ = m;
@@ -448,7 +458,14 @@ impl SearchBoard {
     /// 合法手mが王手になるか。
     #[inline(always)]
     pub fn gives_check(&self, m: Move) -> bool {
-        let r = self.mb.gives_check(mbconv::to_mb(m));
+        // 王手の判定は81升の集合で行うので、配列盤の手へ直さずに渡す（ADR-0252）
+        let b = m.bits();
+        let r = self.mb.gives_check81(
+            (b & 0x7F) as u8,
+            ((b >> 7) & 0x7F) as u8,
+            b & 0x8000 != 0,
+            ((b >> 16) & 0x1F) as u8,
+        );
         self.shadow("gives_check", &r, |p| p.gives_check(m));
         r
     }

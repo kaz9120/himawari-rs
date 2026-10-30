@@ -292,6 +292,43 @@ impl Position {
         board_key ^ hand_key.wrapping_mul(zobrist::HAND_MIX)
     }
 
+    /// `key_after` と同じ値を、81升の通し番号と移動後の駒から求める（ADR-0252）。
+    ///
+    /// 移動元の駒を盤から読まず、升を配列盤の添字へ直すのも取る駒を見る1回で済む。
+    /// 駒打ちでは `from81` を使わない。持ち駒は両者の32ビットを並べた1語のまま足し引きする。
+    /// 合法手なら持ち駒の欄は溢れも借りも起こさないので、手番側の32ビットだけが変わる。
+    #[inline(always)]
+    pub fn key_after81(
+        &self,
+        to81: u8,
+        from81: u8,
+        drop: bool,
+        promote: bool,
+        piece_after: u8,
+    ) -> u64 {
+        let shift = 32 * self.side.index() as u32;
+        let mut board_key = self.state().board_key ^ zobrist::SIDE;
+        let mut hand_key = u64::from(self.hand_raw[0]) | (u64::from(self.hand_raw[1]) << 32);
+        if drop {
+            hand_key -= 1u64 << (HAND_SHIFT[piece_type(piece_after) as usize] + shift);
+            board_key ^= PSQ[piece_after as usize][to81 as usize];
+        } else {
+            let p = if promote {
+                piece_after | 8
+            } else {
+                piece_after
+            };
+            let cap = self.board[idx81(to81 as usize) as usize];
+            if cap != EMPTY {
+                hand_key += 1u64 << (HAND_SHIFT[(piece_type(cap) | 8) as usize] + shift);
+                board_key ^= PSQ[cap as usize][to81 as usize];
+            }
+            board_key ^=
+                PSQ[p as usize][from81 as usize] ^ PSQ[piece_after as usize][to81 as usize];
+        }
+        board_key ^ hand_key.wrapping_mul(zobrist::HAND_MIX)
+    }
+
     #[inline]
     pub fn checkers(&self) -> u128 {
         self.state().checkers

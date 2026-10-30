@@ -420,11 +420,26 @@ fn check_node(core: &mut CorePos, mb: &mut Position) {
 }
 
 /// 進める前に求めたキー（`key_after`）が、進めた後の `key` と一致する（ADR-0250）。
+/// 81升の番号から求める版（`key_after81`、ADR-0252）も同じ値を返す。
 fn check_key_after(mb: &mut Position) {
+    use himawari_mailbox::board::SQ81;
     let mut list = MoveList::default();
     mb.generate_legal(true, &mut list);
     for &m in list.as_slice() {
         let want = mb.key_after(m);
+        let from81 = if m.is_drop() {
+            0
+        } else {
+            SQ81[m.from() as usize]
+        };
+        let by81 = mb.key_after81(
+            SQ81[m.to() as usize],
+            from81,
+            m.is_drop(),
+            m.is_promote(),
+            m.piece_after(),
+        );
+        assert_eq!(by81, want, "key_after81: {} {}", m.to_usi(), mb.to_sfen());
         mb.do_move(m);
         assert_eq!(mb.key(), want, "key_after: {} {}", m.to_usi(), mb.to_sfen());
         mb.undo_move(m);

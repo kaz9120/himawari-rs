@@ -111,8 +111,6 @@ pub fn ft_apply_out<const NS: usize, const NA: usize>(
     let dst = dst.map(|d| d.as_chunks_mut::<FT_I8_LANES>().0);
     let src = src.map(|s| &s.as_chunks::<FT_I8_LANES>().0[..FT_CHUNKS]);
     let out = out.map(|o| &mut o.as_chunks_mut::<FT_I8_LANES>().0[..HALF_CHUNKS]);
-    let zero = Simd::<i16, FT_I8_LANES>::splat(0);
-    let max = Simd::<i16, FT_I8_LANES>::splat(127);
     for i in 0..HALF_CHUNKS {
         for k in 0..2 {
             let [mut lo, mut hi] =
@@ -127,11 +125,7 @@ pub fn ft_apply_out<const NS: usize, const NA: usize>(
             }
             dst[k][i] = lo.to_array();
             dst[k][i + HALF_CHUNKS] = hi.to_array();
-            let a = lo.simd_clamp(zero, max);
-            let b = hi.simd_clamp(zero, max);
-            out[k][i] = ((a * b + Simd::splat(64)) >> Simd::splat(7))
-                .cast::<u8>()
-                .to_array();
+            out[k][i] = pair_act(lo, hi);
         }
     }
 }
@@ -262,22 +256,35 @@ pub fn ft_update(
 /// 積に64を足しても16bitに収まり、7bit右シフトで0..126のu8になる。
 pub fn clip_to_u8(acc: &[i16; FT_OUT], out: &mut [u8]) {
     debug_assert_eq!(out.len(), HALF);
-    let zero = Simd::<i16, I16_LANES>::splat(0);
-    let max = Simd::<i16, I16_LANES>::splat(127);
     let (lo, hi) = acc.split_at(HALF);
     for ((oc, lc), hc) in out
-        .as_chunks_mut::<I16_LANES>()
+        .as_chunks_mut::<FT_I8_LANES>()
         .0
         .iter_mut()
-        .zip(lo.as_chunks::<I16_LANES>().0)
-        .zip(hi.as_chunks::<I16_LANES>().0)
+        .zip(lo.as_chunks::<FT_I8_LANES>().0)
+        .zip(hi.as_chunks::<FT_I8_LANES>().0)
     {
-        let a = Simd::from_array(*lc).simd_clamp(zero, max);
-        let b = Simd::from_array(*hc).simd_clamp(zero, max);
-        *oc = ((a * b + Simd::splat(64)) >> Simd::splat(7))
-            .cast::<u8>()
-            .to_array();
+        *oc = pair_act(Simd::from_array(*lc), Simd::from_array(*hc));
     }
+}
+
+/// 対の積の活性 `(clip(a) * clip(b) + 64) >> 7` を32要素ぶん作る。clipは0..127。
+///
+/// NEONでは、飽和付きの縮小でu8にしてから127で抑え、u8どうしの積を丸めながら縮める
+/// （ADR-0252）。i16のままclipすると、32要素ごとに16本のmax・minが要る。縮小してからなら
+/// 縮小4本と抑え4本で済む。値はどちらも同じになる。
+#[inline(always)]
+fn pair_act(a: Simd<i16, FT_I8_LANES>, b: Simd<i16, FT_I8_LANES>) -> [u8; FT_I8_LANES] {
+    use std::simd::num::SimdUint;
+    let clip = |x: Simd<i16, FT_I8_LANES>| {
+        x.simd_clamp(Simd::splat(0), Simd::splat(255))
+            .cast::<u8>()
+            .simd_min(Simd::splat(127))
+    };
+    let p = clip(a).cast::<u16>() * clip(b).cast::<u16>();
+    ((p + Simd::splat(64)) >> Simd::splat(7))
+        .cast::<u8>()
+        .to_array()
 }
 
 /// i8重み×u8活性の内積（i32）。portable版。
@@ -683,7 +690,8 @@ fn find_nnz(x: &[u8; CONCAT], nnz: &mut [MaybeUninit<u16>; NNZ_CHUNKS + 8]) -> u
 #[cfg(all(target_arch = "aarch64", target_feature = "dotprod"))]
 fn affine_relu_l1_sparse(wt: &[i8], b: &[i32], x: &[u8; CONCAT], out: &mut [u8]) {
     use std::arch::aarch64::{
-        int32x4_t, vdotq_s32, vdupq_n_s32, vdupq_n_u32, vld1q_s8, vreinterpretq_s8_u32, vst1q_s32,
+        int32x4_t, vaddq_s32, vdotq_s32, vdupq_n_s32, vdupq_n_u32, vld1q_s8, vreinterpretq_s8_u32,
+        vst1q_s32,
     };
 
     debug_assert_eq!(wt.len(), L1_OUT * CONCAT);
@@ -702,7 +710,10 @@ fn affine_relu_l1_sparse(wt: &[i8], b: &[i32], x: &[u8; CONCAT], out: &mut [u8])
     // sumsの L1_OUT 要素ちょうど
     unsafe {
         let mut acc: [int32x4_t; L1_ACCS] = [vdupq_n_s32(0); L1_ACCS];
-        for &k in nnz {
+        // 2チャンクずつ別の和へ積み、最後に足す。i32の和は正確なので順序を変えても値は同じで、
+        // SDOTの依存の連鎖が半分になる（ADR-0252）
+        let mut acc2: [int32x4_t; L1_ACCS] = [vdupq_n_s32(0); L1_ACCS];
+        let step = |acc: &mut [int32x4_t; L1_ACCS], k: u16| {
             let k = usize::from(k);
             let v = x.as_ptr().add(k * 4).cast::<u32>().read_unaligned();
             let xv = vreinterpretq_s8_u32(vdupq_n_u32(v));
@@ -710,6 +721,17 @@ fn affine_relu_l1_sparse(wt: &[i8], b: &[i32], x: &[u8; CONCAT], out: &mut [u8])
             for (r, a) in acc.iter_mut().enumerate() {
                 *a = vdotq_s32(*a, vld1q_s8(base.add(r * 16)), xv);
             }
+        };
+        let (pairs, rest) = nnz.as_chunks::<2>();
+        for &[k0, k1] in pairs {
+            step(&mut acc, k0);
+            step(&mut acc2, k1);
+        }
+        for &k in rest {
+            step(&mut acc, k);
+        }
+        for (a, b) in acc.iter_mut().zip(acc2) {
+            *a = vaddq_s32(*a, b);
         }
         if L1_OUT.is_multiple_of(16) {
             // 16出力ずつ、バイアス・シフト・clipをベクトルのまま当てる（ADR-0251）

@@ -656,21 +656,22 @@ const CHECK_SEE_MARGIN: i32 = -75;
 
 /// limit以上のスコアを持つ指し手だけを降順に並べる（movepick.cpp:91-105）。
 /// limit未満の並びは不定になる。
-///
-/// 添字は範囲検査なしで引く（ADR-0241の第16回）。p は `1..len`、sorted_end は p 以下、
-/// q は sorted_end 以下で、q-1 を読むのは q≠0 のときだけなので、どれも len 未満である。
 fn partial_insertion_sort(a: &mut [ExtMove], limit: i32) {
     if a.len() < 2 {
         return;
     }
     // limit以上の手を、見つけた順に先頭の後ろへ寄せる。挿入ソート版は1手ずつ
-    // 入れ替えてから挿入していたので、入れ替えの並びはこれと同じになる
+    // 入れ替えてから挿入していたので、入れ替えの並びはこれと同じになる。
+    // 寄せない手は自分の位置へ書き戻すので、入れ替えを分岐にしなくてよい。点数は
+    // 手ごとにばらつき、分岐で書くと予測が外れ続ける（ADR-0252）
     let mut sorted_end = 0usize;
     for p in 1..a.len() {
-        if a[p].v >= limit {
-            sorted_end += 1;
-            a.swap(p, sorted_end);
-        }
+        let x = a[p];
+        let take = x.v >= limit;
+        let q = if take { sorted_end + 1 } else { p };
+        a[p] = a[q];
+        a[q] = x;
+        sorted_end += usize::from(take);
     }
     // 挿入ソートは同点を後ろへ置く安定ソートなので、安定ソートで同じ並びになる
     a[..=sorted_end].sort_by_key(|e| std::cmp::Reverse(e.v));

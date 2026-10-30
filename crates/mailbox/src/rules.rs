@@ -85,6 +85,21 @@ impl Position {
         let us = self.side.index();
         let them = 1 - us;
         let limit = (st.plies_from_null as usize).min(cur).min(scan_max);
+        // 盤のキーが一致する局面が無いかを、分岐を持たずに先に確かめる。遡る手数は局面ごとに
+        // 違い、手数で回すとループの出口で予測が外れる。ほとんどの局面は一致が無く、ここで返る
+        // （engineのADR-0252）
+        if scan_max == REPETITION_SCAN_MAX {
+            let mut hit = false;
+            let mut i = 4;
+            while i <= REPETITION_SCAN_MAX {
+                let prev = &self.states[cur - i.min(limit)];
+                hit |= (i <= limit) & (prev.board_key == st.board_key);
+                i += 2;
+            }
+            if !hit {
+                return Repetition::None;
+            }
+        }
         let mut i = 4;
         while i <= limit {
             let prev = &self.states[cur - i];
