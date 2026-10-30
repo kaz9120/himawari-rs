@@ -119,6 +119,25 @@ pub(crate) fn dead_square(us: Color, pt: u8, to: u8) -> bool {
     }
 }
 
+/// 王手になるかを、81升の通し番号で決める。`gives_check` と `gives_check81` の本体。
+#[inline(always)]
+fn gives_check_at(ci: &CheckInfo, to81: u8, from81: u8, drop: bool, piece_after: u8) -> bool {
+    // 直接王手: 動いた後の駒種の王手の升に行き先が入る
+    if ci.sq[(piece_after & 15) as usize] & (1u128 << to81) != 0 {
+        return true;
+    }
+    if drop {
+        return false;
+    }
+    // 開き王手: 移動元が開き王手の駒で、行き先がその線（玉を通る直線）から外れる
+    if ci.blockers & (1u128 << from81) == 0 {
+        return false;
+    }
+    let dk = DIR81[ci.k81 as usize][to81 as usize];
+    let df = DIR81[ci.k81 as usize][from81 as usize];
+    dk != df && dk != (df ^ 1)
+}
+
 impl Position {
     /// 色cの駒のうち、升sqへ利いている駒の升の集合（81升）。
     /// removedの升の駒は無いものとし、飛び利きもそこを通す（SEEの取り合いで使う）。
@@ -415,24 +434,39 @@ impl Position {
         r
     }
 
+    /// `gives_check` を、81升の通し番号と移動後の駒で受ける（engineのADR-0252）。
+    /// 判定は81升の集合で行うので、配列盤の添字へ直さずに済む。駒打ちでは `from81` を使わない。
+    #[inline]
+    pub fn gives_check81(&self, to81: u8, from81: u8, drop: bool, piece_after: u8) -> bool {
+        let r = gives_check_at(self.check_info(), to81, from81, drop, piece_after);
+        #[cfg(debug_assertions)]
+        {
+            let to = idx81(to81 as usize);
+            let m = if drop {
+                Move::drop(piece_after & 15, to, self.side)
+            } else {
+                // 遅い版は移動後の駒と移動元しか見ないので、成りの印は付けない
+                Move::normal(idx81(from81 as usize), to, false, piece_after)
+            };
+            debug_assert_eq!(r, self.gives_check_slow(m), "gives_check81: {}", m.to_usi());
+        }
+        r
+    }
+
     #[inline]
     fn gives_check_with(&self, ci: &CheckInfo, m: Move) -> bool {
-        let to81 = SQ81[m.to() as usize];
-        // 直接王手: 動いた後の駒種の王手の升に行き先が入る
-        if ci.sq[(m.piece_after() & 15) as usize] & (1u128 << to81) != 0 {
-            return true;
-        }
-        if m.is_drop() {
-            return false;
-        }
-        // 開き王手: 移動元が開き王手の駒で、行き先がその線（玉を通る直線）から外れる
-        let from81 = SQ81[m.from() as usize];
-        if ci.blockers & (1u128 << from81) == 0 {
-            return false;
-        }
-        let dk = DIR81[ci.k81 as usize][to81 as usize];
-        let df = DIR81[ci.k81 as usize][from81 as usize];
-        dk != df && dk != (df ^ 1)
+        let from81 = if m.is_drop() {
+            0
+        } else {
+            SQ81[m.from() as usize]
+        };
+        gives_check_at(
+            ci,
+            SQ81[m.to() as usize],
+            from81,
+            m.is_drop(),
+            m.piece_after(),
+        )
     }
 
     /// 盤を歩いて決める版。キャッシュの経路の正解器で、デバッグの検査とテストからだけ呼ぶ。
