@@ -270,6 +270,17 @@ impl SearchBoard {
         self.pos.check_squares(pt)
     }
 
+    /// `check_squares` を駒種の添字で並べた表（ADR-0251）。0・1は空。
+    pub fn check_squares_all(&self) -> [Bitboard; 16] {
+        std::array::from_fn(|i| {
+            if i < 2 {
+                Bitboard::EMPTY
+            } else {
+                self.pos.check_squares(PieceType(i as u8))
+            }
+        })
+    }
+
     pub fn to_sfen(&self) -> String {
         self.pos.to_sfen()
     }
@@ -569,6 +580,12 @@ impl SearchBoard {
         let r = Bitboard::from_bits(self.mb.check_squares(pt.0));
         self.shadow("check_squares", &r, |p| p.check_squares(pt));
         r
+    }
+
+    /// `check_squares` を駒種の添字で並べた表（ADR-0251）。0・1は空。
+    #[inline(always)]
+    pub fn check_squares_all(&self) -> [Bitboard; 16] {
+        self.mb.check_squares_all().map(Bitboard::from_bits)
     }
 
     pub fn to_sfen(&self) -> String {
