@@ -614,6 +614,8 @@ impl Position {
 
     /// 盤上の駒の候補を調べる。1手詰めの列挙の3段目。
     #[inline(always)]
+    // 1手詰めの列挙を段へ分けた関数で、前の段が一度だけ作った集合を受け取る。
+    // どの段がどの集合を読むかを引数に出しておく
     #[allow(clippy::too_many_arguments)]
     fn mate_board<const COUNT: bool>(
         &self,
@@ -687,6 +689,8 @@ impl Position {
 
     /// 駒打ちの候補を調べる。1手詰めの列挙の4段目。
     #[inline(always)]
+    // 1手詰めの列挙を段へ分けた関数で、前の段が一度だけ作った集合を受け取る。
+    // どの段がどの集合を読むかを引数に出しておく
     #[allow(clippy::too_many_arguments)]
     fn mate_drops<const COUNT: bool>(
         &self,

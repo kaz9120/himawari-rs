@@ -557,6 +557,8 @@ impl ThreadPool {
     /// 全スレッドの結論から最終手を決め、bestmoveまで出す（G10, ADR-0125。
     /// S:1239-1348）。投票・投了判定・bestmove出力の3つを行う。
     /// 次のgoへ持ち越す記憶も、best threadのもので上書きする（S:1249-1253）。
+    // Workerを持たない関連関数である（最終手は全スレッドの結論からWorkerの外で
+    // 決める）。読む参照を個別に受ける。呼び出しはスレッドループの1か所
     #[allow(clippy::too_many_arguments)]
     fn conclude(
         out: Option<&OnLine>,

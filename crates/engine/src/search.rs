@@ -595,6 +595,9 @@ pub struct Worker {
 }
 
 impl Worker {
+    // 値の持ち主がばらばらで、posとevaluatorとhistはスレッドへmoveし、sharedはArcで
+    // 共有し、limitsとtmはコピーで、残り2つはoptsから読む。構造体へまとめても
+    // スレッドごとに詰め直すことになる。goごとに変わる残りはset_thread・set_draw_valueで入れる
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         pos: Position,
@@ -1016,6 +1019,8 @@ impl Worker {
     /// TTカットの判定（ADR-0024。yaneuraou-search.cpp:2700-2748）。
     /// カットするならその値を返す。除外手つき探索中はカットしない
     /// （probeは行い、eval再利用は可）。
+    // NodeInfoを組むより前に判定する（静的評価を取る前にカットを返す）ので、
+    // 判定が読む値だけを個別に受ける
     #[allow(clippy::too_many_arguments)]
     fn tt_cutoff(
         &mut self,
@@ -1665,6 +1670,8 @@ impl Worker {
     /// 通常探索。参照実装が `search<PV>` と `search<NonPV>` をテンプレートで
     /// 分けるのに合わせ、ノード種別をconst genericの `PV` で受ける
     /// （ADR-0151の群J）。呼び出し側は定数で呼び分ける。
+    // 引数はαβ探索の呼び出し規約そのもので、再帰のたびに全部が変わる。
+    // 構造体へまとめると1ノードごとに詰め直すことになる
     #[allow(clippy::too_many_arguments)]
     fn search<const PV: bool>(
         &mut self,
@@ -2142,6 +2149,8 @@ impl Worker {
     ///
     /// `quiets_searched` と `captures_searched` は、このノードで調べたが
     /// 最善にならなかった手を良い順に並べたもの。
+    // 入口で決まる値はNodeInfoへまとめてある。残りは手のループを回し終えて
+    // 初めて確定する結果なので、NodeInfoへは入れられない
     #[allow(clippy::too_many_arguments)]
     fn finalize_node<const PV: bool>(
         &mut self,
@@ -2278,6 +2287,8 @@ impl Worker {
     ///
     /// 項10の途中で、その手の履歴の強さをStackへ控える。子のhistory更新量も
     /// この値を読むので、do_moveの前に測る必要がある
+    // ノードで決まる値はNodeInfoへまとめてある。残りは手ごとに変わる値で、
+    // 1手ずつ呼ぶたびに差し替わる
     #[allow(clippy::too_many_arguments)]
     fn reduction_amount<const PV: bool>(
         &mut self,
@@ -2350,6 +2361,8 @@ impl Worker {
     /// search()は常にrootでない。`best` は1手目を読み終えるまで
     /// -VALUE_INFINITEなので、第1手はここで刈られない。親futilityは
     /// 刈った手の見込み値で `best` を引き上げる
+    // ノードで決まる値はNodeInfoへまとめてある。残りは手ごとに変わる値と、
+    // 呼び出し側が書き換えるMovePicker・bestである
     #[allow(clippy::too_many_arguments)]
     fn prune_shallow<const PV: bool>(
         &mut self,
@@ -3183,6 +3196,8 @@ impl Worker {
     ///
     /// `quiets_searched` と `captures_searched` は、このノードで調べたが
     /// 最善にならなかった手を良い順に並べたもの。
+    // 引数は出典の関数（yaneuraou-search.cpp:5293-5367）と同じ役の値である。
+    // 参照実装と読み比べるために並びを変えない。呼び出しはfinalize_nodeの1か所
     #[allow(clippy::too_many_arguments)]
     fn update_all_stats(
         &mut self,
