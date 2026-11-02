@@ -684,8 +684,10 @@ impl Position {
         }
     }
 
-    /// 盤の上で駒を動かす（盤と駒のいる升の集合だけ）。進めと戻しの両方で使う。
-    /// 進めるときは src→dst（dstの駒xが消える）、戻すときは引数の役を入れ替えて呼ぶ。
+    /// 盤の上で駒を動かす（盤と駒のいる升の集合だけ）。src→dstへ動かし、dstの駒xが消える。
+    /// 呼ぶのは進めるときの `transfer` だけで、戻しは `undo_move` が自分で盤へ書き戻す。
+    // 引数はtransferが利きの差分更新のために先に求めた値である。構造体へまとめると
+    // 呼び出し側で詰め直すことになり、差分更新の途中でどの値を書くのかが見えなくなる
     #[allow(clippy::too_many_arguments)]
     #[inline(always)]
     fn move_on_board(&mut self, src: u8, dst: u8, np: u8, x: u8, c: usize, bf: u128, bt: u128) {

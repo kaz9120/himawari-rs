@@ -238,6 +238,8 @@ impl Tt {
         None
     }
 
+    // 引数はkeyと、TTエントリの6フィールド（同じファイルのTtData）そのものである。
+    // TtDataへまとめると抑止が外れるが、ABIが変わるのでNPSの非劣化を測る。Issue #994
     #[allow(clippy::too_many_arguments)]
     pub fn store(
         &self,
