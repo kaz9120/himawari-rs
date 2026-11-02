@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.57.14](https://github.com/kaz9120/himawari-rs/compare/v0.57.13...v0.57.14) (2026-11-02)
+
+
+### その他の変更
+
+* 理由の書かれていないclippyの抑止12か所へ理由を書く ([#995](https://github.com/kaz9120/himawari-rs/issues/995)) ([6ef6b47](https://github.com/kaz9120/himawari-rs/commit/6ef6b47e5ebd303f615f0f7f9d7b97efe36dd708)), closes [#992](https://github.com/kaz9120/himawari-rs/issues/992)
+
 ## [0.57.13](https://github.com/kaz9120/himawari-rs/compare/v0.57.12...v0.57.13) (2026-10-30)
 
 
