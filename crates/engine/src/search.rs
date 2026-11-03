@@ -1947,7 +1947,12 @@ impl Worker {
                     // 増えた1手はTT手自身には乗らない
                     // （yaneuraou-search.cpp:3556, 3788）
                     Some(e) if m == tt.mv => (e, depth_pre_singular),
-                    _ => (i32::from(gives_check), depth as i32),
+                    // 王手の延長は根の深さの2倍の手数までにする（ADR-0255）。上限が
+                    // ないと王手と応手の連鎖で深さが減らず、MAX_PLY付近でノードが膨らむ
+                    _ => (
+                        i32::from(gives_check && (ply as u32) < 2 * self.root_depth),
+                        depth as i32,
+                    ),
                 };
                 let mut new_depth = base_depth - 1 + extension;
 
