@@ -105,6 +105,10 @@ impl Position {
             let prev = &self.states[cur - i];
             if prev.board_key == st.board_key {
                 if prev.hand_key == st.hand_key {
+                    // 根より前との一致は、4回目の局面でなければ終局にしない（engineのADR-0254）
+                    if i >= ply && !self.is_fourth_occurrence(cur) {
+                        return Repetition::None;
+                    }
                     if st.continuous_check[them] as usize * 2 >= i {
                         return Repetition::Win;
                     }
@@ -128,6 +132,25 @@ impl Position {
             i += 2;
         }
         Repetition::None
+    }
+
+    /// 今の局面が対局の中で4回目か（coreの同名の関数と同じ値）。千日手の成立の条件である。
+    fn is_fourth_occurrence(&self, cur: usize) -> bool {
+        let st = &self.states[cur];
+        let limit = (st.plies_from_null as usize).min(cur);
+        let mut seen = 0;
+        let mut i = 4;
+        while i <= limit {
+            let prev = &self.states[cur - i];
+            if prev.board_key == st.board_key && prev.hand_key == st.hand_key {
+                seen += 1;
+                if seen == 3 {
+                    return true;
+                }
+            }
+            i += 2;
+        }
+        false
     }
 
     /// 入玉宣言勝ち（27点法）が成立するか（coreの `can_declare_win` と同じ値）。
