@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.60.0](https://github.com/kaz9120/himawari-rs/compare/v0.59.1...v0.60.0) (2026-11-03)
+
+
+### 棋力向上
+
+* 王手の延長を根の深さの2倍の手数までにする（ADR-0255） ([#1009](https://github.com/kaz9120/himawari-rs/issues/1009)) ([d62ef90](https://github.com/kaz9120/himawari-rs/commit/d62ef906fe50b29c0b9cfbb4b4c70cc7e0ecf603))
+
 ## [0.59.1](https://github.com/kaz9120/himawari-rs/compare/v0.59.0...v0.59.1) (2026-11-03)
 
 
