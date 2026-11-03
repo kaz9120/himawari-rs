@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.58.1](https://github.com/kaz9120/himawari-rs/compare/v0.58.0...v0.58.1) (2026-11-03)
+
+
+### その他の変更
+
+* 静止探索で同じ手へ重ねて呼ぶSEEを省く ([#1001](https://github.com/kaz9120/himawari-rs/issues/1001)) ([e3e614b](https://github.com/kaz9120/himawari-rs/commit/e3e614b96bdcbb557ae1b676e85d9bd0861802c6)), closes [#871](https://github.com/kaz9120/himawari-rs/issues/871)
+
 ## [0.58.0](https://github.com/kaz9120/himawari-rs/compare/v0.57.14...v0.58.0) (2026-11-03)
 
 
