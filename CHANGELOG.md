@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.58.0](https://github.com/kaz9120/himawari-rs/compare/v0.57.14...v0.58.0) (2026-11-03)
+
+
+### 棋力向上
+
+* 時間管理の定数を短い持ち時間へ合わせて縮める（+325.7 Elo、ADR-0253） ([#997](https://github.com/kaz9120/himawari-rs/issues/997)) ([cf7f69c](https://github.com/kaz9120/himawari-rs/commit/cf7f69caf7d1688e10aa1addd8f1aecda90b8f86))
+
 ## [0.57.14](https://github.com/kaz9120/himawari-rs/compare/v0.57.13...v0.57.14) (2026-11-02)
 
 
