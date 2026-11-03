@@ -150,6 +150,7 @@ ROADMAPの注力を決めた判断。いまの注力は0229にある。
 
 - [0021](0021-time-management.md) 時間管理
 - [0253](0253-short-tc-floors.md) 時間管理の定数を短い持ち時間へ合わせて縮める
+- [0256](0256-slowmover-allocation.md) 配分の倍率SlowMoverを既定の100から動かすか
 - [0060](0060-opening-book-policy.md) 定跡の方針
 - [0080](0080-net-release.md) 学習済みネットの配布
 - [0108](0108-license-gplv3.md) GPLv3への変更
@@ -421,6 +422,7 @@ ROADMAPの注力を決めた判断。いまの注力は0229にある。
 | [0252](0252-nps-4threads-10pct.md) | 探索木を変えずに4スレッドのNPSを10%まで上げる | 2026-10-31 |  | accepted（4スレッドで+10.68%、1スレッドで+9.81%。比較の起点はb12299c。固定深さのノード数は全局面で一致。SPRTはb12299c比で+39.6 Elo、H1） |
 | [0253](0253-short-tc-floors.md) | 時間管理の定数を短い持ち時間へ合わせて縮める | 2026-11-03 | +325.7 | accepted |
 | [0254](0254-repetition-root-gate.md) | 千日手の判定を探索経路内に限り、rootより前との一致は4回目だけにする | 2026-11-03 |  | accepted（ノード固定の非劣性でH1、−0.2。偽の `mate 1` が消えた） |
+| [0256](0256-slowmover-allocation.md) | 配分の倍率SlowMoverを既定の100から動かすか | 2026-11-04 |  | proposed |
 
 ## バックログ
 
