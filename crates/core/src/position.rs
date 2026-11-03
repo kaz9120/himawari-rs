@@ -1214,11 +1214,11 @@ impl Position {
     /// 探索木は変わらず速度だけが上がるので、対局ルールの裁定
     /// （[`Self::repetition_state_all`]）は上限なしのまま残す。
     ///
-    /// `ply` はrootからの距離を表す。優等・劣等局面（`Superior` /
-    /// `Inferior`）は検出距離 `i < ply` のときだけ返す。つまり同一盤面の
-    /// 両方の出現が探索経路内にあるときに限る（ADR-0153）。rootを跨いだ
-    /// 比較は「大昔の同一盤面より手駒が多い」だけを意味し、探索の値として
-    /// は誤りになる。
+    /// `ply` はrootからの距離を表す。判定は検出距離 `i < ply` のとき、つまり
+    /// 同一盤面の両方の出現が探索経路内にあるときに限って返す（ADR-0153、
+    /// ADR-0254）。rootを跨いだ比較は「大昔の同一盤面より手駒が多い」「相手が
+    /// 同じ局面へ1度戻した」を意味するだけで、探索の値としては誤りになる。
+    /// 例外は同一局面の4回目で、対局のルールそのものなのでrootを跨いでも返す。
     #[inline]
     pub fn repetition_state(&self, ply: usize) -> Repetition {
         self.scan_repetition(ply, REPETITION_SCAN_MAX)
@@ -1248,6 +1248,11 @@ impl Position {
             let prev = &self.states[cur - i];
             if prev.board_key == st.board_key {
                 if prev.hand_key == st.hand_key {
+                    // rootより前との一致は、4回目の局面でなければ終局にしない（ADR-0254）。
+                    // 相手は次の手で別の手を選べるので、まだ何も決まっていない
+                    if i >= ply && !self.is_fourth_occurrence() {
+                        return Repetition::None;
+                    }
                     // 連続王手の千日手（相手優先で判定）
                     if st.continuous_check[them] as usize * 2 >= i {
                         return Repetition::Win;
@@ -1273,6 +1278,27 @@ impl Position {
             i += 2;
         }
         Repetition::None
+    }
+
+    /// 今の局面が対局の中で4回目か。千日手の成立の条件である（ADR-0254）。
+    /// 走査の打ち切りは掛けない。一致が見つかった局面でしか呼ばれないので重さは効かない
+    fn is_fourth_occurrence(&self) -> bool {
+        let cur = self.states.len() - 1;
+        let st = &self.states[cur];
+        let limit = (st.plies_from_null as usize).min(cur);
+        let mut seen = 0;
+        let mut i = 4;
+        while i <= limit {
+            let prev = &self.states[cur - i];
+            if prev.board_key == st.board_key && prev.hand_key == st.hand_key {
+                seen += 1;
+                if seen == 3 {
+                    return true;
+                }
+            }
+            i += 2;
+        }
+        false
     }
 
     // ---- 擬似合法性（置換表由来の指し手の検査。ADR-0025） ----

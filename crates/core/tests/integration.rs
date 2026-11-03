@@ -250,13 +250,30 @@ fn move_from_usi_roundtrip() {
 }
 
 /// 飛車の往復による通常の千日手（ADR-0026）。
-/// 千日手はrootを跨いでも成立する（ADR-0153）ので、ply=0でも返る。
+/// 探索は、一致がrootより後にあるときだけ千日手として返す（ADR-0254）。
 #[test]
 fn repetition_draw() {
     let mut pos = Position::from_sfen(SFEN_STARTPOS).unwrap();
     assert_eq!(pos.repetition_state_all(), Repetition::None);
     apply(&mut pos, &["2h3h", "8b7b", "3h2h", "7b8b"]);
     assert_eq!(pos.repetition_state_all(), Repetition::Draw);
+    // 一致した局面（4手前）がrootより後なら千日手
+    assert_eq!(pos.repetition_state(5), Repetition::Draw);
+    // rootそのものか、rootより前との一致なら、2回目ではまだ決まらない
+    assert_eq!(pos.repetition_state(4), Repetition::None);
+    assert_eq!(pos.repetition_state(0), Repetition::None);
+}
+
+/// rootより前との一致でも、4回目の局面は千日手として返す（ADR-0254）。
+#[test]
+fn repetition_fourth_occurrence_crosses_root() {
+    let mut pos = Position::from_sfen(SFEN_STARTPOS).unwrap();
+    let cycle = ["2h3h", "8b7b", "3h2h", "7b8b"];
+    apply(&mut pos, &cycle);
+    apply(&mut pos, &cycle);
+    assert_eq!(pos.repetition_state(1), Repetition::None); // 3回目
+    apply(&mut pos, &cycle);
+    assert_eq!(pos.repetition_state(1), Repetition::Draw); // 4回目
     assert_eq!(pos.repetition_state(0), Repetition::Draw);
 }
 
@@ -267,7 +284,15 @@ fn perpetual_check_is_loss_for_checker() {
     apply(&mut pos, &["4h5h", "5a4a", "5h4h", "4a5a"]);
     // ここで盤面はループ先頭と同一。先手の手はすべて王手だった
     assert_eq!(pos.repetition_state_all(), Repetition::Lose);
-    assert_eq!(pos.repetition_state(0), Repetition::Lose);
+    // 探索の中の往復なら負けと読む
+    assert_eq!(pos.repetition_state(5), Repetition::Lose);
+    // rootより前との一致なら、後手は別の手を選べるので、まだ負けではない（ADR-0254）
+    assert_eq!(pos.repetition_state(1), Repetition::None);
+    // 4回目は本当に負けである
+    let cycle = ["4h5h", "5a4a", "5h4h", "4a5a"];
+    apply(&mut pos, &cycle);
+    apply(&mut pos, &cycle);
+    assert_eq!(pos.repetition_state(1), Repetition::Lose);
 }
 
 /// 優等局面はrootを跨いで判定しない（ADR-0153）。
@@ -352,9 +377,9 @@ fn repetition_disappears_after_undo() {
     apply(&mut pos, &["2h3h", "8b7b", "3h2h"]);
     let m = pos.move_from_usi("7b8b").unwrap();
     pos.do_move(m);
-    assert_eq!(pos.repetition_state(0), Repetition::Draw);
+    assert_eq!(pos.repetition_state(usize::MAX), Repetition::Draw);
     pos.undo_move(m);
-    assert_eq!(pos.repetition_state(0), Repetition::None);
+    assert_eq!(pos.repetition_state(usize::MAX), Repetition::None);
 }
 
 /// null moveの往復一致と、手番だけ違う局面のキー相違（ADR-0028）。
