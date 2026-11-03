@@ -54,6 +54,17 @@ const SINGLE_MOVE_CAP_MS: f64 = 502.0;
 /// increaseDepthの判定比（S:2050-2051）。totalTimeのこの割合を超えて
 /// いれば、次の反復では実効深さを削って掘り直す
 const INCREASE_DEPTH_RATIO: f64 = 0.503;
+/// 持ち時間に合わせて定数を縮める（ADR-0253）。1手の配分がこれ未満なら、
+/// 秒単位の切り上げをやめる。秒単位の時計を前提にした仕組みだからである
+const ROUND_UP_MIN_AVAIL: i64 = 5000;
+/// 最小思考時間は配分のこの分の1までに抑える
+const MIN_THINK_AVAIL_DIV: i64 = 5;
+/// NetworkDelayは配分のこの分の1までに抑える
+const NETWORK_DELAY_AVAIL_DIV: i64 = 4;
+/// NetworkDelay2は残り時間のこの分の1までに抑える
+const RESERVE_TIME_DIV: i64 = 8;
+/// NetworkDelay2を縮めるときの下限[ms]。指し手の返答の遅れを受け止める
+const RESERVE_MIN_MS: i64 = 50;
 
 /// 反復の終わりに時間管理へ渡す探索の統計（ADR-0125。S:1961-2053の入力）。
 /// 5係数はすべてここから決まる。
@@ -178,6 +189,41 @@ pub struct TimeManager {
     round_up_to_full_second: bool,
 }
 
+/// 持ち時間に合わせて縮めたあとの定数（ADR-0253）。
+struct ScaledFloors {
+    minimum_thinking_time: i64,
+    network_delay: i64,
+    network_delay2: i64,
+    round_up_to_full_second: bool,
+}
+
+/// 実戦の持ち時間を前提にした定数を、短い持ち時間へ合わせて縮める（ADR-0253）。
+///
+/// 定数のままだと10+0.1では最初の5手で持ち時間の9割を使い、残り約1.2秒を
+/// 使わないまま以後の全手が100msになる。秒読みは秒単位の時計を前提に毎手
+/// 使い切る方式なので触らない。floodgateの300+10は配分が常に10秒以上、残りが
+/// 常に10秒以上なので、どの定数も縮まない
+fn scale_floors(opts: &TimeOptions, my_time: i64, byoyomi: i64, avail: i64) -> ScaledFloors {
+    if byoyomi > 0 {
+        return ScaledFloors {
+            minimum_thinking_time: opts.minimum_thinking_time,
+            network_delay: opts.network_delay,
+            network_delay2: opts.network_delay2,
+            round_up_to_full_second: opts.round_up_to_full_second,
+        };
+    }
+    ScaledFloors {
+        minimum_thinking_time: opts
+            .minimum_thinking_time
+            .min((avail / MIN_THINK_AVAIL_DIV).max(1)),
+        network_delay: opts.network_delay.min(avail / NETWORK_DELAY_AVAIL_DIV),
+        network_delay2: opts
+            .network_delay2
+            .min((my_time / RESERVE_TIME_DIV).max(RESERVE_MIN_MS)),
+        round_up_to_full_second: opts.round_up_to_full_second && avail >= ROUND_UP_MIN_AVAIL,
+    }
+}
+
 impl TimeManager {
     pub fn new(limits: &Limits, us: Color, game_ply: u16, opts: &TimeOptions) -> Self {
         let mut tm = TimeManager {
@@ -212,10 +258,28 @@ impl TimeManager {
         let inc = inc as i64;
         let byoyomi = limits.byoyomi as i64;
 
+        // 配分の分母は現行（ADR-0021）のまま据え置く。G7の切り分けである。
+        //
+        // 参照実装の分母（move horizon方式のMTG）を入れた版は、支えを揃えた
+        // うえでも730局で-15.7だった。分母だけをmove horizon方式にした
+        // [ADR-0102](../../docs/adr/0102-move-horizon.md)は-107.2で、支えを
+        // 足しても中立までしか戻らない。分母は本エンジンの現行式が釣り合って
+        // いるという判断で、支え（最小思考時間・秒単位切り上げ・停止の予約）
+        // だけを参照実装から採る
+        let rem_moves = (48i64 - i64::from(game_ply) / 2).max(16);
+        let avail = my_time / rem_moves + byoyomi + inc;
+
+        // 定数を持ち時間へ合わせて縮める（ADR-0253）。movetimeは残り時間を
+        // 読まないので、ここで縮めても結果は変わらない
+        let floors = scale_floors(opts, my_time, byoyomi, avail);
+        self.minimum_thinking_time = floors.minimum_thinking_time;
+        self.network_delay = floors.network_delay;
+        self.round_up_to_full_second = floors.round_up_to_full_second;
+
         // 今回の最大残り時間（timeman.cpp:154-160）。秒読みは残り時間へ
         // 加算して考える。加算時間はこの指し手のあとに増えるので足さない。
         // 0にすると時間切れのあと自爆するので下限を置く
-        self.remain_time = my_time + byoyomi - opts.network_delay2;
+        self.remain_time = my_time + byoyomi - floors.network_delay2;
         self.remain_time = self
             .remain_time
             .max(if self.round_up_to_full_second { 100 } else { 1 });
@@ -265,7 +329,7 @@ impl TimeManager {
 
         // 最小思考時間（timeman.cpp:235-236）。秒未満を切り上げないときは
         // 秒未満での戦いなので下限を1にする
-        self.minimum_time = (opts.minimum_thinking_time - opts.network_delay).max(
+        self.minimum_time = (self.minimum_thinking_time - self.network_delay).max(
             if self.round_up_to_full_second {
                 1000
             } else {
@@ -276,17 +340,6 @@ impl TimeManager {
         // 最適・最大思考時間には、まず上限値を入れておく（timeman.cpp:239）
         self.optimum_time = self.remain_time;
         self.maximum_time = self.remain_time;
-
-        // 配分の分母は現行（ADR-0021）のまま据え置く。G7の切り分けである。
-        //
-        // 参照実装の分母（move horizon方式のMTG）を入れた版は、支えを揃えた
-        // うえでも730局で-15.7だった。分母だけをmove horizon方式にした
-        // [ADR-0102](../../docs/adr/0102-move-horizon.md)は-107.2で、支えを
-        // 足しても中立までしか戻らない。分母は本エンジンの現行式が釣り合って
-        // いるという判断で、支え（最小思考時間・秒単位切り上げ・停止の予約）
-        // だけを参照実装から採る
-        let rem_moves = (48i64 - i64::from(game_ply) / 2).max(16);
-        let avail = my_time / rem_moves + byoyomi + inc;
 
         // optimumの候補。最小思考時間の床は参照実装から採る（timeman.cpp:257）
         let t1 = self.minimum_time + avail;
@@ -309,7 +362,7 @@ impl TimeManager {
         // optimumが常に121ms大きくなり、availが42〜600msしかない条件では1.6〜2.8倍の
         // 下駄になった。終盤の到達深さが8ply落ちる（ADR-0116）
         self.optimum_time =
-            (t1.min(self.optimum_time) * opts.slow_mover / 100 - opts.network_delay).max(1);
+            (t1.min(self.optimum_time) * opts.slow_mover / 100 - self.network_delay).max(1);
         self.maximum_time = t2.min(self.maximum_time);
 
         // USI_Ponder有効時はoptimumを1.25倍する（timeman.cpp:285-286）。
@@ -550,16 +603,87 @@ mod tests {
 
     #[test]
     fn sudden_death_caps_max_ratio() {
-        // 切れ負け（加算も秒読みもない）で残り1分。max_ratioが1.0固定になる
+        // 切れ負け（加算も秒読みもない）で残り2分。max_ratioが2に下がる
         let limits = Limits {
-            btime: 60_000,
+            btime: 120_000,
             ..Limits::default()
         };
         let tm = TimeManager::new(&limits, Color::Black, 1, &TimeOptions::default());
-        // avail = 60000/48 = 1250、max_ratio = min(3.0, max(60000/60000, 1.0)) = 1.0
-        // なのでt1とt2が同じ値になる
-        assert_eq!(tm.optimum(), 1880 + 1250 - 120);
-        assert_eq!(tm.maximum(), 3880);
+        // avail = 120000/48 = 2500で5秒未満なので定数が縮む（ADR-0253）。
+        // 最小思考時間500、NetworkDelay120で、minimumTime = 380
+        // optimum = 380 + 2500 - 120
+        assert_eq!(tm.optimum(), 380 + 2500 - 120);
+        // maximum = 380 + 2500*2 から同じ120を引く。切り上げはしない
+        assert_eq!(tm.maximum(), 380 + 5000 - 120);
+    }
+
+    #[test]
+    fn floodgate_floors_stay_constant() {
+        // 300+10の最も切迫した場面（持ち時間0で10秒の加算だけ）でも、
+        // 定数はどれも縮まない（ADR-0253）
+        let limits = Limits {
+            btime: 10_000,
+            binc: 10_000,
+            ..Limits::default()
+        };
+        let tm = TimeManager::new(&limits, Color::Black, 150, &TimeOptions::default());
+        assert_eq!(tm.remain_time, 10_000 - 1120);
+        assert_eq!(tm.minimum_thinking_time, 2000);
+        assert_eq!(tm.network_delay, 120);
+        assert!(tm.round_up_to_full_second);
+    }
+
+    #[test]
+    fn short_clock_scales_floors() {
+        // 10+0.1の開始局面。定数のままなら最小思考時間だけで1.88秒になる（ADR-0253）
+        let limits = Limits {
+            btime: 10_000,
+            binc: 100,
+            ..Limits::default()
+        };
+        let tm = TimeManager::new(&limits, Color::Black, 24, &TimeOptions::default());
+        // avail = 10000/36 + 100 = 377。最小思考時間75、NetworkDelay94
+        assert_eq!(tm.minimum_thinking_time, 75);
+        assert_eq!(tm.network_delay, 94);
+        assert!(!tm.round_up_to_full_second);
+        // 残り時間は10000/8 = 1250がNetworkDelay2より大きいので1120のまま
+        assert_eq!(tm.remain_time, 10_000 - 1120);
+        // optimum = max(75 - 94, 1) + 377 - 94 = 284
+        assert_eq!(tm.optimum(), 284);
+    }
+
+    #[test]
+    fn short_clock_shrinks_reserve() {
+        // 残りが少なくなったら、取り置きも一緒に縮めて使い切らないようにする
+        let limits = Limits {
+            btime: 1000,
+            binc: 100,
+            ..Limits::default()
+        };
+        let tm = TimeManager::new(&limits, Color::Black, 80, &TimeOptions::default());
+        assert_eq!(tm.remain_time, 1000 - 125);
+        // 取り置きには下限がある
+        let limits = Limits {
+            btime: 200,
+            binc: 100,
+            ..Limits::default()
+        };
+        let tm = TimeManager::new(&limits, Color::Black, 80, &TimeOptions::default());
+        assert_eq!(tm.remain_time, 200 - 50);
+    }
+
+    #[test]
+    fn byoyomi_keeps_floors() {
+        // 秒読みは秒単位の時計を前提にするので、定数を縮めない（ADR-0253）
+        let limits = Limits {
+            byoyomi: 1000,
+            ..Limits::default()
+        };
+        let tm = TimeManager::new(&limits, Color::Black, 80, &TimeOptions::default());
+        assert_eq!(tm.minimum_thinking_time, 2000);
+        assert_eq!(tm.network_delay, 120);
+        assert!(tm.round_up_to_full_second);
+        assert_eq!(tm.remain_time, 100);
     }
 
     #[test]
