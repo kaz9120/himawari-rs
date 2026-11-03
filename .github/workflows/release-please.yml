@@ -95,4 +95,12 @@ jobs:
           GH_TOKEN: ${{ secrets.RELEASE_PLEASE_TOKEN }}
           PR_JSON: ${{ steps.release-please.outputs.pr }}
           REPO: ${{ github.repository }}
-        run: gh pr merge --auto --squash "$(jq -r '.number' <<< "$PR_JSON")" --repo "$REPO"
+        # APIの一時的な504で落ちるとリリースPRが通知なしに止まるので、再試行する（#999）
+        run: |
+          NUMBER=$(jq -r '.number' <<< "$PR_JSON")
+          for delay in 30 60 120 240; do
+            gh pr merge --auto --squash "$NUMBER" --repo "$REPO" && exit 0
+            echo "auto-mergeの設定に失敗した。${delay}秒後に再試行する"
+            sleep "$delay"
+          done
+          gh pr merge --auto --squash "$NUMBER" --repo "$REPO"
