@@ -3035,6 +3035,8 @@ impl Worker {
                 // bestValueが負け側の決着スコアの間は何も刈らない。詰みを逃れる
                 // 手を探している最中だからである
                 if best > VALUE_MATED_IN_MAX_PLY {
+                    // このしきい値で通ったSEEは、これ以下のしきい値でも通る
+                    let mut see_passed_at = None;
                     // futility（ADR-0077）: 王手をかけず取り返しでもない手を、
                     // 取る駒の価値を足してもalphaへ届かないなら捨てる
                     if futility_base > VALUE_MATED_IN_MAX_PLY
@@ -3063,12 +3065,14 @@ impl Worker {
                             }
                             continue;
                         }
-                        if !self.pos.see_ge(m, alpha - futility_base) {
+                        let threshold = alpha - futility_base;
+                        if !self.pos.see_ge(m, threshold) {
                             if raise {
                                 best = best.max(alpha.min(futility_base));
                             }
                             continue;
                         }
+                        see_passed_at = Some(threshold);
                     }
 
                     // 取る手でない手は一律に捨てる（yaneuraou-search.cpp:4975-4976）
@@ -3077,7 +3081,9 @@ impl Worker {
                     }
                     // SEEが十分悪い手は探索しない（yaneuraou-search.cpp:4989-4990）。
                     // 無駄な王手ラッシュを抑える。歩損は許す下限である
-                    if !self.pos.see_ge(m, QS_SEE_MARGIN()) {
+                    let margin = QS_SEE_MARGIN();
+                    if !see_passed_at.is_some_and(|th| th >= margin) && !self.pos.see_ge(m, margin)
+                    {
                         continue;
                     }
                 }
