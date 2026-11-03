@@ -599,7 +599,7 @@ def shapes(args: argparse.Namespace) -> int:
             [
                 "python3", TRAINER,
                 *common,
-                "--out", f"data/nets/{name}.hmwr",
+                "--out", str(paths.NETS / f"{name}.hmwr"),
                 *BASE_FLAGS,
                 "--device", args.device,
                 "--seed", str(args.seed),

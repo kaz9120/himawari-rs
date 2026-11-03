@@ -117,6 +117,25 @@ def test_a_name_is_resolved_under_the_train_place(trainer):
     assert argv[argv.index("--valid") + 1] == "data/train/v.psv"
 
 
+def test_net_shapes_writes_under_the_nets_place(monkeypatch):
+    """構成ごとの学習の出力先も paths.NETS から組む（#993）。
+
+    文字列で組むとテストの退避が効かず、本物の `data/nets/` へ書く。
+    """
+    calls = []
+
+    def fake_run(argv, **_):
+        calls.append(argv)
+        return proc.OK
+
+    monkeypatch.setattr(proc, "run", fake_run)
+    monkeypatch.setattr(net, "_install_wheel", lambda *_, **__: None)
+
+    assert cli.main(["net", "shapes", "256x16", "--tag", "t", "--seed", "7"]) == proc.OK
+    (argv,) = [a for a in calls if net.TRAINER in a]
+    assert argv[argv.index("--out") + 1] == str(paths.NETS / "t-256x16-s7.hmwr")
+
+
 def test_a_path_is_passed_through_as_given(trainer):
     """区切りか拡張子があればパスとして通す。名前の解決に巻き込まない。"""
     _, train_dir = trainer
