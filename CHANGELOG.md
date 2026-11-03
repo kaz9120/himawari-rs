@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.59.0](https://github.com/kaz9120/himawari-rs/compare/v0.58.1...v0.59.0) (2026-11-03)
+
+
+### 棋力向上
+
+* 千日手の判定を探索経路内に限り、rootより前との一致は4回目だけにする（ADR-0254） ([#1003](https://github.com/kaz9120/himawari-rs/issues/1003)) ([b15b03d](https://github.com/kaz9120/himawari-rs/commit/b15b03d264e29d6fbcbee57eea795711fda3a20c))
+
 ## [0.58.1](https://github.com/kaz9120/himawari-rs/compare/v0.58.0...v0.58.1) (2026-11-03)
 
 
