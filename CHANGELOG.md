@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.59.1](https://github.com/kaz9120/himawari-rs/compare/v0.59.0...v0.59.1) (2026-11-03)
+
+
+### その他の変更
+
+* net shapes の出力先を paths.NETS から組む ([#1006](https://github.com/kaz9120/himawari-rs/issues/1006)) ([e92be95](https://github.com/kaz9120/himawari-rs/commit/e92be95380d08e3e287cc33b8bddb88b72f3f59c)), closes [#993](https://github.com/kaz9120/himawari-rs/issues/993)
+
 ## [0.59.0](https://github.com/kaz9120/himawari-rs/compare/v0.58.1...v0.59.0) (2026-11-03)
 
 
