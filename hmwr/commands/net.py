@@ -333,7 +333,7 @@ def train(args: argparse.Namespace) -> int:
         "--ft-clip", FT_CLIP,
         "--device", args.device or "mps",
         "--seed", str(args.seed),
-        "--checkpoint-dir", f"training/checkpoints/{name}",
+        "--checkpoint-dir", str(paths.CHECKPOINTS / name),
         "--log-file", _curve(name),
         "--registry", paths.rel(paths.registry()),
         "--name", name,

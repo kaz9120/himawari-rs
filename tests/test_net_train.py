@@ -136,6 +136,17 @@ def test_net_shapes_writes_under_the_nets_place(monkeypatch):
     assert argv[argv.index("--out") + 1] == str(paths.NETS / "t-256x16-s7.hmwr")
 
 
+def test_the_checkpoint_dir_is_built_from_the_checkpoints_place(trainer):
+    """学習器へ渡す置き場も paths.CHECKPOINTS から組む（#1008）。
+
+    文字列で組むと、再開を判定する行と学習器へ渡す行が別の場所を指す。
+    """
+    calls, train_dir = trainer
+    assert cli.main(argv_for(train_dir)) == proc.OK
+    argv = calls[0]
+    assert argv[argv.index("--checkpoint-dir") + 1] == str(paths.CHECKPOINTS / "x")
+
+
 def test_a_path_is_passed_through_as_given(trainer):
     """区切りか拡張子があればパスとして通す。名前の解決に巻き込まない。"""
     _, train_dir = trainer
