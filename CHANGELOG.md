@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.60.1](https://github.com/kaz9120/himawari-rs/compare/v0.60.0...v0.60.1) (2026-11-04)
+
+
+### その他の変更
+
+* net train のチェックポイントの置き場を paths.CHECKPOINTS から組む ([#1015](https://github.com/kaz9120/himawari-rs/issues/1015)) ([dc32e1c](https://github.com/kaz9120/himawari-rs/commit/dc32e1c76a00c1b97d238e95889707f09c318967)), closes [#1008](https://github.com/kaz9120/himawari-rs/issues/1008)
+
 ## [0.60.0](https://github.com/kaz9120/himawari-rs/compare/v0.59.1...v0.60.0) (2026-11-03)
 
 
