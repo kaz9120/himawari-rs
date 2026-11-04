@@ -153,6 +153,7 @@ ROADMAPの注力を決めた判断。いまの注力は0229にある。
 - [0253](0253-short-tc-floors.md) 時間管理の定数を短い持ち時間へ合わせて縮める
 - [0256](0256-slowmover-allocation.md) 配分の倍率SlowMoverを既定の100から動かすか
 - [0257](0257-cut-settled-iteration.md) 予算を超えた反復を、PVが確定していれば途中で打ち切る
+- [0258](0258-maximum-ratio.md) 1手の上限maximumを配分の3倍から4倍へ広げる
 - [0060](0060-opening-book-policy.md) 定跡の方針
 - [0080](0080-net-release.md) 学習済みネットの配布
 - [0108](0108-license-gplv3.md) GPLv3への変更
@@ -427,6 +428,7 @@ ROADMAPの注力を決めた判断。いまの注力は0229にある。
 | [0255](0255-check-extension-ply-cap.md) | 王手の延長を根の深さの2倍の手数までにする | 2026-11-04 |  | accepted（ノード固定の非劣性でH1、+6.2。局面4が0.9秒で深さ18。局面10・12は未解消） |
 | [0256](0256-slowmover-allocation.md) | 配分の倍率SlowMoverを既定の100から動かすか | 2026-11-04 |  | rejected（10+0.33で80は−14.8、130は+3.5。どちらも95%CIの下限が0以下） |
 | [0257](0257-cut-settled-iteration.md) | 予算を超えた反復を、PVが確定していれば途中で打ち切る | 2026-11-04 |  | rejected（既定条件のSPRTでH0、−6.2 [−13.8, +1.3]） |
+| [0258](0258-maximum-ratio.md) | 1手の上限maximumを配分の3倍から4倍へ広げる | 2026-11-04 |  | rejected（既定条件のSPRTでH0、−3.0 [−9.0, +3.0]） |
 
 ## バックログ
 
