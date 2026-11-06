@@ -464,12 +464,12 @@ pub fn effect_clip(acc: &[i32; EFF_OUT], out: &mut [u8]) {
     }
 }
 
-/// 差分で持つ側のaccの要素の型。F2だけの構成はi16（ADR-0237のD2）、
-/// F2と最小の攻め駒の組（`SIDE_MINATT_INC`）はi32で持つ（ADR-0249）。
+/// 差分で持つ側のaccの要素の型。既定はi16（ADR-0237のD2）で、構成名に `w` を書いた
+/// F2と最小の攻め駒の組だけi32で持つ（ADR-0249・ADR-0261）。
 #[cfg(not(eff_acc32))]
 pub type EffAcc = i16;
-/// 差分で持つ側のaccの要素の型。F2だけの構成はi16（ADR-0237のD2）、
-/// F2と最小の攻め駒の組（`SIDE_MINATT_INC`）はi32で持つ（ADR-0249）。
+/// 差分で持つ側のaccの要素の型。既定はi16（ADR-0237のD2）で、構成名に `w` を書いた
+/// F2と最小の攻め駒の組だけi32で持つ（ADR-0249・ADR-0261）。
 #[cfg(eff_acc32)]
 pub type EffAcc = i32;
 
@@ -692,8 +692,8 @@ pub const SIDE_MINATT_INC: bool = EFF_GENERIC
     && EFF_KINDS[0] == crate::side_feat::KIND_F2
     && EFF_KINDS[1] == crate::side_feat::KIND_MINATT;
 
-// build.rsが出すcfg `eff_acc32`（側のaccをi32で持つ）は、この構成と一致させる
-const _: () = assert!(SIDE_MINATT_INC == cfg!(eff_acc32));
+// build.rsが出すcfg `eff_acc32`（構成名の `w`、側のaccをi32で持つ）は、この構成でだけ立つ
+const _: () = assert!(!cfg!(eff_acc32) || SIDE_MINATT_INC);
 
 /// i32の側のaccが溢れないこと。1升に立つのはF2と最小の攻め駒の1つずつで、81升の
 /// 162行とバイアスをi16の最大の絶対値で足しても、i32に十分収まる。だから読み込みで
@@ -755,8 +755,8 @@ static WHITE_MINATT: [u16; 4096] = {
 /// `SIDE_MINATT_INC` の構成で、側のaccumulatorが取りうる値の上限（絶対値）を重みから見積もる。
 ///
 /// 1升に立つのはF2と最小の攻め駒の1つずつなので、升ごとに各表の最大の絶対値を足す。
-/// accはi32で持つので読み込みでは使わない。テストで、i16を超えるネットを作れたことを確かめる。
-#[cfg(test)]
+/// i16に収まれば、差分の経路をi16の巡回加算で持っても、i32で作り直す値と一致する。
+/// 側のaccをi16で持つ構成（`w` なし）では、読み込みでこの値を検査する（ADR-0261）。
 pub fn side_minatt_acc_bound(net: &NnueNetwork) -> i64 {
     if !SIDE_MINATT_INC {
         unreachable!("f2_minatt の構成でだけ呼ぶ");

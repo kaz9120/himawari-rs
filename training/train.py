@@ -252,6 +252,14 @@ def main():
              "対しては1.0を指定する",
     )
     p.add_argument(
+        "--side-clip",
+        type=float,
+        default=0.0,
+        help="側の表の重み（畳み込み後）とバイアスをこの絶対値へ収める（ADR-0261。0=無効）。"
+             "差分で持つ側のaccをi16に収めるための制約で、F2と最小の攻め駒の組では"
+             "1.5で上限の見積もりが31,051になる。射影の間隔は --ft-clip-interval に従う",
+    )
+    p.add_argument(
         "--init-checkpoint",
         help="f32のチェックポイント（.pt）から重みだけを読んで新しい学習を始める"
              "（ADR-0145）。--resume と違い step・optimizer・schedulerは引き継がず、"
@@ -782,6 +790,8 @@ def main():
             model.clip_weights()
             if args.ft_clip > 0 and step % args.ft_clip_interval == 0:
                 model.clip_ft_weights(args.ft_clip)
+            if args.side_clip > 0 and step % args.ft_clip_interval == 0:
+                model.clip_eff_weights(args.side_clip)
 
             step += 1
             samples_done += n
@@ -878,6 +888,8 @@ def main():
                 # 検証と書き出しは制約を満たした状態で行う（ADR-0138）
                 if args.ft_clip > 0:
                     model.clip_ft_weights(args.ft_clip)
+                if args.side_clip > 0:
+                    model.clip_eff_weights(args.side_clip)
                 if use_focus:
                     focus_vl, top5, base = validate_focus(
                         model, valid_loader, device, focus_prior,
@@ -986,6 +998,8 @@ def main():
         f"warmup={args.warmup_steps} lambda={args.lambda_} "
         f"steps={step}{eff_tag}"
     )
+    if args.side_clip > 0:
+        model.clip_eff_weights(args.side_clip)
     save_hmwr(model, lineage, args.out)
     print(f"{args.out} を書き出しました", file=sys.stderr)
 

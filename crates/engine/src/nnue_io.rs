@@ -584,13 +584,20 @@ pub fn load(r: &mut impl Read) -> Result<(NnueNetwork, String), String> {
     // 利きのaccumulatorは差分の経路でi16に持つ（ADR-0237のD2）。取りうる値が
     // i16に収まらないネットでは全計算と食い違うので、読み込みで弾く。表し方を替えた
     // 構成（ADR-0245）は評価のたびにi32で作り直すので、この制約を持たない。
-    // F2と最小の攻め駒の組は差分の経路をi32で持ち、どの重みでも溢れない（ADR-0249）
-    if EFF_OUT != 0 && !crate::nnue::EFF_GENERIC {
-        let bound = crate::nnue::effect_acc_bound(&net);
+    // F2と最小の攻め駒の組も差分の経路をi16で持つので、同じ検査をする。構成名に `w` を
+    // 書いた組だけはi32で持ち、どの重みでも溢れない（ADR-0249・ADR-0261）
+    let side16 = crate::nnue::SIDE_MINATT_INC && !cfg!(eff_acc32);
+    if EFF_OUT != 0 && (!crate::nnue::EFF_GENERIC || side16) {
+        let bound = if side16 {
+            crate::nnue::side_minatt_acc_bound(&net)
+        } else {
+            crate::nnue::effect_acc_bound(&net)
+        };
         if bound > i64::from(i16::MAX) {
             return Err(format!(
                 "利きのaccumulatorがi16に収まらない（上限の見積もり{bound}）。\
-                 量子化で利きの重みを小さくする"
+                 学習で側の重みに上限をかける（--side-clip）か、F2と最小の攻め駒の組なら\
+                 構成名に w を書いてi32で持つ"
             ));
         }
     }
@@ -890,18 +897,28 @@ mod tests {
         assert!(err.contains("i16"), "原因の読める文言にする: {err}");
     }
 
-    /// F2と最小の攻め駒の組は側のaccをi32で持つので、i16に収まらないネットも読める（ADR-0249）。
+    /// F2と最小の攻め駒の組は、構成名に `w` を書けば側のaccをi32で持ち、i16に収まらない
+    /// ネットも読める（ADR-0249）。書かなければi16で持ち、収まらないネットを弾く（ADR-0261）。
     #[test]
-    fn side_minatt_acc_beyond_i16_loads() {
+    fn side_minatt_acc_beyond_i16() {
         if !crate::nnue::SIDE_MINATT_INC {
             return;
         }
         let mut net = NnueNetwork::random(5);
+        let mut buf = Vec::new();
+        save(&net, "", &mut buf).unwrap();
+        assert!(load(&mut buf.as_slice()).is_ok());
         net.eff_w.fill(405);
         assert!(crate::nnue::side_minatt_acc_bound(&net) > i64::from(i16::MAX));
         let mut buf = Vec::new();
         save(&net, "", &mut buf).unwrap();
-        assert!(load(&mut buf.as_slice()).is_ok());
+        let loaded = load(&mut buf.as_slice());
+        if cfg!(eff_acc32) {
+            assert!(loaded.is_ok());
+        } else {
+            let err = loaded.err().expect("i16で持つ構成は、収まらなければ弾く");
+            assert!(err.contains("i16"), "原因の読める文言にする: {err}");
+        }
     }
 
     /// ヘッダ・重みの破損を検出してエラーになる。

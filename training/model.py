@@ -366,6 +366,25 @@ class NnueModel(nn.Module):
             folded = self.folded_ft_weight()
             self.ft.weight.sub_(folded - folded.clamp(-limit, limit))
 
+    def clip_eff_weights(self, limit):
+        """側の表の重み（畳み込み後）とバイアスを±limitへ収める（ADR-0261）。
+
+        差分で持つ側のaccをi16にするための制約である。F2と最小の攻め駒の組では1視点に
+        162行が立つので、重みとバイアスが±limitに収まれば、accの絶対値は量子化の127倍で
+        `127 × 163 × limit` 以下になる。limit=1.5なら31,051で、i16の上限32,767に収まる。
+        仮想特徴（`eff_p`）を持つ構成は、FTと同じく超過分を実特徴の側から引く。
+        """
+        if self.eff is None:
+            return
+        with torch.no_grad():
+            w = self.eff.weight[:EFF_IN]
+            if self.eff_p is None:
+                w.clamp_(-limit, limit)
+            else:
+                folded = self.folded_eff_weight().to(w.device, w.dtype)
+                w.sub_(folded - folded.clamp(-limit, limit))
+            self.eff_bias.clamp_(-limit, limit)
+
     def clip_weights(self):
         with torch.no_grad():
             self.l2.weight.clamp_(-HIDDEN_W_LIMIT, HIDDEN_W_LIMIT)
