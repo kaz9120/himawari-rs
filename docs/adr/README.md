@@ -103,6 +103,7 @@ ROADMAPの注力を決めた判断。いまの注力は0229にある。
 - [0184](0184-cross-view-product.md) 視点をまたぐ対の積で両玉の相互作用を入れる案（測って棄却）
 - [0237](0237-effect-count-inputs.md) 駒×升×利き数の特徴を、細い別のaccumulatorで入力に足す
 - [0238](0238-effect-progress-layer-stack.md) 利きから出す2軸の進行度で後段を4組に切り替える（LayerStack）
+- [0261](0261-narrow-minatt-production.md) 主のFTを256へ絞り、F2と最小の攻め駒を足した構成を本番の規模で測る
 
 ### 学習
 
@@ -433,6 +434,7 @@ ROADMAPの注力を決めた判断。いまの注力は0229にある。
 | [0258](0258-maximum-ratio.md) | 1手の上限maximumを配分の3倍から4倍へ広げる | 2026-11-04 |  | rejected（既定条件のSPRTでH0、−3.0 [−9.0, +3.0]） |
 | [0259](0259-allocation-denominator.md) | 配分の分母の起点を48から64へ増やす | 2026-11-05 |  | rejected（10+0.33のSPRTでH0、−5.1 [−12.0, +1.9]） |
 | [0260](0260-slowmover-130.md) | SlowMoverの既定を100から130へ上げる | 2026-11-05 |  | rejected（10+0.33のSPRTでH0、−5.8 [−13.2, +1.5]） |
+| [0261](0261-narrow-minatt-production.md) | 主256＋F2＋最小の攻め駒（E1）を本番の規模で学習し、現行とSPRTで比べる | 2026-11-07 |  | proposed |
 
 ## バックログ
 
