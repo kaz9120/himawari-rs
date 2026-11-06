@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.60.2](https://github.com/kaz9120/himawari-rs/compare/v0.60.1...v0.60.2) (2026-11-06)
+
+
+### その他の変更
+
+* 側のaccをi16で持ち、i32は構成名のwで選ぶ。学習器に側の重みの上限を足す ([#1021](https://github.com/kaz9120/himawari-rs/issues/1021)) ([2c6c46b](https://github.com/kaz9120/himawari-rs/commit/2c6c46ba93612c1cefcc75198d85bee509cb0113))
+
 ## [0.60.1](https://github.com/kaz9120/himawari-rs/compare/v0.60.0...v0.60.1) (2026-11-04)
 
 
