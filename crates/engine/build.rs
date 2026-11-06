@@ -86,6 +86,9 @@ struct Arch {
     eff: usize,
     /// 側のaccumulatorの活性に対の積を掛けるか（ADR-0245）。
     eff_pair: bool,
+    /// 差分で持つ側のaccをi32にするか（構成名の `w`。ADR-0249・ADR-0261）。
+    /// F2と最小の攻め駒の組でだけ書ける。書かなければi16で持つ
+    eff_acc32: bool,
     /// 側の入力の種類（`SIDE_KINDS` の番号）。空ならF2の従来の経路。
     eff_kinds: Vec<usize>,
     /// 玉の近傍の部分モデルの出力の幅（ADR-0246）。0なら持たない。
@@ -93,8 +96,8 @@ struct Arch {
 }
 
 fn parse(spec: &str) -> Result<Arch, String> {
-    // 末尾の e<E>[p][k<K>][-<種類>[_<種類>…]] を先に切り離す。残りは従来の書式のまま読む
-    let (body, eff, eff_pair, eff_kinds, sub) = match spec.split_once('e') {
+    // 末尾の e<E>[p][w][k<K>][-<種類>[_<種類>…]] を先に切り離す。残りは従来の書式のまま読む
+    let (body, eff, eff_pair, eff_acc32, eff_kinds, sub) = match spec.split_once('e') {
         Some((body, e)) => {
             let (e, kinds) = match e.split_once('-') {
                 Some((e, k)) => (e, Some(k)),
@@ -107,6 +110,10 @@ fn parse(spec: &str) -> Result<Arch, String> {
                         .map_err(|_| format!("部分モデルの幅が整数でない: {k}"))?,
                 ),
                 None => (e, 0),
+            };
+            let (e, acc32) = match e.strip_suffix('w') {
+                Some(e) => (e, true),
+                None => (e, false),
             };
             let (e, pair) = match e.strip_suffix('p') {
                 Some(e) => (e, true),
@@ -127,9 +134,9 @@ fn parse(spec: &str) -> Result<Arch, String> {
                     })
                     .collect::<Result<Vec<_>, _>>()?,
             };
-            (body, eff, pair, kinds, sub)
+            (body, eff, pair, acc32, kinds, sub)
         }
-        None => (spec, 0, false, Vec::new(), 0),
+        None => (spec, 0, false, false, Vec::new(), 0),
     };
     let parts: Vec<&str> = body.split('x').collect();
     let num = |name: &str, s: &str| -> Result<usize, String> {
@@ -154,6 +161,7 @@ fn parse(spec: &str) -> Result<Arch, String> {
         l3: num("L3", l3)?,
         eff,
         eff_pair,
+        eff_acc32,
         eff_kinds,
         sub,
     })
@@ -182,6 +190,12 @@ fn validate(a: &Arch) -> Result<(), String> {
         check("利きの幅", a.eff, EFF_MULTIPLE)?;
     }
     // 対の積は片視点E/2を出す。連結ベクトルを32の倍数に保つには、E/2も16の倍数が要る
+    let kind = |name: &str| SIDE_KINDS.iter().position(|k| k.0 == name).unwrap();
+    if a.eff_acc32 && (a.eff_pair || a.eff_kinds != [kind("f2"), kind("minatt")]) {
+        return Err(
+            "`w`（側のaccをi32で持つ）は、対の積のない `-f2_minatt` の構成でだけ書ける".into(),
+        );
+    }
     if a.eff_pair && !a.eff.is_multiple_of(2 * EFF_MULTIPLE) {
         return Err(format!(
             "対の積を掛ける側の幅は{}の倍数にする（{}が渡された）",
@@ -323,11 +337,10 @@ fn main() {
     )
     .unwrap();
     writeln!(src, "pub const EFF_KINDS: &[usize] = &{kinds:?};").unwrap();
-    // F2と最小の攻め駒の組（`nnue::SIDE_MINATT_INC`）は、側のaccをi32で持つ（ADR-0249）。
-    // 要素の型を切り替えるのでcfgで渡す。条件は `SIDE_MINATT_INC` と同じで、nnue.rsが一致を確かめる
+    // 構成名に `w` を書いたF2と最小の攻め駒の組は、側のaccをi32で持つ（ADR-0249・ADR-0261）。
+    // 要素の型を切り替えるのでcfgで渡す。`w` を書けるのはこの組だけで、validateが確かめる
     println!("cargo::rustc-check-cfg=cfg(eff_acc32)");
-    let kind = |name: &str| SIDE_KINDS.iter().position(|k| k.0 == name).unwrap();
-    if !arch.eff_pair && arch.eff_kinds == [kind("f2"), kind("minatt")] {
+    if arch.eff_acc32 {
         println!("cargo::rustc-cfg=eff_acc32");
     }
     writeln!(src, "/// 側の特徴の総数（表の行数）。").unwrap();

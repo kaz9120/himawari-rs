@@ -1206,11 +1206,11 @@ mod tests {
         assert!(evaluated > 300, "評価したノードが少なすぎる: {evaluated}");
     }
 
-    /// F2と最小の攻め駒の組で、側のaccがi16を超えるネットでも差分が全計算と一致すること
-    /// （ADR-0249）。ランダムなネットの側の重みを3000倍して、見積もりをi16の上限より大きくする。
+    /// 構成名に `w` を書いたF2と最小の攻め駒の組で、側のaccがi16を超えるネットでも差分が
+    /// 全計算と一致すること（ADR-0249）。ランダムなネットの側の重みを3000倍して、見積もりをi16の上限より大きくする。
     #[test]
     fn side_minatt_incremental_matches_beyond_i16() {
-        if !SIDE_MINATT_INC {
+        if !SIDE_MINATT_INC || !cfg!(eff_acc32) {
             return;
         }
         let mut net = NnueNetwork::random(19);

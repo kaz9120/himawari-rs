@@ -50,7 +50,7 @@ NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
 # ネットワークの構成。<FT>x<L1>[x<L2>[x<L3>]][e<E>[p][-<種類>[_<種類>…]]] の形だけを通す（512x16x64など）。
 # 末尾の e<E> は幅Eの利きのaccumulatorを足す（ADR-0237、例 1024x16x32e64）。その後ろの p は
 # 側の活性に対の積を掛け、-<種類> は側の入力の表し方を替える（ADR-0245、例 1024x16x32e64-f2_threat）
-ARCH_RE = re.compile(r"^\d+x\d+(x\d+){0,2}(e\d+p?(k\d+)?(-[a-z0-9]+(_[a-z0-9]+)*)?)?$")
+ARCH_RE = re.compile(r"^\d+x\d+(x\d+){0,2}(e\d+p?w?(k\d+)?(-[a-z0-9]+(_[a-z0-9]+)*)?)?$")
 
 
 class BadName(ValueError):
