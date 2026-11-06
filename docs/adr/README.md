@@ -155,6 +155,7 @@ ROADMAPの注力を決めた判断。いまの注力は0229にある。
 - [0257](0257-cut-settled-iteration.md) 予算を超えた反復を、PVが確定していれば途中で打ち切る
 - [0258](0258-maximum-ratio.md) 1手の上限maximumを配分の3倍から4倍へ広げる
 - [0259](0259-allocation-denominator.md) 配分の分母の起点を48から64へ増やす
+- [0260](0260-slowmover-130.md) SlowMoverの既定を100から130へ上げる
 - [0060](0060-opening-book-policy.md) 定跡の方針
 - [0080](0080-net-release.md) 学習済みネットの配布
 - [0108](0108-license-gplv3.md) GPLv3への変更
@@ -431,6 +432,7 @@ ROADMAPの注力を決めた判断。いまの注力は0229にある。
 | [0257](0257-cut-settled-iteration.md) | 予算を超えた反復を、PVが確定していれば途中で打ち切る | 2026-11-04 |  | rejected（既定条件のSPRTでH0、−6.2 [−13.8, +1.3]） |
 | [0258](0258-maximum-ratio.md) | 1手の上限maximumを配分の3倍から4倍へ広げる | 2026-11-04 |  | rejected（既定条件のSPRTでH0、−3.0 [−9.0, +3.0]） |
 | [0259](0259-allocation-denominator.md) | 配分の分母の起点を48から64へ増やす | 2026-11-05 |  | rejected（10+0.33のSPRTでH0、−5.1 [−12.0, +1.9]） |
+| [0260](0260-slowmover-130.md) | SlowMoverの既定を100から130へ上げる | 2026-11-05 |  | rejected（10+0.33のSPRTでH0、−5.8 [−13.2, +1.5]） |
 
 ## バックログ
 
