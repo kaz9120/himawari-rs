@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.60.3](https://github.com/kaz9120/himawari-rs/compare/v0.60.2...v0.60.3) (2026-11-07)
+
+
+### その他の変更
+
+* net actdump と net reorder --apply に --arch を足す ([#1027](https://github.com/kaz9120/himawari-rs/issues/1027)) ([ab8b4a6](https://github.com/kaz9120/himawari-rs/commit/ab8b4a6d3792b45040a4e1c1dac86ed65e05a721)), closes [#1025](https://github.com/kaz9120/himawari-rs/issues/1025)
+
 ## [0.60.2](https://github.com/kaz9120/himawari-rs/compare/v0.60.1...v0.60.2) (2026-11-06)
 
 
