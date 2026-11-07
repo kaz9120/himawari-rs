@@ -84,15 +84,34 @@ def test_main_accepts_argv_list(tmp_path):
 # --- ネットへ当てる（hmwr net reorder --apply） -------------------------
 
 
-def _fake_apply(monkeypatch, tables):
+def _fake_apply(monkeypatch, tables, envs=None):
+    """makenet・エンジンのビルド・verifyの3つを差し替える。
+
+    envsを渡すと、呼び出しごとの環境変数をそこへ順に控える（#1025）。
+    """
     from hmwr import proc
     from hmwr.commands import build, net
 
     calls = []
-    monkeypatch.setattr(proc, "run", lambda argv, **kw: calls.append(argv) or proc.OK)
-    monkeypatch.setattr(build, "cargo_build", lambda **kw: None)
+
+    def record(env):
+        if envs is not None:
+            envs.append(env or {})
+
+    def fake_run(argv, **kw):
+        calls.append(argv)
+        record(kw.get("env"))
+        return proc.OK
+
     outputs = iter(tables)
-    monkeypatch.setattr(proc, "capture", lambda argv, **kw: next(outputs))
+
+    def fake_capture(argv, **kw):
+        record(kw.get("env"))
+        return next(outputs)
+
+    monkeypatch.setattr(proc, "run", fake_run)
+    monkeypatch.setattr(build, "cargo_build", lambda **kw: record(kw.get("env")))
+    monkeypatch.setattr(proc, "capture", fake_capture)
     return net, calls
 
 
@@ -119,6 +138,38 @@ def test_apply_refuses_when_the_search_changes(monkeypatch, tmp_path):
     net, _ = _fake_apply(monkeypatch, [TABLE, TABLE.replace("100", "101")])
     with pytest.raises(proc.Fail):
         net.apply_reorder(paths.NETS / "x.hmwr", tmp_path / "perm.txt")
+
+
+def test_apply_passes_the_arch_to_every_cargo_call(monkeypatch):
+    """構成はmakenet・ビルド・verifyの全部へ届く（#1025）。
+
+    1つでも欠けると、その呼び出しが既定の構成で target/release を
+    置き換え、読み込みが effect accumulator mismatch で落ちる。
+    """
+    from hmwr import paths, proc
+
+    envs = []
+    net, _ = _fake_apply(monkeypatch, [TABLE, TABLE], envs)
+    spec = "256x32x32e8"
+    code = net.apply_reorder(
+        paths.NETS / "x.hmwr", paths.PROFILE / "perm_x.txt", env={"HIMAWARI_ARCH": spec}
+    )
+    assert code == proc.OK
+    # makenet・ビルド・verify（2局面ぶん）の4回
+    assert len(envs) == 4
+    assert all(env.get("HIMAWARI_ARCH") == spec for env in envs)
+    # makenetのRUSTFLAGSは構成を足しても残る
+    assert "RUSTFLAGS" in envs[0]
+
+
+def test_apply_without_an_arch_sets_no_arch_variable(monkeypatch):
+    """構成を省いたときは環境変数を足さない。build.rsの既定が効く。"""
+    from hmwr import paths, proc
+
+    envs = []
+    net, _ = _fake_apply(monkeypatch, [TABLE, TABLE], envs)
+    assert net.apply_reorder(paths.NETS / "x.hmwr", paths.PROFILE / "perm_x.txt") == proc.OK
+    assert all("HIMAWARI_ARCH" not in env for env in envs)
 
 
 def test_reordered_name_drops_every_suffix():

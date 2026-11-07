@@ -25,6 +25,13 @@ CURVES = "net_shape"
 BUILD_RS = paths.REPO / "crates" / "engine" / "build.rs"
 DEFAULT_ARCH_RE = re.compile(r'^const DEFAULT_ARCH: &str = "([^"]+)";', re.MULTILINE)
 
+# 構成を選ぶフラグの説明。ビルドを伴う操作で同じ文を使う
+ARCH_HELP = (
+    "ネットワークの構成。例 512x16x64（省くと既定構成）。"
+    "この構成でビルドし直す。省いたまま既定以外のネットを渡すと、"
+    "読み込みが effect accumulator mismatch で落ちる"
+)
+
 # 1局面40バイト固定（ADR-0038）
 BYTES_PER_POSITION = 40
 BATCH = 16384
@@ -209,7 +216,12 @@ def add_parser(sub: argparse._SubParsersAction) -> None:
         "同じチャンクへ寄せる。評価値はビット一致したまま速度だけが上がる。",
     )
     t.add_argument("dump", metavar="ダンプ", help="活性ダンプ（*.bin）")
-    t.add_argument("activations", type=int, metavar="次元", help="片視点の活性次元")
+    t.add_argument(
+        "activations",
+        type=int,
+        metavar="次元",
+        help="片視点の活性次元。対の積を取る構成ではFTの幅の半分になる（主256なら128）",
+    )
     t.add_argument("--out", metavar="ファイル", help="並べ替えの出力先")
     t.add_argument("--perm", metavar="ファイル", help="既存の並べ替えを当てて評価する")
     t.add_argument(
@@ -219,6 +231,7 @@ def add_parser(sub: argparse._SubParsersAction) -> None:
         "ダンプを取ったときと同じ、並べ替え前の書き出しを渡す。"
         "当てたあと、固定深さのノード数と評価値が並べ替え前と一致することを確かめる",
     )
+    t.add_argument("--arch", metavar="構成", help=ARCH_HELP)
     t.set_defaults(func=reorder)
 
     t = ss.add_parser(
@@ -243,6 +256,7 @@ def add_parser(sub: argparse._SubParsersAction) -> None:
     )
     t.add_argument("--stride", type=int, metavar="N", help="何回の評価につき1つ記録するか")
     t.add_argument("--eval-file", metavar="パス", help="評価関数")
+    t.add_argument("--arch", metavar="構成", help=ARCH_HELP)
     t.set_defaults(func=actdump)
 
     t = ss.add_parser(
@@ -264,6 +278,16 @@ def add_parser(sub: argparse._SubParsersAction) -> None:
 def positions(psv: Path) -> int:
     """psvの局面数。1局面40バイト固定である（ADR-0038）。"""
     return psv.stat().st_size // BYTES_PER_POSITION
+
+
+def arch_env(arch: str | None) -> dict[str, str]:
+    """構成をcargoへ渡す環境変数。省かれたら空で、build.rsの既定が効く。
+
+    ビルドを伴う操作が構成を受け取らないと、既定の構成で `target/release` を
+    上書きしてしまう。先に `hmwr build engine --arch` で作っても消えるので、
+    読み込みが `effect accumulator mismatch` で落ちる（#1025）。
+    """
+    return {"HIMAWARI_ARCH": paths.check_arch(arch)} if arch else {}
 
 
 def default_arch() -> str:
@@ -734,6 +758,7 @@ def _last_loss(output: str) -> str | None:
 def reorder(args: argparse.Namespace) -> int:
     """活性ダンプから並べ替えを決める。--apply ならネットへ当てて検証まで行う。"""
     net = Path(args.apply) if args.apply else None
+    env = arch_env(args.arch)
     out = args.out
     if net and not out:
         out = str(paths.PROFILE / f"perm_{net.name.split('.')[0]}.txt")
@@ -754,21 +779,26 @@ def reorder(args: argparse.Namespace) -> int:
     code = ft_reorder.main(argv)
     if code != proc.OK or not net:
         return code
-    return apply_reorder(net, Path(out))
+    return apply_reorder(net, Path(out), env=env)
 
 
 def reordered_path(net: Path) -> Path:
     return paths.NETS / f"{net.name.split('.')[0]}_reorder.hmwr"
 
 
-def apply_reorder(net: Path, perm: Path) -> int:
+def apply_reorder(net: Path, perm: Path, *, env: dict[str, str] | None = None) -> int:
     """並べ替えをネットへ当て、評価値が変わっていないことを確かめる。
 
     並べ替えは評価値を変えないので、変わったら渡した書き出しか置換を
     取り違えている（ADR-0195で .hmwr と .hmwr.best を取り違えた）。
+
+    envは構成を選ぶ環境変数で、makenet・エンジン・verifyの3つへ同じものを
+    渡す。1つでも欠けると、その呼び出しが既定の構成でビルドし直して
+    `target/release` を置き換える（#1025）。
     """
     from .build import cargo_build
 
+    env = env or {}
     out = reordered_path(net)
     proc.run(
         # 来歴の文字列にパスが残るので、リポジトリからの相対で渡す
@@ -776,14 +806,16 @@ def apply_reorder(net: Path, perm: Path) -> int:
             "makenet",
             ["--reorder", paths.rel(perm), "--from", paths.rel(net), "--out", paths.rel(out)],
         ),
-        env={"RUSTFLAGS": config.rustflags()},
+        env={"RUSTFLAGS": config.rustflags(), **env},
     )
     # actdumpは計測用のfeature付きでエンジンを作るので、通常のビルドへ戻してから測る
-    cargo_build(dry_run=False, args=["-p", "himawari-usi", "--bin", "himawari"])
+    cargo_build(dry_run=False, env=env, args=["-p", "himawari-usi", "--bin", "himawari"])
     engine = str(paths.release_bin("himawari"))
     tables = []
     for n in (net, out):
-        text = proc.capture(proc.cargo_tool("verify", [engine, "--eval-file", str(n)]))
+        text = proc.capture(
+            proc.cargo_tool("verify", [engine, "--eval-file", str(n)]), env=env
+        )
         tables.append([line for line in text.splitlines() if line.startswith("| ")])
     if not tables[0] or tables[0] != tables[1]:
         print("\n".join(tables[0]))
@@ -842,6 +874,7 @@ def actdump(args: argparse.Namespace) -> int:
     out = paths.PROFILE / f"act-{name}.bin"
     go = actdump_go(args.depth, args.nodes)
     eval_file = args.eval_file or config.get("EVAL_FILE")
+    env = arch_env(args.arch)
 
     if not positions.is_file() and not args.dry_run:
         raise proc.Fail(f"局面リストがない: {paths.rel(positions)}")
@@ -850,12 +883,15 @@ def actdump(args: argparse.Namespace) -> int:
     print(f"局面    : {paths.rel(positions)}")
     print(f"探索    : {go}")
     print(f"評価関数: {eval_file}")
+    if args.arch:
+        print(f"構成    : {args.arch}")
     print(f"出力    : {paths.rel(out)}")
 
     from .build import cargo_build
 
     cargo_build(
         dry_run=args.dry_run,
+        env=env,
         args=[
             "-p", "himawari-usi", "--bin", "himawari",
             "--features", "himawari-engine/actdump",

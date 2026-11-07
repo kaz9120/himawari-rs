@@ -33,12 +33,35 @@ def test_capture_code_takes_a_missing_command_as_a_runtime_failure():
 
 
 def test_the_narrower_helpers_follow_capture_code(monkeypatch):
-    monkeypatch.setattr(proc, "capture_code", lambda argv, cwd=None: (3, "o", "e"))
+    monkeypatch.setattr(proc, "capture_code", lambda argv, cwd=None, env=None: (3, "o", "e"))
     assert proc.capture(["x"]) == "o"
     assert proc.capture_both(["x"]) == ("o", "e")
     assert proc.succeeds(["x"]) is False
-    monkeypatch.setattr(proc, "capture_code", lambda argv, cwd=None: (0, "o", ""))
+    monkeypatch.setattr(proc, "capture_code", lambda argv, cwd=None, env=None: (0, "o", ""))
     assert proc.succeeds(["x"]) is True
+
+
+def test_the_narrower_helpers_pass_the_environment_through(monkeypatch):
+    """envは3つの呼び出し口から `capture_code` へ届く（#1025）。"""
+    seen = []
+    monkeypatch.setattr(
+        proc, "capture_code", lambda argv, cwd=None, env=None: seen.append(env) or (0, "o", "")
+    )
+    proc.capture(["x"], env={"A": "1"})
+    proc.capture_both(["x"], env={"A": "2"})
+    proc.succeeds(["x"], env={"A": "3"})
+    assert seen == [{"A": "1"}, {"A": "2"}, {"A": "3"}]
+
+
+def test_capture_code_overlays_env_on_the_current_environment(monkeypatch):
+    """envは現在の環境へ重ねる。渡さなければ環境はそのまま残る。"""
+    monkeypatch.setenv("HIMAWARI_TEST_KEEP", "keep")
+    code = "import os; print(os.environ.get('HIMAWARI_TEST_KEEP'), os.environ.get('HIMAWARI_ARCH'))"
+    argv = [sys.executable, "-c", code]
+    assert proc.capture_code(argv, env={"HIMAWARI_ARCH": "256x32x32"})[1].strip() == (
+        "keep 256x32x32"
+    )
+    assert proc.capture_code(argv)[1].strip() == "keep None"
 
 
 @pytest.fixture
@@ -47,7 +70,7 @@ def cores(monkeypatch):
     calls: list[list[str]] = []
 
     def fake(reply):
-        def capture_code(argv, cwd=None):
+        def capture_code(argv, cwd=None, env=None):
             calls.append(argv)
             return reply
         config.physical_cores.cache_clear()
@@ -80,20 +103,20 @@ def test_physical_cores_falls_back_when_the_command_is_missing(monkeypatch, core
 
 
 def test_launchd_reads_the_pid_when_the_agent_is_loaded(monkeypatch):
-    monkeypatch.setattr(proc, "capture_code", lambda argv, cwd=None: (0, '\t"PID" = 4321;\n', ""))
+    monkeypatch.setattr(proc, "capture_code", lambda argv, cwd=None, env=None: (0, '\t"PID" = 4321;\n', ""))
     assert status._launchd() == {"loaded": True, "pid": 4321}
 
 
 @pytest.mark.parametrize("code", [1, proc.RUNTIME])
 def test_launchd_reports_not_loaded_on_any_failure(monkeypatch, code):
-    monkeypatch.setattr(proc, "capture_code", lambda argv, cwd=None: (code, "", "だめ"))
+    monkeypatch.setattr(proc, "capture_code", lambda argv, cwd=None, env=None: (code, "", "だめ"))
     assert status._launchd() == {"loaded": False}
 
 
 def test_gh_returns_stdout_and_raises_with_stderr(monkeypatch):
-    monkeypatch.setattr(proc, "capture_code", lambda argv, cwd=None: (0, "[]\n", ""))
+    monkeypatch.setattr(proc, "capture_code", lambda argv, cwd=None, env=None: (0, "[]\n", ""))
     assert queue.gh("issue", "list") == "[]\n"
-    monkeypatch.setattr(proc, "capture_code", lambda argv, cwd=None: (1, "", "届かない\n"))
+    monkeypatch.setattr(proc, "capture_code", lambda argv, cwd=None, env=None: (1, "", "届かない\n"))
     with pytest.raises(proc.Fail) as e:
         queue.gh("issue", "list")
     assert "gh issue list" in str(e.value) and "届かない" in str(e.value)
