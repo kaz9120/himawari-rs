@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.61.0](https://github.com/kaz9120/himawari-rs/compare/v0.60.3...v0.61.0) (2026-11-08)
+
+
+### 棋力向上
+
+* 既定の構成を主256＋F2＋最小の攻め駒に切り替える（+4.6 Elo、ADR-0261） ([#1030](https://github.com/kaz9120/himawari-rs/issues/1030)) ([7bfd48d](https://github.com/kaz9120/himawari-rs/commit/7bfd48d7b4b430ff3812b26f92e9171fd0bde2bc))
+
 ## [0.60.3](https://github.com/kaz9120/himawari-rs/compare/v0.60.2...v0.60.3) (2026-11-07)
 
 
