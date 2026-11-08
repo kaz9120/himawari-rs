@@ -37,9 +37,9 @@ MATCH_MAX_MOVES = "320"
 # 現行の評価関数。**ここが一次情報の置き場である**（ROADMAPとREADMEはここを指す。
 # ADR-0182）。ネットの世代を替えるときはこの行と EVAL_TAG、配布物のPGOが使う
 # .github/workflows/release.yml の NET_TAG・NET_ASSET を更新する（食い違うとpytestが落ちる）
-EVAL_FILE = "data/nets/pool1_2ep_f2_reorder.hmwr"
+EVAL_FILE = "data/nets/pool1_2ep_minatt256c_reorder.hmwr"
 # EVAL_FILE を配ったReleaseのタグ。EVAL_FILE と一緒に替える
-EVAL_TAG = "net-v16"
+EVAL_TAG = "net-v17"
 # 配布するネットのアセット名（ADR-0080の追記）。net-v16から固定名で配る。
 # エンジンは EvalFile が空のとき、実行ファイルと同じフォルダのこの名前を読む
 NET_ASSET = "eval.hmwr"

@@ -101,6 +101,10 @@ jobs:
           # side_featの作り直しと一致することを、engineの単体テストで守る
           - arch: 1024x16x32e64-f2_minatt
             args: -p himawari-engine --lib
+          # F2だけを差分で持つ構成（ADR-0261より前の既定）。既定がf2_minattに
+          # なったので、F2の差分の経路をここで守る
+          - arch: 1024x16x32e64
+            args: --workspace
     runs-on: ubuntu-latest
     # testジョブと同じ理由でopt-level=1にする
     env:
