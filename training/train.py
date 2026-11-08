@@ -5,6 +5,7 @@ import csv
 import math
 import multiprocessing
 import os
+import re
 import sys
 import time
 
@@ -254,10 +255,11 @@ def main():
     p.add_argument(
         "--side-clip",
         type=float,
-        default=0.0,
+        default=None,
         help="側の表の重み（畳み込み後）とバイアスをこの絶対値へ収める（ADR-0261。0=無効）。"
              "差分で持つ側のaccをi16に収めるための制約で、F2と最小の攻め駒の組では"
-             "1.5で上限の見積もりが31,051になる。射影の間隔は --ft-clip-interval に従う",
+             "1.5で上限の見積もりが31,051になる。射影の間隔は --ft-clip-interval に従う。"
+             "省くと、側のaccをi16で持つ f2_minatt の構成では1.5、それ以外では0になる",
     )
     p.add_argument(
         "--init-checkpoint",
@@ -328,6 +330,12 @@ def main():
     if EFF_OUT == 0 and args.effect_inputs is not None:
         p.error(f"--effect-inputs は利きの構成（e<E>）でだけ使える。いまの構成は {ARCH}")
     eff_inputs = args.effect_inputs == "f2"
+    # 側のaccをi16で持つ構成は、上限なしで学習すると読み込みで弾かれる（ADR-0261）。
+    # 1日学習してから気づかないよう、省いたら現行の評価関数と同じ1.5をかける
+    if args.side_clip is None:
+        m = re.search(r"e\d+(p?)(w?)", ARCH)
+        side16 = "-f2_minatt" in ARCH and m is not None and not (m.group(1) or m.group(2))
+        args.side_clip = 1.5 if side16 else 0.0
     if EFF_OUT > 0 and not args.batch_loader:
         p.error("利きの構成は --batch-loader が要る（逐次のローダは特徴を作らない）")
     # 来歴に群を残す（ADR-0237）。統制と処置は同じ構成で、ファイルの寸法では見分けられない
