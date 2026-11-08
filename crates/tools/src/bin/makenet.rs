@@ -51,7 +51,7 @@ fn read_perm(path: &str) -> Vec<usize> {
         );
         std::process::exit(1);
     }
-    let mut seen = vec![false; HALF];
+    let mut seen = [false; HALF];
     for &p in &perm {
         if p >= HALF || seen[p] {
             eprintln!("置換が順列になっていない: {p}");
