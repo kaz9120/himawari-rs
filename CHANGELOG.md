@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.61.1](https://github.com/kaz9120/himawari-rs/compare/v0.61.0...v0.61.1) (2026-11-08)
+
+
+### その他の変更
+
+* 配布のmacOSのビルドをmacos-15で回し、タグを指定して添付し直せるようにする ([#1033](https://github.com/kaz9120/himawari-rs/issues/1033)) ([33961b5](https://github.com/kaz9120/himawari-rs/commit/33961b5d6bec4ec4ae34d854a95c435581eb960c))
+
 ## [0.61.0](https://github.com/kaz9120/himawari-rs/compare/v0.60.3...v0.61.0) (2026-11-08)
 
 
