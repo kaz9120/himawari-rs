@@ -9,11 +9,18 @@ name: Release
 # scripts/build-pgo.sh と同じ3段で、各ターゲットのrunner上で計測用
 # ビルド→ベンチ4局面の走行→profile-useの再ビルドを行う。学習走行の
 # 評価関数はネット配布リリース（ADR-0080）から取得する。
-# workflow_dispatchはタグなしの動作確認用で、Releaseへの添付は行わない。
+# workflow_dispatchは、tagを省くとタグなしの動作確認で、Releaseへ添付しない。
+# tagを渡すと、そのタグのコードをいまのワークフローでビルドして、そのReleaseへ
+# 添付する。ランナーの廃止などで添付に失敗した版を出し直すときに使う。
 on:
   push:
     tags: ["v*"]
   workflow_dispatch:
+    inputs:
+      tag:
+        description: "添付し直すタグ（例 v0.61.0）。省くと動作確認だけ"
+        required: false
+        default: ""
 
 # 書き込みはReleaseへ添付するreleaseジョブだけが持つ。buildは
 # ネット配布リリースの取得とartifactのアップロードだけなので読み取りで足りる
@@ -25,6 +32,8 @@ env:
   # net-v16からアセットは固定名 eval.hmwr になる（ADR-0080の追記）
   NET_TAG: net-v17
   NET_ASSET: eval.hmwr
+  # 添付先のタグ。タグpushならそのタグ、workflow_dispatchなら入力のタグ
+  TAG: ${{ inputs.tag || github.ref_name }}
 
 jobs:
   build:
@@ -51,13 +60,16 @@ jobs:
             name: windows-x64-sse42
             rustflags: "-C target-cpu=x86-64-v2 -C target-feature=+crt-static"
             bin: himawari.exe
-          - os: macos-14
+          # macos-14のランナーは廃止された（2026-11、v0.60.2〜v0.61.0の添付が止まった）
+          - os: macos-15
             name: macos-arm64
             rustflags: ""
             bin: himawari
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.tag || github.ref }}
       - name: Fetch eval net
         shell: bash
         env:
@@ -78,7 +90,7 @@ jobs:
           ROOT="$PWD"
           if [[ "$RUNNER_OS" == "Windows" ]]; then ROOT="$(pwd -W)"; fi
           export RUSTFLAGS="${{ matrix.rustflags }} -C profile-generate=${ROOT}/pgo-raw"
-          export HIMAWARI_BUILD_ID="${GITHUB_SHA::7}"
+          export HIMAWARI_BUILD_ID="$(git rev-parse --short=7 HEAD)"
           cargo build --release -p himawari-usi
           cargo build --release -p himawari-tools --bin bench
       - name: Train (bench positions)
@@ -96,13 +108,13 @@ jobs:
           ROOT="$PWD"
           if [[ "$RUNNER_OS" == "Windows" ]]; then ROOT="$(pwd -W)"; fi
           export RUSTFLAGS="${{ matrix.rustflags }} -C profile-use=${ROOT}/merged.profdata"
-          export HIMAWARI_BUILD_ID="${GITHUB_SHA::7}"
+          export HIMAWARI_BUILD_ID="$(git rev-parse --short=7 HEAD)"
           cargo build --release -p himawari-usi
       - name: Package
         shell: bash
         run: |
           cp "target/release/${{ matrix.bin }}" .
-          python3 -m zipfile -c "himawari-${{ github.ref_name }}-${{ matrix.name }}.zip" "${{ matrix.bin }}"
+          python3 -m zipfile -c "himawari-${TAG}-${{ matrix.name }}.zip" "${{ matrix.bin }}"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: ${{ matrix.name }}
@@ -110,8 +122,8 @@ jobs:
 
   release:
     needs: build
-    # workflow_dispatchの動作確認ではReleaseへ添付しない
-    if: startsWith(github.ref, 'refs/tags/')
+    # workflow_dispatchの動作確認（tagなし）ではReleaseへ添付しない
+    if: startsWith(github.ref, 'refs/tags/') || inputs.tag != ''
     permissions:
       contents: write
     runs-on: ubuntu-latest
@@ -123,4 +135,5 @@ jobs:
       # bodyを渡さないので、生成済みのリリースノートはそのまま残る。
       - uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
+          tag_name: ${{ env.TAG }}
           files: himawari-*.zip
