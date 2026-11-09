@@ -10,8 +10,8 @@ import sys
 
 import pytest
 
-from hmwr import cli, heartbeat, paths, proc, spec
-from hmwr.commands import exp, match, net
+from hmwr import heartbeat, paths, proc
+from hmwr.commands import match, net
 
 
 def beat_of(kind: str, name: str) -> dict:
@@ -145,51 +145,3 @@ def test_stopping_short_of_fixed_pairs_is_stopped(match_dirs, monkeypatch):
     d = beat_of("match", "adr0001-x")
     assert d["state"] == "stopped" and d["progress"]["total"] == 500
 
-
-# --- 実験 --------------------------------------------------------------
-
-SPEC = '''
-adr = "0220"
-
-[[step]]
-id = "mix"
-run = "hmwr data mix m --in a --in b"
-
-[[step]]
-id = "train"
-run = "hmwr net train n --data m"
-'''
-
-
-@pytest.fixture
-def exp_runner(tmp_path, monkeypatch):
-    monkeypatch.setattr(paths, "QUEUE", tmp_path / "queue")
-    monkeypatch.setattr(paths, "LOGS", tmp_path / "logs")
-    monkeypatch.setattr(spec, "load", lambda name, ref="origin/main": spec.parse(SPEC, name))
-    # 事前登録の見出しは test_exp が見る。ここでは実在のADRの中身に依存させない
-    monkeypatch.setattr(spec, "check_preregistered", lambda s: None)
-    monkeypatch.setattr(proc, "succeeds", lambda argv, **_: True)
-    seen = []
-
-    def fake_run(argv, **_):
-        # ステップを始める前に、状態ファイルが今のステップを指している
-        seen.append(beat_of("exp", "x")["detail"]["step"])
-        return proc.OK
-
-    monkeypatch.setattr(proc, "run", fake_run)
-    return seen
-
-
-def test_an_experiment_reports_the_current_step(exp_runner):
-    assert cli.main(["exp", "run", "x"]) == proc.OK
-    assert exp_runner == ["mix", "train"]
-    d = beat_of("exp", "x")
-    assert d["state"] == "done" and d["progress"]["done"] == 2 and d["progress"]["total"] == 2
-
-
-def test_a_paused_experiment_is_stopped(exp_runner):
-    exp.pause_file().parent.mkdir(parents=True, exist_ok=True)
-    exp.pause_file().touch()
-    assert cli.main(["exp", "run", "x"]) == proc.JUDGE
-    d = beat_of("exp", "x")
-    assert d["state"] == "stopped" and d["detail"]["reason"] == "paused"

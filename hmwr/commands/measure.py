@@ -122,14 +122,10 @@ def verify(args: argparse.Namespace) -> int:
 
 
 def bench(args: argparse.Namespace) -> int:
-    from . import queue
-
     if args.binaries[0] == "board":
-        queue.guard("盤面操作の計測", dry_run=args.dry_run)
         return bench_board(args)
     if args.repeat:
         raise proc.Fail("--repeat は hmwr bench board でだけ使える", proc.USAGE)
-    queue.guard("NPSの計測", dry_run=args.dry_run)
     extra: list[str] = []
     if args.depth:
         extra += ["--depth", str(args.depth)]

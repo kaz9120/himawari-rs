@@ -1,8 +1,7 @@
-"""今の状態を1つにまとめて出す（ADR-0220）。
+"""今の状態を1つにまとめて出す。
 
-キュー、実行中の実験とステップ、状態ファイル、直近の結果、資源、設定を集める。
-`--json` は機械向けで、ポータルはこれだけを読む。人向けは同じ内容を表で
-出す。`hmwr env` の設定の表示はここに吸収した。
+状態ファイル（実行中の長いコマンド）、直近の結果、資源、設定を集める。
+`--json` は機械向けで、人向けは同じ内容を表で出す。
 
 GitHubに届かないときは、その部分だけ `error` を入れて他は出す。
 """
@@ -14,67 +13,22 @@ import datetime
 import json
 import shutil
 import time
-from pathlib import Path
 
-from .. import config, heartbeat, paths, proc, spec
-from . import exp, queue
+from .. import config, heartbeat, paths, proc
 
 RESULT_KEYS = ("decision", "elo", "ci_low", "ci_high", "games", "llr", "finished_at")
 RECENT = 10
 
 
 def add_parser(sub: argparse._SubParsersAction) -> None:
-    p = sub.add_parser("status", help="キュー・実行中・状態ファイル・直近の結果・資源・設定を1つにまとめて出す")
+    p = sub.add_parser("status", help="実行中の長いコマンド・直近の結果・資源・設定を1つにまとめて出す")
     p.add_argument("--json", action="store_true", help="機械向けにJSONで出す")
-    p.add_argument("--no-github", action="store_true", help="GitHubを読まない（キューと開いているPRを省く）")
+    p.add_argument("--no-github", action="store_true", help="GitHubを読まない（開いているPRを省く）")
     p.add_argument("--config", action="store_true", help="設定（旧 hmwr env）だけを出す")
     p.set_defaults(func=show)
 
 
 # --- 集める ------------------------------------------------------------
-
-
-def _queue(use_github: bool) -> dict:
-    out: dict = {"paused": exp.pause_file().exists(), "running": [], "queued": [], "failed": []}
-    if not use_github:
-        out["error"] = "GitHubを読まなかった"
-        return out
-    try:
-        for state in (queue.RUNNING, queue.QUEUED, queue.FAILED):
-            for issue in queue.issues(state):
-                name = queue.spec_name(issue["body"])
-                item = {"number": issue["number"], "title": issue["title"], "spec": name}
-                if state == queue.RUNNING and name:
-                    item["steps"] = _steps(name)
-                out[state].append(item)
-    except proc.Fail as e:
-        out["error"] = str(e).splitlines()[0]
-    return out
-
-
-def _steps(spec_name: str) -> list[dict]:
-    """実験のステップと完了マーカー。specはorigin/mainのものを読む。"""
-    name = Path(spec_name).stem
-    try:
-        s = spec.load(name)
-    except Exception as e:  # specが読めなくても他は出す
-        return [{"id": "?", "state": "failed", "error": str(e).splitlines()[0]}]
-    rows = []
-    running_found = False
-    for step in s.steps:
-        mark = exp.state_dir(name) / f"{step.id}.done"
-        if mark.is_file():
-            try:
-                info = json.loads(mark.read_text(encoding="utf-8"))
-                rows.append({"id": step.id, "state": "done", "seconds": info.get("seconds"), "finished": info.get("finished")})
-            except (OSError, ValueError):
-                rows.append({"id": step.id, "state": "done"})
-        elif not running_found:
-            rows.append({"id": step.id, "state": "running", "run": step.run})
-            running_found = True
-        else:
-            rows.append({"id": step.id, "state": "pending", "run": step.run})
-    return rows
 
 
 def _results() -> dict:
@@ -101,15 +55,11 @@ def _results() -> dict:
     return {"matches": matches, "nets": nets}
 
 
-def _launchd() -> dict:
-    code, out, _ = proc.capture_code(["launchctl", "list", queue.AGENT])
+def _gh(*args: str) -> str:
+    code, out, err = proc.capture_code(["gh", *args])
     if code != proc.OK:
-        return {"loaded": False}
-    pid = None
-    for line in out.splitlines():
-        if '"PID"' in line:
-            pid = int(line.split("=")[1].strip().rstrip(";"))
-    return {"loaded": True, "pid": pid}
+        raise proc.Fail(f"ghが失敗した: gh {' '.join(args)}\n{err.strip()}")
+    return out
 
 
 def _resources(use_github: bool) -> dict:
@@ -119,12 +69,11 @@ def _resources(use_github: bool) -> dict:
     out: dict = {
         "disk_free_gb": round(usage.free / 1e9, 1),
         "disk_total_gb": round(usage.total / 1e9, 1),
-        "launchd": _launchd(),
         "open_prs": [],
     }
     if use_github:
         try:
-            raw = queue.gh("pr", "list", "--state", "open", "--json", "number,title,isDraft,headRefName")
+            raw = _gh("pr", "list", "--state", "open", "--json", "number,title,isDraft,headRefName")
             out["open_prs"] = json.loads(raw)
         except proc.Fail as e:
             out["error"] = str(e).splitlines()[0]
@@ -179,7 +128,6 @@ def collect(*, use_github: bool = True) -> dict:
     beats += [r for r in _relabel_progress() if (r["kind"], r["name"]) not in known]
     return {
         "generated": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
-        "queue": _queue(use_github),
         "heartbeats": beats,
         "results": _results(),
         "resources": _resources(use_github),
@@ -200,18 +148,6 @@ def _eta(seconds) -> str:
 
 def render(d: dict) -> str:
     lines = []
-    q = d["queue"]
-    lines.append(f"== キュー（{'一時停止中' if q['paused'] else '動作中'}）")
-    if q.get("error"):
-        lines.append(f"  {q['error']}")
-    for state in ("running", "queued", "failed"):
-        for item in q.get(state, []):
-            lines.append(f"  {paths.pad(state, 9)}#{item['number']} {item.get('spec') or ''}  {item['title']}")
-            for step in item.get("steps", []):
-                if step["state"] == "running":
-                    lines.append(f"            → {step['id']}（実行中）")
-                elif step["state"] == "pending":
-                    lines.append(f"              {step['id']}")
     lines.append("== 状態ファイル")
     beats = d["heartbeats"]
     if not beats:
@@ -243,8 +179,6 @@ def render(d: dict) -> str:
     r = d["resources"]
     lines.append("== 資源")
     lines.append(f"  ディスク: 空き {r['disk_free_gb']} GB / {r['disk_total_gb']} GB")
-    ld = r["launchd"]
-    lines.append(f"  キューの常駐: {'あり（pid ' + str(ld.get('pid')) + '）' if ld.get('loaded') else 'なし'}")
     if r.get("open_prs"):
         for pr in r["open_prs"]:
             lines.append(f"  PR #{pr['number']}{'（draft）' if pr.get('isDraft') else ''} {pr['title']}")

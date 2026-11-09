@@ -13,7 +13,7 @@ import argparse
 from pathlib import Path
 
 from .. import conditions, config, paths, proc
-from . import build, match, queue
+from . import build, match
 from .match import Player, Spec, files, settings
 
 # 延長の刻みと、オーナーに諮る線（ADR-0217の追記）
@@ -155,7 +155,6 @@ def run(args: argparse.Namespace) -> int:
 
     if match.decided(args.name):
         return proc.OK
-    queue.guard("SPRT", dry_run=args.dry_run)
 
     code = build.make_pair(
         args.name,
@@ -187,7 +186,6 @@ def run_net(args: argparse.Namespace) -> int:
 
     if match.decided(args.name):
         return proc.OK
-    queue.guard("SPRT", dry_run=args.dry_run)
 
     for net in (args.base, args.cand):
         if not Path(net).is_file() and not args.dry_run:
@@ -245,7 +243,6 @@ def extend(args: argparse.Namespace) -> int:
         for path in (spec.base.build, spec.cand.build, spec.base.net, spec.cand.net, spec.openings):
             if path and not Path(path).is_file():
                 raise proc.Fail(f"ファイルがない: {paths.rel(path)}（hmwr clean が消した可能性がある）")
-    queue.guard("SPRT", dry_run=args.dry_run)
 
     archive = f["result"].with_name(f"{f['result'].name}.capped-{pairs}")
     if archive.exists():

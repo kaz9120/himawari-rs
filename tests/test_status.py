@@ -107,11 +107,9 @@ def test_status_json_collects_everything_without_github(home, monkeypatch, capsy
         json.dumps({"labeler": "dlshogi", "scale": 430, "start": 0, "count": 5, "done": 2,
                     "started": "t0", "updated": "t1", "finished": None})
     )
-    monkeypatch.setattr(status, "_launchd", lambda: {"loaded": False})
     assert cli.main(["status", "--json", "--no-github"]) == proc.OK
     d = json.loads(capsys.readouterr().out)
-    assert set(d) == {"generated", "queue", "heartbeats", "results", "resources", "config"}
-    assert d["queue"]["error"]
+    assert set(d) == {"generated", "heartbeats", "results", "resources", "config"}
     names = {(b["kind"], b["name"]) for b in d["heartbeats"]}
     assert ("relabel", "big") in names and ("relabel", "old") in names
     assert d["results"]["matches"][0]["decision"] == "H1"
@@ -120,12 +118,10 @@ def test_status_json_collects_everything_without_github(home, monkeypatch, capsy
 
 
 def test_status_renders_a_readable_table(home, monkeypatch, capsys):
-    monkeypatch.setattr(status, "_launchd", lambda: {"loaded": True, "pid": 1})
     heartbeat.Heartbeat("net", "train1", total=1000, unit="step")
     assert cli.main(["status", "--no-github"]) == proc.OK
     out = capsys.readouterr().out
-    assert "== キュー" in out and "== 状態ファイル" in out and "net:train1" in out
-    assert "キューの常駐: あり（pid 1）" in out
+    assert "== 状態ファイル" in out and "net:train1" in out
 
 
 def test_status_config_replaces_env(capsys):

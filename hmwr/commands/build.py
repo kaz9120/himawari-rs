@@ -129,8 +129,7 @@ def pair(args: argparse.Namespace) -> int:
 def _resolve(ref: str, what: str) -> None:
     """refが手元にあることを確かめる。無ければoriginから取る。
 
-    実験キューの作業ツリーはorigin/mainしか取っていない。候補のブランチは
-    マージ前なので、SHAで指された先を取りに行く。
+    候補のブランチがpushだけされて手元に無いときは、SHAで指された先を取りに行く。
     """
     verify = ["git", "rev-parse", "--verify", "--quiet", f"{ref}^{{commit}}"]
     if proc.succeeds(verify):

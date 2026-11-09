@@ -78,26 +78,13 @@ def test_data_is_read_from_the_done_mark(artifacts):
     assert report.data_row("missing") is None
 
 
-def test_names_are_collected_from_the_steps():
-    steps = [
-        ["data", "mix", "m", "--in", "a", "--in", "b"],
-        ["net", "train", "n", "--data", "m"],
-        ["data", "rm", "m"],
-        ["match", "run", "x", "--base-net", "ctrl", "--cand-net", "n", "--stop", "pairs:10"],
-    ]
-    matches, nets, data = report.from_steps(steps)
-    assert matches == [("x", "ctrl → n")]
-    assert nets == ["n"]
-    assert data == ["m"]
-
-
 def test_report_needs_something_to_report():
-    assert cli.main(["exp", "report"]) == proc.USAGE
+    assert cli.main(["report"]) == proc.USAGE
 
 
 def test_report_prints_markdown_tables(artifacts, capsys):
     (paths.SPRT / "adr0210-x.result").write_text(RESULT, encoding="utf-8")
-    assert cli.main(["exp", "report", "--match", "adr0210-x", "--net", "n"]) == proc.OK
+    assert cli.main(["report", "--match", "adr0210-x", "--net", "n"]) == proc.OK
     out = capsys.readouterr().out
     assert "### 対局" in out and "| adr0210-x |" in out
     assert "### 学習" in out

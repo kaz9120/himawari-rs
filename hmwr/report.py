@@ -1,4 +1,4 @@
-"""実験の数値を、成果物からMarkdownの表へまとめる（ADR-0209）。
+"""実験の数値を、成果物からMarkdownの表へまとめる。
 
 **LLMを通さない。** 対局は結果ファイル、学習は学習の記録、データは完了マーカーから
 読む。ログを目で読んで書き写すと、転記の誤りに後から気づけない。結果の記録を
@@ -9,12 +9,8 @@ from __future__ import annotations
 
 import csv
 import json
-from pathlib import Path
 
 from . import paths, sprt_log
-
-def _option(argv: list[str], flag: str) -> str:
-    return argv[argv.index(flag) + 1] if flag in argv and argv.index(flag) + 1 < len(argv) else ""
 
 
 # --- 対局 --------------------------------------------------------------
@@ -115,26 +111,6 @@ def table(head: list[str], rows: list[list[str]]) -> str:
     lines = ["| " + " | ".join(head) + " |", "|" + "---|" * len(head)]
     lines += ["| " + " | ".join(r) + " |" for r in rows]
     return "\n".join(lines)
-
-
-def from_steps(steps: list[list[str]]) -> tuple[list, list, list]:
-    """specのステップ（hmwrの後ろの引数）から、対局・学習・データの名前を拾う。"""
-    matches, nets, data = [], [], []
-    for argv in steps:
-        head = tuple(argv[:2])
-        if head == ("match", "run") and len(argv) > 2:
-            base = _option(argv, "--base-net") or _option(argv, "--base-build") or "既定"
-            cand = _option(argv, "--cand-net") or _option(argv, "--cand-build") or "既定"
-            matches.append((argv[2], f"{base} → {cand}"))
-        elif head == ("sprt", "run") and len(argv) > 2:
-            matches.append((argv[2], "origin/main → HEAD"))
-        elif head == ("sprt", "net") and len(argv) > 4:
-            matches.append((argv[4], f"{Path(argv[2]).stem} → {Path(argv[3]).stem}"))
-        elif head == ("net", "train") and len(argv) > 2:
-            nets.append(argv[2])
-        elif argv[:1] == ["data"] and len(argv) > 2 and argv[1] not in ("rm", "stats", "openings"):
-            data.append(argv[2])
-    return matches, nets, data
 
 
 def render(matches: list[tuple[str, str]], nets: list[str], data: list[str]) -> str:

@@ -652,7 +652,7 @@ def test_diag_defend_runs_psv_and_keeps_the_tsv_under_profile(capsys):
 
 
 def test_build_pair_can_build_the_candidate_from_a_ref(capsys):
-    """実験キューの作業ツリーはorigin/mainなので、候補をrefで指せるようにする。"""
+    """候補をrefで指してビルドできる。"""
     _, lines = dry(capsys, ["build", "pair", "adr0211-x", "--candidate", "0cd8205"])
     restores = [x for x in lines if "git restore" in x]
     assert restores[0].endswith(
