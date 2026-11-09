@@ -222,6 +222,10 @@ pub struct NnueState {
     /// 利きの段。`entries` と同じ添字で並ぶ。
     /// `EFF_OUT` が0の構成では空で、誰も触らない。
     eff: Vec<EffEntry>,
+    /// `effect_begin` が並べた、最上段の利きの段へ当てる行の組。
+    eff_pairs: Box<[EffPair; 2 * 81]>,
+    /// 当てる行の組の数＋1。0なら当てる組は無い（`effect_begin` が済ませた）。
+    eff_pending: usize,
     /// 隠れ層へ渡す連結ベクトルの置き場。評価のたびにゼロ埋めすると
     /// 1KBあまりのmemsetが走るので使い回す。各部分が書く範囲は構成で決まり、
     /// 毎回同じ範囲を上書きする。どこも書かない余白は確保時のゼロのまま残る
@@ -256,6 +260,8 @@ impl NnueState {
             eff: std::iter::repeat_with(EffEntry::empty)
                 .take(if EFF_OUT != 0 { MAX_ENTRIES } else { 0 })
                 .collect(),
+            eff_pairs: Box::new([([0; 2], [0; 2]); 2 * 81]),
+            eff_pending: 0,
             concat: Box::new([0; CONCAT]),
         }
     }
@@ -304,6 +310,11 @@ impl NnueState {
     /// 盤は `EvalBoard` 越しに読む。coreの局面のほか、探索の盤（`SearchBoard`）も渡せる。
     pub fn evaluate<B: EvalBoard + ?Sized>(&mut self, net: &NnueNetwork, pos: &B) -> Value {
         let stm = pos.side_to_move();
+        // 利きの部分は、入れ替える行を先に決めて先読みさせ、FTの差分を作ってから当てる。
+        // 先読みからその行を読むまでの間に、FTの計算が挟まる
+        if EFF_OUT != 0 {
+            self.effect_begin(net, pos);
+        }
         // 最上段を差分で作るときは、活性も同じパスで書く
         if !self.ensure_both(net, pos, Some(stm)) {
             let top = &self.entries[self.top];
@@ -317,7 +328,7 @@ impl NnueState {
         if EFF_OUT != 0 {
             // 利きの部分は祖先からの差分で作る。F2と最小の攻め駒の組も
             // 同じ升の語の差分で持つ
-            self.ensure_effect(net, pos);
+            self.effect_end(net);
             let concat = &mut *self.concat;
             let e = &self.eff[self.top];
             for (k, c) in [(0usize, stm), (1, stm.flip())] {
@@ -343,8 +354,13 @@ impl NnueState {
     /// 局面）、1つ上の段に残る前回の中身の3つで、変わった升が最も少ないものを使う。**途中の手の材料は要らない。**
     /// どれも40升を超えたら全計算する。利きの特徴は玉位置に依らないので、
     /// 玉が動いても参照にできる。
-    fn ensure_effect<B: EvalBoard + ?Sized>(&mut self, net: &NnueNetwork, pos: &B) {
+    ///
+    /// 2つに分けて呼ぶ。`effect_begin` が語を作って参照を選び、入れ替える行の組を
+    /// 並べて先読みさせる。`effect_end` が行を当てる。間にFTの差分を作る。
+    /// 当てる行が無い経路（全計算と、F2だけの構成）は `effect_begin` で済ませる。
+    fn effect_begin<B: EvalBoard + ?Sized>(&mut self, net: &NnueNetwork, pos: &B) {
         let top = self.top;
+        self.eff_pending = 0;
         if self.eff[top].computed {
             return;
         }
@@ -379,12 +395,33 @@ impl NnueState {
                     dst.acc = src.acc;
                     dst.codes = src.codes;
                 }
+                if SIDE_MINATT_INC {
+                    let e = &mut self.eff[top];
+                    let n = effect_pairs(net, &codes, &e.codes, c, &mut self.eff_pairs);
+                    // accはまだ前の局面のまま。当て終わるまで参照に使わせない
+                    e.codes = codes;
+                    e.coherent = false;
+                    self.eff_pending = n + 1;
+                    return;
+                }
                 effect_apply(net, &codes, &mut self.eff[top], c);
             }
             _ => effect_refresh(net, &codes, &mut self.eff[top]),
         }
         let e = &mut self.eff[top];
         e.codes = codes;
+        e.computed = true;
+        e.coherent = true;
+    }
+
+    /// `effect_begin` が並べた行の組を当て、利きのaccumulatorを仕上げる。
+    fn effect_end(&mut self, net: &NnueNetwork) {
+        let Some(n) = self.eff_pending.checked_sub(1) else {
+            return;
+        };
+        self.eff_pending = 0;
+        let e = &mut self.eff[self.top];
+        nnue_simd::effect_rows_swap(net, &mut e.acc, &self.eff_pairs[..n]);
         e.computed = true;
         e.coherent = true;
     }
@@ -723,39 +760,46 @@ fn codes_diff(a: &[u16; 81], b: &[u16; 81]) -> Bitboard {
 fn effect_apply(net: &NnueNetwork, codes: &[u16; 81], e: &mut EffEntry, changed: Bitboard) {
     let old_codes = &e.codes;
     let mut sqs = changed.into_iter();
-    if SIDE_MINATT_INC {
-        // 語が変わった升で、F2の行と最小の攻め駒の行のうち変わったほうだけを入れ替える。
-        // F2の行は下位9ビット、最小の攻め駒の行は駒と階級（4ビット目から上）で決まる。
-        //
-        // 入れ替える行の組を先に分岐なしで並べ、並べながら行を先読みさせてから当てる。
-        // 変わったかどうかは升ごとにばらつき、分岐で選ぶと予測が外れる。表は40MBあり、
-        // 当てながら読むと読み込みの待ちが重なる。置き場はゼロ埋めせず、書いた先頭n組だけを読む
-        type Pair = ([u32; 2], [u32; 2]);
-        let mut list = [const { std::mem::MaybeUninit::<Pair>::uninit() }; 2 * 81];
-        let mut n = 0;
-        for sq in sqs {
-            let (old, new) = (old_codes[sq.index()], codes[sq.index()]);
-            let f2 = (side_f2_pair(sq, old), side_f2_pair(sq, new));
-            list[n].write(f2);
-            n += usize::from((old ^ new) & 0x1FF != 0);
-            let ma = (side_minatt_pair(sq, old), side_minatt_pair(sq, new));
-            list[n].write(ma);
-            n += usize::from((old ^ new) & !0xF != 0);
-            for f in [f2.0, f2.1, ma.0, ma.1].as_flattened() {
-                prefetch_eff_row(net, *f);
-            }
-        }
-        // SAFETY: 先頭n組は上のループで書いた。nは書いた位置の次を指す
-        let list = unsafe { std::slice::from_raw_parts(list.as_ptr().cast::<Pair>(), n) };
-        nnue_simd::effect_rows_swap(net, &mut e.acc, list);
-        return;
-    }
     nnue_simd::effect_rows_update(net, &mut e.acc, || {
         let sq = sqs.next()?;
         let (old, new) = (old_codes[sq.index()], codes[sq.index()]);
         Some((Some(effect_code_pair(sq, old)), effect_code_pair(sq, new)))
     });
 }
+
+/// 側の差分で入れ替える行の組を `out` の先頭へ並べ、組の数を返す。並べながら行を先読みさせる。
+///
+/// F2と最小の攻め駒の組の構成で使う。語が変わった升で、F2の行と最小の攻め駒の行の
+/// うち変わったほうだけを入れ替える。F2の行は下位9ビット、最小の攻め駒の行は駒と
+/// 階級（4ビット目から上）で決まる。
+///
+/// 組は分岐なしで並べる。変わったかどうかは升ごとにばらつき、分岐で選ぶと予測が外れる。
+/// 表は40MBあり、当てながら読むと読み込みの待ちが重なるので、先に並べて先読みさせる。
+fn effect_pairs(
+    net: &NnueNetwork,
+    codes: &[u16; 81],
+    old_codes: &[u16; 81],
+    changed: Bitboard,
+    out: &mut [EffPair; 2 * 81],
+) -> usize {
+    let mut n = 0;
+    for sq in changed {
+        let (old, new) = (old_codes[sq.index()], codes[sq.index()]);
+        let f2 = (side_f2_pair(sq, old), side_f2_pair(sq, new));
+        out[n] = f2;
+        n += usize::from((old ^ new) & 0x1FF != 0);
+        let ma = (side_minatt_pair(sq, old), side_minatt_pair(sq, new));
+        out[n] = ma;
+        n += usize::from((old ^ new) & !0xF != 0);
+        for f in [f2.0, f2.1, ma.0, ma.1].as_flattened() {
+            prefetch_eff_row(net, *f);
+        }
+    }
+    n
+}
+
+/// 側の差分で入れ替える行の組。`(引く行, 足す行)` で、それぞれ両視点の行番号を持つ。
+type EffPair = ([u32; 2], [u32; 2]);
 
 /// 側の表の行fの先読みを始めさせる。行は `EFF_OUT` 個のi16（128バイト）だが、
 /// 先頭のキャッシュラインだけを読ませる。2本目まで先読みすると命令が増え、速くならなかった。
