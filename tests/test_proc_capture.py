@@ -1,7 +1,7 @@
 """取り込む系のsubprocess呼び出しを検証する（issue #712）。
 
 `proc.capture_code` が唯一の実装で、`capture`・`capture_both`・`succeeds` と
-3つの呼び出し元（`config.physical_cores`・`status._launchd`・`queue.gh`）が
+2つの呼び出し元（`config.physical_cores`・`status._gh`）が
 これを細めたものになっていることを見る。外部コマンドは1つだけ実際に走らせ、
 残りは `capture_code` を差し替えて組み立てだけを見る。
 """
@@ -11,7 +11,7 @@ import sys
 import pytest
 
 from hmwr import config, paths, proc
-from hmwr.commands import queue, status
+from hmwr.commands import status
 
 
 def test_capture_code_returns_the_code_and_both_streams():
@@ -102,23 +102,12 @@ def test_physical_cores_falls_back_when_the_command_is_missing(monkeypatch, core
     assert config.physical_cores() == 6
 
 
-def test_launchd_reads_the_pid_when_the_agent_is_loaded(monkeypatch):
-    monkeypatch.setattr(proc, "capture_code", lambda argv, cwd=None, env=None: (0, '\t"PID" = 4321;\n', ""))
-    assert status._launchd() == {"loaded": True, "pid": 4321}
-
-
-@pytest.mark.parametrize("code", [1, proc.RUNTIME])
-def test_launchd_reports_not_loaded_on_any_failure(monkeypatch, code):
-    monkeypatch.setattr(proc, "capture_code", lambda argv, cwd=None, env=None: (code, "", "だめ"))
-    assert status._launchd() == {"loaded": False}
-
-
 def test_gh_returns_stdout_and_raises_with_stderr(monkeypatch):
     monkeypatch.setattr(proc, "capture_code", lambda argv, cwd=None, env=None: (0, "[]\n", ""))
-    assert queue.gh("issue", "list") == "[]\n"
+    assert status._gh("issue", "list") == "[]\n"
     monkeypatch.setattr(proc, "capture_code", lambda argv, cwd=None, env=None: (1, "", "届かない\n"))
     with pytest.raises(proc.Fail) as e:
-        queue.gh("issue", "list")
+        status._gh("issue", "list")
     assert "gh issue list" in str(e.value) and "届かない" in str(e.value)
 
 

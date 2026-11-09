@@ -14,19 +14,18 @@ from . import (
     diag,
     doc,
     env,
-    exp,
     kifu,
     match,
     measure,
     net,
     pr,
-    queue,
+    report,
     sprt,
     spsa,
     status,
 )
 
-MODULES = (status, env, build, exp, queue, match, sprt, spsa, measure, net, data, book, kifu, analyze, diag, ci, pr, doc, clean)
+MODULES = (status, env, build, match, sprt, spsa, measure, net, data, book, kifu, analyze, diag, ci, pr, doc, report, clean)
 
 __all__ = [
     "MODULES",
@@ -39,13 +38,12 @@ __all__ = [
     "diag",
     "doc",
     "env",
-    "exp",
     "kifu",
     "match",
     "measure",
     "net",
     "pr",
-    "queue",
+    "report",
     "sprt",
     "spsa",
     "status",

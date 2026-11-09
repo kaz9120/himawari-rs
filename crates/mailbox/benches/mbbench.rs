@@ -24,7 +24,7 @@
 //! 足さない実行との命令数の差を `"extra"`（足した往復の数）で割ると、歩き方と生成を含まない進め戻し1往復の命令数になる。
 //! longは飛び駒（香・角・飛・馬・竜）の盤上の手である。coreの側は `all` だけを受け付ける。
 //!
-//! 走らせ方（開発機が空いているときだけ。`hmwr queue pause` を先に打つ）:
+//! 走らせ方（開発機で他の計測や対局が走っていないときだけ）:
 //!
 //! ```text
 //! RUSTFLAGS="-C target-cpu=native" cargo bench -p himawari-mailbox --bench mbbench -- --runs 7

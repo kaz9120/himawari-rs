@@ -7,7 +7,7 @@
 import pytest
 
 from hmwr import cli, paths, proc
-from hmwr.commands import match, queue
+from hmwr.commands import match
 
 NAME = "adr9999-x"
 
@@ -43,7 +43,6 @@ def put(tmp_path, *, decision="見送り", elo="+5.1", elo0="0", elo1="5", games
 def started(monkeypatch):
     """前面で走らせる処理を差し替え、渡された条件を控える。"""
     specs = []
-    monkeypatch.setattr(queue, "guard", lambda *a, **k: None)
     monkeypatch.setattr(match, "until_decision", lambda spec, **_: specs.append(spec) or proc.OK)
     return specs
 

@@ -23,7 +23,6 @@ STATUS = REPO / "data" / "status"  # 状態ファイル（ADR-0220）
 PROFILE = REPO / "data" / "profile"
 LEDGER = REPO / "data" / "ledger"  # 点数を付けた局面の台帳（ADR-0228）
 RAW = REPO / "data" / "raw"
-QUEUE = REPO / "data" / "queue"
 # DL系モデル（ADR-0215）。配布元から手で置くもので、hmwrは読むだけ
 MODELS = REPO / "data" / "models"
 
@@ -36,7 +35,7 @@ RUNS = REPO / "training" / "runs"
 # （tests/conftest.py）。置き場を足したらここにも足す
 PLACES = (
     "BIN", "LOGS", "NETS", "SPRT", "SPSA", "BOOK", "TRAIN", "STATUS",
-    "PROFILE", "LEDGER", "RAW", "QUEUE", "CHECKPOINTS", "RUNS",
+    "PROFILE", "LEDGER", "RAW", "CHECKPOINTS", "RUNS",
 )  # fmt: skip
 
 # 上の置き場の根。本番ではリポジトリそのもので、テストでだけ一時ディレクトリになる。

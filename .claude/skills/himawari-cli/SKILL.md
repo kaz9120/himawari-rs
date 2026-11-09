@@ -1,6 +1,6 @@
 ---
 name: himawari-cli
-description: himawari-rsの開発コマンドhmwrを使う。ビルド・機能検証・NPS計測・学習・教師データの前処理・実験のspecとキュー（exp・queue）・実戦の棋譜の回収と分析（kifu）・単発の診断（diag）・成果物の掃除（clean）・PRの作成・文書のlintを実行するとき必ず使う。SPRTの運用手順はrunning-sprtスキルが持つ。
+description: himawari-rsの開発コマンドhmwrを使う。ビルド・機能検証・NPS計測・学習・教師データの前処理・実戦の棋譜の回収と分析（kifu）・単発の診断（diag）・成果物の掃除（clean）・PRの作成・文書のlintを実行するとき必ず使う。SPRTの運用手順はrunning-sprtスキルが持つ。
 ---
 
 # hmwr: 開発コマンド
@@ -211,76 +211,20 @@ probeの的中率は学習のステップ数で変わるので、条件を揃え
 `--extra` にハイフンで始まる値を渡すときは `--extra=--mirror-factor` のように
 = でつなぐ。
 
-### 実験を手順ごと走らせる
+### 結果を表にする
 
 ```
-hmwr exp check                 worktreeのspecを検査する（CIと同じ）
-hmwr exp run <名前>            origin/mainのspecを上から順に実行する
-hmwr exp show <名前>           ステップごとの進み具合
-hmwr exp report <名前>         対局・学習・データの数値をMarkdownの表にする
-hmwr exp report --match <対局名> --net <ネット名>   specの無い実験の表
+hmwr report --match <対局名> --net <ネット名> --data <データ名>
 ```
 
-specは `experiments/<名前>.toml` に置き、ADRと同じPRで入れる。ステップは
-`hmwr` のコマンド1つで、シェルは通らない。対局のステップには `--foreground` を
-付ける。**`exp run` が読むのはorigin/mainのspecである**。事前登録のPRを
-マージしてから走らせる。
+**結果を書くときはこの表を貼る**。ログを目で読んで数値を書き写さない。
+対局は結果ファイル、学習は学習の記録、データは完了マーカーから読む。
 
-指すADRには「仮説」と「事前登録」を含む見出しが要る。`exp check`・`exp queue`・
-`exp run` が見て、無ければ止める。仮説を持たない受け入れ試験だけは、specに
-`kind = "smoke"` と書いて外す。
-
-```toml
-adr = "0224"
-
-[[step]]
-id = "select-dedup"
-run = "hmwr data dedup sel_dedup_100M --in train_7860M_q1 --count 100000000"
-```
-
-**結果をADRへ書くときは `exp report` の表を貼る**。ログを目で読んで数値を
-書き写さない。対局は結果ファイル、学習は学習の記録、データは完了マーカーから読むので、
-転記の誤りが構造的に起きない。
-
-止まったら同じコマンドで続きから走る。完了したステップは飛ばし、学習と対局は
-それぞれの再開の仕組みで続く。完了したステップのコマンドをspecで書き換えると
-止まる。手順を変えるなら、別の名前のspecにする。
-
-### 実験をキューで無人実行する
+### 実行中のものを見る
 
 ```
-hmwr queue status      キューと一時停止の状態
-hmwr status            キューに加え、実行中のステップ・状態ファイル・直近の結果・資源も1画面で
-hmwr queue pause       次のステップを始めさせない（開発機を空けたいとき）
-hmwr queue resume      一時停止を解く
-hmwr queue install     専用のworktreeとlaunchdの常駐を用意する
-hmwr queue uninstall   launchdの常駐を外す（worktreeは残す）
-hmwr queue run         launchdが呼ぶ入口。専用のworktreeをorigin/mainへ揃えてからtickを呼ぶ
-hmwr queue tick        キューを1回見て、実験を1件走らせる。終わるまで戻らない
-hmwr exp reset <名前>  完了マーカーを消し、最初から走り直せるようにする
-hmwr exp queue <名前> --title <題>   specを実験キューへ積む
+hmwr status            状態ファイル・直近の結果・資源を1画面で
 ```
-
-実験を積むには、specとADRをmainへマージしてから、`hmwr exp queue` か
-Issueフォーム「実験」でIssueを出す。`gh issue create` で手書きしない。
-`queued` ラベルが漏れると、キューは拾わずに黙って待ち続ける（issue #652）。launchdが5分おきにキューを見て、古い順に1件ずつ実行する。
-状態はラベルで読める（`queued`→`running`→`done` か `failed`）。失敗したら
-ログの末尾がIssueへコメントされる。原因を直してラベルを `queued` へ戻すと、
-続きから走る。
-
-`queue run` と `queue tick` はlaunchdのための入口で、手で叩くことはまれである。
-`queue run` は開発中の作業ツリーでは走らない。実験が走り終えると、キューは
-`claude -p` でrecording-experimentスキルを起動し、結果の記録のPRを出させる。
-
-**計測や対話セッションのSPRTの前に `hmwr queue pause` を打つ**。キューの実験と
-同時に走ると、どちらの対局も持ち時間の消化が乱れる。走っているステップは
-止まらないので、`hmwr queue status` で実行中の実験が無いことを確かめてから測る。
-
-`sprt run`・`sprt net`・`sprt extend`・`match run`・`bench` は起動時にこれを確かめる。
-常駐が入っているのに一時停止していないか、tickがロックを握って実験を走らせて
-いれば、ビルドも対局も始めずに終了コード3で止まる。キュー自身のステップは
-`exp run` が環境変数 `HMWR_QUEUE_STEP` で印を付けるので止まらない。
-`data/queue` の無いworktreeでは状態を読めないので、警告だけ出して進む。
 
 ### 単発の診断
 
