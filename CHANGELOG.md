@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.61.3](https://github.com/kaz9120/himawari-rs/compare/v0.61.2...v0.61.3) (2026-11-09)
+
+
+### その他の変更
+
+* nnue.rsとpsvのサブコマンドを責務ごとのファイルへ分ける ([#1054](https://github.com/kaz9120/himawari-rs/issues/1054)) ([52edbf2](https://github.com/kaz9120/himawari-rs/commit/52edbf213f2cc0fa0e5dfb3f50e58ecd9fdbfa8b))
+
 ## [0.61.2](https://github.com/kaz9120/himawari-rs/compare/v0.61.1...v0.61.2) (2026-11-09)
 
 
