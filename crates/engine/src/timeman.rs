@@ -155,17 +155,11 @@ pub struct TimeOptions {
     pub ponder: bool,
 }
 
+/// 既定値はUSIオプションの既定（`EngineOptions::default`）から作る。
+/// 既定値を書く場所を1か所にするためである
 impl Default for TimeOptions {
     fn default() -> Self {
-        TimeOptions {
-            network_delay: 120,
-            network_delay2: 1120,
-            minimum_thinking_time: 2000,
-            slow_mover: 100,
-            round_up_to_full_second: true,
-            max_moves_to_draw: 100_000,
-            ponder: false,
-        }
+        crate::thread::EngineOptions::default().time_options()
     }
 }
 
