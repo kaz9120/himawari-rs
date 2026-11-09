@@ -233,12 +233,11 @@ python3 -m pytest tests -q        # hmwr のテスト
 | ツール | 用途 | 入口 |
 |---|---|---|
 | `bench` / `verify` / `profile` | NPS計測・探索の差分比較・プロファイル | `hmwr bench` / `hmwr verify` / `hmwr profile` |
-| `selfplay` / `league` | SPRTの対局と総当たりリーグ戦 | `hmwr match`・`hmwr sprt` / `hmwr league` |
+| `selfplay` | SPRTの対局 | `hmwr match`・`hmwr sprt` |
 | `psv` | 教師データの加工 | `hmwr data` |
 | `makenet` | 評価関数ファイルの生成 | `hmwr net` |
 | `book` | 定跡の生成と統計 | `hmwr book` |
 | `kifu` | floodgate棋譜の回収と分析 | `hmwr kifu` |
-| `blindspot` | 盲点ベンチマークの抽出・ラベル・測定 | `hmwr kifu blindspot` |
 
 `hmwr` に入口がないツールは `cargo run --release -p himawari-tools --bin <name>` で
 動かす。

@@ -231,26 +231,6 @@ def test_build_pair_uses_the_measurement_flags(capsys):
     assert all("RUSTFLAGS=-C target-cpu=native" in x for x in lines if "cargo build" in x)
 
 
-def test_build_shapes_separates_target_directories(capsys):
-    """構成ごとに出力先を分ける。1つを使い回すと毎回全体が再コンパイルされる。"""
-    _, lines = dry(capsys, ["build", "shapes", "256x16", "512x16x32"])
-    assert any("CARGO_TARGET_DIR=target/shape/256x16" in x for x in lines)
-    assert any("CARGO_TARGET_DIR=target/shape/512x16x32" in x for x in lines)
-
-
-def test_build_shapes_rejects_a_malformed_spec(capsys):
-    assert cli.main(["--dry-run", "build", "shapes", "256"]) == proc.USAGE
-    assert "構成の書き方が違う" in capsys.readouterr().err
-
-
-def test_build_shapes_resizes_from_a_source_net(capsys):
-    _, lines = dry(capsys, ["build", "shapes", "256x16", "--from", "Cargo.toml"])
-    makenet = [x for x in lines if "release/makenet" in x][0]
-    assert "--resize Cargo.toml" in makenet
-    # --from を付けると既定の名前が変わる。元ネットごとの結果を混ぜない
-    assert "data/nets/exp-256x16.hmwr" in makenet
-
-
 def test_sprt_run_no_verify_skips_verification(capsys):
     _, lines = dry(capsys, ["sprt", "run", "adr0180-x", "--no-verify"])
     assert not any("--bin verify" in line for line in lines)
@@ -440,13 +420,11 @@ def test_net_train_logs_under_its_area(capsys):
 
 
 def test_net_defaults_to_the_current_validation_set(capsys):
-    """既定の検証集合は config の1か所が持つ。train・eval・shapes で揃える。"""
+    """既定の検証集合は config の1か所が持つ。train・eval で揃える。"""
     _, train = dry(capsys, ["net", "train", "x", "--data", "d.psv"])
     _, evaluate = dry(capsys, ["net", "eval", "a.hmwr"])
-    _, shapes = dry(capsys, ["net", "shapes", "256x16"])
-    for lines in (train, evaluate, shapes):
+    for lines in (train, evaluate):
         assert any(paths.rel(config.train_valid()) in x for x in lines)
-    assert any(f"--data {paths.rel(config.train_data())}" in x for x in shapes)
 
 
 def test_net_resolves_the_default_validation_set_under_the_train_place(capsys):
@@ -471,17 +449,6 @@ def test_net_eval_picks_the_loader_by_extension(capsys):
     _, lines = dry(capsys, ["net", "eval", "a.hmwr", "b.ckpt"])
     assert any("--init-net a.hmwr" in x for x in lines)
     assert any("--init-checkpoint b.ckpt" in x for x in lines)
-
-
-def test_net_shapes_requires_lambda_with_effect_head(capsys):
-    code = cli.main(["--dry-run", "net", "shapes", "256x16", "--effect-head", "board"])
-    assert code == proc.USAGE
-    assert "--lambda-effect" in capsys.readouterr().err
-
-
-def test_net_shapes_rejects_a_malformed_spec(capsys):
-    assert cli.main(["--dry-run", "net", "shapes", "256"]) == proc.USAGE
-    assert "構成の書き方が違う" in capsys.readouterr().err
 
 
 def test_net_release_needs_an_existing_file(capsys):
@@ -700,38 +667,21 @@ def test_every_tool_main_takes_argv():
         assert inspect.signature(main).parameters, f"hmwr.tools.{info.name}.main が引数を受けない"
 
 
-def test_league_summary_reads_the_kifu(capsys, tmp_path):
-    jsonl = tmp_path / "league.jsonl"
-    jsonl.write_text(
-        '{"a": "x", "b": "y", "a_side": "black", "winner": "black"}\n'
-        '{"a": "x", "b": "y", "a_side": "white", "winner": "draw"}\n'
-    )
-    assert cli.main(["league", "summary", str(jsonl), "--anchor", "y"]) == proc.OK
-    out = capsys.readouterr().out
-    assert "=== 2局 ===" in out
-    assert "| x |" in out
-
-
 # --- 終了コードとdry-run -----------------------------------------------
 
 
-def test_unexpected_exception_returns_runtime(capsys, monkeypatch):
+def test_unexpected_exception_returns_runtime(capsys, monkeypatch, tmp_path):
     """想定外の例外は3で返す。Pythonの既定の1は「判定結果」と読まれる。"""
     from hmwr.commands import analyze
 
     def boom(argv):
         raise RuntimeError("想定外")
 
-    monkeypatch.setattr(analyze.league_tool, "main", boom)
-    assert cli.main(["league", "summary", "x.jsonl"]) == proc.RUNTIME
+    profile = tmp_path / "p.json.gz"
+    profile.write_bytes(b"")
+    monkeypatch.setattr(analyze.profile_tool, "main", boom)
+    assert cli.main(["profile", "report", str(profile)]) == proc.RUNTIME
     assert "RuntimeError" in capsys.readouterr().err
-
-
-def test_league_summary_of_empty_kifu_is_a_runtime_error(capsys, tmp_path):
-    jsonl = tmp_path / "league.jsonl"
-    jsonl.write_text("")
-    assert cli.main(["league", "summary", str(jsonl)]) == proc.RUNTIME
-    assert "棋譜が空" in capsys.readouterr().err
 
 
 def test_net_train_dry_run_creates_no_directory(capsys, tmp_path, monkeypatch):

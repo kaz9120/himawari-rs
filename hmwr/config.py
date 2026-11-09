@@ -50,10 +50,9 @@ BOOK_ASSET = "book.db"
 LAST_NAMED_NET = 15
 OPENINGS = "openings/start_sfens_ply24.txt"
 
-# 学習の既定の学習データと検証集合。現行の評価関数を学習したときの組（ADR-0228）。
-# 評価関数の世代を替えて検証集合も替えたら、ここも揃える。net train・eval・shapesの
-# 既定が下の2つの関数を読む
-TRAIN_DATA_FILE = "pool1.psv"
+# 学習の既定の検証集合。現行の評価関数を学習したときのもの（ADR-0228）。
+# 評価関数の世代を替えて検証集合も替えたら、ここも揃える。net train・evalの
+# 既定が train_valid() を読む
 TRAIN_VALID_FILE = "valid_tanuki_dl430_q1.psv"
 
 # 計測・対局のビルドフラグ（ADR-0003）
@@ -73,11 +72,6 @@ DEFAULTS = {
     "SPRT_ADJUDICATE": SPRT_ADJUDICATE,
     "SPRT_MAX_PAIRS": SPRT_MAX_PAIRS,
 }
-
-
-def train_data() -> Path:
-    """既定の学習データ。参照の時点で `paths.TRAIN` から組む。"""
-    return paths.TRAIN / TRAIN_DATA_FILE
 
 
 def train_valid() -> Path:
