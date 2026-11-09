@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 import argparse
+import csv
 import hashlib
 import json
 import re
@@ -178,6 +179,15 @@ def add_parser(sub: argparse._SubParsersAction) -> None:
     t.add_argument("--notes", metavar="文", help="リリースノートへの追記")
     t.add_argument("--apply", action="store_true", help="実際に作る")
     t.set_defaults(func=release)
+
+    t = ss.add_parser(
+        "show",
+        help="ネットがどう学習されたかを出す",
+        description="ファイルが持つ学習来歴、起動したコマンド、学習の記録の行、"
+        "現行の評価関数にしたコミットをまとめて出す。名前を省くと現行の評価関数を見る。",
+    )
+    t.add_argument("net", nargs="?", metavar="名前", help="data/nets/<名前>.hmwr かパス")
+    t.set_defaults(func=show)
 
 
 # --- train -------------------------------------------------------------
@@ -695,6 +705,62 @@ def read_lineage(path: Path) -> str:
         raise proc.Fail("学習来歴の長さを読めない（Himawari NNUE形式か確かめる）")
     start = length_at + 4
     return raw[start : start + length].decode("utf-8", errors="replace")
+
+
+# --- show --------------------------------------------------------------
+
+
+def _net_file(value: str | None) -> Path:
+    if value is None:
+        return paths.REPO / config.EVAL_FILE
+    if "/" in value or value.endswith(".hmwr"):
+        return Path(value)
+    return paths.NETS / f"{value}.hmwr"
+
+
+def training_name(net: Path) -> str:
+    """学習したときの名前。並べ替えは学習の後に当てるので、その接尾辞を外す。"""
+    return net.name.split(".")[0].removesuffix("_reorder")
+
+
+def adopted_in(net: Path) -> str | None:
+    """このネットを現行の評価関数にしたコミット。採用の理由とSPRTの結果はそこにある。"""
+    out = proc.capture(
+        ["git", "log", "--format=%h %s", "-S", net.name, "--", "hmwr/config.py"],
+        cwd=paths.REPO,
+    ).strip()
+    # 新しい順に出るので、名前を最初に書き込んだのは最後の行
+    return out.splitlines()[-1] if out else None
+
+
+def show(args: argparse.Namespace) -> int:
+    net = _net_file(args.net)
+    if not net.is_file():
+        raise proc.Fail(f"ネットがない: {paths.rel(net)}")
+    name = training_name(net)
+    current = net.resolve() == (paths.REPO / config.EVAL_FILE).resolve()
+    print(f"ネット: {paths.rel(net)}{'（現行の評価関数）' if current else ''}")
+    print(f"学習来歴: {read_lineage(net)}")
+
+    record = paths.CHECKPOINTS / name / "train.cond"
+    line = conditions.recorded(record)
+    print(f"起動したコマンド: {line if line else f'控えが無い（{paths.rel(record)}）'}")
+
+    row = None
+    registry = paths.registry()
+    if registry.is_file():
+        with open(registry, encoding="utf-8", newline="") as fh:
+            for r in csv.DictReader(fh, delimiter="\t"):
+                if r.get("name") == name:
+                    row = r
+    if row is None:
+        print(f"学習の記録: {name} の行が無い")
+    else:
+        print(f"学習の記録: {row['timestamp']} {row['notes']}")
+
+    commit = adopted_in(net)
+    print(f"採用したコミット: {commit if commit else '無い（現行の評価関数にしていない）'}")
+    return proc.OK
 
 
 def release(args: argparse.Namespace) -> int:
