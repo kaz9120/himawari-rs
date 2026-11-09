@@ -16,22 +16,7 @@ fn search_position(sfen: &str, depth: u32) -> (Move, Value) {
         depth,
         ..Limits::default()
     };
-    let tm = TimeManager::new(
-        &limits,
-        pos.side_to_move(),
-        pos.game_ply(),
-        &TimeOptions::default(),
-    );
-    let mut worker = Worker::new(
-        pos,
-        shared,
-        limits,
-        tm,
-        0,
-        1,
-        Evaluator::material(),
-        Histories::default(),
-    );
+    let mut worker = Worker::standalone(pos, shared, limits, Evaluator::material());
     let result = worker.iterate(&mut |_| {});
     (result.best, result.score)
 }
@@ -156,21 +141,11 @@ fn nnue_search_returns_legal_moves() {
             depth: 6,
             ..Limits::default()
         };
-        let tm = TimeManager::new(
-            &limits,
-            pos.side_to_move(),
-            pos.game_ply(),
-            &TimeOptions::default(),
-        );
-        let mut worker = Worker::new(
+        let mut worker = Worker::standalone(
             pos.clone(),
             shared,
             limits,
-            tm,
-            0,
-            1,
             Evaluator::nnue(Arc::clone(&net)),
-            Histories::default(),
         );
         let result = worker.iterate(&mut |_| {});
         let mut legal = MoveList::default();
@@ -204,22 +179,7 @@ fn stop_before_first_iteration_still_returns_the_depth1_best() {
         infinite: true,
         ..Limits::default()
     };
-    let tm = TimeManager::new(
-        &limits,
-        pos.side_to_move(),
-        pos.game_ply(),
-        &TimeOptions::default(),
-    );
-    let mut worker = Worker::new(
-        pos.clone(),
-        shared,
-        limits,
-        tm,
-        0,
-        1,
-        Evaluator::material(),
-        Histories::default(),
-    );
+    let mut worker = Worker::standalone(pos.clone(), shared, limits, Evaluator::material());
     let got = worker.iterate(&mut |_| {}).best;
 
     let mut legal = MoveList::default();
@@ -249,22 +209,7 @@ fn does_not_end_on_an_unresolved_aspiration_bound() {
         depth: 12,
         ..Limits::default()
     };
-    let tm = TimeManager::new(
-        &limits,
-        pos.side_to_move(),
-        pos.game_ply(),
-        &TimeOptions::default(),
-    );
-    let mut worker = Worker::new(
-        pos,
-        shared,
-        limits,
-        tm,
-        0,
-        1,
-        Evaluator::material(),
-        Histories::default(),
-    );
+    let mut worker = Worker::standalone(pos, shared, limits, Evaluator::material());
     let mut saw_bound = false;
     let mut last_was_bound = false;
     let mut last_pv_head: Option<Move> = None;
@@ -310,22 +255,8 @@ fn helper_honors_stop_before_depth1_but_main_does_not() {
         let shared = Arc::new(Shared::new(16));
         shared.stop.store(true, Ordering::Relaxed);
         let limits = Limits::default();
-        let tm = TimeManager::new(
-            &limits,
-            pos.side_to_move(),
-            pos.game_ply(),
-            &TimeOptions::default(),
-        );
-        let mut worker = Worker::new(
-            pos,
-            Arc::clone(&shared),
-            limits,
-            tm,
-            0,
-            1,
-            Evaluator::material(),
-            Histories::default(),
-        );
+        let mut worker =
+            Worker::standalone(pos, Arc::clone(&shared), limits, Evaluator::material());
         worker.set_thread(thread_idx, 2);
         let result = worker.iterate(&mut |_| {});
         (result, shared.nodes.load(Ordering::Relaxed))

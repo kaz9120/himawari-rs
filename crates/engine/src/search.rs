@@ -14,7 +14,7 @@ use crate::movepick::{
     ContinuationCorrectionHistory, ContinuationHistory, Histories, LOW_PLY_HISTORY_SIZE, MoveBuf,
     MovePicker, SharedHistories,
 };
-use crate::timeman::{IterationStats, Limits, TimeManager};
+use crate::timeman::{IterationStats, Limits, TimeManager, TimeOptions};
 use crate::tt::{Bound, EvalHash, Tt};
 #[allow(clippy::wildcard_imports)]
 use crate::tunables::*;
@@ -647,6 +647,33 @@ impl Worker {
             draw_value_us: VALUE_ZERO,
             reductions: reductions_table(),
         }
+    }
+
+    /// スレッドプールを通さず、1本だけで探索するWorkerを組む。ツールとテストが使う。
+    /// 時間管理は既定のオプションで作り、historyは空から始める。引き分けの手数は
+    /// 指定なし、MultiPVは1になる
+    pub fn standalone(
+        pos: Position,
+        shared: Arc<Shared>,
+        limits: Limits,
+        evaluator: Evaluator,
+    ) -> Worker {
+        let tm = TimeManager::new(
+            &limits,
+            pos.side_to_move(),
+            pos.game_ply(),
+            &TimeOptions::default(),
+        );
+        Worker::new(
+            pos,
+            shared,
+            limits,
+            tm,
+            0,
+            1,
+            evaluator,
+            Histories::default(),
+        )
     }
 
     /// 局面とaccumulatorのスタックを1手進める。
@@ -3272,7 +3299,6 @@ impl Worker {
 mod tests {
     use super::*;
     use crate::eval::Evaluator;
-    use crate::timeman::TimeOptions;
     use himawari_core::Position;
 
     /// eval hashあり/なしで探索した (総ノード数, 最善手) を返す。
@@ -3298,22 +3324,7 @@ mod tests {
             depth,
             ..Limits::default()
         };
-        let tm = TimeManager::new(
-            &limits,
-            pos.side_to_move(),
-            pos.game_ply(),
-            &TimeOptions::default(),
-        );
-        let mut worker = Worker::new(
-            pos,
-            shared,
-            limits,
-            tm,
-            0,
-            1,
-            Evaluator::material(),
-            Histories::default(),
-        );
+        let mut worker = Worker::standalone(pos, shared, limits, Evaluator::material());
         let result = worker.iterate(&mut |_| {});
         (worker.nodes, result.best)
     }
