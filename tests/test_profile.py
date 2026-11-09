@@ -70,7 +70,7 @@ def test_resolve_lines_macos_with_atos_invokes_subprocess():
     run.assert_called_once()
 
 
-# --- classify: 呼び出し連鎖を処理の種類へ落とす（ADR-0230） ---
+# --- classify: 呼び出し連鎖を処理の種類へ落とす ---
 
 
 def test_classify_attributes_attack_helper_to_its_caller():
@@ -106,7 +106,7 @@ def test_classify_inner_first_for_see_in_move_ordering():
 
 
 def test_classify_effect_map_built_inside_see():
-    # SEEが初めて読むときに作る利きの地図は、地図として数える（ADR-0239）
+    # SEEが初めて読むときに作る利きの地図は、地図として数える
     chain = [
         "himawari_core::attacks::rook_attacks",
         "<himawari_core::effect::EffectMap>::build_near",
@@ -131,7 +131,7 @@ def test_classify_unknown_goes_to_other():
 
 
 def test_classify_see_with_table_is_counted_as_see():
-    # 表を受ける版（see_ge_with）もSEEへ数える（issue #837、ADR-0232の計測）
+    # 表を受ける版（see_ge_with）もSEEへ数える（issue #837）
     chain = [
         "<himawari_core::position::Position>::attackers_to",
         "<himawari_core::position::Position>::see_ge_with",

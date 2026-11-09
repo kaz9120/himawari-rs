@@ -1,4 +1,4 @@
-//! 指し手生成（ADR-0017）。
+//! 指し手生成。
 //!
 //! 生成分類はCaptures（歩成含む）／Quiets／NonEvasions／Evasions。
 //! `all = false`（Normal）は無意味な不成を生成せず、`all = true` は
@@ -19,7 +19,7 @@ pub enum GenType {
     Evasions,
 }
 
-/// 成り・不成の変種を積む（ADR-0017の成り規約）。
+/// 成り・不成の変種を積む。
 fn push_variants(us: Color, from: Square, to: Square, pc: Piece, all: bool, list: &mut MoveList) {
     let pt = pc.piece_type();
     let zone = Bitboard::promotion_zone(us);
@@ -38,7 +38,7 @@ fn push_variants(us: Color, from: Square, to: Square, pc: Piece, all: bool, list
                     false
                 }
             }
-            // 香の不成は3段目以降で生成する（ADR-0176）。香の値打ちは前方へ
+            // 香の不成は3段目以降で生成する。香の値打ちは前方へ
             // 貫通する利きで、成香は金の動きなので前1マスに縮む。3段目で
             // 不成にすれば貫通が残る。2段目の不成は1段目へしか行けず、横と
             // 後ろへ動ける成香に劣るので Normal では生成しない
@@ -49,7 +49,7 @@ fn push_variants(us: Color, from: Square, to: Square, pc: Piece, all: bool, list
                     rel >= 2
                 }
             }
-            // 桂の3段目への不成は Normal でも生成する（ADR-0173）。
+            // 桂の3段目への不成は Normal でも生成する。
             // 成桂は金の動きなので、桂の王手とは利きが違う。「成ると王手に
             // ならないが、不成なら王手になる」形が実戦で詰みの決め手になり、
             // floodgateの敗戦11局がこれだった。参照実装（やねうら王・Apery）も
@@ -129,7 +129,7 @@ fn generate_drops(pos: &Position, target: Bitboard, list: &mut MoveList) {
     }
 }
 
-/// 王手回避を生成する（ADR-0016）。
+/// 王手回避を生成する。
 fn generate_evasions(pos: &Position, all: bool, list: &mut MoveList) {
     let us = pos.side_to_move();
     let checkers = pos.checkers();
@@ -161,7 +161,7 @@ pub fn generate(pos: &Position, gt: GenType, all: bool, list: &mut MoveList) {
             let target = pos.color_bb(us.flip());
             generate_board_moves(pos, target, all, list);
             generate_king_moves(pos, target, list);
-            // 歩成（空きマスへの成り）もCapturesに含める（ADR-0017）
+            // 歩成（空きマスへの成り）もCapturesに含める
             let zone = Bitboard::promotion_zone(us);
             let empty = !pos.occupied();
             let occ = pos.occupied();
@@ -329,7 +329,7 @@ pub fn generate_legal(pos: &Position, all: bool, list: &mut MoveList) {
     }
 }
 
-/// perft（ADR-0018）。深さ1はbulk counting。
+/// perft。深さ1はbulk counting。
 pub fn perft(pos: &mut Position, depth: u32) -> u64 {
     debug_assert!(depth >= 1);
     let mut list = MoveList::default();

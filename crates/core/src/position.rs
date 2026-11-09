@@ -1,4 +1,4 @@
-//! 局面（ADR-0014, 0015, 0016, 0018）。
+//! 局面。
 //!
 //! make/unmake方式。StateInfoはVecスタックで持ち、do_moveは常に
 //! DirtyPiece（NNUE差分の材料）を記録する。SFEN入出力もここに置く。
@@ -32,13 +32,13 @@ pub const fn piece_value(pt: PieceType) -> i32 {
 const MINOR_PIECE_MASK: u16 = (1 << 2) | (1 << 3) | (1 << 4) | (1 << 5) // と・成香・成桂・成銀
     | (1 << 9) | (1 << 11) | (1 << 12) | (1 << 13); // 金・香・桂・銀
 
-/// 小駒か（ADR-0109）。correction historyのminor系統に使う。
+/// 小駒か。correction historyのminor系統に使う。
 #[inline]
 pub const fn is_minor_piece(pt: PieceType) -> bool {
     MINOR_PIECE_MASK & (1 << pt.0) != 0
 }
 
-// ---- 合成ビットボード（ADR-0151群F） ----
+// ---- 合成ビットボード ----
 //
 // by_typeのORはattackers_toなどで毎回作り直していた。同じ合成を
 // Positionが持ち、駒の出し入れと同時に差分維持する。色は使う側が
@@ -70,7 +70,7 @@ const COMPOSITE_OF: [u8; PieceType::NB] = {
     t
 };
 
-// ---- SEEの最安攻撃駒の選択順（ADR-0151群D） ----
+// ---- SEEの最安攻撃駒の選択順 ----
 //
 // PIECE_VALUEの昇順に駒種を見て、最初に当たったグループが最安になる。
 // 同値の駒種は1グループにまとめる。ORしてからlsbを取るので、同値タイの
@@ -96,7 +96,7 @@ const SEE_ORDER: [(u8, i32); 10] = [
     (PieceType::KING.0, PIECE_VALUE[PieceType::KING.index()]),
 ];
 
-/// 入玉宣言の点数（ADR-0030）。飛角系5点、玉以外の他駒1点。
+/// 入玉宣言の点数。飛角系5点、玉以外の他駒1点。
 const fn declaration_points(pt: PieceType) -> u32 {
     match pt {
         PieceType::ROOK | PieceType::BISHOP | PieceType::DRAGON | PieceType::HORSE => 5,
@@ -104,7 +104,7 @@ const fn declaration_points(pt: PieceType) -> u32 {
     }
 }
 
-/// NNUE差分の材料（ADR-0014）。1手で変化する駒は最大2。
+/// NNUE差分の材料。1手で変化する駒は最大2。
 #[derive(Copy, Clone, Debug)]
 pub struct DirtyPiece {
     pub count: u8,
@@ -128,7 +128,7 @@ impl Default for DirtyPiece {
     }
 }
 
-/// 片側の玉に対するpin情報の遅延スロット（ADR-0151群K）。
+/// 片側の玉に対するpin情報の遅延スロット。
 ///
 /// do_moveでは計算せず、`is_legal`・`gives_check` が初めて読むときに埋める。
 /// `computed` が立つまで `blockers`・`pinners` の中身は無効である。
@@ -141,7 +141,7 @@ struct CheckInfo {
     pinners: Cell<Bitboard>,
 }
 
-/// 1ノード分のcheck_squaresの遅延スロット（ADR-0151群O）。
+/// 1ノード分のcheck_squaresの遅延スロット。
 ///
 /// `computed` のビットiが立っていれば `squares[i]` が有効である。
 /// 駒種のindexは2〜15なので、u16のマスクで全駒種を覆える。
@@ -153,7 +153,7 @@ struct CheckSquares {
 
 const _: () = assert!(PieceType::NB <= u16::BITS as usize);
 
-/// 1ノード分の、手番でない側の利きの地図の遅延スロット（ADR-0239の案E）。
+/// 1ノード分の、手番でない側の利きの地図の遅延スロット。
 ///
 /// 維持はしない。SEEと玉の移動の合法性判定が初めて読むときに作る。
 #[derive(Clone, Default, Debug)]
@@ -162,22 +162,22 @@ struct LazyMap {
     map: Cell<EffectMap>,
 }
 
-/// do_moveの巻き戻し材料と差分計算済みの付随情報（ADR-0014）。
+/// do_moveの巻き戻し材料と差分計算済みの付随情報。
 #[derive(Clone, Default, Debug)]
 pub struct StateInfo {
     pub captured: Piece,
     pub board_key: u64,
     pub hand_key: u64,
-    /// 歩構造キー（盤上の歩＋両者の持ち歩枚数。ADR-0046）。
+    /// 歩構造キー（盤上の歩＋両者の持ち歩枚数）。
     pub pawn_key: u64,
-    /// 歩以外の盤上の駒のキー（成駒を含む。ADR-0085, 0109）。
+    /// 歩以外の盤上の駒のキー（成駒を含む）。
     /// correction historyが先後別に引く。持ち駒は含めない
     pub non_pawn_key: [u64; 2],
-    /// 小駒のキー（香・桂・銀・金とその成駒。ADR-0109）。
+    /// 小駒のキー（香・桂・銀・金とその成駒）。
     /// 先後は区別せず1本に混ぜる。出典はやねうら王 position.cpp:144
     pub minor_piece_key: u64,
     pub checkers: Bitboard,
-    /// 色別のpin情報（ADR-0151群K）。読み出しは
+    /// 色別のpin情報。読み出しは
     /// `Position::blockers_for_king`・`Position::pinners` を通す
     check_info: [CheckInfo; 2],
     /// 手番でない側の利きの地図。読み出しは `Position::threat_map` を通す
@@ -191,14 +191,14 @@ pub struct StateInfo {
 #[derive(Debug, PartialEq, Eq)]
 pub struct SfenError(pub String);
 
-/// 探索中の千日手判定がさかのぼる上限（ADR-0186）。
+/// 探索中の千日手判定がさかのぼる上限。
 ///
 /// 参照実装（やねうら王 position.cpp）と同じ16手にする。参照は「初手まで
 /// 遡るとR40弱くなる」と記録しており、遠い一致まで拾うと探索が歪む。本
 /// エンジンでの実測では探索木は変わらず、長手数の局面で速度だけが上がった。
 pub const REPETITION_SCAN_MAX: usize = 16;
 
-/// 千日手の分類（ADR-0026）。WinとLoseは連続王手の千日手。
+/// 千日手の分類。WinとLoseは連続王手の千日手。
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum Repetition {
     None,
@@ -213,7 +213,7 @@ pub enum Repetition {
 pub struct Position {
     board: [Piece; 81],
     by_type: [Bitboard; 16],
-    /// by_typeのORのキャッシュ（ADR-0151群F）。put/removeが差分維持する
+    /// by_typeのORのキャッシュ。put/removeが差分維持する
     composite: [Bitboard; COMP_NB],
     by_color: [Bitboard; 2],
     hands: [Hand; 2],
@@ -221,8 +221,8 @@ pub struct Position {
     game_ply: u16,
     king_sq: [Square; 2],
     states: Vec<StateInfo>,
-    /// check_squaresの遅延スロットを局面スタックの深さ別に持つ
-    /// （ADR-0151群O）。`states` と同じ添字で引き、`push_state` が
+    /// check_squaresの遅延スロットを局面スタックの深さ別に持つ。
+    /// `states` と同じ添字で引き、`push_state` が
     /// 積むたびにマスクだけを落とす。StateInfoに同居させると
     /// do_moveのたびに256バイトのゼロ書き込みが増えるため、
     /// 無効化がマスク1本の書き込みで済むこの形にした
@@ -259,14 +259,13 @@ impl Position {
         self.king_sq[c.index()]
     }
 
-    /// 盤面の生の配列。利きテーブルの再計算で使う（ADR-0148）。
+    /// 盤面の生の配列。利きテーブルの再計算で使う。
     #[inline]
     pub fn board_ref(&self) -> &[Piece; 81] {
         &self.board
     }
 
-    /// 香・角・飛・馬・竜の位置。占有が変わると利きが伸縮する駒である
-    /// （ADR-0148）。
+    /// 香・角・飛・馬・竜の位置。占有が変わると利きが伸縮する駒である。
     #[inline]
     pub fn sliders(&self) -> Bitboard {
         self.by_type[PieceType::LANCE.index()]
@@ -301,7 +300,7 @@ impl Position {
     }
 
     /// 積んである状態の全部。最後が今の局面である。
-    /// 配列盤の研究（ADR-0241の第13回）が、千日手の判定に要る過去の局面のキーを写すのに使う。
+    /// 配列盤の研究が、千日手の判定に要る過去の局面のキーを写すのに使う。
     #[inline]
     pub fn state_history(&self) -> &[StateInfo] {
         &self.states
@@ -317,26 +316,26 @@ impl Position {
         !self.checkers().is_empty()
     }
 
-    /// 置換表用の合成キー（ADR-0015）。
+    /// 置換表用の合成キー。
     #[inline]
     pub fn key(&self) -> u64 {
         let st = self.state();
         st.board_key ^ st.hand_key.wrapping_mul(zobrist::HAND_MIX)
     }
 
-    /// 歩構造キー（ADR-0046）。correction historyのテーブル引きに使う。
+    /// 歩構造キー。correction historyのテーブル引きに使う。
     #[inline]
     pub fn pawn_key(&self) -> u64 {
         self.state().pawn_key
     }
 
-    /// 色cの歩以外の盤上駒のキー（ADR-0085, 0109）。correction historyに使う。
+    /// 色cの歩以外の盤上駒のキー。correction historyに使う。
     #[inline]
     pub fn non_pawn_key(&self, c: Color) -> u64 {
         self.state().non_pawn_key[c.index()]
     }
 
-    /// 小駒のキー（ADR-0109）。correction historyのminor系統に使う。
+    /// 小駒のキー。correction historyのminor系統に使う。
     #[inline]
     pub fn minor_piece_key(&self) -> u64 {
         self.state().minor_piece_key
@@ -381,7 +380,7 @@ impl Position {
 
     // ---- 盤面操作（bitboard/board配列のみ。キーは呼び出し側で管理） ----
 
-    /// 合成板のsqのビットを反転する（ADR-0151群F）。putは0→1、
+    /// 合成板のsqのビットを反転する。putは0→1、
     /// removeは1→0なので、どちらもXORで足りる。
     #[inline]
     fn xor_composites(&mut self, pt: PieceType, sq: Square) {
@@ -392,7 +391,7 @@ impl Position {
         }
     }
 
-    /// 合成板がby_typeの合成と一致するか（ADR-0151群F）。
+    /// 合成板がby_typeの合成と一致するか。
     /// 更新経路の漏れをデバッグビルドで捕まえる。
     fn composites_match_by_type(&self) -> bool {
         let mut expect = [Bitboard::EMPTY; COMP_NB];
@@ -463,7 +462,7 @@ impl Position {
         (blockers, pinners)
     }
 
-    /// 色cのpin情報を必要なら計算して返す（ADR-0151群K）。
+    /// 色cのpin情報を必要なら計算して返す。
     ///
     /// blockers・pinnersを読むのは `is_legal` と `gives_check` だけで、
     /// TTカットや千日手で即返るノードでは読まれない。do_moveで先に
@@ -488,7 +487,7 @@ impl Position {
         ci
     }
 
-    /// 手番でない側の利きの地図（ADR-0239の案E）。初回参照時に作る。
+    /// 手番でない側の利きの地図。初回参照時に作る。
     ///
     /// 手番側の駒を取り返せるか、玉の行き先に利いているかを、
     /// `attackers_to` を引かずに見るために使う。
@@ -521,8 +520,7 @@ impl Position {
     }
 
     /// 手番側の玉への王手駒を求めてStateInfoへ入れる。
-    /// pin情報は毎ノード読むわけではないので、ここでは計算しない
-    /// （ADR-0151群K）。
+    /// pin情報は毎ノード読むわけではないので、ここでは計算しない。
     fn update_checkers(&mut self) {
         let us = self.side;
         let them = us.flip();
@@ -532,7 +530,7 @@ impl Position {
         st.checkers = checkers;
     }
 
-    // ---- 合法性（ADR-0016） ----
+    // ---- 合法性 ----
 
     /// 擬似合法手に対するO(1)の合法性検査。
     pub fn is_legal(&self, m: Move) -> bool {
@@ -552,7 +550,7 @@ impl Position {
         let to = m.to();
         if m.piece_before().piece_type() == PieceType::KING {
             // 王手がかかっていなければ、玉を除いて伸びる相手の利きはない。
-            // 行き先が相手の地図にないかだけで決まる（ADR-0239）
+            // 行き先が相手の地図にないかだけで決まる
             if !self.in_check() {
                 return !self.threat_map().any.test(to);
             }
@@ -597,8 +595,8 @@ impl Position {
 
     /// mが相手玉への王手になるか。
     ///
-    /// 直接王手は `check_squares`（ノード内キャッシュ）で判定する
-    /// （ADR-0151群O）。移動後の利きを毎回引く旧実装と結果は一致する。
+    /// 直接王手は `check_squares`（ノード内キャッシュ）で判定する。
+    /// 移動後の利きを毎回引く旧実装と結果は一致する。
     /// 使う利きの盤面が「指す前」に変わるが、ずれるのは `from` が
     /// `to` と敵玉の間に挟まる場合だけで、そのとき指す前の駒は同じ線を
     /// 走る駒種であり、玉との間に遮る駒がなければ指す前から王手に
@@ -641,10 +639,10 @@ impl Position {
     /// 駒種ptの手番側の駒がそこへ動くと相手玉に直接王手になるマスの集合。
     /// 開き王手は含めない。指し手オーダリングの王手ボーナスと
     /// `gives_check` の直接王手判定が使う
-    /// （ADR-0109。出典はやねうら王のPosition::check_squares）。
+    /// （出典はやねうら王のPosition::check_squares）。
     ///
     /// 敵玉からの利きを毎回引くと高くつくので、ノード内で共有する
-    /// 遅延キャッシュを通す（ADR-0151群O）。敵玉基準なので手番に
+    /// 遅延キャッシュを通す。敵玉基準なので手番に
     /// 依存するが、スロットは局面スタックの深さ別で、手番が変わる
     /// do_null_moveも新しいStateInfoを積むため取り違えは起きない。
     #[inline]
@@ -692,9 +690,9 @@ impl Position {
         }
     }
 
-    // ---- do/undo（ADR-0014） ----
+    // ---- do/undo ----
 
-    /// 盤上の駒1つを部分キーへXORする（ADR-0109）。
+    /// 盤上の駒1つを部分キーへXORする。
     /// 歩はpawn_key、それ以外はnon_pawn_key[色]へ入り、
     /// 小駒はminor_piece_keyにも入る。
     /// 出典はやねうら王 position.cpp:138-148。
@@ -724,7 +722,7 @@ impl Position {
             non_pawn_key: prev.non_pawn_key,
             minor_piece_key: prev.minor_piece_key,
             checkers: Bitboard::EMPTY,
-            // 未計算の状態で積む（ADR-0151群K）
+            // 未計算の状態で積む
             check_info: Default::default(),
             threat_map: Default::default(),
             continuous_check: prev.continuous_check,
@@ -843,7 +841,7 @@ impl Position {
         debug_assert!(self.composites_match_by_type());
     }
 
-    /// 入玉宣言勝ち（27点法、ADR-0030）が成立するか。
+    /// 入玉宣言勝ち（27点法）が成立するか。
     /// 条件: 手番側の玉が敵陣三段目以内、王手されていない、
     /// 敵陣内の玉以外の駒が10枚以上、点数（飛角馬龍5点・他1点、
     /// 持ち駒含む）が先手28点以上・後手27点以上。
@@ -874,7 +872,7 @@ impl Position {
         points >= need
     }
 
-    /// パス（null move。ADR-0028のNMP用）。王手中は呼べない。
+    /// パス（null move。null move pruning用）。王手中は呼べない。
     /// `plies_from_null = 0` により千日手走査はここで遮断される。
     pub fn do_null_move(&mut self) {
         debug_assert!(!self.in_check());
@@ -887,7 +885,7 @@ impl Position {
             non_pawn_key: prev.non_pawn_key,
             minor_piece_key: prev.minor_piece_key,
             checkers: Bitboard::EMPTY,
-            // 未計算の状態で積む（ADR-0151群K）
+            // 未計算の状態で積む
             check_info: Default::default(),
             threat_map: Default::default(),
             continuous_check: prev.continuous_check,
@@ -909,7 +907,7 @@ impl Position {
         self.game_ply -= 1;
     }
 
-    // ---- SFEN（ADR-0018） ----
+    // ---- SFEN ----
 
     pub fn from_sfen(sfen: &str) -> Result<Position, SfenError> {
         let mut tokens = sfen.split_whitespace();
@@ -1205,18 +1203,17 @@ impl Position {
             .find(|m| m.to_move16() == m16)
     }
 
-    // ---- 千日手・優等局面（ADR-0026） ----
+    // ---- 千日手・優等局面 ----
 
     /// 探索中の千日手判定。StateInfoスタックを2plyごとに遡って調べる。
     ///
-    /// 遡る距離は [`REPETITION_SCAN_MAX`] 手で打ち切る（ADR-0186）。上限が
+    /// 遡る距離は [`REPETITION_SCAN_MAX`] 手で打ち切る。上限が
     /// ないと、長手数の対局で毎ノードの走査が履歴の長さに比例して伸びる。
     /// 探索木は変わらず速度だけが上がるので、対局ルールの裁定
     /// （[`Self::repetition_state_all`]）は上限なしのまま残す。
     ///
     /// `ply` はrootからの距離を表す。判定は検出距離 `i < ply` のとき、つまり
-    /// 同一盤面の両方の出現が探索経路内にあるときに限って返す（ADR-0153、
-    /// ADR-0254）。rootを跨いだ比較は「大昔の同一盤面より手駒が多い」「相手が
+    /// 同一盤面の両方の出現が探索経路内にあるときに限って返す。rootを跨いだ比較は「大昔の同一盤面より手駒が多い」「相手が
     /// 同じ局面へ1度戻した」を意味するだけで、探索の値としては誤りになる。
     /// 例外は同一局面の4回目で、対局のルールそのものなのでrootを跨いでも返す。
     #[inline]
@@ -1225,12 +1222,12 @@ impl Position {
     }
 
     /// 対局ルールの千日手裁定用。遡る距離に上限を置かず、優等・劣等も含めて
-    /// 全履歴を対象にする（ADR-0153。探索ではなくルール判定に使う
+    /// 全履歴を対象にする（探索ではなくルール判定に使う
     /// 呼び出し元向け）。
     ///
     /// 探索は近傍の一致だけを見れば足りるが、裁定は同一局面の4回目を
     /// 取りこぼせない。呼び出しは1局面につき1回なので、走査の重さは
-    /// 問題にならない（ADR-0186）。
+    /// 問題にならない。
     #[inline]
     pub fn repetition_state_all(&self) -> Repetition {
         self.scan_repetition(usize::MAX, usize::MAX)
@@ -1248,7 +1245,7 @@ impl Position {
             let prev = &self.states[cur - i];
             if prev.board_key == st.board_key {
                 if prev.hand_key == st.hand_key {
-                    // rootより前との一致は、4回目の局面でなければ終局にしない（ADR-0254）。
+                    // rootより前との一致は、4回目の局面でなければ終局にしない。
                     // 相手は次の手で別の手を選べるので、まだ何も決まっていない
                     if i >= ply && !self.is_fourth_occurrence() {
                         return Repetition::None;
@@ -1262,7 +1259,7 @@ impl Position {
                     }
                     return Repetition::Draw;
                 }
-                // rootを跨ぐ優等・劣等は判定しない（ADR-0153）。走査は続ける
+                // rootを跨ぐ優等・劣等は判定しない。走査は続ける
                 if i < ply {
                     let my_now = Hand((st.hand_key >> (32 * us)) as u32);
                     let my_then = Hand((prev.hand_key >> (32 * us)) as u32);
@@ -1280,7 +1277,7 @@ impl Position {
         Repetition::None
     }
 
-    /// 今の局面が対局の中で4回目か。千日手の成立の条件である（ADR-0254）。
+    /// 今の局面が対局の中で4回目か。千日手の成立の条件である。
     /// 走査の打ち切りは掛けない。一致が見つかった局面でしか呼ばれないので重さは効かない
     fn is_fourth_occurrence(&self) -> bool {
         let cur = self.states.len() - 1;
@@ -1301,7 +1298,7 @@ impl Position {
         false
     }
 
-    // ---- 擬似合法性（置換表由来の指し手の検査。ADR-0025） ----
+    // ---- 擬似合法性（置換表由来の指し手の検査） ----
 
     /// mがこの局面の擬似合法手か（is_legalの前提を満たすか）を検査する。
     pub fn pseudo_legal(&self, m: Move) -> bool {
@@ -1383,9 +1380,9 @@ impl Position {
         }
     }
 
-    // ---- SEE（静的交換評価。ADR-0025） ----
+    // ---- SEE（静的交換評価） ----
 
-    /// 攻撃駒の集合から最も安い駒を選ぶ（ADR-0151群D）。
+    /// 攻撃駒の集合から最も安い駒を選ぶ。
     /// 返り値は(マス, 価値, 玉か)。attackersは空でないこと。
     ///
     /// SEE_ORDERを価値の昇順に見て、最初に当たったグループのlsbを返す。
@@ -1409,7 +1406,7 @@ impl Position {
     }
 
     /// mの静的交換評価がthreshold以上か。Stockfishのsee_geと同じswap構造。
-    /// 駒打ちも解き（ADR-0091）、初手の成りも扱う（ADR-0095）。
+    /// 駒打ちも解き、初手の成りも扱う。
     /// 交換の途中で相手が成る筋は見ない簡略版のままである。
     pub fn see_ge(&self, m: Move, threshold: i32) -> bool {
         let to = m.to();
@@ -1425,7 +1422,7 @@ impl Position {
         } else {
             let from = m.from_sq();
             // 成ると駒の価値が上がる（歩90→と金540など）。その差は取り分で
-            // あり、取り返されるのは成ったあとの駒である（ADR-0095）
+            // あり、取り返されるのは成ったあとの駒である
             let before = PIECE_VALUE[self.piece_on(from).piece_type().index()];
             let after = PIECE_VALUE[m.piece_after().piece_type().index()];
             (
@@ -1443,7 +1440,7 @@ impl Position {
             return true;
         }
         // 取り合いなし: 移動先に相手の利きがなく、移動元の奥から相手の飛び
-        // 利きも通らないなら、下のループは1回目で抜けて真を返す（ADR-0239）
+        // 利きも通らないなら、下のループは1回目で抜けて真を返す
         let threat = self.threat_map();
         if !threat.any.test(to) && (m.is_drop() || !threat.slider.test(m.from_sq())) {
             return true;
@@ -1478,7 +1475,7 @@ impl Position {
         res
     }
 
-    /// Move16を盤面情報で完全なMoveに復元する（ADR-0012）。
+    /// Move16を盤面情報で完全なMoveに復元する。
     /// 置換表由来の任意ビット列に耐えるよう全フィールドを検証する。
     /// 復元できても擬似合法とは限らない。pseudo_legalで別途検査する。
     pub fn to_move(&self, m16: Move16) -> Option<Move> {
@@ -1589,7 +1586,7 @@ mod tests {
         }
     }
 
-    /// check_squaresの遅延計算（ADR-0151群O）が盤面と食い違わないか。
+    /// check_squaresの遅延計算が盤面と食い違わないか。
     /// pin情報と同じくランダム対局で往復させ、releaseビルドでも効かせる。
     #[test]
     fn lazy_check_squares_stays_in_sync() {
@@ -1623,7 +1620,7 @@ mod tests {
         }
     }
 
-    /// pin情報の遅延計算（ADR-0151群K）で無効化漏れが起きないか。
+    /// pin情報の遅延計算で無効化漏れが起きないか。
     /// ランダム対局にdo/undoとnull moveを挟み、各時点で作り直した局面と
     /// 比べる。releaseビルドのテストでも効く安全網になる。
     #[test]
@@ -1697,7 +1694,7 @@ mod tests {
         }
     }
 
-    /// ADR-0151群Dより前の最安攻撃駒の選択。全マスを走査して最小値を取る。
+    /// 選択順の表を使わない旧実装の最安攻撃駒の選択。全マスを走査して最小値を取る。
     fn least_valuable_reference(pos: &Position, attackers: Bitboard) -> (Square, i32, bool) {
         let mut best = Square::NONE;
         let mut best_val = i32::MAX;
@@ -1715,7 +1712,7 @@ mod tests {
         )
     }
 
-    /// ADR-0151群Dより前のsee_ge。最安攻撃駒の選択だけが違う。
+    /// 旧実装のsee_ge。最安攻撃駒の選択だけが違う。
     fn see_ge_reference(pos: &Position, m: Move, threshold: i32) -> bool {
         let to = m.to();
         let (captured, placed, occ0) = if m.is_drop() {

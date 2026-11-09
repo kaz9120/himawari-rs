@@ -1,4 +1,4 @@
-//! 動作環境の最適なスレッド数を、NPSと自己対局で決める（ADR-0203）。
+//! 動作環境の最適なスレッド数を、NPSと自己対局で決める。
 //!
 //! 使い方:
 //!   himawari threadtune --eval <hmwr> [--hours 4] [--current 6] [--tc 10+0.1]
@@ -12,7 +12,7 @@
 //!
 //! 対局の相手は自分自身で、`himawari` を子プロセスとしてUSIで起動する。
 //! 探索の経路には触れない。開始局面は埋め込んである。
-//! 終了コード: 0=成功、2=引数エラー、3=実行時エラー（ADR-0122）。
+//! 終了コード: 0=成功、2=引数エラー、3=実行時エラー。
 
 use std::collections::BTreeMap;
 use std::time::{Duration, Instant};
@@ -271,7 +271,7 @@ fn run(a: &Args) -> Result<(), String> {
     let logical = std::thread::available_parallelism().map_or(1, |n| n.get());
     // 既定は論理コアから2本を空ける。実戦では指し手を中継するクライアントが
     // 別プロセスで動き、全論理コアを埋めると中継が数秒遅れて切れ負けする
-    // （放流機で12スレッドを試して発生。ADR-0203の追記）。この道具は
+    // （放流機で12スレッドを試して発生）。この道具は
     // 自分が中継役なのでその遅れを見られない。上限を上げるなら --max-threads
     let max = a
         .max_threads

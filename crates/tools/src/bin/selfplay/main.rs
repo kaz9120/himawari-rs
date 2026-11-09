@@ -1,4 +1,4 @@
-//! 自己対局・SPRT判定ツール（ADR-0027）。
+//! 自己対局・SPRT判定ツール。
 //!
 //! ベースラインと候補の2エンジンを、同一開始局面の先後入れ替えペアで
 //! 対局させる。ペア得点のpentanomial度数からGSPRTのLLRを逐次更新し、
@@ -17,10 +17,10 @@
 //! --copt/--boptは候補側/ベースライン側だけに適用するオプション
 //! （例: --copt Threads=4）。--codds/--boddsは候補側/ベースライン側の
 //! 持ち時間の倍率（時間オッズ）で、初期時間と加算の両方に掛かる。
-//! --no-stopはSPRTの判定で止めず、--max-pairsまで指す（Eloの推定用。
-//! ADR-0200）。--ponderは候補側だけが相手番思考する
-//! 効果測定モード（ADR-0033）。--ponder-bothは両者に相手番思考させる
-//! （ponder前提の変更を比べるモード。ADR-0104）。1局が2コアを使うため
+//! --no-stopはSPRTの判定で止めず、--max-pairsまで指す（Eloの推定用）。
+//! --ponderは候補側だけが相手番思考する
+//! 効果測定モード。--ponder-bothは両者に相手番思考させる
+//! （ponder前提の変更を比べるモード）。1局が2コアを使うため
 //! --concurrencyを物理コアの半分に落とすこと。
 //!
 //! openingsは1行1局面のSFEN。#始まりはコメント。省略時は平手初期局面
@@ -54,16 +54,16 @@ struct Config {
     max_moves: usize,
     adjudicate: Option<(i32, u32)>,
     ponder: bool,
-    /// 両者に相手番思考させる（ADR-0104）。ponderより優先する。
+    /// 両者に相手番思考させる。ponderより優先する。
     ponder_both: bool,
     options: Vec<(String, String)>,
     /// 候補側 / ベースライン側だけに適用するオプション。
     copts: Vec<(String, String)>,
     bopts: Vec<(String, String)>,
     out: String,
-    /// 既存の棋譜jsonlから再開する（ADR-0087）。空なら新規。
+    /// 既存の棋譜jsonlから再開する。空なら新規。
     resume: String,
-    /// 持ち時間の倍率（[候補, ベースライン]）。時間オッズ（ADR-0200）。
+    /// 持ち時間の倍率（[候補, ベースライン]）。時間オッズ。
     odds: [f64; 2],
     /// SPRTの判定で止めず、max_pairsまで指す。
     no_stop: bool,
@@ -316,7 +316,7 @@ struct Aggregate {
     out: std::fs::File,
 }
 
-/// 既存の棋譜jsonlからpentanomialとW-D-Lを復元する（ADR-0087）。
+/// 既存の棋譜jsonlからpentanomialとW-D-Lを復元する。
 /// 戻り値は (pentanomial, wdl, 次に割り当てるペア番号)。
 /// 2局そろっているペアだけを数える。片方しかないペアは捨てる
 fn restore_from_jsonl(path: &str) -> Result<(Pentanomial, [u64; 3], u64), String> {
@@ -503,8 +503,8 @@ fn worker(
         }
         let opening = &cfg.openings[(pair as usize) % cfg.openings.len()];
         // 候補が先手→後手の順で同一開始局面のペアを消化する。
-        // --ponderは候補側だけ（効果測定モード。ADR-0033）、
-        // --ponder-bothは両者に相手番思考させる（ADR-0104）
+        // --ponderは候補側だけ（効果測定モード）、
+        // --ponder-bothは両者に相手番思考させる
         let (p_cand, p_base) = if cfg.ponder_both {
             (true, true)
         } else {
@@ -598,7 +598,7 @@ fn main() {
             eprintln!("棋譜ファイルを開けません: {e}");
             std::process::exit(3)
         });
-    // 中断したSPRTの続きを回す（ADR-0087）。棋譜からpentanomialを
+    // 中断したSPRTの続きを回す。棋譜からpentanomialを
     // 復元し、ペア番号も引き継ぐ。開始局面の割り当てが重複しない
     let (pent, wdl, start_pair) = if cfg.resume.is_empty() {
         (Pentanomial::default(), [0u64; 3], 0u64)
@@ -630,7 +630,7 @@ fn main() {
     let counter = Arc::new(AtomicU64::new(start_pair));
     let failed = Arc::new(AtomicBool::new(false));
 
-    // 停止ファイルの監視（ADR-0123）。SPRTは数時間かかるので、判定を待たずに
+    // 停止ファイルの監視。SPRTは数時間かかるので、判定を待たずに
     // 止めたいことがある。全ワーカーが毎ペア見るとファイルシステムを叩きすぎる
     // ため、1本のスレッドが定期的に見て既存の停止フラグへ流す。走行中の対局は
     // 最後まで指してから終わる
@@ -737,7 +737,7 @@ mod tests {
         assert_eq!(json_num(&l, "nonexistent"), None);
     }
 
-    /// 2局そろったペアだけを数え、ペア番号は最大値+1から続ける（ADR-0087）。
+    /// 2局そろったペアだけを数え、ペア番号は最大値+1から続ける。
     #[test]
     fn resume_restores_pentanomial_and_skips_incomplete_pair() {
         let path = std::env::temp_dir().join("himawari_resume_test.jsonl");

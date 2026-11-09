@@ -1,6 +1,6 @@
 # GitHub Actionsのアクションの更新だけを任せる（#752）。ワークフローは
 # アクションをSHAで固定しており、dependabotがSHAと版のコメントを一緒に上げる。
-# cargoは対象にしない。Cargo.tomlはrelease-pleaseだけが書き換える（ADR-0071）。
+# cargoは対象にしない。Cargo.tomlはrelease-pleaseだけが書き換える。
 version: 2
 updates:
   - package-ecosystem: github-actions

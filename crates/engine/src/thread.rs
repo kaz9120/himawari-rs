@@ -1,8 +1,8 @@
-//! 常駐探索スレッド群（ADR-0020, 0031）。
+//! 常駐探索スレッド群。
 //!
 //! Lazy SMP: 全ワーカーが同じ局面をTT共有で探索する。ヘルパーは
-//! 反復を深さでずらす（ADR-0202。旧Stockfishの表。ADR-0031の案Bから
-//! 変えた）。それ以外の多様化はTT到着順の揺らぎに任せる。
+//! 反復を深さでずらす（旧Stockfishの表）。
+//! それ以外の多様化はTT到着順の揺らぎに任せる。
 //! メインワーカー（index 0）だけが時間管理・info出力・bestmoveを
 //! 担い、ヘルパーはstopフラグに従って止まる。
 //! history等のスレッドローカル状態は対局を通じて各スレッドに保持する。
@@ -123,7 +123,7 @@ struct Ctl {
     idle_cv: Condvar,
 }
 
-/// ponder中のbestmove保留状態（ADR-0033、ADR-0109のG8）。
+/// ponder中のbestmove保留状態。
 /// go ponder中は探索が終わってもbestmoveを出さず、ponderhit/stopの
 /// 解決を待つ（2手指し防御。S:1162-1187）。
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -138,7 +138,7 @@ enum PonderState {
     Hit,
     /// stopされた（bestmoveを出してよい）。
     Stopped,
-    /// ponderhitの局面が定跡にあった（ADR-0231）。探索を止め、bestmoveを
+    /// ponderhitの局面が定跡にあった。探索を止め、bestmoveを
     /// 出さずに終える。指し手はUSI層が定跡から出す
     Abandoned,
 }
@@ -179,7 +179,7 @@ pub struct ThreadPool {
 }
 
 /// USIのscore表記（cp / mate）を組み立てる。
-/// USIのinfo行を組み立てる（ADR-0086, 0091）。suffixは `lowerbound` などの
+/// USIのinfo行を組み立てる。suffixは `lowerbound` などの
 /// スコア修飾子で、確定値なら空文字を渡す。
 fn format_pv_line(info: &IterInfo, score_suffix: &str) -> String {
     let pv: Vec<String> = info.pv.iter().map(|m| m.to_usi()).collect();
@@ -342,7 +342,7 @@ fn spawn_worker(
     });
     let ctl2 = Arc::clone(&ctl);
     let handle = std::thread::spawn(move || {
-        // スレッドローカル状態（対局を通じて保持。ADR-0020, 0109）。
+        // スレッドローカル状態（対局を通じて保持）。
         // 約100MiBあるので、goごとに作り直さずWorkerへ渡して回収する
         let mut hist = Histories::new(Arc::clone(&shared.hists));
         // goをまたぐ記憶（G9）。参照実装がSearchManagerに置く値で、
@@ -365,7 +365,6 @@ fn spawn_worker(
                 Job::NewGame => {
                     hist.clear();
                     // 共有分は全スレッドで同じ表なので、メインだけが消す
-                    // （ADR-0162）
                     if is_main {
                         shared.hists.clear();
                     }
@@ -426,8 +425,8 @@ fn spawn_worker(
                     );
                     worker.set_thread(thread_idx, thread_count);
                     worker.set_draw_value(j.opts.draw_value_black, j.opts.draw_value_white);
-                    // 結論を出さずに捨てる探索では、goをまたぐ記憶を探索前へ戻す
-                    // （ADR-0231）。定跡の手を指したので、この探索は前回のgoに当たらない
+                    // 結論を出さずに捨てる探索では、goをまたぐ記憶を探索前へ戻す。
+                    // 定跡の手を指したので、この探索は前回のgoに当たらない
                     let memory_before = memory;
                     worker.memory = memory;
                     let result = worker.iterate(&mut |info| {
@@ -530,7 +529,7 @@ fn spawn_worker(
 }
 
 impl ThreadPool {
-    /// 探索中の報告をUSIのinfo行へ落とす（ADR-0086, 0091, 0125）。
+    /// 探索中の報告をUSIのinfo行へ落とす。
     /// 探索スレッドはこの関数を呼ぶだけで、プロトコルを知らない。
     fn emit_info(out: &OnLine, info: SearchInfo) {
         match info {
@@ -543,7 +542,7 @@ impl ThreadPool {
             SearchInfo::Iteration(info) => {
                 out(&format_pv_line(&info, ""));
             }
-            // fail high/lowは確定値でないことを示す（ADR-0091）
+            // fail high/lowは確定値でないことを示す
             SearchInfo::Bound(info, b) => {
                 let suffix = match b {
                     ScoreBound::Lower => " lowerbound",
@@ -554,8 +553,8 @@ impl ThreadPool {
         }
     }
 
-    /// 全スレッドの結論から最終手を決め、bestmoveまで出す（G10, ADR-0125。
-    /// S:1239-1348）。投票・投了判定・bestmove出力の3つを行う。
+    /// 全スレッドの結論から最終手を決め、bestmoveまで出す（S:1239-1348）。
+    /// 投票・投了判定・bestmove出力の3つを行う。
     /// 次のgoへ持ち越す記憶も、best threadのもので上書きする（S:1249-1253）。
     // Workerを持たない関連関数である（最終手は全スレッドの結論からWorkerの外で
     // 決める）。読む参照を個別に受ける。呼び出しはスレッドループの1か所
@@ -661,7 +660,7 @@ impl ThreadPool {
         net: Option<(String, Arc<NnueNetwork>)>,
         on_line: OnLine,
     ) -> ThreadPool {
-        // 共有historyの表はスレッド数に比例させる（ADR-0162）
+        // 共有historyの表はスレッド数に比例させる
         let shared = Arc::new(Shared::with_threads(hash_mb, threads.max(1)));
         let ponder = Arc::new(PonderCtl {
             state: Mutex::new(PonderState::None),
@@ -715,7 +714,7 @@ impl ThreadPool {
         self.dispatch(pos, limits, opts, false);
     }
 
-    /// go ponder（ADR-0033、ADR-0109のG8）。実際の持ち時間で時間管理しつつ
+    /// go ponder。実際の持ち時間で時間管理しつつ
     /// 時間では止まらず、bestmoveはponderhit/stopまで保留される。
     pub fn go_ponder(&self, pos: Position, limits: Limits, opts: EngineOptions) {
         self.dispatch(pos, limits, opts, true);
@@ -757,7 +756,7 @@ impl ThreadPool {
         }
     }
 
-    /// ponderhit（ADR-0109のG8）。**探索は止めない。** ponderフラグを
+    /// ponderhit。**探索は止めない。** ponderフラグを
     /// 下ろすだけで、探索スレッドは次の判定から時間で止まるようになる
     /// （S:299-308）。保留中ならその場で解放してbestmoveを出させる。
     pub fn ponderhit(&self) {
@@ -794,7 +793,7 @@ impl ThreadPool {
         self.shared.stop.store(true, Ordering::Relaxed);
     }
 
-    /// go ponderの探索を、bestmoveを出さずに止める（ADR-0231）。
+    /// go ponderの探索を、bestmoveを出さずに止める。
     ///
     /// ponderhitの局面が定跡にあったときに使う。探索が終わるまで待って
     /// から返るので、呼び出し側が次に出すbestmoveが今回のgoの唯一の1本になる。

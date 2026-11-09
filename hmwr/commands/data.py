@@ -1,7 +1,7 @@
 """教師データの取得と前処理。
 
 取得（fetch）はここが持つ。psvの加工（shuffle・split・mix・quiet・rank）は
-`dataops` の対応表から作る（ADR-0208）。
+`dataops` の対応表から作る。
 
 公開データセットを取り、学習用と検証用のpsvを作る。開発機を移すときは
 これで再現できる。hao_depth9は固定の381ファイル、その他のデータセットは
@@ -136,7 +136,7 @@ def fetch(args: argparse.Namespace) -> int:
             stages = ("download", "verify")
         else:
             raise proc.Fail(
-                "prepareはhao専用。他のデータセットの前処理は着手時のADRの手順で行う"
+                "prepareはhao専用。他のデータセットの前処理は hmwr data の操作で行う"
             )
     manifest = _manifest(args.dataset, args.limit_files)
     for stage in stages:

@@ -1,4 +1,4 @@
-//! PackedSfenValue互換の教師データ入出力（ADR-0038）。
+//! PackedSfenValue互換の教師データ入出力。
 //!
 //! packed sfenは局面を256bit（32バイト）に収めるハフマン符号。
 //! LSB-firstのビット列に、手番1bit・先手玉/後手玉の位置7bit×2・

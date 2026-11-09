@@ -1,4 +1,4 @@
-//! NNUE評価ファイルの独自フォーマット（ADR-0037）。
+//! NNUE評価ファイルの独自フォーマット。
 //!
 //! ヘッダ: マジック・フォーマット版・アーキテクチャ記述子
 //! （各塔の次元）・学習来歴文字列・重みハッシュ。以降は
@@ -6,7 +6,7 @@
 //! 不一致は読み込みエラーにする（気づかず壊れたネットで
 //! 対局する事故を防ぐ）。
 //!
-//! 版3で隠れ層の幅を2つ（L1・L2）持つようにした（ADR-0127）。
+//! 版3で隠れ層の幅を2つ（L1・L2）持つようにした。
 //! 版2は幅を1つしか書かないため、L1とL2が同じ構成でだけ読める。
 
 use std::io::{Read, Write};
@@ -21,16 +21,16 @@ const MAGIC: &[u8; 8] = b"HMWRNNUE";
 const FORMAT_VERSION_TWO_HIDDEN: u32 = 3;
 /// 隠れ層の幅を1つしか持たない旧版（L1とL2が同じ構成に限り読める）。
 const FORMAT_VERSION_UNIFORM_HIDDEN: u32 = 2;
-/// FT重みをi8で格納する版（ADR-0138）。寸法の並びは版3と同じで、
+/// FT重みをi8で格納する版。寸法の並びは版3と同じで、
 /// 違いはFT重み1つあたりのバイト数だけである。
 const FORMAT_VERSION_TWO_HIDDEN_I8: u32 = 5;
-/// FT出力の対を掛けて活性にする版（ADR-0171）。寸法の並びは版5と
+/// FT出力の対を掛けて活性にする版。寸法の並びは版5と
 /// 同じで、違うのは `w2` の列幅（`CONCAT`）だけである。**版を分けないと、
 /// 積なしのネットを読んだときのエラーが「末尾に余分なバイトがある」に
 /// なって原因が読めない。**
 const FORMAT_VERSION_TWO_HIDDEN_I8_PAIR: u32 = 7;
 const FORMAT_VERSION_TWO_HIDDEN_PAIR: u32 = 9;
-/// 利きのaccumulatorを持つ版（ADR-0237）。版7の並びに、寸法として
+/// 利きのaccumulatorを持つ版。版7の並びに、寸法として
 /// 利きの特徴数と幅を足し、FT重みの後ろに利きのバイアスと重み（i16）を
 /// 置く。研究ブランチだけの最小の拡張で、自己記述の形式（Issue #768）が
 /// 入ったらそちらへ移す。
@@ -38,7 +38,7 @@ const FORMAT_VERSION_TWO_HIDDEN_I8_PAIR_EFF: u32 = 11;
 // 版4・6・8・10・12・14は隠れ層3つの構成、版13・14は玉の近傍の部分モデルを持つ構成の版である。
 // どちらの構成も消したので読まない。番号は再利用しない。
 
-/// 書き出しに使う版。利きのaccumulatorの有無で決まる。FT重みはi8で書く（ADR-0138）。
+/// 書き出しに使う版。利きのaccumulatorの有無で決まる。FT重みはi8で書く。
 /// FT重みをi16で持つ版9は、読み込みだけを受け付ける。積の有無は
 /// ビルドで固定なので、このブランチは対応する版だけを書き、他は読まない。
 const FORMAT_VERSION: u32 = if EFF_OUT != 0 {
@@ -47,13 +47,13 @@ const FORMAT_VERSION: u32 = if EFF_OUT != 0 {
     FORMAT_VERSION_TWO_HIDDEN_I8_PAIR
 };
 
-/// その版が利きのaccumulatorを持つか（ADR-0237）。
+/// その版が利きのaccumulatorを持つか。
 const fn version_is_effect(v: u32) -> bool {
     v == FORMAT_VERSION_TWO_HIDDEN_I8_PAIR_EFF
 }
 
-/// FT重み列をi16として読む。ファイルの版で1要素のバイト数が変わる
-/// （ADR-0138）。呼び出し側の計算はi16で行い、格納型への変換は最後にする。
+/// FT重み列をi16として読む。ファイルの版で1要素のバイト数が変わる。
+/// 呼び出し側の計算はi16で行い、格納型への変換は最後にする。
 fn read_ft_i16(cur: &mut Cursor<'_>, version: u32, n: usize) -> Result<Vec<i16>, String> {
     if version_is_ft_i8(version) {
         Ok(cur.i8v(n)?.into_iter().map(i16::from).collect())
@@ -72,7 +72,7 @@ const fn version_is_ft_i8(v: u32) -> bool {
     )
 }
 
-/// その版がFT出力の対を掛ける構成か（ADR-0171）。`w2` の列幅が
+/// その版がFT出力の対を掛ける構成か。`w2` の列幅が
 /// 積なしの半分になるので、後段まで読む経路はここで弾く。
 const fn version_is_pair(v: u32) -> bool {
     matches!(
@@ -83,7 +83,7 @@ const fn version_is_pair(v: u32) -> bool {
     )
 }
 
-/// 利きの寸法がビルドと合うかを確かめる（ADR-0237）。利きのないファイルは
+/// 利きの寸法がビルドと合うかを確かめる。利きのないファイルは
 /// `[0, 0]` を持つ。合わないまま読むと `w2` の列幅がずれ、原因の読めない
 /// 「末尾に余分なバイトがある」になる。
 fn require_effect(eff: [usize; 2]) -> Result<(), String> {
@@ -96,7 +96,7 @@ fn require_effect(eff: [usize; 2]) -> Result<(), String> {
         return Ok(());
     }
     Err(format!(
-        "effect accumulator mismatch (ADR-0237): file [features, width] = {eff:?}, \
+        "effect accumulator mismatch: file [features, width] = {eff:?}, \
          build {want:?}; build with HIMAWARI_ARCH=...e<width> for effect nets"
     ))
 }
@@ -108,7 +108,7 @@ fn require_pair(version: u32) -> Result<(), String> {
     }
     Err(format!(
         "net without the FT pair product (format {version}) is not supported by this build; \
-         retrain with the paired FT output (ADR-0171)"
+         retrain with the paired FT output"
     ))
 }
 
@@ -137,7 +137,7 @@ fn weight_bytes(net: &NnueNetwork) -> Vec<u8> {
     for &x in &net.ft_w {
         v.extend_from_slice(&x.to_le_bytes());
     }
-    // 利きのaccumulator（ADR-0237）。持たない構成では空なので何も書かない
+    // 利きのaccumulator。持たない構成では空なので何も書かない
     for &x in net.eff_b.iter().chain(&net.eff_w) {
         v.extend_from_slice(&x.to_le_bytes());
     }
@@ -321,7 +321,7 @@ impl<'r, R: Read> HashingReader<'r, R> {
         Ok(v)
     }
 
-    /// i8のFT重み列を格納型へ直接読む（ADR-0138）。中間のVecを挟まない。
+    /// i8のFT重み列を格納型へ直接読む。中間のVecを挟まない。
     fn ftv(&mut self, n: usize) -> Result<Vec<FtWeight>, String> {
         let mut v = Vec::with_capacity(n);
         self.read_chunks(n, |b| {
@@ -447,7 +447,7 @@ pub fn load(r: &mut impl Read) -> Result<(NnueNetwork, String), String> {
 
     let mut cur = HashingReader::new(r);
     let ft_b = cur.i16v(FT_OUT)?;
-    // FT重みの型はファイルの版とビルドで別々に決まる（ADR-0138）。
+    // FT重みの型はファイルの版とビルドで別々に決まる。
     // 型が違っても読めるようにするが、i8へ落とすときは範囲を検査する。
     // 黙って切り詰めると、飽和したネットで気づかず対局してしまう
     let n = FT_IN * FT_OUT;
@@ -485,9 +485,9 @@ pub fn load(r: &mut impl Read) -> Result<(NnueNetwork, String), String> {
         eff_b,
     }
     .finish();
-    // 利きのaccumulatorは差分の経路でi16に持つ（ADR-0237のD2）。取りうる値が
+    // 利きのaccumulatorは差分の経路でi16に持つ。取りうる値が
     // i16に収まらないネットでは全計算と食い違うので、読み込みで弾く。
-    // F2と最小の攻め駒の組も差分の経路をi16で持つので、同じ検査をする（ADR-0261）
+    // F2と最小の攻め駒の組も差分の経路をi16で持つので、同じ検査をする
     if EFF_OUT != 0 {
         let bound = if crate::nnue::SIDE_MINATT_INC {
             crate::nnue::side_minatt_acc_bound(&net)
@@ -504,7 +504,7 @@ pub fn load(r: &mut impl Read) -> Result<(NnueNetwork, String), String> {
     Ok((net, lineage))
 }
 
-/// 別の構成のファイルを読み、いまのビルド構成へ合わせる（ADR-0127）。
+/// 別の構成のファイルを読み、いまのビルド構成へ合わせる。
 ///
 /// **広げるときは評価値が元と完全に一致する。** 足した次元の重みと
 /// バイアスをすべてゼロにすると、その出力はclipped ReLUで0になり、
@@ -520,18 +520,18 @@ pub fn load(r: &mut impl Read) -> Result<(NnueNetwork, String), String> {
 /// 活性は0..127で、対角を64にすると `(64x) >> 6 == x` になるため、
 /// **層を足しても評価値が変わらない。**
 ///
-/// **継続学習の初期値には、このままでは使えない**（ADR-0130）。広げた次元と、
+/// **継続学習の初期値には、このままでは使えない**。広げた次元と、
 /// それを受ける次の層の列が両方ゼロなので、互いの勾配がゼロで固定し合う。
 /// 学習を続けるなら、どちらか片方へ微小な乱数を入れて対称性を破ること。
 /// ここでゼロ埋めを崩さないのは、速度計測が「評価値を1ビットも変えない」
 /// ことを要件にしているためである。
 ///
 /// 元ファイルの構成 `[FT_IN, FT, L1, L2]` を添えて返す。学習側が
-/// 「後段の層を初期値に使ってよいか」を判断するのに要る（ADR-0130）。
+/// 「後段の層を初期値に使ってよいか」を判断するのに要る。
 pub fn load_resized_with_dims(
     r: &mut impl Read,
 ) -> Result<(NnueNetwork, String, [usize; 4]), String> {
-    // 利きの構成は同じ構成のファイルだけを読む（ADR-0237の研究ブランチ）。
+    // 利きの構成は同じ構成のファイルだけを読む。
     // 構成の変換は利きの重みを写す口を持たない
     if EFF_OUT != 0 {
         let (net, lineage) = load(r)?;
@@ -577,7 +577,7 @@ pub fn load_resized_with_dims(
     ))?;
     let b2 = fit(cur.i32v(src_l1)?, L1_OUT);
     // 隠れ層1の入力は2視点の連結なので、視点ごとに写す。片視点の幅は
-    // 対を掛けたあとの `src_ft / 2` になる（ADR-0171）
+    // 対を掛けたあとの `src_ft / 2` になる
     let src_half = src_ft / 2;
     let src_w2 = cur.i8v(src_l1 * src_half * 2)?;
     let mut w2 = vec![0i8; L1_OUT * CONCAT];
@@ -675,7 +675,7 @@ mod tests {
     }
 
     /// resizeは元ファイルの構成を返す。学習側が「後段を初期値に使ってよいか」を
-    /// 判断するのに要る（ADR-0130）。
+    /// 判断するのに要る。
     #[test]
     fn resized_reports_source_dims() {
         let net = NnueNetwork::random(31);
@@ -683,13 +683,13 @@ mod tests {
         save(&net, "dims test", &mut buf).unwrap();
         let (_, lineage, dims) = load_resized_with_dims(&mut buf.as_slice()).unwrap();
         assert_eq!(dims, [FT_IN, FT_OUT, L1_OUT, L2_OUT]);
-        // 利きの構成は同じ構成のファイルだけを読み、変換しない（ADR-0237）
+        // 利きの構成は同じ構成のファイルだけを読み、変換しない
         if EFF_OUT == 0 {
             assert!(lineage.contains("resized to"), "来歴に変換の跡が残る");
         }
     }
 
-    /// 積なしのネットは後段まで読む経路で弾く（ADR-0171）。
+    /// 積なしのネットは後段まで読む経路で弾く。
     ///
     /// 寸法のヘッダは積の有無で変わらないので、版で判定する。版を見ずに
     /// 読むと `w2` の列幅が倍違うまま進み、「末尾に余分なバイトがある」に
@@ -698,7 +698,7 @@ mod tests {
     fn nets_without_the_pair_product_are_rejected() {
         let net = NnueNetwork::random(123);
         // 版2の本体はFT重みを常にi16で持つ。i8のビルドでも16bitへ広げて
-        // 組み立てる（ADR-0138）。バイト列の切り貼りでは並びが合わない
+        // 組み立てる。バイト列の切り貼りでは並びが合わない
         let mut body = Vec::new();
         for &x in &net.ft_b {
             body.extend_from_slice(&x.to_le_bytes());
@@ -724,24 +724,33 @@ mod tests {
         let err = load(&mut v2.as_slice())
             .err()
             .expect("積なしのネットを受け入れてはいけない");
-        assert!(err.contains("ADR-0171"), "原因の読める文言にする: {err}");
+        assert!(
+            err.contains("paired FT output"),
+            "原因の読める文言にする: {err}"
+        );
         let err = load_resized_with_dims(&mut v2.as_slice())
             .err()
             .expect("resizeの経路も後段を読むので弾く");
-        assert!(err.contains("ADR-0171"), "原因の読める文言にする: {err}");
+        assert!(
+            err.contains("paired FT output"),
+            "原因の読める文言にする: {err}"
+        );
     }
 
-    /// 利きの寸法がビルドと違うファイルは弾く（ADR-0237）。利きのないファイルは
+    /// 利きの寸法がビルドと違うファイルは弾く。利きのないファイルは
     /// `[0, 0]` を持ち、利きの構成のビルドでだけ弾かれる。
     #[test]
     fn effect_dims_must_match_the_build() {
         assert_eq!(require_effect([0, 0]).is_ok(), EFF_OUT == 0);
         assert_eq!(require_effect([EFF_IN, 64]).is_ok(), EFF_OUT == 64);
         let err = require_effect([EFF_IN, 48]).expect_err("幅が違えば弾く");
-        assert!(err.contains("ADR-0237"), "原因の読める文言にする: {err}");
+        assert!(
+            err.contains("effect accumulator mismatch"),
+            "原因の読める文言にする: {err}"
+        );
     }
 
-    /// 利きのaccumulatorがi16に収まらないネットは弾く（ADR-0237のD2）。
+    /// 利きのaccumulatorがi16に収まらないネットは弾く。
     /// 収まるネットは読める。
     #[test]
     fn effect_acc_must_fit_in_i16() {
@@ -762,7 +771,7 @@ mod tests {
         assert!(err.contains("i16"), "原因の読める文言にする: {err}");
     }
 
-    /// F2と最小の攻め駒の組は側のaccをi16で持ち、収まらないネットを弾く（ADR-0261）。
+    /// F2と最小の攻め駒の組は側のaccをi16で持ち、収まらないネットを弾く。
     #[test]
     fn side_minatt_acc_beyond_i16() {
         if !crate::nnue::SIDE_MINATT_INC {

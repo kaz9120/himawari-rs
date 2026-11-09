@@ -1,4 +1,4 @@
-"""たまった成果物の掃除（ADR-0189）。
+"""たまった成果物の掃除。
 
 保持は日数で決める。例外は現行の評価関数の系列だけで、名前の一覧を手で持たない。何を残すかを列挙し始めると、
 一覧の手入れが新しいゴミになる。
@@ -36,7 +36,7 @@ def _size(path: Path) -> int:
 
 
 def _protected_stems() -> set[str]:
-    """現行の評価関数の系列。並べ替え（ADR-0168）の前後どちらも守る。"""
+    """現行の評価関数の系列。並べ替えの前後どちらも守る。"""
     stem = Path(config.get("EVAL_FILE")).name.removesuffix(".hmwr")
     return {stem, stem.removesuffix("_reorder")}
 
@@ -71,7 +71,7 @@ def _candidates(days: int) -> list[tuple[str, Path]]:
         if old(p):
             found.append(("ログ", p))
     if paths.STATUS.is_dir():
-        # 状態ファイルは終わった後も残し、日数で消す（ADR-0220）。60秒ごとに書くので、
+        # 状態ファイルは終わった後も残し、日数で消す。60秒ごとに書くので、
         # 実行中のものは古くならない
         for p in sorted(paths.STATUS.glob("*.json")):
             if old(p):

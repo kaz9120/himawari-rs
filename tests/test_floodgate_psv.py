@@ -1,4 +1,4 @@
-"""floodgateの棋譜からの局面の取り出し（ADR-0228）を検証する。"""
+"""floodgateの棋譜からの局面の取り出しを検証する。"""
 
 import numpy as np
 import pytest

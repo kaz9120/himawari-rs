@@ -1,14 +1,14 @@
 name: Release
 
 # タグpushでCPU別バイナリをビルドし、release-pleaseが作ったGitHub
-# Releaseへ添付する（ADR-0003のtarget-feature固定ビルド、ADR-0071）。
+# Releaseへ添付する（target-featureを固定したビルド）。
 # 添付の競合を避けるため、ビルドはartifact経由で単一ジョブに集約する。
 # リリースノートとタグはrelease-pleaseが作るので、ここでは触らない。
 #
-# 配布バイナリはPGOで作る（ADR-0151群I、+10%前後のNPS）。手順は
+# 配布バイナリはPGOで作る（+10%前後のNPS）。手順は
 # scripts/build-pgo.sh と同じ3段で、各ターゲットのrunner上で計測用
 # ビルド→ベンチ4局面の走行→profile-useの再ビルドを行う。学習走行の
-# 評価関数はネット配布リリース（ADR-0080）から取得する。
+# 評価関数はネット配布リリースから取得する。
 # workflow_dispatchは、tagを省くとタグなしの動作確認で、Releaseへ添付しない。
 # tagを渡すと、そのタグのコードをいまのワークフローでビルドして、そのReleaseへ
 # 添付する。ランナーの廃止などで添付に失敗した版を出し直すときに使う。
@@ -29,7 +29,7 @@ permissions:
 
 env:
   # 学習走行に使う評価関数。現行ネットを差し替えたら更新する。
-  # net-v16からアセットは固定名 eval.hmwr になる（ADR-0080の追記）
+  # net-v16からアセットは固定名 eval.hmwr になる
   NET_TAG: net-v17
   NET_ASSET: eval.hmwr
   # 添付先のタグ。タグpushならそのタグ、workflow_dispatchなら入力のタグ
@@ -49,7 +49,7 @@ jobs:
             name: linux-x64-sse42
             rustflags: "-C target-cpu=x86-64-v2"
             bin: himawari
-          # WindowsはMSVCランタイムを静的リンクする（ADR-0083）。
+          # WindowsはMSVCランタイムを静的リンクする。
           # 既定の動的リンクだと VCRUNTIME140.dll が要り、再頒布可能
           # パッケージの入っていない環境で起動しない
           - os: windows-latest
@@ -131,7 +131,7 @@ jobs:
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           merge-multiple: true
-      # release-pleaseが作ったリリースへ添付する（ADR-0071）。
+      # release-pleaseが作ったリリースへ添付する。
       # bodyを渡さないので、生成済みのリリースノートはそのまま残る。
       - uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:

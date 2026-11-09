@@ -1,4 +1,4 @@
-//! 1手詰め（ADR-0241の第8回）。盤を動かさずに判定する。
+//! 1手詰め。盤を動かさずに判定する。
 //!
 //! coreの `mate_1ply` と同じ候補を同じ順に調べ、同じ手を返す。
 //! coreの判定は健全だが不完全で、合駒の升があれば持ち駒が1枚でもあるだけで「打って遮れる」とみなす。
@@ -151,7 +151,7 @@ fn bit81_or_zero(i: u8) -> u128 {
     if s == 0xFF { 0 } else { 1u128 << s }
 }
 
-/// 1手詰めの列挙と判定の仕事の量（`mate_1ply_counted` が足す。ADR-0241の第10回）。
+/// 1手詰めの列挙と判定の仕事の量（`mate_1ply_counted` が足す）。
 #[derive(Clone, Copy, Debug, Default)]
 pub struct MateCount {
     /// 呼び出しの回数
@@ -636,7 +636,6 @@ impl Position {
             let p = self.board[s as usize];
             // 回す駒は、短い利きで近傍へ届きうる升の駒と、近傍に飛び利きが届いている駒に絞ってある。
             // 空の盤で届かない駒をもう一度表で落とす段は、41KBの表を引く費用が見合わないので外した
-            // （ADR-0241の第16回）
             if COUNT {
                 cnt.pieces_kept += 1;
             }
@@ -778,7 +777,7 @@ impl Position {
     #[inline]
     fn escape_left(&self, escapes: u128, ksq: u8, t: u8, np: u8, from: u8, occ_all: u128) -> bool {
         let t81 = SQ81[t as usize] as usize;
-        // 置いた升と、置いた駒の短い利きで埋まる逃げ場を1回の論理積で落とす（ADR-0241の第16回）
+        // 置いた升と、置いた駒の短い利きで埋まる逃げ場を1回の論理積で落とす
         let mut left = escapes & !short81(np, t81) & !(1u128 << t81);
         if left == 0 {
             return false;

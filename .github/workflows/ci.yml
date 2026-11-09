@@ -33,10 +33,10 @@ jobs:
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
       - run: cargo fmt --all --check
       - run: cargo clippy --all-targets -- -D warnings
-      # 活性ダンプのfeature（ADR-0168）。通常のビルドでは触らないので、
+      # 活性ダンプのfeature。通常のビルドでは触らないので、
       # コンパイルが通ることだけ確かめて腐るのを防ぐ
       - run: cargo check -p himawari-engine --features actdump
-      # hmwrコマンドと解析ツールのPython（ADR-0180）。引数処理は同じ入力から
+      # hmwrコマンドと解析ツールのPython。引数処理は同じ入力から
       # 同じコマンド列が出ることを、解析はログの読み取りを固定する
       - run: pip install --quiet pytest numpy
       - run: python3 -m pytest tests -q
@@ -68,7 +68,7 @@ jobs:
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
       - run: cargo test --workspace
 
-  # perft既知値の照合（debugではignoreされる。ADR-0006/0018）
+  # perft既知値の照合（debugではignoreされる）
   # LTOを外し、codegen-unitsを16にする（#806）。時間の大半はテストの実行
   # ではなく、テストのバイナリごとにかかるLTOのリンクだった。守るものは
   # releaseの意味論で、opt-level=3・debug_assertionsなし・overflowの
@@ -90,19 +90,19 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # 既定以外のネットワーク構成（ADR-0127）。L1をパディングする経路と
+          # 既定以外のネットワーク構成。L1をパディングする経路と
           # FTを太らせた経路が壊れていないことを、コンパイルとテストで確認する
           - arch: 512x16x64
             args: --workspace
-          # 利きのaccumulatorを持たない構成（ADR-0237より前の既定）。既定が
+          # 利きのaccumulatorを持たない構成（利きの入力を足す前の既定）。既定が
           # e64になったので、利きの経路をコードごと消すビルドをここで守る
           - arch: 1024x16x32
             args: --workspace
-          # F2と最小の攻め駒を升の語の差分で持つ構成（ADR-0248）。差分の累積が
+          # F2と最小の攻め駒を升の語の差分で持つ構成。差分の累積が
           # side_featの作り直しと一致することを、engineの単体テストで守る
           - arch: 1024x16x32e64-f2_minatt
             args: -p himawari-engine --lib
-          # F2だけを差分で持つ構成（ADR-0261より前の既定）。既定がf2_minattに
+          # F2だけを差分で持つ構成（f2_minattを入れる前の既定）。既定がf2_minattに
           # なったので、F2の差分の経路をここで守る
           - arch: 1024x16x32e64
             args: --workspace
@@ -118,7 +118,7 @@ jobs:
           key: ${{ matrix.arch }}
       - run: HIMAWARI_ARCH=${{ matrix.arch }} cargo test ${{ matrix.args }}
 
-  # 配列盤とcoreを並べて毎回答えを比べる構成（ADR-0241）のテストを、
+  # 配列盤とcoreを並べて毎回答えを比べる構成のテストを、
   # debugビルドで回す。既定の配列盤は上のtestジョブが見る
   test-board:
     strategy:
@@ -137,7 +137,7 @@ jobs:
           key: ${{ matrix.args }}
       - run: cargo test ${{ matrix.args }}
 
-  # SPSAチューニングのfeature（ADR-0143）。setoptionの動作は
+  # SPSAチューニングのfeature。setoptionの動作は
   # engine側の単体テストで確かめる
   test-tune:
     runs-on: ubuntu-latest
@@ -166,7 +166,7 @@ jobs:
           done
 
 
-  # NNUE推論のAVX2経路を検証する（ADR-0099）。既定のx86-64ターゲットは
+  # NNUE推論のAVX2経路を検証する。既定のx86-64ターゲットは
   # SSE2までで、上のジョブではAVX2経路がコンパイルされない。
   # Cargo.tomlのLTOのままで回す。LTOでビルドしたengineのテストはここで残る
   avx2:

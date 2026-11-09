@@ -1,4 +1,4 @@
-//! PackedSfenValue教師データの前処理ツール（ADR-0038）。
+//! PackedSfenValue教師データの前処理ツール。
 //!
 //! 使い方:
 //!   psv stats   --in file [--limit N]          統計表示（局面数・score分布・勝敗・勝率帯）
@@ -11,18 +11,18 @@
 //!                                              --parts Nは出力を.partNNNへ分割する。
 //!                                              --limit Nは入力の先頭N局面だけを読む
 //!   psv quiet   --in file --out file [--limit N] [--max-plies N（既定1）] [--hash MB]
-//!               [--append] [--consume] [--jobs N]  qsearchのPV葉へ置き換える（ADR-0136）。
+//!               [--append] [--consume] [--jobs N]  qsearchのPV葉へ置き換える。
 //!                                              --appendは出力へ追記、--consumeは完了後に
 //!                                              入力を消す（分割入力の逐次処理用）。--jobsの
 //!                                              並列出力はjobs固定で決定論（逐次とは不一致）
 //!   psv rank    --in file --out file [--limit N] [--skip N] [--hash MB]
-//!                                              兄弟局面の葉の群を作る（ADR-0185）
+//!                                              兄弟局面の葉の群を作る
 //!   psv dedup   --in file --out file [--count N] [--limit N]
-//!                                              同じ盤面の2回目以降を捨て、初出の順に残す
-//!                                              （ADR-0224）。--count Nで書く件数を、--limit Nで
+//!                                              同じ盤面の2回目以降を捨て、初出の順に残す。
+//!                                              --count Nで書く件数を、--limit Nで
 //!                                              読む件数を打ち切る
 //!
-//! shuffleは2パスのバケット法で動く（ADR-0065）。メモリ使用量は
+//! shuffleは2パスのバケット法で動く。メモリ使用量は
 //! バケット1個分（2GB）に収まるため、入力サイズの制限はない。
 //! 一時ファイルは出力と同じディレクトリに作り、使い終わり次第消す。
 
@@ -97,9 +97,9 @@ fn stats(input: &str, limit: Option<u64>) {
     let mut results = [0u64; 3]; // 負け・引き分け・勝ち
     let mut ply_max = 0u16;
     let mut hist = [0u64; 9]; // |score|の桁別ヒストグラム
-    let mut wp_hist = [0u64; 100]; // 勝率1%刻み（非詰み）。ADR-0190の診断
+    let mut wp_hist = [0u64; 100]; // 勝率1%刻み（非詰み）。教師の勝率の偏りを見る
     let (mut mate_win, mut mate_lose) = (0u64, 0u64);
-    // 盤上の駒数（玉2枚を含む）。出力バケットの境界を決める材料（ADR-0137）
+    // 盤上の駒数（玉2枚を含む）。出力バケットの境界を決める材料
     let mut piece_hist = [0u64; 41];
     let mut piece_n = 0u64;
     while r.read_exact(&mut buf).is_ok() {
@@ -221,7 +221,7 @@ fn stats(input: &str, limit: Option<u64>) {
     }
 
     if piece_n > 0 {
-        // 出力バケットの境界は分布の四分位から決める（ADR-0137）
+        // 出力バケットの境界は分布の四分位から決める
         println!("盤上の駒数（玉を含む、先頭{piece_n}局面）:");
         let mut acc = 0u64;
         let mut quartile = 1;
@@ -282,10 +282,10 @@ fn head(input: &str, output: &str, count: u64, skip: u64) {
     println!("{n}局面を{output}へ書き出しました（{skip}局面スキップ）");
 }
 
-/// 詰みスコアの下限。statsはこの絶対値以上を詰みとして別に数える（ADR-0188）。
+/// 詰みスコアの下限。statsはこの絶対値以上を詰みとして別に数える。
 const MATE_ABS: i32 = 29000;
 
-/// 同じ盤面の2回目以降を捨て、初出の順に残す（ADR-0224）。
+/// 同じ盤面の2回目以降を捨て、初出の順に残す。
 ///
 /// 盤面はpacked sfenの32バイト（盤・手番・持ち駒）で比べ、手数・教師信号は
 /// 見ない。比べるのは32バイトの64ビットハッシュで、1億件の出力で誤って
@@ -337,7 +337,7 @@ fn board_hash(sfen: &[u8]) -> u64 {
     h ^ (h >> 31)
 }
 
-/// 1バケットの目標サイズ。パス2でバケット1個をメモリに載せる（ADR-0065）。
+/// 1バケットの目標サイズ。パス2でバケット1個をメモリに載せる。
 const BUCKET_BYTES: u64 = 2 << 30;
 /// バケットごとの書き込みバッファ。40バイト単位の書き込みをまとめる。
 const BUCKET_BUF: usize = 1 << 20;
@@ -367,19 +367,19 @@ struct ShuffleCfg {
     limit: u64,
 }
 
-/// 2パスのバケット法で全体をシャッフルする（ADR-0065）。
+/// 2パスのバケット法で全体をシャッフルする。
 ///
 /// パス1で各レコードをランダムなバケットへ振り分け、パス2でバケット単位に
 /// メモリ上でシャッフルして連結する。メモリ使用量はバケット1個分に収まる。
 ///
 /// consumeは読み終えた入力ファイルから順に消し、ディスクのピークを
-/// 入力1倍強に抑える（ADR-0192）。再取得できる生データにだけ使う。
+/// 入力1倍強に抑える。再取得できる生データにだけ使う。
 /// partsが2以上なら、出力を `<出力名>.partNNN` のほぼ等分な連番へ分ける。
 /// 分割してもレコードの割り付けはseedだけで決まり、連結すればparts=1と
 /// 同じ並びになる。
 ///
 /// limitは入力の先頭からこの局面数だけを読む。生データの先頭だけを元にする
-/// ときに使う（ADR-0216）。上限で読み止めた入力は、consumeでも消さない。
+/// ときに使う。上限で読み止めた入力は、consumeでも消さない。
 fn shuffle(inputs: &[&str], output: &str, cfg: ShuffleCfg) {
     let ShuffleCfg {
         seed,
@@ -505,7 +505,7 @@ fn shuffle(inputs: &[&str], output: &str, cfg: ShuffleCfg) {
     }
 }
 
-/// 教師局面をqsearchのPV葉へ置き換える（ADR-0136）。
+/// 教師局面をqsearchのPV葉へ置き換える。
 ///
 /// 評価関数が探索中に見るのは静止局面である。ところがhao_depth9は
 /// qsearch PV葉への置換なしで配られており、駒の取り合いの途中の局面へ
@@ -825,7 +825,7 @@ fn quiet(
     );
 }
 
-/// 兄弟局面の葉の群を作る（ADR-0185）。
+/// 兄弟局面の葉の群を作る。
 ///
 /// 教師の最善手の子と、他の合法手から引いた負例2手の子を、それぞれ
 /// qsearchのPV葉まで進めて 正例・負例・負例 の順に書く。1群は
@@ -925,7 +925,7 @@ fn rank(input: &str, output: &str, limit: u64, skip: u64, hash_mb: usize, eval: 
             child.move16 = 0;
             child.game_ply = rec.game_ply.saturating_add(plies as u16);
             let mut bytes = child.to_bytes();
-            // 予備バイトへ親からの手数の偶奇を入れる（ADR-0185）
+            // 予備バイトへ親からの手数の偶奇を入れる
             bytes[39] = (plies % 2) as u8;
             out_recs.push(bytes);
         }
@@ -1031,7 +1031,7 @@ fn main() {
             let limit = arg_value(rest, "--limit")
                 .map(|s| s.parse().unwrap_or(u64::MAX))
                 .unwrap_or(u64::MAX);
-            // 既定はADR-0136の採択構成（1手）。hmwr data quietの既定と
+            // 既定は採択した構成の1手。hmwr data quietの既定と
             // 揃える。ここが16のままだと、直接呼んだときだけ別条件の
             // データができる（2026-08-30の前処理事故の再発防止）
             let max_plies = arg_value(rest, "--max-plies")

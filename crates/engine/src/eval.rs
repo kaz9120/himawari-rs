@@ -1,7 +1,7 @@
-//! 評価関数インターフェース（ADR-0023）。
+//! 評価関数インターフェース。
 //!
-//! enumディスパッチ。駒割＋tempoのMaterialと、NNUE（ADR-0034）。
-//! NNUEはADR-0045で利き塔を除去し、純粋HalfKP構成にした。
+//! enumディスパッチ。駒割＋tempoのMaterialと、NNUE。
+//! NNUEはHalfKPに、利きを入力にする側のaccumulatorを足した構成である（構成は build.rs）。
 //! push/popはdo_move/undo_moveと対で呼ぶ契約。
 
 use std::sync::Arc;
@@ -21,7 +21,7 @@ pub enum Evaluator {
     Nnue(NnueEval),
 }
 
-/// NNUE評価（ADR-0034〜0036）。ネットは全スレッド共有、
+/// NNUE評価。ネットは全スレッド共有、
 /// accumulatorスタックはスレッドローカル。
 pub struct NnueEval {
     net: Arc<NnueNetwork>,

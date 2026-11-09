@@ -1,4 +1,4 @@
-//! BonaPiece番号付け（やねうら王互換、ADR-0034）。
+//! BonaPiece番号付け（やねうら王互換）。
 //!
 //! HalfKP特徴量のインデックスを構成する駒の通し番号。成り小駒
 //! （と・成香・成桂・成銀）は金として数え、玉は特徴に含めない。
@@ -111,7 +111,7 @@ pub fn hand_bona_piece(c: Color, owner: Color, pt: PieceType, i: u32) -> u16 {
     hand_base(owner == c, pt) + (i - 1) as u16
 }
 
-/// 盤上駒のカテゴリ（ADR-0164）。
+/// 盤上駒のカテゴリ。
 ///
 /// BonaPieceの盤上部分は、このカテゴリ順に (視点側, 相手側) の81升ブロックが
 /// 並ぶ。金の動きをする5駒種は `board_base` の `gold_like` で1つに畳まれるため、
@@ -132,7 +132,7 @@ const BOARD_CATEGORIES: [PieceType; 9] = [
 /// BonaPiece集合を保持するブロック数（手駒1＋盤上の9カテゴリ×2色）。
 pub const BP_BLOCKS: usize = 1 + 2 * BOARD_CATEGORIES.len();
 
-/// ブロックに分けたBonaPiece集合（ADR-0165）。
+/// ブロックに分けたBonaPiece集合。
 ///
 /// 0番目が手駒（BonaPiece 0..`FE_HAND_END`）、1番目以降が盤上の81升ブロックで、
 /// **並びはBonaPiece番号の昇順と一致する。** 語をまたぐ配置がないので、
@@ -153,8 +153,8 @@ pub const fn block_base(b: usize) -> u32 {
     }
 }
 
-/// BonaPiece `bp` のビットを反転する。集合へ足すのにも引くのにも使える
-/// （ADR-0250）。反転は順序に依らないので、何手ぶんかの差分を戻す順も問わない。
+/// BonaPiece `bp` のビットを反転する。集合へ足すのにも引くのにも使える。
+/// 反転は順序に依らないので、何手ぶんかの差分を戻す順も問わない。
 #[inline]
 pub fn toggle_bona_bit(bits: &mut BonaBits, bp: u16) {
     if bp < F_PAWN {
@@ -171,7 +171,7 @@ const fn rev81(x: u128) -> u128 {
     x.reverse_bits() >> (128 - 81)
 }
 
-/// 視点cのBonaPiece集合をブロックへ書く（ADR-0164・ADR-0165）。
+/// 視点cのBonaPiece集合をブロックへ書く。
 ///
 /// 結果は `board_bona_piece`・`hand_bona_piece` を駒1枚ずつ呼んで
 /// ビットを立てたものと一致する。**1枚ずつ回らずに済むのは、BonaPieceの
@@ -198,7 +198,7 @@ pub fn bona_piece_bits(pos: &Position, c: Color, out: &mut BonaBits) {
 ///
 /// `hand_count(持ち主, 駒種)` は手駒の枚数、`board(持ち主, 駒種)` は盤上の駒の81升の集合を返す。
 /// 駒種が金のときは、金の動きをする5駒種（金と成駒4種）の和を返す契約である。
-/// 配列盤の研究（ADR-0241の第13回）が、coreの局面なしで同じ集合を作るのに使う。
+/// 配列盤の研究が、coreの局面なしで同じ集合を作るのに使う。
 #[inline]
 pub fn bona_piece_bits_with(
     c: Color,
@@ -312,7 +312,7 @@ mod tests {
     #[test]
     fn board_categories_match_bona_order() {
         // ブロックの並びがBonaPieceの番号順と一致すること。block_baseは
-        // これを前提に F_PAWN から81ずつ進む（ADR-0165）
+        // これを前提に F_PAWN から81ずつ進む
         for (i, pt) in BOARD_CATEGORIES.into_iter().enumerate() {
             assert_eq!(u32::from(board_base(true, pt)), block_base(1 + 2 * i));
             assert_eq!(u32::from(board_base(false, pt)), block_base(2 + 2 * i));

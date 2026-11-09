@@ -1,6 +1,6 @@
 [package]
 name = "himawari-mailbox"
-description = "配列盤と利きの配列による盤面表現。探索の盤の既定（ADR-0241）"
+description = "配列盤と利きの配列による盤面表現。探索の盤の既定"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -10,10 +10,10 @@ publish = false
 workspace = true
 
 [features]
-# 戻しを差分ではなく、利きの表の複写で行う（ADR-0241の段階4で比べる）
+# 戻しを差分ではなく、利きの表の複写で行う。既定の戻し方と比べるための構成
 copy-undo = []
 # 盤と利きの表の1列を16升にする。外すと1列11升（143要素）になる。
-# 第5回の計測で16升がratio_moveを約0.1下げたので既定にした（ADR-0241）
+# 1列11升と比べた計測で、16升がratio_moveを約0.1下げたので既定にした
 default = ["stride16"]
 stride16 = []
 
@@ -25,7 +25,7 @@ himawari-tools = { path = "../tools" }
 # 1手詰めの照合にcoreの探索側の mate_1ply を使う
 himawari-engine = { path = "../engine" }
 
-# 段階4のミクロな計測（ADR-0241）。cargo bench -p himawari-mailbox --bench mbbench
+# 段階4のミクロな計測。cargo bench -p himawari-mailbox --bench mbbench
 [[bench]]
 name = "mbbench"
 harness = false

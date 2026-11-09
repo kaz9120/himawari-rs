@@ -206,7 +206,7 @@ def test_build_pair_restore_removes_files_absent_from_head(tmp_path):
     git("tag", "base")
     git("rm", "-q", "crates/removed.rs")
     (tmp_path / "crates" / "added.rs").write_text("c\n")
-    # 片側にだけあるクレートをワークスペースへ足した形（ADR-0241）
+    # 片側にだけあるクレートをワークスペースへ足した形
     (tmp_path / "Cargo.toml").write_text("members = [a, b]\n")
     (tmp_path / "Cargo.lock").write_text("lock b\n")
     git("add", ".")
@@ -325,7 +325,7 @@ def test_bench_forwards_options(capsys):
 
 
 def test_build_pair_places_boardbench_next_to_each_side(capsys):
-    """盤面操作の計測は、対局用のバイナリと同じ crates/ から作る（ADR-0239）。"""
+    """盤面操作の計測は、対局用のバイナリと同じ crates/ から作る。"""
     _, lines = dry(capsys, ["build", "pair", "adr0239-x"])
     copies = [x for x in lines if " cp " in x]
     assert copies[1].endswith("target/release/boardbench data/bin/cand-adr0239-x.boardbench")
@@ -457,7 +457,7 @@ def test_net_release_needs_an_existing_file(capsys):
 
 
 def test_net_release_ships_the_fixed_asset_name(capsys, tmp_path):
-    """アセットは固定名で配り、学習時の名前はノートに残す（ADR-0080の追記）。"""
+    """アセットは固定名で配り、学習時の名前はノートに残す。"""
     lineage = b"train-v2 data=x"
     header = b"HMWRNNUE" + (10).to_bytes(4, "little") + bytes(5 * 4)
     net_file = tmp_path / "pool9_2ep.hmwr.best"
@@ -494,7 +494,7 @@ def test_book_release_is_dry_by_default(capsys, tmp_path):
 
 
 def test_book_release_ships_the_fixed_asset_name(capsys, tmp_path):
-    """定跡は手元の名前によらず book.db で配る（ADR-0080の追記）。"""
+    """定跡は手元の名前によらず book.db で配る。"""
     db = tmp_path / "main.db"
     db.write_text("#YANEURAOU-DB2016 1.00\nsfen a\n", encoding="utf-8")
     assert cli.main(["--dry-run", "book", "release", str(db), "4"]) == proc.OK

@@ -2,12 +2,12 @@
 
 固定深さでノード数を比べる `verify`、NPSを測る `bench`、時間の内訳を見る
 `profile` を持つ。`bench board` は探索を通さず、盤面操作だけを1回あたりの
-nsで測る（ADR-0239）。いずれも実体は crates/tools のRustバイナリで、USIエンジンを
-起動して測る仕事はそちらにある（ADR-0122）。
+nsで測る。いずれも実体は crates/tools のRustバイナリで、USIエンジンを
+起動して測る仕事はそちらにある。
 
 動作環境の最適なスレッド数を測る `threadtune` もここに置く。実体だけは
 エンジン本体のモードだが、やることはNPSと自己対局による測定で、`bench` の
-隣にあるのが読み手に分かりやすい（ADR-0203）。
+隣にあるのが読み手に分かりやすい。
 """
 
 from __future__ import annotations
@@ -149,7 +149,7 @@ def bench(args: argparse.Namespace) -> int:
     )
 
 
-# --- bench board（ADR-0239） --------------------------------------------
+# --- bench board --------------------------------------------
 
 #: `hmwr build pair` が対局用のバイナリの隣に置く、盤面操作の計測の拡張子
 BOARD_SUFFIX = ".boardbench"

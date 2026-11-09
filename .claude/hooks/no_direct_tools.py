@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""hmwr がラップするツールの直接実行を止める（ADR-0208）。
+"""hmwr がラップするツールの直接実行を止める。
 
 実験のチェーンが psv と selfplay を直接叩き、既定値がチェーンごとにずれた。
 入口を `hmwr` に限れば、既定値・ログの置き場・完了マーカーが1か所で決まる。
@@ -34,7 +34,7 @@ VIA_CARGO = re.compile(
 )
 
 MESSAGE = """\
-この操作は直接実行しない。hmwr 経由で実行する（ADR-0208）。
+この操作は直接実行しない。hmwr 経由で実行する。
   psv      → hmwr data shuffle / split / mix / quiet / rank / dedup / stats / openings
   selfplay → hmwr match run（固定ペア数は --stop pairs:N）
   himawari threadtune → hmwr threadtune（ビルドを選ぶなら --build <名前>）

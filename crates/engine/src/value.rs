@@ -1,4 +1,4 @@
-//! 評価値の符号化（ADR-0024, 0026）。
+//! 評価値の符号化。
 
 pub type Value = i32;
 
@@ -10,7 +10,7 @@ pub const VALUE_DRAW: Value = 0;
 pub const VALUE_MATE: Value = 32000;
 pub const VALUE_INFINITE: Value = 32601;
 pub const VALUE_NONE: Value = 32602;
-/// 優等局面の値（ADR-0026）。ply補正しない。
+/// 優等局面の値。ply補正しない。
 pub const VALUE_SUPERIOR: Value = 28000;
 
 pub const MAX_PLY: usize = 128;
@@ -27,7 +27,7 @@ pub const fn mated_in(ply: usize) -> Value {
     -VALUE_MATE + ply as Value
 }
 
-/// 置換表へ保存する値（詰みスコアから根までの距離を除く。ADR-0024）。
+/// 置換表へ保存する値（詰みスコアから根までの距離を除く）。
 #[inline]
 pub fn value_to_tt(v: Value, ply: usize) -> i16 {
     debug_assert!(v.abs() < VALUE_NONE);

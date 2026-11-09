@@ -1,4 +1,4 @@
-//! 段階5の盤面操作。合法性・擬似合法性・王手の判定・SEE（ADR-0241の第6回）。1手詰めは `mate.rs` にある。
+//! 段階5の盤面操作。合法性・擬似合法性・王手の判定・SEE。1手詰めは `mate.rs` にある。
 //!
 //! どれもcoreの同名の関数と同じ値を返す（照合のテストで確かめる）。
 //! 利きの配列を引いて決め、Bitboardの利きの計算は使わない。
@@ -167,7 +167,7 @@ impl Position {
 
     /// 升aと升bの間の升の集合（同じ線に無ければ空）。
     pub fn between81(&self, a: u8, b: u8) -> u128 {
-        // 盤を歩かず、aからbへの線とbから先の線の差で引く（ADR-0241の第16回）
+        // 盤を歩かず、aからbへの線とbから先の線の差で引く
         let (a81, b81) = (SQ81[a as usize] as usize, SQ81[b as usize] as usize);
         let d = dir81(a81, b81);
         if d == NO_DIR {
@@ -417,7 +417,7 @@ impl Position {
     }
 
     /// `check_squares` を駒種の添字（0〜15、0・1は空）で並べた表。手ごとに引く呼び出しを
-    /// ループの外へ出すときに使う（engineのADR-0251）。
+    /// ループの外へ出すときに使う。
     pub fn check_squares_all(&self) -> [u128; 16] {
         self.check_info().sq
     }
@@ -434,7 +434,7 @@ impl Position {
         r
     }
 
-    /// `gives_check` を、81升の通し番号と移動後の駒で受ける（engineのADR-0252）。
+    /// `gives_check` を、81升の通し番号と移動後の駒で受ける。
     /// 判定は81升の集合で行うので、配列盤の添字へ直さずに済む。駒打ちでは `from81` を使わない。
     #[inline]
     pub fn gives_check81(&self, to81: u8, from81: u8, drop: bool, piece_after: u8) -> bool {
@@ -512,7 +512,7 @@ impl Position {
 
     /// 色ciの攻め駒の集合から最も安い駒を選ぶ。同じ組なら小さい升。(升, 価値, 玉か)
     ///
-    /// 安い組から順に、駒種ごとの集合との積を見る。攻め駒を1枚ずつ盤から引かない（ADR-0241の第17回）。
+    /// 安い組から順に、駒種ごとの集合との積を見る。攻め駒を1枚ずつ盤から引かない。
     #[inline]
     fn least_valuable(&self, ci: usize, att: u128) -> (u8, i32, bool) {
         // 組の順はcoreの `SEE_ORDER` と同じ。駒種1の欄は金と成金4種の和

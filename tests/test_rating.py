@@ -1,4 +1,4 @@
-"""floodgateのレートの読み取りを検証する（ADR-0209）。通信はしない。"""
+"""floodgateのレートの読み取りを検証する。通信はしない。"""
 
 import datetime
 import os

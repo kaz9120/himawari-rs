@@ -13,14 +13,14 @@ use himawari_engine::nnue::{
 use himawari_engine::nnue_io;
 
 const SIGMOID_SCALE: f32 = 600.0;
-/// 評価値スケール（ADR-0036）。量子化を戻すのに使う
+/// 評価値スケール。量子化を戻すのに使う
 const FV_SCALE: i32 = 16;
 
 fn sigmoid(x: f32) -> f32 {
     1.0 / (1.0 + (-x).exp())
 }
 
-/// 1レコードの抽出結果。指し手ラベルは補助ヘッド用（ADR-0129）。
+/// 1レコードの抽出結果。指し手ラベルは補助ヘッド用。
 struct Sample {
     stm: Vec<u32>,
     opp: Vec<u32>,
@@ -28,7 +28,7 @@ struct Sample {
     move_from: i64,
     move_to: i64,
     /// 側の入力特徴。手番視点・非手番視点の順に `EFF_ACTIVE` 個ずつ。F2は81個で、
-    /// F2と最小の攻め駒の組（ADR-0248）は上限の個数まで詰め物（`EFF_IN`）で埋める。
+    /// F2と最小の攻め駒の組は上限の個数まで詰め物（`EFF_IN`）で埋める。
     eff_inputs: Option<(Vec<u32>, Vec<u32>)>,
 }
 
@@ -38,7 +38,7 @@ struct Sample {
 /// `score_clamp` が正なら、評価値をその絶対値へ丸めてから教師信号にする。
 /// 教師データの9.8%は詰みスコア（±29000以上）で、`sigmoid(score/600)` は
 /// |score| >= 4144 で飽和する。丸めずに通すと教師信号が0か1に張り付き、
-/// モデルは有限の出力で届かない値を目指し続ける（ADR-0126）。
+/// モデルは有限の出力で届かない値を目指し続ける。
 fn extract_one(
     raw: &[u8; PSV_BYTES],
     lambda_: f32,
@@ -83,7 +83,7 @@ fn extract_one(
 /// 1局面1視点あたりの側の入力特徴の数。F2は升ごとに1つで81、F2と最小の攻め駒の組は上限。
 const EFF_ACTIVE: usize = if EFF_GENERIC { EFF_MAX_ACTIVE } else { 81 };
 
-/// 側の入力特徴を手番視点・非手番視点の順に返す（ADR-0237・0248）。推論と同じ
+/// 側の入力特徴を手番視点・非手番視点の順に返す。推論と同じ
 /// `effect_active`・`side_feat` を通すので、学習と推論で特徴の作り方がずれない。
 fn effect_inputs(pos: &himawari_core::Position) -> (Vec<u32>, Vec<u32>) {
     let stm = pos.side_to_move();
@@ -122,12 +122,12 @@ fn extract_features(
     )
 }
 
-/// バッチ分のレコードをまとめてEmbeddingBag形式へ変換する（ADR-0065）。
+/// バッチ分のレコードをまとめてEmbeddingBag形式へ変換する。
 ///
 /// 戻り値は `(stm_idx, stm_off, opp_idx, opp_off, targets, move_from, move_to,
 /// eff_stm, eff_opp)` の9本。`move_from`・`move_to` は補助ヘッド用の指し手
-/// ラベルで、取れなかった局面は-1になる（ADR-0129）。最後の2本は利きの入力特徴
-/// （ADR-0237）で、1局面あたり `EFF_ACTIVE` 個ずつ並ぶ（F2は81）。
+/// ラベルで、取れなかった局面は-1になる。最後の2本は利きの入力特徴
+/// で、1局面あたり `EFF_ACTIVE` 個ずつ並ぶ（F2は81）。
 /// `effect_inputs` が偽なら長さ0で返る。
 /// 抽出はrayonで並列に行い、その間GILを解放する。
 type BatchArrays<'py> = (
@@ -202,7 +202,7 @@ fn extract_batch<'py>(
             )
         });
 
-    // レコードの並びが意味を持つ用途（ADR-0185のランキング群）では、
+    // レコードの並びが意味を持つ用途（兄弟局面のランキング群）では、
     // 黙って落とすと整列が壊れる。strictでは落とした時点で失敗させる
     if strict && dropped > 0 {
         return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(format!(
@@ -224,7 +224,7 @@ fn extract_batch<'py>(
 }
 
 /// 学習側が渡す重みの長さを検査する。次元の取り違えは、書けてしまうと
-/// 読み込み時のバイト数不一致まで気づけない（ADR-0127）。
+/// 読み込み時のバイト数不一致まで気づけない。
 fn check_len(name: &str, got: usize, want: usize) -> PyResult<()> {
     if got != want {
         return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(format!(
@@ -251,13 +251,13 @@ fn save_hmwr(
     b3: Vec<i32>,
     w_out: Vec<i8>,
     b_out: i32,
-    // 利きのaccumulatorを持つ構成でだけ渡す（ADR-0237）
+    // 利きのaccumulatorを持つ構成でだけ渡す
     eff_w: Option<Vec<i16>>,
     eff_b: Option<Vec<i16>>,
 ) -> PyResult<()> {
     check_len("ft_w", ft_w.len(), FT_IN * FT_OUT)?;
-    // 学習側は常にi16で渡す。i8ビルドでは範囲検査を通してから格納する
-    // （ADR-0138）。飽和する重みは黙って切り詰めずエラーにする
+    // 学習側は常にi16で渡す。i8ビルドでは範囲検査を通してから格納する。
+    // 飽和する重みは黙って切り詰めずエラーにする
     let ft_w = himawari_engine::nnue::ft_w_from_i16(ft_w)
         .map_err(pyo3::exceptions::PyValueError::new_err)?;
     check_len("ft_b", ft_b.len(), FT_OUT)?;
@@ -292,7 +292,7 @@ fn save_hmwr(
     Ok(())
 }
 
-/// `.hmwr` を読み、学習側が使うf32の重みへ戻す（ADR-0130）。
+/// `.hmwr` を読み、学習側が使うf32の重みへ戻す。
 ///
 /// 量子化の逆変換なので、元のf32とは丸めのぶんだけ違う。凍結して使う
 /// ぶんには差が動かないので影響しない。構成が違うファイルはいまの
@@ -348,7 +348,7 @@ fn load_hmwr<'py>(py: Python<'py>, path: &str) -> PyResult<Bound<'py, PyDict>> {
     Ok(d)
 }
 
-/// `.hmwr` を読み、psvのレコードを推論側の全計算で評価する（ADR-0237）。
+/// `.hmwr` を読み、psvのレコードを推論側の全計算で評価する。
 ///
 /// 学習と推論の一致テストに使う。値は手番視点・歩=90スケールの整数で、
 /// 探索が見るのと同じ `evaluate_scalar` を通す。復元できないレコードは
@@ -400,7 +400,7 @@ fn himawari(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add("ARCH", ARCH)?;
     m.add("EFF_IN", EFF_IN)?;
     m.add("EFF_OUT", EFF_OUT)?;
-    // F2と最小の攻め駒の組（ADR-0248）。学習側は詰め物の行 `EFF_IN` を足して持つ
+    // F2と最小の攻め駒の組。学習側は詰め物の行 `EFF_IN` を足して持つ
     m.add("EFF_GENERIC", EFF_GENERIC)?;
     m.add("EFF_ACTIVE", EFF_ACTIVE)?;
     Ok(())

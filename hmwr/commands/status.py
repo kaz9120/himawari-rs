@@ -97,7 +97,7 @@ def _rate_eta(d: dict) -> tuple[float | None, int | None]:
 
 
 def _relabel_progress() -> list[dict]:
-    """その場の付け直しの進み具合（ADR-0219）。状態ファイルを持たない旧い実行の代わりに読む。"""
+    """その場の付け直しの進み具合。状態ファイルを持たない旧い実行の代わりに読む。"""
     out = []
     for p in paths.TRAIN.glob("*.psv.relabel.json"):
         try:

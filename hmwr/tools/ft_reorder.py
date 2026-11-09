@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""活性ダンプからFT出力次元の置換を決める（ADR-0168）。
+"""活性ダンプからFT出力次元の置換を決める。
 
-第1層は4列チャンクのうち全ゼロのものを飛ばす（ADR-0151群L）。飛ばせる数は
+第1層は4列チャンクのうち全ゼロのものを飛ばす。飛ばせる数は
 次元の並び順で変わるので、ゼロが同時に起きる次元を同じチャンクへ寄せると
 第1層の回る回数が減る。出力した置換は `makenet --reorder` へ渡す。
 並べ替えても積和の項の集合は変わらず、評価値はビット一致する。
@@ -11,10 +11,10 @@
 次元iが非ゼロだったことを表す。
 
 **渡すのは片視点の活性の次元数であって、FTの出力次元ではない。**出力の対を
-掛ける構成（ADR-0171）では活性が `FT_OUT / 2` になる。置換もその単位で出て、
+掛ける構成では活性が `FT_OUT / 2` になる。置換もその単位で出て、
 `makenet --reorder` がFT側を対で動かす。
 
-終了コード: 0=成功、2=引数エラー、3=実行時エラー（ADR-0122）。
+終了コード: 0=成功、2=引数エラー、3=実行時エラー。
 """
 
 import argparse
@@ -40,7 +40,7 @@ class ArgParser(argparse.ArgumentParser):
 def build_parser():
     parser = ArgParser(
         prog="ft-reorder.py",
-        description="活性ダンプからFT出力次元の置換を決める（ADR-0168）。",
+        description="活性ダンプからFT出力次元の置換を決める。",
         epilog="ダンプは HIMAWARI_ACT_OUT で場所を指定し、actdump付きのビルドが書く。",
     )
     parser.add_argument("dump", help="活性ダンプ（*.bin）")

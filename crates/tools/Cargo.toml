@@ -8,10 +8,10 @@ license.workspace = true
 [dependencies]
 himawari-core = { path = "../core" }
 himawari-engine = { path = "../engine" }
-# USIクライアントと対局ループ（ADR-0203でエンジン側へ移した）
+# USIクライアントと対局ループ。エンジンのthreadtuneも使うので、usiクレートが持つ
 himawari-usi = { path = "../usi" }
 # 開発用ツールだけの依存。配布する himawari バイナリ（core・engine・usi）は
-# 依存ゼロを保つ（ADR-0122）
+# 依存ゼロを保つ
 anyhow = "1"
 clap = { version = "4", features = ["derive"] }
 

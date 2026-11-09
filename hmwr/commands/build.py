@@ -3,7 +3,7 @@
 手で組み立てると条件がぶれる。実際に起きた事故が3つある。片側だけ
 `-C target-cpu=native` を付け忘れて最適化条件の違う2本を比べたこと、
 退避した変更の戻し忘れで変更前後を取り違えたこと、競合を解決しないまま
-中途半端な木からビルドしたことである（ADR-0081）。手順をここに固定する。
+中途半端な木からビルドしたことである。手順をここに固定する。
 """
 
 from __future__ import annotations
@@ -135,7 +135,7 @@ def _use_crates(ref: str, *, dry_run: bool, cwd: Path | None = None) -> None:
 
     ワークスペースの `Cargo.toml` と `Cargo.lock` も揃える。片側にだけある
     クレートを members に足した変更では、crates/ だけを戻すと、もう片側に無い
-    クレートを探しに行ってビルドが落ちる（ADR-0241の配列盤で起きた）。
+    クレートを探しに行ってビルドが落ちる（配列盤のクレートを足したときに起きた）。
     """
     proc.run(
         [
@@ -157,7 +157,7 @@ def _use_crates(ref: str, *, dry_run: bool, cwd: Path | None = None) -> None:
 def _build_side(out: Path, *, dry_run: bool) -> None:
     """片側をビルドし、対局用のバイナリと盤面操作の計測を out の隣へ置く。
 
-    `boardbench`（ADR-0239）は同じ crates/ から作らないと、比べる2本の
+    `boardbench`は同じ crates/ から作らないと、比べる2本の
     盤面操作が揃わない。手順0より前のコミットには無いので、無ければ置かない。
     前の側のビルドが target/ に残したものを拾わないよう、先に消しておく。
     """

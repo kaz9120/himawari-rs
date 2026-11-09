@@ -1,4 +1,4 @@
-//! 指し手オーダリングとhistoryのテーブル群（ADR-0025, 0109）。
+//! 指し手オーダリングとhistoryのテーブル群。
 //!
 //! MovePickerは段階生成の状態機械。参照実装（やねうら王）の
 //! `movepick.cpp` の遷移をそのまま移してある。カットが早いノードでは
@@ -6,7 +6,7 @@
 //! &Positionと&Historiesを受け取る。
 //!
 //! テーブルの次元・値域・初期値は参照実装の `history.h` と
-//! `yaneuraou-search.cpp` を出典とする（ADR-0074）。
+//! `yaneuraou-search.cpp` を出典とする。
 
 use std::mem::MaybeUninit;
 use std::sync::Arc;
@@ -72,7 +72,7 @@ fn stats_update(entry: &mut i16, bonus: i32, d: i32) {
     *entry = (v + b - v * b.abs() / d) as i16;
 }
 
-/// スレッド共有の表に対する同じ更新（ADR-0162。history.hの `AtomicStats`）。
+/// スレッド共有の表に対する同じ更新（history.hの `AtomicStats`）。
 /// 読んで書く間に別スレッドが書くと片方の更新が消える。参照実装も同じ
 /// 扱いで、historyは統計値なので取りこぼしを許容する。
 #[inline]
@@ -117,7 +117,7 @@ impl History {
         i32::from(self.table[Self::index(c, m)])
     }
 
-    /// 手番cの面。16bitの手で引けば添字の検査が要らない（ADR-0251）。
+    /// 手番cの面。16bitの手で引けば添字の検査が要らない。
     #[inline]
     pub fn row(&self, c: Color) -> &[i16; UINT16_HISTORY_SIZE] {
         let at = c.index() * UINT16_HISTORY_SIZE;
@@ -159,7 +159,7 @@ impl LowPlyHistory {
         i32::from(self.table[Self::index(ply, m)])
     }
 
-    /// plyの面（ADR-0251）。`History::row` と同じく16bitの手で引く。
+    /// plyの面。`History::row` と同じく16bitの手で引く。
     #[inline]
     pub fn row(&self, ply: usize) -> &[i16; UINT16_HISTORY_SIZE] {
         let at = ply * UINT16_HISTORY_SIZE;
@@ -214,7 +214,7 @@ impl CaptureHistory {
 }
 
 /// pawn history（[歩構造キー 8192×スレッド数][移動後の駒 32][移動先 81]。
-/// history.h:265）。全スレッドで共有する（ADR-0162）。スロット数は
+/// history.h:265）。全スレッドで共有する。スロット数は
 /// スレッド数に比例して伸びる（`DynStats`。history.h:151-153）。
 pub struct PawnHistory {
     table: Box<[AtomicI16]>,
@@ -241,7 +241,7 @@ impl PawnHistory {
         i32::from(self.table[slot + pc.index() * SQUARE_NB + to.index()].load(Ordering::Relaxed))
     }
 
-    /// スロットの面。`駒 * 81 + 升` で引く（ADR-0251）。
+    /// スロットの面。`駒 * 81 + 升` で引く。
     #[inline]
     pub fn row(&self, slot: usize) -> &[AtomicI16; PIECE_NB * SQUARE_NB] {
         self.table[slot..slot + PIECE_NB * SQUARE_NB]
@@ -264,13 +264,13 @@ impl PawnHistory {
     }
 }
 
-/// 静的評価の系統誤差を補正する履歴（ADR-0046, 0109）。
+/// 静的評価の系統誤差を補正する履歴。
 ///
 /// 参照実装のUnifiedCorrectionHistory（history.h:337-339）に対応する。
 /// 1本の表を4系統（歩・小駒・先手非歩・後手非歩）で共有し、系統ごとに
 /// 別のキーで引く。添字は `[キー下位16bit×スレッド数][手番][系統]`。
 /// 全スレッドで共有し、スロット数はスレッド数に比例して伸びる
-/// （ADR-0162。history.h:151-153, 359-366）。
+/// （history.h:151-153, 359-366）。
 pub struct CorrectionHistory {
     table: Box<[AtomicI16]>,
     /// スロットのマスク（スロット数−1）。
@@ -328,7 +328,7 @@ impl CorrectionHistory {
         )
     }
 
-    /// `probe(pos)` が読む4か所を先読みさせる（ADR-0250）。
+    /// `probe(pos)` が読む4か所を先読みさせる。
     #[inline(always)]
     pub fn prefetch(&self, pos: &SearchBoard) {
         let stm = pos.side_to_move().index();
@@ -378,7 +378,7 @@ impl CorrectionHistory {
     }
 }
 
-/// 全スレッドで共有するhistory（ADR-0162。`history.h:359` の
+/// 全スレッドで共有するhistory（`history.h:359` の
 /// `SharedHistories`）。参照実装が共有するのはcorrection historyと
 /// pawn historyの2面だけで、continuation correction historyは
 /// スレッドローカルに残る（yaneuraou-search.h:457）。
@@ -412,7 +412,7 @@ impl Default for SharedHistories {
     }
 }
 
-/// continuation correction history（ADR-0085, 0109）。
+/// continuation correction history。
 /// 論理次元は[条件手の駒 32][条件手の移動先 81][駒 32][マス 81]
 /// （history.h:325-327）。条件手の側は2手前・4手前を見る。
 pub struct ContinuationCorrectionHistory {
@@ -446,7 +446,7 @@ impl ContinuationCorrectionHistory {
         i32::from(self.table[base + pc.index() * SQUARE_NB + to.index()])
     }
 
-    /// `get(base, pc, to)` が読む要素を先読みさせる（ADR-0250）。
+    /// `get(base, pc, to)` が読む要素を先読みさせる。
     #[inline(always)]
     pub fn prefetch(&self, base: usize, pc: Piece, to: Square) {
         crate::prefetch::line(
@@ -469,7 +469,7 @@ impl ContinuationCorrectionHistory {
     }
 }
 
-/// continuation history（ADR-0047, 0109）。
+/// continuation history。
 /// 論理次元は[王手中か 2][駒を取る手か 2][条件手の駒 32][条件手の移動先 81]
 /// [応手の駒 32][応手の移動先 81]（history.h:259、yaneuraou-search.cpp:2117）。
 /// 巨大ネスト配列のスタック経由初期化はオーバーフローの危険があるため、
@@ -505,7 +505,7 @@ impl ContinuationHistory {
         i32::from(self.table[base + pc.index() * SQUARE_NB + to.index()])
     }
 
-    /// 面 `base` を `駒 * 81 + 升` で引ける形で返す（ADR-0251）。
+    /// 面 `base` を `駒 * 81 + 升` で引ける形で返す。
     #[inline]
     pub fn row(&self, base: usize) -> &[i16; CONT_STRIDE] {
         self.table[base..base + CONT_STRIDE].try_into().unwrap()
@@ -545,7 +545,7 @@ impl TtMoveHistory {
     }
 }
 
-/// スレッドが対局を通じて保持するhistoryの一式（ADR-0109）。
+/// スレッドが対局を通じて保持するhistoryの一式。
 /// 参照実装のWorkerが持つテーブル群に対応する。
 #[derive(Default)]
 pub struct Histories {
@@ -555,7 +555,7 @@ pub struct Histories {
     pub cont: ContinuationHistory,
     pub corr_cont: ContinuationCorrectionHistory,
     pub tt_move: TtMoveHistory,
-    /// 全スレッドで共有する2面（ADR-0162）。pawn historyと
+    /// 全スレッドで共有する2面。pawn historyと
     /// correction historyはここから引く
     pub shared: Arc<SharedHistories>,
 }
@@ -617,7 +617,7 @@ struct ExtMove {
 /// ノード1つで生成される手を見込んだ初期容量。
 const MOVE_BUF_CAP: usize = 64;
 
-/// MovePickerへ貸し出す採点済みの手の置き場（ADR-0151の群B）。
+/// MovePickerへ貸し出す採点済みの手の置き場。
 ///
 /// `ExtMove` をモジュールの外へ出さずに、`Worker` がply別の領域を
 /// 持ち回るための入れ物である。`Default` は空を返すので、
@@ -633,7 +633,7 @@ impl MoveBuf {
     }
 }
 
-/// 容量を確保した後の積み込み。容量の検査と伸ばす経路を手ごとに通らない（ADR-0241の第16回）。
+/// 容量を確保した後の積み込み。容量の検査と伸ばす経路を手ごとに通らない。
 #[inline(always)]
 fn push_reserved(v: &mut Vec<ExtMove>, e: ExtMove) {
     debug_assert!(v.len() < v.capacity());
@@ -663,7 +663,7 @@ fn partial_insertion_sort(a: &mut [ExtMove], limit: i32) {
     // limit以上の手を、見つけた順に先頭の後ろへ寄せる。挿入ソート版は1手ずつ
     // 入れ替えてから挿入していたので、入れ替えの並びはこれと同じになる。
     // 寄せない手は自分の位置へ書き戻すので、入れ替えを分岐にしなくてよい。点数は
-    // 手ごとにばらつき、分岐で書くと予測が外れ続ける（ADR-0252）
+    // 手ごとにばらつき、分岐で書くと予測が外れ続ける
     let mut sorted_end = 0usize;
     for p in 1..a.len() {
         let x = a[p];
@@ -767,7 +767,7 @@ impl MovePicker {
         Self::make(stage, tt_move, 0, 0, threshold, buf)
     }
 
-    /// バッファを呼び出し側へ返す（ADR-0151の群B）。容量が残るので、
+    /// バッファを呼び出し側へ返す。容量が残るので、
     /// 次に同じplyで借りるときは確保が起きない。
     pub fn into_buf(self) -> MoveBuf {
         MoveBuf(self.moves)
@@ -817,15 +817,15 @@ impl MovePicker {
     ) {
         self.moves.reserve(list.len());
         // 表の面はノードで決まるので、手のループの外で引いておく。手ごとに
-        // 添字を1回だけ確かめれば、各面の読み出しの検査は消える（ADR-0251）
+        // 添字を1回だけ確かめれば、各面の読み出しの検査は消える
         let main = h.main.row(pos.side_to_move());
         let pawn = h.shared.pawn.row(h.shared.pawn.slot(pos.pawn_key()));
         let conts = [0, 1, 2, 3, 5].map(|k| h.cont.row(cont[k]));
         let low = (self.ply < LOW_PLY_HISTORY_SIZE)
             .then(|| (h.low_ply.row(self.ply), 1 + self.ply as i32));
         // 王手になる升は駒種ごとの表を1回で受け取る。直接王手になるマスは
-        // Positionのノード内キャッシュが持つ（ADR-0151群O）。手のループの中で
-        // 関数を呼ばないので、表の面や長さがレジスタに残る（ADR-0251）
+        // Positionのノード内キャッシュが持つ。手のループの中で
+        // 関数を呼ばないので、表の面や長さがレジスタに残る
         let checks = pos.check_squares_all();
         let start = self.moves.len();
         // 王手になる手の位置。王手のボーナスはSEEを見て足すので、ループの後で当てる
@@ -892,7 +892,7 @@ impl MovePicker {
     /// 取る手を生成して並べる（movepick.cpp:466-478）。
     ///
     /// **`next` から切り出してあるのは、`MoveList`（608手ぶん、約2.4KB）を
-    /// 呼び出しごとのフレームから追い出すためである（ADR-0166）。** 生成段を
+    /// 呼び出しごとのフレームから追い出すためである。** 生成段を
     /// 通るのは `next` の呼び出し5〜6回に1回だが、インライン化すると
     /// フレームの確保とレジスタの退避が毎回走る。
     #[inline(never)]
@@ -942,7 +942,7 @@ impl MovePicker {
     ///
     /// 置換表の手を返した直後だけ、段は生成の準備（`*Init`）に止まっている。生成した手を返すときは
     /// 準備の段を通り過ぎているので、段を見るだけで決まる。配列盤の生成は合法手だけを出すので、
-    /// 探索はこれを見て合法性の判定を省く（ADR-0241の第15回）。
+    /// 探索はこれを見て合法性の判定を省く。
     #[inline(always)]
     pub fn last_from_tt(&self) -> bool {
         matches!(
@@ -1076,7 +1076,7 @@ mod tests {
     use super::*;
 
     /// 共有historyの表がスレッド数に比例して伸びること
-    /// （ADR-0162。history.h:151-153）。
+    /// （history.h:151-153）。
     #[test]
     fn shared_history_scales_with_threads() {
         let one = SharedHistories::new(1);
@@ -1088,7 +1088,7 @@ mod tests {
         assert_eq!(three.pawn.mask + 1, (one.pawn.mask + 1) * 4);
     }
 
-    /// 共有historyへの更新が、別の持ち主から読めること（ADR-0162）。
+    /// 共有historyへの更新が、別の持ち主から読めること。
     /// スレッドローカルのままだと、この読み出しが初期値のままになる。
     #[test]
     fn shared_history_is_visible_across_owners() {

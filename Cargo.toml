@@ -14,7 +14,7 @@ unsafe_op_in_unsafe_fn = "deny"
 [workspace.lints.clippy]
 undocumented_unsafe_blocks = "warn"
 
-# 探索エンジンは単一バイナリで動かすため、リリースは最適化を最大にする（ADR-0003）
+# 探索エンジンは単一バイナリで動かすため、リリースは最適化を最大にする
 [profile.release]
 lto = true
 codegen-units = 1

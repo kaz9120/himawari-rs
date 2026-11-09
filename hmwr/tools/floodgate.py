@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""floodgateの棋譜をwdoorから回収する（ADR-0152）。
+"""floodgateの棋譜をwdoorから回収する。
 
 wdoorの対局者ページ（``x/<年>/player/<アカウント>.html``）を読み、そこに
 載っている対局のCSAを ``data/raw/floodgate/<年>/`` へ落とす。
@@ -11,13 +11,13 @@ wdoor側が保証する（2026-08-09オーナー指示）。
 
 回収は追記専用にする。取得済みのファイルは再取得も削除もしない。
 入力集合が単調に増えるだけなら、ある時点のスナップショットに対する
-分析と定跡追加を後から再現できる（ADR-0152の決定論）。
+分析と定跡追加を後から再現できる。
 
 アカウント名（``Himawari+6fd5a66``）は変わらない。年はURLに含まれるので、
 既定では2026年から今年（日本時間）までの対局者ページを順に読む。年が
 明けた直後は今年のページがまだないので、今年の分の404だけは空として扱う。
 
-終了コード: 0=成功、2=引数エラー、3=実行時エラー（ADR-0122）。
+終了コード: 0=成功、2=引数エラー、3=実行時エラー。
 """
 
 import argparse
@@ -88,7 +88,7 @@ def build_parser():
     """既定の置き場は呼ぶたびに paths から引く。テストが置き場を差し替えられる（#802）。"""
     parser = ArgParser(
         prog="floodgate-fetch.py",
-        description="floodgateの棋譜をwdoorから回収する（ADR-0152）。",
+        description="floodgateの棋譜をwdoorから回収する。",
         epilog="対局者ページに載っている棋譜だけを取る。"
         "取得済みのファイルはスキップする（追記専用）。",
     )
@@ -179,7 +179,7 @@ class Fetcher:
 
 
 class Log:
-    """詳細ログを追記する。ログの置き場はスクリプトが決める（ADR-0149）。"""
+    """詳細ログを追記する。ログの置き場はスクリプトが決める。"""
 
     def __init__(self, path):
         self.path = path
@@ -296,7 +296,7 @@ def main(argv=None):
     )
     log.close()
 
-    print("=== floodgate回収（ADR-0152）===")
+    print("=== floodgate回収 ===")
     for url in pages:
         print(f"対局者ページ : {url}")
     print(f"保存先       : {args.out}")

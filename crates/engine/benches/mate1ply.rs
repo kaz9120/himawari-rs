@@ -5,7 +5,7 @@
 //! 「詰みなし」の局面だけを集めた集合も別に測る。
 //!
 //! ローカルで `RUSTFLAGS="-C target-cpu=native" cargo bench -p himawari-engine
-//! --bench mate1ply` を実行して計測する（ADR-0003）。
+//! --bench mate1ply` を実行して計測する。
 
 use std::hint::black_box;
 

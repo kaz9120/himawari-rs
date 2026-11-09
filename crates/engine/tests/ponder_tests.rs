@@ -1,4 +1,4 @@
-//! ponderの状態機械の結合テスト（ADR-0033）。
+//! ponderの状態機械の結合テスト。
 //!
 //! go ponder中はbestmoveが出ないこと（2手指し防御）、
 //! ponderhit/stopで正しく1回だけbestmoveが出ることを固定する。
@@ -52,7 +52,7 @@ fn max_depth(lines: &Lines) -> u32 {
 }
 
 /// 確定した反復の深さだけを拾う。窓外れの `lowerbound` / `upperbound` と
-/// `currmove` は同じ深さで複数回出るので除く（ADR-0086, 0091）。
+/// `currmove` は同じ深さで複数回出るので除く。
 fn completed_depths(lines: &Lines) -> Vec<u32> {
     lines
         .lock()
@@ -123,7 +123,7 @@ fn ponderhit_continues_and_emits_once() {
     pool.quit();
 }
 
-/// ponderhitで探索を再起動しない（ADR-0109のG8）。再起動すると
+/// ponderhitで探索を再起動しない。再起動すると
 /// 反復深化が深さ1からやり直しになるので、infoのdepthが巻き戻る。
 #[test]
 fn ponderhit_does_not_restart_iterative_deepening() {

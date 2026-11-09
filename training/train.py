@@ -1,4 +1,4 @@
-"""NNUE trainer v2 (ADR-0040, ADR-0045)."""
+"""NNUE trainer v2."""
 
 import argparse
 import csv
@@ -38,7 +38,7 @@ def validate(model, valid_loader, device):
             stm_i, stm_o, opp_i, opp_o, targets = [
                 x.to(device) for x in batch[:5]
             ]
-            # 利きの入力特徴（ADR-0237）。抽出させていなければ空で来る。
+            # 利きの入力特徴。抽出させていなければ空で来る。
             # 古い拡張のPsvDatasetは5本しか返さないので、そのときは渡さない
             eff = [x.to(device) for x in batch[7:9]]
             out = model(stm_i, stm_o, opp_i, opp_o, *eff)
@@ -58,7 +58,7 @@ def main():
     p.add_argument(
         "--positions",
         type=int,
-        help="学習データの先頭のこの件数だけを使う（ADR-0219）。--batch-loader のときだけ効く",
+        help="学習データの先頭のこの件数だけを使う。--batch-loader のときだけ効く",
     )
     p.add_argument("--batch", type=int, default=16384)
     p.add_argument("--peak-lr", type=float, default=1e-3)
@@ -67,7 +67,7 @@ def main():
     p.add_argument("--lambda", type=float, default=0.7, dest="lambda_")
     p.add_argument(
         "--rank-data",
-        help="兄弟局面のランキング群（psv rankの出力。ADR-0185）",
+        help="兄弟局面のランキング群（psv rankの出力）",
     )
     p.add_argument(
         "--rank-batch", type=int, default=4096,
@@ -75,11 +75,11 @@ def main():
     )
     p.add_argument(
         "--rank-alpha", type=float, default=1.0,
-        help="ランキング損失の重み（ADR-0185の宣言値）",
+        help="ランキング損失の重み",
     )
     p.add_argument(
         "--rank-margin", type=float, default=0.02,
-        help="ヒンジのマージン（シグモイド空間。ADR-0185の宣言値）",
+        help="ヒンジのマージン（シグモイド空間）",
     )
     p.add_argument("--score-limit", type=int, default=0,
                    help="この絶対値以上の評価値を持つ局面を学習から除外する（0=無効）")
@@ -101,26 +101,26 @@ def main():
         "--effect-inputs",
         dest="effect_inputs",
         choices=list(EFFECT_INPUTS),
-        help="利きのaccumulatorへ特徴を立てるか（ADR-0237）。f2は駒×升×利き数の特徴を"
+        help="利きのaccumulatorへ特徴を立てるか。f2は駒×升×利き数の特徴を"
              "立てる処置群、noneは立てない統制群。利きの構成（e<E>）で省くとf2になる。"
              "それ以外の構成では渡せない",
     )
     p.add_argument(
         "--init-net",
         help="既存の.hmwrを初期値に読む。FTは常に読み、後段は形が一致する層だけ"
-             "読む（ADR-0130）",
+             "読む",
     )
     p.add_argument(
         "--freeze-ft",
         action="store_true",
-        help="FTを更新しない。後段の候補を絞るときに使う（ADR-0130）。"
+        help="FTを更新しない。後段の候補を絞るときに使う。"
              "採用の判断には使わない",
     )
     p.add_argument(
         "--ft-clip",
         type=float,
         default=0.0,
-        help="畳み込み後のFT重みをこの絶対値へ収める（ADR-0138。0=無効）。"
+        help="畳み込み後のFT重みをこの絶対値へ収める（0=無効）。"
              "i8で格納するとき飽和させないための制約で、量子化スケール127に"
              "対しては1.0を指定する",
     )
@@ -128,7 +128,7 @@ def main():
         "--side-clip",
         type=float,
         default=None,
-        help="側の表の重み（畳み込み後）とバイアスをこの絶対値へ収める（ADR-0261。0=無効）。"
+        help="側の表の重み（畳み込み後）とバイアスをこの絶対値へ収める（0=無効）。"
              "差分で持つ側のaccをi16に収めるための制約で、F2と最小の攻め駒の組では"
              "1.5で上限の見積もりが31,051になる。射影の間隔は --ft-clip-interval に従う。"
              "省くと、側のaccをi16で持つ f2_minatt の構成では1.5、それ以外では0になる",
@@ -136,7 +136,7 @@ def main():
     p.add_argument(
         "--init-checkpoint",
         help="f32のチェックポイント（.pt）から重みだけを読んで新しい学習を始める"
-             "（ADR-0145）。--resume と違い step・optimizer・schedulerは引き継がず、"
+             "。--resume と違い step・optimizer・schedulerは引き継がず、"
              "lrは渡した値から改めて減衰する。--init-net は量子化を経た.hmwrを読むので"
              "世代を重ねるほど丸め誤差が乗るが、こちらは乗らない",
     )
@@ -144,21 +144,21 @@ def main():
         "--eval-only",
         action="store_true",
         help="学習せず、--init-net で読んだネットの検証損失だけを出す"
-             "（ADR-0136）。教師データの条件を変えて同じネットを測るときに使う。"
+             "。教師データの条件を変えて同じネットを測るときに使う。"
              "読むのは量子化済みの.hmwrなので、学習中に出る値とは丸めのぶん違う",
     )
     p.add_argument(
         "--ft-clip-interval",
         type=int,
         default=50,
-        help="FT重みの射影を何ステップおきに行うか（ADR-0138）。毎ステップは"
+        help="FT重みの射影を何ステップおきに行うか。毎ステップは"
              "重すぎる。検証と書き出しの直前はこの設定に関係なく必ず射影する",
     )
     p.add_argument(
         "--seed",
         type=int,
         help="モデル初期化とデータ順序の乱数種。指定しないとPyTorchが実行ごとに"
-             "違う種を引くため、同じ条件でもvalid lossが動く（ADR-0127）",
+             "違う種を引くため、同じ条件でもvalid lossが動く",
     )
     p.add_argument(
         "--mmap",
@@ -168,34 +168,34 @@ def main():
     p.add_argument(
         "--batch-loader",
         action="store_true",
-        help="バッチ一括抽出のローダを使う（ADR-0065）",
+        help="バッチ一括抽出のローダを使う",
     )
     p.add_argument(
         "--factorized",
         action="store_true",
-        help="学習時のみ駒単独の仮想特徴を併用する（ADR-0066）",
+        help="学習時のみ駒単独の仮想特徴を併用する",
     )
     p.add_argument(
         "--dense-ft",
         action="store_true",
-        help="FT勾配をdenseにする（SparseAdamを外し、MPSで学習できる。ADR-0064）",
+        help="FT勾配をdenseにする（SparseAdamを外し、MPSで学習できる）",
     )
     args = p.parse_args()
 
-    # 利きのaccumulatorは構成で決まる（ADR-0237）。利きの構成で省いたら、
+    # 利きのaccumulatorは構成で決まる。利きの構成で省いたら、
     # 現行の評価関数と同じF2の特徴を立てる。どちらの群かは来歴に残る（下の eff_tag）
     if EFF_OUT > 0 and args.effect_inputs is None:
         args.effect_inputs = "f2"
     if EFF_OUT == 0 and args.effect_inputs is not None:
         p.error(f"--effect-inputs は利きの構成（e<E>）でだけ使える。いまの構成は {ARCH}")
     eff_inputs = args.effect_inputs == "f2"
-    # 側のaccをi16で持つ構成は、上限なしで学習すると読み込みで弾かれる（ADR-0261）。
+    # 側のaccをi16で持つ構成は、上限なしで学習すると読み込みで弾かれる。
     # 1日学習してから気づかないよう、省いたら現行の評価関数と同じ1.5をかける
     if args.side_clip is None:
         args.side_clip = 1.5 if "-f2_minatt" in ARCH else 0.0
     if EFF_OUT > 0 and not args.batch_loader:
         p.error("利きの構成は --batch-loader が要る（逐次のローダは特徴を作らない）")
-    # 来歴に群を残す（ADR-0237）。統制と処置は同じ構成で、ファイルの寸法では見分けられない
+    # 来歴に群を残す。統制と処置は同じ構成で、ファイルの寸法では見分けられない
     eff_tag = f" effect_inputs={args.effect_inputs}" if args.effect_inputs else ""
 
     if args.eval_only:
@@ -213,7 +213,7 @@ def main():
     print(f"Device: {device}", file=sys.stderr)
 
     # 種を固定しないと初期化とデータ順が実行ごとに変わり、条件の差と
-    # 初期値の差を分けられない（ADR-0127）
+    # 初期値の差を分けられない
     if args.seed is not None:
         torch.manual_seed(args.seed)
         print(f"Seed: {args.seed}", file=sys.stderr)
@@ -253,7 +253,7 @@ def main():
         if args.batch_loader:
             # validには score_limit も score_clamp も適用しない。
             # 教師信号の作り方を変えると指標が変わり、条件間で
-            # valid loss を比べられなくなる（ADR-0126）
+            # valid loss を比べられなくなる
             valid_loader = PsvBatchLoader(
                 args.valid, args.batch, lambda_=args.lambda_, shuffle=False,
                 effect_inputs=eff_inputs,
@@ -315,10 +315,10 @@ def main():
         model.l2.weight, model.l2.bias,
         model.out.weight, model.out.bias,
     ]
-    # 隠れ層は構成によって数が変わる（ADR-0127）
+    # 隠れ層は構成によって数が変わる
     if model.l3 is not None:
         dense_params.extend([model.l3.weight, model.l3.bias])
-    # 利きのaccumulator（ADR-0237）。統制群の表は凍結してあり、下で外れる
+    # 利きのaccumulator。統制群の表は凍結してあり、下で外れる
     if model.eff is not None:
         dense_params.extend([model.eff.weight, model.eff_bias])
     ft_params = [model.ft.weight]
@@ -332,8 +332,8 @@ def main():
 
     optimizer_dense = torch.optim.Adam(dense_params, lr=args.peak_lr)
     # FT勾配をdenseにするとMPSへ載せられる。更新則はSparseAdamと
-    # 同じ「出現した行だけ動かす」を保つ（ADR-0064）
-    # FTを凍結すると更新対象が空になる。optimizerは作らない（ADR-0130）
+    # 同じ「出現した行だけ動かす」を保つ
+    # FTを凍結すると更新対象が空になる。optimizerは作らない
     optimizer_ft = (
         None
         if not ft_params
@@ -367,10 +367,10 @@ def main():
         step = ckpt["step"]
         best_valid = ckpt.get("best_valid", float("inf"))
         best_step = ckpt.get("best_step", 0)
-        # **エポック内の位置も戻す（ADR-0159）。** stepだけ戻して
+        # **エポック内の位置も戻す。** stepだけ戻して
         # エポックを頭から回すと、schedulerが復元した値から進むので
         # cosineの終端を越えて学習率が再上昇する。epochs=1が既定の
-        # 本エンジンでは、この経路が常に壊れていた（ADR-0158で発覚）
+        # 本エンジンでは、この経路が常に壊れていた
         start_epoch = step // steps_per_epoch
         skip = step % steps_per_epoch
         if hasattr(train_loader, "skip_batches"):
@@ -431,7 +431,7 @@ def main():
                 continue
 
             # 6・7本目は指し手のラベルで、学習には使わない。8・9本目は
-            # 利きの入力特徴（ADR-0237）。抽出させていなければ空で来る
+            # 利きの入力特徴。抽出させていなければ空で来る
             tensors = [x.to(device) for x in batch]
             stm_i, stm_o, opp_i, opp_o, targets = tensors[:5]
             eff_stm, eff_opp = tensors[7:9]
@@ -447,7 +447,7 @@ def main():
             loss = loss_fn(out, targets)
             value_loss = loss.detach()
             if rank_loader is not None:
-                # 兄弟局面のランキング損失（ADR-0185）。正例の葉が負例の葉
+                # 兄弟局面のランキング損失。正例の葉が負例の葉
                 # より親視点で良い、をシグモイド空間のヒンジで課す
                 r_si, r_so, r_oi, r_oo, r_par, r_es, r_eo = [
                     x.to(device) for x in rank_loader.sample()
@@ -485,7 +485,7 @@ def main():
                 sps = samples_log / max(elapsed, 1e-6)
                 avg_loss = loss_acc / max(loss_n, 1)
                 current_lr = scheduler_dense.get_last_lr()[0]
-                # ランキング損失と発火率（ADR-0185）。λを掛ける前の値を出す。
+                # ランキング損失と発火率。λを掛ける前の値を出す。
                 # 掛けたあとの値ではλを変えるたびに指標が動く
                 rank_str = (
                     f" rank {rank_acc / rank_n:.5f}"
@@ -525,7 +525,7 @@ def main():
                 samples_log = 0
 
             if valid_loader and step % args.valid_interval == 0:
-                # 検証と書き出しは制約を満たした状態で行う（ADR-0138）
+                # 検証と書き出しは制約を満たした状態で行う
                 if args.ft_clip > 0:
                     model.clip_ft_weights(args.ft_clip)
                 if args.side_clip > 0:

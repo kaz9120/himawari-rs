@@ -1,4 +1,4 @@
-//! 探索の統合テスト（ADR-0024, 0026）。
+//! 探索の統合テスト。
 
 use std::sync::Arc;
 
@@ -99,7 +99,7 @@ fn selfplay_smoke() {
     }
 }
 
-/// MultiPV: ラインの初手が重複せず、スコアが降順であること（ADR-0032）。
+/// MultiPV: ラインの初手が重複せず、スコアが降順であること。
 #[test]
 fn multipv_lines_are_distinct_and_sorted() {
     let pos = Position::from_sfen(SFEN_STARTPOS).unwrap();

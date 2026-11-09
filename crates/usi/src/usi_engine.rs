@@ -1,4 +1,4 @@
-//! USIエンジンのサブプロセスクライアント（ADR-0027・ADR-0122）。
+//! USIエンジンのサブプロセスクライアント。
 //!
 //! stdout読み取りは専用スレッドでチャネルに流し、待ち受けはすべて
 //! タイムアウト付きで行う。ハングは実装バグとして即エラーにする。
@@ -61,15 +61,15 @@ pub fn parse_info(line: &str) -> Option<InfoLine> {
 
 pub struct ThinkResult {
     pub bestmove: String,
-    /// bestmoveに付随する予測応手（ponderヒント。ADR-0033）。
+    /// bestmoveに付随する予測応手（ponderヒント）。
     pub ponder: Option<String>,
     /// 最後にinfoで報告された評価値（手番視点、mateは±30000近傍へ写像）。
     pub score_cp: Option<i32>,
     pub elapsed_ms: u64,
-    /// nodesを持つ最後のinfo行。NPS計測が読む（ADR-0122）。
+    /// nodesを持つ最後のinfo行。NPS計測が読む。
     pub last_info: InfoLine,
     /// `go_depth` で指定した深さの、nodesを持つ最初のinfo行。
-    /// 機能検証がこの行のノード数を比べる（ADR-0074）。指定深さへ
+    /// 機能検証がこの行のノード数を比べる。指定深さへ
     /// 到達せずに探索が終わればNone。
     pub target_depth_info: Option<InfoLine>,
 }
@@ -80,8 +80,8 @@ impl UsiEngine {
     }
 
     /// 起動コマンドに引数を渡して立ち上げる。`profile` が
-    /// `samply record ... <engine>` の形で包んで起動するために要る
-    /// （ADR-0122）。エンジンのstdin/stdoutは包んだプロセスを素通りする。
+    /// `samply record ... <engine>` の形で包んで起動するために要る。
+    /// エンジンのstdin/stdoutは包んだプロセスを素通りする。
     pub fn launch_with_args(
         program: &str,
         args: &[&str],
@@ -167,7 +167,7 @@ impl UsiEngine {
     }
 
     /// 固定深さで読ませる。指定深さのinfo行を `target_depth_info` へ入れて
-    /// 返す。機能検証とNPS計測が使う（ADR-0074・ADR-0081）。
+    /// 返す。機能検証とNPS計測が使う。
     pub fn go_depth(
         &mut self,
         position_cmd: &str,
@@ -181,7 +181,7 @@ impl UsiEngine {
     }
 
     /// bestmove行が来るまで待つ。経過時間はstart起点で測る
-    /// （ponderhit後の計測に使う。ADR-0033）。
+    /// （ponderhit後の計測に使う）。
     pub fn wait_bestmove(
         &mut self,
         start: Instant,
@@ -298,7 +298,7 @@ mod tests {
         assert_eq!(info.score_cp, Some(-42));
     }
 
-    /// mateの写像はselfplayの早期終局判定と揃える（ADR-0027）。
+    /// mateの写像はselfplayの早期終局判定と揃える。
     #[test]
     fn parse_info_maps_mate_to_score() {
         let win = parse_info("info depth 9 score mate 5 nodes 100 time 1 pv 1a1b").expect("info行");
@@ -310,7 +310,7 @@ mod tests {
         assert_eq!(lose.score_cp, Some(-29997));
     }
 
-    /// lowerbound付きでも値は拾う（ADR-0091）。currmove行はnodesを持たない。
+    /// lowerbound付きでも値は拾う。currmove行はnodesを持たない。
     #[test]
     fn parse_info_handles_bound_and_currmove() {
         let bound = parse_info("info depth 13 score cp 30 lowerbound nodes 50 time 2 pv 7g7f")

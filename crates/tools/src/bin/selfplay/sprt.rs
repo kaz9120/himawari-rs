@@ -1,4 +1,4 @@
-//! SPRT統計（ADR-0027）。
+//! SPRT統計。
 //!
 //! pentanomial（ペア得点の5値）度数から、GSPRTの正規近似でLLRを
 //! 逐次計算する。式はfishtestの簡易近似と同じ。

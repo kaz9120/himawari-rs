@@ -1,10 +1,10 @@
-//! 1局の実行と終局判定（ADR-0027, 0033）。
+//! 1局の実行と終局判定。
 //!
 //! 終局判定はマネージャ側で行う。合法手なし=詰み、同一局面4回=千日手
 //! （連続王手は反則）、手数上限=引き分け、resign=投了、非合法手=即負け、
 //! 宣言勝ちは27点法で検証。時間切れはマネージャの計測で判定する。
 //!
-//! ponderモード（ADR-0033）: 指した側は予測手つきでgo ponderし、
+//! ponderモード: 指した側は予測手つきでgo ponderし、
 //! 相手の着手が予測と一致したらponderhit（消費時間はponderhitから
 //! 計測）、外れたらstopで破棄して通常のgoを送る。
 
@@ -22,7 +22,7 @@ pub enum TimeControl {
 pub struct GameConfig {
     pub tc: TimeControl,
     /// 持ち時間の倍率（[先手, 後手]）。Fischerの初期時間と加算の両方に
-    /// 掛ける。時間オッズで並列効率を測るときに使う（ADR-0200）
+    /// 掛ける。時間オッズで並列効率を測るときに使う
     pub odds: [f64; 2],
     /// 手数上限（ply数）。到達で引き分け。
     pub max_moves: usize,
@@ -63,7 +63,7 @@ impl GameRecord {
     }
 }
 
-/// ponderは色ごとの有効フラグ（[先手, 後手]。ADR-0033）。
+/// ponderは色ごとの有効フラグ（[先手, 後手]）。
 pub fn play_game(
     black: &mut UsiEngine,
     white: &mut UsiEngine,
@@ -147,7 +147,7 @@ pub fn play_game(
             break 'game GameRecord::end(Some(stm.flip()), "resign", moves);
         }
         if r.bestmove == "win" {
-            // 宣言勝ち（ADR-0030）。27点法で検証し、不当な宣言は反則負け
+            // 宣言勝ち。27点法で検証し、不当な宣言は反則負け
             break 'game if pos.can_declare_win() {
                 GameRecord::end(Some(stm), "declaration", moves)
             } else {
@@ -203,7 +203,7 @@ pub fn play_game(
             }
         }
 
-        // 指した側の相手番思考を開始する（ADR-0033）。予測手が
+        // 指した側の相手番思考を開始する。予測手が
         // 現局面で合法なときだけ。ここまでの終局判定を抜けた後に行う
         if ponder[stm.index()]
             && let TimeControl::Fischer { .. } = cfg.tc

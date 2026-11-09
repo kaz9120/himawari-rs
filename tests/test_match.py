@@ -1,4 +1,4 @@
-"""`hmwr match` を検証する（ADR-0208）。
+"""`hmwr match` を検証する。
 
 対局は起こさない。`--dry-run` が組み立てるコマンドと、条件の記録の裁き方、
 指し切りの結果の書き方を固定する。
@@ -35,7 +35,7 @@ def empty_dirs(tmp_path, monkeypatch):
 
 
 def test_fixed_pairs_matches_the_adr0206_chain(capsys):
-    """ADR-0206のチェーンが selfplay を直接叩いた条件を、名前だけで書ける。"""
+    """以前の実験のチェーンが selfplay を直接叩いた条件を、名前だけで書ける。"""
     _, lines = dry(
         capsys,
         [

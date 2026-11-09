@@ -1,4 +1,4 @@
-//! 定跡生成ツール（ADR-0063）。
+//! 定跡生成ツール。
 //!
 //! 平手初期局面から展開し、各局面をMultiPV=widthで探索して上位width手を
 //! 記録する。出力はやねうら王db形式互換。
@@ -29,8 +29,8 @@
 //! 選ばれない手に探索時間を使わないためである。--max-positions に
 //! 達したら打ち切る。
 //!
-//! --full-ply より浅い層では、この絞り込みを外して全合法手を展開する
-//! （ADR-0146）。相手の手は選べないので、widthとmarginで絞ると定跡を
+//! --full-ply より浅い層では、この絞り込みを外して全合法手を展開する。
+//! 相手の手は選べないので、widthとmarginで絞ると定跡を
 //! 引けるかどうかが相手の指し手に依存する。平手初期局面の合法手は30通り
 //! あり、--full-ply 2 なら61局面で「相手の初手が何であっても自分の2手目と
 //! 3手目を定跡から出せる」状態になる。この区間はcostを0で積むため、
@@ -39,12 +39,12 @@
 //! 長時間走るので --save-every 局面ごとに書き出す。出力ファイルが既に
 //! あれば読み込んで再開する。中断しても、そこまでの定跡はそのまま使える。
 //!
-//! 途中で止めるときは停止ファイルを置く（ADR-0123）。次の局面へ進む前に
+//! 途中で止めるときは停止ファイルを置く。次の局面へ進む前に
 //! 書き出して終わるので、探索中の1局面ぶんも失わない。
 //!
 //!   touch data/book/main.db.stop
 //!
-//! refreshは評価関数の世代が変わったときに使う（ADR-0146）。掘り直すのは
+//! refreshは評価関数の世代が変わったときに使う。掘り直すのは
 //! 高くつくので、局面の集合を変えずに中身だけ新しいネットで引き直す。
 //!
 //!   book refresh --out data/book/main.db --eval <新しいhmwr> [--depth 28]
@@ -53,7 +53,7 @@
 //! 読んで再開するので、--max-positions を増やせば続きから掘り、
 //! --full-ply を上げれば浅い層の幅が広がる。
 //!
-//! seedは実戦に現れた局面を定跡へ足す（ADR-0152）。floodgateの棋譜を定期的に
+//! seedは実戦に現れた局面を定跡へ足す。floodgateの棋譜を定期的に
 //! 回収して回すので、同じ入力からは同じ定跡が出る手順にしてある。
 //!
 //!   book seed --games data/raw/floodgate --out data/book/main.db
@@ -76,7 +76,7 @@
 //!
 //!   book stats --out data/book/main.db --ply 6
 //!
-//! 探索はThreadPool経由でLazy SMP（ADR-0031）を使う。置換表は局面を
+//! 探索はThreadPool経由でLazy SMPを使う。置換表は局面を
 //! またいで再利用する。親から子へ展開するので、親の探索で読んだ子局面の
 //! 情報がそのまま効く。TTのエントリは深さ付きなので、浅い探索の結果が
 //! 深い探索に流用されることはない。
@@ -102,7 +102,7 @@ struct Config {
     max_positions: usize,
     margin: i32,
     save_every: usize,
-    /// 停止ファイルのパス。省略すると `<out>.stop`（ADR-0123）
+    /// 停止ファイルのパス。省略すると `<out>.stop`
     stop_file: Option<String>,
     /// seedの入力。CSAのファイルかディレクトリを並べる
     games: Vec<String>,
@@ -126,7 +126,7 @@ struct Task {
     ply: u16,
     pos: Position,
     /// この枝でエンジンが持つ側。同じ局面でも、自分が先手か後手かで
-    /// 「相手の手」が入れ替わるため、展開の幅が変わる（ADR-0146）。
+    /// 「相手の手」が入れ替わるため、展開の幅が変わる。
     my_side: Color,
 }
 
@@ -348,7 +348,7 @@ fn make_pool(cfg: &Config) -> std::io::Result<(ThreadPool, Sink)> {
     ))
 }
 
-/// 定跡が持つ局面はそのままに、指し手と評価値だけを引き直す（ADR-0146）。
+/// 定跡が持つ局面はそのままに、指し手と評価値だけを引き直す。
 ///
 /// 評価関数の世代が変わると、古い定跡は前の世代の判断を持ち続ける。掘り直す
 /// のは高くつくので、局面の集合を変えずに中身だけ更新する経路を分けている。
@@ -382,7 +382,7 @@ fn refresh(cfg: &Config) -> std::io::Result<()> {
     let mut done = 0usize;
     let mut stopped = false;
     for key in &keys {
-        // 1局面に入る前に見る。探索の途中では止めない（ADR-0123）
+        // 1局面に入る前に見る。探索の途中では止めない
         if stop.requested() {
             eprintln!("停止ファイルを見つけた: {}", stop.path().display());
             stopped = true;
@@ -426,7 +426,7 @@ fn refresh(cfg: &Config) -> std::io::Result<()> {
     Ok(())
 }
 
-/// CSA棋譜から序盤の局面を取り出す（ADR-0152）。
+/// CSA棋譜から序盤の局面を取り出す。
 ///
 /// 必要なのは局面だけなので、読むのは開始局面の指定と指し手に絞る。
 /// 指し手は合法手との突き合わせで解決する。CSAは移動元・移動先・移動後の
@@ -817,7 +817,7 @@ struct Seeds {
 
 /// 入力に並んだCSAを列挙する。ディレクトリは再帰的にたどり、拡張子が
 /// csaのファイルだけを拾う。名指しされたファイルは拡張子を問わない。
-/// 順序はパスの昇順で固定する（ADR-0152の決定論）。
+/// 順序はパスの昇順で固定する。
 fn collect_csa_files(inputs: &[String]) -> std::io::Result<Vec<PathBuf>> {
     fn walk(dir: &Path, out: &mut Vec<PathBuf>) -> std::io::Result<()> {
         for entry in std::fs::read_dir(dir)? {
@@ -904,7 +904,7 @@ fn collect_seeds(files: &[PathBuf], max_ply: u16) -> Seeds {
     }
 }
 
-/// 棋譜に現れた局面を種にして定跡へ足す（ADR-0152）。
+/// 棋譜に現れた局面を種にして定跡へ足す。
 ///
 /// genとの違いは掘る順序である。genは初期局面から評価値の損失が小さい順に
 /// 広げるが、seedは実戦に現れた局面をそのまま種にする。実戦の分布に定跡を
@@ -961,7 +961,7 @@ fn seed(cfg: &Config) -> std::io::Result<()> {
             known += 1;
             continue;
         }
-        // 1局面に入る前に見る。探索の途中では止めない（ADR-0123）
+        // 1局面に入る前に見る。探索の途中では止めない
         if stop.requested() {
             println!("停止ファイルを見つけた: {}", stop.path().display());
             stopped = true;
@@ -1015,7 +1015,7 @@ fn seed(cfg: &Config) -> std::io::Result<()> {
 }
 
 fn generate(cfg: &Config) -> std::io::Result<()> {
-    // 生成条件をログの先頭に残す（ADR-0082）。定跡は非決定的に生成され、
+    // 生成条件をログの先頭に残す。定跡は非決定的に生成され、
     // 評価関数にも依存するため、どの設定で作ったかを後から追えないと
     // 作り直しの判断ができない
     eprintln!(
@@ -1048,7 +1048,7 @@ fn generate(cfg: &Config) -> std::io::Result<()> {
     let mut queue: BinaryHeap<Task> = BinaryHeap::new();
     let mut seq = 0usize;
     // 先手用と後手用の2本を同じ木に重ねて掘る。エンジンはどちらにもなるので、
-    // 片側だけ掘ると反対の手番で穴が残る（ADR-0146）
+    // 片側だけ掘ると反対の手番で穴が残る
     for my_side in [Color::Black, Color::White] {
         queue.push(Task {
             cost: 0,
@@ -1070,7 +1070,7 @@ fn generate(cfg: &Config) -> std::io::Result<()> {
         if task.ply >= cfg.ply || book.len() >= cfg.max_positions {
             continue;
         }
-        // 1局面に入る前に見る。探索の途中では止めない（ADR-0123）
+        // 1局面に入る前に見る。探索の途中では止めない
         if stop.requested() {
             eprintln!("停止ファイルを見つけた: {}", stop.path().display());
             stopped = true;
@@ -1109,8 +1109,8 @@ fn generate(cfg: &Config) -> std::io::Result<()> {
                 found
             }
         };
-        // 相手の手番の浅い層は、widthとmarginで絞らず全合法手を展開する
-        // （ADR-0146）。相手の指し手は選べないので、絞ると定跡を引けるか
+        // 相手の手番の浅い層は、widthとmarginで絞らず全合法手を展開する。
+        // 相手の指し手は選べないので、絞ると定跡を引けるか
         // どうかが相手に依存する。cost 0 で積み、この層を埋め終わるまで
         // 深い層へ進まない
         if task.pos.side_to_move() != task.my_side && task.ply < cfg.full_ply {
@@ -1178,7 +1178,7 @@ fn prune_by_margin(mut lines: Lines, margin: i32) -> Lines {
     lines
 }
 
-/// 定跡がどこまで網羅できているかを数える（ADR-0146）。
+/// 定跡がどこまで網羅できているかを数える。
 ///
 /// 見るのは「相手の手が何であっても定跡を引けるか」である。plyを1つ進める
 /// たびに、その層の全合法手のうち何手ぶんの局面を定跡が持っているかを出す。
@@ -1351,7 +1351,7 @@ fn parse(args: &[String]) -> Result<(&'static str, Config), String> {
     }
     if sub == "seed" {
         // マルチスレッド探索は同じ局面でも選ぶ手が揺れる。決定論を優先して
-        // 1スレッドに固定し、指定されたら黙って落とさずに知らせる（ADR-0152）
+        // 1スレッドに固定し、指定されたら黙って落とさずに知らせる
         if threads_given {
             return Err(
                 "seed は --threads を受け付けない（決定論のため1スレッド固定）".to_string(),

@@ -1,4 +1,4 @@
-//! Zobristハッシュ（ADR-0015）。
+//! Zobristハッシュ。
 //!
 //! board_keyの乱数はseed固定のsplitmix64でconst fn生成する。
 //! 全乱数はbit 0を0にし、手番はbit 0のXORで表す（board_keyの
@@ -46,7 +46,7 @@ pub fn psq(pc: Piece, sq: Square) -> u64 {
     PSQ[pc.index()][sq.index()]
 }
 
-/// 歩構造キー用の持ち歩テーブル（ADR-0046）。[色][枚数 0..=18]。
+/// 歩構造キー用の持ち歩テーブル。[色][枚数 0..=18]。
 /// PSQと同じsplitmix64のconst fn生成に合わせる。
 static HAND_PAWN: [[u64; 19]; 2] = {
     let mut t = [[0u64; 19]; 2];
@@ -65,7 +65,7 @@ static HAND_PAWN: [[u64; 19]; 2] = {
     t
 };
 
-/// 色cの持ち歩count枚に対応する歩構造キー成分（ADR-0046）。
+/// 色cの持ち歩count枚に対応する歩構造キー成分。
 #[inline]
 pub fn hand_pawn(c: Color, count: u32) -> u64 {
     HAND_PAWN[c.index()][count as usize]

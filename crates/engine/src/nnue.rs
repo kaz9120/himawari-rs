@@ -1,11 +1,11 @@
-//! NNUE推論の骨格（ADR-0034〜0036）。
+//! NNUE推論の骨格。
 //!
 //! HalfKPの差分FT（片視点FT_OUT次元×2視点）を連結し、
 //! L1_OUT→L2_OUT→1で評価値を出す。本モジュールはスカラー基準実装
 //! （正解器）。accumulator差分とSIMDはこの実装との完全一致を要求する
 //! 形で後から積む。
 //!
-//! 次元は `build.rs` が環境変数 `HIMAWARI_ARCH` から生成する（ADR-0127）。
+//! 次元は `build.rs` が環境変数 `HIMAWARI_ARCH` から生成する。
 
 use himawari_core::attacks::{
     attacks, bishop_attacks, gold_attacks, king_attacks, knight_attacks, lance_attacks,
@@ -21,45 +21,45 @@ include!(concat!(env!("OUT_DIR"), "/arch.rs"));
 /// 隠れ層の入力次元（FT両視点＋利きの両視点）。
 ///
 /// 片視点は `FT_OUT` 次元のaccumulatorを2つに割って要素ごとに掛けるので、
-/// 出す活性は `FT_OUT / 2` 次元になる（ADR-0171）。両視点でその2倍。
-/// 利きのaccumulator（ADR-0237）を持つ構成では、その後ろへ `EFF_OUT` 次元を
+/// 出す活性は `FT_OUT / 2` 次元になる。両視点でその2倍。
+/// 利きのaccumulatorを持つ構成では、その後ろへ `EFF_OUT` 次元を
 /// 2視点ぶん連結する。`EFF_OUT` が0の構成では `FT_OUT` のままである。
 pub const CONCAT: usize = FT_OUT + 2 * EFF_OUT;
 /// 連結ベクトルのうち、HalfKPの片視点ぶんの幅。
 pub const HALF: usize = FT_OUT / 2;
-/// 連結ベクトルのうち、利きの活性が始まる位置（ADR-0237）。
+/// 連結ベクトルのうち、利きの活性が始まる位置。
 pub const EFF_BASE: usize = FT_OUT;
-/// 利きの特徴で、升に乗るものの種類。空き・自分の14種・相手の14種（ADR-0237）。
+/// 利きの特徴で、升に乗るものの種類。空き・自分の14種・相手の14種。
 pub const EFF_PIECES: usize = 29;
-/// 利き数の段階。0・1・2・3以上の4つ（技巧の3で打ち切り、ADR-0237）。
+/// 利き数の段階。0・1・2・3以上の4つ（技巧の3で打ち切り）。
 pub const EFF_LEVELS: usize = 4;
-// 側の特徴の総数 `EFF_IN` はbuild.rsが構成名から作る（ADR-0245）。種類を書かない
+// 側の特徴の総数 `EFF_IN` はbuild.rsが構成名から作る。種類を書かない
 // 構成ではF2だけで、升×乗るもの×自分の利き数×相手の利き数になる
 const _: () = assert!(EFF_GENERIC || EFF_IN == 81 * EFF_PIECES * EFF_LEVELS * EFF_LEVELS);
-/// 評価値スケール（ADR-0036）。
+/// 評価値スケール。
 pub const FV_SCALE: i32 = 16;
 /// 入力特徴の総数。
 pub const FT_IN: usize = 81 * bonapiece::FE_END as usize;
 
-/// FT重みの格納型（ADR-0138）。accumulatorとFTバイアスはi16のままなので、
+/// FT重みの格納型。accumulatorとFTバイアスはi16のままなので、
 /// 活性（clipped ReLU）以降の精度は変わらない。
 pub type FtWeight = i8;
 
-/// i16で読んだFT重みを格納型へ移す（ADR-0138）。
+/// i16で読んだFT重みを格納型へ移す。
 ///
 /// 範囲を確かめる。**黙って切り詰めない。** 飽和は
-/// 0.055%でも−59.3 Eloになる（ADR-0138のリーグ戦）ので、気づかず
+/// 0.055%でも−59.3 Eloになるので、気づかず
 /// 壊れたネットで対局する事故のほうが高くつく。
 pub fn ft_w_from_i16(v: Vec<i16>) -> Result<Vec<FtWeight>, String> {
     if let Some(&bad) = v.iter().find(|&&x| !(-128..=127).contains(&i32::from(x))) {
         return Err(format!(
-            "FT weight {bad} does not fit in i8; train the net with --ft-clip (ADR-0138)"
+            "FT weight {bad} does not fit in i8; train the net with --ft-clip "
         ));
     }
     Ok(v.into_iter().map(|x| x as i8).collect())
 }
 
-/// 重み一式。量子化はADR-0036（隠れ層i8）とADR-0138（FT重みi8）。
+/// 重み一式。隠れ層とFT重みはi8に量子化する。
 /// FTバイアスとaccumulatorはi16で持つ。
 pub struct NnueNetwork {
     /// FT重み。列優先: `ft_w[feature * FT_OUT + o]`。
@@ -67,7 +67,7 @@ pub struct NnueNetwork {
     pub ft_b: Vec<i16>,
     /// 隠れ層1。行優先: `w2[row * CONCAT + i]`。
     pub w2: Vec<i8>,
-    /// 同じ重みを4列チャンク単位で並べ替えた表（ADR-0151群L）。
+    /// 同じ重みを4列チャンク単位で並べ替えた表。
     /// `w2` から機械的に作る派生表で、列駆動の推論だけが読む。
     /// **`w2` を差し替えたら `finish` を呼び直す。**
     pub w2_sparse: Vec<i8>,
@@ -79,7 +79,7 @@ pub struct NnueNetwork {
     /// 出力層。入力は最後の隠れ層（隠れ層2つなら`L2_OUT`、1つなら`L1_OUT`）。
     pub w_out: Vec<i8>,
     pub b_out: i32,
-    /// 利きの特徴の重み（ADR-0237）。列優先: `eff_w[feature * EFF_OUT + o]`。
+    /// 利きの特徴の重み。列優先: `eff_w[feature * EFF_OUT + o]`。
     /// `EFF_OUT` が0の構成では空。
     pub eff_w: Vec<i16>,
     pub eff_b: Vec<i16>,
@@ -88,7 +88,7 @@ pub struct NnueNetwork {
 /// 出力層の入力次元。隠れ層2を挟むかで変わる。
 pub const LAST_HIDDEN: usize = if L2_OUT != 0 { L2_OUT } else { L1_OUT };
 
-/// 隠れ層1の重みを4列チャンク単位で並べ替える（ADR-0151群L）。
+/// 隠れ層1の重みを4列チャンク単位で並べ替える。
 ///
 /// `out[k * L1_OUT * 4 + o * 4 + j] = w2[o * CONCAT + 4k + j]`。入力列を
 /// 4要素ずつのチャンクに区切り、チャンクkについて全出力行の重みを
@@ -176,7 +176,7 @@ impl NnueNetwork {
 
 /// 隠れ層の重みを `行数 × used` から `行数 × stride` へ広げ、余った列を
 /// ゼロで埋める。ファイルと学習側はゼロ埋めを持たず、推論だけがSIMDの
-/// 都合で広い幅を使う（ADR-0127）。
+/// 都合で広い幅を使う。
 pub fn pad_rows(rows: &[i8], used: usize, stride: usize) -> Vec<i8> {
     if stride == used || rows.is_empty() {
         return rows.to_vec();
@@ -192,14 +192,14 @@ pub fn pad_rows(rows: &[i8], used: usize, stride: usize) -> Vec<i8> {
 /// ラベルが取れなかったときの値。PyTorchの `ignore_index` に渡す。
 pub const MOVE_NONE: i64 = -1;
 
-/// `move16` を手番視点の (from, to) ラベルへ分解する（ADR-0129）。
+/// `move16` を手番視点の (from, to) ラベルへ分解する。
 ///
 /// HalfKPの特徴は手番視点で作る（`bonapiece::board_bona_piece` が後手番で
 /// `sq.inv()` する）ので、指し手のラベルも同じ向きに揃える。揃えないと、
 /// 同じ形の局面が先後で違うラベルになり、学習が割れる。
 ///
 /// `from` は盤上81マスに打つ駒7種を続けた88クラス、`to` は81クラス。
-/// **成りは落ちる。** どちらのヘッドにも現れない（ADR-0129で承知のうえ）。
+/// **成りは落ちる。** どちらのヘッドにも現れない。
 pub fn move_labels(m: u16, stm: Color) -> (i64, i64) {
     if m == 0 {
         return (MOVE_NONE, MOVE_NONE);
@@ -231,9 +231,9 @@ pub fn move_labels(m: u16, stm: Color) -> (i64, i64) {
 
 /// 視点cのHalfKP活性特徴（玉以外の盤上駒＋両者の持ち駒）のBonaPieceを
 /// 順に渡す。玉位置のオフセットを掛ける前の形で、これを起点に
-/// 特徴インデックスにもキャッシュの鍵にもできる（ADR-0156）。
+/// 特徴インデックスにもキャッシュの鍵にもできる。
 /// 盤上は駒のある升だけを走る。81升を舐めると空升の判定が3分の2を
-/// 占め、全計算のほうで列挙が支配的になる（ADR-0156のプロファイル）。
+/// 占め、全計算のほうで列挙が支配的になる。
 #[inline]
 pub fn for_each_bona_piece(pos: &Position, c: Color, mut f: impl FnMut(u16)) {
     let kings = Bitboard::from_square(pos.king(Color::Black))
@@ -260,7 +260,7 @@ pub fn halfkp_active(pos: &Position, c: Color, out: &mut Vec<u32>) {
     });
 }
 
-/// 升ごとの利き数を色別に数える（ADR-0237）。添字は `[色][升]` で、升は盤の
+/// 升ごとの利き数を色別に数える。添字は `[色][升]` で、升は盤の
 /// 向きのまま。玉の利きを含め、ピンは無視する。その升の駒自身は数えない
 /// （駒は自分の升へ利かない）。値は打ち切らない。
 ///
@@ -278,7 +278,7 @@ pub fn effect_counts(pos: &Position) -> [[u8; 81]; 2] {
     n
 }
 
-/// 利きの特徴のindex（ADR-0237のF2）。`sq` は視点から見た升、`pc` は
+/// 利きの特徴のindex（F2）。`sq` は視点から見た升、`pc` は
 /// 0（空き）・1〜14（自分の駒）・15〜28（相手の駒）、`own`・`opp` は
 /// 自分と相手の利き数（打ち切り前）。
 #[inline]
@@ -287,7 +287,7 @@ pub fn effect_index(sq: usize, pc: usize, own: u8, opp: u8) -> u32 {
     (((sq * EFF_PIECES + pc) * EFF_LEVELS + cap(own)) * EFF_LEVELS + cap(opp)) as u32
 }
 
-/// 視点cの利きの特徴を81個書く（ADR-0237のF2）。升ごとに1つ立つ。
+/// 視点cの利きの特徴を81個書く（F2）。升ごとに1つ立つ。
 ///
 /// 視点ごとに盤を反転し、自他は視点から見る。HalfKPと同じ扱いなので、
 /// 180度回して先後を入れ替えた局面は同じ特徴になる。`counts` は
@@ -309,7 +309,7 @@ pub fn effect_active(pos: &Position, c: Color, counts: &[[u8; 81]; 2], out: &mut
     }
 }
 
-/// 利きのaccumulatorを特徴から全計算する（ADR-0237のD3）。i32で足すので、
+/// 利きのaccumulatorを特徴から全計算する。i32で足すので、
 /// 81行を足しても桁あふれしない。差分の経路（D2）はこの値との一致を求める。
 pub fn effect_accumulate(net: &NnueNetwork, features: &[u32; 81]) -> [i32; EFF_OUT] {
     let mut acc = [0i32; EFF_OUT];
@@ -386,14 +386,14 @@ pub fn effect_acc_bias(net: &NnueNetwork, acc: &mut [i16; EFF_OUT]) {
     acc.copy_from_slice(&net.eff_b[..EFF_OUT]);
 }
 
-/// 利きのaccumulatorを特徴から作り直し、0〜127へクリップして書く（ADR-0237のD3）。
+/// 利きのaccumulatorを特徴から作り直し、0〜127へクリップして書く。
 ///
 /// 評価のたびに81行を足す。差分は持たない。対の積は掛けない。
 pub fn effect_transform(net: &NnueNetwork, features: &[u32; 81], out: &mut [u8]) {
     effect_clip(&effect_accumulate(net, features), out);
 }
 
-/// 色ごとの利き数を、1枚以上・2枚以上・3枚以上の3枚の集合で持つ（ADR-0237のD2）。
+/// 色ごとの利き数を、1枚以上・2枚以上・3枚以上の3枚の集合で持つ。
 ///
 /// 特徴は利き数を3で打ち切るので、升ごとの数を持たなくても段階は決まる。
 /// 駒ごとに利き先の集合を飽和カウンタへ足すので、升を1つずつ数えずに済む。
@@ -411,7 +411,7 @@ impl EffectLevels {
 
     /// 局面から作る。数え方は `effect_counts` と同じで、一致はテストで確かめる。
     ///
-    /// 駒種ごとに集合から引く（ADR-0242の段3）。駒ごとに `attacks` の分岐を
+    /// 駒種ごとに集合から引く。駒ごとに `attacks` の分岐を
     /// 通らないので、駒種の分岐の外れが減る。
     pub fn build(pos: &Position) -> EffectLevels {
         let occ = pos.occupied();
@@ -459,7 +459,7 @@ impl EffectLevels {
     }
 
     /// 色ごとの「k+1枚以上」の升の集合（81升の通し番号のビット）から作る。
-    /// 配列盤（ADR-0241の段階6）が升ごとの利き数から作った集合を受け取る口である。
+    /// 配列盤が升ごとの利き数から作った集合を受け取る口である。
     #[inline]
     pub fn from_bits(bits: [[u128; 3]; 2]) -> EffectLevels {
         let mut l = EffectLevels::EMPTY;
@@ -499,7 +499,7 @@ impl EffectLevels {
     }
 }
 
-/// 升の中身と両色の利き数を、視点に依らない形で1語に詰める（ADR-0237のD2）。
+/// 升の中身と両色の利き数を、視点に依らない形で1語に詰める。
 ///
 /// 上位が駒（0は空き、先手の14種を1〜14、後手を15〜28）、下位4ビットが
 /// 先手と後手の利き数（各2ビット、3で打ち切り）である。視点ごとの特徴の
@@ -530,7 +530,7 @@ pub fn effect_code<B: crate::nnue_acc::EvalBoard + ?Sized>(
 ///
 /// 語は `駒 << 4 | 先手の段階 << 2 | 後手の段階` で、`effect_index` の升より下の桁と
 /// 同じ並びになる。先手の視点は升の起点に語を足すだけで済む。後手の視点は、
-/// 自他を入れ替えた語を表で引く（ADR-0241の第15回）。
+/// 自他を入れ替えた語を表で引く。
 #[inline(always)]
 pub fn effect_code_index(c: Color, sq: Square, code: u16) -> u32 {
     const PER_SQ: u32 = (EFF_PIECES * EFF_LEVELS * EFF_LEVELS) as u32;
@@ -562,7 +562,7 @@ static WHITE_CODE: [u16; 512] = {
     t
 };
 
-/// 側の入力がF2と最小の攻め駒の組（`-f2_minatt`）で、両方を升の語の差分で持つ構成か（ADR-0248）。
+/// 側の入力がF2と最小の攻め駒の組（`-f2_minatt`）で、両方を升の語の差分で持つ構成か。
 ///
 /// 升の語は `nnue_acc::EvalBoard::side_codes` が作る16ビットで、下位9ビットがF2の語
 /// （`effect_code`）、上位7ビットが `先手の階級 * 11 + 後手の階級` である。
@@ -624,7 +624,7 @@ static WHITE_MINATT: [u16; 4096] = {
 ///
 /// 1升に立つのはF2と最小の攻め駒の1つずつなので、升ごとに各表の最大の絶対値を足す。
 /// i16に収まれば、差分の経路をi16の巡回加算で持っても、i32で作り直す値と一致する。
-/// 読み込みでこの値を検査する（ADR-0261）。
+/// 読み込みでこの値を検査する。
 pub fn side_minatt_acc_bound(net: &NnueNetwork) -> i64 {
     if !SIDE_MINATT_INC {
         unreachable!("f2_minatt の構成でだけ呼ぶ");
@@ -649,7 +649,7 @@ pub fn side_minatt_acc_bound(net: &NnueNetwork) -> i64 {
     sum.into_iter().max().unwrap_or(0)
 }
 
-/// 連結ベクトルの利きの部分（両視点）を埋める（ADR-0237）。手番視点が先に並ぶ。
+/// 連結ベクトルの利きの部分（両視点）を埋める。手番視点が先に並ぶ。
 /// `EFF_OUT` が0の構成では何もしない。
 #[inline]
 pub fn fill_effect(net: &NnueNetwork, pos: &Position, concat: &mut [u8; CONCAT]) {
@@ -675,7 +675,7 @@ fn clip(v: i32) -> u8 {
     v.clamp(0, 127) as u8
 }
 
-/// accumulatorの前半と後半を要素ごとに掛けて活性にする（ADR-0171）。
+/// accumulatorの前半と後半を要素ごとに掛けて活性にする。
 ///
 /// `(clip(a) * clip(b) + 64) >> 7` の最大は 126 で、127には届かない。
 /// **学習側が同じ127/128を掛けているので、これで縮尺が合う。**掛けずに
@@ -690,7 +690,7 @@ pub(crate) fn pair_activation(a: i32, b: i32) -> u8 {
 }
 
 /// スカラー全計算の評価（手番視点、歩=90スケール）。
-/// 差分計算・SIMDの正解基準（ADR-0035, 0036）。
+/// 差分計算・SIMDの正解基準。
 pub fn evaluate_scalar(net: &NnueNetwork, pos: &Position) -> Value {
     let stm = pos.side_to_move();
     let mut features = Vec::with_capacity(64);
@@ -709,7 +709,7 @@ pub fn evaluate_scalar(net: &NnueNetwork, pos: &Position) -> Value {
                 *a += i32::from(net.ft_w[base + o]);
             }
         }
-        // accの前半と後半を対にして掛ける（ADR-0171）
+        // accの前半と後半を対にして掛ける
         for o in 0..HALF {
             concat[half * HALF + o] = pair_activation(acc[o], acc[o + HALF]);
         }
@@ -719,7 +719,7 @@ pub fn evaluate_scalar(net: &NnueNetwork, pos: &Position) -> Value {
     forward_hidden(net, &concat)
 }
 
-/// 連結ベクトルから評価値まで（隠れ層はi8×u8の積和、ADR-0036）。
+/// 連結ベクトルから評価値まで（隠れ層はi8×u8の積和）。
 pub(crate) fn forward_hidden(net: &NnueNetwork, concat: &[u8; CONCAT]) -> Value {
     // 隠れ層2の入力はL1_PAD幅で、L1_OUT以降はゼロのまま渡す
     let mut h2 = [0u8; L1_PAD];
@@ -895,7 +895,7 @@ mod tests {
         format!("{} {} {} {}", rows.join("/"), parts[1], parts[2], parts[3])
     }
 
-    /// 左右反転で評価値がどれだけ動くかを測る（ADR-0157の先行指標）。
+    /// 左右反転で評価値がどれだけ動くかを測る。
     ///
     /// HalfKPは玉位置を81通りそのまま持つので、左右対称性は構造では
     /// 保証されず、学習で獲得するしかない。**獲得できていない量が、
@@ -904,7 +904,7 @@ mod tests {
     /// 現行ネットが要るので既定では走らせない。
     /// `EVAL_FILE=... cargo test --release -p himawari-engine -- --ignored --nocapture mirror_lr_gap`
     #[test]
-    #[ignore = "現行ネットが要る調査（ADR-0157）"]
+    #[ignore = "現行ネットが要る調査"]
     fn mirror_lr_gap() {
         let path = std::env::var("EVAL_FILE").expect("EVAL_FILE を指定する");
         let f = std::fs::File::open(&path).expect("EVAL_FILEを開けない");
@@ -960,7 +960,7 @@ mod tests {
         scores.sort_unstable();
         let pick = |v: &[i32], q: f64| v[((v.len() - 1) as f64 * q) as usize];
         let mean = |v: &[i32]| v.iter().map(|&x| i64::from(x)).sum::<i64>() / v.len() as i64;
-        // 歩=90スケール（ADR-0036）
+        // 歩=90スケール
         println!(
             "左右ミラーの評価差（歩=90）: 平均{} 中央{} p90={} p99={} 最大{}",
             mean(&gaps),
@@ -1009,7 +1009,7 @@ mod tests {
         positions
     }
 
-    /// 利き数は探索が使う `attackers_to` と一致する（ADR-0237）。実装を
+    /// 利き数は探索が使う `attackers_to` と一致する。実装を
     /// 共有しない別経路で、遮り・玉の利き・駒自身を数えないことをまとめて確かめる。
     #[test]
     fn effect_counts_match_attackers_to() {
@@ -1032,7 +1032,7 @@ mod tests {
     }
 
     /// 特徴のindexを升・駒・自他の利き数へ戻し、局面から直接数えた値と
-    /// 突き合わせる（ADR-0237のF2）。視点の反転と自他の入れ替えもここで見る。
+    /// 突き合わせる（F2）。視点の反転と自他の入れ替えもここで見る。
     #[test]
     fn effect_features_decode_to_the_board() {
         for pos in &effect_positions() {
@@ -1095,7 +1095,7 @@ mod tests {
     }
 
     /// 段階の集合（D2）は、升ごとに数えた利き数を3で打ち切った値と一致する。
-    /// 升の語から戻した特徴のindexも、`effect_active` と一致する（ADR-0237）。
+    /// 升の語から戻した特徴のindexも、`effect_active` と一致する。
     #[test]
     fn effect_levels_and_codes_match_counts() {
         for pos in &effect_positions() {
@@ -1128,7 +1128,7 @@ mod tests {
     }
 
     /// 遮りが特徴に入る。香の前に駒を置くと、その先の升の利き数が落ちる。
-    /// 遮りを無視した利き数は駒の位置の線形和で、FTがすでに表せる（ADR-0237）。
+    /// 遮りを無視した利き数は駒の位置の線形和で、FTがすでに表せる。
     #[test]
     fn effect_features_see_blocking() {
         let open = Position::from_sfen("8k/9/9/9/4L4/9/9/9/K8 b - 1").unwrap();
@@ -1143,7 +1143,7 @@ mod tests {
     }
 
     /// 利きの活性は連結ベクトルの後ろ（`EFF_BASE` 以降）に入り、第1層の
-    /// 利きの列を通って評価値に効く（ADR-0237）。利きを持たない構成では
+    /// 利きの列を通って評価値に効く。利きを持たない構成では
     /// 何も書かない。
     #[test]
     fn effect_activations_reach_the_output() {
@@ -1183,7 +1183,7 @@ mod tests {
         assert!(moved, "利きの活性が後段へ届いていない");
     }
 
-    /// インターリーブ表は `w2` の並べ替えである（ADR-0151群L）。
+    /// インターリーブ表は `w2` の並べ替えである。
     /// 全要素を1対1で突き合わせる。列駆動の推論はこの並びに依存する。
     #[test]
     fn interleaved_w2_is_a_permutation_of_w2() {

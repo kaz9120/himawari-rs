@@ -1,4 +1,4 @@
-//! Position・movegen・perftの統合テスト（ADR-0006, 0018）。
+//! Position・movegen・perftの統合テスト。
 //!
 //! do/undo往復の完全一致と、差分更新キー＝全計算キーの一致を
 //! ランダムプレイアウトで検証する。perftは公開値と照合する。
@@ -74,7 +74,7 @@ fn perft_matches_slow_perft() {
     }
 }
 
-// releaseビルドでのみ実行（CIのreleaseテストが回す。ADR-0006/0018）
+// releaseビルドでのみ実行（CIのreleaseテストが回す）
 #[cfg_attr(debug_assertions, ignore)]
 #[test]
 fn perft_startpos_depth4() {
@@ -136,7 +136,7 @@ fn random_playout(seed: u64, plies: usize, all: bool) {
             fresh.state().material,
             "差分materialと全計算の不一致"
         );
-        // 歩構造キーの差分更新＝全計算の一致（ADR-0046）
+        // 歩構造キーの差分更新＝全計算の一致
         assert_eq!(
             pos.pawn_key(),
             fresh.pawn_key(),
@@ -147,7 +147,7 @@ fn random_playout(seed: u64, plies: usize, all: bool) {
             pos.compute_pawn_key(),
             "pawn_keyの差分と全計算の不一致"
         );
-        // 歩以外の盤上駒キーも同様に検証する（ADR-0085, 0109）
+        // 歩以外の盤上駒キーも同様に検証する
         for c in [Color::Black, Color::White] {
             assert_eq!(
                 pos.non_pawn_key(c),
@@ -160,7 +160,7 @@ fn random_playout(seed: u64, plies: usize, all: bool) {
                 "non_pawn_keyの差分と全計算の不一致"
             );
         }
-        // 小駒キーも同様に検証する（ADR-0109）
+        // 小駒キーも同様に検証する
         assert_eq!(
             pos.minor_piece_key(),
             fresh.minor_piece_key(),
@@ -249,8 +249,8 @@ fn move_from_usi_roundtrip() {
     assert!(pos.move_from_usi("7g7e").is_none());
 }
 
-/// 飛車の往復による通常の千日手（ADR-0026）。
-/// 探索は、一致がrootより後にあるときだけ千日手として返す（ADR-0254）。
+/// 飛車の往復による通常の千日手。
+/// 探索は、一致がrootより後にあるときだけ千日手として返す。
 #[test]
 fn repetition_draw() {
     let mut pos = Position::from_sfen(SFEN_STARTPOS).unwrap();
@@ -264,7 +264,7 @@ fn repetition_draw() {
     assert_eq!(pos.repetition_state(0), Repetition::None);
 }
 
-/// rootより前との一致でも、4回目の局面は千日手として返す（ADR-0254）。
+/// rootより前との一致でも、4回目の局面は千日手として返す。
 #[test]
 fn repetition_fourth_occurrence_crosses_root() {
     let mut pos = Position::from_sfen(SFEN_STARTPOS).unwrap();
@@ -286,7 +286,7 @@ fn perpetual_check_is_loss_for_checker() {
     assert_eq!(pos.repetition_state_all(), Repetition::Lose);
     // 探索の中の往復なら負けと読む
     assert_eq!(pos.repetition_state(5), Repetition::Lose);
-    // rootより前との一致なら、後手は別の手を選べるので、まだ負けではない（ADR-0254）
+    // rootより前との一致なら、後手は別の手を選べるので、まだ負けではない
     assert_eq!(pos.repetition_state(1), Repetition::None);
     // 4回目は本当に負けである
     let cycle = ["4h5h", "5a4a", "5h4h", "4a5a"];
@@ -295,7 +295,7 @@ fn perpetual_check_is_loss_for_checker() {
     assert_eq!(pos.repetition_state(1), Repetition::Lose);
 }
 
-/// 優等局面はrootを跨いで判定しない（ADR-0153）。
+/// 優等局面はrootを跨いで判定しない。
 ///
 /// 8ply前と盤面が同一で、先手だけ歩を1枚得ている局面を作る。手順は
 /// 先手が2六の歩を飛車で取り、玉の往復で手待ちし、後手が同じ2六へ
@@ -322,7 +322,7 @@ fn superior_is_gated_by_search_ply() {
     assert_eq!(pos.repetition_state(0), Repetition::None);
 }
 
-/// 玉が閉路を回って `plies` ply後に開始局面へ戻る手順を作る（ADR-0186）。
+/// 玉が閉路を回って `plies` ply後に開始局面へ戻る手順を作る。
 ///
 /// 経路のマスはすべて相異なるので、途中の局面が開始局面と一致することは
 /// ない。先手の周期と後手の周期の最小公倍数だけ進んだところで初めて戻る。
@@ -334,7 +334,7 @@ fn king_cycle(black: &[&str], white: &[&str], plies: usize) -> Position {
     pos
 }
 
-/// 探索の判定は距離16の一致まで拾う（ADR-0186）。
+/// 探索の判定は距離16の一致まで拾う。
 ///
 /// 先手・後手とも8手の閉路を回り、16ply後に開始局面へ戻る。
 #[test]
@@ -352,7 +352,7 @@ fn repetition_scan_finds_distance_16() {
     assert_eq!(pos.repetition_state_all(), Repetition::Draw);
 }
 
-/// 距離18の一致は探索の判定から外れ、ルールの裁定だけが拾う（ADR-0186）。
+/// 距離18の一致は探索の判定から外れ、ルールの裁定だけが拾う。
 ///
 /// 先手が9手、後手が3手の閉路を回るので、最初の一致は18ply後になる。
 /// 前計算の走査は16手で打ち切るため、探索側は千日手を見ない。
@@ -370,7 +370,7 @@ fn repetition_beyond_scan_max_is_rule_only() {
     assert_eq!(pos.repetition_state_all(), Repetition::Draw);
 }
 
-/// 千日手はundo_moveで消える（ADR-0026）。
+/// 千日手はundo_moveで消える。
 #[test]
 fn repetition_disappears_after_undo() {
     let mut pos = Position::from_sfen(SFEN_STARTPOS).unwrap();
@@ -382,7 +382,7 @@ fn repetition_disappears_after_undo() {
     assert_eq!(pos.repetition_state(usize::MAX), Repetition::None);
 }
 
-/// null moveの往復一致と、手番だけ違う局面のキー相違（ADR-0028）。
+/// null moveの往復一致と、手番だけ違う局面のキー相違。
 #[test]
 fn null_move_roundtrip() {
     let mut pos = Position::from_sfen(SFEN_STARTPOS).unwrap();
@@ -397,7 +397,7 @@ fn null_move_roundtrip() {
     assert_eq!(pos.to_sfen(), sfen);
 }
 
-/// 千日手の走査はnull moveを跨がない（ADR-0028）。
+/// 千日手の走査はnull moveを跨がない。
 #[test]
 fn repetition_scan_stops_at_null_move() {
     let mut pos = Position::from_sfen(SFEN_STARTPOS).unwrap();
@@ -411,7 +411,7 @@ fn repetition_scan_stops_at_null_move() {
     assert_eq!(pos.repetition_state_all(), Repetition::None);
 }
 
-/// 入玉宣言勝ち（27点法、ADR-0030）の境界条件。
+/// 入玉宣言勝ち（27点法）の境界条件。
 #[test]
 fn declaration_win_boundaries() {
     // 先手: 敵陣に龍+と9枚（14点）+持駒RB4G（14点）= 28点、駒10枚
@@ -475,7 +475,7 @@ fn pseudo_legal_accepts_generated_moves() {
     }
 }
 
-/// 駒打ちのSEE（ADR-0091）。打った駒が取られる筋を解く。
+/// 駒打ちのSEE。打った駒が取られる筋を解く。
 #[test]
 fn see_ge_solves_drops() {
     use himawari_core::{Color, PieceType, Square};
@@ -496,7 +496,7 @@ fn see_ge_solves_drops() {
     assert!(pos.see_ge(m2, 0), "取られない打ちは損しない");
 }
 
-/// 成りのSEE（ADR-0095）。成りによる駒の価値上昇を取り分に入れる。
+/// 成りのSEE。成りによる駒の価値上昇を取り分に入れる。
 #[test]
 fn see_ge_accounts_for_promotion() {
     use himawari_core::{Color, Piece, PieceType, Square};
@@ -523,7 +523,7 @@ fn see_ge_accounts_for_promotion() {
     );
 }
 
-/// 桂の3段目不成を通常の生成でも出す（ADR-0173）。
+/// 桂の3段目不成を通常の生成でも出す。
 ///
 /// 成桂は金の動きなので、桂の王手とは利きが違う。「成ると王手にならないが、
 /// 不成なら王手になる」形があり、これを落とすと相手の詰め手順ごと見えなくなる。
@@ -570,7 +570,7 @@ fn knight_non_promotion_check_is_generated_in_normal_mode() {
     );
 }
 
-/// 行き所のない駒になる桂の不成は、どちらのモードでも生成しない（ADR-0017）。
+/// 行き所のない駒になる桂の不成は、どちらのモードでも生成しない。
 #[test]
 fn knight_non_promotion_is_not_generated_on_last_two_ranks() {
     // 先手の2三桂は1一・3一（1段目）へしか跳べない。不成は行き所がない
@@ -588,7 +588,7 @@ fn knight_non_promotion_is_not_generated_on_last_two_ranks() {
     }
 }
 
-/// 香の不成は3段目以降で生成し、2段目では生成しない（ADR-0176）。
+/// 香の不成は3段目以降で生成し、2段目では生成しない。
 ///
 /// 香の値打ちは前方へ貫通する利きにある。成香は金の動きなので前1マスへ
 /// 縮む。3段目で不成にすれば貫通が残るので、通常の生成でも出す。2段目の

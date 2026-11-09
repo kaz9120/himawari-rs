@@ -1,4 +1,4 @@
-"""PSV dataset reader via Rust PyO3 bridge (ADR-0043, ADR-0045, ADR-0065)."""
+"""PSV dataset reader via Rust PyO3 bridge."""
 
 import math
 import os
@@ -11,9 +11,9 @@ from torch.utils.data import Dataset
 
 import himawari
 
-#: psvの1レコード（ADR-0038）
+#: psvの1レコード
 PSV_BYTES = 40
-#: `extract_batch` が返す配列の本数。末尾2本が利きの入力特徴（ADR-0237）
+#: `extract_batch` が返す配列の本数。末尾2本が利きの入力特徴
 BATCH_ARRAYS = 9
 
 
@@ -70,7 +70,7 @@ class PsvDataset(Dataset):
 
 
 class PsvBatchLoader:
-    """バッチ単位でPSVを読み、Rust側で一括抽出する（ADR-0065）。
+    """バッチ単位でPSVを読み、Rust側で一括抽出する。
 
     DataLoaderのworkerを使わない。`extract_batch` がGILを解放して
     rayonで並列に抽出するため、1プロセスで全コアを使える。
@@ -88,7 +88,7 @@ class PsvBatchLoader:
         if size % 40 != 0:
             raise ValueError(f"ファイルサイズが40の倍数でない: {size}")
         self.n = size // 40
-        # 先頭のこの件数だけを使う（ADR-0219）。大きなpsvの一部を、コピーを
+        # 先頭のこの件数だけを使う。大きなpsvの一部を、コピーを
         # 作らずに学習するためのもので、バッチの並びは件数だけで決まる
         if positions is not None:
             if positions <= 0 or positions > self.n:
@@ -99,14 +99,14 @@ class PsvBatchLoader:
         self.score_limit = score_limit
         self.score_clamp = score_clamp
         self.mmap = mmap
-        # 利きの入力特徴（ADR-0237）。処置群だけが抽出する
+        # 利きの入力特徴。処置群だけが抽出する
         self.effect_inputs = effect_inputs
         self.shuffle = shuffle
         self.chunk = max(chunk_positions, batch)
         self.seed = seed
         self.prefetch = prefetch
         self.epoch = 0
-        # 再開時にエポック内で読み飛ばすバッチ数（ADR-0159）。1回の
+        # 再開時にエポック内で読み飛ばすバッチ数。1回の
         # __iter__ でだけ効く。バッチの並びは seed と epoch で決まるので、
         # 同じ数だけ飛ばせば中断した位置から続けられる
         self.skip_batches = 0
@@ -211,7 +211,7 @@ def collate_psv(batch):
 
 
 class RankLoader:
-    """兄弟局面のランキング群を供給する（ADR-0185）。
+    """兄弟局面のランキング群を供給する。
 
     ファイルは `psv rank` が書いた40バイト×3（正例・負例・負例）の群の
     連なり。ステップごとに群を一様に引き、順序を保ったまま特徴を抽出して
@@ -237,7 +237,7 @@ class RankLoader:
         self.rng = np.random.default_rng(seed)
         self.data = np.memmap(path, dtype=np.uint8, mode="r", shape=(self.n, 120))
         self.prefetch = prefetch
-        # 利きの入力特徴（ADR-0237）。処置群は兄弟局面にも同じ特徴を立てる
+        # 利きの入力特徴。処置群は兄弟局面にも同じ特徴を立てる
         self.effect_inputs = effect_inputs
         self._queue = None
 

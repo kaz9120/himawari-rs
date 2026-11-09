@@ -110,7 +110,7 @@ def release(args: argparse.Namespace) -> int:
     )
     size = release_mod.file_size(db)
     gen = _read_gen_log(args.gen_log)
-    # アセットは固定名で配る（ADR-0080の追記）。手元の名前はノートに残す
+    # アセットは固定名で配る。手元の名前はノートに残す
     asset_name = config.BOOK_ASSET
 
     notes = [

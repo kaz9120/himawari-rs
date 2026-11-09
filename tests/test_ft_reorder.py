@@ -1,4 +1,4 @@
-"""FT出力次元の並べ替えを検証する（ADR-0168）。"""
+"""FT出力次元の並べ替えを検証する。"""
 
 import pytest
 
@@ -70,7 +70,7 @@ def test_ft_out_must_be_a_multiple_of_four(tmp_path, monkeypatch, capsys):
 
 
 def test_main_accepts_argv_list(tmp_path):
-    """hmwr net reorderは引数リストでmainを呼ぶ（回帰。ADR-0185で発覚）。
+    """hmwr net reorderは引数リストでmainを呼ぶ（回帰テスト）。
 
     ダンプ形式の検証は他のテストが持つ。ここでは呼び出し規約だけを見る。
     引数が壊れていればargparseがSystemExit(2)を出し、呼べていれば

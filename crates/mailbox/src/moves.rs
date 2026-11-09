@@ -26,7 +26,7 @@ impl Move {
         Move(to as u32 | ((pt as u32) << 8) | DROP | ((make_piece(c, pt) as u32) << 24))
     }
 
-    /// 符号のビット列そのもの（ADR-0241の第15回、coreの手との変換に使う）。
+    /// 符号のビット列そのもの（coreの手との変換に使う）。
     #[inline(always)]
     pub const fn raw(self) -> u32 {
         self.0

@@ -1,4 +1,4 @@
-//! USIエンジンのエントリポイント（ADR-0019）。
+//! USIエンジンのエントリポイント。
 //!
 //! stdin読み取りスレッド＋コマンドループ＋探索スレッド分離。
 //! 出力は行単位でロックしてflushする。
@@ -20,7 +20,7 @@ const ENGINE_NAME: &str = "Himawari";
 const ENGINE_AUTHOR: &str = "Kazumasa Yamamoto";
 
 fn version_string() -> String {
-    // devビルドの識別はCIが設定するHIMAWARI_BUILD_ID（ADR-0007）
+    // devビルドの識別はCIが設定するHIMAWARI_BUILD_ID
     match option_env!("HIMAWARI_BUILD_ID") {
         Some(id) => format!("{} ({})", env!("CARGO_PKG_VERSION"), id),
         None => format!("{}-dev", env!("CARGO_PKG_VERSION")),
@@ -181,7 +181,7 @@ fn print_line(s: &str) {
     let _ = lock.flush();
 }
 
-/// setoptionで設定できるオプションのUSI宣言（ADR-0019のレジストリ）。
+/// setoptionで設定できるオプションのUSI宣言。
 fn print_options() {
     print_line("option name USI_Hash type spin default 256 min 1 max 33554432");
     print_line("option name USI_Ponder type check default false");
@@ -193,14 +193,14 @@ fn print_options() {
     print_line("option name RoundUpToFullSecond type check default true");
     print_line("option name MaxMovesToDraw type spin default 0 min 0 max 100000");
     print_line("option name MultiPV type spin default 1 min 1 max 128");
-    // 実務オプション（ADR-0109のG10。S:151-155）
+    // 実務オプション（S:151-155）
     print_line("option name ResignValue type spin default 99999 min 0 max 99999");
     print_line("option name DrawValueBlack type spin default -2 min -30000 max 30000");
     print_line("option name DrawValueWhite type spin default -2 min -30000 max 30000");
     print_line("option name EvalFile type string default <empty>");
     print_line("option name BookFile type string default <empty>");
     print_line("option name BookDepth type spin default 24 min 0 max 1000");
-    // 定跡の引き方（ADR-0109のG10。既定値はbook.cpp:1308-1392）
+    // 定跡の引き方（既定値はbook.cpp:1308-1392）
     print_line("option name USI_OwnBook type check default true");
     print_line("option name BookIgnoreRate type spin default 0 min 0 max 100");
     print_line("option name BookEvalDiff type spin default 30 min 0 max 99999");
@@ -210,7 +210,7 @@ fn print_options() {
     print_line("option name FlippedBook type check default true");
     print_line("option name BookRandomize type check default false");
     print_line("option name DebugLogFile type string default <empty>");
-    // SPSAのチューニング項目（ADR-0143）。tuneビルドだけが宣言する
+    // SPSAのチューニング項目。tuneビルドだけが宣言する
     #[cfg(feature = "tune")]
     for e in himawari_engine::tunables::ENTRIES {
         print_line(&format!(
@@ -270,7 +270,7 @@ fn parse_go(tokens: &[&str]) -> Limits {
                 continue;
             }
             "ponder" => {
-                // ponderフラグは呼び出し側がトークンで判定する（ADR-0033）
+                // ponderフラグは呼び出し側がトークンで判定する
                 i += 1;
                 continue;
             }
@@ -417,7 +417,7 @@ fn set_option(opts: &mut EngineOptions, bopts: &mut BookOptions, tokens: &[&str]
         }
         "FlippedBook" => bopts.params.flipped = value == "true",
         "BookRandomize" => bopts.params.randomize = value == "true",
-        // SPSAのチューニング項目（ADR-0143）。tuneビルドだけが受ける
+        // SPSAのチューニング項目。tuneビルドだけが受ける
         #[cfg(feature = "tune")]
         name if himawari_engine::tunables::ENTRIES
             .iter()
@@ -443,7 +443,7 @@ fn set_option(opts: &mut EngineOptions, bopts: &mut BookOptions, tokens: &[&str]
     }
 }
 
-/// 定跡ファイルを読み込む（ADR-0063）。EvalFileと違い、読めなくても
+/// 定跡ファイルを読み込む。EvalFileと違い、読めなくても
 /// 起動を止めない。定跡なしで対局できるため、事故にはならない。
 fn load_book(path: &str) -> Option<Book> {
     if path.is_empty() {
@@ -469,7 +469,7 @@ fn load_book(path: &str) -> Option<Book> {
     }
 }
 
-/// 定跡を引き、ヒットしたら返すbestmoveの行を作る（ADR-0063）。
+/// 定跡を引き、ヒットしたら返すbestmoveの行を作る。
 /// 引いた経過はinfo stringで出す。
 fn probe_book(bopts: &mut BookOptions, pos: &Position, ponder: bool) -> Option<String> {
     let mut notes = Vec::new();
@@ -492,7 +492,7 @@ fn probe_book(bopts: &mut BookOptions, pos: &Position, ponder: bool) -> Option<S
     Some(format!("bestmove {}{}", h.mv.to_usi(), ponder_hint))
 }
 
-/// 配布する評価関数の固定名（ADR-0080の追記）。
+/// 配布する評価関数の固定名。
 const DEFAULT_EVAL_NAME: &str = "eval.hmwr";
 
 /// 読み込む評価関数のパスを決める。EvalFileが空なら、実行ファイルと
@@ -510,7 +510,7 @@ fn eval_path(eval_file: &str) -> String {
         .unwrap_or_default()
 }
 
-/// EvalFileを読み込む。読めなければ起動エラー（ADR-0037: 駒割への
+/// EvalFileを読み込む。読めなければ起動エラー（駒割への
 /// フォールバックはしない。気づかず弱いまま対局する事故を防ぐ）。
 fn load_eval(path: &str) -> Option<(String, std::sync::Arc<NnueNetwork>)> {
     if path.is_empty() {
@@ -549,15 +549,15 @@ fn load_eval(path: &str) -> Option<(String, std::sync::Arc<NnueNetwork>)> {
 }
 
 fn main() {
-    // `himawari threadtune ...` は動作環境の最適なスレッド数を測るモード
-    // （ADR-0203）。引数なしならUSIエンジンとして動く
+    // `himawari threadtune ...` は動作環境の最適なスレッド数を測るモード。
+    // 引数なしならUSIエンジンとして動く
     let args: Vec<String> = std::env::args().skip(1).collect();
     if args.first().map(String::as_str) == Some("threadtune") {
         std::process::exit(i32::from(himawari_usi::threadtune::main(&args[1..])));
     }
     // panicは黙って止めない。探索スレッドが落ちるとbestmoveが永久に返らず、
     // 実戦では残り時間を抱えたまま時間切れになる（floodgateで60手以上の
-    // 時間切れ19局、ADR-0199）。原因をログとstderrへ残し、プロセスごと
+    // 時間切れ19局）。原因をログとstderrへ残し、プロセスごと
     // 終える。落ちたことがGUIとログから見えるようにする
     std::panic::set_hook(Box::new(|info| {
         let msg = format!("panic: {info}");
@@ -565,7 +565,7 @@ fn main() {
         eprintln!("info string error: {msg}");
         std::process::exit(101);
     }));
-    // stdin読み取り専用スレッド（ADR-0019）
+    // stdin読み取り専用スレッド
     let (tx, rx) = mpsc::channel::<String>();
     std::thread::spawn(move || {
         let stdin = std::io::stdin();
@@ -596,7 +596,7 @@ fn main() {
     // 探索をスキップしたままstopを待ち、そのあとでbestmoveを出す。
     // 探索スレッドが動いていないのでUSI層で保持する
     let mut pending_book: Option<String> = None;
-    // go ponderの局面。定跡はponderhitで引く（ADR-0231）。ponder中は
+    // go ponderの局面。定跡はponderhitで引く。ponder中は
     // 定跡を引かずに探索し、定跡を抜けた直後の置換表を温める
     let mut ponder_root: Option<Position> = None;
     let mut pool: Option<ThreadPool> = None;
@@ -615,8 +615,8 @@ fn main() {
                 print_line("usiok");
             }
             "setoption" => set_option(&mut opts, &mut bopts, &tokens[1..], &line),
-            // SPSAランナーがチューニング項目を発見するための一覧出力
-            // （ADR-0143）。tuneビルドだけが応答する
+            // SPSAランナーがチューニング項目を発見するための一覧出力。
+            // tuneビルドだけが応答する
             #[cfg(feature = "tune")]
             "tunables" => {
                 for e in himawari_engine::tunables::ENTRIES {
@@ -669,8 +669,8 @@ fn main() {
                 // 前のgoの保留は持ち越さない
                 pending_book = None;
                 ponder_root = None;
-                // 定跡ヒットなら探索しない（ADR-0063）。go ponderでは引かずに
-                // 探索し、ponderhitで引く（ADR-0231。参照実装のS:1115-1117は
+                // 定跡ヒットなら探索しない。go ponderでは引かずに
+                // 探索し、ponderhitで引く（参照実装のS:1115-1117は
                 // ponderでも引くが、それだと定跡区間の相手番に探索しない）
                 if is_ponder {
                     ponder_root = Some(position.clone());
@@ -720,7 +720,7 @@ fn main() {
                 }
             }
             "ponderhit" => {
-                // ponderした局面を定跡で引く（ADR-0231）。ヒットしたら探索の
+                // ponderした局面を定跡で引く。ヒットしたら探索の
                 // 結論を出さずに止め、終わるのを待ってから定跡の手を出す。
                 // 1回のgoに対してbestmoveは1本だけになる
                 let book_line = ponder_root

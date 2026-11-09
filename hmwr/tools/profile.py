@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
-"""samplyのプロファイルからself時間の上位を出す（ADR-0099）。
+"""samplyのプロファイルからself時間の上位を出す。
 
 関数単位とソース行単位の2つを出す。行番号はデバッグ情報が要る
 （CARGO_PROFILE_RELEASE_DEBUG=1 でビルドする）。ソース行の解決には
 atos を使うため、macOS上でしか行番号は出ない。
 
-`--categories` を付けると、探索時間を処理の種類ごとに分けた表を出す
-（ADR-0230）。インライン展開された関数まで呼び出し連鎖を復元して数えるので、
+`--categories` を付けると、探索時間を処理の種類ごとに分けた表を出す。
+インライン展開された関数まで呼び出し連鎖を復元して数えるので、
 self時間の表では呼び出し元へ溶けて見えない処理も拾える。表の後に、分類の
 規則に当たらない関数のうち割合の大きいものを挙げる。関数が増えたときに、
 その時間が別の種類へ黙って数えられるのを見つけるためである。
 
-終了コード: 0=成功、2=引数エラー、3=実行時エラー（ADR-0122）。
+終了コード: 0=成功、2=引数エラー、3=実行時エラー。
 """
 
 import argparse
@@ -46,7 +46,7 @@ class ArgParser(argparse.ArgumentParser):
 def build_parser():
     parser = ArgParser(
         prog="profile-report.py",
-        description="samplyのプロファイルからself時間の上位を出す（ADR-0099）。",
+        description="samplyのプロファイルからself時間の上位を出す。",
         epilog="行番号はデバッグ情報が要る（CARGO_PROFILE_RELEASE_DEBUG=1 でビルドする）。"
         "ソース行の解決はmacOS上のatosに限る。",
     )
@@ -224,7 +224,7 @@ def report(profile, binary, topn):
     return 0
 
 
-# --- 処理の種類ごとの内訳（ADR-0230） ---
+# --- 処理の種類ごとの内訳 ---
 
 # (表示名, 盤面操作か, 優先の型, 関数名の正規表現)
 # 呼び出し連鎖を葉から根へ辿り、最初に当たった種類へサンプルを数える
@@ -233,14 +233,14 @@ def report(profile, binary, topn):
 # 処理として数えるためである。"fallback" は利きを引く下請けの関数で、
 # 連鎖のどこにもほかの種類が無いときだけ取る。
 CATEGORIES = [
-    # 配列盤（ADR-0241）の関数は `himawari_mailbox::position::Position` のメソッドとして
+    # 配列盤の関数は `himawari_mailbox::position::Position` のメソッドとして
     # 出る。探索の盤 `SearchBoard` の包みも同じ種類へ数える
     ("1手詰め", True, "outer", r"(himawari_engine::mate::|(SearchBoard|mailbox::position::Position)>::mate_1ply$)"),
     ("do_move・undo_move", True, "outer", r"Position>::(do_move|undo_move|do_null_move|undo_null_move)$"),
-    # 都度作る利きの地図（ADR-0239）。SEEと合法性判定の中から作られるので、
+    # 都度作る利きの地図。SEEと合法性判定の中から作られるので、
     # それらより先に照合する。1手詰めの中で作る分は1手詰めに入る
     ("利きの地図", True, "inner", r"(EffectMap>::(build|build_near|add|add_slider)$|Position>::threat_map$)"),
-    # 維持する利きの表（ADR-0148・ADR-0232）。試作では探索のワーカーが
+    # 維持する利きの表。試作では探索のワーカーが
     # make_move・unmake_move で更新するので、do_move・undo_move の外側の
     # 優先には当たらない。Position の中から更新する形へ変えると、
     # do_move・undo_move へ数えられる
@@ -328,7 +328,7 @@ def unknown_names(names, index):
     """決め手のフレームより内側で、どの規則にも当たらない自前の関数を返す。
 
     分類器が知らない関数を見つけるための目印である。関数が増えたとき、
-    その時間は別の種類へ黙って数えられる。ADR-0232の計測では `see_ge_with`
+    その時間は別の種類へ黙って数えられる。以前の計測では `see_ge_with`
     がSEEではなく指し手の順序付けへ、`EffectTable::update` が探索のその他へ
     入っていた。種類が妥当かは連鎖だけでは決まらないので、判断の材料として
     挙げるだけにする。

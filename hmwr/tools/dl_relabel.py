@@ -1,4 +1,4 @@
-"""DL系モデルの推論1回の評価値で、psvのscoreを付け直す（ADR-0215）。
+"""DL系モデルの推論1回の評価値で、psvのscoreを付け直す。
 
 局面・指し手・勝敗・手数はそのまま残し、scoreの2バイトだけを書き換える。
 モデルは勝率pを返すので、学習器の勝率変換 `sigmoid(cp / 600)` の逆で
@@ -23,7 +23,7 @@ import numpy as np
 
 PSV_BYTES = 40
 SCORE_OFFSET = 32  # i16、リトルエンディアン
-SCORE_LIMIT = 30000  # mateの飽和。旧psv relabel（ADR-0205）と揃えた値
+SCORE_LIMIT = 30000  # mateの飽和。旧psv relabelと揃えた値
 DEFAULT_SCALE = 600.0  # training/model.py の SIGMOID_SCALE
 EPS = 1e-6
 
