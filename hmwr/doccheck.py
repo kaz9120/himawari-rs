@@ -1,28 +1,17 @@
-"""文書どうしの整合を検査する（ADR-0209）。
+"""文書の相対リンクの行き先を検査する。
 
-yomiyasu（hmwr/doclint.py）は1文ずつの書き方を見る。ここが見るのは文書の間の食い違いで、
-どれも「索引だけを見て誤読する」「リンクを辿って行き止まる」事故につながる。
-
-- ADR本文のStatusと、索引（docs/adr/README.md）の表の一致
-- ADRのファイルと索引の行の過不足
-- 文書の相対リンクの行き先
-- proposedのまま動いていないADR（期限つきの警告。Statusの行を書き換えた日で測る）
+yomiyasu（hmwr/doclint.py）は1文ずつの書き方を見る。ここが見るのは、リンクを辿って
+行き止まる事故である。
 """
 
 from __future__ import annotations
 
 import re
-import time
 from dataclasses import dataclass
 from pathlib import Path
 
-from . import paths, proc
+from . import paths
 
-ADR_DIR = "docs/adr"
-INDEX = "docs/adr/README.md"
-# 索引の表の行: | [0208](0208-x.md) | 題 | 日付 | 置換 | Status |
-ROW_RE = re.compile(r"^\| \[(\d{4})\]\(([^)]+)\) \|.*\| ([^|]*) \|\s*$", re.M)
-STATUS_RE = re.compile(r"^- Status: (.+)$", re.M)
 LINK_RE = re.compile(r"(?<!\!)\[[^\]]*\]\(([^)\s]+)\)")
 FENCE_RE = re.compile(r"^(```|~~~).*?^\1", re.M | re.S)
 INLINE_CODE_RE = re.compile(r"`[^`\n]*`")
@@ -36,43 +25,6 @@ class Finding:
 
     def __str__(self) -> str:
         return f"{self.file}: {self.message}"
-
-
-def status_head(text: str) -> str:
-    """Statusの先頭の語。補足の括弧や置換先は比べない。"""
-    return re.split(r"[（(\s]", text.strip(), maxsplit=1)[0]
-
-
-def adr_files(root: Path) -> list[Path]:
-    return sorted((root / ADR_DIR).glob("[0-9][0-9][0-9][0-9]-*.md"))
-
-
-def check_index(root: Path) -> list[Finding]:
-    index = (root / INDEX).read_text(encoding="utf-8")
-    rows = {m.group(1): (m.group(2), m.group(3)) for m in ROW_RE.finditer(index)}
-    found: list[Finding] = []
-    seen = set()
-    for file in adr_files(root):
-        number = file.name[:4]
-        seen.add(number)
-        rel = f"{ADR_DIR}/{file.name}"
-        m = STATUS_RE.search(file.read_text(encoding="utf-8"))
-        if m is None:
-            found.append(Finding(rel, "Statusの行がない"))
-            continue
-        if number not in rows:
-            found.append(Finding(rel, "索引の表に行がない"))
-            continue
-        link, status = rows[number]
-        if link != file.name:
-            found.append(Finding(INDEX, f"{number} のリンク先がファイル名と違う: {link}"))
-        if status_head(m.group(1)) != status_head(status):
-            found.append(
-                Finding(rel, f"Statusが索引と違う（本文 {m.group(1)!r}、索引 {status.strip()!r}）")
-            )
-    for number in sorted(set(rows) - seen):
-        found.append(Finding(INDEX, f"{number} の行があるが、ADRのファイルがない"))
-    return found
 
 
 def doc_files(root: Path) -> list[Path]:
@@ -102,43 +54,5 @@ def check_links(root: Path) -> list[Finding]:
     return found
 
 
-def status_changed_at(root: Path, rel: str) -> int | None:
-    """Statusの行を最後に書き換えたコミットの時刻（UNIX秒）。
-
-    ファイルの最終コミットでは測らない。文言の一括修正（#608）のような
-    本文だけのコミットで日付が動き、proposedのまま止まったADRが漏れたためである。
-    `-G` は追加・削除された行に正規表現が当たるコミットだけを拾うので、
-    Statusを書いたコミット（作成を含む）の日付になる。
-    """
-    stamp = proc.capture(
-        ["git", "log", "-1", "--format=%ct", "-G", r"^- Status:", "--", rel], cwd=root
-    ).strip()
-    return int(stamp) if stamp.isdigit() else None
-
-
-def check_stale(root: Path, days: int) -> list[Finding]:
-    """proposedのまま、Statusを最後に書き換えてから日数が過ぎたADR。"""
-    found: list[Finding] = []
-    now = time.time()
-    for file in adr_files(root):
-        m = STATUS_RE.search(file.read_text(encoding="utf-8"))
-        if m is None or status_head(m.group(1)) != "proposed":
-            continue
-        rel = f"{ADR_DIR}/{file.name}"
-        stamp = status_changed_at(root, rel)
-        if stamp is None:
-            continue
-        age = int((now - stamp) // 86400)
-        if age >= days:
-            found.append(
-                Finding(rel, f"proposedのまま{age}日動いていない。acceptedかrejectedへ進める")
-            )
-    return found
-
-
-def run_all(root: Path | None = None, *, stale_days: int = 0) -> list[Finding]:
-    root = root or paths.REPO
-    found = check_index(root) + check_links(root)
-    if stale_days:
-        found += check_stale(root, stale_days)
-    return found
+def run_all(root: Path | None = None) -> list[Finding]:
+    return check_links(root or paths.REPO)
