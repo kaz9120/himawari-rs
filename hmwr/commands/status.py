@@ -24,7 +24,7 @@ def add_parser(sub: argparse._SubParsersAction) -> None:
     p = sub.add_parser("status", help="実行中の長いコマンド・直近の結果・資源・設定を1つにまとめて出す")
     p.add_argument("--json", action="store_true", help="機械向けにJSONで出す")
     p.add_argument("--no-github", action="store_true", help="GitHubを読まない（開いているPRを省く）")
-    p.add_argument("--config", action="store_true", help="設定（旧 hmwr env）だけを出す")
+    p.add_argument("--config", action="store_true", help="設定だけを出す")
     p.set_defaults(func=show)
 
 

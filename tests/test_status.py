@@ -124,11 +124,9 @@ def test_status_renders_a_readable_table(home, monkeypatch, capsys):
     assert "== 状態ファイル" in out and "net:train1" in out
 
 
-def test_status_config_replaces_env(capsys):
+def test_status_config_shows_the_settings(capsys):
     assert cli.main(["status", "--config"]) == proc.OK
     assert "評価関数" in capsys.readouterr().out
-    assert cli.main(["env"]) == proc.OK
-    assert "hmwr status --config" in capsys.readouterr().out
 
 
 def test_relabel_record_gives_rate_and_eta(home):
