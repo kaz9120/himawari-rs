@@ -112,9 +112,14 @@ def verify(args: argparse.Namespace) -> int:
         extra += ["--positions", args.positions]
     if args.eval_file:
         extra += ["--eval-file", args.eval_file]
+    return run_verify([*targets, *extra], dry_run=args.dry_run, log=log)
+
+
+def run_verify(argv: list[str], *, dry_run: bool, log: Path | None) -> int:
+    """固定深さで探索の変化を比べる。全局面でノード数が一致したら JUDGE を返す。"""
     return proc.run(
-        proc.cargo_tool("verify", [*targets, *extra]),
-        dry_run=args.dry_run,
+        proc.cargo_tool("verify", argv),
+        dry_run=dry_run,
         env=config.measure_env(),
         log=log,
         allowed=(proc.OK, proc.JUDGE),

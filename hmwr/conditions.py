@@ -25,18 +25,35 @@ def normalize(line: str) -> str:
 
 
 def recorded(record: Path) -> str | None:
-    """控えてある条件。記録がなければNone。"""
+    """控えてある条件の行。記録がなければNone。"""
     if not record.is_file():
         return None
     return normalize(json.loads(record.read_text(encoding="utf-8"))["command"])
 
 
+def recorded_detail(record: Path) -> dict | None:
+    """行と一緒に控えた構造化した条件。記録が無いか、行だけを控えた古い記録ならNone。"""
+    if not record.is_file():
+        return None
+    return json.loads(record.read_text(encoding="utf-8")).get("conditions")
+
+
 def check(
-    record: Path, line: str, *, resuming: bool, adopt: bool, dry_run: bool, what: str
+    record: Path,
+    line: str,
+    *,
+    resuming: bool,
+    adopt: bool,
+    dry_run: bool,
+    what: str,
+    detail: dict | None = None,
 ) -> None:
     """続きから走るなら条件を比べ、新規なら条件を控える。
 
     whatは途中の成果物の呼び名（「棋譜」「チェックポイント」）で、エラー文に使う。
+    比べるのは行だけである。detailを渡すと、新規に控えるときに `conditions` の
+    鍵で行と並べて控える。読み戻して同じ実行を組み立て直すためのもので、
+    行だけの古い記録もそのまま読める。
     """
     line = normalize(line)
     before = recorded(record) if resuming else None
@@ -55,6 +72,7 @@ def check(
         )
     if not dry_run:
         record.parent.mkdir(parents=True, exist_ok=True)
-        record.write_text(
-            json.dumps({"command": line}, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
-        )
+        content: dict = {"command": line}
+        if detail is not None:
+            content["conditions"] = detail
+        record.write_text(json.dumps(content, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")

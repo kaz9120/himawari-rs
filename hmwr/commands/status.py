@@ -14,7 +14,7 @@ import json
 import shutil
 import time
 
-from .. import config, heartbeat, paths, proc
+from .. import config, heartbeat, paths, proc, sprt_log
 
 RESULT_KEYS = ("decision", "elo", "ci_low", "ci_high", "games", "llr", "finished_at")
 RECENT = 10
@@ -36,13 +36,8 @@ def _results() -> dict:
     if paths.SPRT.is_dir():
         files = sorted(paths.SPRT.glob("*.result"), key=lambda p: p.stat().st_mtime, reverse=True)
         for p in files[:RECENT]:
-            row = {"name": p.stem}
-            for line in p.read_text(encoding="utf-8").splitlines():
-                if "=" in line:
-                    k, v = line.split("=", 1)
-                    if k in RESULT_KEYS:
-                        row[k] = v
-            matches.append(row)
+            fields = sprt_log.read_result(p)
+            matches.append({"name": p.stem, **{k: v for k, v in fields.items() if k in RESULT_KEYS}})
     nets = []
     registry = paths.registry()
     if registry.is_file():

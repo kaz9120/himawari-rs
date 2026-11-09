@@ -4,10 +4,12 @@
 組み立て直した対局のコマンドを見る。
 """
 
+import json
+
 import pytest
 
 from hmwr import cli, paths, proc
-from hmwr.commands import match
+from hmwr.commands import match, sprt
 
 NAME = "adr9999-x"
 
@@ -153,3 +155,44 @@ def test_missing_players_stop_before_archiving(tmp_path, started):
     (paths.BIN / f"base-{NAME}").unlink()
     assert cli.main(["sprt", "extend", NAME, "--foreground"]) == proc.RUNTIME
     assert (paths.SPRT / f"{NAME}.result").is_file()
+
+
+def structured(tmp_path, cand_odds="", **spec_fields):
+    """対局を起動したときと同じく、構造化した条件を行と並べて控え直す。"""
+    spec = match.Spec(
+        NAME,
+        match.Player(str(paths.BIN / f"base-{NAME}")),
+        match.Player(str(paths.BIN / f"cand-{NAME}"), odds=cand_odds),
+        openings=str(tmp_path / "open.txt"),
+        env={"EVAL_FILE": str(tmp_path / "a.hmwr"), "SPRT_TC": "10+0.1", "SPRT_CONCURRENCY": "8"},
+        **spec_fields,
+    )
+    cond = paths.SPRT / f"{NAME}.cond"
+    cond.unlink()
+    match.check_conditions(
+        cond, proc.show(match.play_command(spec)), 0, adopt=False, dry_run=False,
+        detail=match.conditions_of(spec),
+    )  # fmt: skip
+    return json.loads(cond.read_text(encoding="utf-8"))
+
+
+def test_structured_conditions_are_read_without_parsing_the_line(tmp_path, started, monkeypatch):
+    """新しい記録は条件を構造で控える。延長は行を解析し直さずに組み立てる。"""
+    put(tmp_path)
+    record = structured(tmp_path, cand_odds="2")
+    # 置き場の根を外して控えるので、worktreeが違っても同じ記録になる
+    assert record["conditions"]["base"]["build"] == f"data/bin/base-{NAME}"
+    assert record["conditions"]["settings"]["SPRT_ELO1"] == "5"
+    monkeypatch.setattr(sprt, "_parse_line", lambda *_: pytest.fail("行を解析した"))
+    assert cli.main(["sprt", "extend", NAME, "--foreground"]) == proc.OK
+    [spec] = started
+    assert spec.cand.odds == "2"
+    assert spec.base.build == str(paths.BIN / f"base-{NAME}")
+    assert spec.env["SPRT_MAX_PAIRS"] == "20000"
+
+
+def test_structured_fixed_pairs_are_not_extended(tmp_path, started):
+    put(tmp_path)
+    structured(tmp_path, stop_pairs=100)
+    assert cli.main(["sprt", "extend", NAME, "--foreground"]) == proc.RUNTIME
+    assert started == []

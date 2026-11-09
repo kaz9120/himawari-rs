@@ -20,6 +20,7 @@ import os
 import subprocess
 import sys
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field, replace
 from pathlib import Path
 
@@ -311,16 +312,46 @@ def spec_from(args: argparse.Namespace) -> Spec:
 
 def run(args: argparse.Namespace) -> int:
     spec = spec_from(args)
+
+    def prepare() -> None:
+        if not args.dry_run:
+            require_files(spec)
+
+    rest = [a for a in args.argv if a not in ("--dry-run", "--foreground")]
+    return launch(args, spec, rest, pass_env=False, prepare=prepare)
+
+
+def launch(
+    args: argparse.Namespace,
+    spec: Spec,
+    rest: list[str],
+    *,
+    pass_env: bool = True,
+    prepare: Callable[[], int | None] | None = None,
+) -> int:
+    """対局の入口に共通の段取り。
+
+    切り離した子なら判定まで回す。判定済みなら結果を出して終わる。そうでなければ
+    prepare（ビルドや入力の確認）を済ませてから起動する。prepareが終了コードを
+    返したら、起動せずにそれを返す。
+    """
     if args.worker:
+        # 切り離された子。判定が出るまで回す
         return until_decision(spec, dry_run=False)
     if decided(spec.name):
         return proc.OK
-    if not args.dry_run:
-        for path in (spec.base.build, spec.cand.build, spec.base.net, spec.cand.net, spec.openings):
-            if path and not Path(path).is_file():
-                raise proc.Fail(f"ファイルがない: {paths.rel(path)}")
-    rest = [a for a in args.argv if a not in ("--dry-run", "--foreground")]
-    return start(args, spec, rest, pass_env=False)
+    if prepare is not None:
+        code = prepare()
+        if code is not None:
+            return code
+    return start(args, spec, rest, pass_env=pass_env)
+
+
+def require_files(spec: Spec, hint: str = "") -> None:
+    """対局者と開始局面集のファイルが揃っていることを確かめる。"""
+    for path in (spec.base.build, spec.cand.build, spec.base.net, spec.cand.net, spec.openings):
+        if path and not Path(path).is_file():
+            raise proc.Fail(f"ファイルがない: {paths.rel(path)}{hint}")
 
 
 def decided(name: str) -> bool:
@@ -490,7 +521,9 @@ def _selfplay(spec: Spec, *, dry_run: bool, attempt: int, on_line=None) -> int:
     argv = play_command(spec)
     f["jsonl"].parent.mkdir(parents=True, exist_ok=True)
     games = _games(f["jsonl"])
-    check_conditions(f["cond"], proc.show(argv), games, adopt=spec.adopt, dry_run=dry_run)
+    check_conditions(
+        f["cond"], proc.show(argv), games, adopt=spec.adopt, dry_run=dry_run, detail=conditions_of(spec)
+    )
 
     # ペア数の上限は条件に数えない。続きを積むときに変わるのが正常である
     max_pairs = spec.env.get("SPRT_MAX_PAIRS") or config.get("SPRT_MAX_PAIRS", "10000")
@@ -504,60 +537,140 @@ def _selfplay(spec: Spec, *, dry_run: bool, attempt: int, on_line=None) -> int:
     return proc.run(argv, dry_run=dry_run, log=f["log"], allowed=(0, 1, 2, 3), on_line=on_line)
 
 
-def play_command(spec: Spec) -> list[str]:
-    """対局のコマンドのうち、条件に数える部分を組み立てる。
+def conditions_of(spec: Spec) -> dict:
+    """対局の条件を、既定値まで埋めた形で返す。
 
-    条件の記録（.cond）はこの部分を控える。ペア数の上限と棋譜の置き場は
-    続きを積むときに変わるのが正常なので、ここに含めない。
+    `play_command` はこれだけから組み立てる。条件の記録（.cond）にも控え、
+    `sprt extend` が読み戻して同じ対局を組み立て直す。ペア数の上限と棋譜の
+    置き場は続きを積むときに変わるのが正常なので、ここに含めない。
+
+    評価関数を片側ずつ渡すときは、eval_file を None にして各側の net に入れる。
     """
-    binary = paths.release_bin("selfplay")
 
     def setting(key: str, fallback: str = "") -> str:
         return spec.env.get(key) or config.get(key, fallback)
 
-    argv = [str(binary), "--baseline", spec.base.build, "--candidate", spec.cand.build]
-    if spec.base.net or spec.cand.net:
-        # 評価関数を片側ずつ渡す。--option と併用すると、どちらが効くかが
-        # 実装依存になるため、片側指定だけで完結させる
-        argv += ["--bopt", f"EvalFile={spec.base.net or setting('EVAL_FILE')}"]
-        argv += ["--copt", f"EvalFile={spec.cand.net or setting('EVAL_FILE')}"]
-    elif setting("EVAL_FILE"):
-        argv += ["--option", f"EvalFile={setting('EVAL_FILE')}"]
-    for item in spec.opts:
-        argv += ["--option", item]
-    for item in spec.base.opts:
-        argv += ["--bopt", item]
-    for item in spec.cand.opts:
-        argv += ["--copt", item]
-    if spec.base.odds:
-        argv += ["--bodds", spec.base.odds]
-    if spec.cand.odds:
-        argv += ["--codds", spec.cand.odds]
+    # 評価関数を片側ずつ渡す。--option と併用すると、どちらが効くかが
+    # 実装依存になるため、片側指定だけで完結させる
+    per_side = bool(spec.base.net or spec.cand.net)
 
-    argv += ["--openings", spec.openings or setting("OPENINGS")]
-    # 1手の持ち時間の決め方は1つだけ渡す。環境変数で両方が立っていたら
+    def side(player: Player) -> dict:
+        return {
+            "build": player.build,
+            "net": (player.net or setting("EVAL_FILE")) if per_side else "",
+            "opts": list(player.opts),
+            "odds": player.odds,
+        }
+
+    # 1手の持ち時間の決め方は1つだけ持つ。環境変数で両方が立っていたら
     # ノード数固定を採る（フラグで両方を書いた実行は settings が止める）
     nodes = setting("SPRT_NODES")
-    argv += ["--nodes", nodes] if nodes else ["--tc", setting("SPRT_TC", "10+0.1")]
+    measure = {"SPRT_NODES": nodes} if nodes else {"SPRT_TC": setting("SPRT_TC", "10+0.1")}
+    measure |= {
+        "SPRT_CONCURRENCY": setting("SPRT_CONCURRENCY", "8"),
+        "SPRT_ADJUDICATE": setting("SPRT_ADJUDICATE", "2000,8"),
+        "SPRT_ELO0": setting("SPRT_ELO0", "0"),
+        "SPRT_ELO1": setting("SPRT_ELO1", "5"),
+        "SPRT_ALPHA": setting("SPRT_ALPHA", "0.05"),
+        "SPRT_BETA": setting("SPRT_BETA", "0.05"),
+    }
+    return {
+        "base": side(spec.base),
+        "cand": side(spec.cand),
+        "eval_file": None if per_side else setting("EVAL_FILE"),
+        "opts": list(spec.opts),
+        "openings": spec.openings or setting("OPENINGS"),
+        "hash": spec.hash_mb or config.MATCH_HASH,
+        "max_moves": spec.max_moves or config.MATCH_MAX_MOVES,
+        "settings": measure,
+        "stop_pairs": spec.stop_pairs,
+    }
+
+
+def spec_of(name: str, c: dict, env: dict[str, str] | None = None) -> Spec:
+    """`conditions_of` の形の条件から、同じ対局を組み立てる Spec を作る。"""
+
+    def player(side: dict) -> Player:
+        return Player(side["build"], side["net"], tuple(side["opts"]), side["odds"])
+
+    measure = dict(c["settings"])
+    if c["eval_file"]:
+        measure["EVAL_FILE"] = c["eval_file"]
+    return Spec(
+        name,
+        player(c["base"]),
+        player(c["cand"]),
+        opts=tuple(c["opts"]),
+        stop_pairs=c["stop_pairs"],
+        openings=c["openings"],
+        hash_mb=c["hash"],
+        max_moves=c["max_moves"],
+        env={**measure, **(env or {})},
+    )
+
+
+def play_command(spec: Spec) -> list[str]:
+    """対局のコマンドのうち、条件に数える部分を組み立てる。
+
+    条件の記録（.cond）はこの部分を控える。
+    """
+    c = conditions_of(spec)
+    argv = [str(paths.release_bin("selfplay")), "--baseline", c["base"]["build"]]
+    argv += ["--candidate", c["cand"]["build"]]
+    if c["eval_file"] is None:
+        argv += ["--bopt", f"EvalFile={c['base']['net']}", "--copt", f"EvalFile={c['cand']['net']}"]
+    elif c["eval_file"]:
+        argv += ["--option", f"EvalFile={c['eval_file']}"]
+    for item in c["opts"]:
+        argv += ["--option", item]
+    for item in c["base"]["opts"]:
+        argv += ["--bopt", item]
+    for item in c["cand"]["opts"]:
+        argv += ["--copt", item]
+    if c["base"]["odds"]:
+        argv += ["--bodds", c["base"]["odds"]]
+    if c["cand"]["odds"]:
+        argv += ["--codds", c["cand"]["odds"]]
+
+    s = c["settings"]
+    argv += ["--openings", c["openings"]]
+    argv += ["--nodes", s["SPRT_NODES"]] if "SPRT_NODES" in s else ["--tc", s["SPRT_TC"]]
     argv += [
-        "--concurrency", setting("SPRT_CONCURRENCY", "8"),
-        "--hash", spec.hash_mb or config.MATCH_HASH,
-        "--max-moves", spec.max_moves or config.MATCH_MAX_MOVES,
-        "--adjudicate", setting("SPRT_ADJUDICATE", "2000,8"),
-        "--elo0", setting("SPRT_ELO0", "0"),
-        "--elo1", setting("SPRT_ELO1", "5"),
-        "--alpha", setting("SPRT_ALPHA", "0.05"),
-        "--beta", setting("SPRT_BETA", "0.05"),
+        "--concurrency", s["SPRT_CONCURRENCY"],
+        "--hash", c["hash"],
+        "--max-moves", c["max_moves"],
+        "--adjudicate", s["SPRT_ADJUDICATE"],
+        "--elo0", s["SPRT_ELO0"],
+        "--elo1", s["SPRT_ELO1"],
+        "--alpha", s["SPRT_ALPHA"],
+        "--beta", s["SPRT_BETA"],
     ]  # fmt: skip
-    if spec.stop_pairs:
+    if c["stop_pairs"]:
         argv += ["--no-stop"]
     return argv
 
 
-def check_conditions(cond: Path, line: str, games: int, *, adopt: bool, dry_run: bool) -> None:
-    """同じ名前の棋譜へ、違う条件の対局を積まない。"""
+def portable(value):
+    """控える条件からリポジトリの置き場を外す。worktreeごとに置き場が違うためである。"""
+    if isinstance(value, str):
+        return conditions.normalize(paths.rel(value))
+    if isinstance(value, list):
+        return [portable(v) for v in value]
+    if isinstance(value, dict):
+        return {k: portable(v) for k, v in value.items()}
+    return value
+
+
+def check_conditions(
+    cond: Path, line: str, games: int, *, adopt: bool, dry_run: bool, detail: dict | None = None
+) -> None:
+    """同じ名前の棋譜へ、違う条件の対局を積まない。
+
+    新しく控えるときは、detail（`conditions_of` の形）も一緒に控える。
+    """
     conditions.check(
-        cond, line, resuming=games > 0, adopt=adopt, dry_run=dry_run, what="棋譜"
+        cond, line, resuming=games > 0, adopt=adopt, dry_run=dry_run, what="棋譜",
+        detail=portable(detail) if detail is not None else None,
     )
 
 
@@ -585,10 +698,10 @@ def _finish(spec: Spec, beat, capped_pairs: int = 0) -> int:
 
 
 def _exit_code(result: Path) -> int:
-    for line in result.read_text(encoding="utf-8").splitlines():
-        if line.startswith("decision="):
-            return sprt_log.EXIT_BY_VERDICT.get(line.split("=", 1)[1], proc.RUNTIME)
-    raise proc.Fail(f"結果ファイルの判定を読めない: {paths.rel(result)}")
+    decision = sprt_log.read_result(result).get("decision")
+    if decision is None:
+        raise proc.Fail(f"結果ファイルの判定を読めない: {paths.rel(result)}")
+    return sprt_log.EXIT_BY_VERDICT.get(decision, proc.RUNTIME)
 
 
 # --- 確認 --------------------------------------------------------------

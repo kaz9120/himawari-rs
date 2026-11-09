@@ -136,16 +136,6 @@ def squash_message(pr: dict) -> tuple[str, str]:
     return f"{pr['title']} (#{number})", body
 
 
-def read_result(path: Path) -> dict[str, str]:
-    """結果ファイル（key=value）を読む。"""
-    fields = {}
-    for line in path.read_text(encoding="utf-8").splitlines():
-        key, sep, value = line.partition("=")
-        if sep:
-            fields[key] = value
-    return fields
-
-
 def expected_trailer(result: dict[str, str]) -> str:
     """結果ファイルから、本文に載るべき SPRT: トレーラを作る。
 
@@ -220,7 +210,7 @@ def merge(args: argparse.Namespace) -> int:
     if args.sprt:
         path = paths.SPRT / f"{args.sprt}.result"
         if path.is_file():
-            result = read_result(path)
+            result = sprt_log.read_result(path)
     subject, body = squash_message(pr)
     if args.body_file:
         # 研究ブランチは数十件のコミットを持つ。全部をつなげた本文は、古いコミットの

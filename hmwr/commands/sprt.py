@@ -12,8 +12,8 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from .. import conditions, config, paths, proc
-from . import build, match
+from .. import conditions, config, paths, proc, sprt_log
+from . import build, match, measure
 from .match import Player, Spec, files, settings
 
 # 延長の刻みと、オーナーに諮る線
@@ -149,31 +149,26 @@ def run(args: argparse.Namespace) -> int:
         args.name, Player(str(f["base"])), Player(str(f["cand"])), env=settings(args)
     )
 
-    if args.worker:
-        # 切り離された子。判定が出るまで回す
-        return match.until_decision(spec, dry_run=False)
+    def prepare() -> int | None:
+        code = build.make_pair(
+            args.name,
+            baseline=args.baseline or "origin/main",
+            dry_run=args.dry_run,
+        )
+        if code == proc.JUDGE:
+            # 2本が同一だった。対局しても差は出ない
+            return proc.JUDGE
+        if args.verify and not _verified(args):
+            return proc.JUDGE
+        return None
 
-    if match.decided(args.name):
-        return proc.OK
-
-    code = build.make_pair(
-        args.name,
-        baseline=args.baseline or "origin/main",
-        dry_run=args.dry_run,
-    )
-    if code == proc.JUDGE:
-        # 2本が同一だった。対局しても差は出ない
-        return proc.JUDGE
-
-    if args.verify and not _verified(args):
-        return proc.JUDGE
-
-    return match.start(args, spec, ["sprt", "run", args.name])
+    return match.launch(args, spec, ["sprt", "run", args.name], prepare=prepare)
 
 
 def run_net(args: argparse.Namespace) -> int:
     """評価関数だけを差し替えて測る。ビルドは同じものを両側に使う。"""
-    engine = args.bin or _default_bin(args.name)
+    # 実験ごとに固定したいので data/bin を先に見る
+    engine = args.bin or match.default_builds(args.name)[0]
     spec = Spec(
         args.name,
         Player(engine, _resolve(args.base)),
@@ -181,22 +176,17 @@ def run_net(args: argparse.Namespace) -> int:
         env=settings(args),
     )
 
-    if args.worker:
-        return match.until_decision(spec, dry_run=False)
-
-    if match.decided(args.name):
-        return proc.OK
-
-    for net in (args.base, args.cand):
-        if not Path(net).is_file() and not args.dry_run:
-            raise proc.Fail(f"ネットがない: {net}")
+    def prepare() -> None:
+        for net in (args.base, args.cand):
+            if not Path(net).is_file() and not args.dry_run:
+                raise proc.Fail(f"ネットがない: {net}")
 
     rest = ["sprt", "net", args.base, args.cand, args.name]
     if args.cand_bin:
         rest += ["--cand-bin", args.cand_bin]
     if args.bin:
         rest += ["--bin", args.bin]
-    return match.start(args, spec, rest)
+    return match.launch(args, spec, rest, prepare=prepare)
 
 
 # --- 延長 --------------------------------------------------------------
@@ -215,7 +205,7 @@ def extend(args: argparse.Namespace) -> int:
         # 切り離された子。退避は親が済ませている
         return match.until_decision(_spec_from_conditions(args.name, args.max_pairs), dry_run=False)
 
-    result = _read_result(f["result"])
+    result = _capped_result(f["result"])
     if result.get("decision") != "見送り":
         raise proc.Fail(
             f"見送りではない（{result.get('decision', '不明')}）。延ばすのは上限で見送りになった実行だけ"
@@ -240,9 +230,7 @@ def extend(args: argparse.Namespace) -> int:
 
     spec = _spec_from_conditions(args.name, cap)
     if not args.dry_run:
-        for path in (spec.base.build, spec.cand.build, spec.base.net, spec.cand.net, spec.openings):
-            if path and not Path(path).is_file():
-                raise proc.Fail(f"ファイルがない: {paths.rel(path)}（hmwr clean が消した可能性がある）")
+        match.require_files(spec, "（hmwr clean が消した可能性がある）")
 
     archive = f["result"].with_name(f"{f['result'].name}.capped-{pairs}")
     if archive.exists():
@@ -257,32 +245,15 @@ def extend(args: argparse.Namespace) -> int:
     return match.start(args, spec, rest, pass_env=False)
 
 
-def _read_result(result: Path) -> dict[str, str]:
-    """結果ファイルを鍵と値の組で読む。"""
+def _capped_result(result: Path) -> dict[str, str]:
+    """延ばすかを決めるのに要る鍵を、結果ファイルから読む。"""
     if not result.is_file():
         raise proc.Fail(f"結果がない: {paths.rel(result)}（走っている途中か、まだ起動していない）")
-    fields = {}
-    for line in result.read_text(encoding="utf-8").splitlines():
-        key, sep, value = line.partition("=")
-        if sep:
-            fields[key] = value
+    fields = sprt_log.read_result(result)
     missing = [k for k in ("games", "elo", "elo0", "elo1") if k not in fields]
     if missing:
         raise proc.Fail(f"結果ファイルに {', '.join(missing)} がない: {paths.rel(result)}")
     return fields
-
-
-# 条件の記録にある、測定条件の鍵へ畳むフラグ
-_ENV_FLAGS = {
-    "--tc": "SPRT_TC",
-    "--nodes": "SPRT_NODES",
-    "--concurrency": "SPRT_CONCURRENCY",
-    "--adjudicate": "SPRT_ADJUDICATE",
-    "--elo0": "SPRT_ELO0",
-    "--elo1": "SPRT_ELO1",
-    "--alpha": "SPRT_ALPHA",
-    "--beta": "SPRT_BETA",
-}
 
 
 def _resolve(value: str) -> str:
@@ -297,70 +268,26 @@ def _resolve(value: str) -> str:
 def _spec_from_conditions(name: str, max_pairs: int) -> Spec:
     """控えた条件（.cond）から対局の条件を組み立て直す。
 
-    `sprt run`・`sprt net`・`match run` のどれで起動したかを問わない。組み立てた
-    結果を同じ書式に戻し、控えた行と一致することを確かめる。一致しなければ
-    延ばさない。違う条件の対局を同じ棋譜へ積まないためである。
+    `sprt run`・`sprt net`・`match run` のどれで起動したかを問わない。構造化した
+    条件（`match.conditions_of` の形）が控えてあればそれを読み、行だけを控えた
+    古い記録は行を解析して同じ形にする。組み立てた対局を同じ書式に戻し、
+    控えた行と一致することを確かめる。一致しなければ延ばさない。違う条件の
+    対局を同じ棋譜へ積まないためである。
     """
     f = files(name)
     line = conditions.recorded(f["cond"])
     if line is None:
         raise proc.Fail(f"条件の記録がない: {paths.rel(f['cond'])}。延ばせない")
+    c = conditions.recorded_detail(f["cond"]) or _parse_line(line, f["cond"])
+    if c["stop_pairs"]:
+        raise proc.Fail(NO_FIXED_PAIRS)
 
-    base = cand = base_net = cand_net = ""
-    base_odds = cand_odds = openings = hash_mb = max_moves = ""
-    opts: list[str] = []
-    base_opts: list[str] = []
-    cand_opts: list[str] = []
-    env = {"SPRT_MAX_PAIRS": str(max_pairs)}
-    words = iter(line.split()[1:])
-    for flag in words:
-        if flag == "--no-stop":
-            raise proc.Fail("指し切りの対局は延ばさない。延ばすのはSPRTの見送りだけ")
-        value = next(words, None)
-        if value is None:
-            raise proc.Fail(f"条件の記録を読めない（{flag} に値がない）: {paths.rel(f['cond'])}")
-        evalfile = value.removeprefix("EvalFile=") if value.startswith("EvalFile=") else None
-        if flag == "--baseline":
-            base = _resolve(value)
-        elif flag == "--candidate":
-            cand = _resolve(value)
-        elif flag == "--bopt" and evalfile is not None and not base_net:
-            base_net = _resolve(evalfile)
-        elif flag == "--copt" and evalfile is not None and not cand_net:
-            cand_net = _resolve(evalfile)
-        elif flag == "--bopt":
-            base_opts.append(value)
-        elif flag == "--copt":
-            cand_opts.append(value)
-        elif flag == "--option" and evalfile is not None:
-            env["EVAL_FILE"] = _resolve(evalfile)
-        elif flag == "--option":
-            opts.append(value)
-        elif flag == "--bodds":
-            base_odds = value
-        elif flag == "--codds":
-            cand_odds = value
-        elif flag == "--openings":
-            openings = _resolve(value)
-        elif flag == "--hash":
-            hash_mb = value
-        elif flag == "--max-moves":
-            max_moves = value
-        elif flag in _ENV_FLAGS:
-            env[_ENV_FLAGS[flag]] = value
-        else:
-            raise proc.Fail(f"条件の記録に知らないフラグがある: {flag}（{paths.rel(f['cond'])}）")
-
-    spec = Spec(
-        name,
-        Player(base, base_net, tuple(base_opts), base_odds),
-        Player(cand, cand_net, tuple(cand_opts), cand_odds),
-        opts=tuple(opts),
-        openings=openings,
-        hash_mb=hash_mb,
-        max_moves=max_moves,
-        env=env,
-    )
+    for side in (c["base"], c["cand"]):
+        for key in ("build", "net"):
+            side[key] = side[key] and _resolve(side[key])
+    for key in ("eval_file", "openings"):
+        c[key] = c[key] and _resolve(c[key])
+    spec = match.spec_of(name, c, env={"SPRT_MAX_PAIRS": str(max_pairs)})
     rebuilt = conditions.normalize(proc.show(match.play_command(spec)))
     if rebuilt != line:
         raise proc.Fail(
@@ -370,15 +297,79 @@ def _spec_from_conditions(name: str, max_pairs: int) -> Spec:
     return spec
 
 
+NO_FIXED_PAIRS = "指し切りの対局は延ばさない。延ばすのはSPRTの見送りだけ"
+
+# 条件の行にある、測定条件の鍵へ畳むフラグ
+_ENV_FLAGS = {
+    "--tc": "SPRT_TC",
+    "--nodes": "SPRT_NODES",
+    "--concurrency": "SPRT_CONCURRENCY",
+    "--adjudicate": "SPRT_ADJUDICATE",
+    "--elo0": "SPRT_ELO0",
+    "--elo1": "SPRT_ELO1",
+    "--alpha": "SPRT_ALPHA",
+    "--beta": "SPRT_BETA",
+}
+
+
+def _parse_line(line: str, cond: Path) -> dict:
+    """行だけを控えた古い記録を、`match.conditions_of` の形へ解析する。
+
+    構造化した条件を控える前に起動した実行の延長に要る。パスは控えたまま返す。
+    """
+
+    def side() -> dict:
+        return {"build": "", "net": "", "opts": [], "odds": ""}
+
+    c = {
+        "base": side(), "cand": side(), "eval_file": "", "opts": [], "openings": "",
+        "hash": "", "max_moves": "", "settings": {}, "stop_pairs": 0,
+    }  # fmt: skip
+    words = iter(line.split()[1:])
+    for flag in words:
+        if flag == "--no-stop":
+            raise proc.Fail(NO_FIXED_PAIRS)
+        value = next(words, None)
+        if value is None:
+            raise proc.Fail(f"条件の記録を読めない（{flag} に値がない）: {paths.rel(cond)}")
+        evalfile = value.removeprefix("EvalFile=") if value.startswith("EvalFile=") else None
+        if flag == "--baseline":
+            c["base"]["build"] = value
+        elif flag == "--candidate":
+            c["cand"]["build"] = value
+        elif flag in ("--bopt", "--copt"):
+            player = c["base"] if flag == "--bopt" else c["cand"]
+            if evalfile is not None and not player["net"]:
+                player["net"] = evalfile
+                c["eval_file"] = None
+            else:
+                player["opts"].append(value)
+        elif flag == "--option" and evalfile is not None:
+            c["eval_file"] = evalfile
+        elif flag == "--option":
+            c["opts"].append(value)
+        elif flag == "--bodds":
+            c["base"]["odds"] = value
+        elif flag == "--codds":
+            c["cand"]["odds"] = value
+        elif flag == "--openings":
+            c["openings"] = value
+        elif flag == "--hash":
+            c["hash"] = value
+        elif flag == "--max-moves":
+            c["max_moves"] = value
+        elif flag in _ENV_FLAGS:
+            c["settings"][_ENV_FLAGS[flag]] = value
+        else:
+            raise proc.Fail(f"条件の記録に知らないフラグがある: {flag}（{paths.rel(cond)}）")
+    return c
+
+
 def _verified(args: argparse.Namespace) -> bool:
     """機能検証を通す。全局面で一致したらFalseを返し、起動を止める。"""
     f = files(args.name)
-    code = proc.run(
-        proc.cargo_tool("verify", [str(f["base"]), str(f["cand"])]),
-        dry_run=args.dry_run,
-        env=config.measure_env(),
-        log=paths.log("verify", args.name),
-        allowed=(proc.OK, proc.JUDGE),
+    code = measure.run_verify(
+        [str(f["base"]), str(f["cand"])], dry_run=args.dry_run, log=paths.log("verify", args.name)
     )
     if code != proc.JUDGE:
         return True
@@ -388,11 +379,3 @@ def _verified(args: argparse.Namespace) -> bool:
     print("終盤にしか出ない機能なら、終盤局面を別に用意して測り直す。")
     print("それでも走らせるなら --no-verify を付ける。")
     return False
-
-
-def _default_bin(name: str) -> str:
-    """対局に使うビルド。実験ごとに固定したいので data/bin を先に見る。"""
-    fixed = paths.BIN / f"base-{name}"
-    if fixed.is_file():
-        return str(fixed)
-    return str(paths.release_bin("himawari"))
