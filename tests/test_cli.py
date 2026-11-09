@@ -633,22 +633,11 @@ def test_measure_env_includes_rustflags():
 # --- diag --------------------------------------------------------------
 
 
-def test_one_off_diagnoses_live_under_diag(capsys):
-    """単発の診断は net に置かない。正規の表面と寿命が違う。"""
-    _, lines = dry(capsys, ["diag", "rank", "a.ckpt", "g.rankpsv"])
-    assert "ヒンジの発火を分ける" in lines[0]
-    for name in ("rank", "dead", "phase"):
-        with pytest.raises(SystemExit):
-            cli.main(["--dry-run", "net", name, "x", "y"])
-
-
-def test_diag_defend_runs_psv_and_keeps_the_tsv_under_profile(capsys):
-    """名前からTSVとログの置き場が決まる。呼び出し側はパスを書かない。"""
-    _, lines = dry(capsys, ["diag", "defend", "adr0213", "--in", "e4_ctrl_train", "--limit", "1000"])
-    assert "--bin psv -- defend" in lines[0]
-    assert "data/train/e4_ctrl_train.psv" in lines[0]
-    assert "data/profile/defend-adr0213.tsv" in lines[0]
-    assert "data/logs/diag-defend-adr0213.log" in lines[1]
+def test_diag_reach_keeps_the_log_under_logs(capsys):
+    """名前からログの置き場が決まる。呼び出し側はパスを書かない。"""
+    _, lines = dry(capsys, ["diag", "reach", "x", "--depth", "12"])
+    assert "深さ12" in lines[0]
+    assert "data/logs/diag-reach-x.log" in lines[1]
 
 
 def test_build_pair_can_build_the_candidate_from_a_ref(capsys):
