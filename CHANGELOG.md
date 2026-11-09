@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.61.4](https://github.com/kaz9120/himawari-rs/compare/v0.61.3...v0.61.4) (2026-11-09)
+
+
+### その他の変更
+
+* 探索のWorkerを単独で組む定型を1つの関数へまとめる ([#1057](https://github.com/kaz9120/himawari-rs/issues/1057)) ([fc7f316](https://github.com/kaz9120/himawari-rs/commit/fc7f316b5202677f83c13b737db7d368198e8380))
+
 ## [0.61.3](https://github.com/kaz9120/himawari-rs/compare/v0.61.2...v0.61.3) (2026-11-09)
 
 
