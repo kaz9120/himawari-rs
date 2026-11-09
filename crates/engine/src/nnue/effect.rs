@@ -56,7 +56,7 @@ pub fn effect_active(pos: &Position, c: Color, counts: &[[u8; 81]; 2], out: &mut
 }
 
 /// 利きのaccumulatorを特徴から全計算する。i32で足すので、
-/// 81行を足しても桁あふれしない。差分の経路（D2）はこの値との一致を求める。
+/// 81行を足しても桁あふれしない。差分の経路はこの値との一致を求める。
 pub fn effect_accumulate(net: &NnueNetwork, features: &[u32; 81]) -> [i32; EFF_OUT] {
     let mut acc = [0i32; EFF_OUT];
     for (a, &b) in acc.iter_mut().zip(&net.eff_b) {
@@ -72,7 +72,7 @@ pub fn effect_accumulate(net: &NnueNetwork, features: &[u32; 81]) -> [i32; EFF_O
 ///
 /// 出力ごとに、バイアスと升ごとの重みの最大の絶対値を足す。1升に立つ特徴は
 /// 1つなので、どの局面でもaccの絶対値はこれを超えない。i16に収まれば、
-/// 差分の経路（D2）をi16の巡回加算で持っても、i32で足す全計算と一致する。
+/// 差分の経路をi16の巡回加算で持っても、i32で足す全計算と一致する。
 pub fn effect_acc_bound(net: &NnueNetwork) -> i64 {
     let per = EFF_PIECES * EFF_LEVELS * EFF_LEVELS;
     // 利きを持たない構成では重みが空で、下のループは回らない。chunksに0を
@@ -117,7 +117,7 @@ pub fn effect_clip(acc: &[i32; EFF_OUT], out: &mut [u8]) {
     }
 }
 
-/// 差分で持つ側のaccを0〜127へクリップして書く（D2）。
+/// 差分で持つ側のaccを0〜127へクリップして書く。
 #[inline]
 pub fn effect_clip_acc(acc: &[i16; EFF_OUT], out: &mut [u8]) {
     debug_assert_eq!(out.len(), EFF_OUT);

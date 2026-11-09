@@ -551,7 +551,7 @@ mod tests {
         }
     }
 
-    /// 段階の集合（D2）は、升ごとに数えた利き数を3で打ち切った値と一致する。
+    /// 段階の集合は、升ごとに数えた利き数を3で打ち切った値と一致する。
     /// 升の語から戻した特徴のindexも、`effect_active` と一致する。
     #[test]
     fn effect_levels_and_codes_match_counts() {
