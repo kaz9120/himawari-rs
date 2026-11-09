@@ -33,22 +33,7 @@ pub(super) fn quiet_worker(
     let limits = Limits::default();
     let start_pos = himawari_core::Position::from_sfen(himawari_core::SFEN_STARTPOS)
         .unwrap_or_else(|e| die(&format!("初期局面を作れません: {e:?}")));
-    let tm = TimeManager::new(
-        &limits,
-        start_pos.side_to_move(),
-        start_pos.game_ply(),
-        &TimeOptions::default(),
-    );
-    Worker::new(
-        start_pos,
-        shared,
-        limits,
-        tm,
-        0,
-        1,
-        Evaluator::nnue(Arc::clone(net)),
-        Histories::default(),
-    )
+    Worker::standalone(start_pos, shared, limits, Evaluator::nnue(Arc::clone(net)))
 }
 
 /// 1レコードを静止局面へ置き換える。統計はstへ足す。
