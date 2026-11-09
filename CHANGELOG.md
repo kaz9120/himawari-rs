@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.62.0](https://github.com/kaz9120/himawari-rs/compare/v0.61.6...v0.62.0) (2026-11-09)
+
+
+### 棋力向上
+
+* 現行ネットで実戦の頻度順に掘った長い定跡へ替える（+25.9 Elo） ([#1064](https://github.com/kaz9120/himawari-rs/issues/1064)) ([04d14d2](https://github.com/kaz9120/himawari-rs/commit/04d14d2c23843a6d0b9b173d5bd15ea4630750da))
+
 ## [0.61.6](https://github.com/kaz9120/himawari-rs/compare/v0.61.5...v0.61.6) (2026-11-09)
 
 
