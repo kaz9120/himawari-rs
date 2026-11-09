@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.61.5](https://github.com/kaz9120/himawari-rs/compare/v0.61.4...v0.61.5) (2026-11-09)
+
+
+### その他の変更
+
+* hmwr net show でネットの学習来歴をまとめて出す ([#1060](https://github.com/kaz9120/himawari-rs/issues/1060)) ([38e556a](https://github.com/kaz9120/himawari-rs/commit/38e556aa5cdf20abe0854ee859ed3de0fc20a55a))
+
 ## [0.61.4](https://github.com/kaz9120/himawari-rs/compare/v0.61.3...v0.61.4) (2026-11-09)
 
 
