@@ -140,7 +140,6 @@ hmwr build pair <名前> --baseline v0.12.0
 hmwr build pair <名前> --candidate <SHA>   候補をrefから作る
 hmwr build pgo                      配布・対局用の単体ビルド
 hmwr build engine --arch 512x16x64  構成を変えてビルドする
-hmwr build shapes 256x16 512x16x32  構成ごとにエンジンとネットを対で作る
 ```
 
 **比較用のペアにPGOを使わない**。両側を同条件（PGOなし）で作るほうが公平で、
@@ -153,9 +152,7 @@ hmwr net train <名前> --data <名前> --valid valid_tanuki_dl430_q1 \
                       --rank rank_tanuki_210M     dlshogiのラベルで学習するレシピ
 hmwr net train <名前> --data <名前> --init-ckpt <ckpt> --lr 1e-4
 hmwr net train <名前> --data <名前> --arch 512x16x64  既定以外の構成で学習する
-hmwr net shapes 256x16 512x16x32 --seed 1   構成ごとに小さく学習して比べる
 hmwr net eval data/nets/*.hmwr.best
-hmwr net probe <名前> --focus focus_1M      FTを凍結して焦点のヒートマップを当てる
 hmwr net release data/nets/x.hmwr.best 5 --apply
 hmwr net actdump <名前> --eval-file data/nets/<ネット>.hmwr   並べ替えの材料を取る
 hmwr net reorder data/profile/act-<名前>.bin 512 --apply data/nets/<ネット>.hmwr
@@ -167,7 +164,7 @@ hmwr net reorder data/profile/act-<名前>.bin 512 --apply data/nets/<ネット>
 
 py拡張は学習する構成で入れ直す。`--arch` を省くと `crates/engine/build.rs` の
 既定の構成になる。入っている拡張の構成が違えば、その構成で作り直してから学習する。
-`net shapes` の後に残った別構成の拡張で、黙って学習しないためである。
+別の構成で作った拡張のまま、黙って学習しないためである。
 
 **検証集合は学習データと同じ条件に揃える**。静止化した教師で
 学習するなら検証集合も静止化する。条件がずれると最良チェックポイントの選択が
@@ -175,11 +172,6 @@ py拡張は学習する構成で入れ直す。`--arch` を省くと `crates/eng
 
 **検証損失を足切りに使わない**。初期値の系列が違うだけで0.00136
 動く。**採否は対局で決める。**
-
-`net probe` は表現の測定で、ネットを作らない。FTを凍結してヒートマップを当てる
-後段だけを学習し、上位5マスの的中率を検証行へ出す。**ベースラインと並べて読む**。
-頻度ベースラインは同じ行に並び、乱数ベースライン（乱数初期値のFT）は `--init-net none` で別に測る。
-probeの的中率は学習のステップ数で変わるので、条件を揃えて比べる。
 
 配布は既定でdry-runになる。`--apply` を付けたときだけ作る。
 
@@ -234,26 +226,20 @@ hmwr data split <出力名> --in <入力名> --count N     先頭から区間を
 hmwr data mix <出力名> --in <入力名> --in <入力名>   複数の教師を混ぜる
 hmwr data quiet <出力名> --in <入力名>               静止局面へ置き換える
 hmwr data rank <出力名> --in <入力名> --limit N --jobs 4   兄弟局面の群を作る
-hmwr data oversample <出力名> --in <入力名> --kind defense --times 3   該当する型の局面を複製する
-hmwr data thin <出力名> --in <入力名> --threshold 945 --keep 0.25 --count N   決着圏の局面を間引く
 hmwr data dedup <出力名> --in <入力名> --count N     同じ盤面の2回目以降を捨てる
-hmwr data pick <出力名> --in <入力名> --king-max 6 --p-min 0.1 --p-max 0.9   玉の段と勝率で絞り込む
 hmwr data ledger filter <出力名> --in <入力名>   点数を付けた局面の台帳に無い局面だけを残す
 hmwr data ledger add --in <入力名>              点数を付けた局面を台帳へ足す
 hmwr data mix <出力名> --in <入力名> --in <入力名> --consume   読み終えた入力を消しながら混ぜる
 hmwr data merge <出力名> --in <入力名> --in <入力名> --consume   シャッフル済みの入力を織り交ぜる。空きは出力1本ぶん
 hmwr data floodgate <出力名> --years 2011-2026   floodgateの全対局の棋譜から局面を取り出す（評価値は0）
-hmwr data select <出力名> --in <入力名> --in <入力名> --king 0.15,0.25,0.60 --eval 0.25,0.25,0.50 --count N --alpha 0.5   区画の配分とαで選ぶ
 hmwr data openings <出力名> --in <入力名> --min-ply 40 --count 2000   開始局面集を作る
 hmwr data relabel <出力名> --in <入力名> --scale 600    DL系モデルの推論1回でscoreを付け直す
-hmwr data rescore <出力名> --in <入力名>             現行エンジンの探索でscoreと教師手を付け直す
-hmwr data focus <出力名> --raw <データセット> --count N   先8手の焦点のヒートマップを付けた局面集を作る
 hmwr data stats <名前>                               局面数・評価値の分布を見る
 hmwr data rm <名前>...                               中間ファイルを消す
 ```
 
 **引数は名前で渡す**。`<名前>` は `data/train/<名前>.psv` に決まる（rankの出力は
-`.rankpsv`、focusの出力は `.focus`）。`psv` を直接叩かない。既定値（シャッフルのseed 1、静止化の
+`.rankpsv`）。`psv` を直接叩かない。既定値（シャッフルのseed 1、静止化の
 1手・並列8）がここに集まっているためである。足りない操作は
 `hmwr/dataops.py` の対応表へ1行足す。
 
@@ -272,25 +258,8 @@ hmwr data rm <名前>...                               中間ファイルを消�
 onnxruntimeが要る。MacのCoreMLで約2,600局面/秒、1億局面に約11時間かかる。
 進み具合は `data/logs/relabel-<名前>.log` へ1分ごとに出る。
 
-`data rescore` は名前が似ているが別物で、現行エンジンの探索で読み直し、scoreと
-教師手を付け替える。勝敗と手数は元のまま残る。8ワーカーで
-1,346局面/秒なので、1億局面に20時間強かかる。置換表は `--hash` を `--jobs` で
-割って配るため、どちらを変えても出力が変わる。
-
-`data oversample` は教師の最善手から型を判定し、該当する局面を末尾へ
-`--times` −1 回書き足す。判定に教師手が要るので、静止化の前に通す。出力は
-元の全件のあとに複製が続く並びなので、学習の前に `data shuffle` を掛ける。
-`data thin` と `data dedup` は、局面集合の選び方を比べるために使う。
-`--count` で書く件数を打ち切るので、20億の先頭から1億だけを選べる。`thin` の
-`--threshold` は教師の点数の尺度で決める。dlshogiのラベル（S=430）なら、勝率
-10%と90%の境は945である。`dedup` は盤面を64ビットのハッシュで比べ、出力1億件で
-約1.5GBのメモリを使う。
-
-`data select` は、局面を区画（手番側の玉の帯×形勢の帯）に分けて選ぶ。
-標本で特徴の頻度表と区画の在庫を見積もってから、全件を1回だけ読む。在庫の足りない
-区画は全部を取り、不足を同じ玉の帯の優勢へ回す。`--alpha` は区画の中の選び方で、
-0なら自然な分布のまま、上げるほどありふれ度の低い局面を連続的に厚くする。出力は
-入力の順に並ぶので、学習の前に `data shuffle` を掛ける。17.1億を読むのに約1.5時間かかる。
+`data dedup` は `--count` で書く件数を打ち切るので、20億の先頭から1億だけを選べる。
+盤面を64ビットのハッシュで比べ、出力1億件で約1.5GBのメモリを使う。
 
 **dlshogiで点数を付ける前に、必ず `data ledger filter` を通す**。台帳は
 点数を付けた全局面と検証集合の盤面ハッシュを持ち、同じ局面に二度点数を付けることと、
@@ -298,11 +267,6 @@ onnxruntimeが要る。MacのCoreMLで約2,600局面/秒、1億局面に約11時
 重複の判定は点数を付ける局面そのもので行うので、静止化の後に通す。
 `data shuffle` の `--limit` は入力の先頭だけを読む。生データの先頭から
 決まった件数を切り出すときに使う。
-
-`data focus` は対局順のままの生データだけを読む。シャッフル済みの教師は続きの
-手を持たないので使えない。出力は202バイト固定長で、元のpsvの40バイトにヒートマップの
-81バイトと関与フラグの81バイトが続く。読み手は
-`np.fromfile(パス, dtype=np.uint8).reshape(-1, 202)` で読める。復元にcshogiが要る。
 
 ### 掃除する
 
@@ -346,9 +310,6 @@ PRを出す前に通す。CIが落ちてから直すより速い。
 hmwr kifu cycle                回収→分析→定跡追加→網羅率
 hmwr kifu fetch                棋譜だけ回収する
 hmwr kifu report               評価値の系列から、崩壊のきっかけの局面を拾う
-hmwr kifu blindspot extract    実戦で評価が崩れた局面を候補として集める
-hmwr kifu blindspot label --nodes N   深い探索の値を正解として付ける
-hmwr kifu blindspot measure --eval-file <ネット>   浅い評価との乖離を測る
 hmwr kifu rate                 レートの推移（日毎と2週間）を出す
 hmwr kifu usilog <ログ>...     放流機のUSIログを1局ごとに区切る
 hmwr book seed --max-positions 100
@@ -366,20 +327,16 @@ READMEの画像はこれで、ワークフロー `rate-graph.yml` が毎日作�
 `kifu usilog` は `DebugLogFile` のログを読み、1局1行の表を出す。`--out <置き場>` で
 1局1ファイルのJSONも書く。形は `himawari-usilog-game/1` である。bestmoveの出なかった手（固まり）と待ちの行の数が表に並ぶ。
 
-`kifu blindspot` は盲点ベンチマークである。自己対局の外にある分布へ
-触れる指標で、マージのゲートではなく、ネットの世代ごとの定点観測に使う。
 `kifu report` は再解析より安い診断材料で、`kifu cycle` の分析の段もこれを使う。
 
 定跡追加は1局面あたり深さ28で約34秒かかる。1回の追加数を絞り、残りは次回が
 続きから足す（冪等なので何度回しても増えない）。
 
-### 速度の内訳とリーグ戦
+### 速度の内訳
 
 ```
 hmwr profile record <バイナリ> --threads 8 --positions <局面リスト>   プロファイルを取る
 hmwr profile report <プロファイル> <バイナリ> --categories   処理の種類ごとの割合も出す
-hmwr league run <バイナリ>...        総当たり戦を回す
-hmwr league summary <棋譜>           相対Eloを集計する
 ```
 
 `--categories` は、インライン展開まで遡った呼び出し連鎖で探索時間を分ける

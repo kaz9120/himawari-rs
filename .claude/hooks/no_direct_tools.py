@@ -16,8 +16,8 @@ import json
 import re
 import sys
 
-# hmwr が包んだ psv のサブコマンド。data と diag の両方を見る
-PSV_COVERED = "head|shuffle|quiet|rank|stats|phase|defend|oversample|relabel|thin|dedup"
+# hmwr data が包んだ psv のサブコマンド
+PSV_COVERED = "head|shuffle|quiet|rank|stats|dedup"
 # コマンドの位置にあるものだけを見る。ls や grep の引数に出てくるパスは止めない
 COMMAND_START = r"(?:^|[;&|(\n]|\$\(|\bexec\s|\bnohup\s|\btime\s)\s*(?:\w+=\S+\s+)*"
 BINARY = r"(?:\S*/)?target/release/"
@@ -35,9 +35,7 @@ VIA_CARGO = re.compile(
 
 MESSAGE = """\
 この操作は直接実行しない。hmwr 経由で実行する（ADR-0208）。
-  psv      → hmwr data shuffle / split / mix / quiet / rank / oversample / thin / dedup / stats / openings
-  psv      → hmwr diag phase / defend（単発の診断）
-  psv relabel → hmwr data rescore（探索で付け直す。DL系の推論は hmwr data relabel）
+  psv      → hmwr data shuffle / split / mix / quiet / rank / dedup / stats / openings
   selfplay → hmwr match run（固定ペア数は --stop pairs:N）
   himawari threadtune → hmwr threadtune（ビルドを選ぶなら --build <名前>）
 足りない操作は hmwr/dataops.py の対応表へ足すか、micro Issueを切る。
