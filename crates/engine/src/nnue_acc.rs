@@ -12,8 +12,8 @@
 use himawari_core::{Bitboard, Color, DirtyPiece, Piece, PieceType, Position, Square, bonapiece};
 
 use crate::nnue::{
-    CONCAT, EFF_BASE, EFF_GENERIC, EFF_OUT, EffAcc, EffectLevels, FT_OUT, FtWeight, HALF,
-    NnueNetwork, SIDE_MINATT_INC, effect_code, effect_code_index, side_f2_index, side_minatt_index,
+    CONCAT, EFF_BASE, EFF_OUT, EffectLevels, FT_OUT, FtWeight, HALF, NnueNetwork, SIDE_MINATT_INC,
+    effect_code, effect_code_index, side_f2_index, side_minatt_index,
 };
 use crate::nnue_simd;
 use crate::value::{MAX_PLY, Value};
@@ -137,13 +137,13 @@ impl AccEntry {
 /// 利きの段（ADR-0237のD2）。`EFF_OUT` が0の構成では確保しない。
 ///
 /// 祖先と比べるために、段階の集合と升ごとの語（`effect_code`）を持つ。
-/// accの要素は `EffAcc` で、巡回加算で足す。F2だけの構成はi16で持ち、読み込み時に
-/// `effect_acc_bound` がi16に収まることを確かめてあるので、i32で足す全計算（D3）と
-/// 一致する。F2と最小の攻め駒の組はi32で持ち、どの重みでも溢れない（ADR-0249）。
+/// accの要素はi16で、巡回加算で足す。読み込み時に、取りうる値がi16に収まることを
+/// 確かめてある（F2だけの構成は `effect_acc_bound`、F2と最小の攻め駒の組は
+/// `side_minatt_acc_bound`）ので、i32で足す全計算（D3）と一致する。
 #[derive(Clone)]
 struct EffEntry {
     /// 絶対色ごとの利きのaccumulator。
-    acc: [[EffAcc; EFF_OUT]; 2],
+    acc: [[i16; EFF_OUT]; 2],
     /// 升ごとの中身と段階（`effect_code`）。
     codes: [u16; 81],
     /// falseの間は中身が未定義で、誰も読まない。
@@ -315,10 +315,7 @@ impl NnueState {
                 nnue_simd::clip_to_u8(acc, &mut concat[half * HALF..(half + 1) * HALF]);
             }
         }
-        if EFF_GENERIC && !SIDE_MINATT_INC {
-            // 表し方を替えた構成は、評価のたびに作り直す（ADR-0245）
-            crate::side_feat::fill(net, pos, &mut self.concat);
-        } else if EFF_OUT != 0 {
+        if EFF_OUT != 0 {
             // 利きの部分は祖先からの差分で作る（ADR-0237のD2）。F2と最小の攻め駒の組も
             // 同じ升の語の差分で持つ（ADR-0248）
             self.ensure_effect(net, pos);
@@ -1147,7 +1144,7 @@ mod tests {
                 pos.to_sfen()
             );
             // 評価値は活性のクリップで差を吸収しうるので、側のaccと升の語もcoreの局面で突き合わせる
-            if EFF_OUT != 0 && (!EFF_GENERIC || SIDE_MINATT_INC) {
+            if EFF_OUT != 0 {
                 st.check_effect(net, pos);
             }
             n += 1;
@@ -1204,48 +1201,6 @@ mod tests {
             evaluated += walk_board(&net, &mut pos, &mut sb, &mut st, &mut rng, 7);
         }
         assert!(evaluated > 300, "評価したノードが少なすぎる: {evaluated}");
-    }
-
-    /// 構成名に `w` を書いたF2と最小の攻め駒の組で、側のaccがi16を超えるネットでも差分が
-    /// 全計算と一致すること（ADR-0249）。ランダムなネットの側の重みを3000倍して、見積もりをi16の上限より大きくする。
-    #[test]
-    fn side_minatt_incremental_matches_beyond_i16() {
-        if !SIDE_MINATT_INC || !cfg!(eff_acc32) {
-            return;
-        }
-        let mut net = NnueNetwork::random(19);
-        // デバッグビルドでは掛け算の桁あふれで落ちるので、i16の端で止める
-        for w in &mut net.eff_w {
-            *w = w.saturating_mul(3000);
-        }
-        assert!(crate::nnue::side_minatt_acc_bound(&net) > 100 * i64::from(i16::MAX));
-        let (mut evaluated, mut widest) = (0, 0i64);
-        for seed in 1..=8u64 {
-            let mut rng = Rng(seed.wrapping_mul(0x8EBC_6AF0_9C88_C6E3));
-            let mut pos = Position::from_sfen(SFEN_STARTPOS).unwrap();
-            for _ in 0..(rng.next() % 90) {
-                let mut list = MoveList::default();
-                generate_legal(&pos, true, &mut list);
-                if list.is_empty() {
-                    break;
-                }
-                let m = list.as_slice()[(rng.next() % list.len() as u64) as usize];
-                pos.do_move(m);
-            }
-            // coreの局面で進め戻すと、`evaluate` の中の検査がaccを突き合わせる
-            let mut st = NnueState::new();
-            evaluated += walk_sparse(&net, &mut pos.clone(), &mut st, &mut rng, 6);
-            let mut sb = crate::board::SearchBoard::new(pos.clone());
-            let mut st = NnueState::new();
-            evaluated += walk_board(&net, &mut pos, &mut sb, &mut st, &mut rng, 6);
-            let root = st.eff[0].acc.as_flattened().iter();
-            widest = widest.max(root.map(|&a| i64::from(a).abs()).max().unwrap());
-        }
-        assert!(evaluated > 300, "評価したノードが少なすぎる: {evaluated}");
-        assert!(
-            widest > i64::from(i16::MAX),
-            "accがi16を超えていない: {widest}"
-        );
     }
 
     /// 探索の盤が作るF2と最小の攻め駒の語（配列盤では `effect_minatt_codes`）が、

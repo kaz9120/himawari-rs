@@ -11,7 +11,7 @@
 
 use himawari_core::{Color, PieceType, Square};
 
-use crate::nnue::{CONCAT, EFF_ACT, FT_OUT, SUB_OUT};
+use crate::nnue::{CONCAT, EFF_OUT, FT_OUT, SUB_OUT};
 use crate::nnue_acc::EvalBoard;
 
 /// 窓の升の数（5×5）。
@@ -37,7 +37,7 @@ pub const SUB_SLOT: usize = if SUB_OUT == 0 {
     (2 * SUB_OUT).next_multiple_of(32)
 };
 /// 連結ベクトルの中で部分モデルの出力が始まる位置。
-pub const SUB_BASE: usize = FT_OUT + 2 * EFF_ACT;
+pub const SUB_BASE: usize = FT_OUT + 2 * EFF_OUT;
 /// ファイルに載る重みの数（学習側の形のf32）。
 /// 埋め込み・第1層の重みとバイアス・第2層の重みとバイアスの順に並ぶ。
 pub const SUB_PARAMS: usize = if SUB_OUT == 0 {
