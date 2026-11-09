@@ -266,3 +266,41 @@ def test_train_defaults_to_the_build_rs_arch_without_changing_the_record(trainer
 def test_a_malformed_arch_is_a_usage_error(trainer):
     _, train_dir = trainer
     assert cli.main(argv_for(train_dir, "d.psv", "--arch", "big")) == proc.USAGE
+
+
+# --- net show ----------------------------------------------------------
+
+
+def test_training_name_drops_the_reorder_suffix():
+    """並べ替えたネットも、学習したときの名前で記録を引く。"""
+    assert net.training_name(Path("data/nets/x_reorder.hmwr")) == "x"
+    assert net.training_name(Path("data/nets/x.hmwr")) == "x"
+
+
+def test_show_collects_the_records_of_a_net(tmp_path, monkeypatch, capsys):
+    monkeypatch.setattr(paths, "NETS", tmp_path / "nets")
+    monkeypatch.setattr(paths, "CHECKPOINTS", tmp_path / "checkpoints")
+    monkeypatch.setattr(paths, "RUNS", tmp_path / "runs")
+    monkeypatch.setattr(net, "read_lineage", lambda _: "data=d.psv step=9")
+    monkeypatch.setattr(net, "adopted_in", lambda _: "abc1234 feat: 採用 (#1)")
+    paths.NETS.mkdir()
+    (paths.NETS / "x_reorder.hmwr").write_bytes(b"net")
+    cond = paths.CHECKPOINTS / "x" / "train.cond"
+    cond.parent.mkdir(parents=True)
+    cond.write_text(json.dumps({"command": "python3 training/train.py --seed 0"}), encoding="utf-8")
+    paths.RUNS.mkdir()
+    (paths.RUNS / "registry.tsv").write_text(
+        "timestamp\tname\tnotes\n2026-01-01T00:00:00\tx\t本番の学習\n", encoding="utf-8"
+    )
+
+    assert cli.main(["net", "show", "x_reorder"]) == proc.OK
+    out = capsys.readouterr().out
+    assert "data=d.psv step=9" in out
+    assert "--seed 0" in out
+    assert "本番の学習" in out
+    assert "abc1234" in out
+
+
+def test_show_fails_for_a_missing_net(tmp_path, monkeypatch):
+    monkeypatch.setattr(paths, "NETS", tmp_path)
+    assert cli.main(["net", "show", "nothing"]) == proc.RUNTIME

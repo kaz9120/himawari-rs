@@ -152,6 +152,7 @@ hmwr net train <名前> --data <名前> --valid valid_tanuki_dl430_q1 \
                       --rank rank_tanuki_210M     dlshogiのラベルで学習するレシピ
 hmwr net train <名前> --data <名前> --init-ckpt <ckpt> --lr 1e-4
 hmwr net train <名前> --data <名前> --arch 512x16x64  既定以外の構成で学習する
+hmwr net show [<名前>]                 ネットの学習来歴・起動コマンド・採用したコミット（省くと現行）
 hmwr net eval data/nets/*.hmwr.best
 hmwr net release data/nets/x.hmwr.best 5 --apply
 hmwr net actdump <名前> --eval-file data/nets/<ネット>.hmwr   並べ替えの材料を取る
