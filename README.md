@@ -204,13 +204,12 @@ HIMAWARI_ARCH=256x32x32 cargo build --release
 ```sh
 hmwr --help                         全体を見る
 hmwr --dry-run <...>                走るはずのコマンドを表示する
-hmwr status                         今の状態（キュー・実行中・直近の結果・資源・設定）
+hmwr status                         今の状態（実行中・直近の結果・資源・設定）
 hmwr sprt run <名前>                ペア作成→機能検証→SPRT起動
 hmwr sprt show <名前>               途中経過・結果
 hmwr verify <名前>                  固定深さで探索の変化を比べる
 hmwr bench <base> <cand>            NPSを交互に測る
 hmwr net train <名前> --data <psv>  ネットを学習する
-hmwr doc lint                       日本語文書のlint
 ```
 
 オプションはフラグで渡す。ログの置き場（`data/logs/<領域>-<名前>.log`）は
@@ -226,7 +225,6 @@ cargo clippy --all-targets -- -D warnings
 cargo test --workspace            # テスト（debug）
 cargo test --workspace --release  # perft既知値の照合込み
 python3 -m pytest tests -q        # hmwr のテスト
-hmwr doc lint                     # 日本語文書のlint
 ```
 
 開発用ツールは `crates/tools` にあり、多くは `hmwr` から呼ぶ。直接実行すると、

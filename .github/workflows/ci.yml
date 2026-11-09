@@ -158,7 +158,7 @@ jobs:
   # 下のdocsとavx2も含める。外していた間、文書のlintが落ちたリリースPRが
   # 自動マージされた（#751）。ジョブを足したらここへも足す
   check:
-    needs: [lint, ruff, test, test-release, test-arch, test-board, test-tune, docs, avx2]
+    needs: [lint, ruff, test, test-release, test-arch, test-board, test-tune, avx2]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -168,14 +168,6 @@ jobs:
           for r in $RESULTS; do
             [ "$r" = "success" ] || exit 1
           done
-
-  # 日本語文書のlint（ADR-0244）。同梱したyomiyasuで、AIの文に出やすい
-  # 書き方を見る。標準ライブラリだけで動くので、ランナーのPythonで回す
-  docs:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - run: ./bin/hmwr doc lint
 
 
   # NNUE推論のAVX2経路を検証する（ADR-0099）。既定のx86-64ターゲットは

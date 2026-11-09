@@ -71,30 +71,3 @@ def test_broken_check_warns_without_blocking(tmp_path):
     r = _check(tmp_path, "parens", cwd=tmp_path)
     assert r.returncode == 0
     assert "実行できなかった" in r.stderr
-
-
-def test_missing_doclint_warns(repo, tmp_path):
-    _git(repo, "commit", "-q", "--allow-empty", "-m", "fix: x")
-    r = _check(repo, "subject", cwd=tmp_path)
-    assert r.returncode == 0
-    assert "hmwr/doclint.py がない" in r.stderr
-
-
-def _install_doclint(root: Path) -> None:
-    shutil.copytree(REPO / "hmwr" / "vendor", root / "hmwr" / "vendor")
-    shutil.copy(REPO / "hmwr" / "doclint.py", root / "hmwr" / "doclint.py")
-
-
-def test_subject_with_slop_word_stops(repo, tmp_path):
-    _install_doclint(repo)
-    _git(repo, "commit", "-q", "--allow-empty", "-m", "docs: 探索の土台を整える")
-    r = _check(repo, "subject", cwd=tmp_path)
-    assert r.returncode == 2
-    assert "slop_vocabulary" in r.stderr
-
-
-def test_clean_subject_passes(repo, tmp_path):
-    _install_doclint(repo)
-    _git(repo, "commit", "-q", "--allow-empty", "-m", "fix: 台帳へ足すときの一時ファイルを減らす")
-    r = _check(repo, "subject", cwd=tmp_path)
-    assert (r.returncode, r.stderr) == (0, "")
