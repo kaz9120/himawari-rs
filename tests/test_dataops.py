@@ -87,29 +87,6 @@ def test_shuffle_can_take_only_the_head_of_the_raw_data(capsys):
     assert lines[0].endswith("--out data/train/s.psv.part --seed 1 --limit 300000000")
 
 
-def test_oversample_passes_the_kind_and_the_multiplier(capsys):
-    """該当の型と倍率は既定でも明示して渡す（ADR-0216）。"""
-    _, lines = dry(capsys, ["oversample", "t3", "--in", "t", "--kind", "defense", "--times", "3"])
-    assert lines[0] == (
-        "[dry-run] target/release/psv oversample --in data/train/t.psv "
-        "--out data/train/t3.psv.part --kind defense --times 3"
-    )
-    assert lines[1] == "[dry-run] mv data/train/t3.psv.part data/train/t3.psv"
-    assert lines[2] == "[dry-run] ログ: data/logs/oversample-t3.log"
-
-
-def test_rescore_matches_the_adr0205_invocation(capsys):
-    """ADR-0205が記録した探索条件を、既定のまま明示して渡す。"""
-    _, lines = dry(capsys, ["rescore", "t_r9", "--in", "t", "--eval-file", "data/nets/x.hmwr"])
-    assert lines[0] == (
-        "[dry-run] target/release/psv relabel --in data/train/t.psv "
-        "--out data/train/t_r9.psv.part --depth 9 --max-nodes 1000000 "
-        f"--jobs {dataops.RESCORE_JOBS} --hash {dataops.RESCORE_HASH} "
-        "--eval-file data/nets/x.hmwr"
-    )
-    assert lines[2] == "[dry-run] ログ: data/logs/rescore-t_r9.log"
-
-
 # --- 表とpsvの食い違い -------------------------------------------------
 
 
@@ -254,14 +231,13 @@ def test_openings_picks_by_ply(tmp_path, monkeypatch):
     [
         ["data", "openings", "o", "--count", "1"],
         ["data", "relabel", "r"],
-        ["data", "pick", "p"],
         ["data", "ledger", "filter", "f"],
     ],
-    ids=["openings", "relabel", "pick", "ledger-filter"],
+    ids=["openings", "relabel", "ledger-filter"],
 )
 @pytest.mark.parametrize("inputs", [[], ["a", "b"]], ids=["none", "two"])
 def test_single_input_commands_share_the_wording(capsys, argv, inputs):
-    """`Op` に乗らない4コマンドの `--in` の検査が、共通のヘルパーで同じ文言を出す。"""
+    """`Op` に乗らない3コマンドの `--in` の検査が、共通のヘルパーで同じ文言を出す。"""
     extra = [x for name in inputs for x in ("--in", name)]
     assert cli.main(["--dry-run", *argv, *extra]) == proc.USAGE
     assert f"--in は1個要る（{len(inputs)}個渡された）" in capsys.readouterr().err
