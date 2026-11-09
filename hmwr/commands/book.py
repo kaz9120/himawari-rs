@@ -76,6 +76,10 @@ def add_parser(sub: argparse._SubParsersAction) -> None:
     t.add_argument("--seeds", metavar="名前", help="種。data/book/<名前>.seeds（hmwr book seeds の出力）")
     t.add_argument("--eval", metavar="ネット", help="評価関数。data/nets/<名前>.hmwr（既定 現行）")
     t.add_argument("--depth", type=int, default=30, metavar="N", help="探索の深さ（既定 30）")
+    t.add_argument(
+        "--nodes", type=int, default=300_000_000, metavar="N",
+        help="1局面のノード上限（既定 3億、平均の約6倍。0は無制限）",
+    )
     t.add_argument("--width", type=int, default=3, metavar="N", help="記録する候補手数（既定 3）")
     t.add_argument("--threads", type=int, default=10, metavar="N", help="探索スレッド数（既定 10）")
     t.add_argument("--hash", type=int, default=4096, metavar="MB", help="置換表（既定 4096）")
@@ -209,6 +213,7 @@ def mine(args: argparse.Namespace) -> int:
         "--out", str(out),
         "--eval", str(net),
         "--depth", str(args.depth),
+        "--nodes", str(args.nodes),
         "--width", str(args.width),
         "--threads", str(args.threads),
         "--hash", str(args.hash),

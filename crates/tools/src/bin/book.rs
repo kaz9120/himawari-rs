@@ -97,6 +97,8 @@ struct Config {
     width: usize,
     full_ply: u16,
     depth: u32,
+    /// 1局面の探索のノード上限（0は無制限）。深さだけでは終わらない局面がある
+    nodes: u64,
     hash_mb: usize,
     threads: usize,
     max_positions: usize,
@@ -286,6 +288,7 @@ fn search_lines(pos: &Position, cfg: &Config, pool: &ThreadPool, sink: &Sink) ->
     sink.lock().expect("sink").clear();
     let limits = Limits {
         depth: cfg.depth,
+        nodes: cfg.nodes,
         ..Limits::default()
     };
     let opts = EngineOptions {
@@ -1103,10 +1106,11 @@ fn load_seeds(text: &str) -> Result<Vec<(f64, u16, Position)>, String> {
 /// 比べられる。出力ファイルがあれば読んで続きから掘る。
 fn mine(cfg: &Config) -> std::io::Result<()> {
     eprintln!(
-        "BookGen: mine max_ply={} width={} depth={} threads={} hash={}MB max={} margin={} temp={} min_prob={} seeds={}",
+        "BookGen: mine max_ply={} width={} depth={} nodes={} threads={} hash={}MB max={} margin={} temp={} min_prob={} seeds={}",
         cfg.max_ply,
         cfg.width,
         cfg.depth,
+        cfg.nodes,
         cfg.threads,
         cfg.hash_mb,
         cfg.max_positions,
@@ -1484,6 +1488,7 @@ const FLAGS: &[(&str, &str)] = &[
     ("--width", "各局面で記録する候補手数（既定 4）"),
     ("--full-ply", "全合法手を展開する深さ（既定 0）"),
     ("--depth", "探索の深さ（既定 24）"),
+    ("--nodes", "1局面の探索のノード上限（既定 0＝無制限）"),
     ("--hash", "置換表のMB（既定 256）"),
     ("--threads", "探索スレッド数（seedは受け付けない）"),
     ("--max-positions", "追加する局面数の上限（既定 2000）"),
@@ -1532,6 +1537,7 @@ fn parse(args: &[String]) -> Result<(&'static str, Config), String> {
         width: 4,
         full_ply: 0,
         depth: 24,
+        nodes: 0,
         hash_mb: 256,
         threads: std::thread::available_parallelism().map_or(1, |n| n.get()),
         max_positions: 2000,
@@ -1565,6 +1571,7 @@ fn parse(args: &[String]) -> Result<(&'static str, Config), String> {
             "--width" => cfg.width = val.parse::<usize>().unwrap_or(cfg.width).max(1),
             "--full-ply" => cfg.full_ply = val.parse().unwrap_or(cfg.full_ply),
             "--depth" => cfg.depth = val.parse().unwrap_or(cfg.depth),
+            "--nodes" => cfg.nodes = val.parse().unwrap_or(cfg.nodes),
             "--hash" => cfg.hash_mb = val.parse().unwrap_or(cfg.hash_mb),
             "--max-ply" => cfg.max_ply = val.parse().unwrap_or(cfg.max_ply),
             "--threads" => {
@@ -1954,6 +1961,7 @@ P9+KY+KE+GI+KI+OU+KI+GI+KE+KY
             width: 2,
             full_ply: 0,
             depth: 1,
+            nodes: 0,
             hash_mb: 1,
             threads: 1,
             max_positions: 2,
@@ -1994,6 +2002,7 @@ P9+KY+KE+GI+KI+OU+KI+GI+KE+KY
             width: 2,
             full_ply: 0,
             depth: 1,
+            nodes: 0,
             hash_mb: 1,
             threads: 1,
             max_positions: 2,

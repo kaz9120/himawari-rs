@@ -522,6 +522,7 @@ def test_book_mine_passes_the_seeds_and_current_net(capsys):
     assert "--seeds data/book/strong.seeds" in out
     assert f"--eval {config.EVAL_FILE}" in out
     assert "--depth 28" in out
+    assert "--nodes 300000000" in out, "深さだけでは終わらない局面があるので、既定でノード上限を付ける"
 
 
 def test_book_seeds_rejects_reversed_years(capsys):
