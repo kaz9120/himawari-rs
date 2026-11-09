@@ -20,21 +20,6 @@ L2_OUT = himawari.L2_OUT
 # 0なら3層。0でなければ隠れ層をもう1つ挟む（ADR-0127）
 L3_OUT = himawari.L3_OUT
 LAST_HIDDEN = L3_OUT or L2_OUT or L1_OUT
-# 補助ヘッドの分類クラス数（ADR-0129）。fromは盤上81マス＋打つ駒7種
-MOVE_FROM_CLASSES = himawari.MOVE_FROM_CLASSES
-MOVE_TO_CLASSES = himawari.MOVE_TO_CLASSES
-# 利きラベル1本の長さ（ADR-0133）。手番側81升＋相手側81升
-EFFECT_LEN = himawari.EFFECT_LEN
-# 利きヘッドの出力次元。短い利きと長い利きを続けて並べる
-EFFECT_OUT = EFFECT_LEN * 2
-# 2層MLPヘッドの中間の幅
-EFFECT_MLP_HIDDEN = 256
-# 利き数の正規化に使う。1升に8枚も利いていれば十分に多い
-EFFECT_SCALE = 8.0
-# 焦点のヒートマップの長さ（ADR-0213）。盤の81升をそのまま並べる
-FOCUS_OUT = 81
-# 的中率を測る上位マスの数（ADR-0213の測定の設計）
-FOCUS_TOPK = 5
 ARCH = himawari.ARCH
 FE_END = FT_IN // 81
 # 第1層の入力幅。片視点のFT出力を2つに割って掛けるので、視点あたり
@@ -96,9 +81,7 @@ class NnueModel(nn.Module):
     推論側の構造は変わらない。重みは書き出し時に畳み込む。
     """
 
-    def __init__(self, sparse_ft=True, factorized=False, policy=False,
-                 pretrain=False, effect_head=None,
-                 focus_head=None, effect_inputs=None, halfkp_inputs=True):
+    def __init__(self, sparse_ft=True, factorized=False, effect_inputs=None, halfkp_inputs=True):
         super().__init__()
         # 利きのaccumulatorは構成で決まる（ADR-0237）。持つ構成では、統制群も
         # 処置群も同じ層を作る。**構造が同じなので、初期化で乱数を消費する
@@ -149,56 +132,7 @@ class NnueModel(nn.Module):
         self.l3 = nn.Linear(L1_OUT, L2_OUT) if L2_OUT else None
         self.l4 = nn.Linear(L2_OUT, L3_OUT) if L3_OUT else None
         self.out = nn.Linear(LAST_HIDDEN, 1)
-        # 補助ヘッド（ADR-0129）。FT出力からの線形1層に限る。深くすると
-        # ヘッド自身がタスクを解いてしまい、FTへ表現を押し込む圧力が弱まる
-        self.policy_from = nn.Linear(CONCAT, MOVE_FROM_CLASSES) if policy else None
-        self.policy_to = nn.Linear(CONCAT, MOVE_TO_CLASSES) if policy else None
-        # FT事前学習では評価値ヘッドも線形1層にする（ADR-0129）。深い
-        # ヘッドはタスクを自分で解いてしまい、FTへ表現を押し込む圧力が
-        # 弱まる。評価値を当てる圧力自体は残す
-        self.pretrain_value = nn.Linear(CONCAT, 1) if pretrain else None
-        # 利き予測ヘッド（ADR-0133）。FT出力から升ごとの利き数を当てる。
-        # 線形1層と2層MLPのどちらが良い表現を作るかは決め打たず、比較軸に
-        # する。深いヘッドは遮りの論理積を自分で計算できてしまう一方、
-        # SimCLRは非線形の写像のほうが良い表現になると報告している。
-        # このヘッドも書き出しには載らないので推論は変わらない
-        self.effect = self._build_effect_head(effect_head)
-        # 焦点のヒートマップを当てるヘッド（ADR-0213）。利きヘッドと同じCONCATから
-        # 生やす線形1層で、probeの指標になる。深くするとヘッド自身が
-        # タスクを解いてしまい、「FTが焦点を持っているか」を測れなくなる。
-        # 書き出しには載らないので推論は変わらない
-        self.focus = self._build_focus_head(focus_head)
         self._init_weights()
-
-    @staticmethod
-    def _build_focus_head(kind):
-        if kind is None:
-            return None
-        if kind == "linear":
-            return nn.Linear(CONCAT, FOCUS_OUT)
-        if kind == "mlp":
-            # 線形で当たらない焦点が非線形なら当たるかを分けるための対照。
-            # 中間は利きヘッドのmlpと同じ256にする
-            return nn.Sequential(
-                nn.Linear(CONCAT, EFFECT_MLP_HIDDEN),
-                nn.ReLU(),
-                nn.Linear(EFFECT_MLP_HIDDEN, FOCUS_OUT),
-            )
-        raise ValueError(f"焦点ヘッドの種類が不明: {kind}")
-
-    @staticmethod
-    def _build_effect_head(kind):
-        if kind is None:
-            return None
-        if kind == "linear":
-            return nn.Linear(CONCAT, EFFECT_OUT)
-        if kind == "mlp":
-            return nn.Sequential(
-                nn.Linear(CONCAT, EFFECT_MLP_HIDDEN),
-                nn.ReLU(),
-                nn.Linear(EFFECT_MLP_HIDDEN, EFFECT_OUT),
-            )
-        raise ValueError(f"利きヘッドの種類が不明: {kind}")
 
     def _init_weights(self):
         nn.init.uniform_(self.ft.weight, -0.05, 0.05)
@@ -237,15 +171,6 @@ class NnueModel(nn.Module):
             nn.init.zeros_(self.l4.bias)
         nn.init.uniform_(self.out.weight, -0.3, 0.3)
         nn.init.zeros_(self.out.bias)
-        heads = [self.policy_from, self.policy_to, self.pretrain_value]
-        # 利きヘッドと焦点ヘッドはMLPのこともある。線形層を取り出して同じ初期化を当てる
-        for head in (self.effect, self.focus):
-            if head is not None:
-                heads.extend(m for m in head.modules() if isinstance(m, nn.Linear))
-        for head in heads:
-            if head is not None:
-                nn.init.uniform_(head.weight, -0.05, 0.05)
-                nn.init.zeros_(head.bias)
         if self.sub is not None:
             self.sub.init_weights()
 
@@ -308,7 +233,7 @@ class NnueModel(nn.Module):
 
     def transform_both(self, stm_idx, stm_off, opp_idx, opp_off,
                        eff_stm=None, eff_opp=None):
-        """FT出力を2視点ぶん連結して返す。補助ヘッドもここから生やす。
+        """FT出力を2視点ぶん連結して返す。
 
         利きのaccumulatorを持つ構成では、HalfKPの活性の後ろに利きの活性を
         手番視点・非手番視点の順に連結する（ADR-0237）。
@@ -333,12 +258,7 @@ class NnueModel(nn.Module):
         return torch.cat(parts, dim=1)
 
     def value(self, x):
-        """FT出力の連結から評価値を出す（推論と同じ経路）。
-
-        事前学習中は線形1層で代替する。この層は書き出しに載らない。
-        """
-        if self.pretrain_value is not None:
-            return self.pretrain_value(x).squeeze(1)
+        """FT出力の連結から評価値を出す（推論と同じ経路）。"""
         h = self.l2(x).clamp(0.0, 1.0)
         for layer in (self.l3, self.l4):
             if layer is not None:
@@ -449,39 +369,3 @@ class SubModel(nn.Module):
 
 def loss_fn(output, target):
     return F.binary_cross_entropy_with_logits(output, target)
-
-
-def focus_loss_fn(pred, heat):
-    """焦点のヒートマップのBCE（ADR-0213）。
-
-    的は升ごとの0/1で、「続くk手で駒が動いたか取られたか」を表す。
-    81升を独立に当てるので、多ラベル分類のBCEになる。
-    """
-    return F.binary_cross_entropy_with_logits(pred, heat.float())
-
-
-def top_k_precision(pred, heat, k=FOCUS_TOPK):
-    """局面ごとに予測の上位k升を取り、ヒートマップが1だった割合を平均する。
-
-    ADR-0213がprobeの指標に選んだ「上位5マスの的中率」である。**ベースラインも
-    同じ関数で測る。** 局面によらない予測（頻度ベースライン）を全局面へ広げて渡せば、
-    どの局面でも同じk升が選ばれ、比較の条件が揃う。
-    """
-    idx = pred.topk(k, dim=1).indices
-    return heat.gather(1, idx).float().mean()
-
-
-def effect_loss_fn(pred, eff_short, eff_long):
-    """利き数の回帰損失を、短い利きと長い利きに分けて返す（ADR-0133）。
-
-    ラベルは升ごとの利き数（u8）で、EFFECT_SCALEで割って正規化してから
-    当てる。損失は升ごとのMSEである。
-
-    短い利きは加法で解けるので、ほぼ0まで落ちるはずである。落ちなければ
-    実装かλがおかしい。長い利きは遮りが絡んで加法では書けず、こちらが
-    FTの容量を測る本体になる。だから2つを混ぜずに返す。
-    """
-    target = torch.cat([eff_short, eff_long], dim=1).float() / EFFECT_SCALE
-    short_loss = F.mse_loss(pred[:, :EFFECT_LEN], target[:, :EFFECT_LEN])
-    long_loss = F.mse_loss(pred[:, EFFECT_LEN:], target[:, EFFECT_LEN:])
-    return short_loss, long_loss

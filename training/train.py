@@ -14,15 +14,9 @@ import torch.nn.functional as F
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 
-from model import (
-    ARCH, EFF_OUT, EFFECT_INPUTS, EFFECT_LEN, EFFECT_SCALE, FOCUS_TOPK, NnueModel,
-    effect_loss_fn, focus_loss_fn, loss_fn, top_k_precision,
-)
+from model import ARCH, EFF_OUT, EFFECT_INPUTS, NnueModel, loss_fn
 from optim import MaskedAdam
-from dataset import (
-    FOCUS_BYTES, FOCUS_ORIENTS, FocusBatchLoader, RankLoader,
-    GeneratedBatchLoader, PsvBatchLoader, PsvDataset, collate_psv,
-)
+from dataset import PsvBatchLoader, PsvDataset, RankLoader, collate_psv
 from quantize import save_hmwr
 
 
@@ -32,40 +26,6 @@ def lr_lambda(step, warmup_steps, total_steps, min_lr, peak_lr):
     progress = (step - warmup_steps) / max(total_steps - warmup_steps, 1)
     ratio = min_lr / peak_lr
     return ratio + (1.0 - ratio) * 0.5 * (1.0 + math.cos(math.pi * progress))
-
-
-def validate_focus(model, valid_loader, device, prior):
-    """焦点ヘッドを検証する（ADR-0213）。
-
-    返すのは3つ。ヒートマップのBCE、上位5マスの的中率、同じ検証集合で測った
-    頻度ベースラインの的中率である。**ベースラインを並記しないと的中率を読めない。**
-    """
-    model.eval()
-    loss_sum = hit_sum = base_sum = 0.0
-    total = 0
-    with torch.no_grad():
-        for batch in valid_loader:
-            if batch is None:
-                continue
-            stm_i, stm_o, opp_i, opp_o = [x.to(device) for x in batch[:4]]
-            heat = batch[11].to(device)
-            n = heat.size(0)
-            pred = model.focus(model.transform_both(stm_i, stm_o, opp_i, opp_o))
-            loss_sum += focus_loss_fn(pred, heat).item() * n
-            hit_sum += top_k_precision(pred, heat).item() * n
-            base_sum += top_k_precision(prior.expand(n, -1), heat).item() * n
-            total += n
-    model.train()
-    n = max(total, 1)
-    return loss_sum / n, hit_sum / n, base_sum / n
-
-
-def focus_line(bce, top5, base):
-    """検証行に出す焦点の指標。学習中と最終報告で同じ書式を使う。"""
-    return (
-        f"focus bce {bce:.5f} top{FOCUS_TOPK} {100.0 * top5:.2f}% "
-        f"頻度ベースライン {100.0 * base:.2f}%"
-    )
 
 
 def validate(model, valid_loader, device):
@@ -93,13 +53,6 @@ def validate(model, valid_loader, device):
 def main():
     p = argparse.ArgumentParser(description="NNUE trainer v2")
     p.add_argument("--data", help="Training PSV file")
-    p.add_argument(
-        "--generate",
-        type=int,
-        help="教師データの代わりに局面をその場で作る（ADR-0133）。値は1エポック"
-             "あたりの局面数。初期局面からランダムに指して局面を集め、利きラベルを"
-             "その場で計算する。--data の代わりに使い、--lambda-value 0 と組む",
-    )
     p.add_argument("--valid", help="Validation PSV file")
     p.add_argument("--out", help="Output .hmwr path（--eval-only 以外では必須）")
     p.add_argument("--epochs", type=int, default=1)
@@ -145,78 +98,6 @@ def main():
     p.add_argument("--name", default="", help="Experiment name for registry")
     p.add_argument("--notes", default="", help="Notes for registry")
     p.add_argument("--device", default="cpu")
-    p.add_argument(
-        "--lambda-move",
-        type=float,
-        default=0.0,
-        dest="lambda_move",
-        help="指し手を当てる補助ヘッドの重み（ADR-0129）。0で無効。"
-             "書き出し時にヘッドは捨てるので推論は変わらない",
-    )
-    p.add_argument(
-        "--pretrain",
-        action="store_true",
-        help="FT事前学習モード（ADR-0129）。評価値ヘッドも線形1層にして、"
-             "すべての仕事をFTへ押し込む。成果物はFTだけで、後段は捨てる",
-    )
-    p.add_argument(
-        "--effect-head",
-        dest="effect_head",
-        choices=["linear", "mlp"],
-        help="利き予測ヘッドを付けてFTを事前学習する（ADR-0133）。linearは線形1層、"
-             "mlpは中間256の2層。どちらが良い表現を作るかは比較軸で、決め打たない。"
-             "ヘッドは書き出し時に捨てるので推論は変わらない",
-    )
-    p.add_argument(
-        "--lambda-value",
-        type=float,
-        default=1.0,
-        dest="lambda_value",
-        help="評価値損失の重み（ADR-0133）。0にすると評価値を使わずに学習する。"
-             "利き予測だけでFTを事前学習する第1段階で使う。書き出したネットの"
-             "後段は意味を持たないので、--init-net で読み直して第2段階を回す",
-    )
-    p.add_argument(
-        "--lambda-effect",
-        type=float,
-        default=0.0,
-        dest="lambda_effect",
-        help="利き予測の重み（ADR-0133）。--effect-head と対で渡す。"
-             "λは値ではなく λ×利き損失÷value損失 の割合で決める",
-    )
-    p.add_argument(
-        "--focus-head",
-        dest="focus_head",
-        choices=["linear", "mlp"],
-        help="焦点のヒートマップを当てるヘッドを付ける（ADR-0213）。--data に.focusを"
-             "渡したときだけ使える。--freeze-ft と --lambda-value 0 と組むと、"
-             "FTが焦点を持っているかを測るprobeになる。ヘッドは書き出し時に"
-             "捨てるので推論は変わらない",
-    )
-    p.add_argument(
-        "--lambda-focus",
-        type=float,
-        default=0.0,
-        dest="lambda_focus",
-        help="焦点損失の重み（ADR-0213）。--focus-head と対で渡す",
-    )
-    p.add_argument(
-        "--focus-orient",
-        dest="focus_orient",
-        choices=list(FOCUS_ORIENTS),
-        default="board",
-        help="ヒートマップの向き（ADR-0213）。boardは書かれたまま、stmは後手番の局面で"
-             "180度回して手番側の向きへ揃える。**アキュムレータは手番側から見た向きで"
-             "並ぶ**ので、boardでは的と表現の向きが局面の半分でずれる",
-    )
-    p.add_argument(
-        "--focus-valid-count",
-        type=int,
-        default=100_000,
-        dest="focus_valid_count",
-        help=".focus の末尾この件数を検証に回す（ADR-0213）。残りが学習になる。"
-             "レコードは対局順なので、境目の1局を除いて学習と検証は別の対局になる",
-    )
     p.add_argument(
         "--effect-inputs",
         dest="effect_inputs",
@@ -310,19 +191,6 @@ def main():
     )
     args = p.parse_args()
 
-    # 利き予測はヘッドと重みが対で要る（ADR-0133）。片方だけ渡すと、的の
-    # ないヘッドを持つか、学習に効かないラベルを抽出し続けることになる
-    if args.lambda_effect > 0 and args.effect_head is None:
-        p.error("--lambda-effect には --effect-head が要る（ヘッドがない）")
-    if args.effect_head is not None and args.lambda_effect <= 0:
-        p.error("--effect-head には正の --lambda-effect が要る（重み0では学べない）")
-    # 焦点も同じ扱いにする（ADR-0213）。ヘッドと重みは対で要る
-    if args.lambda_focus > 0 and args.focus_head is None:
-        p.error("--lambda-focus には --focus-head が要る（ヘッドがない）")
-    if args.focus_head is not None and args.lambda_focus <= 0:
-        p.error("--focus-head には正の --lambda-focus が要る（重み0では学べない）")
-    if args.lambda_value <= 0 and args.effect_head is None and args.focus_head is None:
-        p.error("--lambda-value 0 には別の的が要る（--effect-head か --focus-head を渡す）")
     # 利きのaccumulatorは構成で決まる（ADR-0237）。利きの構成で省いたら、
     # 現行の評価関数と同じF2の特徴を立てる。どちらの群かは来歴に残る（下の eff_tag）
     if EFF_OUT > 0 and args.effect_inputs is None:
@@ -346,39 +214,17 @@ def main():
         if args.init_net or args.init_checkpoint:
             p.error("--halfkp-inputs none はゼロから学習するときだけ使える（読んだFTを捨てることになる）")
         eff_tag += " halfkp_inputs=none"
-    use_effect = args.effect_head is not None
-    use_focus = args.focus_head is not None
-    # ヒートマップは.focusにしか入っていない（ADR-0213）
-    if use_focus and not (args.data or "").endswith(".focus"):
-        p.error("--focus-head には .focus の学習データが要る（ヒートマップの的がない）")
 
-    # 局面の出どころは1つに決める（ADR-0133）。両方渡せるとどちらで学習した
-    # のか記録から読めなくなる
-    if args.data and args.generate:
-        p.error("--data と --generate は同時に使えない（局面の出どころは1つ）")
     if args.eval_only:
         # 測るだけなので教師データは要らない。読むネットと指標が要る
         if not args.init_net and not args.init_checkpoint:
             p.error("--eval-only には --init-net か --init-checkpoint が要る（測るネットがない）")
         if not args.valid:
             p.error("--eval-only には --valid が要る（指標がない）")
-    elif not args.data and not args.generate:
-        p.error("--data か --generate のどちらかが要る")
+    elif not args.data:
+        p.error("--data が要る")
     if not args.eval_only and not args.out:
         p.error("--out が要る")
-    if args.generate:
-        if args.generate <= 0:
-            p.error("--generate は正の局面数が要る")
-        # 生成した局面に評価値の的はない。targetsは0.5で埋まるので、
-        # λ_value>0 のまま回すと定数を当てるだけの学習になる
-        if args.lambda_value > 0:
-            p.error("--generate には --lambda-value 0 が要る（評価値の的がない）")
-        # --valid は要求しない。**生成した局面は使い捨てで、同じ局面が
-        # 二度と出ない。** 訓練損失がそのまま未見データの損失になるので、
-        # 別の検証集合を持つ意味がない（ADR-0133）
-        if args.valid:
-            print("--generate では訓練損失が未見データの損失になる。"
-                  "--valid は補助的な指標にしかならない", file=sys.stderr)
 
     device = torch.device(args.device)
     print(f"Device: {device}", file=sys.stderr)
@@ -389,47 +235,15 @@ def main():
         torch.manual_seed(args.seed)
         print(f"Seed: {args.seed}", file=sys.stderr)
 
-    # .focus は学習と検証を同じファイルから切る（ADR-0213）。検証集合を
-    # 別に用意すると、ヒートマップの作り方が学習側とずれても気づけない
-    focus_valid_loader = None
-    if use_focus and not args.eval_only:
-        focus_rows = os.path.getsize(args.data) // FOCUS_BYTES
-        split = focus_rows - args.focus_valid_count
-        if split <= 0:
-            p.error(
-                f"--focus-valid-count が大きすぎる（全{focus_rows}件、"
-                f"学習に残るのは{split}件）"
-            )
-        train_loader = FocusBatchLoader(
-            args.data, args.batch, lo=0, hi=split,
-            lambda_=args.lambda_, shuffle=True, seed=args.seed or 0,
-            orient=args.focus_orient,
-        )
-        focus_valid_loader = FocusBatchLoader(
-            args.data, args.batch, lo=split, hi=focus_rows,
-            lambda_=args.lambda_, shuffle=False, orient=args.focus_orient,
-        )
-        data_n = train_loader.n
-        print(
-            f"焦点データ: 学習 {data_n}局面 / 検証 {focus_valid_loader.n}局面"
-            f"（{args.data}、向き {args.focus_orient}）",
-            file=sys.stderr,
-        )
-    elif args.eval_only:
+    if args.eval_only:
         train_loader = None
         data_n = 0
-    elif args.generate:
-        # 抽出ではなく生成。バッチの形は PsvBatchLoader と同じ9本になる
-        train_loader = GeneratedBatchLoader(
-            args.generate, args.batch, seed=args.seed or 0,
-        )
-        data_n = train_loader.n
     elif args.batch_loader:
         train_loader = PsvBatchLoader(
             args.data, args.batch, lambda_=args.lambda_,
             score_limit=args.score_limit, mmap=args.mmap, shuffle=True,
             score_clamp=args.score_clamp, seed=args.seed or 0,
-            effect=use_effect, positions=args.positions,
+            positions=args.positions,
             effect_inputs=eff_inputs,
         )
         data_n = train_loader.n
@@ -448,19 +262,11 @@ def main():
             multiprocessing_context=mp_ctx,
         )
         data_n = len(train_ds)
-    # 系譜と実験台帳へ書く局面の出どころ。生成にはファイル名がない
-    data_desc = args.data if args.data else "generated"
     steps_per_epoch = math.ceil(data_n / args.batch)
     total_steps = args.epochs * steps_per_epoch
 
     valid_loader = None
-    if focus_valid_loader is not None:
-        # 同じファイルの末尾を使う。--valid は受け取らない
-        valid_loader = focus_valid_loader
-        if args.valid:
-            print("--focus-head では.focusの末尾を検証に使う。--valid は無視する",
-                  file=sys.stderr)
-    elif args.valid:
+    if args.valid:
         if args.batch_loader:
             # validには score_limit も score_clamp も適用しない。
             # 教師信号の作り方を変えると指標が変わり、条件間で
@@ -480,19 +286,9 @@ def main():
             valid_n = len(valid_ds)
         print(f"検証データ: {valid_n}局面", file=sys.stderr)
 
-    if use_effect:
-        print(
-            f"利き予測: {args.effect_head}ヘッド（λ={args.lambda_effect}）",
-            file=sys.stderr,
-        )
-
     model = NnueModel(
         sparse_ft=not args.dense_ft,
         factorized=args.factorized,
-        policy=args.lambda_move > 0,
-        pretrain=args.pretrain,
-        effect_head=args.effect_head,
-        focus_head=args.focus_head,
         effect_inputs=args.effect_inputs,
         halfkp_inputs=args.halfkp_inputs == "on",
     ).to(device)
@@ -526,16 +322,7 @@ def main():
         print(f"初期値: {load_into(model, args.init_net, args.freeze_ft)}",
               file=sys.stderr)
     elif args.freeze_ft:
-        # probeのベースラインRは「乱数初期値のFT」を凍結して測る（ADR-0213）。
-        # 学習済みの表現がなくても意味があるのはこの用途だけなので、
-        # 焦点ヘッドを付けているときに限って許す
-        if not use_focus:
-            p.error("--freeze-ft には --init-net か --init-checkpoint が要る（凍結する重みがない）")
-        print("初期値: 乱数のまま凍結（probeのベースラインR）", file=sys.stderr)
-        model.ft.weight.requires_grad_(False)
-        model.ft_bias.requires_grad_(False)
-        if model.ft_p is not None:
-            model.ft_p.weight.requires_grad_(False)
+        p.error("--freeze-ft には --init-net か --init-checkpoint が要る（凍結する重みがない）")
 
     if args.eval_only:
         vl = validate(model, valid_loader, device)
@@ -552,16 +339,6 @@ def main():
     for layer in (model.l3, model.l4):
         if layer is not None:
             dense_params.extend([layer.weight, layer.bias])
-    # 補助ヘッドも学習する。書き出し時に捨てるので推論には出てこない
-    for head in (model.policy_from, model.policy_to, model.pretrain_value):
-        if head is not None:
-            dense_params.extend([head.weight, head.bias])
-    # 利きヘッドはMLPのこともあるので、パラメータをまとめて足す（ADR-0133）
-    if model.effect is not None:
-        dense_params.extend(model.effect.parameters())
-    # 焦点ヘッド（ADR-0213）。probeではここだけが学習対象になる
-    if model.focus is not None:
-        dense_params.extend(model.focus.parameters())
     # 利きのaccumulator（ADR-0237）。統制群の表は凍結してあり、下で外れる
     if model.eff is not None:
         dense_params.extend([model.eff.weight, model.eff_bias])
@@ -659,36 +436,12 @@ def main():
     t_log = time.time()
     loss_acc = 0.0
     loss_n = 0
-    eff_short_acc = 0.0
-    eff_long_acc = 0.0
-    eff_short_base = 0.0
-    eff_long_base = 0.0
-    effect_n = 0
     samples_log = 0
     rank_acc = 0.0
     rank_fire = 0.0
     rank_n = 0
     samples_done = step * args.batch
     early_stopped = False
-
-    # 頻度ベースライン（ADR-0213）。学習側のヒートマップの平均で、局面によらないベースラインに
-    # なる。**検証集合から作らない。** 測る相手の答えを覗くことになる
-    focus_prior = None
-    focus_acc = 0.0
-    focus_hit = 0.0
-    focus_n = 0
-    if use_focus:
-        rates = torch.from_numpy(train_loader.heat_mean()).float()
-        focus_prior = rates.view(1, -1).to(device)
-        top = rates.topk(FOCUS_TOPK)
-        print(
-            f"頻度ベースラインの上位{FOCUS_TOPK}升: "
-            + " ".join(
-                f"{sq}:{rate * 100:.1f}%"
-                for sq, rate in zip(top.indices.tolist(), top.values.tolist())
-            ),
-            file=sys.stderr,
-        )
 
     rank_loader = None
     if args.rank_data:
@@ -699,19 +452,15 @@ def main():
 
     model.train()
     for epoch in range(start_epoch, args.epochs):
-        move_hits = 0
-        move_total = 0
         for batch in train_loader:
             if batch is None:
                 continue
 
-            # 8・9本目は利きラベル（ADR-0133）、10・11本目は利きの入力特徴
-            # （ADR-0237）。抽出させていなければ空で来る。
-            # .focus のローダはさらにヒートマップを1本足す（ADR-0213）
+            # 6〜9本目は指し手と利きのラベルで、学習には使わない。10・11本目は
+            # 利きの入力特徴（ADR-0237）。抽出させていなければ空で来る
             tensors = [x.to(device) for x in batch]
-            stm_i, stm_o, opp_i, opp_o, targets, mv_from, mv_to, \
-                eff_short, eff_long, eff_stm, eff_opp = tensors[:11]
-            heat = tensors[11] if len(tensors) > 11 else None
+            stm_i, stm_o, opp_i, opp_o, targets = tensors[:5]
+            eff_stm, eff_opp = tensors[9:11]
             n = targets.size(0)
 
             optimizer_dense.zero_grad()
@@ -721,11 +470,8 @@ def main():
             out = model.value(x)
             # ログとvalidに載せるのは評価値の損失だけにする。合計を載せると
             # λを変えるたびに指標が動き、過去の学習と比べられなくなる
-            value_loss = loss_fn(out, targets)
-            # 第1段階（利き予測だけでFTを事前学習する）ではλ_value=0にして
-            # 評価値を切る。ログには測るだけの値として残す（ADR-0133）
-            loss = args.lambda_value * value_loss
-            value_loss = value_loss.detach()
+            loss = loss_fn(out, targets)
+            value_loss = loss.detach()
             if rank_loader is not None:
                 # 兄弟局面のランキング損失（ADR-0185）。正例の葉が負例の葉
                 # より親視点で良い、をシグモイド空間のヒンジで課す
@@ -741,53 +487,6 @@ def main():
                 rank_acc += rank_loss.item()
                 rank_fire += (hinge > 0).float().mean().item()
                 rank_n += 1
-            if model.policy_from is not None:
-                # ラベルが取れなかった局面は-1で、ignore_indexが落とす
-                lf = model.policy_from(x)
-                lt = model.policy_to(x)
-                move_loss = F.cross_entropy(lf, mv_from, ignore_index=-1) + \
-                    F.cross_entropy(lt, mv_to, ignore_index=-1)
-                loss = loss + args.lambda_move * move_loss
-                valid_mv = mv_to >= 0
-                if valid_mv.any():
-                    hit = ((lf.argmax(1) == mv_from) & (lt.argmax(1) == mv_to) & valid_mv)
-                    move_hits += int(hit.sum())
-                    move_total += int(valid_mv.sum())
-            if model.effect is not None:
-                # 升ごとの利き数を当てる（ADR-0133）。短い利きは加法で解ける
-                # ので、健全性チェックとして別々にログへ出す
-                short_loss, long_loss = effect_loss_fn(
-                    model.effect(x),
-                    eff_short.view(n, EFFECT_LEN),
-                    eff_long.view(n, EFFECT_LEN),
-                )
-                # 出力数が同じなので、平均は324次元全体のMSEに等しい
-                effect_loss = 0.5 * (short_loss + long_loss)
-                loss = loss + args.lambda_effect * effect_loss
-                eff_short_acc += short_loss.item() * n
-                eff_long_acc += long_loss.item() * n
-                # ベースライン（全部0と答える）のMSEを一緒に測る。長い利きは
-                # 88%の升がゼロなので、基準なしでは損失の大小を読めない。
-                # 学習がベースラインを下回っているかだけが意味のある判定になる
-                with torch.no_grad():
-                    scale = EFFECT_SCALE * EFFECT_SCALE
-                    eff_short_base += (
-                        eff_short.float().pow(2).mean().item() / scale * n
-                    )
-                    eff_long_base += (
-                        eff_long.float().pow(2).mean().item() / scale * n
-                    )
-                effect_n += n
-            if model.focus is not None and heat is not None:
-                # 焦点のヒートマップを当てる（ADR-0213）。的中率も一緒に測る。
-                # 損失だけでは「上位5マスが当たっているか」が読めない
-                focus_pred = model.focus(x)
-                focus_loss = focus_loss_fn(focus_pred, heat)
-                loss = loss + args.lambda_focus * focus_loss
-                focus_acc += focus_loss.item() * n
-                with torch.no_grad():
-                    focus_hit += top_k_precision(focus_pred, heat).item() * n
-                focus_n += n
             loss.backward()
             optimizer_dense.step()
             if optimizer_ft is not None:
@@ -812,48 +511,18 @@ def main():
                 sps = samples_log / max(elapsed, 1e-6)
                 avg_loss = loss_acc / max(loss_n, 1)
                 current_lr = scheduler_dense.get_last_lr()[0]
-                # 指し手の的中率。表現が厚くなったかを直接は測れないので、
-                # 少なくとも「指し手を学べているか」を見る（ADR-0129）
-                hit_rate = (
-                    f" move {100.0 * move_hits / move_total:.1f}%"
-                    if move_total
-                    else ""
-                )
-                move_hits = 0
-                move_total = 0
-                # 利きは長短を別々に出す（ADR-0133）。短いほうが落ちなければ
-                # 実装かλがおかしい。λを掛ける前の値を出す。掛けたあとの値では
-                # λを変えるたびに指標が動く
-                avg_eff_short = eff_short_acc / max(effect_n, 1)
-                avg_eff_long = eff_long_acc / max(effect_n, 1)
-                base_s = eff_short_base / max(effect_n, 1)
-                base_l = eff_long_base / max(effect_n, 1)
-                effect_str = (
-                    f" effect short {avg_eff_short:.5f}/{base_s:.5f}"
-                    f" long {avg_eff_long:.5f}/{base_l:.5f}"
-                    if effect_n
-                    else ""
-                )
-                # ランキング損失と発火率（ADR-0185）。λを掛ける前の値を
-                # 出すのは利きと同じ
+                # ランキング損失と発火率（ADR-0185）。λを掛ける前の値を出す。
+                # 掛けたあとの値ではλを変えるたびに指標が動く
                 rank_str = (
                     f" rank {rank_acc / rank_n:.5f}"
                     f" fire {100.0 * rank_fire / rank_n:.1f}%"
                     if rank_n
                     else ""
                 )
-                # 焦点は損失と的中率を並べる（ADR-0213）。λを掛ける前の値を
-                # 出すのは利き・ランキングと同じ
-                focus_str = (
-                    f" focus {focus_acc / focus_n:.5f}"
-                    f" top{FOCUS_TOPK} {100.0 * focus_hit / focus_n:.2f}%"
-                    if focus_n
-                    else ""
-                )
                 print(
                     f"step {step} samples {samples_done} "
                     f"loss {avg_loss:.5f} lr {current_lr:.6f}"
-                    f"{hit_rate}{effect_str}{rank_str}{focus_str} "
+                    f"{rank_str} "
                     f"({sps:.0f} samples/s)",
                     file=sys.stderr,
                 )
@@ -868,9 +537,6 @@ def main():
                     writer.add_scalar("train/loss", avg_loss, step)
                     writer.add_scalar("train/lr", current_lr, step)
                     writer.add_scalar("train/sps", sps, step)
-                    if effect_n:
-                        writer.add_scalar("train/effect_short", avg_eff_short, step)
-                        writer.add_scalar("train/effect_long", avg_eff_long, step)
                 if log_file:
                     total_elapsed = time.time() - t0
                     log_file.write(
@@ -881,14 +547,6 @@ def main():
                     log_file.flush()
                 loss_acc = 0.0
                 loss_n = 0
-                eff_short_acc = 0.0
-                eff_long_acc = 0.0
-                eff_short_base = 0.0
-                eff_long_base = 0.0
-                effect_n = 0
-                focus_acc = 0.0
-                focus_hit = 0.0
-                focus_n = 0
                 t_log = time.time()
                 samples_log = 0
 
@@ -898,20 +556,8 @@ def main():
                     model.clip_ft_weights(args.ft_clip)
                 if args.side_clip > 0:
                     model.clip_eff_weights(args.side_clip)
-                if use_focus:
-                    focus_vl, top5, base = validate_focus(
-                        model, valid_loader, device, focus_prior,
-                    )
-                    print(f"  valid {focus_line(focus_vl, top5, base)}",
-                          file=sys.stderr)
-                # probeはλ_value=0で評価値ヘッドを学習しない（ADR-0213）。
-                # 評価値の損失で最良チェックポイントを選んでも意味がないので、
-                # 焦点のBCEを指標にする
-                if use_focus and args.lambda_value <= 0:
-                    vl = focus_vl
-                else:
-                    vl = validate(model, valid_loader, device)
-                    print(f"  valid loss {vl:.5f}", file=sys.stderr)
+                vl = validate(model, valid_loader, device)
+                print(f"  valid loss {vl:.5f}", file=sys.stderr)
                 if writer:
                     writer.add_scalar("valid/loss", vl, step)
                 if log_file:
@@ -928,7 +574,7 @@ def main():
                     no_improve = 0
                     best_path = f"{args.out}.best"
                     lineage = (
-                        f"train-v2-pytorch data={data_desc} n={data_n} "
+                        f"train-v2-pytorch data={args.data} n={data_n} "
                         f"step={step} valid_loss={vl:.5f} "
                         f"batch={args.batch} peak_lr={args.peak_lr} "
                         f"lambda={args.lambda_}{eff_tag}"
@@ -971,20 +617,7 @@ def main():
         print(f"epoch {epoch + 1} 完了", file=sys.stderr)
 
     elapsed_total = time.time() - t0
-    if valid_loader and use_focus:
-        # probeの答えはこの1行にある（ADR-0213）。ベースラインを並べて出す
-        final_valid, top5, base = validate_focus(
-            model, valid_loader, device, focus_prior,
-        )
-        print(f"最終 {focus_line(final_valid, top5, base)}", file=sys.stderr)
-        print(
-            f"probeの結果: top{FOCUS_TOPK} {100.0 * top5:.2f}% "
-            f"頻度ベースライン {100.0 * base:.2f}% "
-            f"（差 {100.0 * (top5 - base):+.2f}ポイント、"
-            f"検証 {valid_loader.n}局面、{step}ステップ）",
-            file=sys.stderr,
-        )
-    elif valid_loader:
+    if valid_loader:
         final_valid = validate(model, valid_loader, device)
         print(
             f"最終valid loss {final_valid:.5f} "
@@ -1000,7 +633,7 @@ def main():
     )
 
     lineage = (
-        f"train-v2-pytorch data={data_desc} n={data_n} "
+        f"train-v2-pytorch data={args.data} n={data_n} "
         f"epochs={args.epochs} batch={args.batch} "
         f"peak_lr={args.peak_lr} min_lr={args.min_lr} "
         f"warmup={args.warmup_steps} lambda={args.lambda_} "
@@ -1012,7 +645,7 @@ def main():
     print(f"{args.out} を書き出しました", file=sys.stderr)
 
     if args.registry:
-        _append_registry(args, data_desc, data_n, step, total_steps,
+        _append_registry(args, args.data, data_n, step, total_steps,
                          best_step, best_valid, final_valid, elapsed_total)
 
     if writer:
