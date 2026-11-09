@@ -27,7 +27,8 @@ CONCAT = himawari.CONCAT
 # HalfKPの片視点の活性の幅。利きのaccumulatorを持つ構成では、CONCATの後ろに
 # 利きの活性が2視点ぶん続くので、CONCAT//2 ではなくFT_OUTから決める
 HALF = FT_OUT // 2
-# 利きのaccumulator（ADR-0237のF2）。構成の末尾の e<E> で幅が決まり、0なら# 持たない。古い拡張は定数を持たないので0として扱う
+# 利きのaccumulator（ADR-0237のF2）。構成の末尾の e<E> で幅が決まり、0なら
+# 持たない。古い拡張は定数を持たないので0として扱う
 EFF_IN = getattr(himawari, "EFF_IN", 0)
 EFF_OUT = getattr(himawari, "EFF_OUT", 0)
 # F2と最小の攻め駒の組（ADR-0248）。側の入力を `side_feat` の種類で作る。
