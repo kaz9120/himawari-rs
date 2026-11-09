@@ -81,6 +81,7 @@ ROADMAPの注力を決めた判断。いまの注力は0229にある。
 - [0200](0200-thread-scaling.md) スレッド数ごとのElo曲線を時間オッズで較正し、並列効率を測る
 - [0202](0202-smp-loss-diagnosis.md) Lazy SMPの損失を深さ到達で切り分け、ヘルパーの多様化で減らす
 - [0262](0262-smp-defer-searching-moves.md) 他のスレッドが読んでいる手を後回しにして、並列探索の重複を減らす（測って棄却）
+- [0263](0263-shared-move-histories.md) 指し手の順序付けに使うhistoryを全スレッドで共有する
 - [0204](0204-ponder-from-tt.md) PVが1手で終わったとき、置換表からponder手を補う
 - [0211](0211-check-extension-see.md) 王手延長を損をしない王手に限る
 - [0233](0233-check-extension-hanging.md)〜[0235](0235-quiet-ordering-hanging.md) 利きの表を使う探索の改善（王手延長・RFP・並べ替え）
@@ -437,6 +438,7 @@ ROADMAPの注力を決めた判断。いまの注力は0229にある。
 | [0260](0260-slowmover-130.md) | SlowMoverの既定を100から130へ上げる | 2026-11-05 |  | rejected（10+0.33のSPRTでH0、−5.8 [−13.2, +1.5]） |
 | [0261](0261-narrow-minatt-production.md) | 主256＋F2＋最小の攻め駒（E1）を本番の規模で学習し、現行とSPRTで比べる | 2026-11-07 | +4.6 | accepted（SPRTは30,172局で+4.6 [+0.8,+8.4]、H1。既定の構成を主256＋F2＋最小の攻め駒に切り替えた） |
 | [0262](0262-smp-defer-searching-moves.md) | 他のスレッドが読んでいる手を後回しにして、並列探索の重複を減らす | 2026-11-09 |  | rejected（8スレッドのSPRTで−9.2 [−23.3, +4.9]、1848局で打ち切り） |
+| [0263](0263-shared-move-histories.md) | 指し手の順序付けに使うhistoryを全スレッドで共有する | 2026-11-09 |  | proposed |
 
 ## バックログ
 
