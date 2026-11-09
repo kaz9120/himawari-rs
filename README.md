@@ -232,10 +232,9 @@ python3 -m pytest tests -q        # hmwr のテスト
 
 | ツール | 用途 | 入口 |
 |---|---|---|
-| `perft` / `tsume` | 指し手生成と詰み探索の検証 | `cargo run` |
 | `bench` / `verify` / `profile` | NPS計測・探索の差分比較・プロファイル | `hmwr bench` / `hmwr verify` / `hmwr profile` |
 | `selfplay` | SPRTの対局 | `hmwr match`・`hmwr sprt` |
-| `gensfen` / `psv` | 教師データの生成と加工 | `cargo run` / `hmwr data` |
+| `psv` | 教師データの加工 | `hmwr data` |
 | `makenet` | 評価関数ファイルの生成 | `hmwr net` |
 | `book` | 定跡の生成と統計 | `hmwr book` |
 | `kifu` | floodgate棋譜の回収と分析 | `hmwr kifu` |

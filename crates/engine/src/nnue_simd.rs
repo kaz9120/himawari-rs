@@ -11,7 +11,7 @@ use std::simd::cmp::SimdOrd;
 use std::simd::num::SimdInt;
 
 use crate::nnue::{
-    CONCAT, EFF_OUT, EffAcc, FT_OUT, HALF, L1_OUT, L1_PAD, L2_OUT, L2_PAD, L3_OUT, NnueNetwork,
+    CONCAT, EFF_OUT, FT_OUT, HALF, L1_OUT, L1_PAD, L2_OUT, L2_PAD, L3_OUT, NnueNetwork,
 };
 use crate::value::Value;
 
@@ -136,12 +136,10 @@ pub fn ft_apply_out<const NS: usize, const NA: usize>(
 /// `None` を返す。accは両視点とも64次元なら8本のベクトルに載るので、全部の升を
 /// 当ててから1回だけ書き戻す。巡回加算なので、1行ずつ当てる版とビット一致する。
 ///
-/// accの要素は `EffAcc` で、F2と最小の攻め駒の組ではi32になる（ADR-0249）。重みはi16の
-/// まま読み、足す前に広げる。i16の構成では同じ型への変換なので、命令は増えない。
 #[inline(always)]
 pub fn effect_rows_update(
     net: &NnueNetwork,
-    acc: &mut [[EffAcc; EFF_OUT]; 2],
+    acc: &mut [[i16; EFF_OUT]; 2],
     mut each: impl FnMut() -> Option<(Option<[u32; 2]>, [u32; 2])>,
 ) {
     const CHUNKS: usize = EFF_OUT / I16_LANES;
@@ -149,8 +147,8 @@ pub fn effect_rows_update(
         let at = f as usize * EFF_OUT;
         &net.eff_w[at..at + EFF_OUT].as_chunks::<I16_LANES>().0[..CHUNKS]
     };
-    let wide = |w: &[i16; I16_LANES]| -> Simd<EffAcc, I16_LANES> { Simd::from_array(*w).cast() };
-    let mut a: [[Simd<EffAcc, I16_LANES>; CHUNKS]; 2] = std::array::from_fn(|c| {
+    let wide = |w: &[i16; I16_LANES]| Simd::from_array(*w);
+    let mut a: [[Simd<i16, I16_LANES>; CHUNKS]; 2] = std::array::from_fn(|c| {
         let src = &acc[c].as_chunks::<I16_LANES>().0[..CHUNKS];
         std::array::from_fn(|i| Simd::from_array(src[i]))
     });

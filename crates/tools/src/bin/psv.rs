@@ -24,11 +24,6 @@
 //!                                              同じ盤面の2回目以降を捨て、初出の順に残す
 //!                                              （ADR-0224）。--count Nで書く件数を、--limit Nで
 //!                                              読む件数を打ち切る
-//!   psv phase   --in file --out file.tsv [--limit N] [--eval-file NET]
-//!                                              進行度の指標と静的評価をTSVへ書く（ADR-0198）
-//!   psv defend  --in file --out file.tsv [--limit N] [--skip N] [--hash MB] [--eval-file NET]
-//!                                              教師の最善手が全合法手の中で何位に置かれるかを
-//!                                              TSVへ書く（ADR-0213）。攻撃的な受けの印も付ける
 //!   psv relabel --in file --out file [--depth N] [--max-nodes N] [--jobs N] [--hash MB]
 //!               [--limit N] [--eval-file NET]  現行エンジンで読み直し、scoreと教師手を
 //!                                              付け替える（ADR-0205）。勝敗と手数は残す
@@ -1215,140 +1210,6 @@ fn relabel(input: &str, output: &str, limit: u64, cfg: RelabelCfg, eval: &str) {
 /// relabelのチャンク。小さいほど並列の偏りが減り、大きいほど置換表が温まる
 const RELABEL_CHUNK: usize = 256;
 
-/// 進行度の指標の候補（ADR-0198）。TSVの列名で、`phase_features` の
-/// 戻り値と同じ順に並ぶ。
-const PHASE_COLUMNS: [&str; 10] = [
-    "board",
-    "ply",
-    "mixed",
-    "contact",
-    "advanced",
-    "promoted",
-    "majors",
-    "camp",
-    "king_adv",
-    "king_zone",
-];
-
-/// 局面から進行度の指標を10本まとめて計算する。定義はADR-0198の表にある。
-fn phase_features(pos: &himawari_core::Position) -> [u32; 10] {
-    use himawari_core::attacks::king_attacks;
-    use himawari_core::{Bitboard, Color, File, PieceType, Rank, Square};
-
-    let occ = pos.occupied();
-    // 2×2の窓に先手と後手の駒が両方あるか（Lichessの混合度の骨格）
-    let mut mixed = 0;
-    for f in 0..8u8 {
-        for r in 0..8u8 {
-            let mut has = [false; 2];
-            for (df, dr) in [(0, 0), (0, 1), (1, 0), (1, 1)] {
-                let pc = pos.piece_on(Square::new(File(f + df), Rank(r + dr)));
-                if !pc.is_empty() {
-                    has[pc.color().index()] = true;
-                }
-            }
-            if has[0] && has[1] {
-                mixed += 1;
-            }
-        }
-    }
-    let (mut contact, mut advanced, mut promoted, mut majors) = (0, 0, 0, 0);
-    let mut camp = [0u32; 2];
-    for sq in occ {
-        let pc = pos.piece_on(sq);
-        let (c, pt) = (pc.color(), pc.piece_type());
-        if !pos.attackers_to(c.flip(), sq, occ).is_empty() {
-            contact += 1;
-        }
-        let in_enemy = Bitboard::promotion_zone(c).test(sq);
-        if pt != PieceType::KING && in_enemy {
-            advanced += 1;
-        }
-        if pt.is_promoted() {
-            promoted += 1;
-        }
-        let is_major = matches!(
-            pt,
-            PieceType::ROOK | PieceType::BISHOP | PieceType::DRAGON | PieceType::HORSE
-        );
-        if is_major && (pt.is_promoted() || in_enemy) {
-            majors += 1;
-        }
-        // 自陣は相手から見た敵陣
-        if Bitboard::promotion_zone(c.flip()).test(sq) {
-            camp[c.index()] += 1;
-        }
-    }
-    let (mut king_adv, mut king_zone) = (0, 0);
-    for c in [Color::Black, Color::White] {
-        let k = pos.king(c);
-        // relativeは自陣の1段目を8にするので、進出度は8から引く
-        king_adv = king_adv.max(8 - u32::from(k.rank().relative(c).0));
-        let zone: u32 = king_attacks(k)
-            .into_iter()
-            .map(|sq| pos.attackers_to(c.flip(), sq, occ).count())
-            .sum();
-        king_zone = king_zone.max(zone);
-    }
-    [
-        occ.count(),
-        u32::from(pos.game_ply()),
-        mixed,
-        contact,
-        advanced,
-        promoted,
-        majors,
-        camp[0].min(camp[1]),
-        king_adv,
-        king_zone,
-    ]
-}
-
-/// 局面ごとの教師信号・静的評価・進行度の指標をTSVへ書く（ADR-0198）。
-/// 集計は `hmwr net phase` のPython側が持つ。
-fn phase(input: &str, output: &str, limit: u64, eval: &str) {
-    let mut r = open_reader(input);
-    let mut w = BufWriter::new(
-        std::fs::File::create(output)
-            .unwrap_or_else(|e| die(&format!("作れません: {output}: {e}"))),
-    );
-    let mut f = std::fs::File::open(eval)
-        .unwrap_or_else(|e| die(&format!("評価関数を開けません: {eval}: {e}")));
-    let (net, _lineage) = himawari_engine::nnue_io::load(&mut f)
-        .unwrap_or_else(|e| die(&format!("評価関数を読めません: {eval}: {e}")));
-    let mut worker = quiet_worker(&Arc::new(net), 1);
-
-    writeln!(w, "score\tresult\teval\t{}", PHASE_COLUMNS.join("\t"))
-        .unwrap_or_else(|e| die(&format!("書けません: {e}")));
-    let mut buf = [0u8; PSV_BYTES];
-    let (mut n, mut failed) = (0u64, 0u64);
-    while n < limit && r.read_exact(&mut buf).is_ok() {
-        n += 1;
-        let rec = PackedSfenValue::from_bytes(&buf);
-        let Ok(pos) = unpack(&rec.sfen, rec.game_ply) else {
-            failed += 1;
-            continue;
-        };
-        let features = phase_features(&pos);
-        worker.set_position(pos);
-        // 教師のscoreと同じく手番視点の値になる
-        let value = worker.evaluator.evaluate(&worker.pos);
-        let cols: Vec<String> = features.iter().map(u32::to_string).collect();
-        writeln!(
-            w,
-            "{}\t{}\t{}\t{}",
-            rec.score,
-            rec.game_result,
-            value,
-            cols.join("\t")
-        )
-        .unwrap_or_else(|e| die(&format!("書けません: {e}")));
-    }
-    w.flush()
-        .unwrap_or_else(|e| die(&format!("書けません: {e}")));
-    eprintln!("局面数: {n}（復元失敗{failed}）→ {output}");
-}
-
 /// 最善手が「攻撃的な受け」かを判定する（ADR-0213）。
 ///
 /// 判定は手を指した後の局面で行う。動いた駒が利いている相手の駒のうち、
@@ -1380,7 +1241,7 @@ fn is_aggressive_defense(
 
 /// 教師の最善手が「攻撃的な受け」である局面かを判定する（ADR-0216）。
 ///
-/// 判定は `psv defend` と同じ `is_aggressive_defense` に委ねる。全合法手の
+/// 判定は `is_aggressive_defense` に委ねる。全合法手の
 /// 展開も探索もしないので、1局面あたりの費用は復元と `do_move` 1回と
 /// 利きの計算に収まる。復元できない局面と非合法な教師手は非該当にする。
 fn is_defense_record(buf: &[u8; PSV_BYTES]) -> bool {
@@ -1480,124 +1341,11 @@ fn oversample(
     (n, hit, written)
 }
 
-/// 子局面をqsearchの葉まで進め、親の手番から見た評価値を返す。
-///
-/// 経路は `psv rank` と同じで、`do_move` のあと `walk_to_quiet(16)` で
-/// 葉へ降りる。葉の手番が親と逆（進めた手数が奇数）なら符号を戻す。
-fn leaf_value(worker: &mut Worker, pos: &himawari_core::Position, m: himawari_core::Move) -> i32 {
-    let mut child = pos.clone();
-    child.do_move(m);
-    worker.set_position(child);
-    let plies = 1 + worker.walk_to_quiet(16);
-    let value = worker.evaluator.evaluate(&worker.pos);
-    if plies % 2 == 1 { -value } else { value }
-}
-
-/// 教師の最善手が、全合法手の中で静的評価の何位に置かれるかをTSVへ書く（ADR-0213）。
-///
-/// 負例を2手に絞る `rank` と違い、全合法手の子を葉まで進めて並べる。
-/// 順位は「厳密に良い手の数 + 1」で、同値は同順位になる。
-/// 集計は `hmwr diag defend` のPython側が持つ。
-fn defend(input: &str, output: &str, limit: u64, skip: u64, hash_mb: usize, eval: &str) {
-    use himawari_core::Move16;
-
-    let mut r = open_reader(input);
-    r.seek(SeekFrom::Start(skip * PSV_BYTES as u64))
-        .unwrap_or_else(|e| die(&format!("シークできません: {e}")));
-    let mut w = BufWriter::new(
-        std::fs::File::create(output)
-            .unwrap_or_else(|e| die(&format!("作れません: {output}: {e}"))),
-    );
-    let mut f = std::fs::File::open(eval)
-        .unwrap_or_else(|e| die(&format!("評価関数を開けません: {eval}: {e}")));
-    let (net, _lineage) = himawari_engine::nnue_io::load(&mut f)
-        .unwrap_or_else(|e| die(&format!("評価関数を読めません: {eval}: {e}")));
-    let mut worker = quiet_worker(&Arc::new(net), hash_mb);
-
-    writeln!(w, "index\tdefend\tmoves\trank\tvalue\tbest")
-        .unwrap_or_else(|e| die(&format!("書けません: {e}")));
-    let mut buf = [0u8; PSV_BYTES];
-    let (mut n, mut written, mut skipped) = (0u64, 0u64, 0u64);
-    let mut skip_why = [0u64; 3];
-    let start = std::time::Instant::now();
-    while n < limit && r.read_exact(&mut buf).is_ok() {
-        let rec = PackedSfenValue::from_bytes(&buf);
-        n += 1;
-        let Ok(pos) = unpack(&rec.sfen, rec.game_ply) else {
-            skipped += 1;
-            skip_why[0] += 1;
-            continue;
-        };
-        let best = Move16::from_yaneura(rec.move16).and_then(|m16| pos.to_move(m16));
-        let Some(best) = best else {
-            skipped += 1;
-            skip_why[1] += 1;
-            continue;
-        };
-        if !pos.pseudo_legal(best) || !pos.is_legal(best) {
-            skipped += 1;
-            skip_why[2] += 1;
-            continue;
-        }
-        let us = pos.side_to_move();
-        let mut after = pos.clone();
-        after.do_move(best);
-        let defended = is_aggressive_defense(&after, us, best.to());
-
-        let mut list = himawari_core::MoveList::default();
-        himawari_core::generate_legal(&pos, true, &mut list);
-        let mut values = Vec::with_capacity(list.len());
-        let mut value = 0;
-        for &m in list.as_slice() {
-            let v = leaf_value(&mut worker, &pos, m);
-            if m == best {
-                value = v;
-            }
-            values.push(v);
-        }
-        // 同値は同順位にする。順位は「厳密に良い手の数 + 1」である
-        let better = values.iter().filter(|&&v| v > value).count();
-        let top = values.iter().copied().max().unwrap_or(value);
-        writeln!(
-            w,
-            "{}\t{}\t{}\t{}\t{}\t{}",
-            skip + n,
-            u8::from(defended),
-            list.len(),
-            better + 1,
-            value,
-            top
-        )
-        .unwrap_or_else(|e| die(&format!("書けません: {e}")));
-        written += 1;
-        if n % 10_000 == 0 {
-            let sec = start.elapsed().as_secs_f64();
-            eprintln!(
-                "{n}局面 書いた{written} ({:.0}局面/秒)",
-                n as f64 / sec.max(1e-9)
-            );
-        }
-    }
-    w.flush()
-        .unwrap_or_else(|e| die(&format!("書けません: {e}")));
-    let sec = start.elapsed().as_secs_f64();
-    eprintln!("読んだ局面 : {n}");
-    eprintln!("書いた局面 : {written} → {output}");
-    eprintln!(
-        "捨てた局面 : {skipped}（復元{} 手復号{} 非合法{}）",
-        skip_why[0], skip_why[1], skip_why[2]
-    );
-    eprintln!(
-        "所要       : {sec:.1}秒（{:.0}局面/秒）",
-        n as f64 / sec.max(1e-9)
-    );
-}
-
 fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
     let Some(cmd) = args.first() else {
         die(
-            "サブコマンドが必要です: stats / dump / head / shuffle / quiet / rank / thin / dedup / phase / relabel / defend / oversample",
+            "サブコマンドが必要です: stats / dump / head / shuffle / quiet / rank / thin / dedup / relabel / oversample",
         );
     };
     let rest = &args[1..];
@@ -1772,38 +1520,6 @@ fn main() {
                     jobs,
                     hash_mb,
                 },
-                &eval,
-            );
-        }
-        "phase" => {
-            let limit = arg_value(rest, "--limit")
-                .map(|s| s.parse().unwrap_or(u64::MAX))
-                .unwrap_or(u64::MAX);
-            let eval = eval_arg(rest, "--eval-file");
-            phase(
-                &input.unwrap_or_else(|| die("--in が必要です")),
-                &output.unwrap_or_else(|| die("--out が必要です")),
-                limit,
-                &eval,
-            );
-        }
-        "defend" => {
-            let limit = arg_value(rest, "--limit")
-                .map(|s| s.parse().unwrap_or(u64::MAX))
-                .unwrap_or(u64::MAX);
-            let skip: u64 = arg_value(rest, "--skip")
-                .map(|s| s.parse().unwrap_or(0))
-                .unwrap_or(0);
-            let hash_mb = arg_value(rest, "--hash")
-                .map(|s| s.parse().unwrap_or(64))
-                .unwrap_or(64);
-            let eval = eval_arg(rest, "--eval-file");
-            defend(
-                &input.unwrap_or_else(|| die("--in が必要です")),
-                &output.unwrap_or_else(|| die("--out が必要です")),
-                limit,
-                skip,
-                hash_mb,
                 &eval,
             );
         }

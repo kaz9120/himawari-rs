@@ -25,9 +25,13 @@ include!(concat!(env!("OUT_DIR"), "/arch.rs"));
 /// 利きのaccumulator（ADR-0237）を持つ構成では、その後ろへ `EFF_OUT` 次元を
 /// 2視点ぶん連結する。`EFF_OUT` が0の既定構成では `FT_OUT` のままである。
 /// 玉の近傍の部分モデル（ADR-0246）を持つ構成では、さらに末尾へ両玉の出力が続く。
-pub const CONCAT: usize = FT_OUT + 2 * EFF_ACT + crate::submodel::SUB_SLOT;
-/// 側のaccumulatorが片視点で出す活性の幅。対の積を掛ける構成（ADR-0245）では半分になる。
-pub const EFF_ACT: usize = if EFF_PAIR { EFF_OUT / 2 } else { EFF_OUT };
+pub const CONCAT: usize = FT_OUT + 2 * EFF_OUT + crate::submodel::SUB_SLOT;
+/// 側のaccumulatorが片視点で出す活性の幅。対の積の構成を消したので `EFF_OUT` と同じになる。
+/// 学習側（`crates/py`）が参照するので残す。
+pub const EFF_ACT: usize = EFF_OUT;
+/// 側の活性に対の積を掛けるか。対の積の構成は消したので常に偽になる。
+/// 学習側（`crates/py`）が参照するので残す。
+pub const EFF_PAIR: bool = false;
 /// 連結ベクトルのうち、HalfKPの片視点ぶんの幅。
 pub const HALF: usize = FT_OUT / 2;
 /// 連結ベクトルのうち、利きの活性が始まる位置（ADR-0237）。
@@ -36,7 +40,7 @@ pub const EFF_BASE: usize = FT_OUT;
 pub const EFF_PIECES: usize = 29;
 /// 利き数の段階。0・1・2・3以上の4つ（技巧の3で打ち切り、ADR-0237）。
 pub const EFF_LEVELS: usize = 4;
-// 側の特徴の総数 `EFF_IN` はbuild.rsが構成名から作る（ADR-0245）。表し方を書かない
+// 側の特徴の総数 `EFF_IN` はbuild.rsが構成名から作る（ADR-0245）。種類を書かない
 // 構成ではF2だけで、升×乗るもの×自分の利き数×相手の利き数になる
 const _: () = assert!(EFF_GENERIC || EFF_IN == 81 * EFF_PIECES * EFF_LEVELS * EFF_LEVELS);
 /// 評価値スケール（ADR-0036）。
@@ -464,46 +468,19 @@ pub fn effect_clip(acc: &[i32; EFF_OUT], out: &mut [u8]) {
     }
 }
 
-/// 差分で持つ側のaccの要素の型。既定はi16（ADR-0237のD2）で、構成名に `w` を書いた
-/// F2と最小の攻め駒の組だけi32で持つ（ADR-0249・ADR-0261）。
-#[cfg(not(eff_acc32))]
-pub type EffAcc = i16;
-/// 差分で持つ側のaccの要素の型。既定はi16（ADR-0237のD2）で、構成名に `w` を書いた
-/// F2と最小の攻め駒の組だけi32で持つ（ADR-0249・ADR-0261）。
-#[cfg(eff_acc32)]
-pub type EffAcc = i32;
-
 /// 差分で持つ側のaccを0〜127へクリップして書く（D2）。
-#[cfg(not(eff_acc32))]
 #[inline]
-pub fn effect_clip_acc(acc: &[EffAcc; EFF_OUT], out: &mut [u8]) {
+pub fn effect_clip_acc(acc: &[i16; EFF_OUT], out: &mut [u8]) {
     debug_assert_eq!(out.len(), EFF_OUT);
     for (o, &a) in out.iter_mut().zip(acc) {
         *o = a.clamp(0, 127) as u8;
     }
 }
 
-/// 差分で持つ側のaccを0〜127へクリップして書く（ADR-0249）。
-#[cfg(eff_acc32)]
-#[inline]
-pub fn effect_clip_acc(acc: &[EffAcc; EFF_OUT], out: &mut [u8]) {
-    effect_clip(acc, out);
-}
-
 /// 差分で持つ側のaccへバイアスを写す。
-#[cfg(not(eff_acc32))]
 #[inline]
-pub fn effect_acc_bias(net: &NnueNetwork, acc: &mut [EffAcc; EFF_OUT]) {
+pub fn effect_acc_bias(net: &NnueNetwork, acc: &mut [i16; EFF_OUT]) {
     acc.copy_from_slice(&net.eff_b[..EFF_OUT]);
-}
-
-/// 差分で持つ側のaccへバイアスを写す（i32へ広げる。ADR-0249）。
-#[cfg(eff_acc32)]
-#[inline]
-pub fn effect_acc_bias(net: &NnueNetwork, acc: &mut [EffAcc; EFF_OUT]) {
-    for (a, &b) in acc.iter_mut().zip(&net.eff_b[..EFF_OUT]) {
-        *a = i32::from(b);
-    }
 }
 
 /// 利きのaccumulatorを特徴から作り直し、0〜127へクリップして書く（ADR-0237のD3）。
@@ -685,20 +662,8 @@ static WHITE_CODE: [u16; 512] = {
 /// 側の入力がF2と最小の攻め駒の組（`-f2_minatt`）で、両方を升の語の差分で持つ構成か（ADR-0248）。
 ///
 /// 升の語は `nnue_acc::EvalBoard::side_codes` が作る16ビットで、下位9ビットがF2の語
-/// （`effect_code`）、上位7ビットが `先手の階級 * 11 + 後手の階級` である。対の積を掛ける構成は含めない。
-pub const SIDE_MINATT_INC: bool = EFF_GENERIC
-    && !EFF_PAIR
-    && EFF_KINDS.len() == 2
-    && EFF_KINDS[0] == crate::side_feat::KIND_F2
-    && EFF_KINDS[1] == crate::side_feat::KIND_MINATT;
-
-// build.rsが出すcfg `eff_acc32`（構成名の `w`、側のaccをi32で持つ）は、この構成でだけ立つ
-const _: () = assert!(!cfg!(eff_acc32) || SIDE_MINATT_INC);
-
-/// i32の側のaccが溢れないこと。1升に立つのはF2と最小の攻め駒の1つずつで、81升の
-/// 162行とバイアスをi16の最大の絶対値で足しても、i32に十分収まる。だから読み込みで
-/// 重みを検査しなくても、差分の値はi32で作り直す値と一致する（ADR-0249）。
-const _: () = assert!((162 + 1) * 32768 < i32::MAX as i64);
+/// （`effect_code`）、上位7ビットが `先手の階級 * 11 + 後手の階級` である。
+pub const SIDE_MINATT_INC: bool = EFF_GENERIC;
 
 /// F2の表の行数。最小の攻め駒の行はこの後ろに続く（`side_feat::ROWS` の順）。
 const F2_ROWS: u32 = (81 * EFF_PIECES * EFF_LEVELS * EFF_LEVELS) as u32;
@@ -756,7 +721,7 @@ static WHITE_MINATT: [u16; 4096] = {
 ///
 /// 1升に立つのはF2と最小の攻め駒の1つずつなので、升ごとに各表の最大の絶対値を足す。
 /// i16に収まれば、差分の経路をi16の巡回加算で持っても、i32で作り直す値と一致する。
-/// 側のaccをi16で持つ構成（`w` なし）では、読み込みでこの値を検査する（ADR-0261）。
+/// 読み込みでこの値を検査する（ADR-0261）。
 pub fn side_minatt_acc_bound(net: &NnueNetwork) -> i64 {
     if !SIDE_MINATT_INC {
         unreachable!("f2_minatt の構成でだけ呼ぶ");
@@ -1451,15 +1416,13 @@ mod tests {
         if EFF_OUT == 0 {
             return;
         }
-        // 表し方を替えた構成（ADR-0245）は数百の行が立つので、行の和に負けない大きさにする
+        // 行の和に負けない大きさにする
         net.eff_b.fill(20000);
         fill_effect(&net, &pos, &mut concat);
-        // 対の積は127×127/128を四捨五入して126が上限になる（`pair_activation`）
-        let top = if EFF_PAIR { 126 } else { 127 };
         assert!(
-            concat[EFF_BASE..EFF_BASE + 2 * EFF_ACT]
+            concat[EFF_BASE..EFF_BASE + 2 * EFF_OUT]
                 .iter()
-                .all(|&x| x == top),
+                .all(|&x| x == 127),
             "バイアスで飽和する"
         );
         // 第1層の利きの列だけを動かすと評価値が変わる。HalfKPの列は触らない
@@ -1467,7 +1430,7 @@ mod tests {
         let mut moved = false;
         for scale in [1i8, -1, 3, -3] {
             for (i, w) in net.w2.iter_mut().enumerate() {
-                if (EFF_BASE..EFF_BASE + 2 * EFF_ACT).contains(&(i % CONCAT)) {
+                if (EFF_BASE..EFF_BASE + 2 * EFF_OUT).contains(&(i % CONCAT)) {
                     *w = scale;
                 }
             }

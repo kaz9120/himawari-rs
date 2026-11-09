@@ -1,13 +1,9 @@
 [package]
 name = "himawari-tools"
-description = "開発用ツール群（perft等）"
+description = "開発用ツール群"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-
-[[bin]]
-name = "perft"
-path = "src/bin/perft.rs"
 
 [dependencies]
 himawari-core = { path = "../core" }
@@ -21,10 +17,6 @@ clap = { version = "4", features = ["derive"] }
 
 [lints]
 workspace = true
-
-[[bin]]
-name = "tsume"
-path = "src/bin/tsume.rs"
 
 [[bin]]
 name = "selfplay"

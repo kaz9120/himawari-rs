@@ -1,77 +1,38 @@
-//! 側のaccumulatorの入力を、表し方ごとに作る（ADR-0245）。
+//! 側のaccumulatorの入力を、種類ごとに作る（ADR-0245）。
 //!
-//! 構成名の `e<E>` の後ろに書いた種類（`-f2_threat` など）の特徴を、種類の並びの順に
-//! 表の行を続けて立てる。評価のたびに盤から作り直し、差分は持たない。学習側（PyO3）も
-//! 同じ関数を通すので、学習と推論で特徴の作り方がずれない。ただし `-f2_minatt` の構成は、
-//! 推論で升の語の差分を使う（ADR-0248、`nnue::SIDE_MINATT_INC`）。ここの作り直しはその正解器になる。
+//! 構成名の `e<E>` の後ろに書いた種類（`-f2_minatt`）の特徴を、種類の並びの順に
+//! 表の行を続けて立てる。盤から作り直し、差分は持たない。学習側（PyO3）も
+//! 同じ関数を通すので、学習と推論で特徴の作り方がずれない。推論は升の語の差分を使う
+//! （ADR-0248、`nnue::SIDE_MINATT_INC`）。ここの作り直しはその正解器になる。
 //!
 //! 視点ごとに盤を反転し、自他は視点から見る。利きは盤上の生の利きで、玉の利きを含め、
 //! ピンは無視する。その升の駒自身の利きは数えない。ADR-0237のF2と同じ数え方である。
 
 use himawari_core::attacks::attacks;
-use himawari_core::{Bitboard, Color, Piece, PieceType, Square, bonapiece};
+use himawari_core::{Bitboard, Color, Piece, PieceType, Square};
 
 use crate::nnue::{
-    CONCAT, EFF_ACT, EFF_BASE, EFF_IN, EFF_KINDS, EFF_MAX_ACTIVE, EFF_OUT, EFF_PAIR, EFF_PIECES,
-    NnueNetwork, effect_index, pair_activation,
+    CONCAT, EFF_BASE, EFF_IN, EFF_KINDS, EFF_MAX_ACTIVE, EFF_OUT, EFF_PIECES, NnueNetwork,
+    effect_index,
 };
 use crate::nnue_acc::EvalBoard;
 
 /// 種類の番号。build.rsの `SIDE_KINDS` の並びと同じにする。
 pub const KIND_F2: usize = 0;
-pub const KIND_L2: usize = 1;
-pub const KIND_THERMO: usize = 2;
-pub const KIND_MINATT: usize = 3;
-pub const KIND_THREAT: usize = 4;
-pub const KIND_ESCAPE: usize = 5;
-pub const KIND_DROP: usize = 6;
-pub const KIND_MOBILITY: usize = 7;
-pub const KIND_KW5: usize = 8;
-pub const KIND_HAND: usize = 9;
-/// 習甦方式の玉×升×利き（ADR-0245の追記）。升に乗る駒は見ない。
-pub const KIND_KE: usize = 10;
-/// HalfKP（玉×BonaPiece）を側に入れる（ADR-0245の習甦方式）。主のHalfKPと同じ添字。
-pub const KIND_KP: usize = 11;
-pub const KINDS: usize = 12;
+pub const KIND_MINATT: usize = 1;
+pub const KINDS: usize = 2;
 
 /// 最小の攻め駒の階級の数。なし・歩・香・桂・銀・金と成り駒・角・飛・馬・龍・玉。
 const ATT_CLASSES: usize = 11;
-/// 持ち駒の種類（`PieceType::HAND_KINDS` の順）。
-const HAND: usize = 7;
-/// 1種類の持ち駒で数える枚数の上限。歩の18枚に合わせる。
-const HAND_MAX: usize = 18;
 
 /// 種類ごとの表の行数。build.rsの `SIDE_KINDS` と同じ値で、一致はテストで確かめる。
 pub const ROWS: [usize; KINDS] = [
     81 * EFF_PIECES * 16,
-    81 * EFF_PIECES * 4,
-    81 * EFF_PIECES + 81 * 2 * 3,
     81 * EFF_PIECES * ATT_CLASSES * ATT_CLASSES,
-    28 * 81 * ATT_CLASSES * 2,
-    2 * 8 * 5,
-    2 * HAND * 4,
-    28 * 8,
-    2 * EFF_PIECES * 16 * 25,
-    2 * HAND * HAND_MAX,
-    81 * 81 * 16,
-    81 * bonapiece::FE_END as usize,
 ];
 
 /// 種類ごとの、1視点で立つ数の上限。
-pub const MAX_ACTIVE: [usize; KINDS] = [
-    81,
-    81,
-    81 + 81 * 2 * 3,
-    81,
-    38,
-    16,
-    2 * HAND * 4,
-    38 * 8,
-    50,
-    38,
-    81,
-    38,
-];
+pub const MAX_ACTIVE: [usize; KINDS] = [81, 81];
 
 const _: () = {
     let (mut rows, mut max, mut i) = (0, 0, 0);
@@ -87,27 +48,14 @@ const _: () = {
     );
 };
 
-/// 構成の表の中で、HalfKP（`KIND_KP`）が始まる行。含まない構成では `None`。
-/// 学習側は、この区画にだけ玉位置に依らない駒の成分（factorizer、ADR-0066）を足す。
-pub const KP_BASE: Option<usize> = {
-    let (mut base, mut i, mut found) = (0, 0, None);
-    while i < EFF_KINDS.len() {
-        if EFF_KINDS[i] == KIND_KP {
-            found = Some(base);
-        }
-        base += ROWS[EFF_KINDS[i]];
-        i += 1;
-    }
-    found
-};
+/// 構成の表の中で、HalfKPの区画が始まる行。HalfKPを側に入れる構成は消したので、常に `None`。
+/// 学習側（`crates/py`）が参照するので残す。
+pub const KP_BASE: Option<usize> = None;
 
 /// 特徴を作るのに要る盤の情報。升ごとの利き数と最小の攻め駒を、色ごとに1回だけ数える。
 pub struct SideBoard {
     pc: [Piece; 81],
-    hand: [[u8; HAND]; 2],
-    king: [Square; 2],
     occ: Bitboard,
-    color_bb: [Bitboard; 2],
     cnt: [[u8; 81]; 2],
     minatt: [[u8; 81]; 2],
 }
@@ -149,10 +97,7 @@ impl SideBoard {
     pub fn new<B: EvalBoard + ?Sized>(b: &B) -> SideBoard {
         let mut s = SideBoard {
             pc: [Piece::EMPTY; 81],
-            hand: [[0; HAND]; 2],
-            king: [b.king(Color::Black), b.king(Color::White)],
             occ: Bitboard::EMPTY,
-            color_bb: [Bitboard::EMPTY; 2],
             cnt: [[0; 81]; 2],
             minatt: [[0; 81]; 2],
         };
@@ -162,12 +107,6 @@ impl SideBoard {
             s.pc[sq.index()] = pc;
             if !pc.is_empty() {
                 s.occ.set(sq);
-                s.color_bb[pc.color().index()].set(sq);
-            }
-        }
-        for c in [Color::Black, Color::White] {
-            for (hi, &pt) in PieceType::HAND_KINDS.iter().enumerate() {
-                s.hand[c.index()][hi] = b.hand_count(c, pt).min(u32::from(u8::MAX)) as u8;
             }
         }
         for sq in s.occ {
@@ -208,27 +147,6 @@ impl SideBoard {
                     );
                 }
             }
-            KIND_L2 => {
-                for i in 0..81 {
-                    let v = view(Square::from_index(i as u8), c).index();
-                    let (a, b) = (
-                        usize::from(self.cnt[ci][i] > 0),
-                        usize::from(self.cnt[oi][i] > 0),
-                    );
-                    push(((v * EFF_PIECES + code(self.pc[i], c)) * 2 + a) * 2 + b);
-                }
-            }
-            KIND_THERMO => {
-                for i in 0..81 {
-                    let v = view(Square::from_index(i as u8), c).index();
-                    push(v * EFF_PIECES + code(self.pc[i], c));
-                    for (side, n) in [(0, self.cnt[ci][i]), (1, self.cnt[oi][i])] {
-                        for t in 1..=n.min(3) {
-                            push(81 * EFF_PIECES + (v * 2 + side) * 3 + usize::from(t - 1));
-                        }
-                    }
-                }
-            }
             KIND_MINATT => {
                 for i in 0..81 {
                     let v = view(Square::from_index(i as u8), c).index();
@@ -240,176 +158,6 @@ impl SideBoard {
                         ((v * EFF_PIECES + code(self.pc[i], c)) * ATT_CLASSES + a) * ATT_CLASSES
                             + b,
                     );
-                }
-            }
-            KIND_THREAT => {
-                for sq in self.occ {
-                    let pc = self.pc[sq.index()];
-                    if pc.piece_type() == PieceType::KING {
-                        continue;
-                    }
-                    let (me, them) = (pc.color().index(), pc.color().flip().index());
-                    let att = usize::from(self.minatt[them][sq.index()]);
-                    if att == 0 {
-                        continue;
-                    }
-                    let def = usize::from(self.cnt[me][sq.index()] > 0);
-                    let v = view(sq, c).index();
-                    push((((code(pc, c) - 1) * 81 + v) * ATT_CLASSES + att) * 2 + def);
-                }
-            }
-            KIND_ESCAPE => {
-                for (tag, kc) in [(0, c), (1, c.flip())] {
-                    let ks = self.king[kc.index()];
-                    if ks.is_none() {
-                        continue;
-                    }
-                    let vk = view(ks, c);
-                    let (kf, kr) = (i32::from(vk.file().0), i32::from(vk.rank().0));
-                    let mut d = 0;
-                    for df in -1..=1 {
-                        for dr in -1..=1 {
-                            if df == 0 && dr == 0 {
-                                continue;
-                            }
-                            let (f, r) = (kf + df, kr + dr);
-                            let state = if !(0..9).contains(&f) || !(0..9).contains(&r) {
-                                0
-                            } else {
-                                let s = view(Square::from_index((f * 9 + r) as u8), c).index();
-                                let pc = self.pc[s];
-                                if !pc.is_empty() && pc.color() == kc {
-                                    1
-                                } else if !pc.is_empty() {
-                                    2
-                                } else if self.cnt[kc.flip().index()][s] > 0 {
-                                    3
-                                } else {
-                                    4
-                                }
-                            };
-                            push((tag * 8 + d) * 5 + state);
-                            d += 1;
-                        }
-                    }
-                }
-            }
-            KIND_DROP => {
-                for (tag, side) in [(0, c), (1, c.flip())] {
-                    let ek = self.king[side.flip().index()];
-                    if ek.is_none() {
-                        continue;
-                    }
-                    let (kf, kr) = (i32::from(ek.file().0), i32::from(ek.rank().0));
-                    let mut safe = 0;
-                    for f in (kf - 2).max(0)..=(kf + 2).min(8) {
-                        for r in (kr - 2).max(0)..=(kr + 2).min(8) {
-                            let s = (f * 9 + r) as usize;
-                            if self.pc[s].is_empty() && self.cnt[side.flip().index()][s] == 0 {
-                                safe += 1;
-                            }
-                        }
-                    }
-                    for hi in 0..HAND {
-                        if self.hand[side.index()][hi] == 0 {
-                            continue;
-                        }
-                        for t in 0..safe.min(4) {
-                            push((tag * HAND + hi) * 4 + t);
-                        }
-                    }
-                }
-            }
-            KIND_MOBILITY => {
-                for sq in self.occ {
-                    let pc = self.pc[sq.index()];
-                    let pt = pc.piece_type();
-                    if pt == PieceType::PAWN || pt == PieceType::KING {
-                        continue;
-                    }
-                    let n =
-                        (attacks(pc, sq, self.occ) & !self.color_bb[pc.color().index()]).count();
-                    for t in 0..n.min(8) as usize {
-                        push((code(pc, c) - 1) * 8 + t);
-                    }
-                }
-            }
-            KIND_KW5 => {
-                for (tag, kc) in [(0, c), (1, c.flip())] {
-                    let ks = self.king[kc.index()];
-                    if ks.is_none() {
-                        continue;
-                    }
-                    let vk = view(ks, c);
-                    let (kf, kr) = (i32::from(vk.file().0), i32::from(vk.rank().0));
-                    for df in -2..=2i32 {
-                        for dr in -2..=2i32 {
-                            let (f, r) = (kf + df, kr + dr);
-                            if !(0..9).contains(&f) || !(0..9).contains(&r) {
-                                continue;
-                            }
-                            let s = view(Square::from_index((f * 9 + r) as u8), c).index();
-                            let own = usize::from(self.cnt[ci][s].min(3));
-                            let opp = usize::from(self.cnt[oi][s].min(3));
-                            let rel = ((df + 2) * 5 + (dr + 2)) as usize;
-                            push(
-                                (((tag * EFF_PIECES + code(self.pc[s], c)) * 4 + own) * 4 + opp)
-                                    * 25
-                                    + rel,
-                            );
-                        }
-                    }
-                }
-            }
-            KIND_HAND => {
-                for (tag, side) in [(0, c), (1, c.flip())] {
-                    for hi in 0..HAND {
-                        for i in 0..usize::from(self.hand[side.index()][hi]).min(HAND_MAX) {
-                            push((tag * HAND + hi) * HAND_MAX + i);
-                        }
-                    }
-                }
-            }
-            KIND_KE => {
-                // 視点側の玉の升と、升ごとの自分の利き・相手の利き（3で打ち切り）の組
-                let ks = self.king[ci];
-                if ks.is_none() {
-                    return;
-                }
-                let kv = view(ks, c).index();
-                for i in 0..81 {
-                    let v = view(Square::from_index(i as u8), c).index();
-                    let own = usize::from(self.cnt[ci][i].min(3));
-                    let opp = usize::from(self.cnt[oi][i].min(3));
-                    push(((kv * 81 + v) * 4 + own) * 4 + opp);
-                }
-            }
-            KIND_KP => {
-                // 主のHalfKPと同じ添字（`halfkp_index`）。玉の無い局面では立てない
-                let ks = self.king[ci];
-                if ks.is_none() {
-                    return;
-                }
-                for sq in self.occ {
-                    let pc = self.pc[sq.index()];
-                    if pc.piece_type() == PieceType::KING {
-                        continue;
-                    }
-                    push(
-                        bonapiece::halfkp_index(c, ks, bonapiece::board_bona_piece(c, pc, sq))
-                            as usize,
-                    );
-                }
-                for owner in [Color::Black, Color::White] {
-                    for (hi, &pt) in PieceType::HAND_KINDS.iter().enumerate() {
-                        for i in 1..=u32::from(self.hand[owner.index()][hi]) {
-                            push(bonapiece::halfkp_index(
-                                c,
-                                ks,
-                                bonapiece::hand_bona_piece(c, owner, pt, i),
-                            ) as usize);
-                        }
-                    }
                 }
             }
             _ => unreachable!("側の入力の種類が不明: {k}"),
@@ -452,16 +200,9 @@ pub fn fill<B: EvalBoard + ?Sized>(net: &NnueNetwork, b: &B, concat: &mut [u8; C
         feats.clear();
         sb.active(c, &mut feats);
         let acc = accumulate(net, &feats);
-        let out = &mut concat[EFF_BASE + k * EFF_ACT..EFF_BASE + (k + 1) * EFF_ACT];
-        if EFF_PAIR {
-            let h = EFF_OUT / 2;
-            for (o, x) in out.iter_mut().enumerate() {
-                *x = pair_activation(acc[o], acc[o + h]);
-            }
-        } else {
-            for (x, &a) in out.iter_mut().zip(&acc) {
-                *x = a.clamp(0, 127) as u8;
-            }
+        let out = &mut concat[EFF_BASE + k * EFF_OUT..EFF_BASE + (k + 1) * EFF_OUT];
+        for (x, &a) in out.iter_mut().zip(&acc) {
+            *x = a.clamp(0, 127) as u8;
         }
     }
 }
@@ -548,22 +289,6 @@ pub(crate) mod tests {
                 let mut got = Vec::new();
                 sb.kind(KIND_F2, c, 0, &mut got);
                 let mut want = want.to_vec();
-                want.sort_unstable();
-                got.sort_unstable();
-                assert_eq!(got, want, "{}", pos.to_sfen());
-            }
-        }
-    }
-
-    #[test]
-    fn kp_kind_matches_halfkp_active() {
-        for pos in positions() {
-            let sb = SideBoard::new(&pos);
-            for c in [Color::Black, Color::White] {
-                let mut want = Vec::new();
-                crate::nnue::halfkp_active(&pos, c, &mut want);
-                let mut got = Vec::new();
-                sb.kind(KIND_KP, c, 0, &mut got);
                 want.sort_unstable();
                 got.sort_unstable();
                 assert_eq!(got, want, "{}", pos.to_sfen());
@@ -659,14 +384,8 @@ pub(crate) mod tests {
                         *a += i32::from(w);
                     }
                 }
-                for o in 0..EFF_ACT {
-                    let want = if EFF_PAIR {
-                        let (x, y) = (acc[o].clamp(0, 127), acc[o + EFF_OUT / 2].clamp(0, 127));
-                        ((x * y + 64) >> 7) as u8
-                    } else {
-                        acc[o].clamp(0, 127) as u8
-                    };
-                    assert_eq!(concat[EFF_BASE + k * EFF_ACT + o], want);
+                for (o, &a) in acc.iter().enumerate() {
+                    assert_eq!(concat[EFF_BASE + k * EFF_OUT + o], a.clamp(0, 127) as u8);
                 }
             }
         }
