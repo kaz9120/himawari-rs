@@ -246,6 +246,20 @@ def write_result(
     os.replace(tmp, path)
 
 
+def read_result(path: Path) -> dict[str, str]:
+    """`write_result` が書いた結果ファイルを、鍵と値の組で読む。
+
+    鍵の有無は確かめない。古い実行の結果には timeloss などが無いので、
+    要る鍵の検査は呼び出し側が持つ。
+    """
+    fields = {}
+    for line in path.read_text(encoding="utf-8").splitlines():
+        key, sep, value = line.partition("=")
+        if sep:
+            fields[key] = value
+    return fields
+
+
 def report(
     log: Path,
     name: str,

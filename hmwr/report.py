@@ -20,9 +20,7 @@ def match_row(name: str, note: str = "") -> list[str]:
     """対局1本を表の1行にする。結果ファイルが無ければ、ログの途中経過を読む。"""
     result = paths.SPRT / f"{name}.result"
     if result.is_file():
-        f = dict(
-            line.split("=", 1) for line in result.read_text(encoding="utf-8").splitlines() if "=" in line
-        )
+        f = sprt_log.read_result(result)
         return [
             name, note, f["games"], f["wdl"],
             f"{f['elo']} [{f['ci_low']}, {f['ci_high']}]", f["llr"], f["decision"],
