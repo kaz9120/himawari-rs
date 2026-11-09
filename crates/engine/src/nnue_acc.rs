@@ -339,9 +339,9 @@ impl NnueState {
     /// 利きのaccumulatorを最上段に用意する。
     ///
     /// 81升の語を盤から受け取り、参照の局面の語と比べて変わった升だけを当てる。
-    /// 参照の候補は、計算済みの祖先と、この段に残る前回の中身（兄弟か従兄弟の
-    /// 局面）の2つで、変わった升が少ないほうを使う。**途中の手の材料は要らない。**
-    /// どちらも40升を超えたら全計算する。利きの特徴は玉位置に依らないので、
+    /// 参照の候補は、計算済みの祖先、この段に残る前回の中身（兄弟か従兄弟の
+    /// 局面）、1つ上の段に残る前回の中身の3つで、変わった升が最も少ないものを使う。**途中の手の材料は要らない。**
+    /// どれも40升を超えたら全計算する。利きの特徴は玉位置に依らないので、
     /// 玉が動いても参照にできる。
     fn ensure_effect<B: EvalBoard + ?Sized>(&mut self, net: &NnueNetwork, pos: &B) {
         let top = self.top;
@@ -354,22 +354,32 @@ impl NnueState {
         } else {
             pos.effect_codes(&mut codes);
         }
-        let here = &self.eff[top];
-        let from_here = here.coherent.then(|| codes_diff(&codes, &here.codes));
+        // 参照の候補。この段の前回の中身、計算済みの祖先、1つ上の段の前回の中身（直前に
+        // 調べた兄弟の子）の順に並べ、変わった升が最も少ないものを選ぶ。同数なら前を選ぶ
+        let here = self.eff[top].coherent.then_some(top);
         let anc = (0..top).rev().find(|&i| self.eff[i].computed);
-        let from_anc = anc.map(|a| (a, codes_diff(&codes, &self.eff[a].codes)));
-        let far = |c: &Bitboard| c.count() > EFF_REFRESH_ABOVE;
-        match (from_here, from_anc) {
-            // 同数なら、写さずに済むこの段を使う
-            (Some(h), a) if !far(&h) && a.is_none_or(|(_, c)| h.count() <= c.count()) => {
-                effect_apply(net, &codes, &mut self.eff[top], h);
+        let up = (top + 1 < self.eff.len() && self.eff[top + 1].coherent).then_some(top + 1);
+        let mut best: Option<(usize, Bitboard)> = None;
+        for i in [here, anc, up].into_iter().flatten() {
+            let c = codes_diff(&codes, &self.eff[i].codes);
+            if best.is_none_or(|(_, b)| c.count() < b.count()) {
+                best = Some((i, c));
             }
-            (_, Some((a, c))) if !far(&c) => {
-                let (before, after) = self.eff.split_at_mut(top);
-                let e = &mut after[0];
-                e.acc = before[a].acc;
-                e.codes = before[a].codes;
-                effect_apply(net, &codes, e, c);
+        }
+        match best {
+            Some((i, c)) if c.count() <= EFF_REFRESH_ABOVE => {
+                if i != top {
+                    let (src, dst) = if i < top {
+                        let (before, after) = self.eff.split_at_mut(top);
+                        (&before[i], &mut after[0])
+                    } else {
+                        let (before, after) = self.eff.split_at_mut(i);
+                        (&after[0], &mut before[top])
+                    };
+                    dst.acc = src.acc;
+                    dst.codes = src.codes;
+                }
+                effect_apply(net, &codes, &mut self.eff[top], c);
             }
             _ => effect_refresh(net, &codes, &mut self.eff[top]),
         }
