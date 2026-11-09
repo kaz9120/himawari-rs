@@ -14,7 +14,7 @@ use himawari_core::{Position, SFEN_STARTPOS};
 use himawari_engine::nnue::NnueNetwork;
 use himawari_engine::{EngineOptions, Limits, ThreadPool};
 
-use book::{Book, BookOptions};
+use book::{Book, BookOptions, BookParams};
 
 const ENGINE_NAME: &str = "Himawari";
 const ENGINE_AUTHOR: &str = "Kazumasa Yamamoto";
@@ -182,34 +182,80 @@ fn print_line(s: &str) {
 }
 
 /// setoptionで設定できるオプションのUSI宣言。
+///
+/// 既定値は `EngineOptions::default` と `BookParams::default` から取る。
+/// ここに書くのは名前・型・範囲だけである
 fn print_options() {
-    print_line("option name USI_Hash type spin default 256 min 1 max 33554432");
-    print_line("option name USI_Ponder type check default false");
-    print_line("option name Threads type spin default 1 min 1 max 512");
-    print_line("option name NetworkDelay type spin default 120 min 0 max 10000");
-    print_line("option name NetworkDelay2 type spin default 1120 min 0 max 10000");
-    print_line("option name MinimumThinkingTime type spin default 2000 min 1 max 100000");
-    print_line("option name SlowMover type spin default 100 min 1 max 1000");
-    print_line("option name RoundUpToFullSecond type check default true");
-    print_line("option name MaxMovesToDraw type spin default 0 min 0 max 100000");
-    print_line("option name MultiPV type spin default 1 min 1 max 128");
+    let e = EngineOptions::default();
+    let b = BookParams::default();
+    let spin = |name: &str, default: i64, min: i64, max: i64| {
+        print_line(&format!(
+            "option name {name} type spin default {default} min {min} max {max}"
+        ));
+    };
+    let check = |name: &str, default: bool| {
+        print_line(&format!("option name {name} type check default {default}"));
+    };
+    let string = |name: &str, default: &str| {
+        let default = if default.is_empty() {
+            "<empty>"
+        } else {
+            default
+        };
+        print_line(&format!("option name {name} type string default {default}"));
+    };
+    spin("USI_Hash", e.hash_mb as i64, 1, 33554432);
+    check("USI_Ponder", e.ponder);
+    spin("Threads", e.threads as i64, 1, 512);
+    spin("NetworkDelay", e.network_delay as i64, 0, 10000);
+    spin("NetworkDelay2", e.network_delay2 as i64, 0, 10000);
+    spin(
+        "MinimumThinkingTime",
+        e.minimum_thinking_time as i64,
+        1,
+        100000,
+    );
+    spin("SlowMover", e.slow_mover as i64, 1, 1000);
+    check("RoundUpToFullSecond", e.round_up_to_full_second);
+    spin("MaxMovesToDraw", i64::from(e.max_moves_to_draw), 0, 100000);
+    spin("MultiPV", e.multi_pv as i64, 1, 128);
     // 実務オプション（S:151-155）
-    print_line("option name ResignValue type spin default 99999 min 0 max 99999");
-    print_line("option name DrawValueBlack type spin default -2 min -30000 max 30000");
-    print_line("option name DrawValueWhite type spin default -2 min -30000 max 30000");
-    print_line("option name EvalFile type string default <empty>");
-    print_line("option name BookFile type string default <empty>");
-    print_line("option name BookDepth type spin default 24 min 0 max 1000");
+    spin("ResignValue", i64::from(e.resign_value), 0, 99999);
+    spin(
+        "DrawValueBlack",
+        i64::from(e.draw_value_black),
+        -30000,
+        30000,
+    );
+    spin(
+        "DrawValueWhite",
+        i64::from(e.draw_value_white),
+        -30000,
+        30000,
+    );
+    string("EvalFile", &e.eval_file);
+    string("BookFile", "");
+    spin("BookDepth", i64::from(b.book_moves), 0, 1000);
     // 定跡の引き方（既定値はbook.cpp:1308-1392）
-    print_line("option name USI_OwnBook type check default true");
-    print_line("option name BookIgnoreRate type spin default 0 min 0 max 100");
-    print_line("option name BookEvalDiff type spin default 30 min 0 max 99999");
-    print_line("option name BookEvalBlackLimit type spin default 0 min -99999 max 99999");
-    print_line("option name BookEvalWhiteLimit type spin default -140 min -99999 max 99999");
-    print_line("option name BookDepthLimit type spin default 16 min 0 max 99999");
-    print_line("option name FlippedBook type check default true");
-    print_line("option name BookRandomize type check default false");
-    print_line("option name DebugLogFile type string default <empty>");
+    check("USI_OwnBook", b.own_book);
+    spin("BookIgnoreRate", i64::from(b.ignore_rate), 0, 100);
+    spin("BookEvalDiff", i64::from(b.eval_diff), 0, 99999);
+    spin(
+        "BookEvalBlackLimit",
+        i64::from(b.eval_black_limit),
+        -99999,
+        99999,
+    );
+    spin(
+        "BookEvalWhiteLimit",
+        i64::from(b.eval_white_limit),
+        -99999,
+        99999,
+    );
+    spin("BookDepthLimit", i64::from(b.depth_limit), 0, 99999);
+    check("FlippedBook", b.flipped);
+    check("BookRandomize", b.randomize);
+    string("DebugLogFile", "");
     // SPSAのチューニング項目。tuneビルドだけが宣言する
     #[cfg(feature = "tune")]
     for e in himawari_engine::tunables::ENTRIES {

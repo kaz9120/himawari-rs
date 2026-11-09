@@ -66,6 +66,8 @@ pub struct BookParams {
     pub randomize: bool,
 }
 
+/// 定跡のUSIオプションの既定値を持つ唯一の場所。`main.rs` のoption宣言は
+/// ここから値を取る
 impl Default for BookParams {
     fn default() -> Self {
         BookParams {

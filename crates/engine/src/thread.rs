@@ -62,6 +62,8 @@ pub struct EngineOptions {
     pub eval_file: String,
 }
 
+/// USIオプションの既定値を持つ唯一の場所。`usi` のoption宣言と
+/// `TimeOptions::default` はここから値を取る
 impl Default for EngineOptions {
     fn default() -> Self {
         EngineOptions {
