@@ -514,6 +514,38 @@ def test_book_release_dry_run_does_not_need_gh(capsys, tmp_path, monkeypatch):
     assert "dry-runのため作成しない" in capsys.readouterr().out
 
 
+def test_book_mine_passes_the_seeds_and_current_net(capsys):
+    """mineは名前から置き場を決め、既定で現行の評価関数を使う。"""
+    assert cli.main(["--dry-run", "book", "mine", "bm", "--seeds", "strong", "--depth", "28"]) == proc.OK
+    out = capsys.readouterr().out
+    assert "--out data/book/bm.db" in out
+    assert "--seeds data/book/strong.seeds" in out
+    assert f"--eval {config.EVAL_FILE}" in out
+    assert "--depth 28" in out
+
+
+def test_book_seeds_rejects_reversed_years(capsys):
+    assert cli.main(["--dry-run", "book", "seeds", "s", "--years", "2026-2025"]) == proc.RUNTIME
+    assert "順が逆" in capsys.readouterr().err
+
+
+def test_book_openings_draws_only_the_ply_in_proportion():
+    """開始局面は指定の手数だけから、出現率に比例して引く。"""
+    from hmwr.commands import book
+
+    text = (
+        "1 sfen a b - 1\n"
+        "0.9 sfen x b - 7\n"
+        "0.1 sfen y b - 7\n"
+        "0.5 sfen z w - 8\n"
+    )
+    rows = book.pick_openings(text, 6, 2000, 1)
+    assert set(rows) == {"sfen x b - 7", "sfen y b - 7"}
+    assert 0.85 < rows.count("sfen x b - 7") / len(rows) < 0.95
+    assert rows == book.pick_openings(text, 6, 2000, 1), "同じ種なら同じ並び"
+    assert book.pick_openings(text, 3, 10, 1) == []
+
+
 # --- data --------------------------------------------------------------
 
 

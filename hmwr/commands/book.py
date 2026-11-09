@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import argparse
+import os
 import shutil
+import subprocess
 import tempfile
 from pathlib import Path
 
@@ -34,6 +36,56 @@ def add_parser(sub: argparse._SubParsersAction) -> None:
     t.add_argument("--depth", type=int, default=28, metavar="N", help="探索の深さ")
     t.add_argument("--max-positions", type=int, default=50, metavar="N", help="追加の上限")
     t.set_defaults(func=seed)
+
+    t = ss.add_parser(
+        "seeds",
+        help="floodgateの全対局から局面の出現率を数え、mineの種にする",
+        description="data/book/<名前>.seeds へ書く。両対局者のレートが下限以上の対局だけを数える。",
+    )
+    t.add_argument("name", metavar="名前")
+    t.add_argument("--years", required=True, metavar="A-B", help="対象の年。例 2025-2026")
+    t.add_argument("--min-rate", type=float, default=3500, metavar="R", help="両対局者のレートの下限（既定 3500）")
+    t.add_argument("--max-ply", type=int, default=40, metavar="N", help="数える手数の上限（既定 40）")
+    t.add_argument("--min-count", type=int, default=2, metavar="N", help="この回数未満の局面は書かない（既定 2）")
+    t.add_argument("--min-moves", type=int, default=60, metavar="N", help="これより短い対局は数えない（既定 60）")
+    t.add_argument("--tag", default="2026-04-10", metavar="タグ", help="アーカイブのミラーのタグ")
+    t.add_argument("--jobs", type=int, default=8, metavar="N", help="並列数")
+    t.set_defaults(func=seeds)
+
+    t = ss.add_parser(
+        "openings",
+        help="種から浅い手数の開始局面集を作る",
+        description="種のうち指定の手数の局面を、出現率に比例して重複ありで引き、"
+        "openings/<出力名>.txt へ書く。定跡の効果を測る対局に使う。"
+        "既定のSPRTは24手目から始まるので、定跡が引かれない。",
+    )
+    t.add_argument("name", metavar="出力名")
+    t.add_argument("--seeds", required=True, metavar="名前", help="data/book/<名前>.seeds")
+    t.add_argument("--ply", type=int, default=6, metavar="N", help="開始局面の手数（既定 6）")
+    t.add_argument("--count", type=int, default=20000, metavar="N", help="局面数（既定 20000）")
+    t.add_argument("--seed", type=int, default=1, metavar="N", help="乱数の種（既定 1）")
+    t.set_defaults(func=openings)
+
+    t = ss.add_parser(
+        "mine",
+        help="到達確率の高い局面から順に定跡を掘る",
+        description="data/book/<名前>.db へ書き、切り離して走る。同じコマンドで続きから掘る。"
+        "止めるには data/book/<名前>.db.stop を置く。",
+    )
+    t.add_argument("name", metavar="名前")
+    t.add_argument("--seeds", metavar="名前", help="種。data/book/<名前>.seeds（hmwr book seeds の出力）")
+    t.add_argument("--eval", metavar="ネット", help="評価関数。data/nets/<名前>.hmwr（既定 現行）")
+    t.add_argument("--depth", type=int, default=30, metavar="N", help="探索の深さ（既定 30）")
+    t.add_argument("--width", type=int, default=3, metavar="N", help="記録する候補手数（既定 3）")
+    t.add_argument("--threads", type=int, default=10, metavar="N", help="探索スレッド数（既定 10）")
+    t.add_argument("--hash", type=int, default=4096, metavar="MB", help="置換表（既定 4096）")
+    t.add_argument("--max-ply", type=int, default=40, metavar="N", help="掘る手数の上限（既定 40）")
+    t.add_argument("--max-positions", type=int, default=10000, metavar="N", help="定跡全体の局面数の上限")
+    t.add_argument("--margin", type=int, default=100, metavar="CP", help="最善手との差の上限（既定 100）")
+    t.add_argument("--temp", type=float, default=40, metavar="CP", help="手の分布の温度（既定 40）")
+    t.add_argument("--min-prob", type=float, default=1e-4, metavar="P", help="到達確率の下限（既定 0.0001）")
+    t.add_argument("--foreground", action="store_true", help="切り離さず走らせる")
+    t.set_defaults(func=mine)
 
     t = ss.add_parser("stats", help="定跡の網羅率を出す")
     t.add_argument("--out", metavar="DB", help="定跡ファイル（既定 data/book/main.db）")
@@ -78,6 +130,114 @@ def seed(args: argparse.Namespace) -> int:
         "--max-positions", str(args.max_positions),
     ]
     return proc.run(argv, dry_run=args.dry_run, log=paths.log("book", "seed"))
+
+
+def _years(spec: str) -> list[int]:
+    a, _, b = spec.partition("-")
+    try:
+        lo, hi = int(a), int(b or a)
+    except ValueError:
+        raise proc.Fail(f"--years は A-B の形で渡す: {spec}") from None
+    if lo > hi:
+        raise proc.Fail(f"--years の順が逆: {spec}")
+    return list(range(lo, hi + 1))
+
+
+def seeds(args: argparse.Namespace) -> int:
+    paths.check_name(args.name)
+    out = paths.BOOK / f"{args.name}.seeds"
+    years = _years(args.years)
+    if args.dry_run:
+        print(f"[dry-run] {years} の棋譜から {paths.rel(out)} を書く"
+              f"（レート{args.min_rate}以上、{args.max_ply}手まで、{args.min_count}回以上）")
+        return proc.OK
+    from ..tools import book_seeds
+
+    out.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        got = book_seeds.count(
+            years, paths.RAW / "floodgate_archive", out, tag=args.tag, max_ply=args.max_ply,
+            min_rate=args.min_rate, min_moves=args.min_moves, min_count=args.min_count,
+            jobs=args.jobs,
+        )
+    except ValueError as e:
+        raise proc.Fail(str(e)) from None
+    print(f"{got['games']:,}局から種{got['seeds']:,}局面を {paths.rel(out)} へ書いた")
+    return proc.OK
+
+
+def openings(args: argparse.Namespace) -> int:
+    paths.check_name(args.name)
+    src = paths.BOOK / f"{args.seeds}.seeds"
+    out = paths.REPO / "openings" / f"{args.name}.txt"
+    if args.dry_run:
+        print(f"[dry-run] {paths.rel(src)} の{args.ply}手目の局面から{args.count}局面を {paths.rel(out)} へ書く")
+        return proc.OK
+    if not src.is_file():
+        raise proc.Fail(f"種がない: {paths.rel(src)}")
+    rows = pick_openings(src.read_text(encoding="utf-8"), args.ply, args.count, args.seed)
+    if not rows:
+        raise proc.Fail(f"{args.ply}手目の局面が種に無い")
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text("".join(f"{r}\n" for r in rows), encoding="utf-8")
+    print(f"{len(rows):,}局面（異なり{len(set(rows)):,}）を {paths.rel(out)} へ書いた")
+    return proc.OK
+
+
+def pick_openings(text: str, ply: int, count: int, seed: int) -> list[str]:
+    """種のうち手数plyの局面を、出現率に比例して重複ありでcount個引く。"""
+    import random
+
+    cands, weights = [], []
+    for line in text.splitlines():
+        prob, _, sfen = line.partition(" ")
+        f = sfen.split()
+        if len(f) == 5 and f[0] == "sfen" and f[4] == str(ply + 1):
+            cands.append(sfen)
+            weights.append(float(prob))
+    if not cands:
+        return []
+    return random.Random(seed).choices(cands, weights=weights, k=count)
+
+
+def mine(args: argparse.Namespace) -> int:
+    paths.check_name(args.name)
+    out = paths.BOOK / f"{args.name}.db"
+    net = paths.NETS / f"{args.eval}.hmwr" if args.eval else Path(config.get("EVAL_FILE", ""))
+    argv = [
+        _tool() if not args.dry_run else "target/release/book", "mine",
+        "--out", str(out),
+        "--eval", str(net),
+        "--depth", str(args.depth),
+        "--width", str(args.width),
+        "--threads", str(args.threads),
+        "--hash", str(args.hash),
+        "--max-ply", str(args.max_ply),
+        "--max-positions", str(args.max_positions),
+        "--margin", str(args.margin),
+        "--temp", str(args.temp),
+        "--min-prob", str(args.min_prob),
+    ]
+    if args.seeds:
+        seeds_file = paths.BOOK / f"{args.seeds}.seeds"
+        if not seeds_file.is_file() and not args.dry_run:
+            raise proc.Fail(f"種がない: {paths.rel(seeds_file)}（先に hmwr book seeds {args.seeds}）")
+        argv += ["--seeds", str(seeds_file)]
+    if not net.is_file() and not args.dry_run:
+        raise proc.Fail(f"評価関数がない: {net}")
+    log = paths.log("book", args.name)
+    if args.foreground or args.dry_run:
+        return proc.run(argv, dry_run=args.dry_run, log=log)
+    log.parent.mkdir(parents=True, exist_ok=True)
+    with open(log, "ab") as fh, open(os.devnull, "rb") as devnull:
+        child = subprocess.Popen(
+            argv, cwd=str(paths.REPO), stdout=fh, stderr=fh, stdin=devnull,
+            start_new_session=True,
+        )
+    print(f"起動した pid={child.pid}（新しいセッション）")
+    print(f"経過: tail -f {paths.rel(log)}")
+    print(f"停止: touch {paths.rel(out)}.stop")
+    return proc.OK
 
 
 def stats(args: argparse.Namespace) -> int:

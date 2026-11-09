@@ -106,8 +106,14 @@ struct Config {
     stop_file: Option<String>,
     /// seedの入力。CSAのファイルかディレクトリを並べる
     games: Vec<String>,
-    /// seedが種として拾う手数の上限
+    /// seedが種として拾う手数の上限。mineが掘る手数の上限
     max_ply: u16,
+    /// mineの種。1行1局面で `<出現率> sfen <盤> <手番> <手駒> <手数>`
+    seeds: Option<String>,
+    /// mineが評価値から手の分布を作るときの温度（cp）
+    temp: f64,
+    /// mineが掘る到達確率の下限
+    min_prob: f64,
 }
 
 /// 1局面ぶんの候補手。(指し手, 評価値, 予想応手) を評価値の降順で持つ。
@@ -1014,6 +1020,224 @@ fn seed(cfg: &Config) -> std::io::Result<()> {
     Ok(())
 }
 
+/// mineが展開を待つ局面。`prob` は対局がこの局面を通る確率の見積もりである。
+///
+/// 定跡が1局で何手引けるかの期待値は、定跡が持つ局面の到達確率の和になる。
+/// 到達確率の大きい順に掘れば、局面数あたりの期待値が最も伸びる。
+struct Reach {
+    prob: f64,
+    seq: usize,
+    ply: u16,
+    pos: Position,
+}
+
+impl Ord for Reach {
+    /// 確率の大きいものから取り出す。同点は先に積んだものを優先する。
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.prob
+            .total_cmp(&other.prob)
+            .then_with(|| other.seq.cmp(&self.seq))
+    }
+}
+
+impl PartialOrd for Reach {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl PartialEq for Reach {
+    fn eq(&self, other: &Self) -> bool {
+        self.cmp(other).is_eq()
+    }
+}
+
+impl Eq for Reach {}
+
+/// 候補手の評価値から、その局面で各手が指される確率を見積もる。
+/// 温度 `temp` のsoftmaxで、最善手との差がtempだけ開くごとにe分の1になる。
+fn move_probs(lines: &Lines, temp: f64) -> Vec<f64> {
+    let Some(best) = lines.iter().map(|l| l.1).max() else {
+        return Vec::new();
+    };
+    let w: Vec<f64> = lines
+        .iter()
+        .map(|l| (f64::from(l.1 - best) / temp).exp())
+        .collect();
+    let sum: f64 = w.iter().sum();
+    w.into_iter().map(|x| x / sum).collect()
+}
+
+/// mineの種を読む。1行1局面で `<出現率> sfen <盤> <手番> <手駒> <手数>`。
+/// `#` で始まる行と空行は飛ばす。読めない行はエラーにする（黙って落とさない）。
+fn load_seeds(text: &str) -> Result<Vec<(f64, u16, Position)>, String> {
+    let mut out = Vec::new();
+    for (i, line) in text.lines().enumerate() {
+        let line = line.trim();
+        if line.is_empty() || line.starts_with('#') {
+            continue;
+        }
+        let bad = || format!("種の{}行目が読めない: {line}", i + 1);
+        let (prob, rest) = line.split_once(' ').ok_or_else(bad)?;
+        let prob: f64 = prob.parse().map_err(|_| bad())?;
+        let sfen = rest.strip_prefix("sfen ").ok_or_else(bad)?;
+        let pos = Position::from_sfen(sfen).map_err(|_| bad())?;
+        let ply = sfen
+            .rsplit(' ')
+            .next()
+            .and_then(|s| s.parse::<u16>().ok())
+            .map_or(0, |n| n.saturating_sub(1));
+        out.push((prob, ply, pos));
+    }
+    Ok(out)
+}
+
+/// 到達確率の大きい局面から順に掘る。
+///
+/// 到達確率は2つの見積もりのうち大きいほうを使う。1つは棋譜での出現率
+/// （`--seeds`）で、実戦の相手が実際に選ぶ変化を拾う。もう1つは初期局面から、
+/// 各局面の候補手の評価値をsoftmaxにした確率を掛けて伝える値で、棋譜に
+/// まだ現れない、自分の探索が選ぶ変化を拾う。
+///
+/// genの「損失の累計の小さい順」と違い、合流する変化や種の頻度を同じ尺度で
+/// 比べられる。出力ファイルがあれば読んで続きから掘る。
+fn mine(cfg: &Config) -> std::io::Result<()> {
+    eprintln!(
+        "BookGen: mine max_ply={} width={} depth={} threads={} hash={}MB max={} margin={} temp={} min_prob={} seeds={}",
+        cfg.max_ply,
+        cfg.width,
+        cfg.depth,
+        cfg.threads,
+        cfg.hash_mb,
+        cfg.max_positions,
+        cfg.margin,
+        cfg.temp,
+        cfg.min_prob,
+        cfg.seeds.as_deref().unwrap_or("-"),
+    );
+    let seeds = match &cfg.seeds {
+        Some(path) => load_seeds(&std::fs::read_to_string(path)?).map_err(std::io::Error::other)?,
+        None => Vec::new(),
+    };
+    let (pool, sink) = make_pool(cfg)?;
+    let mut book = Book::load(&cfg.out)?;
+    if book.len() > 0 {
+        eprintln!("再開: {} から {}局面を読み込みました", cfg.out, book.len());
+    }
+    let stop = match &cfg.stop_file {
+        Some(p) => StopFile::at(PathBuf::from(p)),
+        None => StopFile::beside(Path::new(&cfg.out)),
+    };
+    stop.clear_stale();
+    eprintln!("止めるには: touch {}", stop.path().display());
+
+    let mut queue: BinaryHeap<Reach> = BinaryHeap::new();
+    let mut seq = 0usize;
+    queue.push(Reach {
+        prob: 1.0,
+        seq,
+        ply: 0,
+        pos: Position::from_sfen(SFEN_STARTPOS).expect("startpos"),
+    });
+    for (prob, ply, pos) in seeds {
+        seq += 1;
+        queue.push(Reach {
+            prob,
+            seq,
+            ply,
+            pos,
+        });
+    }
+    let mut visited: HashSet<String> = HashSet::new();
+    let started = std::time::Instant::now();
+    let mut searched = 0usize;
+    let mut covered = 0.0f64;
+    let mut stopped = false;
+
+    while let Some(task) = queue.pop() {
+        if task.prob < cfg.min_prob {
+            eprintln!("到達確率が --min-prob {} を下回った", cfg.min_prob);
+            break;
+        }
+        if task.ply > cfg.max_ply {
+            continue;
+        }
+        let key = book_key(&task.pos);
+        if !visited.insert(key.clone()) {
+            continue;
+        }
+        let lines = match book.lines.get(&key) {
+            Some(known) if !known.is_empty() => known.clone(),
+            _ => {
+                if book.len() >= cfg.max_positions {
+                    eprintln!("--max-positions {} に達した", cfg.max_positions);
+                    break;
+                }
+                if stop.requested() {
+                    eprintln!("停止ファイルを見つけた: {}", stop.path().display());
+                    stopped = true;
+                    break;
+                }
+                let found = prune_by_margin(search_lines(&task.pos, cfg, &pool, &sink), cfg.margin);
+                if found.is_empty() {
+                    continue;
+                }
+                searched += 1;
+                let secs = started.elapsed().as_secs();
+                eprintln!(
+                    "[{:>6}局面 {:>6}s] ply={:>2} 確率={:.2e} 待ち{:>6} 手={} 評価={} 候補{}",
+                    book.len() + 1,
+                    secs,
+                    task.ply,
+                    task.prob,
+                    queue.len(),
+                    found[0].0,
+                    found[0].1,
+                    found.len(),
+                );
+                book.insert(key.clone(), found.clone());
+                if searched.is_multiple_of(cfg.save_every) {
+                    book.save(&cfg.out, cfg.depth)?;
+                    eprintln!("  途中書き出し: {}局面（{secs}秒）", book.len());
+                }
+                found
+            }
+        };
+        covered += task.prob;
+        if task.ply == cfg.max_ply {
+            continue;
+        }
+        for ((mv, _, _), p) in lines.iter().zip(move_probs(&lines, cfg.temp)) {
+            let Some(m) = task.pos.move_from_usi(mv) else {
+                continue;
+            };
+            let mut next = task.pos.clone();
+            next.do_move(m);
+            seq += 1;
+            queue.push(Reach {
+                prob: task.prob * p,
+                seq,
+                ply: task.ply + 1,
+                pos: next,
+            });
+        }
+    }
+    pool.quit();
+
+    book.save(&cfg.out, cfg.depth)?;
+    eprintln!(
+        "{} に {}局面を書き出しました（今回{searched}局面を探索、到達確率の和{covered:.2}、{}秒）",
+        cfg.out,
+        book.len(),
+        started.elapsed().as_secs()
+    );
+    if stopped {
+        stop.consume();
+        eprintln!("停止した。同じコマンドで再開できる");
+    }
+    Ok(())
+}
+
 fn generate(cfg: &Config) -> std::io::Result<()> {
     // 生成条件をログの先頭に残す。定跡は非決定的に生成され、
     // 評価関数にも依存するため、どの設定で作ったかを後から追えないと
@@ -1240,6 +1464,7 @@ fn stats(cfg: &Config) -> std::io::Result<()> {
 const SUBCOMMANDS: &[(&str, &str)] = &[
     ("gen", "定跡を掘り広げる（新しい局面を足す）"),
     ("seed", "棋譜に現れた局面を種にして定跡へ足す"),
+    ("mine", "到達確率の高い局面から順に掘る"),
     ("refresh", "局面の集合は変えずに、指し手と評価値を引き直す"),
     ("stats", "plyごとの網羅率を数える"),
 ];
@@ -1249,7 +1474,13 @@ const FLAGS: &[(&str, &str)] = &[
     ("--out", "定跡ファイル（既定 data/book/mini.db）"),
     ("--eval", "評価関数のhmwrファイル"),
     ("--ply", "genが展開しstatsが数える手数（既定 24）"),
-    ("--max-ply", "seedが種として拾う手数の上限（既定 24）"),
+    (
+        "--max-ply",
+        "seedが種として拾い、mineが掘る手数の上限（既定 24）",
+    ),
+    ("--seeds", "mineの種の局面と出現率のファイル"),
+    ("--temp", "mineが評価値から手の分布を作る温度cp（既定 40）"),
+    ("--min-prob", "mineが掘る到達確率の下限（既定 0.0001）"),
     ("--width", "各局面で記録する候補手数（既定 4）"),
     ("--full-ply", "全合法手を展開する深さ（既定 0）"),
     ("--depth", "探索の深さ（既定 24）"),
@@ -1309,6 +1540,9 @@ fn parse(args: &[String]) -> Result<(&'static str, Config), String> {
         stop_file: None,
         games: Vec::new(),
         max_ply: 24,
+        seeds: None,
+        temp: 40.0,
+        min_prob: 1e-4,
     };
     let mut threads_given = false;
     let mut i = 1;
@@ -1342,6 +1576,21 @@ fn parse(args: &[String]) -> Result<(&'static str, Config), String> {
             }
             "--margin" => cfg.margin = val.parse().unwrap_or(cfg.margin),
             "--stop-file" => cfg.stop_file = Some(val),
+            "--seeds" => cfg.seeds = Some(val),
+            "--temp" => {
+                cfg.temp = val
+                    .parse::<f64>()
+                    .ok()
+                    .filter(|t| *t > 0.0)
+                    .ok_or_else(|| format!("--temp は正の数: {val}"))?;
+            }
+            "--min-prob" => {
+                cfg.min_prob = val
+                    .parse::<f64>()
+                    .ok()
+                    .filter(|p| *p > 0.0 && *p <= 1.0)
+                    .ok_or_else(|| format!("--min-prob は0より大きく1以下: {val}"))?;
+            }
             "--save-every" => {
                 cfg.save_every = val.parse::<usize>().unwrap_or(cfg.save_every).max(1);
             }
@@ -1384,6 +1633,7 @@ fn main() {
     }
     let result = match sub {
         "seed" => seed(&cfg),
+        "mine" => mine(&cfg),
         "refresh" => refresh(&cfg),
         "stats" => stats(&cfg),
         _ => generate(&cfg),
@@ -1400,6 +1650,47 @@ mod tests {
 
     fn line(mv: &str, score: i32) -> (String, i32, String) {
         (mv.to_string(), score, "none".to_string())
+    }
+
+    #[test]
+    fn move_probs_sum_to_one_and_fall_by_e_per_temp() {
+        let lines = vec![line("7g7f", 40), line("2g2f", 0), line("6i7h", 40)];
+        let p = move_probs(&lines, 40.0);
+        assert!((p.iter().sum::<f64>() - 1.0).abs() < 1e-12);
+        assert!((p[0] - p[2]).abs() < 1e-12, "同点は同じ確率");
+        assert!((p[0] / p[1] - std::f64::consts::E).abs() < 1e-9);
+        assert!(move_probs(&Vec::new(), 40.0).is_empty());
+    }
+
+    #[test]
+    fn reach_pops_most_probable_first_then_earliest() {
+        let pos = Position::from_sfen(SFEN_STARTPOS).unwrap();
+        let mut q = BinaryHeap::new();
+        for (prob, seq) in [(0.1, 0), (0.5, 1), (0.5, 2), (0.9, 3)] {
+            q.push(Reach {
+                prob,
+                seq,
+                ply: 0,
+                pos: pos.clone(),
+            });
+        }
+        let order: Vec<usize> = std::iter::from_fn(|| q.pop().map(|r| r.seq)).collect();
+        assert_eq!(order, vec![3, 1, 2, 0]);
+    }
+
+    #[test]
+    fn seeds_read_probability_ply_and_position() {
+        let text = "# 見出し\n\
+                    1 sfen lnsgkgsnl/1r5b1/ppppppppp/9/9/9/PPPPPPPPP/1B5R1/LNSGKGSNL b - 1\n\
+                    \n\
+                    0.25 sfen lnsgkgsnl/1r5b1/ppppppppp/9/9/7P1/PPPPPPP1P/1B5R1/LNSGKGSNL w - 2\n";
+        let seeds = load_seeds(text).unwrap();
+        assert_eq!(seeds.len(), 2);
+        assert_eq!((seeds[0].0, seeds[0].1), (1.0, 0));
+        assert_eq!((seeds[1].0, seeds[1].1), (0.25, 1));
+        assert_eq!(seeds[1].2.side_to_move(), Color::White);
+        let err = load_seeds("0.5 lnsgkgsnl b - 1\n").err().unwrap();
+        assert!(err.contains("1行目"), "{err}");
     }
 
     #[test]
@@ -1647,6 +1938,47 @@ P9+KY+KE+GI+KI+OU+KI+GI+KE+KY
         let _ = std::fs::remove_dir_all(&dir);
     }
 
+    /// mineは確率の高い種を初期局面の子より先に掘り、上限を増やすと続きから掘る。
+    #[test]
+    fn mine_digs_by_probability_and_resumes() {
+        let dir = temp_dir("mine");
+        let seeds = dir.join("seeds.txt");
+        // 初期局面(確率1)の次に、この種(0.9)が来る。子はsoftmaxで1未満に割れる
+        let far = "lnsgkgsnl/1r5b1/pppppp1pp/6p2/9/2P6/PP1PPPPPP/1B5R1/LNSGKGSNL b - 3";
+        std::fs::write(&seeds, format!("0.9 sfen {far}\n")).expect("書き出し");
+        let out = dir.join("book.db").to_string_lossy().into_owned();
+        let mut cfg = Config {
+            out: out.clone(),
+            eval: String::new(),
+            ply: 24,
+            width: 2,
+            full_ply: 0,
+            depth: 1,
+            hash_mb: 1,
+            threads: 1,
+            max_positions: 2,
+            margin: 100,
+            save_every: 25,
+            stop_file: None,
+            games: Vec::new(),
+            max_ply: 8,
+            seeds: Some(seeds.to_string_lossy().into()),
+            temp: 40.0,
+            min_prob: 1e-4,
+        };
+        mine(&cfg).expect("1回目");
+        let book = Book::load(&out).expect("読める");
+        assert_eq!(book.len(), 2);
+        let start = book_key(&Position::from_sfen(SFEN_STARTPOS).unwrap());
+        let far_key = far.rsplit_once(' ').unwrap().0.to_string();
+        assert_eq!(book.order, vec![start, far_key]);
+
+        cfg.max_positions = 4;
+        mine(&cfg).expect("2回目");
+        let book = Book::load(&out).expect("読める");
+        assert_eq!(book.len(), 4, "続きから2局面を足す");
+    }
+
     /// 実際に探索する。深さ1・1局面に絞り、CIで重くならないようにする。
     /// 評価関数は渡さないので駒得だけで指すが、確かめたいのは定跡の
     /// 追記と冪等性なので影響しない。
@@ -1670,6 +2002,9 @@ P9+KY+KE+GI+KI+OU+KI+GI+KE+KY
             stop_file: None,
             games: vec![dir.to_string_lossy().into()],
             max_ply: 24,
+            seeds: None,
+            temp: 40.0,
+            min_prob: 1e-4,
         };
         let seeds = collect_seeds(&collect_csa_files(&cfg.games).expect("列挙"), 24).seeds;
         assert_eq!(seeds.len(), 5);
