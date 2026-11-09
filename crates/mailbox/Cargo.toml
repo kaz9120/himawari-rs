@@ -17,7 +17,7 @@ copy-undo = []
 default = ["stride16"]
 stride16 = []
 
-# 既存のcoreは正しさの照合（perft・生成の列）と段階4の計測にだけ使う。本体は依存しない。
+# 既存のcoreは正しさの照合（perft・生成の列）とcoreとの速さの比較にだけ使う。本体は依存しない。
 # himawari-toolsは計測の局面リストの読み込みに使う（boardbenchと同じ局面）
 [dev-dependencies]
 himawari-core = { path = "../core" }
@@ -25,7 +25,7 @@ himawari-tools = { path = "../tools" }
 # 1手詰めの照合にcoreの探索側の mate_1ply を使う
 himawari-engine = { path = "../engine" }
 
-# 段階4のミクロな計測。cargo bench -p himawari-mailbox --bench mbbench
+# 盤面操作のミクロな計測。cargo bench -p himawari-mailbox --bench mbbench
 [[bench]]
 name = "mbbench"
 harness = false
