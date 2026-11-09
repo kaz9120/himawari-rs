@@ -302,8 +302,9 @@ const fn bit(d: usize) -> u8 {
 const GOLD_STEPS: [i8; 6] = [-1, 1, S, -S, S - 1, -S - 1];
 /// 先手の桂の2つの跳び先の差分。
 pub const KNIGHT_STEPS: [i8; 2] = [S - 2, -S - 2];
-const ORTH: u8 = bit(UP) | bit(DOWN) | bit(LEFT) | bit(RIGHT);
-const DIAG: u8 = bit(UL) | bit(DR) | bit(UR) | bit(DL);
+/// 縦横と斜めの方向のビット。
+pub const ORTH: u8 = bit(UP) | bit(DOWN) | bit(LEFT) | bit(RIGHT);
+pub const DIAG: u8 = bit(UL) | bit(DR) | bit(UR) | bit(DL);
 
 /// 先手の駒種ごとの利き。
 const fn black_moves(pt: u8) -> PieceMoves {

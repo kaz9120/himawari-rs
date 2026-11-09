@@ -85,6 +85,62 @@ const GOLD_LIKE_MASK: [u128; 16] = {
 /// 成駒4種と金は5、歩1・香2・桂3・銀4・角6・飛7・馬8・龍9・玉10。
 const ATT_CLASS: [u8; 16] = [0, 0, 5, 5, 5, 5, 8, 9, 10, 5, 1, 2, 3, 4, 6, 7];
 
+/// 短い利きの差分の数。玉の8方向と桂の2つ。
+const MINATT_DIRS: usize = 10;
+
+/// 色ごとの短い利きの差分と、駒種から反転した階級（`16 − 階級`）を引く表。
+///
+/// 要素は `(列の差, 段の差, 表)` で、表は駒種（0〜15）を添字にし、その差分に短い利きを
+/// 持たない駒種と、駒でない0・1は0を返す。飛び利きは含めない。
+#[cfg(feature = "stride16")]
+const MINATT_SHORT: [[(i8, i8, [u8; 16]); MINATT_DIRS]; 2] = {
+    let mut t = [[(0i8, 0i8, [0u8; 16]); MINATT_DIRS]; 2];
+    let mut c = 0;
+    while c < 2 {
+        let mut n = 0;
+        let mut pt = 2;
+        while pt < 16 {
+            let m = &MOVES[c * 16 + pt];
+            let mut k = 0;
+            while k < m.n_short as usize {
+                let o = m.short[k] as i32;
+                let dc = (o + STRIDE / 2).div_euclid(STRIDE);
+                let dr = o - dc * STRIDE;
+                // 既に並べた差分か
+                let mut j = 0;
+                while j < n && !(t[c][j].0 as i32 == dc && t[c][j].1 as i32 == dr) {
+                    j += 1;
+                }
+                if j == n {
+                    t[c][n] = (dc as i8, dr as i8, [0u8; 16]);
+                    n += 1;
+                }
+                t[c][j].2[pt] = 16 - ATT_CLASS[pt];
+                k += 1;
+            }
+            pt += 1;
+        }
+        assert!(n == MINATT_DIRS);
+        c += 1;
+    }
+    t
+};
+
+/// 筋のベクトルのレーンを段の差 `dr`（−2〜2）だけ下へずらす。レーンiへはレーン i−dr が来る。
+/// 回り込んで来るレーンは壁の升か、読まない壁のレーンへ落ちる。
+#[cfg(feature = "stride16")]
+#[inline(always)]
+fn shift_lanes(v: std::simd::Simd<u8, 16>, dr: i8) -> std::simd::Simd<u8, 16> {
+    match dr {
+        -2 => v.rotate_elements_left::<2>(),
+        -1 => v.rotate_elements_left::<1>(),
+        0 => v,
+        1 => v.rotate_elements_right::<1>(),
+        2 => v.rotate_elements_right::<2>(),
+        _ => unreachable!(),
+    }
+}
+
 /// 8升ぶんの利き数に1ずつ足す語。
 const ONES64: u64 = 0x0101_0101_0101_0101;
 
@@ -1123,10 +1179,122 @@ impl Position {
     /// 下位9ビットは `effect_codes` と同じ語で、上位7ビットが `先手の階級 * 11 + 後手の階級` である。
     /// 階級はengineの `side_feat` と同じで、0は利きなし、1〜10が歩・香・桂・銀・金と成駒・角・飛・馬・龍・玉。
     ///
+    /// 階級は、反転した値 `16 − 階級`（利きなしは0）の最大で求める。飛び利きは、利きの表の方向の
+    /// ビットから筋のベクトルで求め、決まらない駒種（香と、飛と龍・角と馬の両方を持つ色）だけ
+    /// 升をたどって置き場へ書く。短い利きは駒ごとに書かず、1筋16升のベクトルで全升をまとめて求める。
+    /// 差分ごとに、駒の符号から階級を引く表（`MINATT_SHORT`）で盤の列を引き、差分の分だけ列とレーンを
+    /// ずらして最大を取る。列の外へずれたレーンは壁の升から来るので、表が0を返す。
+    #[cfg(feature = "stride16")]
+    pub fn effect_minatt_codes(&self, out: &mut [u16; 81]) {
+        use std::simd::Select;
+        use std::simd::Simd;
+        use std::simd::cmp::{SimdOrd, SimdPartialEq};
+        use std::simd::num::SimdUint;
+        type U8 = Simd<u8, 16>;
+        type U16 = Simd<u16, 16>;
+        // 飛び利きは、利きの表が持つ方向のビット（`longdir`）から求める。縦横の線は飛か龍、
+        // 斜めの線は角か馬から来るので、色がどちらか一方しか持たなければ、ビットの立つ升の
+        // 階級は1つに決まる（`long_v`）。両方を持つ色の駒種と香だけ、升をたどって書く。
+        // 香の前方の線も縦横のビットを立てるが、その升へは香の階級も書くので、最大を取れば
+        // 香が残る（香の階級2は飛・龍より小さい）
+        let mut ma = [[0u8; LEN]; 2];
+        let mut long_v = [[0u8; 2]; 2];
+        for (ci, m) in ma.iter_mut().enumerate() {
+            let ps = &self.psets[ci];
+            let p0 = (ci as u8) << 4;
+            let v_lance = 16 - ATT_CLASS[LANCE as usize];
+            for_each81(ps[LANCE as usize], |s| {
+                self.paint_long(m, p0 | LANCE, s, v_lance)
+            });
+            for (k, pair) in [[ROOK, DRAGON], [BISHOP, HORSE]].into_iter().enumerate() {
+                let has = pair.map(|pt| ps[pt as usize] != 0);
+                if has == [true, true] {
+                    for pt in pair {
+                        let v = 16 - ATT_CLASS[pt as usize];
+                        for_each81(ps[pt as usize], |s| self.paint_long(m, p0 | pt, s, v));
+                    }
+                } else if let Some(i) = has.iter().position(|&h| h) {
+                    long_v[ci][k] = 16 - ATT_CLASS[pair[i] as usize];
+                }
+            }
+        }
+        // 盤の列。筋fの段0〜8がレーン0〜8に載り、残りのレーンは壁になる
+        let column = |f: i32| {
+            let base = (i32::from(crate::board::idx(0, 0)) + f * STRIDE) as usize;
+            U8::from_slice(&self.board[base..base + 16])
+        };
+        let zero = U8::splat(0);
+        let mut tmp = [0u16; 9 * 8 + 16];
+        let three = U8::splat(3);
+        for f in 0..9u8 {
+            let base = crate::board::idx(f, 0) as usize;
+            let mut cls = [zero; 2];
+            for (ci, cl) in cls.iter_mut().enumerate() {
+                let mut v = U8::from_slice(&ma[ci][base..base + 16]);
+                let ld = U8::from_slice(&self.longdir[ci][base..base + 16]);
+                for (k, dirs) in [ORTH, DIAG].into_iter().enumerate() {
+                    let hit = (ld & U8::splat(dirs)).simd_ne(zero);
+                    v = v.simd_max(hit.select(U8::splat(long_v[ci][k]), zero));
+                }
+                for &(dc, dr, tbl) in &MINATT_SHORT[ci] {
+                    let src = column(i32::from(f) - i32::from(dc));
+                    // 後手の表は色のビットを反転して引く。相手の駒は16以上になり、表引きが0を返す
+                    let idx = if ci == 0 { src } else { src ^ U8::splat(16) };
+                    let t = U8::from_array(tbl).swizzle_dyn(idx);
+                    v = v.simd_max(shift_lanes(t, dr));
+                }
+                *cl = v.simd_ne(zero).select(U8::splat(16) - v, zero);
+            }
+            let p = U8::from_slice(&self.board[base..base + 16]);
+            let cb = U8::from_slice(&self.count[0][base..base + 16]).simd_min(three);
+            let cw = U8::from_slice(&self.count[1][base..base + 16]).simd_min(three);
+            let mb = cls[0].cast::<u16>();
+            let mw = cls[1].cast::<u16>();
+            let kind = (p & U8::splat(15)).saturating_sub(U8::splat(1))
+                + ((p >> U8::splat(4)) & U8::splat(1)) * U8::splat(14);
+            let code: U16 = (kind.cast::<u16>() << U16::splat(4))
+                | (cb.cast::<u16>() << U16::splat(2))
+                | cw.cast::<u16>()
+                | ((mb * U16::splat(11) + mw) << U16::splat(9));
+            let at = f as usize * 9;
+            tmp[at..at + 16].copy_from_slice(code.as_array());
+        }
+        out.copy_from_slice(&tmp[..81]);
+    }
+
+    /// 升sの飛び駒pの飛び利きの先へ、反転した階級vを最大で書く（`effect_minatt_codes` の下請け）。
+    /// 壁の升にも書くが、読む側は盤の升しか見ない。
+    #[cfg(feature = "stride16")]
+    #[inline(always)]
+    fn paint_long(&self, m: &mut [u8; LEN], p: u8, s: u8, v: u8) {
+        let mut dirs = MOVES[p as usize].long;
+        while dirs != 0 {
+            let step = i32::from(DELTA[dirs.trailing_zeros() as usize]);
+            dirs &= dirs - 1;
+            let mut i = i32::from(s) + step;
+            loop {
+                m[i as usize] = m[i as usize].max(v);
+                if self.board[i as usize] != EMPTY {
+                    break;
+                }
+                i += step;
+            }
+        }
+    }
+
     /// 色ごとに、階級の高い駒から順に利き先へ階級を書き、低い駒で上書きする。最後に書いた駒が
     /// その升の最小の攻め駒になるので、比べる手間が要らない。短い利きは3列ぶんの窓（`SHORT_WIN`）で
     /// まとめて書き、飛び利きは駒に当たるまで升をたどる。
+    ///
+    /// 1列16升でない配置の版で、1列16升の版の照合にも使う。
+    #[cfg(not(feature = "stride16"))]
     pub fn effect_minatt_codes(&self, out: &mut [u16; 81]) {
+        self.effect_minatt_codes_paint(out);
+    }
+
+    /// `effect_minatt_codes` を、駒ごとに利き先へ階級を書いて作る版。
+    #[cfg_attr(feature = "stride16", allow(dead_code))]
+    pub(crate) fn effect_minatt_codes_paint(&self, out: &mut [u16; 81]) {
         use std::simd::Simd;
         use std::simd::cmp::SimdOrd;
         use std::simd::num::SimdUint;

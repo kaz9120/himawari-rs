@@ -222,6 +222,10 @@ pub struct NnueState {
     /// 利きの段。`entries` と同じ添字で並ぶ。
     /// `EFF_OUT` が0の構成では空で、誰も触らない。
     eff: Vec<EffEntry>,
+    /// `effect_begin` が並べた、最上段の利きの段へ当てる行の組。
+    eff_pairs: Box<[EffPair; 2 * 81]>,
+    /// 当てる行の組の数＋1。0なら当てる組は無い（`effect_begin` が済ませた）。
+    eff_pending: usize,
     /// 隠れ層へ渡す連結ベクトルの置き場。評価のたびにゼロ埋めすると
     /// 1KBあまりのmemsetが走るので使い回す。各部分が書く範囲は構成で決まり、
     /// 毎回同じ範囲を上書きする。どこも書かない余白は確保時のゼロのまま残る
@@ -256,6 +260,8 @@ impl NnueState {
             eff: std::iter::repeat_with(EffEntry::empty)
                 .take(if EFF_OUT != 0 { MAX_ENTRIES } else { 0 })
                 .collect(),
+            eff_pairs: Box::new([([0; 2], [0; 2]); 2 * 81]),
+            eff_pending: 0,
             concat: Box::new([0; CONCAT]),
         }
     }
@@ -304,6 +310,11 @@ impl NnueState {
     /// 盤は `EvalBoard` 越しに読む。coreの局面のほか、探索の盤（`SearchBoard`）も渡せる。
     pub fn evaluate<B: EvalBoard + ?Sized>(&mut self, net: &NnueNetwork, pos: &B) -> Value {
         let stm = pos.side_to_move();
+        // 利きの部分は、入れ替える行を先に決めて先読みさせ、FTの差分を作ってから当てる。
+        // 先読みからその行を読むまでの間に、FTの計算が挟まる
+        if EFF_OUT != 0 {
+            self.effect_begin(net, pos);
+        }
         // 最上段を差分で作るときは、活性も同じパスで書く
         if !self.ensure_both(net, pos, Some(stm)) {
             let top = &self.entries[self.top];
@@ -317,7 +328,7 @@ impl NnueState {
         if EFF_OUT != 0 {
             // 利きの部分は祖先からの差分で作る。F2と最小の攻め駒の組も
             // 同じ升の語の差分で持つ
-            self.ensure_effect(net, pos);
+            self.effect_end(net);
             let concat = &mut *self.concat;
             let e = &self.eff[self.top];
             for (k, c) in [(0usize, stm), (1, stm.flip())] {
@@ -339,12 +350,17 @@ impl NnueState {
     /// 利きのaccumulatorを最上段に用意する。
     ///
     /// 81升の語を盤から受け取り、参照の局面の語と比べて変わった升だけを当てる。
-    /// 参照の候補は、計算済みの祖先と、この段に残る前回の中身（兄弟か従兄弟の
-    /// 局面）の2つで、変わった升が少ないほうを使う。**途中の手の材料は要らない。**
-    /// どちらも40升を超えたら全計算する。利きの特徴は玉位置に依らないので、
+    /// 参照の候補は、計算済みの祖先、この段に残る前回の中身（兄弟か従兄弟の
+    /// 局面）、1つ上の段に残る前回の中身の3つで、変わった升が最も少ないものを使う。**途中の手の材料は要らない。**
+    /// どれも40升を超えたら全計算する。利きの特徴は玉位置に依らないので、
     /// 玉が動いても参照にできる。
-    fn ensure_effect<B: EvalBoard + ?Sized>(&mut self, net: &NnueNetwork, pos: &B) {
+    ///
+    /// 2つに分けて呼ぶ。`effect_begin` が語を作って参照を選び、入れ替える行の組を
+    /// 並べて先読みさせる。`effect_end` が行を当てる。間にFTの差分を作る。
+    /// 当てる行が無い経路（全計算と、F2だけの構成）は `effect_begin` で済ませる。
+    fn effect_begin<B: EvalBoard + ?Sized>(&mut self, net: &NnueNetwork, pos: &B) {
         let top = self.top;
+        self.eff_pending = 0;
         if self.eff[top].computed {
             return;
         }
@@ -354,27 +370,58 @@ impl NnueState {
         } else {
             pos.effect_codes(&mut codes);
         }
-        let here = &self.eff[top];
-        let from_here = here.coherent.then(|| codes_diff(&codes, &here.codes));
+        // 参照の候補。この段の前回の中身、計算済みの祖先、1つ上の段の前回の中身（直前に
+        // 調べた兄弟の子）の順に並べ、変わった升が最も少ないものを選ぶ。同数なら前を選ぶ
+        let here = self.eff[top].coherent.then_some(top);
         let anc = (0..top).rev().find(|&i| self.eff[i].computed);
-        let from_anc = anc.map(|a| (a, codes_diff(&codes, &self.eff[a].codes)));
-        let far = |c: &Bitboard| c.count() > EFF_REFRESH_ABOVE;
-        match (from_here, from_anc) {
-            // 同数なら、写さずに済むこの段を使う
-            (Some(h), a) if !far(&h) && a.is_none_or(|(_, c)| h.count() <= c.count()) => {
-                effect_apply(net, &codes, &mut self.eff[top], h);
+        let up = (top + 1 < self.eff.len() && self.eff[top + 1].coherent).then_some(top + 1);
+        let mut best: Option<(usize, Bitboard)> = None;
+        for i in [here, anc, up].into_iter().flatten() {
+            let c = codes_diff(&codes, &self.eff[i].codes);
+            if best.is_none_or(|(_, b)| c.count() < b.count()) {
+                best = Some((i, c));
             }
-            (_, Some((a, c))) if !far(&c) => {
-                let (before, after) = self.eff.split_at_mut(top);
-                let e = &mut after[0];
-                e.acc = before[a].acc;
-                e.codes = before[a].codes;
-                effect_apply(net, &codes, e, c);
+        }
+        match best {
+            Some((i, c)) if c.count() <= EFF_REFRESH_ABOVE => {
+                if i != top {
+                    let (src, dst) = if i < top {
+                        let (before, after) = self.eff.split_at_mut(top);
+                        (&before[i], &mut after[0])
+                    } else {
+                        let (before, after) = self.eff.split_at_mut(i);
+                        (&after[0], &mut before[top])
+                    };
+                    dst.acc = src.acc;
+                    dst.codes = src.codes;
+                }
+                if SIDE_MINATT_INC {
+                    let e = &mut self.eff[top];
+                    let n = effect_pairs(net, &codes, &e.codes, c, &mut self.eff_pairs);
+                    // accはまだ前の局面のまま。当て終わるまで参照に使わせない
+                    e.codes = codes;
+                    e.coherent = false;
+                    self.eff_pending = n + 1;
+                    return;
+                }
+                effect_apply(net, &codes, &mut self.eff[top], c);
             }
             _ => effect_refresh(net, &codes, &mut self.eff[top]),
         }
         let e = &mut self.eff[top];
         e.codes = codes;
+        e.computed = true;
+        e.coherent = true;
+    }
+
+    /// `effect_begin` が並べた行の組を当て、利きのaccumulatorを仕上げる。
+    fn effect_end(&mut self, net: &NnueNetwork) {
+        let Some(n) = self.eff_pending.checked_sub(1) else {
+            return;
+        };
+        self.eff_pending = 0;
+        let e = &mut self.eff[self.top];
+        nnue_simd::effect_rows_swap(net, &mut e.acc, &self.eff_pairs[..n]);
         e.computed = true;
         e.coherent = true;
     }
@@ -713,35 +760,53 @@ fn codes_diff(a: &[u16; 81], b: &[u16; 81]) -> Bitboard {
 fn effect_apply(net: &NnueNetwork, codes: &[u16; 81], e: &mut EffEntry, changed: Bitboard) {
     let old_codes = &e.codes;
     let mut sqs = changed.into_iter();
-    if SIDE_MINATT_INC {
-        // 語が変わった升で、F2の行と最小の攻め駒の行のうち変わったほうだけを入れ替える。
-        // F2の行は下位9ビット、最小の攻め駒の行は駒と階級（4ビット目から上）で決まる
-        let mut pending = None;
-        nnue_simd::effect_rows_update(net, &mut e.acc, || {
-            if let Some(p) = pending.take() {
-                return Some(p);
-            }
-            loop {
-                let sq = sqs.next()?;
-                let (old, new) = (old_codes[sq.index()], codes[sq.index()]);
-                let ma = ((old ^ new) & !0xF != 0)
-                    .then(|| (Some(side_minatt_pair(sq, old)), side_minatt_pair(sq, new)));
-                if (old ^ new) & 0x1FF != 0 {
-                    pending = ma;
-                    return Some((Some(side_f2_pair(sq, old)), side_f2_pair(sq, new)));
-                }
-                if ma.is_some() {
-                    return ma;
-                }
-            }
-        });
-        return;
-    }
     nnue_simd::effect_rows_update(net, &mut e.acc, || {
         let sq = sqs.next()?;
         let (old, new) = (old_codes[sq.index()], codes[sq.index()]);
         Some((Some(effect_code_pair(sq, old)), effect_code_pair(sq, new)))
     });
+}
+
+/// 側の差分で入れ替える行の組を `out` の先頭へ並べ、組の数を返す。並べながら行を先読みさせる。
+///
+/// F2と最小の攻め駒の組の構成で使う。語が変わった升で、F2の行と最小の攻め駒の行の
+/// うち変わったほうだけを入れ替える。F2の行は下位9ビット、最小の攻め駒の行は駒と
+/// 階級（4ビット目から上）で決まる。
+///
+/// 組は分岐なしで並べる。変わったかどうかは升ごとにばらつき、分岐で選ぶと予測が外れる。
+/// 表は40MBあり、当てながら読むと読み込みの待ちが重なるので、先に並べて先読みさせる。
+fn effect_pairs(
+    net: &NnueNetwork,
+    codes: &[u16; 81],
+    old_codes: &[u16; 81],
+    changed: Bitboard,
+    out: &mut [EffPair; 2 * 81],
+) -> usize {
+    let mut n = 0;
+    for sq in changed {
+        let (old, new) = (old_codes[sq.index()], codes[sq.index()]);
+        let f2 = (side_f2_pair(sq, old), side_f2_pair(sq, new));
+        out[n] = f2;
+        n += usize::from((old ^ new) & 0x1FF != 0);
+        let ma = (side_minatt_pair(sq, old), side_minatt_pair(sq, new));
+        out[n] = ma;
+        n += usize::from((old ^ new) & !0xF != 0);
+        for f in [f2.0, f2.1, ma.0, ma.1].as_flattened() {
+            prefetch_eff_row(net, *f);
+        }
+    }
+    n
+}
+
+/// 側の差分で入れ替える行の組。`(引く行, 足す行)` で、それぞれ両視点の行番号を持つ。
+type EffPair = ([u32; 2], [u32; 2]);
+
+/// 側の表の行fの先読みを始めさせる。行は `EFF_OUT` 個のi16（128バイト）だが、
+/// 先頭のキャッシュラインだけを読ませる。2本目まで先読みすると命令が増え、速くならなかった。
+#[inline(always)]
+fn prefetch_eff_row(net: &NnueNetwork, f: u32) {
+    let p = net.eff_w.as_ptr().wrapping_add(f as usize * EFF_OUT);
+    crate::prefetch::line(p);
 }
 
 /// 両視点の特徴の添字。`[Color; 2]::map` の閉包はインライン化されずに残ったので、
@@ -1226,6 +1291,43 @@ mod tests {
             }
         }
         assert!(checked > 5000, "確かめた局面が少なすぎる: {checked}");
+    }
+
+    /// 飛と龍、角と馬を同じ色が持つ局面でも、語が正解器と一致すること。配列盤は、
+    /// 片方しか持たない駒種の飛び利きを方向のビットから求め、両方を持つ駒種だけ升をたどる。
+    /// ランダムな手順から、そういう局面だけを拾って確かめる。
+    #[test]
+    fn search_board_side_codes_with_promoted_sliders() {
+        let mut rng = Rng(0x0BAD_5EED_1234_5678);
+        let mut checked = 0;
+        for _ in 0..400 {
+            let mut pos = Position::from_sfen(SFEN_STARTPOS).unwrap();
+            let mut sb = crate::board::SearchBoard::new(pos.clone());
+            for _ in 0..250 {
+                let mut list = MoveList::default();
+                generate_legal(&pos, true, &mut list);
+                if list.is_empty() {
+                    break;
+                }
+                let m = list.as_slice()[(rng.next() % list.len() as u64) as usize];
+                pos.do_move(m);
+                sb.do_move(m);
+                let both = |c, a, b| !pos.pieces(c, a).is_empty() && !pos.pieces(c, b).is_empty();
+                let mixed = [Color::Black, Color::White].into_iter().any(|c| {
+                    both(c, PieceType::ROOK, PieceType::DRAGON)
+                        || both(c, PieceType::BISHOP, PieceType::HORSE)
+                });
+                if !mixed {
+                    continue;
+                }
+                let (mut got, mut want) = ([0u16; 81], [0u16; 81]);
+                sb.side_codes(&mut got);
+                crate::side_feat::f2_minatt_codes(&pos, &mut want);
+                assert_eq!(got, want, "升の語が食い違う: {}", pos.to_sfen());
+                checked += 1;
+            }
+        }
+        assert!(checked > 1000, "確かめた局面が少なすぎる: {checked}");
     }
 
     /// 語の最小の攻め駒の部分から戻した添字が、`side_feat` の `KIND_MINATT` と一致すること。

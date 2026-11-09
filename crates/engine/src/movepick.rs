@@ -674,7 +674,47 @@ fn partial_insertion_sort(a: &mut [ExtMove], limit: i32) {
         sorted_end += usize::from(take);
     }
     // 挿入ソートは同点を後ろへ置く安定ソートなので、安定ソートで同じ並びになる
-    a[..=sorted_end].sort_by_key(|e| std::cmp::Reverse(e.v));
+    stable_sort_desc(&mut a[..=sorted_end]);
+}
+
+/// 点数の降順に並べる。同点は元の並びを保つ（安定ソート）。
+///
+/// 21手以上は、点数・元の位置・手を1語に詰めて、語の降順に不安定ソートで並べる。
+/// 元の位置を点数の次の桁に置くので、同点は元の並びに戻り、安定ソートと同じ並びになる。
+/// 標準の安定ソートは手を比べるたびに点数を取り出すが、語なら整数の比較で済む。
+/// 20手以下は標準の安定ソート（挿入ソート）のほうが速い。
+fn stable_sort_desc(a: &mut [ExtMove]) {
+    /// 元の位置の桁幅。手の数は `MoveList::CAPACITY` を超えない
+    const IDX_BITS: u32 = 10;
+    const MOVE_BITS: u32 = 21;
+    const _: () = assert!(MoveList::CAPACITY <= 1 << IDX_BITS);
+    const _: () = assert!(32 + IDX_BITS + MOVE_BITS <= 64);
+    let n = a.len();
+    if n <= 20 {
+        a.sort_by_key(|e| std::cmp::Reverse(e.v));
+        return;
+    }
+    let mut keys = [const { MaybeUninit::<u64>::uninit() }; MoveList::CAPACITY];
+    let idx_max = (1u64 << IDX_BITS) - 1;
+    for (i, (e, k)) in a.iter().zip(keys.iter_mut()).enumerate() {
+        let m = u64::from(e.m.bits());
+        debug_assert!(
+            m < 1 << MOVE_BITS,
+            "手が{MOVE_BITS}ビットに収まらない: {m:#x}"
+        );
+        // 点数は符号のビットを反転して、符号なしの大小と揃える
+        let v = u64::from(e.v.cast_unsigned() ^ 0x8000_0000);
+        k.write(v << 32 | (idx_max - i as u64) << MOVE_BITS | m);
+    }
+    // SAFETY: 先頭のn個は上のループで書いた（a.len() <= CAPACITY）
+    let keys = unsafe { std::slice::from_raw_parts_mut(keys.as_mut_ptr().cast::<u64>(), n) };
+    keys.sort_unstable_by(|x, y| y.cmp(x));
+    for (e, &k) in a.iter_mut().zip(keys.iter()) {
+        *e = ExtMove {
+            m: Move::from_bits((k & ((1 << MOVE_BITS) - 1)) as u32),
+            v: ((k >> 32) as u32 ^ 0x8000_0000).cast_signed(),
+        };
+    }
 }
 
 pub struct MovePicker {
@@ -1074,6 +1114,40 @@ impl MovePicker {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// 語に詰めて並べる版が、標準の安定ソートと同じ並びを返すこと。
+    /// 同点の多い点数と、点数の両端（i32の最小・最大）を混ぜる。
+    #[test]
+    fn stable_sort_desc_matches_std_stable_sort() {
+        let mut seed = 0x9E37_79B9_7F4A_7C15u64;
+        let mut rnd = || {
+            seed ^= seed << 13;
+            seed ^= seed >> 7;
+            seed ^= seed << 17;
+            seed
+        };
+        for n in [0, 1, 2, 5, 20, 21, 22, 40, 100, 300, MoveList::CAPACITY] {
+            for _ in 0..20 {
+                let mut a: Vec<ExtMove> = (0..n)
+                    .map(|_| ExtMove {
+                        m: Move::from_bits((rnd() & 0x1F_FFFF) as u32),
+                        v: match rnd() % 8 {
+                            0 => i32::MIN,
+                            1 => i32::MAX,
+                            _ => (rnd() % 16) as i32 - 8,
+                        },
+                    })
+                    .collect();
+                let mut want = a.clone();
+                want.sort_by_key(|e| std::cmp::Reverse(e.v));
+                stable_sort_desc(&mut a);
+                assert!(
+                    a.iter().zip(&want).all(|(x, y)| x.m == y.m && x.v == y.v),
+                    "並びが食い違う: n={n}"
+                );
+            }
+        }
+    }
 
     /// 共有historyの表がスレッド数に比例して伸びること
     /// （history.h:151-153）。
