@@ -602,6 +602,17 @@ const L1_ACCS: usize = L1_OUT / 4;
 #[cfg(all(target_arch = "aarch64", target_feature = "dotprod"))]
 const L1_ACCS_MAX: usize = 16;
 
+/// 第1層の和を分けて積む組の数。SDOTの依存の連鎖を組の数で割る。
+/// アキュムレータの総数（`L1_ACCS * L1_SETS`）を16本以下に保ち、スピルさせない。
+#[cfg(all(target_arch = "aarch64", target_feature = "dotprod"))]
+const L1_SETS: usize = if L1_ACCS <= 4 {
+    4
+} else if L1_ACCS <= 8 {
+    2
+} else {
+    1
+};
+
 /// バイトマスクから非ゼロ位置8個を引く表。
 ///
 /// `NNZ_LUT[m]` は、mのビットが立っている位置を前へ詰めた並びになる。
@@ -738,10 +749,9 @@ fn affine_relu_l1_sparse(wt: &[i8], b: &[i32], x: &[u8; CONCAT], out: &mut [u8])
     // 範囲内に収まる。活性の4バイト読みも同じ理由で範囲内。書き出しは
     // sumsの L1_OUT 要素ちょうど
     unsafe {
-        let mut acc: [int32x4_t; L1_ACCS] = [vdupq_n_s32(0); L1_ACCS];
-        // 2チャンクずつ別の和へ積み、最後に足す。i32の和は正確なので順序を変えても値は同じで、
-        // SDOTの依存の連鎖が半分になる
-        let mut acc2: [int32x4_t; L1_ACCS] = [vdupq_n_s32(0); L1_ACCS];
+        // L1_SETSチャンクずつ別の和へ積み、最後に足す。i32の和は正確なので順序を変えても
+        // 値は同じで、SDOTの依存の連鎖が1/L1_SETSになる
+        let mut accs: [[int32x4_t; L1_ACCS]; L1_SETS] = [[vdupq_n_s32(0); L1_ACCS]; L1_SETS];
         let step = |acc: &mut [int32x4_t; L1_ACCS], k: u16| {
             let k = usize::from(k);
             let v = x.as_ptr().add(k * 4).cast::<u32>().read_unaligned();
@@ -751,16 +761,20 @@ fn affine_relu_l1_sparse(wt: &[i8], b: &[i32], x: &[u8; CONCAT], out: &mut [u8])
                 *a = vdotq_s32(*a, vld1q_s8(base.add(r * 16)), xv);
             }
         };
-        let (pairs, rest) = nnz.as_chunks::<2>();
-        for &[k0, k1] in pairs {
-            step(&mut acc, k0);
-            step(&mut acc2, k1);
+        let (groups, rest) = nnz.as_chunks::<L1_SETS>();
+        for ks in groups {
+            for (acc, &k) in accs.iter_mut().zip(ks) {
+                step(acc, k);
+            }
         }
-        for &k in rest {
-            step(&mut acc, k);
+        for (acc, &k) in accs.iter_mut().zip(rest) {
+            step(acc, k);
         }
-        for (a, b) in acc.iter_mut().zip(acc2) {
-            *a = vaddq_s32(*a, b);
+        let [mut acc, others @ ..] = accs;
+        for o in others {
+            for (a, b) in acc.iter_mut().zip(o) {
+                *a = vaddq_s32(*a, b);
+            }
         }
         if L1_OUT.is_multiple_of(16) {
             // 16出力ずつ、バイアス・シフト・clipをベクトルのまま当てる
