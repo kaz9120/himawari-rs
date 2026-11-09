@@ -2,32 +2,15 @@
 //!
 //! 使い方:
 //!   makenet [--seed N] [--out path]           乱数ネット生成（配線検証・ベンチ用）
-//!   makenet --resize other.hmwr [--out path]  別の構成のネットを、いまの
-//!                                             ビルド構成へ合わせる
 //!   makenet --reorder perm.txt --from net.hmwr [--out path]
 //!                                             FT出力次元を並べ替える
 //!
 //! 学習器が作らないネットを用意する役目で、現行の実験でも使う。乱数ネットは
-//! 配線検証と学習の下限測定（ADR-0133）、`--resize` はネット形状の速度比較
-//! （ADR-0127）と継続学習の構成合わせ（ADR-0130）、`--reorder` は第1層の
+//! 配線検証と学習の下限測定（ADR-0133）、`--reorder` は第1層の
 //! 列駆動が飛ばせるチャンクを増やす並べ替え（ADR-0168）から呼ぶ。
 
 use himawari_engine::nnue::{CONCAT, FT_OUT, HALF, NnueNetwork};
-use himawari_engine::nnue_io::{load, load_resized, save};
-
-/// 別の構成のネットを、いまのビルド構成へ合わせる（ADR-0127）。
-/// 広げる向きなら評価値が完全に一致するので、構成だけを変えて探索木を
-/// 揃えた速度比較ができる。
-fn resize_net(path: &str) -> (NnueNetwork, String) {
-    let mut f = std::fs::File::open(path).unwrap_or_else(|e| {
-        eprintln!("開けません: {path}: {e}");
-        std::process::exit(1);
-    });
-    load_resized(&mut f).unwrap_or_else(|e| {
-        eprintln!("構成の変換に失敗: {e}");
-        std::process::exit(1);
-    })
-}
+use himawari_engine::nnue_io::{load, save};
 
 /// 置換を読む。1行1整数で、`0..FT_OUT` の順列であることを確かめる。
 fn read_perm(path: &str) -> Vec<usize> {
@@ -123,7 +106,6 @@ fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
     let mut seed = 1u64;
     let mut out = "random.hmwr".to_string();
-    let mut resize: Option<String> = None;
     let mut reorder: Option<String> = None;
     let mut from: Option<String> = None;
     let mut i = 0;
@@ -136,14 +118,6 @@ fn main() {
             "--out" => {
                 i += 1;
                 out = args.get(i).cloned().unwrap_or(out);
-            }
-            "--resize" => {
-                i += 1;
-                resize = args.get(i).cloned();
-                if resize.is_none() {
-                    eprintln!("--resize には元になる.hmwrのパスが必要です");
-                    std::process::exit(1);
-                }
             }
             "--reorder" => {
                 i += 1;
@@ -168,20 +142,15 @@ fn main() {
         }
         i += 1;
     }
-    let (net, lineage) = match (&resize, &reorder) {
-        (Some(path), None) => resize_net(path),
-        (None, Some(perm)) => {
+    let (net, lineage) = match &reorder {
+        Some(perm) => {
             let Some(src) = from.as_deref() else {
                 eprintln!("--reorder には --from で元の.hmwrを渡してください");
                 std::process::exit(1);
             };
             reorder_net(src, perm)
         }
-        (None, None) => (NnueNetwork::random(seed), format!("random seed={seed}")),
-        _ => {
-            eprintln!("--resize と --reorder は同時に指定できません");
-            std::process::exit(1);
-        }
+        None => (NnueNetwork::random(seed), format!("random seed={seed}")),
     };
     let mut f = std::fs::File::create(&out).unwrap_or_else(|e| {
         eprintln!("作成できません: {e}");

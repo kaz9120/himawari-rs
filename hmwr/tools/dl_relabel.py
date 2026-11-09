@@ -23,7 +23,7 @@ import numpy as np
 
 PSV_BYTES = 40
 SCORE_OFFSET = 32  # i16、リトルエンディアン
-SCORE_LIMIT = 30000  # mateの飽和。psv relabel（ADR-0205）と揃える
+SCORE_LIMIT = 30000  # mateの飽和。旧psv relabel（ADR-0205）と揃えた値
 DEFAULT_SCALE = 600.0  # training/model.py の SIGMOID_SCALE
 EPS = 1e-6
 

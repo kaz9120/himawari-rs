@@ -44,8 +44,6 @@ def test_covered_operations_are_blocked(command):
         "cargo build --release -p himawari-tools --bin psv",
         # hmwr にまだ無い操作は止めない。止めると抜け道が作られる
         "./target/release/psv dump --in a --limit 3",
-        "./target/release/psv relabel --in a --out b --depth 9 --jobs 8",
-        "./target/release/gensfen --out x --eval y",
         "cargo run --release -p himawari-tools --bin verify -- a b",
         # エンジンをUSIとして起動するのは止めない。包んだのは threadtune だけである
         "./target/release/himawari",

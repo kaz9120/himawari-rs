@@ -48,10 +48,6 @@ const _: () = {
     );
 };
 
-/// 構成の表の中で、HalfKPの区画が始まる行。HalfKPを側に入れる構成は消したので、常に `None`。
-/// 学習側（`crates/py`）が参照するので残す。
-pub const KP_BASE: Option<usize> = None;
-
 /// 特徴を作るのに要る盤の情報。升ごとの利き数と最小の攻め駒を、色ごとに1回だけ数える。
 pub struct SideBoard {
     pc: [Piece; 81],

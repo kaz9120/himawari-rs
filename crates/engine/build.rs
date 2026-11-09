@@ -7,7 +7,6 @@
 //! 256x16           FT→16→1          （隠れ層1つ）
 //! 256x32x32        FT→32→32→1       （隠れ層2つ）
 //! 1024x16x32       FT→16→32→1       （隠れ層2つ）
-//! 256x32x32x32     FT→32→32→32→1    （隠れ層3つ）
 //! 1024x16x32e64    上に、幅64の利きのaccumulatorを足す（ADR-0237）
 //! ```
 //!
@@ -18,13 +17,8 @@
 //! （ADR-0248）。書かなければF2だけを持つ。
 //!
 //! ```text
-//! 1024x16x32e64k8             玉の近傍の部分モデル（出力8）を足す（ADR-0246）
 //! 256x16x32e64-f2_minatt      F2に最小の攻め駒を足す（ADR-0248。主256で既定、ADR-0261）
 //! ```
-//!
-//! `k<K>` は種類の前に書く（`e64k8-f2_minatt`）。部分モデルは
-//! 側のaccumulatorと別の入口で、連結ベクトルの末尾に両玉ぶんの出力が並ぶ。
-//! どちらの入力も、升の語の差分で持つ。
 //!
 //! featureで持つと構成の数だけfeatureが要り、組み合わせが積で増える。
 //! 1つの文字列で受ければ構成を足すのにコード変更が要らない。
@@ -41,7 +35,6 @@ const DEFAULT_ARCH: &str = "256x16x32e64-f2_minatt";
 const FT_MULTIPLE: usize = 16;
 const L1_MULTIPLE: usize = 4;
 const L2_MULTIPLE: usize = 8;
-const L3_MULTIPLE: usize = 8;
 /// 隠れ層の入力に要る倍数。AVX2が32バイト単位で読むため、隠れ層の出力は
 /// この倍数へ切り上げて（ゼロ埋めして）次の層へ渡す。
 const PAD_MULTIPLE: usize = 32;
@@ -64,31 +57,19 @@ struct Arch {
     l1: usize,
     /// 隠れ層1つの構成では0。0なら隠れ層1から出力へ直結する。
     l2: usize,
-    /// 隠れ層2つ以下の構成では0。
-    l3: usize,
     /// 利きのaccumulatorの幅（ADR-0237）。0なら持たない。
     eff: usize,
     /// 側の入力の種類（`SIDE_KINDS` の番号）。空ならF2の従来の経路。
     eff_kinds: Vec<usize>,
-    /// 玉の近傍の部分モデルの出力の幅（ADR-0246）。0なら持たない。
-    sub: usize,
 }
 
 fn parse(spec: &str) -> Result<Arch, String> {
-    // 末尾の e<E>[k<K>][-<種類>[_<種類>…]] を先に切り離す。残りは従来の書式のまま読む
-    let (body, eff, eff_kinds, sub) = match spec.split_once('e') {
+    // 末尾の e<E>[-<種類>[_<種類>…]] を先に切り離す。残りは従来の書式のまま読む
+    let (body, eff, eff_kinds) = match spec.split_once('e') {
         Some((body, e)) => {
             let (e, kinds) = match e.split_once('-') {
                 Some((e, k)) => (e, Some(k)),
                 None => (e, None),
-            };
-            let (e, sub) = match e.split_once('k') {
-                Some((e, k)) => (
-                    e,
-                    k.parse::<usize>()
-                        .map_err(|_| format!("部分モデルの幅が整数でない: {k}"))?,
-                ),
-                None => (e, 0),
             };
             let eff = e
                 .parse::<usize>()
@@ -105,22 +86,21 @@ fn parse(spec: &str) -> Result<Arch, String> {
                     })
                     .collect::<Result<Vec<_>, _>>()?,
             };
-            (body, eff, kinds, sub)
+            (body, eff, kinds)
         }
-        None => (spec, 0, Vec::new(), 0),
+        None => (spec, 0, Vec::new()),
     };
     let parts: Vec<&str> = body.split('x').collect();
     let num = |name: &str, s: &str| -> Result<usize, String> {
         s.parse::<usize>()
             .map_err(|_| format!("{name}が整数でない: {s}"))
     };
-    let (ft, l1, l2, l3) = match parts.as_slice() {
-        [ft, l1] => (*ft, *l1, "0", "0"),
-        [ft, l1, l2] => (*ft, *l1, *l2, "0"),
-        [ft, l1, l2, l3] => (*ft, *l1, *l2, *l3),
+    let (ft, l1, l2) = match parts.as_slice() {
+        [ft, l1] => (*ft, *l1, "0"),
+        [ft, l1, l2] => (*ft, *l1, *l2),
         _ => {
             return Err(format!(
-                "`<FT>x<L1>[x<L2>[x<L3>]][e<E>]` の形で書く（例 256x16、512x16x32、1024x16x32e64）。\
+                "`<FT>x<L1>[x<L2>][e<E>]` の形で書く（例 256x16、512x16x32、1024x16x32e64）。\
                  渡された値: {spec}"
             ));
         }
@@ -129,10 +109,8 @@ fn parse(spec: &str) -> Result<Arch, String> {
         ft: num("FT", ft)?,
         l1: num("L1", l1)?,
         l2: num("L2", l2)?,
-        l3: num("L3", l3)?,
         eff,
         eff_kinds,
-        sub,
     })
 }
 
@@ -152,32 +130,14 @@ fn validate(a: &Arch) -> Result<(), String> {
     if a.l2 != 0 {
         check("L2", a.l2, L2_MULTIPLE)?;
     }
-    if a.l3 != 0 {
-        check("L3", a.l3, L3_MULTIPLE)?;
-    }
     if a.eff != 0 {
         check("利きの幅", a.eff, EFF_MULTIPLE)?;
     }
     if !a.eff_kinds.is_empty() && a.eff_kinds != [0, 1] {
         return Err("側の入力の種類は `-f2_minatt` だけを書ける".to_string());
     }
-    if a.sub > 64 {
-        return Err(format!(
-            "部分モデルの幅は64以下にする（{}が渡された）",
-            a.sub
-        ));
-    }
-    if a.l2 == 0 && a.l3 != 0 {
-        return Err("L2を書かずにL3だけ書くことはできない".to_string());
-    }
     // 最後の隠れ層は8レーンの内積で畳むので、8の倍数が要る
-    let last = if a.l3 != 0 {
-        a.l3
-    } else if a.l2 != 0 {
-        a.l2
-    } else {
-        a.l1
-    };
+    let last = if a.l2 != 0 { a.l2 } else { a.l1 };
     if !last.is_multiple_of(L2_MULTIPLE) {
         return Err(format!(
             "最後の隠れ層は{L2_MULTIPLE}の倍数にする（{last}が渡された）"
@@ -230,12 +190,6 @@ fn main() {
     writeln!(src, "pub const L2_OUT: usize = {};", arch.l2).unwrap();
     writeln!(
         src,
-        "/// 隠れ層3の出力次元。0なら層を挟まず、隠れ層2から出力へ直結する。"
-    )
-    .unwrap();
-    writeln!(src, "pub const L3_OUT: usize = {};", arch.l3).unwrap();
-    writeln!(
-        src,
         "/// 次の層へ渡すときの入力幅。{PAD_MULTIPLE}の倍数へ切り上げ、余りはゼロで\n\
          /// 埋める（SIMDが32バイト単位で読むため）。最後の層へ渡すぶんは\n\
          /// 8レーンの内積で畳むので切り上げない。"
@@ -283,20 +237,6 @@ fn main() {
     )
     .unwrap();
     writeln!(src, "pub const EFF_MAX_ACTIVE: usize = {eff_max};").unwrap();
-    writeln!(
-        src,
-        "/// 玉の近傍の部分モデルの出力の幅（片玉、ADR-0246）。0なら持たない。"
-    )
-    .unwrap();
-    writeln!(src, "pub const SUB_OUT: usize = {};", arch.sub).unwrap();
-    // 次の層へ渡すぶんだけ切り上げる。最後の隠れ層は内積で畳むので
-    // 切り上げない（余分なゼロ列を持たない）
-    let l2_pad = if arch.l3 == 0 {
-        arch.l2
-    } else {
-        arch.l2.next_multiple_of(PAD_MULTIPLE)
-    };
-    writeln!(src, "pub const L2_PAD: usize = {l2_pad};").unwrap();
     writeln!(src, "/// 構成名。評価ファイルの来歴とログに載せる。").unwrap();
     writeln!(src, "pub const ARCH: &str = {spec:?};").unwrap();
 

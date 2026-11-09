@@ -10,9 +10,7 @@ use std::simd::Simd;
 use std::simd::cmp::SimdOrd;
 use std::simd::num::SimdInt;
 
-use crate::nnue::{
-    CONCAT, EFF_OUT, FT_OUT, HALF, L1_OUT, L1_PAD, L2_OUT, L2_PAD, L3_OUT, NnueNetwork,
-};
+use crate::nnue::{CONCAT, EFF_OUT, FT_OUT, HALF, L1_OUT, L1_PAD, L2_OUT, NnueNetwork};
 use crate::value::Value;
 
 const I16_LANES: usize = 16;
@@ -871,18 +869,12 @@ pub fn forward_hidden(net: &NnueNetwork, concat: &[u8; CONCAT]) -> Value {
     let mut h2 = [0u8; L1_PAD];
     l1(net, concat, &mut h2[..L1_OUT]);
     // 隠れ層は書いたぶんだけ挟む。次元は定数なので使わない分岐は消える
-    let mut h3 = [0u8; L2_PAD];
-    let mut h4 = [0u8; L3_OUT];
+    let mut h3 = [0u8; L2_OUT];
     let last: &[u8] = if L2_OUT == 0 {
         &h2[..L1_OUT]
     } else {
-        l2(net, &h2, &mut h3[..L2_OUT]);
-        if L3_OUT != 0 {
-            affine_relu(&net.w4, &net.b4, &h3, &mut h4);
-            &h4
-        } else {
-            &h3[..L2_OUT]
-        }
+        l2(net, &h2, &mut h3);
+        &h3
     };
     // 出力層は1行なので行束ねの対象にならない。専用命令版のdotで畳む
     let out = net.b_out + dot(&net.w_out, last);

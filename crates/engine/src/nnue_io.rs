@@ -12,73 +12,44 @@
 use std::io::{Read, Write};
 
 use crate::nnue::{
-    ARCH, CONCAT, EFF_IN, EFF_OUT, FT_IN, FT_OUT, FtWeight, HALF, L1_OUT, L1_PAD, L2_OUT, L2_PAD,
-    L3_OUT, LAST_HIDDEN, NnueNetwork, SUB_OUT, ft_w_from_i16, pad_rows,
+    ARCH, CONCAT, EFF_IN, EFF_OUT, FT_IN, FT_OUT, FtWeight, HALF, L1_OUT, L1_PAD, L2_OUT,
+    LAST_HIDDEN, NnueNetwork, ft_w_from_i16, pad_rows,
 };
-use crate::submodel::SUB_PARAMS;
 
 const MAGIC: &[u8; 8] = b"HMWRNNUE";
-/// 隠れ層を3つ持つ4層構成の版（ADR-0127）。
-const FORMAT_VERSION_DEEP: u32 = 4;
 /// 隠れ層2つの3層構成の版。隠れ層の幅を別々に持つ。
 const FORMAT_VERSION_TWO_HIDDEN: u32 = 3;
 /// 隠れ層の幅を1つしか持たない旧版（L1とL2が同じ構成に限り読める）。
 const FORMAT_VERSION_UNIFORM_HIDDEN: u32 = 2;
-/// FT重みをi8で格納する版（ADR-0138）。寸法の並びは版3・版4と同じで、
+/// FT重みをi8で格納する版（ADR-0138）。寸法の並びは版3と同じで、
 /// 違いはFT重み1つあたりのバイト数だけである。
 const FORMAT_VERSION_TWO_HIDDEN_I8: u32 = 5;
-const FORMAT_VERSION_DEEP_I8: u32 = 6;
-/// FT出力の対を掛けて活性にする版（ADR-0171）。寸法の並びは版5・版6と
+/// FT出力の対を掛けて活性にする版（ADR-0171）。寸法の並びは版5と
 /// 同じで、違うのは `w2` の列幅（`CONCAT`）だけである。**版を分けないと、
 /// 積なしのネットを読んだときのエラーが「末尾に余分なバイトがある」に
 /// なって原因が読めない。**
 const FORMAT_VERSION_TWO_HIDDEN_I8_PAIR: u32 = 7;
-const FORMAT_VERSION_DEEP_I8_PAIR: u32 = 8;
 const FORMAT_VERSION_TWO_HIDDEN_PAIR: u32 = 9;
-const FORMAT_VERSION_DEEP_PAIR: u32 = 10;
-/// 利きのaccumulatorを持つ版（ADR-0237）。版7・版8の並びに、寸法として
+/// 利きのaccumulatorを持つ版（ADR-0237）。版7の並びに、寸法として
 /// 利きの特徴数と幅を足し、FT重みの後ろに利きのバイアスと重み（i16）を
 /// 置く。研究ブランチだけの最小の拡張で、自己記述の形式（Issue #768）が
 /// 入ったらそちらへ移す。
 const FORMAT_VERSION_TWO_HIDDEN_I8_PAIR_EFF: u32 = 11;
-const FORMAT_VERSION_DEEP_I8_PAIR_EFF: u32 = 12;
-/// 玉の近傍の部分モデルを持つ版（ADR-0246）。版11・版12の寸法の後ろに部分モデルの
-/// 出力の幅を足し、利きの重みの後ろに部分モデルの重み（学習側の形のf32）を置く。
-const FORMAT_VERSION_TWO_HIDDEN_I8_PAIR_EFF_SUB: u32 = 13;
-const FORMAT_VERSION_DEEP_I8_PAIR_EFF_SUB: u32 = 14;
+// 版4・6・8・10・12・14は隠れ層3つの構成、版13・14は玉の近傍の部分モデルを持つ構成の版である。
+// どちらの構成も消したので読まない。番号は再利用しない。
 
-/// 書き出しに使う版。層の数で決まる。FT重みはi8で書く（ADR-0138）。
-/// FT重みをi16で持つ版9・版10は、読み込みだけを受け付ける。積の有無は
+/// 書き出しに使う版。利きのaccumulatorの有無で決まる。FT重みはi8で書く（ADR-0138）。
+/// FT重みをi16で持つ版9は、読み込みだけを受け付ける。積の有無は
 /// ビルドで固定なので、このブランチは対応する版だけを書き、他は読まない。
-const FORMAT_VERSION: u32 = match (L3_OUT != 0, EFF_OUT != 0, SUB_OUT != 0) {
-    (true, false, _) => FORMAT_VERSION_DEEP_I8_PAIR,
-    (false, false, _) => FORMAT_VERSION_TWO_HIDDEN_I8_PAIR,
-    (true, true, false) => FORMAT_VERSION_DEEP_I8_PAIR_EFF,
-    (false, true, false) => FORMAT_VERSION_TWO_HIDDEN_I8_PAIR_EFF,
-    (true, true, true) => FORMAT_VERSION_DEEP_I8_PAIR_EFF_SUB,
-    (false, true, true) => FORMAT_VERSION_TWO_HIDDEN_I8_PAIR_EFF_SUB,
+const FORMAT_VERSION: u32 = if EFF_OUT != 0 {
+    FORMAT_VERSION_TWO_HIDDEN_I8_PAIR_EFF
+} else {
+    FORMAT_VERSION_TWO_HIDDEN_I8_PAIR
 };
-
-// 構成名の `k<K>` は `e<E>` の後ろにしか書けないので、部分モデルは利きのaccumulatorと組で持つ
-const _: () = assert!(SUB_OUT == 0 || EFF_OUT != 0);
 
 /// その版が利きのaccumulatorを持つか（ADR-0237）。
 const fn version_is_effect(v: u32) -> bool {
-    matches!(
-        v,
-        FORMAT_VERSION_TWO_HIDDEN_I8_PAIR_EFF
-            | FORMAT_VERSION_DEEP_I8_PAIR_EFF
-            | FORMAT_VERSION_TWO_HIDDEN_I8_PAIR_EFF_SUB
-            | FORMAT_VERSION_DEEP_I8_PAIR_EFF_SUB
-    )
-}
-
-/// その版が玉の近傍の部分モデルを持つか（ADR-0246）。
-const fn version_is_sub(v: u32) -> bool {
-    matches!(
-        v,
-        FORMAT_VERSION_TWO_HIDDEN_I8_PAIR_EFF_SUB | FORMAT_VERSION_DEEP_I8_PAIR_EFF_SUB
-    )
+    v == FORMAT_VERSION_TWO_HIDDEN_I8_PAIR_EFF
 }
 
 /// FT重み列をi16として読む。ファイルの版で1要素のバイト数が変わる
@@ -96,13 +67,8 @@ const fn version_is_ft_i8(v: u32) -> bool {
     matches!(
         v,
         FORMAT_VERSION_TWO_HIDDEN_I8
-            | FORMAT_VERSION_DEEP_I8
             | FORMAT_VERSION_TWO_HIDDEN_I8_PAIR
-            | FORMAT_VERSION_DEEP_I8_PAIR
             | FORMAT_VERSION_TWO_HIDDEN_I8_PAIR_EFF
-            | FORMAT_VERSION_DEEP_I8_PAIR_EFF
-            | FORMAT_VERSION_TWO_HIDDEN_I8_PAIR_EFF_SUB
-            | FORMAT_VERSION_DEEP_I8_PAIR_EFF_SUB
     )
 }
 
@@ -112,13 +78,8 @@ const fn version_is_pair(v: u32) -> bool {
     matches!(
         v,
         FORMAT_VERSION_TWO_HIDDEN_I8_PAIR
-            | FORMAT_VERSION_DEEP_I8_PAIR
             | FORMAT_VERSION_TWO_HIDDEN_PAIR
-            | FORMAT_VERSION_DEEP_PAIR
             | FORMAT_VERSION_TWO_HIDDEN_I8_PAIR_EFF
-            | FORMAT_VERSION_DEEP_I8_PAIR_EFF
-            | FORMAT_VERSION_TWO_HIDDEN_I8_PAIR_EFF_SUB
-            | FORMAT_VERSION_DEEP_I8_PAIR_EFF_SUB
     )
 }
 
@@ -137,17 +98,6 @@ fn require_effect(eff: [usize; 2]) -> Result<(), String> {
     Err(format!(
         "effect accumulator mismatch (ADR-0237): file [features, width] = {eff:?}, \
          build {want:?}; build with HIMAWARI_ARCH=...e<width> for effect nets"
-    ))
-}
-
-/// 部分モデルの出力の幅がビルドと合うかを確かめる（ADR-0246）。持たないファイルは0。
-fn require_sub(sub: usize) -> Result<(), String> {
-    if sub == SUB_OUT {
-        return Ok(());
-    }
-    Err(format!(
-        "king-window submodel mismatch (ADR-0246): file width {sub}, build {SUB_OUT}; \
-         build with HIMAWARI_ARCH=...k<width> for submodel nets"
     ))
 }
 
@@ -191,10 +141,6 @@ fn weight_bytes(net: &NnueNetwork) -> Vec<u8> {
     for &x in net.eff_b.iter().chain(&net.eff_w) {
         v.extend_from_slice(&x.to_le_bytes());
     }
-    // 部分モデル（ADR-0246）。持たない構成では空
-    for &x in &net.sub.raw {
-        v.extend_from_slice(&x.to_le_bytes());
-    }
 
     for &x in &net.b2 {
         v.extend_from_slice(&x.to_le_bytes());
@@ -209,12 +155,6 @@ fn weight_bytes(net: &NnueNetwork) -> Vec<u8> {
             v.extend_from_slice(&x.to_le_bytes());
         }
         push_rows(&mut v, &net.w3, L1_OUT, L1_PAD);
-    }
-    if L3_OUT != 0 {
-        for &x in &net.b4 {
-            v.extend_from_slice(&x.to_le_bytes());
-        }
-        push_rows(&mut v, &net.w4, L2_OUT, L2_PAD);
     }
     for &x in &net.w_out {
         v.push(x as u8);
@@ -240,16 +180,10 @@ pub fn save(net: &NnueNetwork, lineage: &str, w: &mut impl Write) -> std::io::Re
     for dim in [FT_IN, FT_OUT, L1_OUT, L2_OUT] {
         w.write_all(&(dim as u32).to_le_bytes())?;
     }
-    if L3_OUT != 0 {
-        w.write_all(&(L3_OUT as u32).to_le_bytes())?;
-    }
     if EFF_OUT != 0 {
         for dim in [EFF_IN, EFF_OUT] {
             w.write_all(&(dim as u32).to_le_bytes())?;
         }
-    }
-    if SUB_OUT != 0 {
-        w.write_all(&(SUB_OUT as u32).to_le_bytes())?;
     }
     let lb = lineage.as_bytes();
     w.write_all(&(lb.len() as u32).to_le_bytes())?;
@@ -321,8 +255,8 @@ impl<'a> Cursor<'a> {
     }
 }
 
-/// ファイルの構成（FT入力・FT出力・L1・L2・L3）。L3は3層構成では0。
-type Dims = [usize; 5];
+/// ファイルの構成（FT入力・FT出力・L1・L2）。
+type Dims = [usize; 4];
 
 /// ハッシュを進めながら重み列を読むリーダ（issue #428）。
 ///
@@ -422,8 +356,6 @@ struct Meta {
     version: u32,
     dims: Dims,
     eff: [usize; 2],
-    /// 部分モデルの出力の幅（ADR-0246）。持たない版では0。
-    sub: usize,
     lineage: String,
     hash: u64,
 }
@@ -440,21 +372,14 @@ fn read_meta(r: &mut impl Read) -> Result<Meta, String> {
     let mut u = || read_u32(r).map(|v| v as usize);
     // 旧版は隠れ層の幅を1つしか書かない。L1とL2が同じとみなす
     let dims: Dims = match version {
-        FORMAT_VERSION_DEEP
-        | FORMAT_VERSION_DEEP_I8
-        | FORMAT_VERSION_DEEP_I8_PAIR
-        | FORMAT_VERSION_DEEP_PAIR
-        | FORMAT_VERSION_DEEP_I8_PAIR_EFF
-        | FORMAT_VERSION_DEEP_I8_PAIR_EFF_SUB => [u()?, u()?, u()?, u()?, u()?],
         FORMAT_VERSION_TWO_HIDDEN
         | FORMAT_VERSION_TWO_HIDDEN_I8
         | FORMAT_VERSION_TWO_HIDDEN_I8_PAIR
         | FORMAT_VERSION_TWO_HIDDEN_PAIR
-        | FORMAT_VERSION_TWO_HIDDEN_I8_PAIR_EFF
-        | FORMAT_VERSION_TWO_HIDDEN_I8_PAIR_EFF_SUB => [u()?, u()?, u()?, u()?, 0],
+        | FORMAT_VERSION_TWO_HIDDEN_I8_PAIR_EFF => [u()?, u()?, u()?, u()?],
         FORMAT_VERSION_UNIFORM_HIDDEN => {
             let d = [u()?, u()?, u()?];
-            [d[0], d[1], d[2], d[2], 0]
+            [d[0], d[1], d[2], d[2]]
         }
         other => return Err(format!("unsupported format version: {other}")),
     };
@@ -463,7 +388,6 @@ fn read_meta(r: &mut impl Read) -> Result<Meta, String> {
     } else {
         [0, 0]
     };
-    let sub = if version_is_sub(version) { u()? } else { 0 };
     let llen = read_u32(r)? as usize;
     if llen > 4096 {
         return Err("lineage is too long".to_string());
@@ -480,7 +404,6 @@ fn read_meta(r: &mut impl Read) -> Result<Meta, String> {
         version,
         dims,
         eff,
-        sub,
         lineage,
         hash: expect_hash,
     })
@@ -491,7 +414,6 @@ fn read_header(r: &mut impl Read) -> Result<(u32, Dims, String, Vec<u8>), String
     let meta = read_meta(r)?;
     // resizeの経路は利きの重みを写さない。利きのネットは `load` で読む
     require_effect(meta.eff)?;
-    require_sub(meta.sub)?;
     let mut body = Vec::new();
     r.read_to_end(&mut body)
         .map_err(|e| format!("read failed: {e}"))?;
@@ -511,14 +433,12 @@ pub fn load(r: &mut impl Read) -> Result<(NnueNetwork, String), String> {
         version,
         dims,
         eff,
-        sub,
         lineage,
         hash: expect_hash,
     } = read_meta(r)?;
     require_pair(version)?;
     require_effect(eff)?;
-    require_sub(sub)?;
-    let expect = [FT_IN, FT_OUT, L1_OUT, L2_OUT, L3_OUT];
+    let expect = [FT_IN, FT_OUT, L1_OUT, L2_OUT];
     if dims != expect {
         return Err(format!(
             "architecture mismatch: file {dims:?} build {expect:?}"
@@ -538,24 +458,11 @@ pub fn load(r: &mut impl Read) -> Result<(NnueNetwork, String), String> {
     };
     let eff_b = cur.i16v(EFF_OUT)?;
     let eff_w = cur.i16v(EFF_IN * EFF_OUT)?;
-    let sub = crate::submodel::SubNet::from_raw(
-        cur.i32v(SUB_PARAMS)?
-            .into_iter()
-            .map(|x| f32::from_bits(x as u32))
-            .collect(),
-    );
     let b2 = cur.i32v(L1_OUT)?;
     let w2 = cur.i8v(L1_OUT * CONCAT)?;
     let (b3, w3) = if L2_OUT != 0 {
         let b = cur.i32v(L2_OUT)?;
         let w = pad_rows(&cur.i8v(L2_OUT * L1_OUT)?, L1_OUT, L1_PAD);
-        (b, w)
-    } else {
-        (Vec::new(), Vec::new())
-    };
-    let (b4, w4) = if L3_OUT != 0 {
-        let b = cur.i32v(L3_OUT)?;
-        let w = pad_rows(&cur.i8v(L3_OUT * L2_OUT)?, L2_OUT, L2_PAD);
         (b, w)
     } else {
         (Vec::new(), Vec::new())
@@ -572,13 +479,10 @@ pub fn load(r: &mut impl Read) -> Result<(NnueNetwork, String), String> {
         b2,
         w3,
         b3,
-        w4,
-        b4,
         w_out,
         b_out,
         eff_w,
         eff_b,
-        sub,
     }
     .finish();
     // 利きのaccumulatorは差分の経路でi16に持つ（ADR-0237のD2）。取りうる値が
@@ -612,33 +516,30 @@ pub fn load(r: &mut impl Read) -> Result<(NnueNetwork, String), String> {
 /// ままなので、活性が飽和した乱数ネットよりは現実に近い探索木になる。
 /// 小さい構成を基準にして比べたいときに使う。
 ///
-/// 3層のネットを4層構成へ読むと、足した層を恒等写像にする。活性は0..127で、
-/// 対角を64にすると `(64x) >> 6 == x` になるため、**層を足しても評価値が
-/// 変わらない。** 4層から3層へは落とせない。
+/// 隠れ層1つのネットを隠れ層2つの構成へ読むと、足した層を恒等写像にする。
+/// 活性は0..127で、対角を64にすると `(64x) >> 6 == x` になるため、
+/// **層を足しても評価値が変わらない。**
 ///
 /// **継続学習の初期値には、このままでは使えない**（ADR-0130）。広げた次元と、
 /// それを受ける次の層の列が両方ゼロなので、互いの勾配がゼロで固定し合う。
 /// 学習を続けるなら、どちらか片方へ微小な乱数を入れて対称性を破ること。
 /// ここでゼロ埋めを崩さないのは、速度計測が「評価値を1ビットも変えない」
 /// ことを要件にしているためである。
-pub fn load_resized(r: &mut impl Read) -> Result<(NnueNetwork, String), String> {
-    load_resized_with_dims(r).map(|(net, lineage, _)| (net, lineage))
-}
-
-/// `load_resized` に、元ファイルの構成 `[FT_IN, FT, L1, L2, L3]` を添えて返す。
-/// 学習側が「後段の層を初期値に使ってよいか」を判断するのに要る（ADR-0130）。
+///
+/// 元ファイルの構成 `[FT_IN, FT, L1, L2]` を添えて返す。学習側が
+/// 「後段の層を初期値に使ってよいか」を判断するのに要る（ADR-0130）。
 pub fn load_resized_with_dims(
     r: &mut impl Read,
-) -> Result<(NnueNetwork, String, [usize; 5]), String> {
+) -> Result<(NnueNetwork, String, [usize; 4]), String> {
     // 利きの構成は同じ構成のファイルだけを読む（ADR-0237の研究ブランチ）。
     // 構成の変換は利きの重みを写す口を持たない
     if EFF_OUT != 0 {
         let (net, lineage) = load(r)?;
-        return Ok((net, lineage, [FT_IN, FT_OUT, L1_OUT, L2_OUT, L3_OUT]));
+        return Ok((net, lineage, [FT_IN, FT_OUT, L1_OUT, L2_OUT]));
     }
     let (version, dims, lineage, body) = read_header(r)?;
     require_pair(version)?;
-    let [ft_in, src_ft, src_l1, src_l2, src_l3] = dims;
+    let [ft_in, src_ft, src_l1, src_l2] = dims;
     if ft_in != FT_IN {
         return Err(format!("FT input mismatch: file {ft_in} build {FT_IN}"));
     }
@@ -694,19 +595,8 @@ pub fn load_resized_with_dims(
     } else {
         (Vec::new(), Vec::new())
     };
-    let (src_b4, src_w4) = if src_l3 != 0 {
-        (cur.i32v(src_l3)?, cur.i8v(src_l3 * src_l2)?)
-    } else {
-        (Vec::new(), Vec::new())
-    };
     // 最後の隠れ層は層数で変わる。ここを取り違えると読み残しが出る
-    let src_last = if src_l3 != 0 {
-        src_l3
-    } else if src_l2 != 0 {
-        src_l2
-    } else {
-        src_l1
-    };
+    let src_last = if src_l2 != 0 { src_l2 } else { src_l1 };
     let src_w_out = cur.i8v(src_last)?;
     let b_out = cur.i32v(1)?[0];
     cur.expect_end()?;
@@ -738,21 +628,6 @@ pub fn load_resized_with_dims(
             fit_rows(&src_w3, src_l1, L2_OUT, L1_PAD, L1_OUT),
         ),
     };
-    let (b4, w4) = match (src_l3, L3_OUT) {
-        (_, 0) => (Vec::new(), Vec::new()),
-        (0, _) => {
-            if L3_OUT < src_l2 {
-                return Err(format!(
-                    "cannot add an identity layer: L3 ({L3_OUT}) is narrower than the source L2 ({src_l2})"
-                ));
-            }
-            (vec![0i32; L3_OUT], identity(L3_OUT, L2_PAD, src_l2))
-        }
-        (_, _) => (
-            fit(src_b4, L3_OUT),
-            fit_rows(&src_w4, src_l2, L3_OUT, L2_PAD, L2_OUT),
-        ),
-    };
     let w_out = fit(src_w_out, LAST_HIDDEN);
 
     Ok((
@@ -764,13 +639,10 @@ pub fn load_resized_with_dims(
             b2,
             w3,
             b3,
-            w4,
-            b4,
             w_out,
             b_out,
             eff_w: Vec::new(),
             eff_b: Vec::new(),
-            sub: crate::submodel::SubNet::default(),
         }
         .finish(),
         format!("{lineage} / resized to {ARCH}"),
@@ -795,11 +667,8 @@ mod tests {
         let pos = Position::from_sfen(SFEN_STARTPOS).unwrap();
         assert_eq!(evaluate_scalar(&net, &pos), evaluate_scalar(&loaded, &pos));
         assert_eq!(net.ft_w, loaded.ft_w);
-        assert_eq!(net.w4, loaded.w4);
         assert_eq!(net.eff_w, loaded.eff_w);
         assert_eq!(net.eff_b, loaded.eff_b);
-        assert_eq!(net.sub.raw, loaded.sub.raw);
-        assert_eq!(net.b4, loaded.b4);
         // 隠れ層2はL1_PAD幅のまま往復する（ゼロ埋め列も含めて一致）
         assert_eq!(net.w3, loaded.w3);
         assert_eq!(net.w3.len(), crate::nnue::L2_OUT * L1_PAD);
@@ -813,7 +682,7 @@ mod tests {
         let mut buf = Vec::new();
         save(&net, "dims test", &mut buf).unwrap();
         let (_, lineage, dims) = load_resized_with_dims(&mut buf.as_slice()).unwrap();
-        assert_eq!(dims, [FT_IN, FT_OUT, L1_OUT, L2_OUT, L3_OUT]);
+        assert_eq!(dims, [FT_IN, FT_OUT, L1_OUT, L2_OUT]);
         // 利きの構成は同じ構成のファイルだけを読み、変換しない（ADR-0237）
         if EFF_OUT == 0 {
             assert!(lineage.contains("resized to"), "来歴に変換の跡が残る");
