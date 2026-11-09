@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.61.6](https://github.com/kaz9120/himawari-rs/compare/v0.61.5...v0.61.6) (2026-11-09)
+
+
+### その他の変更
+
+* 探索木を変えずに、側のaccumulatorを中心に1スレッドのNPSを6.0%上げる ([#1062](https://github.com/kaz9120/himawari-rs/issues/1062)) ([24e5e2f](https://github.com/kaz9120/himawari-rs/commit/24e5e2fdbd84a550396e4a1bc306f8fc0dc166e6))
+
 ## [0.61.5](https://github.com/kaz9120/himawari-rs/compare/v0.61.4...v0.61.5) (2026-11-09)
 
 
