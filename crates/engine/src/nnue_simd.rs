@@ -174,6 +174,41 @@ pub fn effect_rows_update(
     }
 }
 
+/// `effect_rows_update` の、引く行と足す行の組を配列で受ける版。
+///
+/// 組ごとに両視点の `acc += 足す行 − 引く行` を当てる。巡回加算なので、
+/// `effect_rows_update` で1組ずつ当てたときとビット一致する。
+#[inline(always)]
+pub fn effect_rows_swap(
+    net: &NnueNetwork,
+    acc: &mut [[i16; EFF_OUT]; 2],
+    pairs: &[([u32; 2], [u32; 2])],
+) {
+    const CHUNKS: usize = EFF_OUT / I16_LANES;
+    let row = |f: u32| {
+        let at = f as usize * EFF_OUT;
+        &net.eff_w[at..at + EFF_OUT].as_chunks::<I16_LANES>().0[..CHUNKS]
+    };
+    let wide = |w: &[i16; I16_LANES]| Simd::from_array(*w);
+    let mut a: [[Simd<i16, I16_LANES>; CHUNKS]; 2] = std::array::from_fn(|c| {
+        let src = &acc[c].as_chunks::<I16_LANES>().0[..CHUNKS];
+        std::array::from_fn(|i| Simd::from_array(src[i]))
+    });
+    for (sub, add) in pairs {
+        for (c, a) in a.iter_mut().enumerate() {
+            let (n, o) = (row(add[c]), row(sub[c]));
+            for ((v, w), x) in a.iter_mut().zip(n).zip(o) {
+                *v += wide(w) - wide(x);
+            }
+        }
+    }
+    for (dst, a) in acc.iter_mut().zip(&a) {
+        for (d, v) in dst.as_chunks_mut::<I16_LANES>().0.iter_mut().zip(a) {
+            *d = v.to_array();
+        }
+    }
+}
+
 /// `acc = bias + Σ特徴行`（i16、ラップ加算）。
 ///
 /// 外側をaccのチャンク、内側を特徴にする。accへの書きが1回になり、

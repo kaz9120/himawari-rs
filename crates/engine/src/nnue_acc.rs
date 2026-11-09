@@ -715,26 +715,29 @@ fn effect_apply(net: &NnueNetwork, codes: &[u16; 81], e: &mut EffEntry, changed:
     let mut sqs = changed.into_iter();
     if SIDE_MINATT_INC {
         // 語が変わった升で、F2の行と最小の攻め駒の行のうち変わったほうだけを入れ替える。
-        // F2の行は下位9ビット、最小の攻め駒の行は駒と階級（4ビット目から上）で決まる
-        let mut pending = None;
-        nnue_simd::effect_rows_update(net, &mut e.acc, || {
-            if let Some(p) = pending.take() {
-                return Some(p);
+        // F2の行は下位9ビット、最小の攻め駒の行は駒と階級（4ビット目から上）で決まる。
+        //
+        // 入れ替える行の組を先に分岐なしで並べ、並べながら行を先読みさせてから当てる。
+        // 変わったかどうかは升ごとにばらつき、分岐で選ぶと予測が外れる。表は40MBあり、
+        // 当てながら読むと読み込みの待ちが重なる。置き場はゼロ埋めせず、書いた先頭n組だけを読む
+        type Pair = ([u32; 2], [u32; 2]);
+        let mut list = [const { std::mem::MaybeUninit::<Pair>::uninit() }; 2 * 81];
+        let mut n = 0;
+        for sq in sqs {
+            let (old, new) = (old_codes[sq.index()], codes[sq.index()]);
+            let f2 = (side_f2_pair(sq, old), side_f2_pair(sq, new));
+            list[n].write(f2);
+            n += usize::from((old ^ new) & 0x1FF != 0);
+            let ma = (side_minatt_pair(sq, old), side_minatt_pair(sq, new));
+            list[n].write(ma);
+            n += usize::from((old ^ new) & !0xF != 0);
+            for f in [f2.0, f2.1, ma.0, ma.1].as_flattened() {
+                prefetch_eff_row(net, *f);
             }
-            loop {
-                let sq = sqs.next()?;
-                let (old, new) = (old_codes[sq.index()], codes[sq.index()]);
-                let ma = ((old ^ new) & !0xF != 0)
-                    .then(|| (Some(side_minatt_pair(sq, old)), side_minatt_pair(sq, new)));
-                if (old ^ new) & 0x1FF != 0 {
-                    pending = ma;
-                    return Some((Some(side_f2_pair(sq, old)), side_f2_pair(sq, new)));
-                }
-                if ma.is_some() {
-                    return ma;
-                }
-            }
-        });
+        }
+        // SAFETY: 先頭n組は上のループで書いた。nは書いた位置の次を指す
+        let list = unsafe { std::slice::from_raw_parts(list.as_ptr().cast::<Pair>(), n) };
+        nnue_simd::effect_rows_swap(net, &mut e.acc, list);
         return;
     }
     nnue_simd::effect_rows_update(net, &mut e.acc, || {
@@ -742,6 +745,14 @@ fn effect_apply(net: &NnueNetwork, codes: &[u16; 81], e: &mut EffEntry, changed:
         let (old, new) = (old_codes[sq.index()], codes[sq.index()]);
         Some((Some(effect_code_pair(sq, old)), effect_code_pair(sq, new)))
     });
+}
+
+/// 側の表の行fの先読みを始めさせる。行は `EFF_OUT` 個のi16（128バイト）だが、
+/// 先頭のキャッシュラインだけを読ませる。2本目まで先読みすると命令が増え、速くならなかった。
+#[inline(always)]
+fn prefetch_eff_row(net: &NnueNetwork, f: u32) {
+    let p = net.eff_w.as_ptr().wrapping_add(f as usize * EFF_OUT);
+    crate::prefetch::line(p);
 }
 
 /// 両視点の特徴の添字。`[Color; 2]::map` の閉包はインライン化されずに残ったので、
