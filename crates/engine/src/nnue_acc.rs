@@ -6,7 +6,7 @@
 //! 正しさの基準はnnue::evaluate_scalarとの完全一致。
 //!
 //! 利きの特徴を持つ構成では、利きのaccumulatorを別のスタックで
-//! 持つ（D2）。評価のときに利き数の段階を集合で作り直し、計算済みの祖先と
+//! 持つ。評価のときに利き数の段階を集合で作り直し、計算済みの祖先と
 //! 比べて、中身か段階が変わった升の行だけを足し引きする。
 
 use himawari_core::{Bitboard, Color, DirtyPiece, Piece, PieceType, Position, Square, bonapiece};
@@ -942,7 +942,7 @@ mod tests {
         }
     }
 
-    /// 差分計算 = 全計算の完全一致（P4出口条件）。
+    /// 差分計算 = 全計算の完全一致。
     /// 実際の探索と同型の再帰do/undoウォーク（null move含む）で照合する。
     fn walk(
         net: &NnueNetwork,

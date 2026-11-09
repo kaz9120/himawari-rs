@@ -7,7 +7,7 @@
 use super::*;
 
 impl Worker {
-    /// LMRのリダクション量の加減算（G2。yaneuraou-search.cpp:3879-3941）。
+    /// LMRのリダクション量の加減算（yaneuraou-search.cpp:3879-3941）。
     /// 参照実装はdo_moveの後に置くが、読む材料は進める前の局面で決まるので
     /// ここでまとめる。項1（ttPv）は枝刈りの尺度にも入るため呼び出し側にある。
     ///
@@ -252,7 +252,7 @@ impl Worker {
             && tt.bound != Bound::None
             && tt.depth >= (*depth).saturating_sub(3) as i32
             && tt.value.abs() < VALUE_MATE_IN_MAX_PLY
-            // 往復手は検証探索にかけない（G5。yaneuraou-search.cpp:3749）
+            // 往復手は検証探索にかけない（yaneuraou-search.cpp:3749）
             && !self.is_shuffling(tt.mv, ply)
             && self.pos.is_legal(tt.mv)
         {

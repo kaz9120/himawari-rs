@@ -161,7 +161,7 @@ impl Worker {
             };
         }
         // 前回のgoと手番が入れ替わっているなら、持ち越したスコアの符号を
-        // 反転させる（G9。S:1483-1492）。番兵はそのまま残す
+        // 反転させる（S:1483-1492）。番兵はそのまま残す
         let root_game_ply = self.pos.game_ply();
         if (i32::from(self.memory.last_game_ply) - i32::from(root_game_ply)) & 1 != 0 {
             if self.memory.best_previous_score != VALUE_INFINITE {
@@ -237,7 +237,7 @@ impl Worker {
             // 直前ラインの出力スコア。頭打ちの基準に使う
             let mut prev_line_score = VALUE_INFINITE;
             for pv_idx in 0..lines {
-                // ラインごとのaspiration（G9。S:1669-1673）。窓幅は評価値の
+                // ラインごとのaspiration（S:1669-1673）。窓幅は評価値の
                 // 二乗平均に比例して広がり、中心はスコアの移動平均に置く。
                 // 深さ1では二乗平均が番兵のままなので窓が全開になる
                 let mut delta = ASPIRATION_BASE()
@@ -469,9 +469,9 @@ impl Worker {
                 self.root_moves[0].pv.clone(),
             )));
         }
-        // 次のgoで使う値を持ち越す（G9。S:1249-1253）。参照実装はbest thread
+        // 次のgoで使う値を持ち越す（S:1249-1253）。参照実装はbest thread
         // のrootMoves[0]から採る。投票で他スレッドが選ばれたときは、
-        // 呼び出し側（ThreadPool）がそちらの値で上書きする（G10）
+        // 呼び出し側（ThreadPool）がそちらの値で上書きする
         self.memory.best_previous_score = self.root_moves[0].score;
         self.memory.best_previous_average_score = self.root_moves[0].average_score;
         self.memory.last_game_ply = root_game_ply;
@@ -563,7 +563,7 @@ impl Worker {
             if self.stopped() {
                 return best;
             }
-            // スコアの移動平均と二乗平均（G9。yaneuraou-search.cpp:4105-4110）。
+            // スコアの移動平均と二乗平均（yaneuraou-search.cpp:4105-4110）。
             // 次の反復のaspiration窓の中心と幅になる。番兵のときは初回として
             // 値をそのまま入れる。二乗平均は符号を保つため |value| を掛ける
             {
@@ -588,8 +588,8 @@ impl Worker {
                 line.clear();
                 line.push(m);
                 line.extend_from_slice(&child_pv);
-                // 最善手が入れ替わった回数を数える（G9。
-                // yaneuraou-search.cpp:4157-4160）。1手目での確定は
+                // 最善手が入れ替わった回数を数える
+                // （yaneuraou-search.cpp:4157-4160）。1手目での確定は
                 // 入れ替わりではない。MultiPVでは1本目だけを数える
                 if j > 0 && pv_idx == 0 {
                     self.shared

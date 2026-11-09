@@ -445,7 +445,7 @@ impl Position {
         self.is_mate_move(m)
     }
 
-    /// 手を進めて判定する版（第6回の実装）。盤を動かさない判定の正解器で、照合のテストだけが使う。
+    /// 手を進めて判定する版。盤を動かさない判定の正解器で、照合のテストだけが使う。
     #[doc(hidden)]
     pub fn is_mate_move_by_move(&mut self, m: Move) -> bool {
         if !self.is_legal(m) {

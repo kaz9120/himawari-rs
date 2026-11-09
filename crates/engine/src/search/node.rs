@@ -296,7 +296,7 @@ impl Worker {
                 };
                 let mut new_depth = base_depth - 1 + extension;
 
-                // LMRのリダクション量（1024倍の固定小数。G2）。枝刈りの尺度
+                // LMRのリダクション量（1024倍の固定小数）。枝刈りの尺度
                 // （lmr_depth）と実際の浅い探索で同じ値を使う
                 let delta = beta - alpha;
                 let mut r = self.reduction(improving, depth, count, delta);
@@ -428,7 +428,7 @@ impl Worker {
                         if value >= beta {
                             // 次plyのfail highの多さをリダクションへ渡す
                             // （yaneuraou-search.cpp:4214）。2手以上延長した手の
-                            // カットは数えない（G5で延長が最大+3になった）
+                            // カットは数えない（延長は最大+3まである）
                             if extension < 2 || PV {
                                 self.stack[ply + STACK_OFFSET].cutoff_cnt += 1;
                             }

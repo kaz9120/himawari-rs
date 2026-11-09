@@ -21,7 +21,7 @@ pub(super) const NMP_VERIFY_MIN_DEPTH: u32 = 16;
 /// `m*depth - (2686*improving + 362*opponentWorsening)*m/1024 + |correction値|/180600`
 /// になる。これを評価から引いてもβを超えるなら刈る。返り値は `(2β+eval)/3`。
 /// 評価値は歩=90スケールで一致するため絶対値のまま使う。
-/// correction historyの分母131072はG1で参照実装へ揃えたので、除数180600も
+/// correction historyの分母131072は参照実装と同じなので、除数180600も
 /// 換算せずに使える
 pub(super) const RFP_MAX_DEPTH: u32 = 15;
 pub(super) const RFP_CORR_DIVISOR: i32 = 180600;
@@ -125,7 +125,7 @@ pub(super) fn lmp_limit(depth: u32, improving: bool) -> u32 {
 /// （yaneuraou-search.h:582）。
 pub(super) const REDUCTIONS_LEN: usize = 608;
 
-/// LMRのリダクション表（G2。yaneuraou-search.cpp:2168-2169）。
+/// LMRのリダクション表（yaneuraou-search.cpp:2168-2169）。
 /// `LMR_COEF / 128 × ln(i)`（既定2763）を整数化した1次元表で、深さと
 /// 手数の積を取る。
 /// 積が1024倍の固定小数になることは確かめてある。

@@ -47,11 +47,11 @@ pub struct Shared {
     /// `ponderhitTime - startTime`）。"ponderhit" を受けるまでは0
     pub ponderhit_offset: AtomicI64,
     pub nodes: AtomicU64,
-    /// 反復深化で深さが増えているか（G9。yaneuraou-search.h:232）。
+    /// 反復深化で深さが増えているか（yaneuraou-search.h:232）。
     /// メインが時間の余りから決め、全スレッドが次の反復の頭で読む。
     /// 偽なら同じ深さを掘り直したとみなし `search_again_counter` が増える
     pub increase_depth: AtomicBool,
-    /// rootの最善手が変わった回数（G9。yaneuraou-search.h:539）。
+    /// rootの最善手が変わった回数（yaneuraou-search.h:539）。
     /// 参照実装はスレッドごとの原子変数を持ち、メインが毎反復で合算して
     /// 0へ戻す。本エンジンは合算先を1つにまとめ、`swap(0)` で汲み出す
     pub best_move_changes: AtomicU64,
@@ -129,16 +129,16 @@ pub struct RootMove {
     pub score: Value,
     pub prev_score: Value,
     pub pv: Vec<Move>,
-    /// この手の探索に費やしたノード数（G9。search.h:129）。
+    /// この手の探索に費やしたノード数（search.h:129）。
     /// メインワーカーのローカル値のみ。**go全体の累計で、イテレーション
     /// ごとには戻さない。** highBestMoveEffortが読む比の分母も同じく
     /// go全体の累計ノード数である（S:1969-1970）
     pub effort: u64,
-    /// スコアの移動平均（G9。search.h:139、yaneuraou-search.cpp:4105-4106）。
+    /// スコアの移動平均（search.h:139、yaneuraou-search.cpp:4105-4106）。
     /// aspirationの窓の中心に使う。前深さの生スコアより揺れが小さい。
     /// 初期値の `-VALUE_INFINITE` は「まだ値がない」ことを表す番兵
     pub average_score: Value,
-    /// スコアの二乗平均（G9。search.h:142、yaneuraou-search.cpp:4108-4110）。
+    /// スコアの二乗平均（search.h:142、yaneuraou-search.cpp:4108-4110）。
     /// 符号を保つため `value * |value|` を平均する。aspirationの初期窓幅が
     /// この絶対値に比例して広がる。初期値の `-VALUE_INFINITE^2` は番兵で、
     /// **この値のまま窓幅を計算すると窓が全開になる。** 深さ1で
@@ -149,7 +149,7 @@ pub struct RootMove {
 /// `RootMove::mean_squared_score` の番兵（search.h:142）。
 const MEAN_SQUARED_NONE: Value = -(VALUE_INFINITE * VALUE_INFINITE);
 
-/// goをまたいでメインスレッドが持ち越す記憶（G9。yaneuraou-search.h:207-247）。
+/// goをまたいでメインスレッドが持ち越す記憶（yaneuraou-search.h:207-247）。
 /// 参照実装はSearchManagerのメンバーで、`isready` でクリアされる。
 /// 本エンジンはスレッドループが持ち、`usinewgame` でクリアする
 #[derive(Clone, Copy)]
@@ -187,15 +187,15 @@ pub struct SearchResult {
     pub score: Value,
     /// 相手の予測応手（PVの2手目。なければNONE）。
     pub ponder: Move,
-    /// `root_moves[0]` の生スコア（G10。S:610-611の投票が読む）。
+    /// `root_moves[0]` の生スコア（S:610-611の投票が読む）。
     /// USIへ出す `score` と違い、頭打ちや窓外れの整形をしていない
     pub root_score: Value,
-    /// `root_moves[0].average_score`（G10。S:1250）。
+    /// `root_moves[0].average_score`（S:1250）。
     /// best threadのものを次のgoへ持ち越す
     pub root_average_score: Value,
-    /// `root_moves[0].pv`（G10。S:625-626の投票が読む）。
+    /// `root_moves[0].pv`（S:625-626の投票が読む）。
     pub pv: Vec<Move>,
-    /// 確定した最後のイテレーションの深さ（G10。S:618の投票が読む）。
+    /// 確定した最後のイテレーションの深さ（S:618の投票が読む）。
     pub completed_depth: u32,
 }
 
@@ -211,33 +211,33 @@ struct StackEntry {
     excluded_move: Move,
     /// 静的評価。王手中はVALUE_NONE
     static_eval: Value,
-    /// このplyで手番側に王手がかかっていたか（G1）。continuation historyの
+    /// このplyで手番側に王手がかかっていたか。continuation historyの
     /// 面の選択と、更新する段数の打ち切りに使う
     in_check: bool,
-    /// このplyで指した手が条件手になるcontinuation historyの面（G1）。
+    /// このplyで指した手が条件手になるcontinuation historyの面。
     /// 参照実装の `Stack::continuationHistory` に対応する
     cont_base: usize,
-    /// 同じくcontinuation correction historyの面（G1）。
+    /// 同じくcontinuation correction historyの面。
     cont_corr_base: usize,
-    /// このplyで今何手目を調べているか（G1。yaneuraou-search.cpp:3520）。
+    /// このplyで今何手目を調べているか（yaneuraou-search.cpp:3520）。
     /// 1手前の値をhistoryの更新条件が読む
     move_count: u32,
-    /// このplyで置換表にヒットしたか（G1。yaneuraou-search.cpp:2623）。
+    /// このplyで置換表にヒットしたか（yaneuraou-search.cpp:2623）。
     /// 同じく1手前の値を読む
     tt_hit: bool,
-    /// 置換表にPVノードとして記録された値か（G2。yaneuraou-search.cpp:2657）。
+    /// 置換表にPVノードとして記録された値か（yaneuraou-search.cpp:2657）。
     /// LMRのリダクション2項が読み、置換表へ書き戻す
     tt_pv: bool,
-    /// このplyでβカットした回数（G2。yaneuraou-search.cpp:4214）。
+    /// このplyでβカットした回数（yaneuraou-search.cpp:4214）。
     /// 親が次plyの値を読む。多いほどリダクションを増やす
     cutoff_cnt: i32,
-    /// このplyのLMRが削った量（G2。yaneuraou-search.cpp:3980）。
-    /// 子が `priorReduction` として読み、深さの事後補正に使う（G4）
+    /// このplyのLMRが削った量（yaneuraou-search.cpp:3980）。
+    /// 子が `priorReduction` として読み、深さの事後補正に使う
     reduction: i32,
-    /// このplyで今調べている手の履歴の強さ（G2。yaneuraou-search.cpp:3924-3932）。
+    /// このplyで今調べている手の履歴の強さ（yaneuraou-search.cpp:3924-3932）。
     /// リダクションの減算と、子でのhistory更新量の2方向へ効く
     stat_score: i32,
-    /// 前回の反復深化のPV上にいるか（G3。yaneuraou-search.cpp:2370-2372）。
+    /// 前回の反復深化のPV上にいるか（yaneuraou-search.cpp:2370-2372）。
     /// PVノードでここが真の間は静かな手の浅い枝刈りを抑え、前回のPVを壊さない
     follow_pv: bool,
 }
@@ -381,18 +381,18 @@ pub struct Worker {
     node_bufs: Box<[NodeBuffers; MAX_PLY]>,
     /// このイテレーションで到達した最大ply（seldepth）。
     sel_depth: u32,
-    /// このイテレーションのaspiration窓の幅（G2。yaneuraou-search.cpp:1708）。
+    /// このイテレーションのaspiration窓の幅（yaneuraou-search.cpp:1708）。
     /// リダクションが「今の窓幅がroot窓幅の何割か」で削る量を決める
     root_delta: Value,
-    /// 今の反復深化の深さ（G5。yaneuraou-search.h:557）。
+    /// 今の反復深化の深さ（yaneuraou-search.h:557）。
     /// singularの多段化のマージンが `ply > rootDepth` で分岐に使う。
     /// rootから遠いノードでは延長を積みにくくする項である
     root_depth: u32,
-    /// このplyに達するまでNMPを止める（G4。yaneuraou-search.h:543）。
+    /// このplyに達するまでNMPを止める（yaneuraou-search.h:543）。
     /// NMPの検証探索の中で立て、探索を抜けたら0へ戻す。再帰的な検証を
     /// 認めないための状態で、スレッドごとに持つ
     nmp_min_ply: usize,
-    /// 前回の反復深化で得たPV（G3。yaneuraou-search.h:562）。
+    /// 前回の反復深化で得たPV（yaneuraou-search.h:562）。
     /// 各ノードの `follow_pv` 判定が読む。goのたびに捨てる
     last_iteration_pv: Vec<Move>,
     /// 深さ1のイテレーションを終えたか。終えるまでstopを無視する。
@@ -412,17 +412,17 @@ pub struct Worker {
     /// 検討モードのライン数。対局時は1。
     multi_pv: usize,
     root_moves: Vec<RootMove>,
-    /// このワーカーの通し番号（G9。thread.h:198のthreadIdx）。
+    /// このワーカーの通し番号（thread.h:198のthreadIdx）。
     /// aspirationの初期窓幅を `thread_idx % 8` だけずらす。参照実装が持つ
     /// 唯一の明示的なLazy SMPの多様化である
     thread_idx: usize,
-    /// ワーカーの総数（G9）。bestMoveInstabilityの分母になる
+    /// ワーカーの総数。bestMoveInstabilityの分母になる
     thread_count: usize,
-    /// goをまたぐ記憶（G9）。スレッドループが持ち回る
+    /// goをまたぐ記憶。スレッドループが持ち回る
     pub memory: MainMemory,
-    /// rootの手番（G10）。引き分けの評価値の符号を決める
+    /// rootの手番。引き分けの評価値の符号を決める
     root_color: Color,
-    /// rootの手番から見た引き分けの評価値（G10。S:1002-1009）。
+    /// rootの手番から見た引き分けの評価値（S:1002-1009）。
     /// `DrawValueBlack` / `DrawValueWhite` を歩の価値で換算した値で、
     /// `ThreadPool` が `set_draw_value` で入れる。既定は0（従来と同じ）
     draw_value_us: Value,
@@ -548,7 +548,7 @@ impl Worker {
         self.pos.undo_null_move();
     }
 
-    /// 引き分けの評価値を設定する（G10。S:1002-1009）。手番別の設定値を
+    /// 引き分けの評価値を設定する（S:1002-1009）。手番別の設定値を
     /// 歩の価値で換算し、rootの手番から見た値として持つ。
     /// 相手番のleafでは符号を反転させる。非対称な探索を避けるためである
     pub fn set_draw_value(&mut self, black: i32, white: i32) {
@@ -560,7 +560,7 @@ impl Worker {
         self.draw_value_us = v * PAWN_VALUE / 100;
     }
 
-    /// このワーカーの通し番号と総数を渡す（G9）。aspirationの多様化と
+    /// このワーカーの通し番号と総数を渡す。aspirationの多様化と
     /// bestMoveInstabilityの分母に使う。既定は単スレッド相当の (0, 1)。
     pub fn set_thread(&mut self, idx: usize, count: usize) {
         self.thread_idx = idx;
@@ -643,7 +643,7 @@ impl Worker {
 
     #[inline]
     fn draw_value(&self) -> Value {
-        // 手番別の引き分けスコア（G10。S:1008-1009、S:2468）。
+        // 手番別の引き分けスコア（S:1008-1009、S:2468）。
         // rootと同じ手番なら+、相手番なら-にする
         let base = if self.pos.side_to_move() == self.root_color {
             self.draw_value_us
@@ -692,7 +692,7 @@ impl Worker {
         std::array::from_fn(|i| self.stack[ply + STACK_OFFSET - 1 - i].cont_base)
     }
 
-    /// LMRのリダクション量（G2。yaneuraou-search.cpp:5148-5151）。
+    /// LMRのリダクション量（yaneuraou-search.cpp:5148-5151）。
     /// 返る値は1024倍の固定小数である。
     ///
     /// 基礎値は深さと手数の表の積。そこから窓幅の比で引き、改善して
@@ -706,7 +706,7 @@ impl Worker {
         scale - delta * 585 / self.root_delta + i32::from(!improving) * scale * 206 / 512 + 1133
     }
 
-    /// その手の履歴の強さ（G2。yaneuraou-search.cpp:3924-3932）。
+    /// その手の履歴の強さ（yaneuraou-search.cpp:3924-3932）。
     /// 取る手は取った駒の価値とcapture history、静かな手はmain historyの
     /// 2倍と1手前・2手前のcontinuation historyで測る。do_moveの前に呼ぶ
     #[inline]
@@ -728,7 +728,7 @@ impl Worker {
         }
     }
 
-    /// 往復手（shuffling）か（G5。yaneuraou-search.cpp:813-838）。
+    /// 往復手（shuffling）か（yaneuraou-search.cpp:813-838）。
     /// 2手前・4手前と行き先を交換しているだけの手は、singularの検証探索に
     /// かけない。参照実装の `#if STOCKFISH` の外側が将棋版で、50手ルールの
     /// 条件を落とし、代わりに駒打ちを除いている。取る手も往復手ではない
