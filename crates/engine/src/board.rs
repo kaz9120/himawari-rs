@@ -6,21 +6,13 @@
 //! 探索とミクロな計測の両方が同じ費用を払う。
 //!
 //! 探索が盤に問うことは、すべてこの型のメソッドにしてある（ADR-0241の第12回・第13回）。
-//! 構成はengineのフィーチャで選び、build.rsが次のcfgへ直す。
+//! 探索は配列盤（`himawari_mailbox::Position`）だけで行う。千日手のために、根の局面を作るときに
+//! coreの過去の局面のキーを写す。
 //!
-//! - 既定（フィーチャ `mailbox`、cfg `mb_search`）: coreの局面を持たず、配列盤
-//!   （`himawari_mailbox::Position`）だけで探索する。千日手のために、根の局面を作るときに
-//!   coreの過去の局面のキーを写す
-//! - `core-search`: coreの `Position` で探索する。比較と照合のために残す。`mailbox` より優先する。
-//!   この構成だけ `Deref` で `Position` のほかのメソッドも読めるが、探索と評価関数はそれを使わない
-//! - `legal-gen`: `core-search` で、擬似合法手の生成を合法手で濾す統制群
-//! - `mailbox-shadow`（cfg `mb_shadow`）: 配列盤に加えてcoreの局面も並べて持ち、同じ手で進め戻す。
-//!   デバッグビルドでは、配列盤の答えを毎回coreの答えと比べる
+//! フィーチャ `mailbox-shadow`（cfg `mb_shadow`）では、配列盤に加えてcoreの局面も並べて持ち、
+//! 同じ手で進め戻す。デバッグビルドでは、配列盤の答えを毎回coreの答えと比べる。
 //!
-//! `DerefMut` は実装しない。局面を可変で借りる経路を、この型の進め戻しに限るためである。
-
-#[cfg(not(mb_search))]
-use std::ops::Deref;
+//! 局面を可変で借りる経路は、この型の進め戻しに限る。
 
 use himawari_core::bonapiece::BonaBits;
 use himawari_core::{
@@ -34,319 +26,75 @@ use crate::nnue_acc::EvalBoard;
 /// 探索が進め戻す盤面。
 #[derive(Clone)]
 pub struct SearchBoard {
-    #[cfg(any(not(mb_search), mb_shadow))]
+    #[cfg(mb_shadow)]
     pos: Position,
-    #[cfg(mb_search)]
     mb: himawari_mailbox::Position,
 }
 
 impl SearchBoard {
     pub fn new(pos: Position) -> SearchBoard {
-        #[cfg(mb_search)]
         let mb = mbconv::from_core(&pos);
         SearchBoard {
-            #[cfg(any(not(mb_search), mb_shadow))]
+            #[cfg(mb_shadow)]
             pos,
-            #[cfg(mb_search)]
             mb,
         }
     }
 
-    /// 包んでいる局面（coreの局面を持つ構成だけ）。
-    #[cfg(any(not(mb_search), mb_shadow))]
-    #[inline(always)]
-    pub fn position(&self) -> &Position {
-        &self.pos
-    }
-
     /// いまの局面をcoreの局面として返す。ツールが局面を書き出すときに使う。
     ///
-    /// 配列盤の構成ではSFENを経由して作るので、過去の局面（千日手の材料）は持たない。
+    /// SFENを経由して作るので、過去の局面（千日手の材料）は持たない。
     pub fn to_position(&self) -> Position {
-        #[cfg(any(not(mb_search), mb_shadow))]
+        #[cfg(mb_shadow)]
         return self.pos.clone();
-        #[cfg(all(mb_search, not(mb_shadow)))]
+        #[cfg(not(mb_shadow))]
         Position::from_sfen(&self.mb.to_sfen()).expect("配列盤の出したSFENをcoreが読めない")
     }
 
-    /// 置換表の先読みに使うキー（ADR-0250）。配列盤の構成ではmで進めた後の
-    /// `key()` を、局面を変えずに求める。coreの局面には同じ計算がないので、
-    /// いまの局面のキーを返す。先読みが外れるだけで、探索の結果は変わらない。
+    /// 置換表の先読みに使うキー（ADR-0250）。mで進めた後の `key()` を、局面を変えずに求める。
     #[inline(always)]
     pub fn prefetch_key(&self, m: Move) -> u64 {
-        #[cfg(mb_search)]
-        {
-            // coreの手は81升の通し番号と移動後の駒を持つので、配列盤の手へ直さずに渡す
-            let b = m.bits();
-            self.mb.key_after81(
-                (b & 0x7F) as u8,
-                ((b >> 7) & 0x7F) as u8,
-                b & 0x8000 != 0,
-                b & 0x4000 != 0,
-                ((b >> 16) & 0x1F) as u8,
-            )
-        }
-        #[cfg(not(mb_search))]
-        {
-            let _ = m;
-            self.pos.key()
-        }
+        // coreの手は81升の通し番号と移動後の駒を持つので、配列盤の手へ直さずに渡す
+        let b = m.bits();
+        self.mb.key_after81(
+            (b & 0x7F) as u8,
+            ((b >> 7) & 0x7F) as u8,
+            b & 0x8000 != 0,
+            b & 0x4000 != 0,
+            ((b >> 16) & 0x1F) as u8,
+        )
     }
 
     /// 1手進める。
     #[inline(always)]
     pub fn do_move(&mut self, m: Move) {
-        #[cfg(any(not(mb_search), mb_shadow))]
+        #[cfg(mb_shadow)]
         self.pos.do_move(m);
-        #[cfg(mb_search)]
         self.mb.do_move(mbconv::to_mb(m));
     }
 
     /// `do_move` を戻す。
     #[inline(always)]
     pub fn undo_move(&mut self, m: Move) {
-        #[cfg(any(not(mb_search), mb_shadow))]
+        #[cfg(mb_shadow)]
         self.pos.undo_move(m);
-        #[cfg(mb_search)]
         self.mb.undo_move(mbconv::to_mb(m));
     }
 
     /// null moveで1手進める。
     #[inline(always)]
     pub fn do_null_move(&mut self) {
-        #[cfg(any(not(mb_search), mb_shadow))]
+        #[cfg(mb_shadow)]
         self.pos.do_null_move();
-        #[cfg(mb_search)]
         self.mb.do_null_move();
     }
 
     /// `do_null_move` を戻す。
     #[inline(always)]
     pub fn undo_null_move(&mut self) {
-        #[cfg(any(not(mb_search), mb_shadow))]
+        #[cfg(mb_shadow)]
         self.pos.undo_null_move();
-        #[cfg(mb_search)]
         self.mb.undo_null_move();
-    }
-}
-
-/// 盤への問い合わせ。既定ではcoreの同名の関数へそのまま渡す。
-#[cfg(not(mb_search))]
-impl SearchBoard {
-    /// 擬似合法手を生成する。
-    ///
-    /// フィーチャ `legal-gen` では、coreの列を合法手で濾してから返す。配列盤の生成が
-    /// 合法手だけを出すことによる木の変化を、配列盤なしで再現する統制群である（ADR-0241の第12回）。
-    #[inline(always)]
-    pub fn generate(&self, gt: GenType, all: bool, list: &mut MoveList) {
-        if cfg!(feature = "legal-gen") {
-            let mut pseudo = MoveList::default();
-            himawari_core::generate(&self.pos, gt, all, &mut pseudo);
-            for &m in pseudo.as_slice() {
-                if self.pos.is_legal(m) {
-                    list.push(m);
-                }
-            }
-        } else {
-            himawari_core::generate(&self.pos, gt, all, list);
-        }
-    }
-
-    /// 合法手を生成する。
-    #[inline(always)]
-    pub fn generate_legal(&self, all: bool, list: &mut MoveList) {
-        himawari_core::generate_legal(&self.pos, all, list);
-    }
-
-    /// 擬似合法手mが合法か。
-    #[inline(always)]
-    pub fn is_legal(&self, m: Move) -> bool {
-        self.pos.is_legal(m)
-    }
-
-    /// 指し手の選び（`MovePicker`）が返した手mが合法か。from_ttは置換表の手か。
-    /// coreの生成は擬似合法手を出すので、どの手も判定する。
-    #[inline(always)]
-    pub fn is_legal_picked(&self, m: Move, _from_tt: bool) -> bool {
-        self.pos.is_legal(m)
-    }
-
-    /// mがこの局面の擬似合法手か（置換表・キラーの手の検査）。
-    #[inline(always)]
-    pub fn pseudo_legal(&self, m: Move) -> bool {
-        self.pos.pseudo_legal(m)
-    }
-
-    /// 合法手mが王手になるか。
-    #[inline(always)]
-    pub fn gives_check(&self, m: Move) -> bool {
-        self.pos.gives_check(m)
-    }
-
-    /// 静的交換評価が閾値以上か。
-    #[inline(always)]
-    pub fn see_ge(&self, m: Move, threshold: i32) -> bool {
-        self.pos.see_ge(m, threshold)
-    }
-
-    /// 1手詰めの手（王手されていない局面で呼ぶ）。
-    #[inline(always)]
-    pub fn mate_1ply(&self) -> Option<Move> {
-        crate::mate::mate_1ply(&self.pos)
-    }
-
-    /// 置換表の `Move16` を完全な手へ戻す。
-    #[inline(always)]
-    pub fn to_move(&self, m16: Move16) -> Option<Move> {
-        self.pos.to_move(m16)
-    }
-
-    /// 評価関数の利き数の入力が使う、段階の集合（ADR-0237のD2）。駒ごとに利き先を数えて作る。
-    #[inline(always)]
-    pub fn effect_levels(&self) -> EffectLevels {
-        EffectLevels::build(&self.pos)
-    }
-
-    #[inline(always)]
-    pub fn piece_on(&self, sq: Square) -> Piece {
-        self.pos.piece_on(sq)
-    }
-
-    #[inline(always)]
-    pub fn side_to_move(&self) -> Color {
-        self.pos.side_to_move()
-    }
-
-    #[inline(always)]
-    pub fn in_check(&self) -> bool {
-        self.pos.in_check()
-    }
-
-    #[inline(always)]
-    pub fn king(&self, c: Color) -> Square {
-        self.pos.king(c)
-    }
-
-    #[inline(always)]
-    pub fn key(&self) -> u64 {
-        self.pos.key()
-    }
-
-    #[inline(always)]
-    pub fn pawn_key(&self) -> u64 {
-        self.pos.pawn_key()
-    }
-
-    #[inline(always)]
-    pub fn minor_piece_key(&self) -> u64 {
-        self.pos.minor_piece_key()
-    }
-
-    #[inline(always)]
-    pub fn non_pawn_key(&self, c: Color) -> u64 {
-        self.pos.non_pawn_key(c)
-    }
-
-    /// 直前の手で取った駒（無ければ空）。
-    #[inline(always)]
-    pub fn captured(&self) -> Piece {
-        self.pos.state().captured
-    }
-
-    /// null moveからの手数。
-    #[inline(always)]
-    pub fn plies_from_null(&self) -> u16 {
-        self.pos.state().plies_from_null
-    }
-
-    #[inline(always)]
-    pub fn game_ply(&self) -> u16 {
-        self.pos.game_ply()
-    }
-
-    #[inline(always)]
-    pub fn can_declare_win(&self) -> bool {
-        self.pos.can_declare_win()
-    }
-
-    #[inline(always)]
-    pub fn repetition_state(&self, ply: usize) -> Repetition {
-        self.pos.repetition_state(ply)
-    }
-
-    /// 手番側の駒種ptが置けば相手玉へ直接王手になる升。
-    #[inline(always)]
-    pub fn check_squares(&self, pt: PieceType) -> Bitboard {
-        self.pos.check_squares(pt)
-    }
-
-    /// `check_squares` を駒種の添字で並べた表（ADR-0251）。0・1は空。
-    pub fn check_squares_all(&self) -> [Bitboard; 16] {
-        std::array::from_fn(|i| {
-            if i < 2 {
-                Bitboard::EMPTY
-            } else {
-                self.pos.check_squares(PieceType(i as u8))
-            }
-        })
-    }
-
-    pub fn to_sfen(&self) -> String {
-        self.pos.to_sfen()
-    }
-}
-
-#[cfg(not(mb_search))]
-impl EvalBoard for SearchBoard {
-    #[inline(always)]
-    fn side_to_move(&self) -> Color {
-        self.pos.side_to_move()
-    }
-    #[inline(always)]
-    fn king(&self, c: Color) -> Square {
-        self.pos.king(c)
-    }
-    #[inline(always)]
-    fn hand_count(&self, owner: Color, pt: PieceType) -> u32 {
-        self.pos.hand(owner).count(pt)
-    }
-    #[inline(always)]
-    fn piece_on(&self, sq: Square) -> Piece {
-        self.pos.piece_on(sq)
-    }
-    #[inline(always)]
-    fn dirty(&self) -> DirtyPiece {
-        self.pos.state().dirty
-    }
-    #[inline(always)]
-    fn bona_piece_bits(&self, c: Color, out: &mut BonaBits) {
-        himawari_core::bonapiece::bona_piece_bits(&self.pos, c, out);
-    }
-    #[inline(always)]
-    fn effect_levels(&self) -> EffectLevels {
-        EffectLevels::build(&self.pos)
-    }
-    #[inline(always)]
-    fn effect_codes(&self, out: &mut [u16; 81]) {
-        self.pos.effect_codes(out);
-    }
-    #[inline(always)]
-    fn material(&self) -> i32 {
-        self.pos.state().material
-    }
-    #[inline(always)]
-    fn core_position(&self) -> Option<&Position> {
-        Some(&self.pos)
-    }
-}
-
-#[cfg(not(mb_search))]
-impl Deref for SearchBoard {
-    type Target = Position;
-
-    #[inline(always)]
-    fn deref(&self) -> &Position {
-        &self.pos
     }
 }
 
@@ -354,7 +102,6 @@ impl Deref for SearchBoard {
 ///
 /// 返す値はどれもcoreと同じになるように作ってある（等価な版）。
 /// `mailbox-shadow` のデバッグビルドでは毎回coreの答えと比べ、食い違えば局面を添えて止める。
-#[cfg(mb_search)]
 impl SearchBoard {
     /// coreの局面と比べる（`mailbox-shadow` のデバッグビルドだけ）。
     #[inline(always)]
@@ -375,7 +122,7 @@ impl SearchBoard {
     /// 擬似合法手を生成する。列はcoreの `generate` を合法手で濾した列と同じになる。
     ///
     /// 配列盤の生成は合法手だけを出す（ADR-0241の第2回）。探索はこのあと `is_legal` で
-    /// 濾すので、手の数え方は変わらない。並びが変わる分は統制群 `legal-gen` で再現できる。
+    /// 濾すので、手の数え方は変わらない。
     #[inline(always)]
     pub fn generate(&self, gt: GenType, all: bool, list: &mut MoveList) {
         let g = match gt {
@@ -610,7 +357,6 @@ impl SearchBoard {
     }
 }
 
-#[cfg(mb_search)]
 impl EvalBoard for SearchBoard {
     #[inline(always)]
     fn side_to_move(&self) -> Color {
@@ -705,7 +451,6 @@ impl EvalBoard for SearchBoard {
 
 /// coreの型と配列盤の型の変換。升を81升の通し番号と配列盤の添字の間で直す。
 /// 駒の符号と駒種は両者で同じ（OSL配列）。
-#[cfg(mb_search)]
 mod mbconv {
     use himawari_core::{Color, DirtyPiece, Move, Piece, PieceType, Position, Square};
     use himawari_mailbox::board::{IDX81, SQ81};
@@ -878,7 +623,7 @@ mod mbconv {
     }
 }
 
-#[cfg(all(test, mb_search))]
+#[cfg(test)]
 mod tests {
     use super::mbconv::{to_core, to_mb};
     use himawari_core::{MoveList, Position, generate_legal};

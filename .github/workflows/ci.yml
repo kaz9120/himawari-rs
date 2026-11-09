@@ -30,8 +30,6 @@ jobs:
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
       - run: cargo fmt --all --check
       - run: cargo clippy --all-targets -- -D warnings
-      # 探索の盤の既定は配列盤（ADR-0241）。比較と照合のために残すcoreの探索も腐らせない
-      - run: cargo clippy --all-targets --features himawari-engine/core-search -- -D warnings
       # 活性ダンプのfeature（ADR-0168）。通常のビルドでは触らないので、
       # コンパイルが通ることだけ確かめて腐るのを防ぐ
       - run: cargo check -p himawari-engine --features actdump
@@ -120,15 +118,13 @@ jobs:
           key: ${{ matrix.arch }}
       - run: HIMAWARI_ARCH=${{ matrix.arch }} cargo test ${{ matrix.args }}
 
-  # 探索の盤の構成（ADR-0241）。既定の配列盤は上のtestジョブが見る。ここでは
-  # 比較と照合のために残すcoreの探索と、配列盤とcoreを並べて毎回答えを比べる
-  # 構成（debugビルドで比べる）のテストを回す
+  # 配列盤とcoreを並べて毎回答えを比べる構成（ADR-0241）のテストを、
+  # debugビルドで回す。既定の配列盤は上のtestジョブが見る
   test-board:
     strategy:
       fail-fast: false
       matrix:
         include:
-          - args: --workspace --features himawari-engine/core-search
           - args: -p himawari-engine --features mailbox-shadow
     runs-on: ubuntu-latest
     # testジョブと同じ理由でopt-level=1にする
