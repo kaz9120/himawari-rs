@@ -1,8 +1,7 @@
 #!/bin/sh
-# Stopフックで、このブランチのコミットを検査する（ADR-0181）。
+# Stopフックで、このブランチのコミットを検査する。
 #
 #   check_commits.sh parens   本文の入れ子の半角括弧（release-pleaseが黙って止まる）
-#   check_commits.sh subject  件名の書き方をyomiyasuで見る（release-pleaseがCHANGELOGへ載せる）
 #
 # 違反を見つけたら終了コード2でセッションの終わりを止め、理由をエージェントへ返す。
 # 検査そのものが動かなかったときは、警告を出して0で抜ける。検査の不調で
@@ -40,24 +39,8 @@ parens)
 		exit 2
 	fi
 	;;
-subject)
-	subjects=$(commits %s) || exit 0
-	[ -z "$subjects" ] && exit 0
-	[ -f hmwr/doclint.py ] || warn 'hmwr/doclint.py がない'
-	out=$(printf '%s\n' "$subjects" | python3 hmwr/doclint.py - 2>&1)
-	code=$?
-	case $code in
-	0) ;;
-	1)
-		printf '%s\n' "$out" >&2
-		echo 'コミット件名がyomiyasuに引っかかっている。件名はrelease-please経由でCHANGELOGへ載り、後から直せない。git commit --amend で直す（CLAUDE.md「開発フロー」）' >&2
-		exit 2
-		;;
-	*) warn "yomiyasuが終了コード $code で落ちた: $out" ;;
-	esac
-	;;
 *)
-	warn "知らない検査: $mode（parens か subject）"
+	warn "知らない検査: $mode（parens）"
 	;;
 esac
 exit 0

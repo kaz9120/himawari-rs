@@ -1,7 +1,6 @@
 """文書の相対リンクの行き先を検査する。
 
-yomiyasu（hmwr/doclint.py）は1文ずつの書き方を見る。ここが見るのは、リンクを辿って
-行き止まる事故である。
+リンクを辿って行き止まる事故を防ぐ。
 """
 
 from __future__ import annotations
@@ -31,7 +30,7 @@ def doc_files(root: Path) -> list[Path]:
     files: set[Path] = set()
     for pattern in DOC_GLOBS:
         files.update(root.glob(pattern))
-    return sorted(f for f in files if "node_modules" not in f.parts)
+    return sorted(f for f in files if not {"node_modules", "worktrees"} & set(f.parts))
 
 
 def check_links(root: Path) -> list[Finding]:

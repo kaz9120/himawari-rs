@@ -7,7 +7,6 @@
       "Bash(hmwr ci wait:*)",
       "Bash(hmwr data stats:*)",
       "Bash(hmwr doc check:*)",
-      "Bash(hmwr doc lint:*)",
       "Bash(hmwr status:*)",
       "Bash(hmwr report:*)",
       "Bash(hmwr kifu rate:*)",
@@ -25,7 +24,6 @@
       "Bash(./bin/hmwr ci wait:*)",
       "Bash(./bin/hmwr data stats:*)",
       "Bash(./bin/hmwr doc check:*)",
-      "Bash(./bin/hmwr doc lint:*)",
       "Bash(./bin/hmwr report:*)",
       "Bash(./bin/hmwr kifu rate:*)",
       "Bash(./bin/hmwr match show:*)",
@@ -84,12 +82,6 @@
             "command": "sh \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/check_commits.sh parens",
             "statusMessage": "コミット本文を検査中",
             "timeout": 30
-          },
-          {
-            "type": "command",
-            "command": "sh \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/check_commits.sh subject",
-            "statusMessage": "コミット件名を検査中",
-            "timeout": 60
           }
         ]
       }

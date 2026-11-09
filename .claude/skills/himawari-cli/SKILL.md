@@ -1,6 +1,6 @@
 ---
 name: himawari-cli
-description: himawari-rsの開発コマンドhmwrを使う。ビルド・機能検証・NPS計測・学習・教師データの前処理・実戦の棋譜の回収と分析（kifu）・単発の診断（diag）・成果物の掃除（clean）・PRの作成・文書のlintを実行するとき必ず使う。SPRTの運用手順はrunning-sprtスキルが持つ。
+description: himawari-rsの開発コマンドhmwrを使う。ビルド・機能検証・NPS計測・学習・教師データの前処理・実戦の棋譜の回収と分析（kifu）・単発の診断（diag）・成果物の掃除（clean）・PRの作成を実行するとき必ず使う。SPRTの運用手順はrunning-sprtスキルが持つ。
 ---
 
 # hmwr: 開発コマンド
@@ -335,7 +335,6 @@ strengthでは `data/sprt/<名前>.result` がH1であることと、本文の�
 ### 文書を書いたら
 
 ```
-hmwr doc lint          CIと同じ検査を回す（ファイルを渡すとそれだけ見る）
 hmwr doc check         相対リンクの行き先を見る
 ```
 

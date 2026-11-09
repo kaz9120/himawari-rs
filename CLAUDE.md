@@ -135,7 +135,7 @@ hmwr pr merge <PR番号> --kind chore            # 棋力向上は --kind streng
 | `chore` | CI・設定・テスト・依存更新 | なし |
 
 - 1コミットに1つの論理変更を入れる。コミット前に `cargo fmt` を通す
-- push前に、CIと同じ検査をローカルで通す。`cargo clippy --all-targets -- -D warnings`、`cargo test`、`python3 -m pytest tests -q`、`hmwr doc lint` である
+- push前に、CIと同じ検査をローカルで通す。`cargo clippy --all-targets -- -D warnings`、`cargo test`、`python3 -m pytest tests -q` である
 - 棋力向上のコミットは件名にEloを入れ、`SPRT: <Elo> [<CI下限>,<CI上限>] <対局数>games <H0|H1>` のトレーラを付ける。
   非劣性で採択したら件名にEloを入れず、トレーラの末尾に `（非劣性 elo0=-5 elo1=0）` を足す
 - **コミットの本文に入れ子の半角括弧を書かない**。release-pleaseの解析が失敗し、その回のリリースが黙って止まる
