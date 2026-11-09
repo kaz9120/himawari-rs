@@ -13,7 +13,7 @@ import argparse
 from pathlib import Path
 
 from .. import conditions, config, paths, proc, sprt_log
-from . import build, match
+from . import build, match, measure
 from .match import Player, Spec, files, settings
 
 # 延長の刻みと、オーナーに諮る線
@@ -368,12 +368,8 @@ def _parse_line(line: str, cond: Path) -> dict:
 def _verified(args: argparse.Namespace) -> bool:
     """機能検証を通す。全局面で一致したらFalseを返し、起動を止める。"""
     f = files(args.name)
-    code = proc.run(
-        proc.cargo_tool("verify", [str(f["base"]), str(f["cand"])]),
-        dry_run=args.dry_run,
-        env=config.measure_env(),
-        log=paths.log("verify", args.name),
-        allowed=(proc.OK, proc.JUDGE),
+    code = measure.run_verify(
+        [str(f["base"]), str(f["cand"])], dry_run=args.dry_run, log=paths.log("verify", args.name)
     )
     if code != proc.JUDGE:
         return True
