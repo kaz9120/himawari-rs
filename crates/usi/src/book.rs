@@ -40,13 +40,15 @@ pub struct BookHit {
 }
 
 /// 定跡の引き方を決める値（book.cpp:1308-1392のadd_options）。
-/// 既定値は参照実装のBOOK_OPTIONS=V1のものをそのまま使う。
+/// 既定値は参照実装のBOOK_OPTIONS=V1に揃え、手数の上限と評価値の下限だけを変えた。
+/// 本エンジンは既定で最善手を決定的に引くので、評価値の下限は、最善手の評価値が
+/// 負の局面で定跡より浅い自前の探索へ切り替えるだけになる。そのため既定で外す。
 #[derive(Clone, Debug)]
 pub struct BookParams {
     /// エンジン側の定跡を使うか（book.cpp:1307）
     pub own_book: bool,
     /// 定跡を使う手数の上限。参照実装の `BookMoves`（book.cpp:1314）に
-    /// あたるが、本エンジンは既存の `BookDepth`（既定24）を使う
+    /// あたるが、本エンジンは既存の `BookDepth`（既定40）を使う
     pub book_moves: u16,
     /// 定跡を無視する確率[%]（book.cpp:1317、1550-1552）
     pub ignore_rate: u32,
@@ -72,11 +74,11 @@ impl Default for BookParams {
     fn default() -> Self {
         BookParams {
             own_book: true,
-            book_moves: 24,
+            book_moves: 40,
             ignore_rate: 0,
             eval_diff: 30,
-            eval_black_limit: 0,
-            eval_white_limit: -140,
+            eval_black_limit: -99999,
+            eval_white_limit: -99999,
             depth_limit: 16,
             flipped: true,
             randomize: false,
@@ -553,19 +555,19 @@ mod tests {
     #[test]
     fn eval_limit_rejects_low_value() {
         let pos = Position::from_sfen(SFEN_STARTPOS).expect("startpos");
-        // 先手番の下限は0。負の評価値しかなければ引かない
+        // 下限を0にすると、先手番で負の評価値しかなければ引かない。既定は下限なし
         let body = format!(
             "#YANEURAOU-DB2016 1.00\nsfen {}\n7g7f 3c3d -50 24 1\n",
             book_key(&pos)
         );
         let path = write_tmp("himawari_book_test4.db", &body);
         let book = Book::load(&path).expect("load");
-        assert!(probe(&book, &pos, &BookParams::default()).is_none());
+        assert!(probe(&book, &pos, &BookParams::default()).is_some());
         let p = BookParams {
-            eval_black_limit: -99999,
+            eval_black_limit: 0,
             ..BookParams::default()
         };
-        assert!(probe(&book, &pos, &p).is_some());
+        assert!(probe(&book, &pos, &p).is_none());
     }
 
     #[test]
