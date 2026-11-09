@@ -1179,8 +1179,9 @@ impl Position {
     /// 下位9ビットは `effect_codes` と同じ語で、上位7ビットが `先手の階級 * 11 + 後手の階級` である。
     /// 階級はengineの `side_feat` と同じで、0は利きなし、1〜10が歩・香・桂・銀・金と成駒・角・飛・馬・龍・玉。
     ///
-    /// 階級は、反転した値 `16 − 階級`（利きなしは0）の最大で求める。飛び利きは駒ごとに升をたどって
-    /// 置き場へ書く。短い利きは駒ごとに書かず、1筋16升のベクトルで全升をまとめて求める。
+    /// 階級は、反転した値 `16 − 階級`（利きなしは0）の最大で求める。飛び利きは、利きの表の方向の
+    /// ビットから筋のベクトルで求め、決まらない駒種（香と、飛と龍・角と馬の両方を持つ色）だけ
+    /// 升をたどって置き場へ書く。短い利きは駒ごとに書かず、1筋16升のベクトルで全升をまとめて求める。
     /// 差分ごとに、駒の符号から階級を引く表（`MINATT_SHORT`）で盤の列を引き、差分の分だけ列とレーンを
     /// ずらして最大を取る。列の外へずれたレーンは壁の升から来るので、表が0を返す。
     #[cfg(feature = "stride16")]
@@ -1191,14 +1192,30 @@ impl Position {
         use std::simd::num::SimdUint;
         type U8 = Simd<u8, 16>;
         type U16 = Simd<u16, 16>;
+        // 飛び利きは、利きの表が持つ方向のビット（`longdir`）から求める。縦横の線は飛か龍、
+        // 斜めの線は角か馬から来るので、色がどちらか一方しか持たなければ、ビットの立つ升の
+        // 階級は1つに決まる（`long_v`）。両方を持つ色の駒種と香だけ、升をたどって書く。
+        // 香の前方の線も縦横のビットを立てるが、その升へは香の階級も書くので、最大を取れば
+        // 香が残る（香の階級2は飛・龍より小さい）
         let mut ma = [[0u8; LEN]; 2];
+        let mut long_v = [[0u8; 2]; 2];
         for (ci, m) in ma.iter_mut().enumerate() {
             let ps = &self.psets[ci];
             let p0 = (ci as u8) << 4;
-            for pt in [LANCE, BISHOP, ROOK, HORSE, DRAGON] {
-                let v = 16 - ATT_CLASS[pt as usize];
-                let p = p0 | pt;
-                for_each81(ps[pt as usize], |s| self.paint_long(m, p, s, v));
+            let v_lance = 16 - ATT_CLASS[LANCE as usize];
+            for_each81(ps[LANCE as usize], |s| {
+                self.paint_long(m, p0 | LANCE, s, v_lance)
+            });
+            for (k, pair) in [[ROOK, DRAGON], [BISHOP, HORSE]].into_iter().enumerate() {
+                let has = pair.map(|pt| ps[pt as usize] != 0);
+                if has == [true, true] {
+                    for pt in pair {
+                        let v = 16 - ATT_CLASS[pt as usize];
+                        for_each81(ps[pt as usize], |s| self.paint_long(m, p0 | pt, s, v));
+                    }
+                } else if let Some(i) = has.iter().position(|&h| h) {
+                    long_v[ci][k] = 16 - ATT_CLASS[pair[i] as usize];
+                }
             }
         }
         // 盤の列。筋fの段0〜8がレーン0〜8に載り、残りのレーンは壁になる
@@ -1214,6 +1231,11 @@ impl Position {
             let mut cls = [zero; 2];
             for (ci, cl) in cls.iter_mut().enumerate() {
                 let mut v = U8::from_slice(&ma[ci][base..base + 16]);
+                let ld = U8::from_slice(&self.longdir[ci][base..base + 16]);
+                for (k, dirs) in [ORTH, DIAG].into_iter().enumerate() {
+                    let hit = (ld & U8::splat(dirs)).simd_ne(zero);
+                    v = v.simd_max(hit.select(U8::splat(long_v[ci][k]), zero));
+                }
                 for &(dc, dr, tbl) in &MINATT_SHORT[ci] {
                     let src = column(i32::from(f) - i32::from(dc));
                     // 後手の表は色のビットを反転して引く。相手の駒は16以上になり、表引きが0を返す

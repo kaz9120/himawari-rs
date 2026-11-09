@@ -1293,6 +1293,43 @@ mod tests {
         assert!(checked > 5000, "確かめた局面が少なすぎる: {checked}");
     }
 
+    /// 飛と龍、角と馬を同じ色が持つ局面でも、語が正解器と一致すること。配列盤は、
+    /// 片方しか持たない駒種の飛び利きを方向のビットから求め、両方を持つ駒種だけ升をたどる。
+    /// ランダムな手順から、そういう局面だけを拾って確かめる。
+    #[test]
+    fn search_board_side_codes_with_promoted_sliders() {
+        let mut rng = Rng(0x0BAD_5EED_1234_5678);
+        let mut checked = 0;
+        for _ in 0..400 {
+            let mut pos = Position::from_sfen(SFEN_STARTPOS).unwrap();
+            let mut sb = crate::board::SearchBoard::new(pos.clone());
+            for _ in 0..250 {
+                let mut list = MoveList::default();
+                generate_legal(&pos, true, &mut list);
+                if list.is_empty() {
+                    break;
+                }
+                let m = list.as_slice()[(rng.next() % list.len() as u64) as usize];
+                pos.do_move(m);
+                sb.do_move(m);
+                let both = |c, a, b| !pos.pieces(c, a).is_empty() && !pos.pieces(c, b).is_empty();
+                let mixed = [Color::Black, Color::White].into_iter().any(|c| {
+                    both(c, PieceType::ROOK, PieceType::DRAGON)
+                        || both(c, PieceType::BISHOP, PieceType::HORSE)
+                });
+                if !mixed {
+                    continue;
+                }
+                let (mut got, mut want) = ([0u16; 81], [0u16; 81]);
+                sb.side_codes(&mut got);
+                crate::side_feat::f2_minatt_codes(&pos, &mut want);
+                assert_eq!(got, want, "升の語が食い違う: {}", pos.to_sfen());
+                checked += 1;
+            }
+        }
+        assert!(checked > 1000, "確かめた局面が少なすぎる: {checked}");
+    }
+
     /// 語の最小の攻め駒の部分から戻した添字が、`side_feat` の `KIND_MINATT` と一致すること。
     /// 構成に依らず、添字の式だけを確かめる。
     #[test]
