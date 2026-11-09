@@ -5,7 +5,6 @@ import csv
 import math
 import multiprocessing
 import os
-import re
 import sys
 import time
 
@@ -41,7 +40,7 @@ def validate(model, valid_loader, device):
             ]
             # 利きの入力特徴（ADR-0237）。抽出させていなければ空で来る。
             # 古い拡張のPsvDatasetは5本しか返さないので、そのときは渡さない
-            eff = [x.to(device) for x in batch[9:11]]
+            eff = [x.to(device) for x in batch[7:9]]
             out = model(stm_i, stm_o, opp_i, opp_o, *eff)
             loss = loss_fn(out, targets)
             total_loss += loss.item() * targets.size(0)
@@ -105,14 +104,6 @@ def main():
         help="利きのaccumulatorへ特徴を立てるか（ADR-0237）。f2は駒×升×利き数の特徴を"
              "立てる処置群、noneは立てない統制群。利きの構成（e<E>）で省くとf2になる。"
              "それ以外の構成では渡せない",
-    )
-    p.add_argument(
-        "--halfkp-inputs",
-        dest="halfkp_inputs",
-        choices=["on", "none"],
-        default="on",
-        help="HalfKPの特徴を立てるか（ADR-0245）。noneはFTの表を0で凍結し、主のaccumulatorを"
-             "バイアスだけの定数にする置き換えの群。入力は側のaccumulatorだけになる",
     )
     p.add_argument(
         "--init-net",
@@ -201,19 +192,11 @@ def main():
     # 側のaccをi16で持つ構成は、上限なしで学習すると読み込みで弾かれる（ADR-0261）。
     # 1日学習してから気づかないよう、省いたら現行の評価関数と同じ1.5をかける
     if args.side_clip is None:
-        m = re.search(r"e\d+(p?)(w?)", ARCH)
-        side16 = "-f2_minatt" in ARCH and m is not None and not (m.group(1) or m.group(2))
-        args.side_clip = 1.5 if side16 else 0.0
+        args.side_clip = 1.5 if "-f2_minatt" in ARCH else 0.0
     if EFF_OUT > 0 and not args.batch_loader:
         p.error("利きの構成は --batch-loader が要る（逐次のローダは特徴を作らない）")
     # 来歴に群を残す（ADR-0237）。統制と処置は同じ構成で、ファイルの寸法では見分けられない
     eff_tag = f" effect_inputs={args.effect_inputs}" if args.effect_inputs else ""
-    if args.halfkp_inputs == "none":
-        if EFF_OUT == 0:
-            p.error("--halfkp-inputs none は側のaccumulatorを持つ構成（e<E>）でだけ使える（入力がなくなる）")
-        if args.init_net or args.init_checkpoint:
-            p.error("--halfkp-inputs none はゼロから学習するときだけ使える（読んだFTを捨てることになる）")
-        eff_tag += " halfkp_inputs=none"
 
     if args.eval_only:
         # 測るだけなので教師データは要らない。読むネットと指標が要る
@@ -290,10 +273,7 @@ def main():
         sparse_ft=not args.dense_ft,
         factorized=args.factorized,
         effect_inputs=args.effect_inputs,
-        halfkp_inputs=args.halfkp_inputs == "on",
     ).to(device)
-    if args.halfkp_inputs == "none":
-        print("HalfKPの入力: 立てない（FTの表を0で凍結、ADR-0245の置き換えの群）", file=sys.stderr)
     if args.effect_inputs is not None:
         print(
             f"利きの入力: {args.effect_inputs}（幅{EFF_OUT}、"
@@ -336,17 +316,11 @@ def main():
         model.out.weight, model.out.bias,
     ]
     # 隠れ層は構成によって数が変わる（ADR-0127）
-    for layer in (model.l3, model.l4):
-        if layer is not None:
-            dense_params.extend([layer.weight, layer.bias])
+    if model.l3 is not None:
+        dense_params.extend([model.l3.weight, model.l3.bias])
     # 利きのaccumulator（ADR-0237）。統制群の表は凍結してあり、下で外れる
     if model.eff is not None:
         dense_params.extend([model.eff.weight, model.eff_bias])
-    if model.eff_p is not None:
-        dense_params.append(model.eff_p.weight)
-    if model.sub is not None:
-        # 玉の近傍の部分モデル（ADR-0246）。小さい密の層なので、後段と同じ最適化器で回す
-        dense_params.extend(model.sub.parameters())
     ft_params = [model.ft.weight]
     if model.ft_p is not None:
         ft_params.append(model.ft_p.weight)
@@ -456,11 +430,11 @@ def main():
             if batch is None:
                 continue
 
-            # 6〜9本目は指し手と利きのラベルで、学習には使わない。10・11本目は
+            # 6・7本目は指し手のラベルで、学習には使わない。8・9本目は
             # 利きの入力特徴（ADR-0237）。抽出させていなければ空で来る
             tensors = [x.to(device) for x in batch]
             stm_i, stm_o, opp_i, opp_o, targets = tensors[:5]
-            eff_stm, eff_opp = tensors[9:11]
+            eff_stm, eff_opp = tensors[7:9]
             n = targets.size(0)
 
             optimizer_dense.zero_grad()

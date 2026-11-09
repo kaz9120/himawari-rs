@@ -23,15 +23,8 @@ include!(concat!(env!("OUT_DIR"), "/arch.rs"));
 /// 片視点は `FT_OUT` 次元のaccumulatorを2つに割って要素ごとに掛けるので、
 /// 出す活性は `FT_OUT / 2` 次元になる（ADR-0171）。両視点でその2倍。
 /// 利きのaccumulator（ADR-0237）を持つ構成では、その後ろへ `EFF_OUT` 次元を
-/// 2視点ぶん連結する。`EFF_OUT` が0の既定構成では `FT_OUT` のままである。
-/// 玉の近傍の部分モデル（ADR-0246）を持つ構成では、さらに末尾へ両玉の出力が続く。
-pub const CONCAT: usize = FT_OUT + 2 * EFF_OUT + crate::submodel::SUB_SLOT;
-/// 側のaccumulatorが片視点で出す活性の幅。対の積の構成を消したので `EFF_OUT` と同じになる。
-/// 学習側（`crates/py`）が参照するので残す。
-pub const EFF_ACT: usize = EFF_OUT;
-/// 側の活性に対の積を掛けるか。対の積の構成は消したので常に偽になる。
-/// 学習側（`crates/py`）が参照するので残す。
-pub const EFF_PAIR: bool = false;
+/// 2視点ぶん連結する。`EFF_OUT` が0の構成では `FT_OUT` のままである。
+pub const CONCAT: usize = FT_OUT + 2 * EFF_OUT;
 /// 連結ベクトルのうち、HalfKPの片視点ぶんの幅。
 pub const HALF: usize = FT_OUT / 2;
 /// 連結ベクトルのうち、利きの活性が始まる位置（ADR-0237）。
@@ -83,28 +76,17 @@ pub struct NnueNetwork {
     /// 常にゼロにする（入力側もゼロ埋めなので値には影響しない）。
     pub w3: Vec<i8>,
     pub b3: Vec<i32>,
-    /// 隠れ層3（`L3_OUT` が0の3層構成では空）。列幅は `L2_PAD`。
-    pub w4: Vec<i8>,
-    pub b4: Vec<i32>,
-    /// 出力層。入力は最後の隠れ層（4層なら`L3_OUT`、3層なら`L2_OUT`）。
+    /// 出力層。入力は最後の隠れ層（隠れ層2つなら`L2_OUT`、1つなら`L1_OUT`）。
     pub w_out: Vec<i8>,
     pub b_out: i32,
     /// 利きの特徴の重み（ADR-0237）。列優先: `eff_w[feature * EFF_OUT + o]`。
     /// `EFF_OUT` が0の構成では空。
     pub eff_w: Vec<i16>,
     pub eff_b: Vec<i16>,
-    /// 玉の近傍の部分モデル（ADR-0246）。持たない構成では空。
-    pub sub: crate::submodel::SubNet,
 }
 
-/// 出力層の入力次元。層を1つ挟むかで変わる。
-pub const LAST_HIDDEN: usize = if L3_OUT != 0 {
-    L3_OUT
-} else if L2_OUT != 0 {
-    L2_OUT
-} else {
-    L1_OUT
-};
+/// 出力層の入力次元。隠れ層2を挟むかで変わる。
+pub const LAST_HIDDEN: usize = if L2_OUT != 0 { L2_OUT } else { L1_OUT };
 
 /// 隠れ層1の重みを4列チャンク単位で並べ替える（ADR-0151群L）。
 ///
@@ -180,18 +162,14 @@ impl NnueNetwork {
             b2: r.i32v(L1_OUT),
             w3: r.i8_rows(L2_OUT, L1_OUT, L1_PAD),
             b3: r.i32v(L2_OUT),
-            w4: r.i8_rows(L3_OUT, L2_OUT, L2_PAD),
-            b4: r.i32v(L3_OUT),
             w_out: r.i8v(LAST_HIDDEN),
             b_out: 0,
             eff_w: Vec::new(),
             eff_b: Vec::new(),
-            sub: crate::submodel::SubNet::default(),
         };
         // 利きの重みは最後に引く。既定構成（EFF_OUT=0）の乱数列を変えない
         net.eff_w = r.i16v(EFF_IN * EFF_OUT, 16);
         net.eff_b = r.i16v(EFF_OUT, 128);
-        net.sub = crate::submodel::SubNet::random(seed ^ 0x5b);
         net.finish()
     }
 }
@@ -211,10 +189,6 @@ pub fn pad_rows(rows: &[i8], used: usize, stride: usize) -> Vec<i8> {
     v
 }
 
-/// 指し手ラベルの `from` のクラス数。盤上81マス＋打つ駒7種（ADR-0129）。
-pub const MOVE_FROM_CLASSES: usize = 81 + 7;
-/// 指し手ラベルの `to` のクラス数。
-pub const MOVE_TO_CLASSES: usize = 81;
 /// ラベルが取れなかったときの値。PyTorchの `ignore_index` に渡す。
 pub const MOVE_NONE: i64 = -1;
 
@@ -255,76 +229,6 @@ pub fn move_labels(m: u16, stm: Color) -> (i64, i64) {
     (from, to)
 }
 
-/// 利きラベル1本の長さ。手番側81升＋相手側81升（ADR-0133）。
-/// 短い利きと長い利きで1本ずつ持つ。
-pub const EFFECT_LEN: usize = 81 * 2;
-
-/// 遮りで利きが変わる駒（飛び駒）か。馬・竜は遠隔の部分を持つので含む。
-fn is_slider(pt: PieceType) -> bool {
-    matches!(
-        pt,
-        PieceType::LANCE
-            | PieceType::BISHOP
-            | PieceType::ROOK
-            | PieceType::HORSE
-            | PieceType::DRAGON
-    )
-}
-
-/// 盤上の実利きを長短に分けて数える（ADR-0133）。
-///
-/// 分ける基準は距離ではなく遮り依存性である。飛び駒でない駒（歩・桂・銀・
-/// 金相当・玉）は遮りが起こらないので、桂が跳ぶ2升先も含めてすべて短い。
-/// 飛び駒（香・角・飛・馬・竜）は隣接升だけがその先の駒に依らず必ず利くので、
-/// 隣接を短い、その先を長いとする。馬・竜の `attacks` は
-/// `bishop_attacks | king_attacks` の形なので、この規則で自動的に分かれる。
-/// 短い＋長いは、常にその駒の利き全体に一致する。
-///
-/// 添字は `陣営 * 81 + 手番視点の升`。陣営0が手番側、1が相手側で、升は
-/// `move_labels` と同じく後手番のとき `80 - idx` へ回す。揃えないと同じ形の
-/// 局面が先後で違うラベルになり、学習が割れる。
-///
-/// 値は利き数であって有無ではない。学習側で二値化も回帰も選べるようにして
-/// あり、的を変えるのに抽出をやり直さずに済む。
-pub fn effect_labels(pos: &Position) -> ([u8; EFFECT_LEN], [u8; EFFECT_LEN]) {
-    let stm = pos.side_to_move();
-    let occ = pos.occupied();
-    let mut short = [0u8; EFFECT_LEN];
-    let mut long = [0u8; EFFECT_LEN];
-    // 手番視点へそろえる。盤自体は反転しない
-    let view = |sq: Square| -> usize {
-        if stm == Color::Black {
-            sq.index()
-        } else {
-            sq.inv().index()
-        }
-    };
-    // 盤上の駒を1周する。81升それぞれで attackers_to を呼ぶと81回になるが、
-    // 駒を回れば盤上の枚数（平手で40）で済む
-    for sq_i in 0..81u8 {
-        let sq = Square::from_index(sq_i);
-        let pc = pos.piece_on(sq);
-        if pc.is_empty() {
-            continue;
-        }
-        let base = if pc.color() == stm { 0 } else { 81 };
-        let att = attacks(pc, sq, occ);
-        let (near, far) = if is_slider(pc.piece_type()) {
-            let adjacent = king_attacks(sq);
-            (att & adjacent, att & !adjacent)
-        } else {
-            (att, Bitboard::EMPTY)
-        };
-        for to in near {
-            short[base + view(to)] += 1;
-        }
-        for to in far {
-            long[base + view(to)] += 1;
-        }
-    }
-    (short, long)
-}
-
 /// 視点cのHalfKP活性特徴（玉以外の盤上駒＋両者の持ち駒）のBonaPieceを
 /// 順に渡す。玉位置のオフセットを掛ける前の形で、これを起点に
 /// 特徴インデックスにもキャッシュの鍵にもできる（ADR-0156）。
@@ -360,8 +264,7 @@ pub fn halfkp_active(pos: &Position, c: Color, out: &mut Vec<u32>) {
 /// 向きのまま。玉の利きを含め、ピンは無視する。その升の駒自身は数えない
 /// （駒は自分の升へ利かない）。値は打ち切らない。
 ///
-/// 盤上の駒を1周して利き先へ足す。`effect_labels` と同じ数え方で、
-/// `attackers_to` との一致はテストで確かめる。
+/// 盤上の駒を1周して利き先へ足す。`attackers_to` との一致はテストで確かめる。
 pub fn effect_counts(pos: &Position) -> [[u8; 81]; 2] {
     let occ = pos.occupied();
     let mut n = [[0u8; 81]; 2];
@@ -812,7 +715,6 @@ pub fn evaluate_scalar(net: &NnueNetwork, pos: &Position) -> Value {
         }
     }
     fill_effect(net, pos, &mut concat);
-    crate::submodel::fill(&net.sub, pos, &mut concat);
 
     forward_hidden(net, &concat)
 }
@@ -830,29 +732,15 @@ pub(crate) fn forward_hidden(net: &NnueNetwork, concat: &[u8; CONCAT]) -> Value 
         *h = clip(sum >> 6);
     }
     // 隠れ層は書いたぶんだけ挟む。次元は定数なので使わない分岐は消える
-    let mut h3 = [0u8; L2_PAD];
-    for (o, h) in h3[..L2_OUT].iter_mut().enumerate() {
+    let mut h3 = [0u8; L2_OUT];
+    for (o, h) in h3.iter_mut().enumerate() {
         let mut sum = net.b3[o];
         for (i, &x) in h2.iter().enumerate() {
             sum += i32::from(net.w3[o * L1_PAD + i]) * i32::from(x);
         }
         *h = clip(sum >> 6);
     }
-    let mut h4 = [0u8; L3_OUT];
-    for (o, h) in h4.iter_mut().enumerate() {
-        let mut sum = net.b4[o];
-        for (i, &x) in h3.iter().enumerate() {
-            sum += i32::from(net.w4[o * L2_PAD + i]) * i32::from(x);
-        }
-        *h = clip(sum >> 6);
-    }
-    let last: &[u8] = if L3_OUT != 0 {
-        &h4
-    } else if L2_OUT != 0 {
-        &h3[..L2_OUT]
-    } else {
-        &h2[..L1_OUT]
-    };
+    let last: &[u8] = if L2_OUT != 0 { &h3 } else { &h2[..L1_OUT] };
 
     let mut out = net.b_out;
     for (i, &x) in last.iter().enumerate() {
@@ -883,10 +771,7 @@ mod tests {
     #[test]
     fn dropped_piece_gets_its_own_class() {
         let (from, to) = move_labels(Move16::from_usi("P*5e").expect("P*5e").0, Color::Black);
-        assert!(
-            (81..MOVE_FROM_CLASSES as i64).contains(&from),
-            "打つ駒は81以降: {from}"
-        );
+        assert!((81..88).contains(&from), "打つ駒は81以降: {from}");
         assert!((0..81).contains(&to), "打つ先は盤上: {to}");
 
         let (_, to_w) = move_labels(Move16::from_usi("P*5e").expect("P*5e").0, Color::White);
@@ -1091,15 +976,6 @@ mod tests {
         );
     }
 
-    /// 手番視点の升へ回す。テスト側でも同じ変換を持ち、実装と突き合わせる。
-    fn view_index(sq: Square, stm: Color) -> usize {
-        if stm == Color::Black {
-            sq.index()
-        } else {
-            sq.inv().index()
-        }
-    }
-
     /// 検証用に置いた局面。馬・竜・香を含む。ランダム対局40手では
     /// 成駒がほとんど出ないので、別に用意する
     const EFFECT_SFENS: [&str; 3] = [
@@ -1107,139 +983,6 @@ mod tests {
         "8k/9/9/9/4L4/9/4l4/9/K8 b - 1",
         "8k/2n6/9/3s5/4B4/9/2g2N3/9/K8 w - 1",
     ];
-
-    /// 短い利きと長い利きの和は、その升の利き数そのものになる。基準は
-    /// 探索が使う `attackers_to` で、実装を共有しない別経路である。
-    #[test]
-    fn effect_short_plus_long_covers_every_attacker() {
-        let mut positions: Vec<Position> = EFFECT_SFENS
-            .iter()
-            .map(|s| Position::from_sfen(s).expect("検証用sfen"))
-            .collect();
-        for seed in 1..=8u64 {
-            let mut rng = Rng(seed.wrapping_mul(0x9E37_79B9_7F4A_7C15));
-            let mut pos = Position::from_sfen(SFEN_STARTPOS).unwrap();
-            for ply in 0..40 {
-                let mut list = MoveList::default();
-                generate_legal(&pos, true, &mut list);
-                if list.is_empty() {
-                    break;
-                }
-                if ply % 5 == 0 {
-                    positions.push(Position::from_sfen(&pos.to_sfen()).unwrap());
-                }
-                let m = list.as_slice()[(rng.next() % list.len() as u64) as usize];
-                pos.do_move(m);
-            }
-        }
-
-        for pos in &positions {
-            let (short, long) = effect_labels(pos);
-            let stm = pos.side_to_move();
-            let occ = pos.occupied();
-            for i in 0..81u8 {
-                let sq = Square::from_index(i);
-                let v = view_index(sq, stm);
-                for (base, c) in [(0usize, stm), (81, stm.flip())] {
-                    let want = pos.attackers_to(c, sq, occ).count();
-                    let got = u32::from(short[base + v]) + u32::from(long[base + v]);
-                    assert_eq!(
-                        got,
-                        want,
-                        "利き数が合わない: sq={} c={c:?} {}",
-                        sq.to_usi(),
-                        pos.to_sfen()
-                    );
-                }
-            }
-        }
-    }
-
-    /// 遮りは長い利きにだけ効く。香の隣接1升は手前に駒が入っても変わらず、
-    /// その先だけが消える。長短を分ける基準が距離ではなく遮り依存性である
-    /// ことの確認になる（ADR-0133）。
-    #[test]
-    fn blocking_changes_only_the_long_effect() {
-        // 先手香を5五に置く。空なら5四〜5一へ利く
-        let open = Position::from_sfen("8k/9/9/9/4L4/9/9/9/K8 b - 1").unwrap();
-        // 5三に先手歩を足す。香の利きは5四・5三で止まる
-        let blocked = Position::from_sfen("8k/9/4P4/9/4L4/9/9/9/K8 b - 1").unwrap();
-        let (s_open, l_open) = effect_labels(&open);
-        let (s_blocked, l_blocked) = effect_labels(&blocked);
-        let at = |sq: &str| Square::from_usi(sq).expect("升").index();
-
-        // 隣接升（5四）は遮りに依らず必ず利く
-        assert_eq!(s_open[at("5d")], 1);
-        assert_eq!(s_blocked[at("5d")], 1);
-        // その先は消える。5三は歩に当たって残る（利きは駒の上まで届く）
-        assert_eq!(
-            (l_open[at("5c")], l_open[at("5b")], l_open[at("5a")]),
-            (1, 1, 1)
-        );
-        assert_eq!(
-            (
-                l_blocked[at("5c")],
-                l_blocked[at("5b")],
-                l_blocked[at("5a")]
-            ),
-            (1, 0, 0)
-        );
-        // 5二の利き数は歩が肩代わりして1のまま。**利き有無だけを的にすると
-        // 遮りが見えない**（ADR-0133がT2を退けた理由）ことがここに出る
-        assert_eq!(s_blocked[at("5b")], 1);
-        assert_eq!(s_open[at("5b")], 0);
-    }
-
-    /// 飛び駒でない駒は長い利きを持たない。桂は2升先へ跳ぶが、遮りが
-    /// 起こらないので短い扱いにする（ADR-0133）。
-    #[test]
-    fn non_sliders_have_no_long_effect() {
-        // 先手の桂・銀・金・歩と玉だけを置く
-        let pos = Position::from_sfen("8k/9/9/9/4N4/9/2G1S1P2/9/K8 b - 1").unwrap();
-        let (short, long) = effect_labels(&pos);
-        assert!(
-            long.iter().all(|&x| x == 0),
-            "飛び駒がなければ長い利きは出ない"
-        );
-        let at = |sq: &str| Square::from_usi(sq).expect("升").index();
-        // 5五の桂が跳ぶ先は2升離れているが、短いほうへ入る
-        assert_eq!(short[at("4c")], 1);
-        assert_eq!(short[at("6c")], 1);
-    }
-
-    /// 利きラベルは手番視点になる。先手の局面と、それを180度回して
-    /// 先後を入れ替えた局面は同じラベルへ落ちる。
-    #[test]
-    fn effect_labels_follow_the_side_to_move() {
-        let mut positions: Vec<Position> = EFFECT_SFENS
-            .iter()
-            .map(|s| Position::from_sfen(s).expect("検証用sfen"))
-            .collect();
-        let mut rng = Rng(0x1234_5678_9ABC_DEF0);
-        let mut pos = Position::from_sfen(SFEN_STARTPOS).unwrap();
-        for ply in 0..40 {
-            let mut list = MoveList::default();
-            generate_legal(&pos, true, &mut list);
-            if list.is_empty() {
-                break;
-            }
-            if ply % 3 == 0 {
-                positions.push(Position::from_sfen(&pos.to_sfen()).unwrap());
-            }
-            let m = list.as_slice()[(rng.next() % list.len() as u64) as usize];
-            pos.do_move(m);
-        }
-
-        for pos in &positions {
-            let mirrored = Position::from_sfen(&mirror_sfen(pos)).unwrap();
-            assert_eq!(
-                effect_labels(pos),
-                effect_labels(&mirrored),
-                "鏡像でラベルが一致しない: {}",
-                pos.to_sfen()
-            );
-        }
-    }
 
     /// 利きの特徴を確かめる局面。検証用の3局面と、ランダムに進めた局面。
     fn effect_positions() -> Vec<Position> {

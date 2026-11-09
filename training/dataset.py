@@ -14,14 +14,13 @@ import himawari
 #: psvの1レコード（ADR-0038）
 PSV_BYTES = 40
 #: `extract_batch` が返す配列の本数。末尾2本が利きの入力特徴（ADR-0237）
-BATCH_ARRAYS = 11
+BATCH_ARRAYS = 9
 
 
 def to_tensors(arrays):
-    """抽出結果をテンソルの組にし、11本へ揃える。
+    """抽出結果をテンソルの組にし、9本へ揃える。
 
-    利きの入力特徴（ADR-0237）を持たない古い拡張は9本を返す。足りない分は
-    長さ0で埋め、受け取り側の分解を1通りに保つ。
+    足りない分は長さ0で埋め、受け取り側の分解を1通りに保つ。
     """
     tensors = [torch.from_numpy(a) for a in arrays]
     while len(tensors) < BATCH_ARRAYS:
@@ -146,10 +145,9 @@ class PsvBatchLoader:
                 yield carry
 
     def _extract(self, raw):
-        # 5番目の引数は利きラベルの抽出で、使わないので常に偽にする
         arrays = extract(
             raw.tobytes(), self.lambda_, self.score_limit, self.score_clamp,
-            False, effect_inputs=self.effect_inputs,
+            effect_inputs=self.effect_inputs,
         )
         if len(arrays[4]) == 0:
             return None
@@ -248,10 +246,10 @@ class RankLoader:
         recs = np.array(self.data[idx]).reshape(-1, 40)
         parity = torch.from_numpy(recs[:, 39].astype(np.float32).copy())
         arrays = to_tensors(extract(
-            recs.tobytes(), 0.0, 0, 0, False, True, effect_inputs=self.effect_inputs,
+            recs.tobytes(), 0.0, 0, 0, True, effect_inputs=self.effect_inputs,
         ))
         stm_i, stm_o, opp_i, opp_o = arrays[:4]
-        return stm_i, stm_o, opp_i, opp_o, parity, arrays[9], arrays[10]
+        return stm_i, stm_o, opp_i, opp_o, parity, arrays[7], arrays[8]
 
     def _produce(self):
         while True:

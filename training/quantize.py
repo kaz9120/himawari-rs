@@ -4,7 +4,7 @@ import torch
 
 import himawari
 from model import (
-    CONCAT, EFF_IN, EFF_OUT, FT_IN, FT_OUT, FV_SCALE, L1_OUT, L2_OUT, L3_OUT,
+    CONCAT, EFF_IN, EFF_OUT, FT_IN, FT_OUT, FV_SCALE, L1_OUT, L2_OUT,
     LAST_HIDDEN, SIGMOID_SCALE, NnueModel,
 )
 
@@ -19,14 +19,10 @@ def quantize(model: NnueModel) -> dict:
         b2 = model.l2.bias.detach().float()
         w3 = model.l3.weight.detach().float() if model.l3 is not None else None
         b3 = model.l3.bias.detach().float() if model.l3 is not None else None
-        # 4層構成でだけ持つ隠れ層3（ADR-0127）
-        w4 = model.l4.weight.detach().float() if model.l4 is not None else None
-        b4 = model.l4.bias.detach().float() if model.l4 is not None else None
         w_out = model.out.weight.detach().float().squeeze(0)
         b_out = model.out.bias.detach().float().item()
         # 利きのaccumulator（ADR-0237）。FTと同じ127倍で、i16のまま持つ
-        # 表し方を替えた構成（ADR-0245）は末尾に詰め物の行を持つので、EFF_IN行で切る
-        # 側に入れたHalfKPのfactorizerもここで畳み込む（ADR-0245）
+        # F2と最小の攻め駒の組（ADR-0248）は末尾に詰め物の行を持つので、EFF_IN行で切る
         eff_w = model.folded_eff_weight() if model.eff is not None else None
         eff_b = model.eff_bias.detach().float() if model.eff is not None else None
 
@@ -48,14 +44,10 @@ def quantize(model: NnueModel) -> dict:
         "b2": hidden_b(b2),
         "w3": None if w3 is None else hidden_w(w3),
         "b3": None if b3 is None else hidden_b(b3),
-        "w4": None if w4 is None else hidden_w(w4),
-        "b4": None if b4 is None else hidden_b(b4),
         "w_out": (w_out * out_w_scale).round().clamp(-128, 127).to(torch.int8),
         "b_out": round(b_out * SIGMOID_SCALE * FV_SCALE),
         "eff_w": None if eff_w is None else ft_q(eff_w),
         "eff_b": None if eff_b is None else ft_q(eff_b),
-        # 玉の近傍の部分モデル（ADR-0246）はf32のまま載せる
-        "sub_w": None if model.sub is None else model.sub.raw_weights(),
     }
 
 
@@ -70,7 +62,7 @@ def load_into(model: NnueModel, path: str, freeze_ft: bool = False) -> str:
     動かないので影響しない。
     """
     w = himawari.load_hmwr(path)
-    here = f"{himawari.FT_OUT}x{himawari.L1_OUT}x{himawari.L2_OUT}x{himawari.L3_OUT}"
+    here = f"{himawari.FT_OUT}x{himawari.L1_OUT}x{himawari.L2_OUT}"
     same_shape = w["src_arch"] == here
 
     def as_tensor(key, *shape):
@@ -87,11 +79,7 @@ def load_into(model: NnueModel, path: str, freeze_ft: bool = False) -> str:
         # 読めないので、拡張が返した長さのまま写せる
         if model.eff is not None and len(w["eff_w"]):
             model.eff.weight[:EFF_IN].copy_(as_tensor("eff_w", EFF_IN, EFF_OUT))
-            if model.eff_p is not None:
-                model.eff_p.weight.zero_()
             model.eff_bias.copy_(as_tensor("eff_b", EFF_OUT))
-        if model.sub is not None and len(w["sub_w"]):
-            model.sub.load_raw(torch.from_numpy(w["sub_w"]).float())
 
         if same_shape:
             model.l2.weight.copy_(as_tensor("w2", L1_OUT, CONCAT))
@@ -99,9 +87,6 @@ def load_into(model: NnueModel, path: str, freeze_ft: bool = False) -> str:
             if model.l3 is not None:
                 model.l3.weight.copy_(as_tensor("w3", L2_OUT, L1_OUT))
                 model.l3.bias.copy_(as_tensor("b3", L2_OUT))
-            if model.l4 is not None:
-                model.l4.weight.copy_(as_tensor("w4", L3_OUT, L2_OUT))
-                model.l4.bias.copy_(as_tensor("b4", L3_OUT))
             model.out.weight.copy_(as_tensor("w_out", 1, LAST_HIDDEN))
             model.out.bias.fill_(w["b_out"])
 
@@ -131,8 +116,6 @@ def save_hmwr(model: NnueModel, lineage: str, path: str):
         [] if q["b3"] is None else q["b3"].tolist(),
         q["w_out"].tolist(),
         q["b_out"],
-        None if q["w4"] is None else q["w4"].flatten().tolist(),
-        None if q["b4"] is None else q["b4"].tolist(),
         **(
             {}
             if q["eff_w"] is None
@@ -141,5 +124,4 @@ def save_hmwr(model: NnueModel, lineage: str, path: str):
                 "eff_b": q["eff_b"].tolist(),
             }
         ),
-        **({} if q["sub_w"] is None else {"sub_w": q["sub_w"].tolist()}),
     )

@@ -10,7 +10,6 @@
       "Bash(hmwr status:*)",
       "Bash(hmwr report:*)",
       "Bash(hmwr kifu rate:*)",
-      "Bash(hmwr league summary:*)",
       "Bash(hmwr match show:*)",
       "Bash(hmwr match wait:*)",
       "Bash(hmwr net eval:*)",
