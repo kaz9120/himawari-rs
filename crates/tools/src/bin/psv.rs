@@ -32,9 +32,8 @@ use std::sync::Arc;
 
 use himawari_core::packed_sfen::{PSV_BYTES, PackedSfenValue, pack, unpack, unpack_sfen};
 use himawari_engine::eval::Evaluator;
-use himawari_engine::movepick::Histories;
 use himawari_engine::search::{Shared, Worker};
-use himawari_engine::timeman::{Limits, TimeManager, TimeOptions};
+use himawari_engine::timeman::Limits;
 
 // バイナリのルートなので、サブモジュールはsrc/bin/psv/の下に置いてpathで指す。
 // Cargo.tomlのpathを変えずに済む
