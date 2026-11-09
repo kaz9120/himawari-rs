@@ -14,7 +14,7 @@ from pathlib import Path
 
 from .. import conditions, config, heartbeat, paths, proc
 from .. import release as release_mod
-from ..tools import focus_labels, ft_reorder
+from ..tools import ft_reorder
 
 TRAINER = "training/train.py"
 
@@ -44,13 +44,6 @@ BASE_FLAGS = ["--batch-loader", "--dense-ft", "--factorized"]
 TOTAL_STEPS_RE = re.compile(r"total_steps=([0-9]+)")
 STEP_RE = re.compile(r"^step ([0-9]+) samples [0-9]+ loss ([0-9.]+)")
 VALID_RE = re.compile(r"^\s*valid loss ([0-9.]+)")
-
-# probeの既定（ADR-0213）。末尾10万局面を検証へ回し、残りで後段だけを学習する
-PROBE_VALID = 100_000
-PROBE_LAMBDA = "1.0"
-# 検証と学習ログを1エポックの中で何回出すか。既定の刻みは本番規模に
-# 合わせてあり、90万局面では1回も出ないまま終わる
-PROBE_REPORTS = 10
 
 
 def add_parser(sub: argparse._SubParsersAction) -> None:
@@ -105,93 +98,6 @@ def add_parser(sub: argparse._SubParsersAction) -> None:
         help="条件の記録がないチェックポイントを、この条件の続きとして引き継ぐ",
     )
     t.set_defaults(func=train)
-
-    t = ss.add_parser(
-        "probe",
-        help="FTを凍結して焦点のヒートマップを当てる",
-        description="後段だけを学習し、上位5マスの的中率でFTの表現を測る。"
-        "**ベースラインを必ず並記する**。頻度ベースラインは検証行に出るので、"
-        "乱数初期値のFTは --init-net none で別に測る。"
-        "書き出すネットは捨てる。学習するのは焦点ヘッドだけである。",
-    )
-    t.add_argument("name", help="probeの名前。ログと学習の記録の名前になる")
-    t.add_argument(
-        "--focus",
-        required=True,
-        metavar="名前",
-        help=f"ヒートマップつき局面集。data/train/<名前>{focus_labels.SUFFIX}",
-    )
-    t.add_argument(
-        "--init-net",
-        metavar="ネット",
-        help=f"FTの出どころ。none で乱数初期値（既定 {config.EVAL_FILE}）",
-    )
-    t.add_argument(
-        "--valid-count",
-        type=int,
-        default=PROBE_VALID,
-        metavar="N",
-        help=f"末尾のこの件数を検証へ回す（既定 {PROBE_VALID}）",
-    )
-    t.add_argument("--epochs", type=int, default=1, metavar="N", help="エポック数")
-    t.add_argument(
-        "--batch", type=int, default=BATCH, metavar="N", help=f"バッチ（既定 {BATCH}）"
-    )
-    t.add_argument("--lr", metavar="値", help="学習率の頂点")
-    t.add_argument(
-        "--head",
-        default="linear",
-        choices=["linear", "mlp"],
-        help="ヘッドの型。mlpは中間256の2層で、線形で当たらない焦点が非線形なら当たるかを分ける",
-    )
-    t.add_argument(
-        "--orient",
-        default="board",
-        choices=["board", "stm"],
-        help="ヒートマップの向き。boardは盤の向きのまま、stmは手番側から見た向きへ揃える",
-    )
-    t.add_argument(
-        "--train-ft",
-        action="store_true",
-        help="FTを凍結せず、焦点だけで学習する。FTが焦点をどこまで表せるかの上限を測る"
-        "対照で、probeではない",
-    )
-    t.add_argument("--device", metavar="名前", help="mps か cpu（既定 mps）")
-    t.add_argument("--seed", type=int, default=0, metavar="N", help="乱数種")
-    t.set_defaults(func=probe)
-
-    t = ss.add_parser(
-        "shapes",
-        help="ネットワーク構成ごとに小さく学習して比べる",
-        description="学習側の次元はPyO3拡張から読むので、構成ごとに拡張を"
-        "ビルドし直して順に回す。並列に回すと拡張が上書きし合い、"
-        "次元の違う構成で学習してしまう。",
-    )
-    t.add_argument("specs", nargs="+", metavar="構成", help="例 256x16 512x16x32")
-    t.add_argument(
-        "--data", metavar="PSV", help=f"学習データ（既定 {paths.rel(config.train_data())}）"
-    )
-    t.add_argument(
-        "--valid", metavar="PSV", help=f"検証データ（既定 {paths.rel(config.train_valid())}）"
-    )
-    t.add_argument("--tag", default="train", metavar="名前", help="出力名の頭")
-    t.add_argument("--seed", type=int, default=0, metavar="N", help="乱数種")
-    t.add_argument("--device", default="cpu", metavar="名前", help="cpu か mps")
-    t.add_argument("--mmap", action="store_true", help="学習データをmmapで開く")
-    t.add_argument("--init-net", metavar="ネット", help="初期値のネット")
-    t.add_argument("--freeze-ft", action="store_true", help="FTを凍結する")
-    t.add_argument("--effect-head", metavar="種類", help="利き予測のヘッド")
-    t.add_argument("--lambda-effect", metavar="値", help="利き損失の重み")
-    t.add_argument("--lambda-value", metavar="値", help="評価値損失の重み")
-    t.add_argument("--lr", metavar="値", help="学習率の頂点")
-    t.add_argument("--ft-clip", default=FT_CLIP, metavar="値", help="FTクリップ（0で無効）")
-    t.add_argument(
-        "--generate",
-        type=int,
-        metavar="N",
-        help="教師データの代わりに局面をその場で作る。1エポックあたりの局面数",
-    )
-    t.set_defaults(func=shapes)
 
     t = ss.add_parser(
         "eval",
@@ -301,9 +207,8 @@ def default_arch() -> str:
 def _ensure_extension(arch: str | None = None, *, dry_run: bool) -> None:
     """指定の構成のpy拡張を入れる。入っていないか、構成が違えば作り直す。
 
-    archを省くと既定の構成になる。`net shapes` は構成ごとに拡張を入れ替え、
-    最後の構成のまま残す。拡張の有無だけを見ると、その後の学習が意図と違う
-    構成のまま進む（#804）。入力次元などの数は拡張が持つので、ここでは構成の
+    archを省くと既定の構成になる。拡張の有無だけを見ると、別の構成で作った
+    拡張のまま学習が進む（#804）。入力次元などの数は拡張が持つので、ここでは構成の
     名前だけを比べる。
     """
     want = paths.check_arch(arch) if arch else default_arch()
@@ -478,200 +383,6 @@ def _continual_args(data: Path, args: argparse.Namespace, *, dry_run: bool) -> l
     interval = max(steps // 20, 50)
     print(f"総ステップ {steps}、warmup {warmup}、検証間隔 {interval}")
     return ["--warmup-steps", str(warmup), "--valid-interval", str(interval)]
-
-
-# --- probe -------------------------------------------------------------
-
-
-def _probe_init(value: str | None) -> str | None:
-    """probeが読むFTの出どころを決める。
-
-    `none` は乱数初期値を表す。乱数ベースラインの測定で、学習した表現を何も読まない。
-    名前だけ渡されたら `data/nets/<名前>.hmwr` に解決する。
-    """
-    if value is None:
-        return config.get("EVAL_FILE")
-    if value == "none":
-        return None
-    if "/" in value or value.endswith(".hmwr"):
-        return value
-    return str(paths.NETS / f"{paths.check_name(value)}.hmwr")
-
-
-def probe(args: argparse.Namespace) -> int:
-    """FTを凍結し、焦点のヒートマップを当てる後段だけを学習する（ADR-0213）。
-
-    測るのは上位5マスの的中率で、比べる相手は2つのベースラインである。頻度ベースラインは
-    学習器が検証行へ並記し、乱数初期値のFTは `--init-net none` の別の実行で
-    測る。**判定はADRの事前登録に従う**。このツールは数字を出すだけである。
-    """
-    name = paths.check_name(args.name)
-    data = _train_file(args.focus, focus_labels.SUFFIX)
-    init = _probe_init(args.init_net)
-
-    if not args.dry_run:
-        if not data.is_file():
-            raise proc.Fail(f"ヒートマップつき局面集がない: {data}")
-        if init is not None and not Path(init).is_file():
-            raise proc.Fail(f"初期値のネットがない: {init}")
-
-    _ensure_extension(dry_run=args.dry_run)
-
-    rows = (
-        data.stat().st_size // focus_labels.RECORD_BYTES if data.is_file() else 0
-    )
-    train_rows = rows - args.valid_count
-    if rows and train_rows <= 0:
-        raise proc.Fail(
-            f"--valid-count が大きすぎる（全{rows:,}件、学習に残るのは{train_rows:,}件）",
-            proc.USAGE,
-        )
-    # 刻みは局面数から決める。既定の100ステップ／2000ステップは本番規模の
-    # 値で、90万局面では検証も学習ログも1回も出ないまま終わる
-    steps = max(train_rows // args.batch, 1) * args.epochs
-    interval = max(steps // PROBE_REPORTS, 1)
-
-    print(f"=== probe: {name} ===")
-    print(f"局面集  : {paths.rel(data)}（{rows:,}件）")
-    print(f"初期値  : {'乱数ベースライン' if init is None else paths.rel(init)}")
-    print(f"学習    : {max(train_rows, 0):,}局面 × {args.epochs}エポック（{steps}ステップ）")
-    print(f"検証    : 末尾{args.valid_count:,}局面、{interval}ステップおき")
-    print(f"ヒートマップ: 向き {args.orient}")
-    print(
-        "出力    : なし（学習した焦点ヘッドは捨てる。FTは"
-        + ("焦点で学習するが残さない" if args.train_ft else "動かない")
-        + "）"
-    )
-
-    argv = [
-        "python3",
-        TRAINER,
-        "--data", paths.rel(data),
-        *BASE_FLAGS,
-        "--focus-head", args.head,
-        "--lambda-focus", PROBE_LAMBDA,
-        # 評価値を切り、焦点だけを的にする。FTは既定で動かさない
-        "--lambda-value", "0",
-        # FTを動かすときはクリップを入れる。書き出しがi8に収まるため（ADR-0138）
-        *(["--ft-clip", FT_CLIP] if args.train_ft else ["--freeze-ft"]),
-        "--focus-orient", args.orient,
-        "--focus-valid-count", str(args.valid_count),
-        "--epochs", str(args.epochs),
-        "--batch", str(args.batch),
-        "--warmup-steps", str(max(steps * 4 // 100, 1)),
-        "--valid-interval", str(interval),
-        "--log-interval", str(interval),
-        "--device", args.device or "mps",
-        "--seed", str(args.seed),
-        "--log-file", _curve(f"probe-{name}"),
-        "--registry", paths.rel(paths.registry()),
-        "--name", f"probe_{name}",
-        "--notes",
-        f"焦点probe: {paths.rel(data)}、FT={paths.rel(init) if init else '乱数'}",
-    ]
-    if init is not None:
-        argv += ["--init-net", str(init)]
-    if args.lr:
-        argv += ["--peak-lr", args.lr]
-
-    if args.dry_run:
-        argv += ["--out", "<一時ファイル>"]
-        return proc.run(argv, dry_run=True, log=paths.log("probe", name))
-    (paths.RUNS / CURVES).mkdir(parents=True, exist_ok=True)
-    # 学習器は必ずネットを書き出すが、probeのそれは捨てるものである。
-    # FTは凍結していて1ビットも変わらず、学習した焦点ヘッドは載らない。
-    # data/nets/ へ置くと128MBの使い道のないファイルが実行ごとに増える
-    with tempfile.TemporaryDirectory() as tmp:
-        argv += ["--out", str(Path(tmp) / f"probe-{name}.hmwr")]
-        return proc.run(argv, log=paths.log("probe", name))
-
-
-# --- shapes ------------------------------------------------------------
-
-
-def shapes(args: argparse.Namespace) -> int:
-    """構成ごとに拡張をビルドし直して学習する。"""
-    for spec in args.specs:
-        paths.check_arch(spec)
-    if args.effect_head and not args.lambda_effect:
-        raise proc.Fail("--effect-head には --lambda-effect が要る", proc.USAGE)
-
-    common = _shape_common_args(args)
-    source = f"生成{args.generate}局面" if args.generate else _shape_data(args)
-
-    print(f"=== 構成ごとの学習（{len(args.specs)}件） ===")
-    print(f"学習データ: {source}")
-    print(f"デバイス: {args.device}、名前の頭: {args.tag}、種: {args.seed}")
-
-    wheels = paths.REPO / "target" / "wheels-shape"
-    for spec in args.specs:
-        print(f"拡張をビルド: {spec}")
-        proc.run(
-            [
-                "maturin", "build", "--release", "--quiet",
-                "-m", "crates/py/Cargo.toml",
-                "--out", str(wheels),
-            ],
-            dry_run=args.dry_run,
-            env={"HIMAWARI_ARCH": spec, "CARGO_TARGET_DIR": f"target/shape/{spec}"},
-        )
-        _install_wheel(wheels, spec, dry_run=args.dry_run)
-
-        name = f"{args.tag}-{spec}-s{args.seed}"
-        print(f"学習: {spec}")
-        proc.run(
-            [
-                "python3", TRAINER,
-                *common,
-                "--out", str(paths.NETS / f"{name}.hmwr"),
-                *BASE_FLAGS,
-                "--device", args.device,
-                "--seed", str(args.seed),
-                "--log-file", _curve(name),
-                "--registry", paths.rel(paths.registry()),
-                "--name", f"{args.tag}_{spec}_s{args.seed}",
-                "--notes", f"構成の比較: {spec}、種 {args.seed}、{source}",
-            ],
-            dry_run=args.dry_run,
-            log=paths.log("shapes", name),
-        )
-
-    print()
-    print(f"検証損失を比べる: column -t -s $'\\t' {paths.rel(paths.registry())} | grep '{args.tag}_'")
-    return proc.OK
-
-
-def _shape_data(args: argparse.Namespace) -> str:
-    """構成比較の学習データ。既定は `paths.TRAIN` から組み、表示は相対にする。"""
-    return args.data or paths.rel(config.train_data())
-
-
-def _shape_common_args(args: argparse.Namespace) -> list[str]:
-    """構成比較で共通の引数を組み立てる。"""
-    out: list[str] = []
-    if args.generate:
-        # 生成した局面は使い捨てなので検証集合が要らない（ADR-0133）
-        out += ["--generate", str(args.generate)]
-    else:
-        out += [
-            "--data", _shape_data(args),
-            "--valid", args.valid or paths.rel(config.train_valid()),
-        ]
-    if args.mmap:
-        out.append("--mmap")
-    if args.init_net:
-        out += ["--init-net", args.init_net]
-        if args.freeze_ft:
-            out.append("--freeze-ft")
-    if args.effect_head:
-        out += ["--effect-head", args.effect_head, "--lambda-effect", args.lambda_effect]
-    if args.lambda_value:
-        out += ["--lambda-value", args.lambda_value]
-    if args.lr:
-        out += ["--peak-lr", args.lr]
-    if args.ft_clip not in ("0", "0.0"):
-        out += ["--ft-clip", args.ft_clip]
-    return out
 
 
 def _install_wheel(wheels: Path, spec: str, *, dry_run: bool) -> None:

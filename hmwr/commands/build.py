@@ -57,19 +57,6 @@ def add_parser(sub: argparse._SubParsersAction) -> None:
     t.add_argument("--arch", metavar="構成", help="例 512x16x64。省くと既定構成")
     t.set_defaults(func=engine)
 
-    t = ss.add_parser(
-        "shapes",
-        help="ネットワーク構成ごとにエンジンと評価ファイルを作る",
-        description="構成を変えるとエンジンと評価ファイルの次元が同時に変わる。"
-        "片方だけ作り直すと読み込みに失敗するので、対で作る。"
-        "--from を付けると元の評価関数を各構成の次元へ合わせる。"
-        "広げる向きは評価値が元と一致するので、速度の差だけを取り出せる。",
-    )
-    t.add_argument("specs", nargs="+", metavar="構成", help="例 256x16 512x16x32")
-    t.add_argument("--from", dest="source", metavar="ネット", help="元の評価関数")
-    t.add_argument("--tag", metavar="名前", help="出力名の頭（既定 shape）")
-    t.set_defaults(func=shapes)
-
 
 # --- 共通 --------------------------------------------------------------
 
@@ -309,61 +296,10 @@ def _find_profdata(*, dry_run: bool) -> str:
     raise proc.Fail("llvm-profdata がない。rustup component add llvm-tools で入れる")
 
 
-# --- engine / shapes ---------------------------------------------------
+# --- engine ------------------------------------------------------------
 
 
 def engine(args: argparse.Namespace) -> int:
     env = {"HIMAWARI_ARCH": args.arch} if args.arch else {}
     cargo_build(dry_run=args.dry_run, env=env, args=["-p", "himawari-usi"])
-    return proc.OK
-
-
-def shapes(args: argparse.Namespace) -> int:
-    """構成ごとにエンジンと評価ファイルを対で作る。
-
-    構成を変えるとエンジンと評価ファイルの次元が同時に変わる。片方だけ
-    作り直すと読み込みに失敗するので、対で作るところまでを1つにする。
-    """
-    source = args.source
-    tag = args.tag or ("exp" if source else "shape")
-    if source and not Path(source).is_file() and not args.dry_run:
-        raise proc.Fail(f"元の評価関数がない: {source}")
-
-    for spec in args.specs:
-        paths.check_arch(spec)
-
-    print(f"=== 構成ごとのビルド（{len(args.specs)}件、名前 {tag}） ===")
-    if source:
-        print(f"元の評価関数: {source}（各構成へ合わせる）")
-
-    for spec in args.specs:
-        # 構成ごとに出力先を分ける。1つを使い回すと構成を変えるたびに
-        # 全体が再コンパイルされる
-        target = paths.REPO / "target" / "shape" / spec
-        binary = paths.BIN / f"shape-{spec}"
-        net = paths.NETS / f"{tag}-{spec}.hmwr"
-
-        print(f"ビルド: {spec}")
-        cargo_build(
-            dry_run=args.dry_run,
-            env={"HIMAWARI_ARCH": spec, "CARGO_TARGET_DIR": str(target)},
-            args=[
-                "-p", "himawari-usi",
-                "-p", "himawari-tools",
-                "--bin", "himawari",
-                "--bin", "makenet",
-            ],
-        )
-        _copy(target / "release" / "himawari", binary, dry_run=args.dry_run)
-
-        print(f"評価ファイル: {paths.rel(net)}")
-        makenet = [str(target / "release" / "makenet")]
-        makenet += ["--resize", source] if source else ["--seed", "1"]
-        makenet += ["--out", str(net)]
-        net.parent.mkdir(parents=True, exist_ok=True)
-        proc.run(makenet, dry_run=args.dry_run)
-
-    pairs = " ".join(f"data/bin/shape-{s}=data/nets/{tag}-{s}.hmwr" for s in args.specs)
-    print()
-    print(f"NPSを測る: hmwr bench --runs 5 {pairs}")
     return proc.OK

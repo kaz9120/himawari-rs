@@ -20,19 +20,11 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from . import config, heartbeat, paths, proc
-from .tools import focus_labels
 
 # 静止化の並列数。**並列の出力はjobs固定で決定論になる**（逐次とは一致しない）
 # ので、既定を1か所で持つ。ADR-0200〜0206のチェーン11回はすべて8だった
 QUIET_JOBS = 8
 SHUFFLE_SEED = 1
-
-# 探索で付け直すときの既定（ADR-0205）。置換表は --hash を --jobs で割って
-# ワーカーへ配るので、どちらを変えても出力が変わる。既定をここで持つ
-RESCORE_DEPTH = 9
-RESCORE_MAX_NODES = 1_000_000
-RESCORE_JOBS = 8
-RESCORE_HASH = 256
 
 # 既定値の印。評価関数は実行時に config から引く
 EVAL = object()
@@ -136,38 +128,6 @@ OPS: tuple[Op, ...] = (
         split_jobs=True,
     ),
     Op(
-        "rescore",
-        "relabel",
-        "現行エンジンの探索でscoreと教師手を付け直す",
-        "1局面ずつ深さを指定して読み直し、info行の最終値からscoreと最善手を取る。"
-        "mateは±30000へ丸め、勝敗と手数は元のまま残す。"
-        "8ワーカーで1,346局面/秒だったので、1億局面に20時間強かかる。"
-        "DL系モデルの推論で付け直すのは `hmwr data relabel` である。",
-        opts=(
-            Opt("--depth", "読み直す深さ", default=RESCORE_DEPTH),
-            Opt("--max-nodes", "1局面あたりのノード上限", default=RESCORE_MAX_NODES),
-            Opt("--jobs", "並列数。変えると出力が変わる", default=RESCORE_JOBS),
-            Opt("--hash", "置換表の大きさ。jobsで割って配る", "MB", default=RESCORE_HASH),
-            EVAL_OPT,
-            LIMIT_OPT,
-        ),
-    ),
-    Op(
-        "thin",
-        "thin",
-        "決着圏の局面を確率で間引く",
-        "|score| が --threshold 以上の局面を、確率 --keep で残す。"
-        "それ以外の局面はすべて残す。dlshogiのラベル（S=430）で勝率10%と90%の"
-        "境は |score|=945 である。--count で書く件数を打ち切ると、入力の先頭"
-        "だけを読む。seedを固定すれば出力は決まる。",
-        opts=(
-            Opt("--threshold", "決着圏とみなす |score| の下限", default=1318),
-            Opt("--keep", "決着圏の局面を残す確率", "P", float, 0.5),
-            Opt("--seed", "乱数の種", default=1),
-            Opt("--count", "書く件数の上限"),
-        ),
-    ),
-    Op(
         "dedup",
         "dedup",
         "同じ盤面の2回目以降を捨てる",
@@ -175,19 +135,6 @@ OPS: tuple[Op, ...] = (
         "手数と教師信号は比べない。--count で書く件数を打ち切ると、"
         "入力の先頭だけを読む。--limit は読む件数の上限である。出力1億件で約1.5GBのメモリを使う。",
         opts=(Opt("--count", "書く件数の上限"), LIMIT_OPT),
-    ),
-    Op(
-        "oversample",
-        "oversample",
-        "該当する型の局面を複製して重くする",
-        "教師の最善手から型を判定し、該当する局面を末尾へ（--times−1）回"
-        "書き足す。判定に教師手が要るので、静止化の前に通す。出力の並びは"
-        "元の全件のあとに複製が続くので、学習の前に shuffle を掛ける。",
-        opts=(
-            Opt("--kind", "重くする型", "型", str, "defense"),
-            Opt("--times", "該当局面を何倍にするか", default=3),
-            LIMIT_OPT,
-        ),
     ),
 )
 
@@ -257,7 +204,7 @@ def add_parsers(ss: argparse._SubParsersAction) -> None:
         "消しても同じコマンドで作り直せる。由来の記録がないファイルには触らない。",
     )
     t.add_argument(
-        "names", nargs="+", metavar="名前", help="data/train/<名前>の.psv・.rankpsv・.focus"
+        "names", nargs="+", metavar="名前", help="data/train/<名前>の.psv・.rankpsv"
     )
     t.set_defaults(func=remove)
 
@@ -327,51 +274,11 @@ def add_parsers(ss: argparse._SubParsersAction) -> None:
     lt.set_defaults(func=ledger_show)
 
     t = ss.add_parser(
-        "pick",
-        help="玉の段と勝率で局面を絞り込む",
-        description="手番側の玉が --king-max 段目以内（1=敵陣の奥）で、教師の勝率 "
-        "σ(score / --scale) が [--p-min, --p-max] に入る局面だけを残す。区画で選ぶ前に、"
-        "足りない区画の候補を別のデータセットから取り出すときに使う。",
-    )
-    t.add_argument("name", metavar="出力名", help="data/train/<出力名>.psv へ書く")
-    t.add_argument("--in", dest="inputs", action="append", default=[], metavar="入力名")
-    t.add_argument("--king-max", type=int, default=9, metavar="N", help="手番側の玉の段の上限（既定 9）")
-    t.add_argument("--p-min", type=float, default=0.0, metavar="P", help="勝率の下限（既定 0）")
-    t.add_argument("--p-max", type=float, default=1.0, metavar="P", help="勝率の上限（既定 1）")
-    t.add_argument("--scale", type=float, default=600.0, metavar="S", help="評価値→勝率の尺度（既定 600）")
-    t.add_argument("--jobs", type=int, default=8, metavar="N", help="並列数。変えても出力は変わらない")
-    t.add_argument("--force", action="store_true", help="出力が既にあっても作り直す")
-    t.set_defaults(func=pick)
-
-    t = ss.add_parser(
-        "select",
-        help="区画の配分とαで局面を選ぶ",
-        description="局面を区画（手番側の玉の帯×形勢の帯）に分け、--king と --eval の配分で"
-        "目標の局面数を決める。在庫の足りない区画は全部を取り、不足を同じ玉の帯の優勢へ回す。"
-        "区画の中では、ありふれ度のα乗に反比例する確率で選ぶ。α=0 は自然な分布のまま。"
-        "出力は入力の順に並ぶので、学習の前に shuffle を掛ける。",
-    )
-    t.add_argument("name", metavar="出力名", help="data/train/<出力名>.psv へ書く")
-    t.add_argument("--in", dest="inputs", action="append", default=[], metavar="入力名",
-                   help="data/train/<入力名>.psv を読む。複数回渡せる")
-    t.add_argument("--king", required=True, metavar="A,B,C", help="玉の帯（敵陣,4〜6段,自陣）の配分")
-    t.add_argument("--eval", dest="evals", required=True, metavar="A,B,C", help="形勢の帯（互角,優勢,勝勢）の配分")
-    t.add_argument("--count", type=int, required=True, metavar="N", help="選ぶ局面数の目標")
-    t.add_argument("--alpha", type=float, default=0.0, metavar="X", help="区画の中の選び方（既定 0）")
-    t.add_argument("--scale", type=float, default=430.0, metavar="S", help="評価値→勝率の尺度（既定 430）")
-    t.add_argument("--sample", type=int, default=5_000_000, metavar="N", help="頻度表を見積もる標本の数")
-    t.add_argument("--seed", type=int, default=1, metavar="N", help="乱数種（既定 1）")
-    t.add_argument("--jobs", type=int, default=8, metavar="N", help="並列数。変えても出力は変わらない")
-    t.add_argument("--force", action="store_true", help="出力が既にあっても作り直す")
-    t.set_defaults(func=select)
-
-    t = ss.add_parser(
         "relabel",
         help="DL系モデルの推論1回の評価値でscoreを付け直す",
         description="局面・指し手・勝敗・手数は残し、scoreだけをモデルの勝率から"
         "戻した値へ書き換える。勝率→評価値の変換は `cp = scale × logit(p)` で、"
-        "scaleを600から下げることは推論側の FV_SCALE を上げることに当たる。"
-        "本エンジンの探索で付け直す `hmwr data rescore` と違い、こちらは探索しない。",
+        "scaleを600から下げることは推論側の FV_SCALE を上げることに当たる。",
     )
     t.add_argument("name", metavar="出力名", help="data/train/<出力名>.psv へ書く")
     t.add_argument("--in", dest="inputs", action="append", default=[], metavar="入力名")
@@ -414,32 +321,6 @@ def add_parsers(ss: argparse._SubParsersAction) -> None:
     t.add_argument("--force", action="store_true", help="出力が既にあっても作り直す")
     t.set_defaults(func=relabel)
 
-    t = ss.add_parser(
-        "focus",
-        help="対局順の生データから焦点のヒートマップつき局面集を作る",
-        description="ある局面から先のk手で駒が動いたマスと取られたマスを"
-        "9×9のヒートマップにし、盤上の駒ごとの関与フラグを付ける。"
-        "入力は対局順のままの生データに限る。シャッフル済みの教師は続きを"
-        "持たないので使えない。出力は202バイト固定長で、"
-        "data/train/<出力名>.focus へ書く。",
-    )
-    t.add_argument("name", metavar="出力名", help=f"data/train/<出力名>{focus_labels.SUFFIX} へ書く")
-    t.add_argument(
-        "--raw",
-        required=True,
-        metavar="データセット",
-        help="data/raw/<データセット>/ の生データ（*.bin）を名前順に読む",
-    )
-    t.add_argument("--count", type=int, required=True, metavar="N", help="切り出す局面数")
-    t.add_argument(
-        "--plies",
-        type=int,
-        default=focus_labels.PLIES,
-        metavar="N",
-        help=f"先を見る手数（既定 {focus_labels.PLIES}）",
-    )
-    t.add_argument("--force", action="store_true", help="出力が既にあっても作り直す")
-    t.set_defaults(func=focus)
 
 
 # --- 実行 --------------------------------------------------------------
@@ -477,7 +358,7 @@ def _inputs(op: Op, args: argparse.Namespace) -> list[Path]:
 def _single_input(args: argparse.Namespace) -> Path:
     """`Op` に乗らないコマンドで、--in の1個指定をpsvのパスへ直す。
 
-    存在の検査は呼び出し側（`_run_cells` か各コマンド）が持つ。
+    存在の検査は呼び出し側（`_run_python` か各コマンド）が持つ。
     """
     n = len(args.inputs)
     if n != 1:
@@ -644,12 +525,12 @@ def remove(args: argparse.Namespace) -> int:
             # 消す対象は、手順の前のステップが実行時に作る。予行では存在を問わない
             print(
                 f"[dry-run] rm {paths.rel(paths.TRAIN / name)} の"
-                ".psv・.rankpsv・.focus と、その完了マーカー"
+                ".psv・.rankpsv と、その完了マーカー"
             )
             continue
         found = [
             p
-            for suffix in (".psv", ".rankpsv", focus_labels.SUFFIX)
+            for suffix in (".psv", ".rankpsv")
             if (p := paths.TRAIN / f"{name}{suffix}").exists()
         ]
         if not found:
@@ -882,83 +763,7 @@ def relabel(args: argparse.Namespace) -> int:
     return proc.OK
 
 
-# --- 焦点のヒートマップ --------------------------------------------------
-
-
-def focus(args: argparse.Namespace) -> int:
-    """対局順の生データから、先k手の焦点を付けた局面集を作る（ADR-0213）。"""
-    name = paths.check_name(args.name)
-    dataset = paths.check_name(args.raw)
-    raw_dir = paths.RAW / dataset
-    out = paths.TRAIN / f"{name}{focus_labels.SUFFIX}"
-    part = out.with_name(out.name + ".part")
-    done = out.with_name(out.name + ".done")
-    record = [f"focus --raw {dataset} --count {args.count} --plies {args.plies}"]
-    log = paths.log("focus", name)
-    sources = sorted(raw_dir.glob("*.bin"))
-
-    if args.dry_run:
-        print(f"[dry-run] {record[0]} → {paths.rel(part)}")
-        print(f"[dry-run] 入力: {paths.rel(raw_dir)}/*.bin（{len(sources)}ファイル）")
-        print(f"[dry-run] mv {paths.rel(part)} {paths.rel(out)}")
-        print(f"[dry-run] ログ: {paths.rel(log)}")
-        return proc.OK
-    if not sources:
-        raise proc.Fail(f"生データがない: {paths.rel(raw_dir)}")
-    if out.exists() and not args.force:
-        return _already(out, done, record)
-
-    out.parent.mkdir(parents=True, exist_ok=True)
-    done.unlink(missing_ok=True)
-    print(f"=== data focus: {name} ===")
-    with open(log, "a", encoding="utf-8") as fh:
-
-        def report(line: str) -> None:
-            print(line)
-            fh.write(f"{time.strftime('%Y-%m-%dT%H:%M:%S')} {line}\n")
-            fh.flush()
-
-        report(f"開始: {record[0]}")
-        stats = focus_labels.write(
-            sources, part, count=args.count, plies=args.plies, report=report
-        )
-        if stats.rows < args.count:
-            raise proc.Fail(f"切り出せた局面が足りない（{stats.rows}/{args.count}）")
-        focus_labels.report_stats(stats, plies=args.plies, report=report)
-
-    part.replace(out)
-    done.write_text(
-        json.dumps(
-            {
-                "commands": record,
-                "bytes": out.stat().st_size,
-                "seconds": round(stats.seconds),
-                "stats": stats.summary(),
-                "finished": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
-            },
-            ensure_ascii=False,
-            indent=2,
-        )
-        + "\n"
-    )
-    print(f"完了: {paths.rel(out)}（{out.stat().st_size:,}バイト）")
-    return proc.OK
-
-
-# --- 区画で選ぶ（ADR-0227） ---------------------------------------------
-
-
-def _ratios(text: str) -> list[float]:
-    try:
-        v = [float(x) for x in text.split(",")]
-    except ValueError:
-        raise proc.Fail(f"配分はコンマ区切りの3つの数で書く: {text}", proc.USAGE)
-    if len(v) != 3 or abs(sum(v) - 1) > 1e-6:
-        raise proc.Fail(f"配分は3つで、和を1にする: {text}", proc.USAGE)
-    return v
-
-
-def _run_cells(args, kind: str, record: list[str], sources: list[Path], body) -> int:
+def _run_python(args, kind: str, record: list[str], sources: list[Path], body) -> int:
     out = paths.TRAIN / f"{paths.check_name(args.name)}.psv"
     part = out.with_name(out.name + ".part")
     done = out.with_name(out.name + ".done")
@@ -1000,44 +805,6 @@ def _run_cells(args, kind: str, record: list[str], sources: list[Path], body) ->
     return proc.OK
 
 
-def pick(args: argparse.Namespace) -> int:
-    """玉の段と勝率で局面を絞り込む（ADR-0227）。"""
-    from .tools import cells_run
-
-    source = _single_input(args)
-    record = [
-        f"pick --in {paths.rel(source)} --king-max {args.king_max} --p-min {args.p_min:g}"
-        f" --p-max {args.p_max:g} --scale {args.scale:g}"
-    ]
-
-    def body(part, progress, report):
-        return cells_run.pick(source, part, king_max=args.king_max, pmin=args.p_min, pmax=args.p_max,
-                              scale=args.scale, jobs=args.jobs, progress=progress)
-
-    return _run_cells(args, "pick", record, [source], body)
-
-
-def select(args: argparse.Namespace) -> int:
-    """区画の配分とαで局面を選ぶ（ADR-0227）。"""
-    from .tools import cells_run
-
-    if not args.inputs:
-        raise proc.Fail("--in が要る", proc.USAGE)
-    sources = [paths.TRAIN / f"{paths.check_name(n)}.psv" for n in args.inputs]
-    king, evals = _ratios(args.king), _ratios(args.evals)
-    record = [
-        "select " + " ".join(f"--in {paths.rel(s)}" for s in sources)
-        + f" --king {args.king} --eval {args.evals} --count {args.count} --alpha {args.alpha:g}"
-        f" --scale {args.scale:g} --sample {args.sample} --seed {args.seed}"
-    ]
-
-    def body(part, progress, report):
-        return cells_run.select(sources, part, king=king, evals=evals, count=args.count, alpha=args.alpha,
-                                eval_scale=args.scale, sample=args.sample, seed=args.seed, jobs=args.jobs,
-                                progress=progress, report=report)
-
-    return _run_cells(args, "select", record, sources, body)
-
 
 # --- 点数を付けた局面の台帳（ADR-0228） ---------------------------------
 
@@ -1075,7 +842,7 @@ def ledger_filter(args: argparse.Namespace) -> int:
         report(f"入力の中の重複 {stats['dup_in_input']:,}、台帳にあった局面 {stats['known']:,}")
         return stats
 
-    return _run_cells(args, "ledger", record, [source], body)
+    return _run_python(args, "ledger", record, [source], body)
 
 
 def ledger_show(args: argparse.Namespace) -> int:
@@ -1109,7 +876,7 @@ def merge_op(args: argparse.Namespace) -> int:
                 src.with_name(src.name + ".done").unlink(missing_ok=True)
         return stats
 
-    return _run_cells(args, "merge", record, sources, body)
+    return _run_python(args, "merge", record, sources, body)
 
 
 def floodgate_op(args: argparse.Namespace) -> int:
@@ -1131,4 +898,4 @@ def floodgate_op(args: argparse.Namespace) -> int:
         return floodgate_psv.convert(years, archive, part, tag=args.tag, min_plies=args.min_plies,
                                      jobs=args.jobs, limit=args.limit, report=report, progress=progress)
 
-    return _run_cells(args, "floodgate", record, [], body)
+    return _run_python(args, "floodgate", record, [], body)
