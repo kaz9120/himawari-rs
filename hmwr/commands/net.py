@@ -7,6 +7,8 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
+import json
 import re
 import shutil
 import tempfile
@@ -204,21 +206,43 @@ def default_arch() -> str:
     return paths.check_arch(m.group(1))
 
 
+EXTENSION_STAMP = paths.REPO / "target" / "py-kp" / "installed.json"
+
+
+def _source_fingerprint() -> str:
+    """crates/ の中身を表す文字列。コミット済みの木のハッシュに、未コミットの差分のハッシュを足す。"""
+    tree = proc.capture(["git", "rev-parse", "HEAD:crates"]).strip()
+    diff = proc.capture(["git", "diff", "HEAD", "--", "crates"])
+    if not diff:
+        return tree
+    return f"{tree}+{hashlib.sha256(diff.encode('utf-8')).hexdigest()[:12]}"
+
+
+def _stamped() -> dict:
+    try:
+        return json.loads(EXTENSION_STAMP.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+
+
 def _ensure_extension(arch: str | None = None, *, dry_run: bool) -> None:
-    """指定の構成のpy拡張を入れる。入っていないか、構成が違えば作り直す。
+    """指定の構成のpy拡張を入れる。入っていないか、構成か crates/ の中身が違えば作り直す。
 
     archを省くと既定の構成になる。拡張の有無だけを見ると、別の構成で作った
-    拡張のまま学習が進む（#804）。入力次元などの数は拡張が持つので、ここでは構成の
-    名前だけを比べる。
+    拡張のまま学習が進む（#804）。構成の名前だけを見ると、拡張のコードが変わっても
+    古い拡張のまま学習が進む。入れたときの crates/ の中身を控えて比べる。
     """
     want = paths.check_arch(arch) if arch else default_arch()
     if dry_run:
         return
     got = proc.capture(["python3", "-c", "import himawari; print(himawari.ARCH)"]).strip()
-    if got == want:
+    source = _source_fingerprint()
+    if got == want and _stamped().get("source") == source:
         return
-    if got:
+    if got and got != want:
         print(f"py拡張の構成が違う: {got}（学習する構成 {want}）。作り直す")
+    elif got:
+        print("py拡張を入れた後に crates/ が変わったので作り直す")
     else:
         print("py拡張が入っていないので作る")
     wheels = paths.REPO / "target" / "wheels"
@@ -231,6 +255,8 @@ def _ensure_extension(arch: str | None = None, *, dry_run: bool) -> None:
         env={"HIMAWARI_ARCH": want, "CARGO_TARGET_DIR": "target/py-kp"},
     )
     _install_wheel(wheels, want, dry_run=False)
+    EXTENSION_STAMP.parent.mkdir(parents=True, exist_ok=True)
+    EXTENSION_STAMP.write_text(json.dumps({"arch": want, "source": source}) + "\n", encoding="utf-8")
 
 
 def train(args: argparse.Namespace) -> int:
