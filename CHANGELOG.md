@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.61.2](https://github.com/kaz9120/himawari-rs/compare/v0.61.1...v0.61.2) (2026-11-09)
+
+
+### その他の変更
+
+* crates/が変わったらpy拡張を作り直す ([#1053](https://github.com/kaz9120/himawari-rs/issues/1053)) ([83dc545](https://github.com/kaz9120/himawari-rs/commit/83dc5455ced176ff171eb67192e5b4d7f595cc0f))
+
 ## [0.61.1](https://github.com/kaz9120/himawari-rs/compare/v0.61.0...v0.61.1) (2026-11-08)
 
 
