@@ -12,10 +12,12 @@
 from __future__ import annotations
 
 import argparse
+import contextlib
 import json
 import struct
 import tempfile
 import time
+from collections.abc import Callable, Iterable, Iterator
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -145,6 +147,11 @@ def psv_bin() -> Path:
 
 def dest(flag: str) -> str:
     return flag.lstrip("-").replace("-", "_")
+
+
+def _train_psv(name: str) -> Path:
+    """名前から data/train/<名前>.psv を決める。"""
+    return paths.TRAIN / f"{paths.check_name(name)}.psv"
 
 
 # --- 登録 --------------------------------------------------------------
@@ -347,7 +354,7 @@ def _inputs(op: Op, args: argparse.Namespace) -> list[Path]:
             else f"{op.min_inputs}個以上"
         )
         raise proc.Fail(f"--in は{want}要る（{n}個渡された）", proc.USAGE)
-    found = [paths.TRAIN / f"{paths.check_name(x)}.psv" for x in args.inputs]
+    found = [_train_psv(x) for x in args.inputs]
     if not args.dry_run:
         for p in found:
             if not p.is_file():
@@ -363,7 +370,7 @@ def _single_input(args: argparse.Namespace) -> Path:
     n = len(args.inputs)
     if n != 1:
         raise proc.Fail(f"--in は1個要る（{n}個渡された）", proc.USAGE)
-    return paths.TRAIN / f"{paths.check_name(args.inputs[0])}.psv"
+    return _train_psv(args.inputs[0])
 
 
 def _opt_args(op: Op, args: argparse.Namespace, *, skip: tuple[str, ...] = ()) -> list[str]:
@@ -431,55 +438,104 @@ def _concat(pieces: list[Path], out: Path) -> None:
 
 def run(op: Op, args: argparse.Namespace) -> int:
     out = paths.TRAIN / f"{paths.check_name(args.name)}{op.suffix}"
-    part = out.with_name(out.name + ".part")
-    done = out.with_name(out.name + ".done")
-    commands, pieces = _commands(op, args, part)
+    commands, pieces = _commands(op, args, _part(out))
     record = [proc.show(c) for c in commands]
     log = paths.log(op.name, args.name)
 
-    if args.dry_run:
+    def dry(part: Path) -> None:
         for c in commands:
             proc.run(c, dry_run=True)
         if pieces:
             print(f"[dry-run] {len(pieces)}区間を順に結合する → {paths.rel(part)}")
+
+    def prepare() -> None:
+        if not psv_bin().is_file():
+            raise proc.Fail(f"{paths.rel(psv_bin())} がない。先に cargo build --release を実行する")
+
+    def body(part: Path) -> None:
+        print(f"=== data {op.name}: {args.name} ===")
+        if pieces:
+            proc.run_all(commands, log=log)
+            _concat(pieces, part)
+        else:
+            proc.run(commands[0], log=log)
+        if getattr(args, "consume", False):
+            # 読み終えた入力は psv が消した。由来の記録だけが残らないよう、完了マーカーも消す
+            for src in _inputs(op, args):
+                src.with_name(src.name + ".done").unlink(missing_ok=True)
+
+    return _produce(args, out, record, log, body, dry=dry, prepare=prepare)
+
+
+# --- 出力の作成 --------------------------------------------------------
+
+
+def _part(out: Path) -> Path:
+    return out.with_name(out.name + ".part")
+
+
+def _produce(
+    args: argparse.Namespace,
+    out: Path,
+    record: list[str],
+    log: Path,
+    body: Callable[[Path], dict | None],
+    *,
+    sources: Iterable[Path] = (),
+    dry: Callable[[Path], None] | None = None,
+    prepare: Callable[[], None] | None = None,
+) -> int:
+    """出力を `.part` へ書いてから改名し、作り方を完了マーカーへ控える。
+
+    同じ名前の出力が既にあれば、控えた作り方と比べて、済みか止めるかを決める。
+    `body(part)` が `.part` を書き、完了マーカーへ添える統計を返す（無ければNone）。
+    統計に seconds があれば、それを所要時間として控える。`prepare` は
+    作り直すと決まってから、前回の完了マーカーを消す前に呼ぶ。
+    """
+    part = _part(out)
+    done = out.with_name(out.name + ".done")
+    if args.dry_run:
+        if dry is None:
+            print(f"[dry-run] {record[0]} → {paths.rel(part)}")
+        else:
+            dry(part)
         print(f"[dry-run] mv {paths.rel(part)} {paths.rel(out)}")
         print(f"[dry-run] ログ: {paths.rel(log)}")
         return proc.OK
-
+    for src in sources:
+        if not src.is_file():
+            raise proc.Fail(f"入力のpsvがない: {paths.rel(src)}")
     if out.exists() and not args.force:
         return _already(out, done, record)
-    if not psv_bin().is_file():
-        raise proc.Fail(f"{paths.rel(psv_bin())} がない。先に cargo build --release を実行する")
+    if prepare is not None:
+        prepare()
 
     out.parent.mkdir(parents=True, exist_ok=True)
     done.unlink(missing_ok=True)
-    print(f"=== data {op.name}: {args.name} ===")
     started = time.time()
-    if pieces:
-        proc.run_all(commands, log=log)
-        _concat(pieces, part)
-    else:
-        proc.run(commands[0], log=log)
-    if getattr(args, "consume", False):
-        # 読み終えた入力は psv が消した。由来の記録だけが残らないよう、完了マーカーも消す
-        for src in _inputs(op, args):
-            src.with_name(src.name + ".done").unlink(missing_ok=True)
+    stats = body(part)
     part.replace(out)
-    done.write_text(
-        json.dumps(
-            {
-                "commands": record,
-                "bytes": out.stat().st_size,
-                "seconds": round(time.time() - started),
-                "finished": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
-            },
-            ensure_ascii=False,
-            indent=2,
-        )
-        + "\n"
-    )
+    marker: dict = {"commands": record, "bytes": out.stat().st_size}
+    marker["seconds"] = stats["seconds"] if stats and "seconds" in stats else round(time.time() - started)
+    if stats:
+        marker["stats"] = stats
+    marker["finished"] = time.strftime("%Y-%m-%dT%H:%M:%S%z")
+    done.write_text(json.dumps(marker, ensure_ascii=False, indent=2) + "\n")
     print(f"完了: {paths.rel(out)}（{out.stat().st_size:,}バイト）")
     return proc.OK
+
+
+@contextlib.contextmanager
+def _logged(log: Path) -> Iterator[Callable[[str], None]]:
+    """表示しつつ、時刻を付けてログへ追記する関数を返す。"""
+    with open(log, "a", encoding="utf-8") as fh:
+
+        def report(line: str) -> None:
+            print(line, flush=True)
+            fh.write(f"{time.strftime('%Y-%m-%dT%H:%M:%S')} {line}\n")
+            fh.flush()
+
+        yield report
 
 
 def _already(out: Path, done: Path, record: list[str]) -> int:
@@ -504,7 +560,7 @@ def _already(out: Path, done: Path, record: list[str]) -> int:
 
 
 def stats(args: argparse.Namespace) -> int:
-    source = paths.TRAIN / f"{paths.check_name(args.name)}.psv"
+    source = _train_psv(args.name)
     if not source.is_file() and not args.dry_run:
         raise proc.Fail(f"入力のpsvがない: {paths.rel(source)}")
     argv = [str(psv_bin()), "stats", "--in", paths.rel(source)]
@@ -630,7 +686,7 @@ def relabel_in_place(args: argparse.Namespace) -> int:
 
     if args.inputs:
         raise proc.Fail("--in-place では --in を渡さない。書き換える名前だけを渡す", proc.USAGE)
-    target = paths.TRAIN / f"{paths.check_name(args.name)}.psv"
+    target = _train_psv(args.name)
     model = "" if args.labeler == "rescale" else f" --model {args.model}"
     record = {"labeler": args.labeler, "model": args.model if args.labeler != "rescale" else None,
               "scale": args.scale}
@@ -652,14 +708,7 @@ def relabel_in_place(args: argparse.Namespace) -> int:
     device = getattr(labeler, "device", None)
     if device:
         print(f"デバイス: {device}")
-    with open(log, "a", encoding="utf-8") as fh:
-
-        def report(line: str) -> None:
-            stamp = time.strftime("%Y-%m-%dT%H:%M:%S")
-            print(line)
-            fh.write(f"{stamp} {line}\n")
-            fh.flush()
-
+    with _logged(log) as report:
         report(f"開始: in-place {record} start={args.start} count={count}")
         beat = heartbeat.Heartbeat(
             "relabel", args.name, total=count, unit="局面", log=log,
@@ -689,9 +738,6 @@ def relabel(args: argparse.Namespace) -> int:
     if args.in_place:
         return relabel_in_place(args)
     source = _single_input(args)
-    out = paths.TRAIN / f"{paths.check_name(args.name)}.psv"
-    part = out.with_name(out.name + ".part")
-    done = out.with_name(out.name + ".done")
     model = "" if args.labeler == "rescale" else f" --model {args.model}"
     record = [
         f"relabel --labeler {args.labeler}{model} --scale {args.scale:g}"
@@ -699,111 +745,59 @@ def relabel(args: argparse.Namespace) -> int:
         + (f" --limit {args.limit}" if args.limit is not None else "")
     ]
     log = paths.log("relabel", args.name)
+    labeler = None
 
-    if args.dry_run:
-        print(f"[dry-run] {record[0]} → {paths.rel(part)}")
-        print(f"[dry-run] mv {paths.rel(part)} {paths.rel(out)}")
-        print(f"[dry-run] ログ: {paths.rel(log)}")
-        return proc.OK
-    if not source.is_file():
-        raise proc.Fail(f"入力のpsvがない: {paths.rel(source)}")
-    if out.exists() and not args.force:
-        return _already(out, done, record)
+    def prepare() -> None:
+        nonlocal labeler
+        labeler = make_labeler(args)
 
-    labeler = make_labeler(args)
-    out.parent.mkdir(parents=True, exist_ok=True)
-    done.unlink(missing_ok=True)
-    print(f"=== data relabel: {args.name} ===")
-    device = getattr(labeler, "device", None)
-    if device:
-        print(f"デバイス: {device}")
-    with open(log, "a", encoding="utf-8") as fh:
-
-        def report(line: str) -> None:
-            stamp = time.strftime("%Y-%m-%dT%H:%M:%S")
-            print(line)
-            fh.write(f"{stamp} {line}\n")
-            fh.flush()
-
-        report(f"開始: {record[0]}")
-        total = source.stat().st_size // dl_relabel.PSV_BYTES
-        beat = heartbeat.Heartbeat(
-            "relabel", args.name, total=min(total, args.limit) if args.limit else total, unit="局面",
-            log=log, detail={"labeler": args.labeler, "scale": args.scale, "device": device},
-        )
-        try:
-            stats = dl_relabel.relabel(
-                source, part, labeler, scale=args.scale, batch=args.batch, limit=args.limit,
-                report=report, progress=beat.update,
+    def body(part: Path) -> dict:
+        print(f"=== data relabel: {args.name} ===")
+        device = getattr(labeler, "device", None)
+        if device:
+            print(f"デバイス: {device}")
+        with _logged(log) as report:
+            report(f"開始: {record[0]}")
+            total = source.stat().st_size // dl_relabel.PSV_BYTES
+            beat = heartbeat.Heartbeat(
+                "relabel", args.name, total=min(total, args.limit) if args.limit else total, unit="局面",
+                log=log, detail={"labeler": args.labeler, "scale": args.scale, "device": device},
             )
-        except BaseException as e:
-            beat.finish("failed", error=type(e).__name__)
-            raise
-        beat.finish("done", **{k: stats[k] for k in ("positions_per_second", "corr_old_new")})
-        report(
-            f"終了: {stats['positions']:,}局面 {stats['positions_per_second']:,}局面/秒 "
-            f"相関 {stats['corr_old_new']} 平均|score| {stats['mean_abs_old']}→{stats['mean_abs_new']}"
-        )
-    part.replace(out)
-    done.write_text(
-        json.dumps(
-            {
-                "commands": record,
-                "bytes": out.stat().st_size,
-                "seconds": stats["seconds"],
-                "stats": stats,
-                "finished": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
-            },
-            ensure_ascii=False,
-            indent=2,
-        )
-        + "\n"
-    )
-    print(f"完了: {paths.rel(out)}（{out.stat().st_size:,}バイト）")
-    return proc.OK
+            try:
+                stats = dl_relabel.relabel(
+                    source, part, labeler, scale=args.scale, batch=args.batch, limit=args.limit,
+                    report=report, progress=beat.update,
+                )
+            except BaseException as e:
+                beat.finish("failed", error=type(e).__name__)
+                raise
+            beat.finish("done", **{k: stats[k] for k in ("positions_per_second", "corr_old_new")})
+            report(
+                f"終了: {stats['positions']:,}局面 {stats['positions_per_second']:,}局面/秒 "
+                f"相関 {stats['corr_old_new']} 平均|score| {stats['mean_abs_old']}→{stats['mean_abs_new']}"
+            )
+        return stats
+
+    return _produce(args, _train_psv(args.name), record, log, body, sources=[source], prepare=prepare)
 
 
 def _run_python(args, kind: str, record: list[str], sources: list[Path], body) -> int:
-    out = paths.TRAIN / f"{paths.check_name(args.name)}.psv"
-    part = out.with_name(out.name + ".part")
-    done = out.with_name(out.name + ".done")
+    """Pythonで書く操作を、`_produce` の作法で走らせる。
+
+    `body(part, progress, report)` は read と kept を持つ統計を返す。
+    """
     log = paths.log(kind, args.name)
-    if args.dry_run:
-        print(f"[dry-run] {record[0]} → {paths.rel(part)}")
-        print(f"[dry-run] mv {paths.rel(part)} {paths.rel(out)}")
-        print(f"[dry-run] ログ: {paths.rel(log)}")
-        return proc.OK
-    for src in sources:
-        if not src.is_file():
-            raise proc.Fail(f"入力のpsvがない: {paths.rel(src)}")
-    if out.exists() and not args.force:
-        return _already(out, done, record)
-    done.unlink(missing_ok=True)
-    total = sum(src.stat().st_size for src in sources) // 40
-    started = time.time()
-    with open(log, "a", encoding="utf-8") as fh:
 
-        def report(line: str) -> None:
-            print(line, flush=True)
-            fh.write(f"{time.strftime('%Y-%m-%dT%H:%M:%S')} {line}\n")
-            fh.flush()
+    def produce(part: Path) -> dict:
+        total = sum(src.stat().st_size for src in sources) // 40
+        with _logged(log) as report:
+            report(f"開始: {record[0]}")
+            with heartbeat.running(kind, args.name, total=total, unit="局面", log=log) as beat:
+                stats = body(part, beat.update, report)
+            report(f"終了: {stats['read']:,}局面を読み、{stats['kept']:,}局面を残した")
+        return stats
 
-        report(f"開始: {record[0]}")
-        with heartbeat.running(kind, args.name, total=total, unit="局面", log=log) as beat:
-            stats = body(part, beat.update, report)
-        report(f"終了: {stats['read']:,}局面を読み、{stats['kept']:,}局面を残した")
-    part.replace(out)
-    done.write_text(
-        json.dumps(
-            {"commands": record, "bytes": out.stat().st_size, "seconds": round(time.time() - started),
-             "stats": stats, "finished": time.strftime("%Y-%m-%dT%H:%M:%S%z")},
-            ensure_ascii=False, indent=2,
-        )
-        + "\n"
-    )
-    print(f"完了: {paths.rel(out)}（{out.stat().st_size:,}バイト）")
-    return proc.OK
-
+    return _produce(args, _train_psv(args.name), record, log, produce, sources=sources)
 
 
 # --- 点数を付けた局面の台帳 ---------------------------------
@@ -815,7 +809,7 @@ def ledger_add(args: argparse.Namespace) -> int:
 
     if not args.inputs:
         raise proc.Fail("--in が要る", proc.USAGE)
-    sources = [paths.TRAIN / f"{paths.check_name(n)}.psv" for n in args.inputs]
+    sources = [_train_psv(n) for n in args.inputs]
     if args.dry_run:
         print(f"[dry-run] 台帳 {paths.rel(paths.LEDGER)} へ足す: " + ", ".join(paths.rel(s) for s in sources))
         return proc.OK
@@ -863,7 +857,7 @@ def merge_op(args: argparse.Namespace) -> int:
 
     if len(args.inputs) < 2:
         raise proc.Fail("--in は2個以上要る", proc.USAGE)
-    sources = [paths.TRAIN / f"{paths.check_name(n)}.psv" for n in args.inputs]
+    sources = [_train_psv(n) for n in args.inputs]
     record = [
         "merge " + " ".join(f"--in {paths.rel(s)}" for s in sources)
         + f" --seed {args.seed}" + (" --consume" if args.consume else "")
