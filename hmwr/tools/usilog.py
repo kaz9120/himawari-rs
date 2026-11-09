@@ -6,7 +6,7 @@
 
 1局は `usinewgame` から `gameover` までとする。ログが局の途中で始まって
 いても（日毎のファイルの境目）、最初の `go` から局として拾う。出力の形は
-`SCHEMA` の版で区別し、壊す変更は版を上げる（ADR-0221）。
+`SCHEMA` の版で区別し、壊す変更は版を上げる。
 """
 
 from __future__ import annotations
@@ -18,7 +18,7 @@ from pathlib import Path
 
 SCHEMA = "himawari-usilog-game/1"
 
-# パスを値に持つオプション。公開データへ出さない（ADR-0221の3）
+# パスを値に持つオプション。公開データへ出さない
 PATH_OPTIONS = frozenset({"EvalFile", "BookFile", "DebugLogFile"})
 
 _LINE = re.compile(r"^(\d+) ([<>!]) ?(.*)$")

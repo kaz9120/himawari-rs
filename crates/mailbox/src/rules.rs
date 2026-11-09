@@ -1,4 +1,4 @@
-//! 探索が局面に問う規則と、評価関数の特徴の材料（ADR-0241の第13回）。
+//! 探索が局面に問う規則と、評価関数の特徴の材料。
 //!
 //! 千日手・入玉宣言・`check_squares`・駒種ごとの升の集合を持つ。どれもcoreの同名の関数と同じ値を返す
 //! （照合のテストで確かめる）。千日手は過去の局面のキーを要るので、探索の根の局面を作るときに
@@ -87,7 +87,6 @@ impl Position {
         let limit = (st.plies_from_null as usize).min(cur).min(scan_max);
         // 盤のキーが一致する局面が無いかを、分岐を持たずに先に確かめる。遡る手数は局面ごとに
         // 違い、手数で回すとループの出口で予測が外れる。ほとんどの局面は一致が無く、ここで返る
-        // （engineのADR-0252）
         if scan_max == REPETITION_SCAN_MAX {
             let mut hit = false;
             let mut i = 4;
@@ -105,7 +104,7 @@ impl Position {
             let prev = &self.states[cur - i];
             if prev.board_key == st.board_key {
                 if prev.hand_key == st.hand_key {
-                    // 根より前との一致は、4回目の局面でなければ終局にしない（engineのADR-0254）
+                    // 根より前との一致は、4回目の局面でなければ終局にしない
                     if i >= ply && !self.is_fourth_occurrence(cur) {
                         return Repetition::None;
                     }
@@ -185,7 +184,7 @@ impl Position {
     /// 手番側の駒種ptの駒が置けば相手玉へ直接王手になる升（coreの `check_squares` と同じ集合）。
     ///
     /// 相手玉の升から、相手の駒種ptとして利きを引いた集合である。ノードごとに持つ王手の手がかりが、
-    /// 駒種ごとの集合を作って持つ（ADR-0241の第17回）。
+    /// 駒種ごとの集合を作って持つ。
     #[inline]
     pub fn check_squares(&self, pt: u8) -> u128 {
         self.check_squares_of(pt)

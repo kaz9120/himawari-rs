@@ -1,4 +1,4 @@
-"""`hmwr net train` の完了マーカーと再開を検証する（ADR-0208・ADR-0209）。
+"""`hmwr net train` の完了マーカーと再開を検証する。
 
 学習は回さない。学習器の起動を差し替え、渡された引数だけを見る。
 """
@@ -198,7 +198,7 @@ def test_dry_run_neither_builds_nor_installs(extension):
 
 
 def test_arch_rebuilds_the_extension_with_that_arch(extension):
-    """--archで別構成を指定したら、その構成で作り直す（ADR-0229の段階2の道）。"""
+    """--archで別構成を指定したら、その構成で作り直す。"""
     extension["installed"] = "1024x16x32"
     net._ensure_extension("512x16x64", dry_run=False)
     assert [b["HIMAWARI_ARCH"] for b in extension["builds"]] == ["512x16x64"]

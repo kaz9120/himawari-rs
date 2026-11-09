@@ -1,11 +1,11 @@
-//! 探索が手を進め戻す盤面（ADR-0239の手順0）。
+//! 探索が手を進め戻す盤面。
 //!
 //! 探索のワーカーと、盤面操作だけを測る `boardbench` が同じ進め戻しを
 //! 呼ぶために1か所へ集める。利きの表のように局面に付いて回る状態を
 //! 足すときは、この型に持たせ、`do_move` などへ追従を書く。そうすれば
 //! 探索とミクロな計測の両方が同じ費用を払う。
 //!
-//! 探索が盤に問うことは、すべてこの型のメソッドにしてある（ADR-0241の第12回・第13回）。
+//! 探索が盤に問うことは、すべてこの型のメソッドにしてある。
 //! 探索は配列盤（`himawari_mailbox::Position`）だけで行う。千日手のために、根の局面を作るときに
 //! coreの過去の局面のキーを写す。
 //!
@@ -51,7 +51,7 @@ impl SearchBoard {
         Position::from_sfen(&self.mb.to_sfen()).expect("配列盤の出したSFENをcoreが読めない")
     }
 
-    /// 置換表の先読みに使うキー（ADR-0250）。mで進めた後の `key()` を、局面を変えずに求める。
+    /// 置換表の先読みに使うキー。mで進めた後の `key()` を、局面を変えずに求める。
     #[inline(always)]
     pub fn prefetch_key(&self, m: Move) -> u64 {
         // coreの手は81升の通し番号と移動後の駒を持つので、配列盤の手へ直さずに渡す
@@ -98,7 +98,7 @@ impl SearchBoard {
     }
 }
 
-/// 盤への問い合わせを配列盤が答える版（ADR-0241の段階6）。
+/// 盤への問い合わせを配列盤が答える版。
 ///
 /// 返す値はどれもcoreと同じになるように作ってある（等価な版）。
 /// `mailbox-shadow` のデバッグビルドでは毎回coreの答えと比べ、食い違えば局面を添えて止める。
@@ -121,7 +121,7 @@ impl SearchBoard {
 
     /// 擬似合法手を生成する。列はcoreの `generate` を合法手で濾した列と同じになる。
     ///
-    /// 配列盤の生成は合法手だけを出す（ADR-0241の第2回）。探索はこのあと `is_legal` で
+    /// 配列盤の生成は合法手だけを出す。探索はこのあと `is_legal` で
     /// 濾すので、手の数え方は変わらない。
     #[inline(always)]
     pub fn generate(&self, gt: GenType, all: bool, list: &mut MoveList) {
@@ -170,7 +170,7 @@ impl SearchBoard {
 
     /// 指し手の選び（`MovePicker`）が返した手mが合法か。from_ttは置換表の手か。
     ///
-    /// 配列盤の生成は合法手だけを出すので、置換表の手でなければ判定しない（ADR-0241の第15回）。
+    /// 配列盤の生成は合法手だけを出すので、置換表の手でなければ判定しない。
     /// 置換表の手は擬似合法性しか確かめていないので、判定する。
     #[inline(always)]
     pub fn is_legal_picked(&self, m: Move, from_tt: bool) -> bool {
@@ -205,7 +205,7 @@ impl SearchBoard {
     /// 合法手mが王手になるか。
     #[inline(always)]
     pub fn gives_check(&self, m: Move) -> bool {
-        // 王手の判定は81升の集合で行うので、配列盤の手へ直さずに渡す（ADR-0252）
+        // 王手の判定は81升の集合で行うので、配列盤の手へ直さずに渡す
         let b = m.bits();
         let r = self.mb.gives_check81(
             (b & 0x7F) as u8,
@@ -241,7 +241,7 @@ impl SearchBoard {
         r
     }
 
-    /// 評価関数の利き数の入力が使う、段階の集合（ADR-0237のD2）。
+    /// 評価関数の利き数の入力が使う、段階の集合。
     ///
     /// 配列盤は利き数を升ごとに持つので、駒ごとに利き先を数え直さず、81升を読むだけで作れる。
     #[inline(always)]
@@ -346,7 +346,7 @@ impl SearchBoard {
         r
     }
 
-    /// `check_squares` を駒種の添字で並べた表（ADR-0251）。0・1は空。
+    /// `check_squares` を駒種の添字で並べた表。0・1は空。
     #[inline(always)]
     pub fn check_squares_all(&self) -> [Bitboard; 16] {
         self.mb.check_squares_all().map(Bitboard::from_bits)
@@ -456,7 +456,7 @@ mod mbconv {
     use himawari_mailbox::board::{IDX81, SQ81};
 
     /// 配列盤の生成に、coreの手の列へ直接書かせる受け手。升は81升の通し番号のまま受け取れるので、
-    /// 表を引かずにcoreの手の符号になる（ADR-0241の第15回）。
+    /// 表を引かずにcoreの手の符号になる。
     ///
     /// 作るときに、手の列の残りの容量が1回の生成の上限（配列盤の `MAX_MOVES`）以上あることを確かめる。
     /// 生成は合法手だけを出し、1回で `MAX_MOVES` 手を超えないので、積むときは範囲を検査しない。
@@ -501,7 +501,7 @@ mod mbconv {
     }
 
     /// 生成の列を照合するための形。並びがcoreと同じ構成では列のまま、並びの変わる構成
-    /// （`HIMAWARI_MB_ORDER=type`）では符号の順に並べて手の集合として比べる（ADR-0241の第16回）。
+    /// （`HIMAWARI_MB_ORDER=type`）では符号の順に並べて手の集合として比べる。
     #[cfg_attr(not(mb_shadow), allow(dead_code))]
     pub fn order_key(list: &[Move]) -> Vec<u32> {
         let mut v: Vec<u32> = list.iter().map(|m| m.bits()).collect();
@@ -588,7 +588,7 @@ mod mbconv {
         t
     };
 
-    /// coreの手を配列盤の手へ。表を引いて欄を詰め替えるだけで、分岐しない（ADR-0241の第15回）。
+    /// coreの手を配列盤の手へ。表を引いて欄を詰め替えるだけで、分岐しない。
     ///
     /// coreの符号は下位から行き先7bit・移動元7bit・成り・駒打ち・移動後の駒（bit16〜）、
     /// 配列盤の符号は行き先8bit・移動元8bit・成り・駒打ち・移動後の駒（bit24〜）である。

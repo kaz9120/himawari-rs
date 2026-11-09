@@ -1,7 +1,7 @@
-//! 機能検証（ADR-0074・ADR-0122）。固定深さでのノード数を変更前後で比べる。
+//! 機能検証。固定深さでのノード数を変更前後で比べる。
 //!
 //! 局面を毎回書き下すと条件がぶれるため、局面と深さを固定する。
-//! ADRへ転記できる形（markdown表）で出力する。
+//! PRへ貼れる形（markdown表）で出力する。
 //!
 //! 全局面でノード数が一致したら終了コード1を返す。その変更は探索に
 //! 影響しておらず、SPRTにかけても中立にしかならない。
@@ -22,12 +22,12 @@ use himawari_tools::{
 
 #[derive(Parser)]
 #[command(
-    about = "機能検証（ADR-0074）。固定深さのノード数を比べる",
-    long_about = "機能検証（ADR-0074）。固定深さのノード数を比べる。
+    about = "機能検証。固定深さのノード数を比べる",
+    long_about = "機能検証。固定深さのノード数を比べる。
 
 candidateを省くとbaselineだけを測る。局面は初期局面と
-openings/start_sfens_ply24.txt の先頭3行の計4つで、ADR-0074の
-「3局面以上」を満たす。
+openings/start_sfens_ply24.txt の先頭3行の計4つで、機能検証に要る
+3局面以上を満たす。
 
 全局面でノード数が一致したら終了コード1を返す。その変更は探索に
 影響していない。評価関数は EVAL_FILE か --eval-file で渡す。"
@@ -89,7 +89,7 @@ fn run(cli: &Cli) -> Result<u8> {
         None => builtin_positions(),
     };
 
-    println!("=== 機能検証（ADR-0074）: 固定深さ {} ===", cli.depth);
+    println!("=== 機能検証: 固定深さ {} ===", cli.depth);
     println!("評価関数: {}", eval.display());
     println!("baseline : {}", cli.baseline.display());
     if let Some(candidate) = &cli.candidate {
@@ -147,7 +147,7 @@ fn run(cli: &Cli) -> Result<u8> {
 
     println!();
     if same {
-        println!("全局面でノード数が一致した。この変更は探索に影響していない（ADR-0074）。");
+        println!("全局面でノード数が一致した。この変更は探索に影響していない。");
         println!("SPRTにかけても中立にしかならない。");
         return Ok(exit::JUDGEMENT);
     }

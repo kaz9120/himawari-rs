@@ -1,5 +1,5 @@
 #![feature(portable_simd)]
-//! NNUE隠れ層の内積の実装候補を比べる（ADR-0099の判断材料）。
+//! NNUE隠れ層の内積の実装候補を比べる。
 //!
 //! 候補1: 現行。i8とu8をi32へ広げて8レーンずつ積和
 //! 候補2: レーン数だけ増やす（16レーン）。移植可能なまま幅を稼ぐ
@@ -9,7 +9,7 @@
 //! 対象は forward_hidden の2層ぶん。第1層は32行×512列、第2層は
 //! 32行×32列で、行ごとの内積を繰り返す。
 //! ローカルで `RUSTFLAGS="-C target-cpu=native" cargo bench -p himawari-engine`
-//! を実行して計測する（ADR-0003）。
+//! を実行して計測する。
 
 use std::hint::black_box;
 use std::simd::Simd;
@@ -102,7 +102,7 @@ fn layer(dot: impl Fn(&[i8], &[u8]) -> i32, w: &[i8], x: &[u8], cols: usize, out
     }
 }
 
-/// 候補6: SDOTで8行を同時に回す（ADR-0151群C。現行の第1層）。
+/// 候補6: SDOTで8行を同時に回す（現行の第1層）。
 #[cfg(all(target_arch = "aarch64", target_feature = "dotprod"))]
 fn layer_sdot8(w: &[i8], x: &[u8], cols: usize, out: &mut [i32]) {
     use std::arch::aarch64::{int32x4_t, vaddvq_s32, vdotq_s32, vdupq_n_s32, vld1q_s8};
@@ -124,7 +124,7 @@ fn layer_sdot8(w: &[i8], x: &[u8], cols: usize, out: &mut [i32]) {
     }
 }
 
-/// 4列チャンク単位のインターリーブ表（ADR-0151群L）。
+/// 4列チャンク単位のインターリーブ表。
 /// `t[k * rows * 4 + o * 4 + j] = w[o * cols + 4k + j]`。
 #[cfg(all(target_arch = "aarch64", target_feature = "dotprod"))]
 fn interleave(w: &[i8], rows: usize, cols: usize) -> Vec<i8> {
@@ -341,7 +341,7 @@ fn bench_dot(c: &mut Criterion) {
         });
     }
 
-    // 第1層の列駆動（ADR-0151群L）。活性のゼロ率は実測の0.731に合わせる
+    // 第1層の列駆動。活性のゼロ率は実測の0.731に合わせる
     #[cfg(all(target_arch = "aarch64", target_feature = "dotprod"))]
     {
         let mut seed = 0x1234_5678_9ABC_DEF0u64;

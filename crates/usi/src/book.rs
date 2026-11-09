@@ -1,4 +1,4 @@
-//! 定跡の読み込みと参照（ADR-0063、ADR-0109のG10）。
+//! 定跡の読み込みと参照。
 //!
 //! 形式はやねうら王のdb形式互換。`sfen` 行に続けて候補手を並べる。
 //!
@@ -46,7 +46,7 @@ pub struct BookParams {
     /// エンジン側の定跡を使うか（book.cpp:1307）
     pub own_book: bool,
     /// 定跡を使う手数の上限。参照実装の `BookMoves`（book.cpp:1314）に
-    /// あたるが、本エンジンは既存の `BookDepth`（既定24。ADR-0063）を使う
+    /// あたるが、本エンジンは既存の `BookDepth`（既定24）を使う
     pub book_moves: u16,
     /// 定跡を無視する確率[%]（book.cpp:1317、1550-1552）
     pub ignore_rate: u32,
@@ -450,7 +450,7 @@ impl Book {
     }
 }
 
-/// 定跡の設定と状態（ADR-0063、ADR-0109のG10）。
+/// 定跡の設定と状態。
 /// 探索器には渡さずUSI層で閉じる。
 pub struct BookOptions {
     pub file: String,

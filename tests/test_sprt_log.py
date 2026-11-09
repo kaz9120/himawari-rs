@@ -106,7 +106,7 @@ def test_raises_when_required_field_is_missing():
 
 
 def test_drops_the_previous_run():
-    """再開前の判定行を拾わない。ログは追記式である（ADR-0087）。"""
+    """再開前の判定行を拾わない。ログは追記式である。"""
     lines = [
         START_DEFAULT,
         "pairs 100 | ...",
@@ -146,7 +146,7 @@ def test_note_is_empty_for_the_default_hypothesis():
 
 
 def test_note_names_non_inferiority():
-    """条件を書かずに数値だけが独り歩きするのを防ぐ（ADR-0163）。"""
+    """条件を書かずに数値だけが独り歩きするのを防ぐ。"""
     assert sprt_log.hypothesis_note(("-5", "0")) == "（非劣性 elo0=-5 elo1=0）"
 
 
@@ -212,7 +212,7 @@ def test_exit_codes_follow_the_verdict():
 
 
 def test_capped_pairs_turn_an_undecided_run_into_a_pass(tmp_path):
-    """上限のペア数まで走って判定に至らなければ「見送り」で、結果ファイルを書く（ADR-0217）。"""
+    """上限のペア数まで走って判定に至らなければ「見送り」で、結果ファイルを書く。"""
     log = tmp_path / "sprt-x.log"
     log.write_text(
         "selfplay: --baseline a --candidate b\n"
@@ -270,7 +270,7 @@ def test_leaves_no_temporary_file(tmp_path):
 
 
 def test_does_not_write_result_before_a_verdict(tmp_path):
-    """判定に至っていない実行を完了として記録しない（ADR-0175）。"""
+    """判定に至っていない実行を完了として記録しない。"""
     log = tmp_path / "sprt-x.log"
     log.write_text(
         "selfplay: c vs b | tc 10+0.1 | SPRT elo[-5, 0] a=0.05\n"

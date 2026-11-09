@@ -1,4 +1,4 @@
-//! NNUE推論のSIMD実装（ADR-0036）。
+//! NNUE推論のSIMD実装。
 //!
 //! `std::simd`（portable SIMD）による移植可能な実装。スカラー実装
 //! （nnue.rs）が正解器で、両者のビット一致をテストで要求する。
@@ -15,7 +15,7 @@ use crate::value::Value;
 
 const I16_LANES: usize = 16;
 
-/// FT重み（i8）の1回あたりのレーン数（ADR-0138）。
+/// FT重み（i8）の1回あたりのレーン数。
 /// 読み出しが半分になり、1命令で扱える要素が倍になる。
 const FT_I8_LANES: usize = 32;
 
@@ -26,13 +26,12 @@ const FT_CHUNKS: usize = FT_OUT / FT_I8_LANES;
 /// build.rsが要求するのは16の倍数までなので、ここで止める。
 const _: () = assert!(FT_OUT.is_multiple_of(FT_I8_LANES));
 
-/// 対の積は前半・後半を16レーンずつ突き合わせる（ADR-0171）。
+/// 対の積は前半・後半を16レーンずつ突き合わせる。
 /// HALFが16の倍数でないと末尾が落ちる。
 const _: () = assert!(HALF.is_multiple_of(I16_LANES));
 const _: () = assert!(EFF_OUT.is_multiple_of(I16_LANES));
 
-/// `dst[k] = src[k] - Σsubs[·][k] + Σadds[·][k]`（i16、ラップ加減算。
-/// ADR-0151群A・群N）。
+/// `dst[k] = src[k] - Σsubs[·][k] + Σadds[·][k]`（i16、ラップ加減算）。
 ///
 /// 親のaccを読みながら全差分を適用し、自分のaccへ書く。accへの往復が
 /// 1回で済む。i16のラップ加減算は可換かつ結合的なので、1行ずつ足し引き
@@ -44,7 +43,7 @@ const _: () = assert!(EFF_OUT.is_multiple_of(I16_LANES));
 /// dirtyのデコードが1回で済み、依存の切れた2本のストリームが並ぶ。
 /// 各視点の演算順序は `V = 1` のときと同じなので結果はビット一致する。
 ///
-/// 重みはi8で持ち、符号拡張してから足し引きする（ADR-0138）。
+/// 重みはi8で持ち、符号拡張してから足し引きする。
 /// accumulatorはi16のままなので、飽和は新たに起こらない。変わるのは
 /// 重みの読み出し幅だけである。
 pub fn ft_apply<const V: usize, const NS: usize, const NA: usize>(
@@ -90,7 +89,7 @@ pub fn ft_apply<const V: usize, const NS: usize, const NA: usize>(
     }
 }
 
-/// `ft_apply` の両視点版に、`clip_to_u8` を畳んだもの（ADR-0251）。
+/// `ft_apply` の両視点版に、`clip_to_u8` を畳んだもの。
 ///
 /// 評価する段のaccを作るときに使う。accの前半と後半のチャンクを同じ周で作り、
 /// レジスタに残っているうちに対の積を `out` へ書く。書いたaccを読み直す4KBの
@@ -128,7 +127,7 @@ pub fn ft_apply_out<const NS: usize, const NA: usize>(
     }
 }
 
-/// 利きのaccの両視点を、レジスタに置いたまま更新する（ADR-0242の段2）。
+/// 利きのaccの両視点を、レジスタに置いたまま更新する。
 ///
 /// `each` は1升ごとに `(引く行, 足す行)` の添字を視点の組で返す。引く行が無い升は
 /// `None` を返す。accは両視点とも64次元なら8本のベクトルに載るので、全部の升を
@@ -175,13 +174,13 @@ pub fn effect_rows_update(
     }
 }
 
-/// `acc = bias + Σ特徴行`（i16、ラップ加算。ADR-0151群A）。
+/// `acc = bias + Σ特徴行`（i16、ラップ加算）。
 ///
 /// 外側をaccのチャンク、内側を特徴にする。accへの書きが1回になり、
 /// バイアスの初期化も同じパスに入る。加算の順序は特徴ごとに足す版と
 /// 同じで、結果もビット一致する。
 ///
-/// 重みはi8で持つ（ADR-0138）。
+/// 重みはi8で持つ。
 pub fn ft_refresh(acc: &mut [i16; FT_OUT], bias: &[i16], w: &[i8], features: &[u32]) {
     debug_assert_eq!(bias.len(), FT_OUT);
     for (i, (a, b)) in acc
@@ -202,17 +201,17 @@ pub fn ft_refresh(acc: &mut [i16; FT_OUT], bias: &[i16], w: &[i8], features: &[u
     }
 }
 
-/// `acc += Σadds行 − Σsubs行`（i16、ラップ加減算。ADR-0156）。
+/// `acc += Σadds行 − Σsubs行`（i16、ラップ加減算）。
 ///
 /// `ft_apply` との違いは行数を実行時に受けることである。玉位置ごとの
 /// キャッシュとの差分は局面の隔たりで本数が変わるので、単相化できない。
 /// 構造は `ft_refresh` と同じで、外側をaccのチャンク、内側を行にする。
 /// 加減算はラップなので、1行ずつ適用した結果とビット一致する。
 ///
-/// 重みはi8で持つ（ADR-0138）。
+/// 重みはi8で持つ。
 ///
 /// 結果は `acc` と `copy` の両方へ書く。キャッシュを更新したあとに探索の段へ
-/// 2KBを写し直すmemcpyを、同じパスに畳む（ADR-0250）。
+/// 2KBを写し直すmemcpyを、同じパスに畳む。
 pub fn ft_update(
     acc: &mut [i16; FT_OUT],
     copy: &mut [i16; FT_OUT],
@@ -245,7 +244,7 @@ pub fn ft_update(
     }
 }
 
-/// i16アキュムレータの前半と後半を対にして掛け、u8の活性へ（ADR-0171）。
+/// i16アキュムレータの前半と後半を対にして掛け、u8の活性へ。
 ///
 /// 出すのは `HALF` 個で、`out[o] = (clip(acc[o]) * clip(acc[o + HALF]) + 64) >> 7`
 /// になる。スカラー基準は `nnue::pair_activation`。clipで0..127に収まるので
@@ -266,8 +265,8 @@ pub fn clip_to_u8(acc: &[i16; FT_OUT], out: &mut [u8]) {
 
 /// 対の積の活性 `(clip(a) * clip(b) + 64) >> 7` を32要素ぶん作る。clipは0..127。
 ///
-/// NEONでは、飽和付きの縮小でu8にしてから127で抑え、u8どうしの積を丸めながら縮める
-/// （ADR-0252）。i16のままclipすると、32要素ごとに16本のmax・minが要る。縮小してからなら
+/// NEONでは、飽和付きの縮小でu8にしてから127で抑え、u8どうしの積を丸めながら縮める。
+/// i16のままclipすると、32要素ごとに16本のmax・minが要る。縮小してからなら
 /// 縮小4本と抑え4本で済む。値はどちらも同じになる。
 #[inline(always)]
 fn pair_act(a: Simd<i16, FT_I8_LANES>, b: Simd<i16, FT_I8_LANES>) -> [u8; FT_I8_LANES] {
@@ -314,12 +313,12 @@ fn dot_tail(w: &[i8], x: &[u8]) -> i32 {
         .sum()
 }
 
-/// SDOT版の内積（ADR-0151群C）。1命令で16要素ぶんの積和を進める。
+/// SDOT版の内積。1命令で16要素ぶんの積和を進める。
 ///
 /// 出力層は1行なので行束ねの対象にならず、portable版では8レーンへ
 /// 広げる形で回っていた。アキュムレータを2本に分けて依存を切り、
 /// 16の倍数に満たない端数はスカラーで畳む。活性は0..127なのでi8として
-/// 読んでも値が変わらない（ADR-0099）。
+/// 読んでも値が変わらない。
 #[cfg(all(target_arch = "aarch64", target_feature = "dotprod"))]
 fn dot(w: &[i8], x: &[u8]) -> i32 {
     use std::arch::aarch64::{vaddq_s32, vaddvq_s32, vdotq_s32, vdupq_n_s32, vld1q_s8};
@@ -353,11 +352,11 @@ fn dot(w: &[i8], x: &[u8]) -> i32 {
     sum + dot_tail(&w[k..], &x[k..])
 }
 
-/// AVX2版の内積（ADR-0151群C）。`affine_relu` と同じく
+/// AVX2版の内積。`affine_relu` と同じく
 /// `maddubs`＋`madd` の組で32要素ずつ積和する。
 ///
-/// 隣接2要素の積の和は-32,512..32,258で、`maddubs` のi16飽和は起きない
-/// （ADR-0099）。32の倍数に満たない端数はスカラーで畳む。
+/// 隣接2要素の積の和は-32,512..32,258で、`maddubs` のi16飽和は起きない。
+/// 32の倍数に満たない端数はスカラーで畳む。
 #[cfg(all(target_arch = "x86_64", target_feature = "avx2"))]
 fn dot(w: &[i8], x: &[u8]) -> i32 {
     use std::arch::x86_64::{
@@ -407,14 +406,13 @@ fn clip(v: i32) -> u8 {
     v.clamp(0, 127) as u8
 }
 
-/// AVX2版で束ねる行数（ADR-0099）。
+/// AVX2版で束ねる行数。
 #[cfg(all(target_arch = "x86_64", target_feature = "avx2"))]
 const ROWS: usize = 4;
 
 /// 全結合層＋clipped ReLU。`out[o] = clip((b[o] + w[o行]·x) >> 6)`。
 ///
-/// 行ごとに内積を取る素直な版。専用命令を使う版と同じ値を返す
-/// （ADR-0099）。
+/// 行ごとに内積を取る素直な版。専用命令を使う版と同じ値を返す。
 #[cfg(not(any(
     all(target_arch = "aarch64", target_feature = "dotprod"),
     all(target_arch = "x86_64", target_feature = "avx2")
@@ -468,7 +466,7 @@ fn affine_rows<const R: usize>(
     }
 }
 
-/// SDOT版（ADR-0099。行束ねを8へ広げた。ADR-0151群C）。
+/// SDOT版（行束ねを8へ広げた）。
 ///
 /// aarch64はSIMDレジスタが32本あるので、8行ぶんのアキュムレータを
 /// 並べても溢れない。入力ベクトルのロードが8行で共有され、4行束ねの
@@ -482,7 +480,7 @@ fn affine_relu(w: &[i8], b: &[i32], x: &[u8], out: &mut [u8]) {
     affine_relu_strided(w, b, x, x.len(), out);
 }
 
-/// 同上で、重みの行の幅 `stride` を入力の長さと別に受ける（ADR-0251）。
+/// 同上で、重みの行の幅 `stride` を入力の長さと別に受ける。
 ///
 /// パディングした列（入力も重みもゼロ）を読まずに済ませるときに使う。`x` は
 /// 実際に積和する列だけを渡し、`stride` は重みの1行の幅にする。読まない列の積は
@@ -511,7 +509,7 @@ fn affine_relu_strided(w: &[i8], b: &[i32], x: &[u8], stride: usize, out: &mut [
     }
 }
 
-/// AVX2版（ADR-0099）。SDOT版と同じ構造で、内側を
+/// AVX2版。SDOT版と同じ構造で、内側を
 /// `maddubs`（u8×i8をi16へ積和）と `madd`（i16をi32へ畳む）の組で作る。
 ///
 /// 活性は0..127、重みは-128..127なので、隣接2要素の積の和は
@@ -569,7 +567,7 @@ const L1_ACCS: usize = L1_OUT / 4;
 #[cfg(all(target_arch = "aarch64", target_feature = "dotprod"))]
 const L1_ACCS_MAX: usize = 16;
 
-/// バイトマスクから非ゼロ位置8個を引く表（ADR-0151群L）。
+/// バイトマスクから非ゼロ位置8個を引く表。
 ///
 /// `NNZ_LUT[m]` は、mのビットが立っている位置を前へ詰めた並びになる。
 /// 立っていないぶんは使わない（`count_ones` の数だけ読む）。4KB。
@@ -592,7 +590,7 @@ static NNZ_LUT: [[u16; 8]; 256] = {
     t
 };
 
-/// バイトマスクの立っているビットの数（ADR-0251）。`count_ones` はベクトルレジスタを
+/// バイトマスクの立っているビットの数。`count_ones` はベクトルレジスタを
 /// 経由する4命令になるので、表を1回引く形にする。
 #[cfg(all(target_arch = "aarch64", target_feature = "dotprod"))]
 static NNZ_COUNT: [u8; 256] = {
@@ -605,7 +603,7 @@ static NNZ_COUNT: [u8; 256] = {
     t
 };
 
-/// 活性のうち非ゼロを含む4列チャンクを列挙する（ADR-0151群L）。
+/// 活性のうち非ゼロを含む4列チャンクを列挙する。
 ///
 /// 16チャンク（64バイト）ずつ見て、チャンクごとの非ゼロ判定を1ビットに
 /// 潰し、2バイトのマスクを `NNZ_LUT` で添字へ展開する。**分岐を持たない。**
@@ -613,7 +611,7 @@ static NNZ_COUNT: [u8; 256] = {
 /// （ベンチで実測: 分岐版112.7ns、この版99.6ns、密127.6ns）。
 ///
 /// 戻り値は `nnz` に書いた個数。先頭からその個数までが初期化済みになる。
-/// 置き場は未初期化で受ける。ゼロ埋めのmemsetが評価のたびに走るのを避ける（ADR-0250）。
+/// 置き場は未初期化で受ける。ゼロ埋めのmemsetが評価のたびに走るのを避ける。
 #[cfg(all(target_arch = "aarch64", target_feature = "dotprod"))]
 #[inline]
 fn find_nnz(x: &[u8; CONCAT], nnz: &mut [MaybeUninit<u16>; NNZ_CHUNKS + 8]) -> usize {
@@ -674,7 +672,7 @@ fn find_nnz(x: &[u8; CONCAT], nnz: &mut [MaybeUninit<u16>; NNZ_CHUNKS + 8]) -> u
     count
 }
 
-/// 第1層を列駆動で計算する（ADR-0151群L）。
+/// 第1層を列駆動で計算する。
 ///
 /// 活性の73.1%はゼロなので、4列チャンクの28.4%は丸ごとゼロになる。
 /// そのチャンクを飛ばすと積和がその分だけ減る。**i32の和は正確なので、
@@ -707,7 +705,7 @@ fn affine_relu_l1_sparse(wt: &[i8], b: &[i32], x: &[u8; CONCAT], out: &mut [u8])
     unsafe {
         let mut acc: [int32x4_t; L1_ACCS] = [vdupq_n_s32(0); L1_ACCS];
         // 2チャンクずつ別の和へ積み、最後に足す。i32の和は正確なので順序を変えても値は同じで、
-        // SDOTの依存の連鎖が半分になる（ADR-0252）
+        // SDOTの依存の連鎖が半分になる
         let mut acc2: [int32x4_t; L1_ACCS] = [vdupq_n_s32(0); L1_ACCS];
         let step = |acc: &mut [int32x4_t; L1_ACCS], k: u16| {
             let k = usize::from(k);
@@ -730,7 +728,7 @@ fn affine_relu_l1_sparse(wt: &[i8], b: &[i32], x: &[u8; CONCAT], out: &mut [u8])
             *a = vaddq_s32(*a, b);
         }
         if L1_OUT.is_multiple_of(16) {
-            // 16出力ずつ、バイアス・シフト・clipをベクトルのまま当てる（ADR-0251）
+            // 16出力ずつ、バイアス・シフト・clipをベクトルのまま当てる
             for (g, o) in out.as_chunks_mut::<16>().0.iter_mut().enumerate() {
                 let v = [0, 1, 2, 3].map(|r| acc[4 * g + r]);
                 *o = std::mem::transmute::<std::arch::aarch64::uint8x16_t, [u8; 16]>(
@@ -748,7 +746,7 @@ fn affine_relu_l1_sparse(wt: &[i8], b: &[i32], x: &[u8; CONCAT], out: &mut [u8])
     }
 }
 
-/// 4出力ずつ和を持つ4本のベクトルから、16出力の `clip((b + sum) >> 6)` を作る（ADR-0251）。
+/// 4出力ずつ和を持つ4本のベクトルから、16出力の `clip((b + sum) >> 6)` を作る。
 ///
 /// 符号付きから符号なしへの飽和縮小で負を0にし、u8への飽和縮小のあと127で抑える。
 /// 1出力ずつ水平加算してスカラーでclipするのと同じ値になる。
@@ -774,7 +772,7 @@ unsafe fn relu_narrow16(
     }
 }
 
-/// 出力が16の倍数の全結合層＋clipped ReLU（SDOT版、ADR-0251）。
+/// 出力が16の倍数の全結合層＋clipped ReLU（SDOT版）。
 ///
 /// 1行の積和を1本のベクトルに溜め、4行ぶんをペア加算で畳むと、4出力の和が
 /// 1本に並ぶ。出力ごとの水平加算とスカラーのclipが要らない。`x` は積和する列、
@@ -813,7 +811,7 @@ fn affine_relu16(w: &[i8], b: &[i32], x: &[u8], stride: usize, out: &mut [u8]) {
     }
 }
 
-/// 第1層。SDOT経路だけ列駆動へ回す（ADR-0151群L）。
+/// 第1層。SDOT経路だけ列駆動へ回す。
 ///
 /// 派生表が空のネット（`NnueNetwork::finish` を呼ばずに組んだ場合）と、
 /// アキュムレータが溢れるほど出力が広い構成では密のまま計算する。
@@ -839,7 +837,7 @@ fn l1(net: &NnueNetwork, x: &[u8; CONCAT], out: &mut [u8]) {
     affine_relu(&net.w2, &net.b2, x, out);
 }
 
-/// 第2層。SDOT経路では、パディングした列を読まない（ADR-0251）。
+/// 第2層。SDOT経路では、パディングした列を読まない。
 ///
 /// 第1層の出力は `L1_OUT` 個で、`L1_PAD` まではゼロで埋めてある。SDOTは16列
 /// ずつ積和するので、`L1_OUT` を16へ切り上げた列までで足りる。
@@ -865,7 +863,7 @@ fn l2(net: &NnueNetwork, h2: &[u8; L1_PAD], out: &mut [u8]) {
 /// 連結ベクトルから評価値まで（SIMD版）。
 pub fn forward_hidden(net: &NnueNetwork, concat: &[u8; CONCAT]) -> Value {
     // 次の層の入力はパディングした幅で渡す。実次元より後ろはゼロのままで、
-    // 重みの対応する列もゼロなので積和に効かない（ADR-0127）
+    // 重みの対応する列もゼロなので積和に効かない
     let mut h2 = [0u8; L1_PAD];
     l1(net, concat, &mut h2[..L1_OUT]);
     // 隠れ層は書いたぶんだけ挟む。次元は定数なので使わない分岐は消える
@@ -891,7 +889,7 @@ mod tests {
     fn primitives_match_scalar() {
         let net = NnueNetwork::random(5);
         let row = |i: usize| &net.ft_w[i * FT_OUT..(i + 1) * FT_OUT];
-        // 重みの格納型はビルドで変わる（ADR-0138）。参照側はi16へ揃える。
+        // 重みの格納型はビルドで変わる。参照側はi16へ揃える。
         // 既定ビルドでは型が同じで変換が恒等になるが、i8ビルドでは必要
         #[allow(clippy::useless_conversion)]
         {
@@ -944,7 +942,7 @@ mod tests {
         }
     }
 
-    /// 対の積がスカラー基準と一致すること（ADR-0171）。
+    /// 対の積がスカラー基準と一致すること。
     ///
     /// 境界を作って回す。負・0・127・127超をすべて前半と後半の両方に
     /// 置き、clipが先で積が後になっていることを確かめる。
@@ -973,7 +971,7 @@ mod tests {
         assert!(out.iter().all(|&x| x == 126));
     }
 
-    /// 両視点1パスが片視点2回とビット一致すること（ADR-0151群N）。
+    /// 両視点1パスが片視点2回とビット一致すること。
     ///
     /// 融合しても視点ごとの演算順序は変わらない。行数の組み合わせを
     /// すべて回し、ラップの起きる境界値で照合する。
@@ -1034,7 +1032,7 @@ mod tests {
     }
 
     /// 活性を畳んだ両視点の適用が、`ft_apply` と `clip_to_u8` を順に呼んだ結果と
-    /// 一致すること（ADR-0251）。値が0〜127の外へ出る行も混ぜる。
+    /// 一致すること。値が0〜127の外へ出る行も混ぜる。
     #[test]
     fn ft_apply_out_matches_apply_then_clip() {
         let net = NnueNetwork::random(13);
@@ -1091,7 +1089,7 @@ mod tests {
         }
     }
 
-    /// 行束ねがどの行数でもスカラーと一致すること（ADR-0151群C）。
+    /// 行束ねがどの行数でもスカラーと一致すること。
     ///
     /// 出力次元は `HIMAWARI_ARCH` でビルド時に変わる。8行束ねが割り切れず
     /// 4行束ねへ落ちる行数（12・20）も含めて照合する。行数を4の倍数に
@@ -1117,7 +1115,7 @@ mod tests {
         }
     }
 
-    /// 隠れ層の推論がスカラー実装とビット一致すること（ADR-0099・0151群L）。
+    /// 隠れ層の推論がスカラー実装とビット一致すること。
     ///
     /// SDOT経路は積和の順序がスカラーと異なり、第1層は列駆動でゼロの列を
     /// 飛ばす。**飛ばす列の並びで結果が変わらないこと**を見るため、
@@ -1185,7 +1183,7 @@ mod tests {
         }
     }
 
-    /// 第1層の出力が1つずつスカラーと一致すること（ADR-0151群L）。
+    /// 第1層の出力が1つずつスカラーと一致すること。
     /// ゼロの位置は毎回変わるので、4列チャンクの飛ばし方が総当たりに近く出る。
     #[test]
     fn l1_matches_scalar_without_saturation() {
@@ -1207,7 +1205,7 @@ mod tests {
         }
     }
 
-    /// 派生表を持たないネットでも同じ値を返すこと（ADR-0151群L）。
+    /// 派生表を持たないネットでも同じ値を返すこと。
     /// 列駆動は表が空なら密へ落ちる。落ちても結果は変わらない。
     #[test]
     fn l1_without_the_interleaved_table() {

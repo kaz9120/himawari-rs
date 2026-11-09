@@ -1,4 +1,4 @@
-//! 探索v1（ADR-0024, 0026）。
+//! 探索v1。
 //!
 //! fail-softのalpha-beta＋反復深化＋aspiration window。
 //! PVは三角配列（Vecの連結）。詰みスコアはTT境界でply補正する。
@@ -23,62 +23,62 @@ use crate::value::{
     VALUE_NONE, VALUE_SUPERIOR, VALUE_ZERO, Value, mate_in, mated_in, value_from_tt, value_to_tt,
 };
 
-// ---- 探索定数（ADR-0028。調整は1調整=1SPRT） ----
+// ---- 探索定数（調整は1調整=1SPRT） ----
 //
-// SPSAの対象にした定数は `tunables.rs` にある（ADR-0143）。以下の
+// SPSAの対象にした定数は `tunables.rs` にある。以下の
 // コメントが式ごと説明し、値はそちらが持つ。ここに残るのは対象外の定数。
 
-/// NMP（ADR-0028, 0109のG4。yaneuraou-search.cpp:3236-3301）。
+/// NMP（yaneuraou-search.cpp:3236-3301）。
 /// 発動条件はcutNodeで、静的評価が `beta - 16*depth - 53*improving + 378`
 /// 以上のとき。リダクションは `7 + depth/3`。深さが16以上なら、同じ深さの
 /// 検証探索でzugzwangの誤りを確かめる。評価値は歩=90スケールで一致する
-/// ため絶対値のまま使う（ADR-0074）
+/// ため絶対値のまま使う
 const NMP_EVAL_DEPTH: Value = 16;
 const NMP_VERIFY_MIN_DEPTH: u32 = 16;
-/// 子ノードのfutility（RFP。ADR-0109のG4。yaneuraou-search.cpp:3217-3227）。
+/// 子ノードのfutility（RFP。yaneuraou-search.cpp:3217-3227）。
 /// 係数 `m = 76 - 21*(TT不ヒット)` を置くと、マージンは
 /// `m*depth - (2686*improving + 362*opponentWorsening)*m/1024 + |correction値|/180600`
 /// になる。これを評価から引いてもβを超えるなら刈る。返り値は `(2β+eval)/3`。
-/// 評価値は歩=90スケールで一致するため絶対値のまま使う（ADR-0074）。
+/// 評価値は歩=90スケールで一致するため絶対値のまま使う。
 /// correction historyの分母131072はG1で参照実装へ揃えたので、除数180600も
-/// 換算せずに使える（ADR-0109の「定数の扱い」）
+/// 換算せずに使える
 const RFP_MAX_DEPTH: u32 = 15;
 const RFP_CORR_DIVISOR: i32 = 180600;
-/// 親ノードfutilityの上限深さとマージン（ADR-0028, 0109のG3。
+/// 親ノードfutilityの上限深さとマージン（
 /// yaneuraou-search.cpp:3665-3676）。尺度はdepthではなく履歴で補正した
 /// lmrDepthである。マージンは
 /// `42 + 151*(最善手未発見) + 120*lmrDepth + 86*(staticEval > alpha)` で、
 /// これを静的評価へ足してもalphaに届かない手を刈る。評価値は歩=90の
-/// スケールで一致する（ADR-0074）
+/// スケールで一致する
 const FUTILITY_MAX_DEPTH: i32 = 13;
-/// 「今読んでいる手」をinfoで出し始める経過時間（ADR-0086）。
+/// 「今読んでいる手」をinfoで出し始める経過時間。
 /// USIの慣例に合わせ、短い探索では出さない
 const CURRMOVE_MIN_MS: u64 = 3000;
-/// IIR（ADR-0028, 0109のG4。yaneuraou-search.cpp:3319-3320）。
+/// IIR（yaneuraou-search.cpp:3319-3320）。
 /// TTに手がないノードを1浅く読む。前回PVの上・allNode・1手前を大きく
 /// 削って来たノードは対象外
 const IIR_MIN_DEPTH: u32 = 6;
 const IIR_MAX_PRIOR_REDUCTION: i32 = 3;
-/// ProbCut（ADR-0051, 0109のG4。yaneuraou-search.cpp:3357-3424）。
+/// ProbCut（yaneuraou-search.cpp:3357-3424）。
 /// 閾値は `beta + 224 - 61*improving`、確認探索の深さは `depth - 4`。
 /// MovePickerへ渡すSEEの閾値は `閾値 - 静的評価` である。評価値は歩=90
-/// スケールで一致するため絶対値のまま使う（ADR-0074）
+/// スケールで一致するため絶対値のまま使う
 const PROBCUT_MARGIN: Value = 224;
 const PROBCUT_IMPROVING: Value = 61;
 const PROBCUT_MIN_DEPTH: u32 = 3;
 const PROBCUT_DEPTH_REDUCTION: i32 = 4;
-/// singular extension（ADR-0050, 0109のG5。yaneuraou-search.cpp:3747-3758）。
+/// singular extension（yaneuraou-search.cpp:3747-3758）。
 /// TT手を除外した検証探索を `ttValue - (60 + 66*(ttPvかつ非PV)) * depth / 55`
 /// の窓で行う。深さの下限は `6 + ttPv` である。参照実装はチェスの
 /// `2 * depth` では「1手以外はすべてそれぐらい悪い」ため大半がsingularに
 /// なると書き、1割ぐらいがsingularになる係数へ調整している
 /// （yaneuraou-search.cpp:3728-3731）。評価値は歩=90スケールで一致する
-/// ため絶対値のまま使う（ADR-0074）
+/// ため絶対値のまま使う
 const SINGULAR_MIN_DEPTH: u32 = 6;
 const SINGULAR_MARGIN: Value = 60;
 const SINGULAR_MARGIN_TTPV: Value = 66;
 const SINGULAR_MARGIN_DIV: Value = 55;
-/// correction historyの合成重み（ADR-0085, 0109）。分母は131072。
+/// correction historyの合成重み。分母は131072。
 /// 出典はやねうら王の `correction_value()`（yaneuraou-search.cpp:737）。
 /// 6要素（歩・小駒・先手非歩・後手非歩・2手前と4手前のcontinuation）を
 /// この重みで合成する
@@ -90,23 +90,22 @@ const CORR_DIVISOR: i32 = 131072;
 /// 1手前の指し手がないときのcontinuation項の代替値
 /// （yaneuraou-search.cpp:735）。
 const CORR_CONT_DEFAULT: i32 = 8;
-/// 取る手のfutility（ADR-0109のG3。yaneuraou-search.cpp:3618-3619）。
+/// 取る手のfutility（yaneuraou-search.cpp:3618-3619）。
 /// `staticEval + 218 + 223*lmrDepth + 取った駒の価値 + 131*captHist/1024`
-/// がalpha以下なら刈る。評価値は歩=90スケールで一致する（ADR-0074）
+/// がalpha以下なら刈る。評価値は歩=90スケールで一致する
 const CAPT_FUTILITY_MAX_DEPTH: i32 = 7;
 const CAPT_FUTILITY_HIST: i32 = 131;
-/// 静かな手のcontinuation history枝刈り（ADR-0109のG3。
-/// yaneuraou-search.cpp:3650）。1手前・2手前のcontinuation historyと
+/// 静かな手のcontinuation history枝刈り（/// yaneuraou-search.cpp:3650）。1手前・2手前のcontinuation historyと
 /// pawn historyの和が `-4097 * depth` を下回る手は読まない
 const CONT_HIST_PRUNE_COEF: i32 = 4097;
-/// 置換表の下界を使った簡易ProbCut（ADR-0078）。探索を伴わず、
+/// 置換表の下界を使った簡易ProbCut。探索を伴わず、
 /// TTに `beta + このマージン` 以上の下界が depth-4 以上の深さで
 /// 記録されていればカットする。出典はやねうら王の `beta + 416`。
-/// 評価値は歩=90スケールで一致するため絶対値のまま用いる（ADR-0074）。
+/// 評価値は歩=90スケールで一致するため絶対値のまま用いる。
 const TT_PROBCUT_MARGIN: Value = 416;
 const TT_PROBCUT_DEPTH_SLACK: u32 = 4;
 
-/// 静止探索のmovecount制限（ADR-0077。「3手目以降は駒価値を見ずに
+/// 静止探索のmovecount制限（「3手目以降は駒価値を見ずに
 /// 捨てる」）。出典はやねうら王の `moveCount > 2`
 const QS_MOVECOUNT_LIMIT: u32 = 2;
 
@@ -121,14 +120,14 @@ const TT_DEPTH_QS: u8 = 3;
 const TT_DEPTH_UNSEARCHED: u8 = 1;
 
 /// スレッドごとの窓幅のずれ幅（yaneuraou-search.cpp:1670）。
-/// 参照実装が持つ唯一の明示的なLazy SMPの多様化である（ADR-0031）
+/// 参照実装が持つ唯一の明示的なLazy SMPの多様化である
 const ASPIRATION_THREAD_SPREAD: usize = 8;
 
 /// historyのbonus・malusを配る対象として覚えておく手数の上限
 /// （yaneuraou-search.cpp:702のSEARCHEDLIST_CAPACITY）。
 const SEARCHED_LIST_CAPACITY: u32 = 32;
 
-/// この手数に達したら静かな手の生成をやめる（ADR-0109のG1）。
+/// この手数に達したら静かな手の生成をやめる。
 /// 出典はやねうら王の `(3 + depth * depth) / (2 - improving)`
 /// （yaneuraou-search.cpp:3593）。
 /// 除数が実行時に決まると `udiv` が出るので、2で割る側だけシフトへ置き換える。
@@ -148,9 +147,9 @@ const REDUCTIONS_LEN: usize = 608;
 /// LMRのリダクション表（G2。yaneuraou-search.cpp:2168-2169）。
 /// `LMR_COEF / 128 × ln(i)`（既定2763）を整数化した1次元表で、深さと
 /// 手数の積を取る。
-/// 積が1024倍の固定小数になるスケールはADR-0076で確認済み。
+/// 積が1024倍の固定小数になることは確かめてある。
 ///
-/// 要素はi16で持つ（ADR-0151群H）。値域は0〜138（`i = 607` が最大）で
+/// 要素はi16で持つ。値域は0〜138（`i = 607` が最大）で
 /// i16に収まり、表が2.4KBから1.2KBへ半分になる。読み出し側は `i32::from`
 /// で広げてから掛けるので、値も計算結果も従来とビット一致する。
 #[cfg(not(feature = "tune"))]
@@ -196,7 +195,7 @@ fn reductions_table() -> &'static [i16; REDUCTIONS_LEN] {
     }
 }
 
-/// スレッド間の共有状態（ADR-0020）。
+/// スレッド間の共有状態。
 pub struct Shared {
     pub stop: AtomicBool,
     /// 探索を破棄した（反復の途中で止めた）ことを示す（thread.h:296-301）。
@@ -219,9 +218,9 @@ pub struct Shared {
     /// 0へ戻す。本エンジンは合算先を1つにまとめ、`swap(0)` で汲み出す
     pub best_move_changes: AtomicU64,
     pub tt: Tt,
-    /// 評価値キャッシュ（ADR-0049）。全スレッド共有、new_gameでクリア。
+    /// 評価値キャッシュ。全スレッド共有、new_gameでクリア。
     pub eval_hash: EvalHash,
-    /// 全スレッドで共有するhistory（ADR-0162）。pawn historyと
+    /// 全スレッドで共有するhistory。pawn historyと
     /// correction historyの2面を持ち、表はスレッド数に比例して伸びる
     pub hists: Arc<SharedHistories>,
 }
@@ -247,22 +246,22 @@ impl Shared {
     }
 }
 
-/// 探索中の報告（ADR-0086）。反復深化1周分の結果と、rootで今読んで
+/// 探索中の報告。反復深化1周分の結果と、rootで今読んで
 /// いる手の2種類がある。呼び出し側はどちらもUSIのinfo行へ落とす。
 pub enum SearchInfo {
     /// 反復深化1周分（MultiPVでは1ラインごとに1回）。
     Iteration(IterInfo),
-    /// aspiration窓を外れた途中経過（ADR-0091）。確定値ではないため、
+    /// aspiration窓を外れた途中経過。確定値ではないため、
     /// 消費側はUSIの `lowerbound` / `upperbound` を付けて出す。
     Bound(IterInfo, ScoreBound),
-    /// rootで今読んでいる手（ADR-0086）。長考中の可視化に使う。
+    /// rootで今読んでいる手。長考中の可視化に使う。
     CurrMove { depth: u32, mv: Move },
     /// 診断の1行（`info string`）。時間管理の計画と実績など、指し手の
     /// 判断には使わないが、事後の調査で要る情報を出す。
     Note(String),
 }
 
-/// aspiration窓を外れたときのスコアの確からしさ（ADR-0091）。
+/// aspiration窓を外れたときのスコアの確からしさ。
 /// USIの `lowerbound` / `upperbound` に対応する。
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum ScoreBound {
@@ -275,7 +274,7 @@ pub enum ScoreBound {
 /// 反復深化1周分の報告（MultiPVでは1ラインごとに1回）。
 pub struct IterInfo {
     pub depth: u32,
-    /// 静止探索を含めて到達した最大ply（ADR-0086）。
+    /// 静止探索を含めて到達した最大ply。
     pub seldepth: u32,
     /// 1始まりのライン番号。MultiPV=1のときは0（info出力で省略）。
     pub multipv: usize,
@@ -286,13 +285,13 @@ pub struct IterInfo {
     pub hashfull: usize,
 }
 
-/// root手1つの探索状態（ADR-0032）。
+/// root手1つの探索状態。
 pub struct RootMove {
     pub mv: Move,
     pub score: Value,
     pub prev_score: Value,
     pub pv: Vec<Move>,
-    /// この手の探索に費やしたノード数（ADR-0062、G9。search.h:129）。
+    /// この手の探索に費やしたノード数（G9。search.h:129）。
     /// メインワーカーのローカル値のみ。**go全体の累計で、イテレーション
     /// ごとには戻さない。** highBestMoveEffortが読む比の分母も同じく
     /// go全体の累計ノード数である（S:1969-1970）
@@ -348,7 +347,7 @@ impl Default for MainMemory {
 pub struct SearchResult {
     pub best: Move,
     pub score: Value,
-    /// 相手の予測応手（PVの2手目。なければNONE。ADR-0033）。
+    /// 相手の予測応手（PVの2手目。なければNONE）。
     pub ponder: Move,
     /// `root_moves[0]` の生スコア（G10。S:610-611の投票が読む）。
     /// USIへ出す `score` と違い、頭打ちや窓外れの整形をしていない
@@ -362,7 +361,7 @@ pub struct SearchResult {
     pub completed_depth: u32,
 }
 
-/// plyごとの探索状態（ADR-0109のG0, G1）。
+/// plyごとの探索状態。
 ///
 /// 参照実装のStackに対応する。statScore・moveCount・ttPvなどは、
 /// 読む側を入れる群で足す。
@@ -370,7 +369,7 @@ pub struct SearchResult {
 struct StackEntry {
     /// このplyで指した手。null moveはMove::NULL、rootの手前はMove::NONE
     current_move: Move,
-    /// singular検証探索中の除外手（ADR-0050）
+    /// singular検証探索中の除外手
     excluded_move: Move,
     /// 静的評価。王手中はVALUE_NONE
     static_eval: Value,
@@ -431,7 +430,7 @@ const STACK_INIT: StackEntry = StackEntry {
     follow_pv: false,
 };
 
-/// 置換表から読んだ値（ADR-0022, 0024, 0125）。`probe_tt` が組み立て、
+/// 置換表から読んだ値。`probe_tt` が組み立て、
 /// TTカット・枝刈り・延長・リダクションが繰り返し読む。
 #[derive(Clone, Copy)]
 struct TtInfo {
@@ -446,7 +445,7 @@ struct TtInfo {
     bound: Bound,
 }
 
-/// ムーブループの手前で決まるノードの前提（ADR-0125）。
+/// ムーブループの手前で決まるノードの前提。
 ///
 /// 切り出した枝刈り・延長・リダクション・終端処理が共通して読む値を束ねる。
 /// `search` の引数と局所変数をそのまま写したもので、値は組み立てたあと
@@ -454,7 +453,7 @@ struct TtInfo {
 /// 入れず、関数の引数で渡す。
 ///
 /// ノードがPVかどうかはここへ入れない。`search` と同じくconst genericの
-/// `PV` で受け取る（ADR-0151の群J）。
+/// `PV` で受け取る。
 #[derive(Clone, Copy)]
 struct NodeInfo {
     ply: usize,
@@ -465,12 +464,12 @@ struct NodeInfo {
     in_check: bool,
     /// 前回の反復深化のPVを辿っているか（yaneuraou-search.cpp:2370-2372）
     follow_pv: bool,
-    /// 除外手（singular extension用。ADR-0050）。検証探索中はTT手が入る
+    /// 除外手（singular extension用）。検証探索中はTT手が入る
     excluded: Move,
     key: u64,
     /// correction history補正前の静的評価。TT storeのeval欄へそのまま入る
     raw_eval: Value,
-    /// correction history補正後の静的評価（ADR-0046）
+    /// correction history補正後の静的評価
     static_eval: Value,
     /// 枝刈り用の評価値（yaneuraou-search.cpp:3084-3087）。置換表の値の
     /// ほうが見積りとして適切なら差し替わる。razoringとRFPだけが読む
@@ -489,7 +488,7 @@ struct NodeInfo {
     tt_capture: bool,
 }
 
-/// ノードごとに使い回すバッファ（ADR-0151の群B）。
+/// ノードごとに使い回すバッファ。
 ///
 /// 素直に書くと毎ノードで `Vec` を確保し直すので、mallocがプロファイルの
 /// 2.1%を占めていた。`Worker` がply別に持ち、`std::mem::take` で貸し出して
@@ -528,21 +527,21 @@ impl NodeBuffers {
 }
 
 pub struct Worker {
-    /// 探索が進め戻す盤面（ADR-0239）。読み取りは `Position` のメソッドを
+    /// 探索が進め戻す盤面。読み取りは `Position` のメソッドを
     /// そのまま呼べる
     pub pos: SearchBoard,
     pub evaluator: Evaluator,
-    /// historyの一式（ADR-0109のG1）。対局を通じてスレッドが持ち回る。
+    /// historyの一式。対局を通じてスレッドが持ち回る。
     pub hist: Histories,
-    /// plyごとの探索状態（ADR-0109）。添字は `ply + STACK_OFFSET` で引く。
+    /// plyごとの探索状態。添字は `ply + STACK_OFFSET` で引く。
     /// 前方の余白により、ply 0でも1手前・2手前を境界検査なしで読める。
-    /// 長さをコンパイル時定数にするため配列で持つ（ADR-0124）。`Vec` だと
+    /// 長さをコンパイル時定数にするため配列で持つ。`Vec` だと
     /// 長さがヒープ上にあり、`&mut self` を通る呼び出しのたびに読み直す
     stack: Box<[StackEntry; STACK_LEN]>,
-    /// ply別の再利用バッファ（ADR-0151の群B）。`search` と `qsearch` は
+    /// ply別の再利用バッファ。`search` と `qsearch` は
     /// `ply >= MAX_PLY` で何も借りずに返すので、長さはMAX_PLYで足りる
     node_bufs: Box<[NodeBuffers; MAX_PLY]>,
-    /// このイテレーションで到達した最大ply（seldepth。ADR-0086）。
+    /// このイテレーションで到達した最大ply（seldepth）。
     sel_depth: u32,
     /// このイテレーションのaspiration窓の幅（G2。yaneuraou-search.cpp:1708）。
     /// リダクションが「今の窓幅がroot窓幅の何割か」で削る量を決める
@@ -572,7 +571,7 @@ pub struct Worker {
     tm: TimeManager,
     limits: Limits,
     max_moves_to_draw: u16,
-    /// 検討モードのライン数（ADR-0032）。対局時は1。
+    /// 検討モードのライン数。対局時は1。
     multi_pv: usize,
     root_moves: Vec<RootMove>,
     /// このワーカーの通し番号（G9。thread.h:198のthreadIdx）。
@@ -663,7 +662,7 @@ impl Worker {
     }
 
     /// `make_move` から、置換表とeval hashの先読みを除いたもの。手を選んだ時点で
-    /// `prefetch_child` を済ませた指し手ループが使う（ADR-0250）。
+    /// `prefetch_child` を済ませた指し手ループが使う。
     #[inline(always)]
     fn make_move_prefetched(&mut self, m: Move) {
         self.pos.do_move(m);
@@ -671,8 +670,7 @@ impl Worker {
         self.evaluator.push(&self.pos);
     }
 
-    /// mで進めた子ノードが引く置換表とeval hashを、進める前に先読みさせる
-    /// （ADR-0250）。
+    /// mで進めた子ノードが引く置換表とeval hashを、進める前に先読みさせる。
     #[inline(always)]
     fn prefetch_child(&self, m: Move) {
         let key = self.pos.prefetch_key(m);
@@ -680,8 +678,8 @@ impl Worker {
         self.shared.eval_hash.prefetch(key);
     }
 
-    /// 進めた局面で引く置換表とeval hashとcorrection historyを先読みさせる
-    /// （ADR-0250）。子ノードがprobeに着くまでの間に読み込みを済ませる。
+    /// 進めた局面で引く置換表とeval hashとcorrection historyを先読みさせる。
+    /// 子ノードがprobeに着くまでの間に読み込みを済ませる。
     #[inline(always)]
     fn prefetch_tables(&self) {
         let key = self.pos.key();
@@ -731,13 +729,13 @@ impl Worker {
         self.thread_count = count.max(1);
     }
 
-    /// ヘルパーがこの反復を飛ばすか（ADR-0202）。旧Stockfish（8〜11）の
+    /// ヘルパーがこの反復を飛ばすか。旧Stockfish（8〜11）の
     /// skipSize/skipPhase表で、ヘルパーは番号ごとに違う周期で反復を
     /// 飛ばし、同じ深さを同時に読む重複を減らす。メインは飛ばさない。
     ///
     /// 8スレッドで同じ深さに使うノードが3.66倍から2.81倍に減り、8対8の
     /// 既定SPRTで+19.8 Elo。参照実装は2020年前後にこの表を外したが、
-    /// 本エンジンでは多様化なしだと重複が大きかった（ADR-0202の診断）
+    /// 本エンジンでは多様化なしだと重複が大きかった
     fn skip_iteration(&self, depth: u32) -> bool {
         const SKIP_SIZE: [u32; 20] = [1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4];
         const SKIP_PHASE: [u32; 20] = [0, 1, 0, 1, 2, 3, 0, 1, 2, 3, 4, 5, 6, 7, 0, 1, 2, 3, 4, 5];
@@ -763,7 +761,7 @@ impl Worker {
     }
 
     /// 定期的な時間・ノード制限の検査（S:5480-5560）。時間制限を持つのは
-    /// メインワーカーだけ（ヘルパーはtmが無制限。ADR-0020, 0031）。
+    /// メインワーカーだけ（ヘルパーはtmが無制限）。
     /// あわせてローカルのノード数を共有カウンタへ流し込む。
     ///
     /// 即座に止めるのは3つだけである。movetime超過、nodes超過、予約した
@@ -814,11 +812,11 @@ impl Worker {
         } else {
             -self.draw_value_us
         };
-        // 千日手PVへの固着を防ぐ±1の揺らぎ（ADR-0026、S:785のvalue_draw）
+        // 千日手PVへの固着を防ぐ±1の揺らぎ（S:785のvalue_draw）
         base + VALUE_DRAW + 1 - (self.nodes & 2) as Value
     }
 
-    /// 生の静的評価をeval hash経由で得る（ADR-0049）。ヒットなら
+    /// 生の静的評価をeval hash経由で得る。ヒットなら
     /// evaluate()の全計算を省き、ミスなら計算して格納する。詰み圏の値は
     /// 入らない（evaluateの出力域のみ）。correction history補正は呼び側。
     #[inline]
@@ -831,7 +829,7 @@ impl Worker {
         v
     }
 
-    /// 指し手をStackへ記録する（ADR-0109。yaneuraou-search.cpp:2102-2120）。
+    /// 指し手をStackへ記録する（yaneuraou-search.cpp:2102-2120）。
     /// continuation historyの面は、このplyの王手の有無と手の種別で決まる。
     #[inline]
     fn set_current_move(&mut self, ply: usize, m: Move, capture: bool) {
@@ -840,7 +838,7 @@ impl Worker {
         e.current_move = m;
         e.cont_base = ContinuationHistory::base(in_check, capture, m.piece_after(), m.to());
         e.cont_corr_base = ContinuationCorrectionHistory::base(m);
-        // 子の `correction_value` が引く2か所を先読みさせる（ADR-0250）。
+        // 子の `correction_value` が引く2か所を先読みさせる。
         // 子から見た1手前の手がm、2手前・4手前がこのplyの1つ下と3つ下になる
         let (pc, to) = (m.piece_after(), m.to());
         for back in [1, 3] {
@@ -849,7 +847,7 @@ impl Worker {
         }
     }
 
-    /// 1手前から6手前までのcontinuation historyの面（ADR-0109）。
+    /// 1手前から6手前までのcontinuation historyの面。
     /// 余白があるのでply 0でも境界検査は要らない。
     #[inline]
     fn cont_bases(&self, ply: usize) -> [usize; 6] {
@@ -915,7 +913,7 @@ impl Worker {
         m.from_sq() == move2.to() && move2.from_sq() == move4.to()
     }
 
-    /// correction historyの6要素を重み付きで合成する（ADR-0046, 0109）。
+    /// correction historyの6要素を重み付きで合成する。
     /// 出典はやねうら王の `correction_value()`（yaneuraou-search.cpp:724-737）。
     /// 131072で割る前の値を返す。LMRのリダクションもこの値を読む。
     #[inline]
@@ -942,7 +940,7 @@ impl Worker {
             + CORR_W_CONT * cntcv
     }
 
-    /// 生の静的評価にcorrection historyの補正を加える（ADR-0046, 0109）。
+    /// 生の静的評価にcorrection historyの補正を加える。
     /// 出典はやねうら王の `to_corrected_static_eval()`
     /// （yaneuraou-search.cpp:744-746）。詰み圏に入らないようクランプする。
     #[inline]
@@ -956,14 +954,14 @@ impl Worker {
         self.to_corrected_with(raw, self.correction_value(ply))
     }
 
-    /// 探索を打ち切ってよい終端か（ADR-0026, 0030）。千日手・優等局面・
+    /// 探索を打ち切ってよい終端か。千日手・優等局面・
     /// 最大手数の到達・入玉宣言勝ちの4つを、この順に調べる。成立したら
     /// その評価値を返す。
     ///
-    /// 通常探索と静止探索で判定も順序も同じなので1つにまとめる（ADR-0125）。
+    /// 通常探索と静止探索で判定も順序も同じなので1つにまとめる。
     /// 最大手数は静止探索でも通常探索と同じ扱いにする
-    /// （yaneuraou-search.cpp:4620）。入玉宣言勝ちはADR-0109で唯一の例外と
-    /// して位置を残した判定で、玉が敵陣外なら即falseで安い
+    /// （yaneuraou-search.cpp:4620）。入玉宣言勝ちは参照実装への追従で唯一、
+    /// 位置を残した判定で、玉が敵陣外なら即falseで安い
     #[inline]
     fn terminal_value(&self, ply: usize) -> Option<Value> {
         match self.pos.repetition_state(ply) {
@@ -983,8 +981,7 @@ impl Worker {
         None
     }
 
-    /// 置換表を引き、Stackへヒットの有無とttPvを記録する（ADR-0022, 0024。
-    /// yaneuraou-search.cpp:2623, 2657）。カットの判定は `tt_cutoff` が行う。
+    /// 置換表を引き、Stackへヒットの有無とttPvを記録する（/// yaneuraou-search.cpp:2623, 2657）。カットの判定は `tt_cutoff` が行う。
     fn probe_tt(&mut self, key: u64, ply: usize, is_pv: bool, excluded: Move) -> TtInfo {
         let hit = self.shared.tt.probe(key);
         // 1手先のノードがhistoryの更新条件で読む（yaneuraou-search.cpp:2623）
@@ -1016,7 +1013,7 @@ impl Worker {
         tt
     }
 
-    /// TTカットの判定（ADR-0024。yaneuraou-search.cpp:2700-2748）。
+    /// TTカットの判定（yaneuraou-search.cpp:2700-2748）。
     /// カットするならその値を返す。除外手つき探索中はカットしない
     /// （probeは行い、eval再利用は可）。
     // NodeInfoを組むより前に判定する（静的評価を取る前にカットを返す）ので、
@@ -1071,7 +1068,7 @@ impl Worker {
         if self.multi_pv > 1 { pv_idx + 1 } else { 0 }
     }
 
-    /// 反復深化1周分の報告を組み立てる（ADR-0125）。3か所で
+    /// 反復深化1周分の報告を組み立てる。3か所で
     /// seldepth・nodes・elapsed_ms・hashfullの採り方が同じなのでまとめる。
     /// nodesは全ワーカー合算（単スレッドではローカル値と一致）。
     fn iter_info(&self, depth: u32, multipv: usize, score: Value, pv: Vec<Move>) -> IterInfo {
@@ -1087,7 +1084,7 @@ impl Worker {
         }
     }
 
-    /// aspirationのfail時に途中経過を報告する（ADR-0091）。
+    /// aspirationのfail時に途中経過を報告する。
     /// PVは並べ替え済みの `root_moves[pv_idx]` から採る。
     fn report_bound(
         &self,
@@ -1114,7 +1111,7 @@ impl Worker {
     }
 
     /// 反復深化。各イテレーション完了時にon_iterを呼ぶ。
-    /// 局面を差し替え、plyごとの状態を初期化する（ADR-0136）。
+    /// 局面を差し替え、plyごとの状態を初期化する。
     ///
     /// 前処理ツールがWorkerを使い回すために要る。局面ごとに `new` を呼ぶと
     /// history一式（数MB）を毎回確保することになり、実測で679局面/秒まで
@@ -1135,8 +1132,8 @@ impl Worker {
         self.last_iteration_pv.clear();
     }
 
-    /// 静止探索を1回走らせ、到達した静止局面まで `self.pos` を進める
-    /// （ADR-0136）。戻り値は進めた手数である。
+    /// 静止探索を1回走らせ、到達した静止局面まで `self.pos` を進める。
+    /// 戻り値は進めた手数である。
     ///
     /// 教師局面をqsearchのPV葉へ置き換える前処理が使う。**探索の内側は
     /// 変えない。** qsearchは最善手を置換表へ書くので、置換表を辿れば
@@ -1167,7 +1164,7 @@ impl Worker {
     }
 
     pub fn iterate(&mut self, on_info: &mut dyn FnMut(SearchInfo)) -> SearchResult {
-        // 入玉宣言勝ち（ADR-0030）: 成立していれば探索せず宣言する
+        // 入玉宣言勝ち: 成立していれば探索せず宣言する
         if self.pos.can_declare_win() {
             return SearchResult {
                 best: Move::WIN,
@@ -1181,7 +1178,7 @@ impl Worker {
         }
         self.shared.tt.new_search();
         self.evaluator.new_search(&self.pos);
-        // lowPly historyはgoのたびに埋め直す（ADR-0109。S:1539-1540）
+        // lowPly historyはgoのたびに埋め直す（S:1539-1540）
         self.hist.new_search();
         // 前回のgoで得たPVは今回の探索では使えないので捨てる
         // （yaneuraou-search.cpp:943）
@@ -1268,7 +1265,7 @@ impl Worker {
         };
 
         'deepening: for depth in 1..=max_depth {
-            // ヘルパーは反復を深さでずらす（ADR-0202）
+            // ヘルパーは反復を深さでずらす
             if self.skip_iteration(depth) {
                 continue;
             }
@@ -1280,13 +1277,13 @@ impl Worker {
             if !self.shared.increase_depth.load(Ordering::Relaxed) {
                 search_again_counter += 1;
             }
-            // seldepthはイテレーションごとに測り直す（ADR-0086）
+            // seldepthはイテレーションごとに測り直す
             self.sel_depth = 0;
             // singularの多段化のマージンが読む（S:1550, 3779）。実効深さ
             // （fail highで削った値）ではなく反復深化の深さを入れる
             self.root_depth = depth;
             let lines = self.multi_pv.min(self.root_moves.len());
-            // 直前ラインの出力スコア。頭打ちの基準に使う（ADR-0032）
+            // 直前ラインの出力スコア。頭打ちの基準に使う
             let mut prev_line_score = VALUE_INFINITE;
             for pv_idx in 0..lines {
                 // ラインごとのaspiration（G9。S:1669-1673）。窓幅は評価値の
@@ -1317,7 +1314,7 @@ impl Worker {
                         break 'deepening;
                     }
                     if score <= alpha {
-                        // fail low: 実際の評価はこの値以下（ADR-0091）。
+                        // fail low: 実際の評価はこの値以下。
                         // 窓を広げて読み直す前に、途中経過として報告する
                         self.report_bound(on_info, depth, pv_idx, score, ScoreBound::Upper);
                         if pv_idx == 0 {
@@ -1393,7 +1390,7 @@ impl Worker {
             }
             // ここまで来れば深さ1は完走している。以降はstopに従う
             self.depth1_done = true;
-            // 詰みが確定したら打ち切る（ADR-0088）。反復深化なので、より短い
+            // 詰みが確定したら打ち切る。反復深化なので、より短い
             // 詰みがあれば浅い周で見つかっている。これ以上読んでも結論は
             // 変わらない。詰まされる側も同じで、より長く粘る手があれば
             // alpha-betaが既にそちらを選んでいる
@@ -1557,7 +1554,7 @@ impl Worker {
         self.root_delta = beta - alpha;
         let mut best = -VALUE_INFINITE;
         let moves: Vec<Move> = self.root_moves[pv_idx..].iter().map(|rm| rm.mv).collect();
-        // 子が読むcontinuation historyの面の選択に要る（ADR-0109のG1）
+        // 子が読むcontinuation historyの面の選択に要る
         let in_check = self.pos.in_check();
         self.stack[STACK_OFFSET].in_check = in_check;
         // 1手目のノードがhistoryの更新条件でrootのStackを読む
@@ -1583,7 +1580,7 @@ impl Worker {
         for (j, &m) in moves.iter().enumerate() {
             let i = pv_idx + j;
             self.stack[STACK_OFFSET].move_count = (j + 1) as u32;
-            // 長考中だけ「今読んでいる手」を出す（ADR-0086）。短い探索で
+            // 長考中だけ「今読んでいる手」を出す。短い探索で
             // 出すとinfo行が溢れる
             if self.tm.elapsed().as_millis() as u64 >= CURRMOVE_MIN_MS {
                 on_info(SearchInfo::CurrMove { depth, mv: m });
@@ -1597,7 +1594,7 @@ impl Worker {
             self.make_move(m);
             let mut child_pv = Vec::new();
             // rootはcut_node = false。PVの第1手と再探索はfalse、
-            // 第2手以降のnull windowは反転してtrueになる（ADR-0109のG0）
+            // 第2手以降のnull windowは反転してtrueになる
             let value = if j == 0 {
                 -self.search::<true>(-beta, -alpha, depth - 1, 1, m, &mut child_pv, false)
             } else {
@@ -1610,7 +1607,7 @@ impl Worker {
                 }
             };
             self.unmake_move(m);
-            // 打ち切られた分もこの手の探索コストなので先に計上（ADR-0062）
+            // 打ち切られた分もこの手の探索コストなので先に計上
             self.root_moves[i].effort += self.nodes - nodes_before;
             if self.stopped() {
                 return best;
@@ -1668,8 +1665,8 @@ impl Worker {
     }
 
     /// 通常探索。参照実装が `search<PV>` と `search<NonPV>` をテンプレートで
-    /// 分けるのに合わせ、ノード種別をconst genericの `PV` で受ける
-    /// （ADR-0151の群J）。呼び出し側は定数で呼び分ける。
+    /// 分けるのに合わせ、ノード種別をconst genericの `PV` で受ける。
+    /// 呼び出し側は定数で呼び分ける。
     // 引数はαβ探索の呼び出し規約そのもので、再帰のたびに全部が変わる。
     // 構造体へまとめると1ノードごとに詰め直すことになる
     #[allow(clippy::too_many_arguments)]
@@ -1683,7 +1680,7 @@ impl Worker {
         pv: &mut Vec<Move>,
         cut_node: bool,
     ) -> Value {
-        // 参照実装の不変条件（ADR-0109のG0）。PVノードはcut_nodeにならない
+        // 参照実装の不変条件。PVノードはcut_nodeにならない
         debug_assert!(!(PV && cut_node));
         pv.clear();
         if self.stopped() {
@@ -1738,10 +1735,10 @@ impl Worker {
             Some(prev_move.to())
         };
 
-        // 除外手（singular extension用。ADR-0050）。検証探索中はTT手が入る
+        // 除外手（singular extension用）。検証探索中はTT手が入る
         let excluded = self.stack[ply + STACK_OFFSET].excluded_move;
 
-        // 置換表（ADR-0022, 0024）
+        // 置換表
         let key = self.pos.key();
         let tt = self.probe_tt(key, ply, PV, excluded);
         if let Some(v) = self.tt_cutoff(
@@ -1771,14 +1768,14 @@ impl Worker {
             return self.qsearch::<PV>(alpha, beta, ply);
         }
 
-        // 静的評価（ADR-0028, 0109のG4）。TTのevalを再利用する。
-        // rawは補正前（TT保存用）、static_evalはcorrection history補正後（ADR-0046）。
+        // 静的評価。TTのevalを再利用する。
+        // rawは補正前（TT保存用）、static_evalはcorrection history補正後。
         let raw_eval = if in_check {
             VALUE_NONE
         } else {
             match &tt.hit {
                 Some(d) if Value::from(d.eval) != VALUE_NONE => Value::from(d.eval),
-                // TTにevalがなければeval hash経由で計算する（ADR-0049）
+                // TTにevalがなければeval hash経由で計算する
                 _ => self.eval_cached(key),
             }
         };
@@ -1838,7 +1835,7 @@ impl Worker {
             }
         }
 
-        // ここまでで決まった前提を束ねる（ADR-0125）。以降の枝刈り・延長・
+        // ここまでで決まった前提を束ねる。以降の枝刈り・延長・
         // リダクション・終端処理が共通して読む
         let node = NodeInfo {
             ply,
@@ -1871,8 +1868,8 @@ impl Worker {
             return v;
         }
 
-        // 置換表の下界による簡易ProbCut（ADR-0078）。探索を伴わない。
-        // 除外手つき探索中はスキップする（ADR-0050）
+        // 置換表の下界による簡易ProbCut。探索を伴わない。
+        // 除外手つき探索中はスキップする
         let tt_probcut_beta = beta + TT_PROBCUT_MARGIN;
         if excluded == Move::NONE
             && matches!(tt.bound, Bound::Lower | Bound::Exact)
@@ -1896,11 +1893,11 @@ impl Worker {
             Err(v) => return v,
         };
 
-        // ply別の再利用バッファを借りる（ADR-0151の群B）。同一plyへ再帰する
+        // ply別の再利用バッファを借りる。同一plyへ再帰する
         // singular検証・NMP検証はここへ来る前に終わっているので重ならない
         let buf = std::mem::take(&mut self.node_bufs[ply].moves);
         let mut picker = MovePicker::new(&self.pos, tt.mv, depth_pre_singular, ply, buf);
-        // continuation historyの面（1手前から6手前まで。ADR-0109のG1）
+        // continuation historyの面（1手前から6手前まで）
         let cont = self.cont_bases(ply);
         // 最善にならなかった手を良い順に覚える（yaneuraou-search.cpp:2343-2344）
         let mut quiets_searched = std::mem::take(&mut self.node_bufs[ply].quiets);
@@ -1920,14 +1917,14 @@ impl Worker {
             let mut count = 0u32;
 
             while let Some(m) = picker.next(&self.pos, &self.hist, &cont) {
-                // 除外手はスキップ（singular検証探索。ADR-0050）。通常はexcluded==NONE
+                // 除外手はスキップ（singular検証探索）。通常はexcluded==NONE
                 if m == excluded {
                     continue;
                 }
                 if !self.pos.is_legal_picked(m, picker.last_from_tt()) {
                     continue;
                 }
-                // 枝刈りの判定の間に、子が引く表の読み込みを進めさせる（ADR-0250）
+                // 枝刈りの判定の間に、子が引く表の読み込みを進めさせる
                 self.prefetch_child(m);
                 count += 1;
                 // 1手先のノードが更新条件で読む（yaneuraou-search.cpp:3520）
@@ -1936,7 +1933,7 @@ impl Worker {
                 let gives_check = self.pos.gives_check(m);
 
                 // 延長（yaneuraou-search.cpp:3543, 3872）。singularの判定に入った
-                // TT手はその結果を使う。王手延長（ADR-0024）は参照実装が持たない
+                // TT手はその結果を使う。王手延長は参照実装が持たない
                 // 本エンジンの機能なので残すが、singularの判定が付いた手では
                 // singular側を採る（多段化した延長量を王手延長で潰さない）。
                 // 参照実装は延長をムーブループの枝刈りの後で加えるので、枝刈りの
@@ -1947,7 +1944,7 @@ impl Worker {
                     // 増えた1手はTT手自身には乗らない
                     // （yaneuraou-search.cpp:3556, 3788）
                     Some(e) if m == tt.mv => (e, depth_pre_singular),
-                    // 王手の延長は根の深さの2倍の手数までにする（ADR-0255）。上限が
+                    // 王手の延長は根の深さの2倍の手数までにする。上限が
                     // ないと王手と応手の連鎖で深さが減らず、MAX_PLY付近でノードが膨らむ
                     _ => (
                         i32::from(gives_check && (ply as u32) < 2 * self.root_depth),
@@ -2248,7 +2245,7 @@ impl Worker {
                 self.stack[ply + STACK_OFFSET].tt_pv || self.stack[ply + STACK_OFFSET - 1].tt_pv;
         }
 
-        // 除外手つき探索中はTT storeをしない（ADR-0050）。
+        // 除外手つき探索中はTT storeをしない。
         // 検証専用の結果でこのキーの本体を汚さない
         if excluded == Move::NONE {
             let bound = if best >= beta {
@@ -2271,7 +2268,7 @@ impl Worker {
             );
         }
 
-        // correction history更新（ADR-0046, 0109）。最善手が取る手でなく、
+        // correction history更新。最善手が取る手でなく、
         // 誤差の向きが最善手の有無と一致するときだけ蓄積する
         // （yaneuraou-search.cpp:4410-4418）。参照実装は除外手つき探索でも
         // 更新するので、TT storeと違いここは条件に入れない
@@ -2496,7 +2493,7 @@ impl Worker {
         false
     }
 
-    /// singular extension（ADR-0050, 0109のG5。yaneuraou-search.cpp:3745-3850）。
+    /// singular extension（yaneuraou-search.cpp:3745-3850）。
     /// TT手を除外した検証探索がsingular_betaを下回れば、TT手だけが傑出して
     /// いると見て延長する。参照実装はムーブループの中でTT手に当たったときに
     /// 判定するが、対象はTT手だけで、TT手はMovePickerが最初に返す。ループの
@@ -2553,7 +2550,7 @@ impl Worker {
                 ply,
                 prev,
                 &mut verify_pv,
-                // 検証探索はcut_nodeを引き継ぐ（ADR-0109のG0）
+                // 検証探索はcut_nodeを引き継ぐ
                 cut_node,
             );
             self.stack[ply + STACK_OFFSET].excluded_move = Move::NONE;
@@ -2570,7 +2567,7 @@ impl Worker {
                 // 組合せ爆発を抑えるため、PVノードではマージンを大きく取って
                 // 積みにくくする。TT手が取る手でない・correction値が大きい・
                 // ttMoveHistoryが良い・rootから遠い、では積みやすくなる
-                // 多段延長は入れない（ADR-0114の二分割）。参照実装の
+                // 多段延長は入れない。参照実装の
                 // doubleMargin / tripleMarginをそのまま移すと、本エンジンでは
                 // singular率が43.5%（参照実装の設計点は1割）あるため+3まで
                 // 積む機会が4倍以上になる。群全体では562局で-99.0だった。
@@ -2609,7 +2606,7 @@ impl Worker {
         Ok(singular_ext)
     }
 
-    /// ムーブループの手前の枝刈り（ADR-0028, 0057, 0109のG4。
+    /// ムーブループの手前の枝刈り（
     /// yaneuraou-search.cpp:3159-3424）。razoring・RFP・NMP・IIR・ProbCutを
     /// この順に試す。刈れたらその値を返し、呼び出し側はそのままreturnする。
     ///
@@ -2666,7 +2663,7 @@ impl Worker {
             *depth -= 1;
         }
 
-        // razoring（ADR-0057, 0109のG4。yaneuraou-search.cpp:3191-3192）。
+        // razoring（yaneuraou-search.cpp:3191-3192）。
         // 評価がalphaを大きく下回るなら通常探索をやめ、qsearchの値を返す。
         // PVノードでないことが唯一の前提で、深さの上限はない
         if !PV && eval < alpha - RAZOR_BASE() - RAZOR_DEPTH_COEF() * (*depth * *depth) as Value {
@@ -2697,10 +2694,10 @@ impl Worker {
             return Some((2 * beta + eval) / 3);
         }
 
-        // NMP（ADR-0028, 0109のG4。yaneuraou-search.cpp:3236-3301）。
+        // NMP（yaneuraou-search.cpp:3236-3301）。
         // 手番を渡して浅く探索し、それでもβ以上なら刈る。cutNode限定で、
         // 深さの下限はない。評価の閾値はβから残り深さとimprovingで割り引く。
-        // 除外手つき探索中はスキップ（ADR-0050）
+        // 除外手つき探索中はスキップ
         if cut_node
             && static_eval
                 >= beta
@@ -2730,7 +2727,7 @@ impl Worker {
                 ply + 1,
                 Move::NULL,
                 &mut null_pv,
-                // NMPの子はcut_node = false（ADR-0109のG0）
+                // NMPの子はcut_node = false
                 false,
             );
             self.unmake_null_move();
@@ -2770,7 +2767,7 @@ impl Worker {
         // 静的評価がβ以上なら、2手前と比べていなくても改善扱いにする
         *improving |= static_eval >= beta;
 
-        // IIR（ADR-0028, 0109のG4。yaneuraou-search.cpp:3319-3320）。
+        // IIR（yaneuraou-search.cpp:3319-3320）。
         // TTに手がないノードは良い順序を作れないので1浅く読み、再訪時に
         // TT手付きで読み直す。前回PVの上と、全手を読むallNodeでは行わない。
         // 1手前を深く削って来たノードも対象から外す
@@ -2783,7 +2780,7 @@ impl Worker {
             *depth -= 1;
         }
 
-        // ProbCut（ADR-0051, 0109のG4。yaneuraou-search.cpp:3357-3424）。
+        // ProbCut（yaneuraou-search.cpp:3357-3424）。
         // betaを大きく超えそうなノードでは、浅い確認探索で「十分良い取る手が
         // 1つある」ことを示せれば高深度の全探索を省いてカットする。
         // 閾値はimprovingで動き、MovePickerがSEEでこの閾値を満たす取る手
@@ -2795,7 +2792,7 @@ impl Worker {
             && !(tt.value != VALUE_NONE && tt.value < probcut_beta)
         {
             let probcut_depth = *depth as i32 - PROBCUT_DEPTH_REDUCTION;
-            // ply別の再利用バッファを借りる（ADR-0151の群B）。このplyの
+            // ply別の再利用バッファを借りる。このplyの
             // MovePickerは同時に1つしか生きないので、同じスロットを使える
             let buf = std::mem::take(&mut self.node_bufs[ply].moves);
             let mut picker =
@@ -2804,7 +2801,7 @@ impl Worker {
             // バッファの返却を一本化するため、復帰点をこのブロックにまとめる
             let probcut_value = 'probcut: {
                 while let Some(m) = picker.next(&self.pos, &self.hist, &cont) {
-                    // 除外手はsingular検証探索中のTT手（ADR-0050）
+                    // 除外手はsingular検証探索中のTT手
                     if m == excluded || !self.pos.is_legal_picked(m, picker.last_from_tt()) {
                         continue;
                     }
@@ -2822,7 +2819,7 @@ impl Worker {
                             ply + 1,
                             m,
                             &mut child_pv,
-                            // ProbCutの子はcut_nodeを反転する（ADR-0109のG0）
+                            // ProbCutの子はcut_nodeを反転する
                             !cut_node,
                         );
                     }
@@ -2860,10 +2857,10 @@ impl Worker {
         None
     }
 
-    /// 静止探索（ADR-0024, 0109のG6）。出典はやねうら王の `qsearch()`
+    /// 静止探索。出典はやねうら王の `qsearch()`
     /// （yaneuraou-search.cpp:4441-5145）。参照実装は `qsearch<PV>` と
     /// `qsearch<NonPV>` をテンプレートで分けるので、const genericの `PV` で
-    /// 受ける（ADR-0151の群J）。
+    /// 受ける。
     fn qsearch<const PV: bool>(&mut self, mut alpha: Value, beta: Value, ply: usize) -> Value {
         if self.stopped() {
             return VALUE_ZERO;
@@ -2878,7 +2875,7 @@ impl Worker {
             return v;
         }
 
-        // Step 3. 置換表probe（ADR-0054。yaneuraou-search.cpp:4645-4685）
+        // Step 3. 置換表probe（yaneuraou-search.cpp:4645-4685）
         let key = self.pos.key();
         let tt_hit = self.shared.tt.probe(key);
         // 参照実装はqsearchでもStackへ記録する（yaneuraou-search.cpp:4648）
@@ -2917,18 +2914,18 @@ impl Worker {
         }
 
         let in_check = self.pos.in_check();
-        // continuation historyの面を決める材料（ADR-0109のG1）
+        // continuation historyの面を決める材料
         self.stack[ply + STACK_OFFSET].in_check = in_check;
 
         // Step 4. 静的評価（yaneuraou-search.cpp:4713-4837）。
         // rawは補正前でTT storeのeval欄へそのまま入る。王手中は定義しない
         let mut raw_eval = VALUE_NONE;
         let mut best = -VALUE_INFINITE;
-        // 静止探索のfutilityの基準（ADR-0077）。王手中は定義しない
+        // 静止探索のfutilityの基準。王手中は定義しない
         let mut futility_base = -VALUE_INFINITE;
         if !in_check {
             let corr_value = self.correction_value(ply);
-            // 1手詰め判定（ADR-0029。yaneuraou-search.cpp:4756-4784）。
+            // 1手詰め判定（yaneuraou-search.cpp:4756-4784）。
             // 置換表にヒットしたときはすでに調べたはずなので、ミスのときだけ
             // 呼ぶ。王手中も呼ばない。評価関数の呼び出しより手前に置くので、
             // 詰みがあるときはevaluate()を省ける
@@ -2976,7 +2973,7 @@ impl Worker {
             {
                 best = tt_value;
             }
-            // stand pat（ADR-0024。yaneuraou-search.cpp:4813-4823）
+            // stand pat（yaneuraou-search.cpp:4813-4823）
             if best >= beta {
                 // 返す値をβへ半分寄せる（yaneuraou-search.cpp:4815-4817）。
                 // βを大きく超えたstand patをそのまま返さず、見積りの甘さを削る。
@@ -3008,7 +3005,7 @@ impl Worker {
             // （yaneuraou-search.cpp:4836）
             futility_base = stand + QS_FUTILITY_MARGIN();
         }
-        // 1手前の移動先（取り返しをfutilityの対象から外す。ADR-0077）。
+        // 1手前の移動先（取り返しをfutilityの対象から外す）。
         // 余白の初期値はMove::NONEなので、ply 0でもNoneになる
         let prev_move = self.stack[ply + STACK_OFFSET - 1].current_move;
         let prev_sq = if prev_move != Move::NONE && !prev_move.is_special() {
@@ -3019,7 +3016,7 @@ impl Worker {
 
         // 参照実装は静止探索で取る手（歩成を含む）だけを生成する
         // （movepick.cpp:69）。静かな王手は生成しない
-        // ply別の再利用バッファを借りる（ADR-0151の群B）
+        // ply別の再利用バッファを借りる
         let buf = std::mem::take(&mut self.node_bufs[ply].moves);
         let mut picker = MovePicker::new(&self.pos, tt_move, 0, ply, buf);
         let cont = self.cont_bases(ply);
@@ -3042,7 +3039,7 @@ impl Worker {
                 if best > VALUE_MATED_IN_MAX_PLY {
                     // このしきい値で通ったSEEは、これ以下のしきい値でも通る
                     let mut see_passed_at = None;
-                    // futility（ADR-0077）: 王手をかけず取り返しでもない手を、
+                    // futility: 王手をかけず取り返しでもない手を、
                     // 取る駒の価値を足してもalphaへ届かないなら捨てる
                     if futility_base > VALUE_MATED_IN_MAX_PLY
                         && Some(m.to()) != prev_sq
@@ -3061,7 +3058,7 @@ impl Worker {
                         // 4965-4969）。fail-softの下限を正しく報告するためである。
                         // 検討モード（MultiPV>1）だけは抑える。ライン確定ごとに出力し、
                         // 確定後のソートを持たないので、窓に依存する値を入れると
-                        // ライン間のスコア順序が崩れる（ADR-0077, 0109）
+                        // ライン間のスコア順序が崩れる
                         let raise = self.multi_pv == 1;
                         let futility_value = futility_base + gain;
                         if futility_value <= alpha {
@@ -3148,7 +3145,7 @@ impl Worker {
         node_value
     }
 
-    /// correction historyを6要素まとめて更新する（ADR-0109のG1）。
+    /// correction historyを6要素まとめて更新する。
     /// 出典はやねうら王の `update_correction_history()`
     /// （yaneuraou-search.cpp:748-771）。系統ごとに重みが違う。
     fn update_correction_history(&mut self, ply: usize, bonus: i32) {
@@ -3164,7 +3161,7 @@ impl Worker {
         }
     }
 
-    /// continuation historyへ段ごとの重みでbonusを配る（ADR-0109のG1）。
+    /// continuation historyへ段ごとの重みでbonusを配る。
     /// 出典はやねうら王の `update_continuation_histories()`
     /// （yaneuraou-search.cpp:5384-5398）。王手中は2手前までで打ち切る。
     fn update_continuation_histories(&mut self, ply: usize, pc: Piece, to: Square, bonus: i32) {
@@ -3184,7 +3181,7 @@ impl Worker {
         }
     }
 
-    /// 静かな手1つのhistoryを更新する（ADR-0109のG1）。
+    /// 静かな手1つのhistoryを更新する。
     /// 出典はやねうら王の `update_quiet_histories()`
     /// （yaneuraou-search.cpp:5408-5422）。
     fn update_quiet_histories(&mut self, ply: usize, m: Move, bonus: i32) {
@@ -3201,7 +3198,7 @@ impl Worker {
             .update(slot, m.piece_after(), m.to(), scaled);
     }
 
-    /// 統計情報一式を更新する（ADR-0109のG1）。bestMoveが確定したノードの
+    /// 統計情報一式を更新する。bestMoveが確定したノードの
     /// 終端で呼ぶ。出典はやねうら王の `update_all_stats()`
     /// （yaneuraou-search.cpp:5293-5367）。
     ///
@@ -3321,7 +3318,7 @@ mod tests {
         (worker.nodes, result.best)
     }
 
-    /// 機能検証（ADR-0049）: eval hashは探索を変えないはずである。
+    /// 機能検証: eval hashは探索を変えないはずである。
     /// 偽ヒットを除けばノード数と最善手が有無で一致する。
     #[test]
     fn eval_hash_does_not_change_search() {

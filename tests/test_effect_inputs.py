@@ -1,4 +1,4 @@
-"""利きの入力特徴（ADR-0237のF2）の、学習側と推論側の一致を確かめる。
+"""利きの入力特徴（F2）の、学習側と推論側の一致を確かめる。
 
 2つを見る。
 
@@ -28,7 +28,7 @@ if not hasattr(himawari, "EFF_IN"):
 
 from hmwr.tools import shadow_flips as sf  # noqa: E402
 
-# F2と最小の攻め駒の組（ADR-0248）。利きの列は連結ベクトルの末尾に2視点ぶん並ぶ
+# F2と最小の攻め駒の組。利きの列は連結ベクトルの末尾に2視点ぶん並ぶ
 GENERIC = getattr(himawari, "EFF_GENERIC", False)
 EFF_COLS = slice(himawari.CONCAT - 2 * himawari.EFF_OUT, himawari.CONCAT)
 
@@ -83,7 +83,7 @@ def positions(count=200, seed=1):
 
 
 def python_features(pieces, color):
-    """視点colorのF2の特徴81個を、Rustと別の経路で作る（ADR-0237）。"""
+    """視点colorのF2の特徴81個を、Rustと別の経路で作る。"""
     counts = sf.exact_counts(pieces)
     own, opp = counts[color], counts[1 - color]
     out = [0] * SQUARES
@@ -125,7 +125,7 @@ def test_features_are_off_unless_asked():
 
 @pytest.mark.parametrize("mode", ["f2", "none"])
 def test_quantized_net_matches_the_model(mode, tmp_path):
-    """模型の出力と、書き出したネットの推論側の評価値が一致する（ADR-0237）。"""
+    """模型の出力と、書き出したネットの推論側の評価値が一致する。"""
     torch = pytest.importorskip("torch")
     if himawari.EFF_OUT == 0:
         pytest.skip("利きの構成（e<E>）の拡張でだけ測れる")
@@ -185,9 +185,9 @@ def test_quantized_net_matches_the_model(mode, tmp_path):
 
 
 def test_groups_start_from_the_same_weights():
-    """統制群と処置群は、利きの表を除いて同じ初期値から始まる（ADR-0237）。
+    """統制群と処置群は、利きの表を除いて同じ初期値から始まる。
 
-    構造を揃えたのは乱数の消費順序を揃えるためである（ADR-0158の教訓）。
+    構造を揃えたのは乱数の消費順序を揃えるためである。
     統制群も表の乱数を引いてから0にするので、後の層の初期値がずれない。
     """
     torch = pytest.importorskip("torch")

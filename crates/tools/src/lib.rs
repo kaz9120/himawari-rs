@@ -1,4 +1,4 @@
-//! 開発用ツールの共有部分（ADR-0122）。
+//! 開発用ツールの共有部分。
 //!
 //! USIエンジンを起動して測るbin（`bench`・`verify`・`profile`）と
 //! `selfplay` が、エンジンクライアントと検証局面をここで共有する。
@@ -8,13 +8,13 @@ pub mod csa;
 pub mod positions;
 pub mod stop_file;
 
-// USIクライアントと対局ループはエンジン側へ移した（ADR-0203）。
+// USIクライアントと対局ループはエンジン側へ移した。
 // 既存のツールは同じパスで参照できるように再輸出する
 pub use himawari_usi::{game, usi_engine};
 
 use std::path::{Path, PathBuf};
 
-/// 終了コードの規約（ADR-0122）。0は成功。
+/// 終了コードの規約。0は成功。
 pub mod exit {
     /// 判定結果。正常に測れたうえで「進むな」を意味する。
     pub const JUDGEMENT: u8 = 1;
@@ -24,7 +24,7 @@ pub mod exit {
     pub const RUNTIME: u8 = 3;
 }
 
-/// 引数エラーで終わる（ADR-0122の終了コード2）。
+/// 引数エラーで終わる。
 pub fn usage_error(msg: &str) -> ! {
     eprintln!("エラー: {msg}");
     std::process::exit(exit::USAGE as i32)
@@ -97,7 +97,7 @@ pub fn path_str(path: &Path) -> anyhow::Result<&str> {
 
 /// 評価関数のパスを決める。明示指定がなければ環境変数 `EVAL_FILE` を読む。
 /// `scripts/env.sh` がexportする値をそのまま使う契約にして、shell側と
-/// 疎結合にする（ADR-0122）。
+/// 疎結合にする。
 pub fn eval_file(explicit: Option<PathBuf>) -> anyhow::Result<PathBuf> {
     let path = match explicit {
         Some(p) => p,
@@ -142,7 +142,7 @@ mod tests {
         assert_eq!(thousands(12_345_678), "12,345,678");
     }
 
-    /// 旧 bench-nps.sh はms=0でゼロ除算した（ADR-0122）。
+    /// 旧 bench-nps.sh はms=0でゼロ除算した。
     #[test]
     fn nps_survives_zero_elapsed() {
         assert_eq!(nps(1000, 0), 0);

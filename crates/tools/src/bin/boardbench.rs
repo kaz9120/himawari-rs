@@ -1,4 +1,4 @@
-//! 盤面操作だけを1回あたりのnsで測る（ADR-0239の手順0）。
+//! 盤面操作だけを1回あたりのnsで測る。
 //!
 //! `bench` は探索ごと測るので、評価関数の推論と置換表が混ざり、背景の
 //! 負荷で±1.5%動く。利きの表の維持費や、1手詰め・SEE・合法性判定の
@@ -37,11 +37,11 @@ use himawari_tools::positions::{builtin_positions, parse_position, read_position
 
 /// 組み込みの4局面を指す `--positions` の値。
 const BUILTIN: &str = "builtin";
-/// 既定の局面。序中盤の組み込みと、終盤寄りの組（ADR-0230）。
+/// 既定の局面。序中盤の組み込みと、終盤寄りの組。
 const DEFAULT_POSITIONS: [&str; 2] = [BUILTIN, "openings/profile_late_positions.txt"];
 
 #[derive(Parser)]
-#[command(about = "盤面操作だけを1回あたりのnsで測る（ADR-0239）")]
+#[command(about = "盤面操作だけを1回あたりのnsで測る")]
 struct Cli {
     /// 局面リストのファイル。重ねて指定できる。`builtin` は組み込みの4局面。
     /// 省略時は組み込みと openings/profile_late_positions.txt
@@ -263,7 +263,7 @@ fn main() -> ExitCode {
     // 引数と環境変数の長さで開始位置がずれる。同じバイナリでも、実験名で
     // 渡すか相対パスで渡すかで mate_1ply が 92ns と 154ns に分かれた。
     // スレッドのスタックはページ境界から始まるので、呼び方に左右されない。
-    // 探索のワーカーも別スレッドで動くので、条件が揃う（ADR-0239）
+    // 探索のワーカーも別スレッドで動くので、条件が揃う
     let worker = std::thread::Builder::new()
         .stack_size(STACK_BYTES)
         .spawn(move || run(&cli));

@@ -1,4 +1,4 @@
-//! 探索のプロファイルを取る（ADR-0081・ADR-0099・ADR-0122・ADR-0230）。
+//! 探索のプロファイルを取る。
 //!
 //! samplyでサンプリングし、プロファイル本体を書き出す。集計は
 //! `hmwr profile report` が行う。局面は `bench` と揃える。深さは25を既定に
@@ -34,8 +34,8 @@ const SAVE_TIMEOUT_SEC: u64 = 120;
 
 #[derive(Parser)]
 #[command(
-    about = "samplyで探索のプロファイルを取る（ADR-0099）",
-    long_about = "samplyで探索のプロファイルを取る（ADR-0099）。
+    about = "samplyで探索のプロファイルを取る",
+    long_about = "samplyで探索のプロファイルを取る。
 
 プロファイル本体を書き出す。集計は hmwr profile report が行い、
 samply load <path> でUIからも見られる。

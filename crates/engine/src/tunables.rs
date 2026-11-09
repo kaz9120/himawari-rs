@@ -1,4 +1,4 @@
-//! SPSAでチューニングする探索定数（ADR-0143）。
+//! SPSAでチューニングする探索定数。
 //!
 //! `tune` featureなしでは各項目が定数を返す `#[inline(always)]` の関数で、
 //! 呼び出しは定数へ畳み込まれる。featureありでは同じ関数がatomicを読み、
@@ -96,13 +96,13 @@ tunables! {
     FUTILITY_NO_BEST: crate::value::Value = 147, [0, 500];
     FUTILITY_MARGIN: crate::value::Value = 125, [30, 400];
     FUTILITY_OVER_ALPHA: crate::value::Value = 87, [0, 300];
-    // razoring（ADR-0057, 0109のG4。yaneuraou-search.cpp:3191-3192）。
+    // razoring（yaneuraou-search.cpp:3191-3192）。
     // 評価が `alpha - RAZOR_BASE - RAZOR_DEPTH_COEF*depth^2` を下回るなら
     // 通常探索をやめてqsearchの値を返す。深さの上限はなく、マージンが
     // depthの2乗で伸びる
     RAZOR_BASE: crate::value::Value = 434, [100, 1500];
     RAZOR_DEPTH_COEF: crate::value::Value = 271, [50, 1000];
-    // SEEベースの枝刈り（ADR-0090, 0109）。移動先での駒の取り合いを静的に
+    // SEEベースの枝刈り。移動先での駒の取り合いを静的に
     // 解き、この額より損をする手を捨てる。出典はやねうら王の
     // `-25*lmrDepth^2`（静かな手。yaneuraou-search.cpp:3697）と
     // `-max(167*depth + captHist*34/1024, 0)`（取る手・王手する手。
@@ -114,14 +114,14 @@ tunables! {
     // 取る手のfutility（式と出典はsearch.rsのCAPT_FUTILITY_MAX_DEPTH群のコメント）
     CAPT_FUTILITY_BASE: crate::value::Value = 230, [0, 800];
     CAPT_FUTILITY_DEPTH: crate::value::Value = 225, [50, 800];
-    // 静止探索のfutility（ADR-0077）。stand patにQS_FUTILITY_MARGINを
+    // 静止探索のfutility。stand patにQS_FUTILITY_MARGINを
     // 足した額を上限とし、取る駒の価値を足してもalphaに届かない手を捨てる。
     // 出典はやねうら王の `futilityBase = staticEval + 328`。
     // QS_SEE_MARGINは静止探索で読む取る手のSEE下限
     // （yaneuraou-search.cpp:4989）。歩損（-90）は下回るので、歩損は許す
     QS_FUTILITY_MARGIN: crate::value::Value = 221, [80, 1000];
     QS_SEE_MARGIN: crate::value::Value = -53, [-300, 50];
-    // aspirationの初期窓（ADR-0109のG9。yaneuraou-search.cpp:1670-1673）。
+    // aspirationの初期窓（yaneuraou-search.cpp:1670-1673）。
     // 幅は `ASPIRATION_BASE + threadIdx%8 + |二乗平均スコア|/ASPIRATION_MSS_DIV`
     // で、評価値が大きいほど広がる。外したら幅へ `幅/ASPIRATION_GROWTH_DIV`
     // を足して読み直す（yaneuraou-search.cpp:1795）
@@ -129,9 +129,9 @@ tunables! {
     ASPIRATION_MSS_DIV: crate::value::Value = 7859, [2000, 30000];
     ASPIRATION_GROWTH_DIV: crate::value::Value = 2, [2, 8];
     // LMR。LMR_COEFはリダクション表の係数（1024倍固定小数の分子。
-    // ADR-0076。search.rsのbuild_reductionsが使う）。
+    // search.rsのbuild_reductionsが使う）。
     // LMR_DEPTH_HIST_DIVISORはhistoryによるlmrDepth補正の除数
-    // （ADR-0109のG3。yaneuraou-search.cpp:3661。continuation+pawn historyの
+    // （yaneuraou-search.cpp:3661。continuation+pawn historyの
     // 和にmain historyの `71/32` を足した値をこれで割り、lmrDepthへ加える）
     LMR_COEF: i32 = 2818, [1000, 6000];
     LMR_DEPTH_HIST_DIVISOR: i32 = 3788, [800, 12000];
@@ -143,7 +143,7 @@ mod tests {
 
     #[test]
     fn set_updates_and_clamps() {
-        // 既定値へ依存させない。SPSAの採択で既定値は書き換わる（ADR-0143）
+        // 既定値へ依存させない。SPSAの採択で既定値は書き換わる
         let e = ENTRIES.iter().find(|e| e.name == "RFP_MULT").unwrap();
         assert_eq!(i64::from(RFP_MULT()), e.default);
         assert!(set("RFP_MULT", e.default + 1));

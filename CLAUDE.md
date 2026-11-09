@@ -150,4 +150,3 @@ hmwr pr merge <PR番号> --kind chore            # 棋力向上は --kind streng
 - `hmwr --dry-run <…>` で、走るはずのコマンドを確かめられる
 - 計測と対局のビルドは `-C target-cpu=native` で作る。配布用はPGO（`hmwr build pgo`）で作るが、SPRTのペアには使わない
 - 現行の評価関数は `hmwr/config.py`、既定のネットワークの構成は `crates/engine/build.rs`、データの所在は `docs/DATASETS.md` が持つ
-- コードの中の `ADR-NNNN` は削除した設計記録を指す。読むときは `git show adr-archive:docs/adr/` から辿る

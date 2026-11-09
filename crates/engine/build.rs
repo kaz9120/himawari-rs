@@ -1,4 +1,4 @@
-//! ネットワーク構造の次元をビルド時に決める（ADR-0127）。
+//! ネットワーク構造の次元をビルド時に決める。
 //!
 //! 環境変数 `HIMAWARI_ARCH` に次元を `x` で区切って渡すと、その構成でビルドする。
 //! 要素の数が層の数を決める。
@@ -7,17 +7,17 @@
 //! 256x16           FT→16→1          （隠れ層1つ）
 //! 256x32x32        FT→32→32→1       （隠れ層2つ）
 //! 1024x16x32       FT→16→32→1       （隠れ層2つ）
-//! 1024x16x32e64    上に、幅64の利きのaccumulatorを足す（ADR-0237）
+//! 1024x16x32e64    上に、幅64の利きのaccumulatorを足す
 //! ```
 //!
-//! 末尾の `e<E>` は、駒×升×利き数の特徴（ADR-0237のF2）を幅Eの別の
+//! 末尾の `e<E>` は、駒×升×利き数の特徴（F2）を幅Eの別の
 //! accumulatorで持つ。省くとE=0で、利きの経路はコードごと消える。
 //!
-//! `e<E>` の後ろに `-f2_minatt` を書くと、側のaccumulatorの入力をF2と最小の攻め駒の組にする
-//! （ADR-0248）。書かなければF2だけを持つ。
+//! `e<E>` の後ろに `-f2_minatt` を書くと、側のaccumulatorの入力をF2と最小の攻め駒の組にする。
+//! 書かなければF2だけを持つ。
 //!
 //! ```text
-//! 256x16x32e64-f2_minatt      F2に最小の攻め駒を足す（ADR-0248。主256で既定、ADR-0261）
+//! 256x16x32e64-f2_minatt      F2に最小の攻め駒を足す（主256で既定）
 //! ```
 //!
 //! featureで持つと構成の数だけfeatureが要り、組み合わせが積で増える。
@@ -25,8 +25,7 @@
 
 use std::fmt::Write as _;
 
-/// 既定の構成（ADR-0034・ADR-0036、後段はADR-0170、利きはADR-0237、
-/// 主の幅と最小の攻め駒はADR-0261）。
+/// 既定の構成。
 const DEFAULT_ARCH: &str = "256x16x32e64-f2_minatt";
 
 /// SIMD実装（`nnue_simd.rs`）が課す倍数の制約。
@@ -43,7 +42,7 @@ const PAD_MULTIPLE: usize = 32;
 /// 2視点）を32の倍数に保つため、片視点の幅を16の倍数にする。
 const EFF_MULTIPLE: usize = 16;
 
-/// 側の入力の種類（ADR-0245）。名前・表の行数・1視点で立つ数の上限。
+/// 側の入力の種類。名前・表の行数・1視点で立つ数の上限。
 /// 並びの順が `side_feat` の種類の番号になる。**行数と上限は `side_feat` の
 /// 定義と合わせる。** 合っていないとテストが落ちる。
 const SIDE_KINDS: &[(&str, usize, usize)] =
@@ -57,7 +56,7 @@ struct Arch {
     l1: usize,
     /// 隠れ層1つの構成では0。0なら隠れ層1から出力へ直結する。
     l2: usize,
-    /// 利きのaccumulatorの幅（ADR-0237）。0なら持たない。
+    /// 利きのaccumulatorの幅。0なら持たない。
     eff: usize,
     /// 側の入力の種類（`SIDE_KINDS` の番号）。空ならF2の従来の経路。
     eff_kinds: Vec<usize>,
@@ -151,15 +150,15 @@ fn main() {
     println!("cargo::rerun-if-env-changed=HIMAWARI_ARCH");
     println!("cargo::rerun-if-env-changed=HIMAWARI_EVAL_HASH_BITS");
 
-    // 配列盤の答えをcoreと照合する構成（ADR-0241）
+    // 配列盤の答えをcoreと照合する構成
     println!("cargo::rustc-check-cfg=cfg(mb_shadow)");
     if std::env::var_os("CARGO_FEATURE_MAILBOX_SHADOW").is_some() {
         println!("cargo::rustc-cfg=mb_shadow");
     }
 
-    // eval hashのエントリ数の指数（ADR-0049、issue #429）。既定23は64MBで
+    // eval hashのエントリ数の指数（issue #429）。既定23は64MBで
     // 従来と同じ。wasmのような小メモリの的に向けてビルド時だけ絞れる。
-    // 実行時オプションは設けない方針（ADR-0049）を変えない
+    // 実行時オプションは設けない方針を変えない
     let eval_hash_bits: usize = std::env::var("HIMAWARI_EVAL_HASH_BITS")
         .map(|v| {
             v.parse()
@@ -203,11 +202,11 @@ fn main() {
     writeln!(src, "pub const L1_PAD: usize = {l1_pad};").unwrap();
     writeln!(
         src,
-        "/// 利きのaccumulatorの幅（片視点、ADR-0237）。0なら利きの特徴を持たない。"
+        "/// 利きのaccumulatorの幅（片視点）。0なら利きの特徴を持たない。"
     )
     .unwrap();
     writeln!(src, "pub const EFF_OUT: usize = {};", arch.eff).unwrap();
-    // 側の入力（ADR-0245）。種類を書かなければF2だけの従来の経路
+    // 側の入力。種類を書かなければF2だけの従来の経路
     let generic = !arch.eff_kinds.is_empty();
     let kinds = if arch.eff_kinds.is_empty() {
         vec![0]
@@ -218,8 +217,8 @@ fn main() {
     let eff_max: usize = kinds.iter().map(|&k| SIDE_KINDS[k].2).sum();
     writeln!(
         src,
-        "/// 側の入力をF2と最小の攻め駒の組で持つか（ADR-0248）。\n\
-         /// 偽ならF2だけを差分で持つ従来の経路（ADR-0237・0242）。"
+        "/// 側の入力をF2と最小の攻め駒の組で持つか。\n\
+         /// 偽ならF2だけを差分で持つ従来の経路。"
     )
     .unwrap();
     writeln!(src, "pub const EFF_GENERIC: bool = {generic};").unwrap();

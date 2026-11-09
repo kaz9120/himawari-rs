@@ -1,4 +1,4 @@
-"""`hmwr data` の対応表を検証する（ADR-0208）。
+"""`hmwr data` の対応表を検証する。
 
 見るのは3つ。表から同じコマンドが出ること、表の綴りが `psv` の実装と
 食い違っていないこと、完了マーカーが再実行を正しく裁くこと。`psv` の実物は
@@ -23,7 +23,7 @@ def dry(capsys, argv):
 
 
 def test_mix_matches_the_adr0206_chain(capsys):
-    """ADR-0206のチェーンが直接叩いた行と、出力の `.part` を除いて一致する。"""
+    """以前の実験のチェーンが直接叩いた行と、出力の `.part` を除いて一致する。"""
     _, lines = dry(capsys, ["mix", "ekmix20_300M", "--in", "train_300M_q1", "--in", "ek_60M_q1"])
     assert lines[0] == (
         "[dry-run] target/release/psv shuffle "
@@ -82,7 +82,7 @@ def test_shuffle_reads_a_raw_dataset(capsys):
 
 
 def test_shuffle_can_take_only_the_head_of_the_raw_data(capsys):
-    """生データの先頭だけを元にする（ADR-0216）。"""
+    """生データの先頭だけを元にする。"""
     _, lines = dry(capsys, ["shuffle", "s", "--raw", "no-such-dataset", "--limit", "300000000"])
     assert lines[0].endswith("--out data/train/s.psv.part --seed 1 --limit 300000000")
 

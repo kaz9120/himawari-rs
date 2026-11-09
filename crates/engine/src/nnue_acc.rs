@@ -1,11 +1,11 @@
-//! NNUE accumulator差分計算（ADR-0035）。
+//! NNUE accumulator差分計算。
 //!
 //! 第1塔（HalfKP FT）のみが対象。遅延方式: push/popではDirtyPieceを
 //! 積むだけで、evaluateが呼ばれた時点で計算済みの祖先まで遡って
 //! 差分を適用する。自玉が動いた視点は全計算（refresh）する。
 //! 正しさの基準はnnue::evaluate_scalarとの完全一致。
 //!
-//! 利きの特徴（ADR-0237）を持つ構成では、利きのaccumulatorを別のスタックで
+//! 利きの特徴を持つ構成では、利きのaccumulatorを別のスタックで
 //! 持つ（D2）。評価のときに利き数の段階を集合で作り直し、計算済みの祖先と
 //! 比べて、中身か段階が変わった升の行だけを足し引きする。
 
@@ -18,7 +18,7 @@ use crate::nnue::{
 use crate::nnue_simd;
 use crate::value::{MAX_PLY, Value};
 
-/// 評価関数が盤から読むもの（ADR-0241の第13回）。
+/// 評価関数が盤から読むもの。
 ///
 /// coreの局面と探索の盤（`SearchBoard`）が実装する。探索の盤は、配列盤の研究のフィーチャ
 /// `mailbox` ではcoreの局面を持たずに、配列盤から同じ値を返す。
@@ -33,10 +33,10 @@ pub trait EvalBoard {
     fn bona_piece_bits(&self, c: Color, out: &mut bonapiece::BonaBits);
     /// 利き数の段階の集合（`EffectLevels::build` と同じ値）。
     fn effect_levels(&self) -> EffectLevels;
-    /// 81升の利きの語（`effect_code`）をまとめて書く（ADR-0242の段1を配列盤へ移した形）。
+    /// 81升の利きの語（`effect_code`）をまとめて書く。
     /// 配列盤は利き数と駒の配列から直接作れるので、段階の集合を経由しない。
     fn effect_codes(&self, out: &mut [u16; 81]);
-    /// 81升の、F2と最小の攻め駒の語（`side_feat::f2_minatt_codes` と同じ値、ADR-0248）。
+    /// 81升の、F2と最小の攻め駒の語（`side_feat::f2_minatt_codes` と同じ値）。
     /// 既定の実装は盤から数え直す正解器で遅い。探索の配列盤は速い版で上書きする。
     fn side_codes(&self, out: &mut [u16; 81]) {
         crate::side_feat::f2_minatt_codes(self, out);
@@ -103,7 +103,7 @@ struct HandDelta {
     added: bool,
 }
 
-/// accを64バイト境界に載せる（ADR-0151群H）。アライン未指定だと要素の
+/// accを64バイト境界に載せる。アライン未指定だと要素の
 /// ストライドが64の倍数にならず、`Vec` の要素ごとにaccの先頭がずれる。
 /// 片視点512バイトが8本でなく9本のキャッシュラインに跨る場合が出る。
 /// `repr(C)` は宣言順を固定し、`FT_OUT` の値によらずaccをオフセット0に置く。
@@ -111,7 +111,7 @@ struct HandDelta {
 struct AccEntry {
     /// 視点色（絶対色）ごとのFT accumulator。
     /// `computed[c]` がfalseの間は中身が未定義で、誰も読まない。
-    /// pushで積み直すときにゼロ埋めしないのはこの不変条件による（ADR-0124）
+    /// pushで積み直すときにゼロ埋めしないのはこの不変条件による
     acc: [[i16; FT_OUT]; 2],
     computed: [bool; 2],
     /// この状態に至った手の差分。rootでは空。
@@ -134,7 +134,7 @@ impl AccEntry {
     }
 }
 
-/// 利きの段（ADR-0237のD2）。`EFF_OUT` が0の構成では確保しない。
+/// 利きの段。`EFF_OUT` が0の構成では確保しない。
 ///
 /// 祖先と比べるために、段階の集合と升ごとの語（`effect_code`）を持つ。
 /// accの要素はi16で、巡回加算で足す。読み込み時に、取りうる値がi16に収まることを
@@ -149,7 +149,7 @@ struct EffEntry {
     /// falseの間は中身が未定義で、誰も読まない。
     computed: bool,
     /// `acc` と `codes` が、ある1つの局面を表している。pushで `computed` を
-    /// 落としても中身は残るので、差分の参照に使える（ADR-0242の段1）。
+    /// 落としても中身は残るので、差分の参照に使える。
     coherent: bool,
 }
 
@@ -164,7 +164,7 @@ impl EffEntry {
     }
 }
 
-/// 差分で遡れない視点を、最上段から何段下でキャッシュから作るか（ADR-0250）。
+/// 差分で遡れない視点を、最上段から何段下でキャッシュから作るか。
 /// 作った段から最上段までは差分で上げる。
 const REFRESH_BACK: usize = 1;
 
@@ -182,7 +182,7 @@ const BP_BLOCKS: usize = bonapiece::BP_BLOCKS;
 /// 玉位置ごとのキャッシュの件数（視点色 × 玉の81升）。
 const FINNY_ENTRIES: usize = 2 * 81;
 
-/// 玉位置ごとのaccumulatorキャッシュ1件（ADR-0156）。
+/// 玉位置ごとのaccumulatorキャッシュ1件。
 ///
 /// `acc` は `bits` が表すBonaPiece集合をバイアスへ足し込んだ状態にある。
 /// 玉が動いた視点は差分連鎖を遡れないが、**同じ玉位置の局面をここに
@@ -209,20 +209,20 @@ impl FinnyEntry {
 /// 探索スタックと同期するaccumulatorスタック。
 pub struct NnueState {
     /// 起動時に `MAX_ENTRIES` ぶん確保し、以後は長さを変えない。
-    /// 有効なのは `0..=top` で、それより上は前回の残骸が残る（ADR-0124）
+    /// 有効なのは `0..=top` で、それより上は前回の残骸が残る
     entries: Vec<AccEntry>,
     /// スタックトップの添字。
     top: usize,
-    /// 玉位置ごとのaccumulatorキャッシュ（ADR-0156）。
+    /// 玉位置ごとのaccumulatorキャッシュ。
     /// 添字は `視点色 * 81 + 玉の升`。
     finny: Vec<FinnyEntry>,
     /// キャッシュとの差分を組み立てる置き場。`scratch` と同じく
-    /// 容量を保ったまま使い回す（ADR-0124）
+    /// 容量を保ったまま使い回す
     scratch: Scratch,
-    /// 利きの段（ADR-0237のD2）。`entries` と同じ添字で並ぶ。
+    /// 利きの段。`entries` と同じ添字で並ぶ。
     /// `EFF_OUT` が0の構成では空で、誰も触らない。
     eff: Vec<EffEntry>,
-    /// 隠れ層へ渡す連結ベクトルの置き場（ADR-0250）。評価のたびにゼロ埋めすると
+    /// 隠れ層へ渡す連結ベクトルの置き場。評価のたびにゼロ埋めすると
     /// 1KBあまりのmemsetが走るので使い回す。各部分が書く範囲は構成で決まり、
     /// 毎回同じ範囲を上書きする。どこも書かない余白は確保時のゼロのまま残る
     concat: Box<[u8; CONCAT]>,
@@ -284,7 +284,7 @@ impl NnueState {
             self.top
         );
         // accは前段の残骸のまま残す。computedをfalseにするので、
-        // ensureが全上書きするまで読まれない（ADR-0124）
+        // ensureが全上書きするまで読まれない
         let e = &mut self.entries[self.top];
         e.computed = [false, false];
         e.dirty = dirty;
@@ -301,11 +301,10 @@ impl NnueState {
 
     /// 現局面の評価値。必要な視点だけ遡り差分または全計算で作る。
     ///
-    /// 盤は `EvalBoard` 越しに読む。coreの局面のほか、探索の盤（`SearchBoard`）も渡せる
-    /// （ADR-0241の第13回）。
+    /// 盤は `EvalBoard` 越しに読む。coreの局面のほか、探索の盤（`SearchBoard`）も渡せる。
     pub fn evaluate<B: EvalBoard + ?Sized>(&mut self, net: &NnueNetwork, pos: &B) -> Value {
         let stm = pos.side_to_move();
-        // 最上段を差分で作るときは、活性も同じパスで書く（ADR-0251）
+        // 最上段を差分で作るときは、活性も同じパスで書く
         if !self.ensure_both(net, pos, Some(stm)) {
             let top = &self.entries[self.top];
             let concat = &mut *self.concat;
@@ -316,8 +315,8 @@ impl NnueState {
             }
         }
         if EFF_OUT != 0 {
-            // 利きの部分は祖先からの差分で作る（ADR-0237のD2）。F2と最小の攻め駒の組も
-            // 同じ升の語の差分で持つ（ADR-0248）
+            // 利きの部分は祖先からの差分で作る。F2と最小の攻め駒の組も
+            // 同じ升の語の差分で持つ
             self.ensure_effect(net, pos);
             let concat = &mut *self.concat;
             let e = &self.eff[self.top];
@@ -337,7 +336,7 @@ impl NnueState {
         nnue_simd::forward_hidden(net, concat)
     }
 
-    /// 利きのaccumulatorを最上段に用意する（ADR-0237のD2、ADR-0242の段1・段2）。
+    /// 利きのaccumulatorを最上段に用意する。
     ///
     /// 81升の語を盤から受け取り、参照の局面の語と比べて変わった升だけを当てる。
     /// 参照の候補は、計算済みの祖先と、この段に残る前回の中身（兄弟か従兄弟の
@@ -428,7 +427,7 @@ impl NnueState {
         }
     }
 
-    /// 両視点のaccumulatorを最上段に用意する（ADR-0151群N）。
+    /// 両視点のaccumulatorを最上段に用意する。
     ///
     /// 視点ごとに遡れる範囲は違う。**両色をまとめて適用できるのは、
     /// 遅いほうの起点から上の区間だけである。** 手前の区間は片色ずつ
@@ -436,10 +435,10 @@ impl NnueState {
     /// 全計算になり、その視点は融合の対象から外れる。
     ///
     /// 遡れない視点は、最上段より `REFRESH_BACK` 段上（玉の動いた段より上へは
-    /// 行かない）でキャッシュから作り、そこから差分で上げる（ADR-0250）。
+    /// 行かない）でキャッシュから作り、そこから差分で上げる。
     ///
-    /// `stm` を渡すと、最上段を差分で作るときに活性を連結ベクトルへ書き、trueを返す
-    /// （ADR-0251）。falseなら活性は書いていない。
+    /// `stm` を渡すと、最上段を差分で作るときに活性を連結ベクトルへ書き、trueを返す。
+    /// falseなら活性は書いていない。
     fn ensure_both<B: EvalBoard + ?Sized>(
         &mut self,
         net: &NnueNetwork,
@@ -501,14 +500,14 @@ impl NnueState {
             debug_assert!(prev.computed[c.index()], "未計算のaccを読もうとした");
             let e = &mut after[0];
             // 借用が分かれているので、親のaccを読みながら直接書ける。
-            // 複製と足し引きを1パスに融合する（ADR-0151群A）
+            // 複製と足し引きを1パスに融合する
             let rows = diff_rows(net, [(c, king)], &e.dirty, e.hand);
             apply_rows([&mut e.acc[c.index()]], [&prev.acc[c.index()]], &rows);
             e.computed[c.index()] = true;
         }
     }
 
-    /// 同上を両視点まとめて行う（ADR-0151群N）。連鎖の走査とdirtyの
+    /// 同上を両視点まとめて行う。連鎖の走査とdirtyの
     /// デコードが1回で済み、accへの読み書きが2本のストリームで並ぶ。
     fn apply_range_both<B: EvalBoard + ?Sized>(
         &mut self,
@@ -548,7 +547,7 @@ impl NnueState {
         false
     }
 
-    /// 最上段の視点cを、同じ玉位置のキャッシュとの差分で作る（ADR-0156）。
+    /// 最上段の視点cを、同じ玉位置のキャッシュとの差分で作る。
     ///
     /// 玉が動いた視点は段の連鎖を遡れない。**遡る代わりに、同じ玉位置で
     /// 最後に作ったaccumulatorを起点にする。** HalfKPの特徴は玉位置を
@@ -559,7 +558,7 @@ impl NnueState {
     /// キャッシュが空のときは、バイアスを置いて全特徴を足す形になり、
     /// 従来の全計算と同じ経路をたどる。
     ///
-    /// 作る段 `at` は最上段より下でもよい（ADR-0250）。置換表に評価値があると
+    /// 作る段 `at` は最上段より下でもよい。置換表に評価値があると
     /// 途中の段は評価されず、計算済みの段が無いまま葉に着く。最上段で作ると、
     /// 葉の兄弟が1つずつ全計算をやり直す。親の段で作れば、兄弟は差分1段で済む。
     /// `at` の集合は、現局面の集合から上の段の差分を戻して作る。`at` より上に
@@ -593,7 +592,7 @@ impl NnueState {
         }
         // ブロックの並びはBonaPiece番号の昇順なので、adds・subsは語で分けて
         // いた頃と同じ順に並ぶ。反映済み集合はここで更新し、別のコピーを
-        // 挟まない（ADR-0165）
+        // 挟まない
         for (b, (&now, had)) in cur.iter().zip(e.bits.iter_mut()).enumerate() {
             if now == *had {
                 continue;
@@ -634,7 +633,7 @@ impl Default for NnueState {
     }
 }
 
-/// 1手ぶんの差分を、視点cのBonaPiece集合から戻す（ADR-0250）。足し引きの
+/// 1手ぶんの差分を、視点cのBonaPiece集合から戻す。足し引きの
 /// 条件は `diff_rows` と同じで、玉は特徴に含まれないので飛ばす。
 fn undo_bits(
     bits: &mut bonapiece::BonaBits,
@@ -691,7 +690,7 @@ fn hand_delta_of<B: EvalBoard + ?Sized>(pos: &B, dirty: &DirtyPiece) -> Option<H
     }
 }
 
-/// 2つの局面の利きの語が違う升（ADR-0242の段1）。8升ずつベクトルで比べる。
+/// 2つの局面の利きの語が違う升。8升ずつベクトルで比べる。
 #[inline]
 fn codes_diff(a: &[u16; 81], b: &[u16; 81]) -> Bitboard {
     use std::simd::Simd;
@@ -709,14 +708,14 @@ fn codes_diff(a: &[u16; 81], b: &[u16; 81]) -> Bitboard {
     Bitboard::from_bits(m)
 }
 
-/// 変わった升の行だけを入れ替える（ADR-0237のD2）。`e` は参照の局面の
-/// accと升の語を持っている。両視点をまとめて当てる（ADR-0242の段2）。
+/// 変わった升の行だけを入れ替える。`e` は参照の局面の
+/// accと升の語を持っている。両視点をまとめて当てる。
 fn effect_apply(net: &NnueNetwork, codes: &[u16; 81], e: &mut EffEntry, changed: Bitboard) {
     let old_codes = &e.codes;
     let mut sqs = changed.into_iter();
     if SIDE_MINATT_INC {
-        // 語が変わった升で、F2の行と最小の攻め駒の行のうち変わったほうだけを入れ替える
-        // （ADR-0248）。F2の行は下位9ビット、最小の攻め駒の行は駒と階級（4ビット目から上）で決まる
+        // 語が変わった升で、F2の行と最小の攻め駒の行のうち変わったほうだけを入れ替える。
+        // F2の行は下位9ビット、最小の攻め駒の行は駒と階級（4ビット目から上）で決まる
         let mut pending = None;
         nnue_simd::effect_rows_update(net, &mut e.acc, || {
             if let Some(p) = pending.take() {
@@ -746,7 +745,7 @@ fn effect_apply(net: &NnueNetwork, codes: &[u16; 81], e: &mut EffEntry, changed:
 }
 
 /// 両視点の特徴の添字。`[Color; 2]::map` の閉包はインライン化されずに残ったので、
-/// 並べて書く（ADR-0241の第15回）。
+/// 並べて書く。
 #[inline(always)]
 fn effect_code_pair(sq: Square, code: u16) -> [u32; 2] {
     [
@@ -755,7 +754,7 @@ fn effect_code_pair(sq: Square, code: u16) -> [u32; 2] {
     ]
 }
 
-/// `side_codes` の語のF2の部分の、両視点の特徴の添字（ADR-0248）。
+/// `side_codes` の語のF2の部分の、両視点の特徴の添字。
 #[inline(always)]
 fn side_f2_pair(sq: Square, code: u16) -> [u32; 2] {
     [
@@ -764,7 +763,7 @@ fn side_f2_pair(sq: Square, code: u16) -> [u32; 2] {
     ]
 }
 
-/// `side_codes` の語の最小の攻め駒の部分の、両視点の特徴の添字（ADR-0248）。
+/// `side_codes` の語の最小の攻め駒の部分の、両視点の特徴の添字。
 #[inline(always)]
 fn side_minatt_pair(sq: Square, code: u16) -> [u32; 2] {
     [
@@ -773,13 +772,13 @@ fn side_minatt_pair(sq: Square, code: u16) -> [u32; 2] {
     ]
 }
 
-/// 81升を全計算する（ADR-0237のD3と同じ値になる）。
+/// 81升を全計算する（`effect_accumulate` と同じ値になる）。
 fn effect_refresh(net: &NnueNetwork, codes: &[u16; 81], e: &mut EffEntry) {
     for c in [Color::Black, Color::White] {
         crate::nnue::effect_acc_bias(net, &mut e.acc[c.index()]);
     }
     if SIDE_MINATT_INC {
-        // 1升にF2と最小の攻め駒の2行を足す（ADR-0248）
+        // 1升にF2と最小の攻め駒の2行を足す
         let mut i = 0u8;
         nnue_simd::effect_rows_update(net, &mut e.acc, || {
             if i == 162 {
@@ -812,7 +811,7 @@ fn effect_refresh(net: &NnueNetwork, codes: &[u16; 81], e: &mut EffEntry) {
 ///
 /// 行を集める条件はdirtyの中身だけで決まり、視点には依らない。だから
 /// 本数 `ns`・`na` は視点で共通になり、同じ位置の行を視点 `V` 本ぶん
-/// 並べて持てる（ADR-0151群N）。添字は `[スロット][視点]` の順。
+/// 並べて持てる。添字は `[スロット][視点]` の順。
 struct DiffRows<'a, const V: usize> {
     subs: [[&'a [FtWeight]; V]; 2],
     ns: usize,
@@ -878,7 +877,7 @@ fn diff_rows<'a, const V: usize>(
     r
 }
 
-/// 親のaccへ差分を適用して自分のaccへ書く（ADR-0151群A・群N）。
+/// 親のaccへ差分を適用して自分のaccへ書く。
 /// 行数ごとに融合カーネルを単相化する。実際に現れるのは
 /// (0,0)（玉の移動・null move）・(1,1)（普通の手と駒打ち）・
 /// (2,2)（取る手）の3通りで、残りは念のため用意する。
@@ -903,7 +902,7 @@ fn apply_rows<const V: usize>(
     }
 }
 
-/// `apply_rows` の両視点版で、活性も書く（ADR-0251）。`out[k]` は視点 `k` の置き場。
+/// `apply_rows` の両視点版で、活性も書く。`out[k]` は視点 `k` の置き場。
 fn apply_rows_out(
     dst: [&mut [i16; FT_OUT]; 2],
     src: [&[i16; FT_OUT]; 2],
@@ -986,7 +985,7 @@ mod tests {
         }
     }
 
-    /// 玉位置ごとのキャッシュ（ADR-0156）が、別局面を挟んでも全計算と
+    /// 玉位置ごとのキャッシュが、別局面を挟んでも全計算と
     /// 一致し続けること。同じ玉位置に違う駒配置で何度も戻るので、
     /// キャッシュの中身と現局面が離れた状態からの差分を必ず踏む。
     #[test]
@@ -1016,7 +1015,7 @@ mod tests {
         }
     }
 
-    /// `bona_piece_bits`（ADR-0164・ADR-0165）が、駒を1枚ずつ回して立てた
+    /// `bona_piece_bits`が、駒を1枚ずつ回して立てた
     /// 集合と一致すること。`for_each_bona_piece` を正解器として残してある。
     ///
     /// 正解器の側は語で区切ったビットセットを作り、ブロック表現へ写して
@@ -1053,7 +1052,7 @@ mod tests {
         }
     }
 
-    /// 評価を飛ばすノードを混ぜた進め戻し。利きの段（ADR-0237のD2）は
+    /// 評価を飛ばすノードを混ぜた進め戻し。利きの段は
     /// 計算済みの祖先が数手上にある状態から差分を当てるので、その経路を踏む。
     /// 評価したノードでは、`evaluate` の中の検査が利きのaccまで突き合わせる。
     fn walk_sparse(
@@ -1123,7 +1122,7 @@ mod tests {
     }
 
     /// 探索の盤（既定では配列盤）とcoreの局面を並べて進め戻し、探索の盤で差分に積んだ評価値が
-    /// coreの局面の全計算と一致すること（ADR-0248）。配列盤は `core_position` を返さないので、
+    /// coreの局面の全計算と一致すること。配列盤は `core_position` を返さないので、
     /// `evaluate` の中の検査は働かない。ここで外から `check_effect` を呼ぶ。評価を飛ばすノードも混ぜる。
     fn walk_board(
         net: &NnueNetwork,
@@ -1202,7 +1201,7 @@ mod tests {
     }
 
     /// 探索の盤が作るF2と最小の攻め駒の語（配列盤では `effect_minatt_codes`）が、
-    /// `side_feat` から作る正解器と一致すること（ADR-0248）。構成に依らず走る。
+    /// `side_feat` から作る正解器と一致すること。構成に依らず走る。
     #[test]
     fn search_board_side_codes_match_side_feat() {
         let mut rng = Rng(0x5DEE_CE66_D1CE_4E5B);

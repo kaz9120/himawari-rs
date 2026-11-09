@@ -1,21 +1,21 @@
 name: Release Please
 
 # mainに積まれたConventional Commitsからバージョンbumpを算出し、
-# リリースPRを作成・更新する（ADR-0071）。リリースPRはauto-mergeを
+# リリースPRを作成・更新する。リリースPRはauto-mergeを
 # 有効化し、required check（check）の通過後に自動でマージされる。
 # マージされるとCargo.tomlのversionとCHANGELOG.mdが更新され、
 # タグとGitHub Releaseが作られる。タグpushを受けてrelease.ymlが
 # CPU別バイナリをビルドし、そのリリースへ添付する。
 #
-# 型とbumpの対応（ADR-0071）:
+# 型とbumpの対応:
 #   feat  -> MINOR（SPRTでH1採択した変更）
 #   fix   -> PATCH（棋力に影響しないコードの変更）
 #   docs  -> bumpなし（文書のみ）
 #   chore -> bumpなし（CI・設定・テスト・依存更新）
 # MAJORは Release-As: 1.0.0 トレーラで明示する（選手権への参加）。
 #
-# bumpなしはconfigの changelog-sections で hidden: true にして実現する
-# （ADR-0161）。release-pleaseの既定のversioning strategyは、featでも
+# bumpなしはconfigの changelog-sections で hidden: true にして実現する。
+# release-pleaseの既定のversioning strategyは、featでも
 # breakingでもないコミットをPATCHへフォールバックさせる。リリースPRを
 # 作るかどうかはリリースノートが空かで決まるため、hidden: false へ戻すと
 # 文書だけの変更でPATCHが上がる。
@@ -55,7 +55,7 @@ jobs:
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
       # simple strategyはCargo.tomlのversionだけを書き換え、Cargo.lockに
-      # 触れない（ADR-0071）。lock内のhimawari-*が古いまま残るのを防ぐため、
+      # 触れない。lock内のhimawari-*が古いまま残るのを防ぐため、
       # リリースPRのブランチで追随させて同じPRに積む。auto-mergeを有効に
       # する前に実行する（先に有効化すると、CI通過と同時にマージされて
       # 同期が間に合わないおそれがある）。

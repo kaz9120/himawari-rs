@@ -1,4 +1,4 @@
-//! NNUEネット生成・変換ツール（ADR-0037）。
+//! NNUEネット生成・変換ツール。
 //!
 //! 使い方:
 //!   makenet [--seed N] [--out path]           乱数ネット生成（配線検証・ベンチ用）
@@ -6,8 +6,8 @@
 //!                                             FT出力次元を並べ替える
 //!
 //! 学習器が作らないネットを用意する役目で、現行の実験でも使う。乱数ネットは
-//! 配線検証と学習の下限測定（ADR-0133）、`--reorder` は第1層の
-//! 列駆動が飛ばせるチャンクを増やす並べ替え（ADR-0168）から呼ぶ。
+//! 配線検証と学習の下限測定、`--reorder` は第1層の
+//! 列駆動が飛ばせるチャンクを増やす並べ替えから呼ぶ。
 
 use himawari_engine::nnue::{CONCAT, FT_OUT, HALF, NnueNetwork};
 use himawari_engine::nnue_io::{load, save};
@@ -45,14 +45,14 @@ fn read_perm(path: &str) -> Vec<usize> {
     perm
 }
 
-/// 活性の次元を並べ替える（ADR-0168）。
+/// 活性の次元を並べ替える。
 ///
 /// 新しい位置jへ元の次元 `perm[j]` を移す。`ft_b`・`ft_w` の列・`w2` の
 /// 入力列（両視点）へ同じ置換を入れるので、**積和の項の集合は変わらず
 /// 評価値はビット一致する。** ゼロになりやすい次元を同じ4列チャンクへ
 /// 寄せると、第1層の列駆動が飛ばせるチャンクが増える。
 ///
-/// **置換の単位は活性であって、FTの出力次元ではない**（ADR-0171）。
+/// **置換の単位は活性であって、FTの出力次元ではない**。
 /// 活性oはFTの次元oと o+`HALF` の積なので、FT側は対で動かす。片方だけ
 /// 動かすと別の相手と掛かり、評価値が変わる。
 fn apply_perm(net: NnueNetwork, perm: &[usize]) -> NnueNetwork {
@@ -70,7 +70,7 @@ fn apply_perm(net: NnueNetwork, perm: &[usize]) -> NnueNetwork {
             ft_w[base + j + HALF] = out.ft_w[base + p + HALF];
         }
     }
-    // HalfKPの後ろに利きの活性の列が続く構成がある（ADR-0237）。そこは
+    // HalfKPの後ろに利きの活性の列が続く構成がある。そこは
     // 並べ替えないので、元の値のまま残す
     let mut w2 = out.w2.clone();
     for row in 0..out.w2.len() / CONCAT {
@@ -182,13 +182,13 @@ mod tests {
     }
 
     /// 4個ずつずらす置換。並びが変わればよいので中身は問わない。
-    /// 長さは片視点の活性次元（ADR-0171で `HALF` になった）。
+    /// 長さは片視点の活性次元（FT出力の対を掛けるので `HALF`）。
     fn rotate_perm() -> Vec<usize> {
         (0..HALF).map(|i| (i + 4) % HALF).collect()
     }
 
     /// 並べ替えたネットは、同じ置換を当てた活性に対して同じ評価値を返す
-    /// こと（ADR-0168）。**この一致が並べ替えの前提そのものである。**
+    /// こと。**この一致が並べ替えの前提そのものである。**
     #[test]
     fn reordering_keeps_the_value() {
         let net = NnueNetwork::random(7).finish();
@@ -216,7 +216,7 @@ mod tests {
         assert_eq!(before, after);
     }
 
-    /// HalfKPの活性より後ろの列（利きの活性、ADR-0237）は動かさない。
+    /// HalfKPの活性より後ろの列（利きの活性）は動かさない。
     /// 恒等置換なら第1層の重みは元と同じになる。
     #[test]
     fn identity_keeps_every_l1_weight() {

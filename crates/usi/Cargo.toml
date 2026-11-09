@@ -13,10 +13,10 @@ path = "src/main.rs"
 himawari-core = { path = "../core" }
 himawari-engine = { path = "../engine" }
 
-# SPSAのチューニング用ビルド（ADR-0143）。対象定数をUSIオプションへ出す。
+# SPSAのチューニング用ビルド。対象定数をUSIオプションへ出す。
 [features]
 tune = ["himawari-engine/tune"]
-# 配列盤の答えをcoreと照合する構成（ADR-0241）
+# 配列盤の答えをcoreと照合する構成
 mailbox-shadow = ["himawari-engine/mailbox-shadow"]
 
 [lints]

@@ -1,9 +1,9 @@
-"""探索定数のSPSAチューニング（ADR-0143）。
+"""探索定数のSPSAチューニング。
 
 init（tuneビルドと対象一覧の生成）→ run（判定なしの対局ループ）→
 結果の定数の反映とheld-out SPRT、の順で使う。runは切り離して走り、
 状態は data/spsa/<名前>.state.json にある。落ちても同じコマンドで
-続きから走る（ADR-0123）。乱数はペア番号から決定論で引くので、
+続きから走る。乱数はペア番号から決定論で引くので、
 再開しても摂動列は変わらない。
 """
 
@@ -395,7 +395,7 @@ def _finish(f: dict[str, Path], state: dict, params: list[Param], log) -> None:
     body = "\n".join(rows) + "\n"
     f["result"].write_text(body, encoding="utf-8")
     log(f"完了: {state['pairs_done']}ペア。結果: {paths.rel(f['result'])}")
-    log("次の手順: 動いた定数をtunables.rsへ反映し、SPRT既定条件で検収する（ADR-0143）")
+    log("次の手順: 動いた定数をtunables.rsへ反映し、SPRT既定条件で検収する")
     for stale in f["tmp"].glob("*.jsonl"):
         stale.unlink()
 

@@ -1,7 +1,7 @@
-//! Bitboard（ADR-0010、u128単一ワード）。
+//! Bitboard（u128単一ワード）。
 //!
 //! bit i = Square i。bit 81〜127は常に0を維持する。
-//! ビット走査は64bitワード2本に分割して回す（ADR-0010の実装規約）。
+//! ビット走査は64bitワード2本に分割して回す。
 
 use std::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Not};
 
@@ -162,14 +162,14 @@ impl Bitboard {
     }
 
     /// 81升の通し番号のビット列から作る。盤外のビットは落とす。
-    /// 配列盤の研究（ADR-0241の段階6）が、升の集合をcoreの型へ渡すのに使う。
+    /// 配列盤の研究が、升の集合をcoreの型へ渡すのに使う。
     #[inline]
     pub const fn from_bits(bits: u128) -> Bitboard {
         Bitboard(bits & BOARD)
     }
 
     /// ビットが1つでもある筋を、筋全体へ広げた集合。二歩マスクの生成に
-    /// 使う（ADR-0151群D）。筋ごとの分岐を持たない。
+    /// 使う。筋ごとの分岐を持たない。
     ///
     /// 1筋は9ビット連続（bit 9f〜9f+8）なので、筋内をOR畳み込みして
     /// 最下位ビットへ集め、そこから筋全体へ展開する。シフトで隣の筋から
@@ -209,7 +209,7 @@ impl Bitboard {
     }
 
     /// condが真ならself、偽ならEMPTY。分岐を持たない選択で、
-    /// 合成ビットボードの差分更新に使う（ADR-0151群F）。
+    /// 合成ビットボードの差分更新に使う。
     #[inline]
     pub(crate) const fn keep_if(self, cond: bool) -> Bitboard {
         Bitboard(self.0 & 0u128.wrapping_sub(cond as u128))
@@ -269,7 +269,7 @@ impl BitXorAssign for Bitboard {
     }
 }
 
-/// ビット走査イテレータ。ADR-0010の規約どおり64bitワード2本に分割して回す。
+/// ビット走査イテレータ。64bitワード2本に分割して回す。
 pub struct SquareIter {
     lo: u64,
     hi: u64,

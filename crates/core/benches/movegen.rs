@@ -19,7 +19,7 @@
 //! 各局面は1回の生成時間（ns）を、bulkは6局面まとめての局面/秒
 //! （elem/s）を読む。ローカルで
 //! `RUSTFLAGS="-C target-cpu=native" cargo bench -p himawari-core --bench movegen`
-//! を実行して計測する（ADR-0003）。
+//! を実行して計測する。
 
 use std::hint::black_box;
 

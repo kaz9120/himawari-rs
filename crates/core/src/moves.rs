@@ -1,4 +1,4 @@
-//! 指し手のエンコーディング（ADR-0012）。
+//! 指し手のエンコーディング。
 //!
 //! 下位16bit: to(7) | from(7) | promote(1) | drop(1)。
 //! 駒打ちのfromフィールドは駒種（OSL配列 9〜15）。
@@ -92,7 +92,7 @@ impl Move {
         v & DROP_BIT == 0 && (v & 0x7F) == ((v >> 7) & 0x7F)
     }
 
-    /// 符号のビット列そのもの。配列盤の研究（ADR-0241の第15回）が、手を表引きで変換するのに使う。
+    /// 符号のビット列そのもの。配列盤の研究が、手を表引きで変換するのに使う。
     #[inline]
     pub const fn bits(self) -> u32 {
         self.0
@@ -135,7 +135,7 @@ impl Move {
 impl Move16 {
     pub const NONE: Move16 = Move16(0);
 
-    /// やねうら王のMove16から本エンジンのMove16へ変換する（ADR-0185）。
+    /// やねうら王のMove16から本エンジンのMove16へ変換する。
     ///
     /// PackedSfenValueのmoveフィールドはやねうら王の符号で、本エンジンと
     /// ビット割り当てが違う。あちらはdrop=bit14・promote=bit15、打つ駒は
@@ -183,7 +183,7 @@ impl Move16 {
 
     /// 本エンジンのMove16をやねうら王の符号へ変換する（from_yaneuraの逆）。
     ///
-    /// PSVのmoveフィールド（ADR-0038）はやねうら王の符号なので、教師データへ
+    /// PSVのmoveフィールドはやねうら王の符号なので、教師データへ
     /// 書くときはこちらを通す。打つ駒は「駒種+80」の流儀で書く（from_yaneuraは
     /// 両流儀を受ける）。変換できないビット列（NONEを含む）には0を返す。
     pub fn to_yaneura(self) -> u16 {
@@ -250,7 +250,7 @@ const MOVE_LIST_CAP: usize = 608;
 /// 指し手バッファ。
 ///
 /// 生成のたびに全要素を埋めると1回あたり2.4KBの書き込みになり、
-/// 書いた値は一度も読まれない（ADR-0101）。未初期化のまま確保し、
+/// 書いた値は一度も読まれない。未初期化のまま確保し、
 /// `push` した先頭 `len` 要素だけを有効として扱う。
 ///
 /// 不変条件: `moves[..len]` は初期化済みである。`len` を増やすのは
@@ -265,8 +265,8 @@ impl Default for MoveList {
     ///
     /// `MoveList { moves: [MaybeUninit::uninit(); N], len: 0 }` と
     /// 構造体を値で組み立てると、LLVMが未初期化の配列を含む
-    /// アグリゲートを定数へ畳み、2,440バイトのゼロクリアを生成する
-    /// （ADR-0101）。フィールド単位で書けばこれが起きない。
+    /// アグリゲートを定数へ畳み、2,440バイトのゼロクリアを生成する。
+    /// フィールド単位で書けばこれが起きない。
     #[inline]
     fn default() -> Self {
         let mut this = MaybeUninit::<MoveList>::uninit();
@@ -295,7 +295,7 @@ impl MoveList {
     /// # Safety
     ///
     /// 積んだ後の手の数が `CAPACITY` を超えないこと。配列盤の生成の受け手が、
-    /// 生成の前に1回だけ残りの容量を確かめてから使う（ADR-0241の第17回）。
+    /// 生成の前に1回だけ残りの容量を確かめてから使う。
     #[inline(always)]
     pub unsafe fn push_unchecked(&mut self, m: Move) {
         debug_assert!(self.len < MOVE_LIST_CAP);
@@ -396,7 +396,7 @@ mod tests {
         assert!(!drop.is_special());
     }
 
-    /// 未初期化バッファでもpushした範囲だけが見えること（ADR-0101）。
+    /// 未初期化バッファでもpushした範囲だけが見えること。
     #[test]
     fn move_list_exposes_only_pushed_moves() {
         let mut list = MoveList::default();

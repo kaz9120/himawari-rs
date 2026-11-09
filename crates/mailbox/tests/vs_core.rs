@@ -1,4 +1,4 @@
-//! 配列盤の試作を、既存のcore（Bitboard）と突き合わせる（ADR-0241の段階3）。
+//! 配列盤の試作を、既存のcore（Bitboard）と突き合わせる。
 //!
 //! - SFENの往復がcoreの出力と一致する
 //! - perft木の全ノードで、合法手の列が順まで含めてcoreと一致し、利きの配列が全計算と一致する。
@@ -419,8 +419,8 @@ fn check_node(core: &mut CorePos, mb: &mut Position) {
     }
 }
 
-/// 進める前に求めたキー（`key_after`）が、進めた後の `key` と一致する（ADR-0250）。
-/// 81升の番号から求める版（`key_after81`、ADR-0252）も同じ値を返す。
+/// 進める前に求めたキー（`key_after`）が、進めた後の `key` と一致する。
+/// 81升の番号から求める版（`key_after81`）も同じ値を返す。
 fn check_key_after(mb: &mut Position) {
     use himawari_mailbox::board::SQ81;
     let mut list = MoveList::default();

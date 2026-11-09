@@ -1,4 +1,4 @@
-"""PRを非対話で作る（ADR-0070）。
+"""PRを非対話で作る。
 
 `gh pr create --template` はエディタを開く前提で、`--body-file` と併用できない。
 エージェントは非対話で走るので、テンプレートの中身を本文へ手で書き写していた。
@@ -137,7 +137,7 @@ def squash_message(pr: dict) -> tuple[str, str]:
 
 
 def read_result(path: Path) -> dict[str, str]:
-    """結果ファイル（key=value）を読む（ADR-0175）。"""
+    """結果ファイル（key=value）を読む。"""
     fields = {}
     for line in path.read_text(encoding="utf-8").splitlines():
         key, sep, value = line.partition("=")
@@ -147,7 +147,7 @@ def read_result(path: Path) -> dict[str, str]:
 
 
 def expected_trailer(result: dict[str, str]) -> str:
-    """結果ファイルから、本文に載るべき SPRT: トレーラを作る（ADR-0071）。
+    """結果ファイルから、本文に載るべき SPRT: トレーラを作る。
 
     注記は `sprt_log.hypothesis_note()` に任せる。トレーラを書く側と
     検査する側で別々に組むと、既定でも非劣性でもない対立仮説（elo1=10の
@@ -174,7 +174,7 @@ def problems(kind: str, subject: str, body: str, result: dict[str, str] | None) 
         found.append("件名が feat: で始まる。棋力の変わる変更は --kind strength で検査する")
     if kind == "strength":
         if not is_feat:
-            found.append("棋力向上のPRの件名は feat: で始める（ADR-0071）")
+            found.append("棋力向上のPRの件名は feat: で始める")
         if result is None:
             found.append("SPRTの結果ファイルがない（--sprt <名前> で data/sprt/<名前>.result を指す）")
         else:
@@ -224,7 +224,7 @@ def merge(args: argparse.Namespace) -> int:
     subject, body = squash_message(pr)
     if args.body_file:
         # 研究ブランチは数十件のコミットを持つ。全部をつなげた本文は、古いコミットの
-        # 入れ子の括弧を拾い、トレーラも最後の段落から外れる（ADR-0241の取り込み）
+        # 入れ子の括弧を拾い、トレーラも最後の段落から外れる
         body_file = Path(args.body_file)
         if not body_file.is_file():
             raise proc.Fail(f"本文のファイルがない: {args.body_file}", proc.USAGE)

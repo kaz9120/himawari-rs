@@ -1,6 +1,6 @@
 """評価関数の学習・評価・配布。
 
-既定は測定で決まった結論に揃えてある（ADR-0135・0138・0065・0066）。
+既定は測定で決まった結論に揃えてある。
 変えるときはフラグで渡す。**環境変数を組み立てる必要はない。**
 """
 
@@ -32,15 +32,15 @@ ARCH_HELP = (
     "読み込みが effect accumulator mismatch で落ちる"
 )
 
-# 1局面40バイト固定（ADR-0038）
+# 1局面40バイト固定
 BYTES_PER_POSITION = 40
 BATCH = 16384
 
-# 既定の学習条件。数値の根拠はADR-0135にある
+# 既定の学習条件
 FT_CLIP = "1.0"
 BASE_FLAGS = ["--batch-loader", "--dense-ft", "--factorized"]
 
-# 学習器の出力から状態ファイルの値を拾う（ADR-0220）。形式は training/train.py の print にある
+# 学習器の出力から状態ファイルの値を拾う。形式は training/train.py の print にある
 TOTAL_STEPS_RE = re.compile(r"total_steps=([0-9]+)")
 STEP_RE = re.compile(r"^step ([0-9]+) samples [0-9]+ loss ([0-9.]+)")
 VALID_RE = re.compile(r"^\s*valid loss ([0-9.]+)")
@@ -182,7 +182,7 @@ def add_parser(sub: argparse._SubParsersAction) -> None:
 
 
 def positions(psv: Path) -> int:
-    """psvの局面数。1局面40バイト固定である（ADR-0038）。"""
+    """psvの局面数。1局面40バイト固定である。"""
     return psv.stat().st_size // BYTES_PER_POSITION
 
 
@@ -234,7 +234,7 @@ def _ensure_extension(arch: str | None = None, *, dry_run: bool) -> None:
 
 
 def train(args: argparse.Namespace) -> int:
-    """本番規模の学習。既定はADRの結論に揃えてある。"""
+    """本番規模の学習。既定は過去の実験の結論に揃えてある。"""
     name = paths.check_name(args.name)
     data = _train_file(args.data, ".psv")
     valid = _train_file(args.valid, ".psv") if args.valid else config.train_valid()
@@ -256,9 +256,9 @@ def train(args: argparse.Namespace) -> int:
         "--valid", paths.rel(valid),
         "--out", str(out),
         *BASE_FLAGS,
-        # 29.9億のpsvはRAMに載らない（ADR-0065）
+        # 29.9億のpsvはRAMに載らない
         "--mmap",
-        # i8で格納するので制約なしだと書き出しが落ちる（ADR-0138）
+        # i8で格納するので制約なしだと書き出しが落ちる
         "--ft-clip", FT_CLIP,
         "--device", args.device or "mps",
         "--seed", str(args.seed),
@@ -274,7 +274,7 @@ def train(args: argparse.Namespace) -> int:
         if not Path(args.init_ckpt).is_file() and not args.dry_run:
             raise proc.Fail(f"初期値のチェックポイントがない: {args.init_ckpt}")
         argv += ["--init-checkpoint", args.init_ckpt]
-        # 前世代の表現を壊さない幅。3e-4では壊れる（ADR-0145）
+        # 前世代の表現を壊さない幅。3e-4では壊れる
         lr = lr or "1e-4"
         argv += _continual_args(data, args, dry_run=args.dry_run)
     if lr:
@@ -321,7 +321,7 @@ def train(args: argparse.Namespace) -> int:
     if args.init_ckpt:
         print(f"初期値    : {args.init_ckpt}（継続学習、学習率 {lr}）")
     if resuming:
-        # 止まった学習の続き。エポック内の位置まで戻る（ADR-0159）
+        # 止まった学習の続き。エポック内の位置まで戻る
         print(f"再開      : {paths.rel(latest)}")
         argv += ["--resume", str(latest)]
     log = paths.log("train", name)
@@ -410,7 +410,7 @@ def evaluate(args: argparse.Namespace) -> int:
     """書き出したネットを検証集合で測って表にする。
 
     条件をまたいで比べたいときだけ検証集合を複数渡す。教師データの分布を
-    変える実験では評価基準も一緒に動く（ADR-0136）。
+    変える実験では評価基準も一緒に動く。
     """
     if args.valid:
         valids = [Path(v) for v in args.valid.split(",") if v]
@@ -501,7 +501,7 @@ def apply_reorder(net: Path, perm: Path, *, env: dict[str, str] | None = None) -
     """並べ替えをネットへ当て、評価値が変わっていないことを確かめる。
 
     並べ替えは評価値を変えないので、変わったら渡した書き出しか置換を
-    取り違えている（ADR-0195で .hmwr と .hmwr.best を取り違えた）。
+    取り違えている（以前、.hmwr と .hmwr.best を取り違えた）。
 
     envは構成を選ぶ環境変数で、makenet・エンジン・verifyの3つへ同じものを
     渡す。1つでも欠けると、その呼び出しが既定の構成でビルドし直して
@@ -541,7 +541,7 @@ def apply_reorder(net: Path, perm: Path, *, env: dict[str, str] | None = None) -
     return proc.OK
 
 
-# 活性ダンプの既定（ADR-0195）
+# 活性ダンプの既定
 ACTDUMP_POSITIONS = "openings/actdump_positions.txt"
 ACTDUMP_DEPTH = 16
 # actdump.rs の TARGET と揃える。片方だけ動かすと間引きの見積もりが狂う
@@ -575,7 +575,7 @@ def actdump(args: argparse.Namespace) -> int:
     """actdump付きのビルドで局面を探索させ、活性ダンプを書く。
 
     局面リストを固定するのがこのコマンドの主目的である。手打ちのUSI入力で
-    取ると、どの局面で決めた並べ替えかが残らない（ADR-0168の反省）。
+    取ると、どの局面で決めた並べ替えかが残らない。
 
     新しい並べ替えを決めるときは、並べ替え前のネットを渡す。既定の評価関数は
     並べ替え済みなので、そこで決めた置換を当てると二重適用になる。
@@ -647,8 +647,8 @@ def actdump(args: argparse.Namespace) -> int:
     return code
 
 
-# 評価関数ファイルの形式（ADR-0037）。版によって次元の数が変わる。
-# 版11・12は利きの特徴数と幅の2つを寸法の後ろに持つ（ADR-0237）
+# 評価関数ファイルの形式。版によって次元の数が変わる。
+# 版11・12は利きの特徴数と幅の2つを寸法の後ろに持つ
 NDIMS_BY_VERSION = {2: 3, 3: 4, 5: 4, 7: 4, 9: 4, 4: 5, 6: 5, 8: 5, 10: 5, 11: 6, 12: 7}
 
 
@@ -686,7 +686,7 @@ def release(args: argparse.Namespace) -> int:
     release_mod.check_prereqs(tag, dry_run=args.dry_run)
 
     lineage = read_lineage(path)
-    # アセットは固定名で配る（ADR-0080の追記）。版はタグと学習来歴が持つ。
+    # アセットは固定名で配る。版はタグと学習来歴が持つ。
     # 学習時の名前はノートと題に残し、どの実験のネットかを辿れるようにする
     asset_name = config.NET_ASSET
     train_name = path.name.removesuffix(".best")

@@ -1,4 +1,4 @@
-"""Quantization and .hmwr file I/O via Rust PyO3 bridge (ADR-0043, ADR-0045)."""
+"""Quantization and.hmwr file I/O via Rust PyO3 bridge."""
 
 import torch
 
@@ -12,7 +12,7 @@ from model import (
 def quantize(model: NnueModel) -> dict:
     """Extract f32 weights from model and quantize to integer types."""
     with torch.no_grad():
-        # factorizer使用時は仮想特徴を畳み込む（ADR-0066）
+        # factorizer使用時は仮想特徴を畳み込む
         ft_w = model.folded_ft_weight()
         ft_b = model.ft_bias.detach().float()
         w2 = model.l2.weight.detach().float()
@@ -21,8 +21,8 @@ def quantize(model: NnueModel) -> dict:
         b3 = model.l3.bias.detach().float() if model.l3 is not None else None
         w_out = model.out.weight.detach().float().squeeze(0)
         b_out = model.out.bias.detach().float().item()
-        # 利きのaccumulator（ADR-0237）。FTと同じ127倍で、i16のまま持つ
-        # F2と最小の攻め駒の組（ADR-0248）は末尾に詰め物の行を持つので、EFF_IN行で切る
+        # 利きのaccumulator。FTと同じ127倍で、i16のまま持つ
+        # F2と最小の攻め駒の組は末尾に詰め物の行を持つので、EFF_IN行で切る
         eff_w = model.folded_eff_weight() if model.eff is not None else None
         eff_b = model.eff_bias.detach().float() if model.eff is not None else None
 
@@ -52,7 +52,7 @@ def quantize(model: NnueModel) -> dict:
 
 
 def load_into(model: NnueModel, path: str, freeze_ft: bool = False) -> str:
-    """既存の.hmwrを初期値として読む（ADR-0130）。
+    """既存の.hmwrを初期値として読む。
 
     FTは常に読む。後段は元ファイルの構成が今の構成と一致するときだけ読み、
     違えば乱数初期化のまま残す。後段の形を変えて比べるとき（足切り）はFTだけが
@@ -75,7 +75,7 @@ def load_into(model: NnueModel, path: str, freeze_ft: bool = False) -> str:
         model.ft_bias.copy_(as_tensor("ft_b", FT_OUT))
         if model.ft_p is not None:
             model.ft_p.weight.zero_()
-        # 利きのaccumulator（ADR-0237）。利きの構成は同じ構成のファイルしか
+        # 利きのaccumulator。利きの構成は同じ構成のファイルしか
         # 読めないので、拡張が返した長さのまま写せる
         if model.eff is not None and len(w["eff_w"]):
             model.eff.weight[:EFF_IN].copy_(as_tensor("eff_w", EFF_IN, EFF_OUT))

@@ -1,4 +1,4 @@
-"""疎な特徴向けのoptimizer（ADR-0064）。"""
+"""疎な特徴向けのoptimizer。"""
 
 import math
 

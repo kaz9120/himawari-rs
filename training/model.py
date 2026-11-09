@@ -1,6 +1,7 @@
-"""NNUE model definition (ADR-0034, ADR-0040, ADR-0045).
+"""NNUE model definition.
 
-ADR-0045で利き入力を除去し、純粋HalfKP構成にした。
+HalfKPに、利きを入力にする側のaccumulatorを足した構成を学習する。
+次元と構成はRust側のビルド（crates/engine/build.rs）から読む。
 """
 
 import torch
@@ -9,7 +10,7 @@ import torch.nn.functional as F
 
 import himawari
 
-# 次元はRust側のビルドから読む（ADR-0067・ADR-0127）。
+# 次元はRust側のビルドから読む。
 # HIMAWARI_ARCH を指定してビルドしたhimawariモジュールを入れれば、
 # 学習側も同じ構成になる。定数を二重に持たないので、推論と学習の
 # 取り違えが起きない
@@ -17,34 +18,34 @@ FT_IN = himawari.FT_IN
 FT_OUT = himawari.FT_OUT
 L1_OUT = himawari.L1_OUT
 L2_OUT = himawari.L2_OUT
-# 0なら隠れ層1つ（ADR-0127）
+# 0なら隠れ層1つ
 LAST_HIDDEN = L2_OUT or L1_OUT
 ARCH = himawari.ARCH
 FE_END = FT_IN // 81
 # 第1層の入力幅。片視点のFT出力を2つに割って掛けるので、視点あたり
-# FT_OUT//2 になる（ADR-0171）。Rust側の定数をそのまま使う
+# FT_OUT//2 になる。Rust側の定数をそのまま使う
 CONCAT = himawari.CONCAT
 # HalfKPの片視点の活性の幅。利きのaccumulatorを持つ構成では、CONCATの後ろに
 # 利きの活性が2視点ぶん続くので、CONCAT//2 ではなくFT_OUTから決める
 HALF = FT_OUT // 2
-# 利きのaccumulator（ADR-0237のF2）。構成の末尾の e<E> で幅が決まり、0なら
+# 利きのaccumulator（F2）。構成の末尾の e<E> で幅が決まり、0なら
 # 持たない。古い拡張は定数を持たないので0として扱う
 EFF_IN = getattr(himawari, "EFF_IN", 0)
 EFF_OUT = getattr(himawari, "EFF_OUT", 0)
-# F2と最小の攻め駒の組（ADR-0248）。側の入力を `side_feat` の種類で作る。
+# F2と最小の攻め駒の組。側の入力を `side_feat` の種類で作る。
 # 学習側は表の末尾に詰め物の行（添字 EFF_IN）を1本足して持ち、書き出しで落とす
 EFF_GENERIC = getattr(himawari, "EFF_GENERIC", False)
 # 1局面1視点で並ぶ利きの特徴の数。F2は升ごとに1つで81、F2と最小の攻め駒の組は上限の数
 EFF_ACTIVE = getattr(himawari, "EFF_ACTIVE", 81)
-# 利きの特徴の使い方。f2は特徴を立てる処置群、noneは立てない統制群（ADR-0237）。
+# 利きの特徴の使い方。f2は特徴を立てる処置群、noneは立てない統制群。
 # F2と最小の攻め駒の組でも、f2は「構成の表し方で立てる」の意味になる
 EFFECT_INPUTS = ("f2", "none")
-# 積の値域合わせ（ADR-0171）。推論側は clip(a)*clip(b) >> 7 で、最大が
+# 積の値域合わせ。推論側は clip(a)*clip(b) >> 7 で、最大が
 # 127×127/128 = 126 にしかならない。学習側にも同じ127/128を掛けておくと、
 # 活性127・隠れ層64という量子化の係数を1つも変えずに済む
 PAIR_SCALE = 127.0 / 128.0
 
-# Evaluation scale (ADR-0036)
+# Evaluation scale
 SIGMOID_SCALE = 600.0
 FV_SCALE = 16
 
@@ -58,7 +59,7 @@ class NnueModel(nn.Module):
     """HalfKPのNNUE。
 
     `factorized=True` のとき、学習時だけ玉位置に依らない駒の特徴
-    （BonaPiece単独）を並列に持つ（ADR-0066）。`halfkp_index` は
+    （BonaPiece単独）を並列に持つ。`halfkp_index` は
     `king * FE_END + bona_piece` なので、実特徴のインデックスを
     FE_ENDで割った余りが仮想特徴のインデックスになる。
     推論側の構造は変わらない。重みは書き出し時に畳み込む。
@@ -66,7 +67,7 @@ class NnueModel(nn.Module):
 
     def __init__(self, sparse_ft=True, factorized=False, effect_inputs=None):
         super().__init__()
-        # 利きのaccumulatorは構成で決まる（ADR-0237）。持つ構成では、統制群も
+        # 利きのaccumulatorは構成で決まる。持つ構成では、統制群も
         # 処置群も同じ層を作る。**構造が同じなので、初期化で乱数を消費する
         # 順序も同じになる**。違いは特徴を立てるかどうかだけである
         if (EFF_OUT > 0) != (effect_inputs is not None):
@@ -84,7 +85,7 @@ class NnueModel(nn.Module):
             else None
         )
         self.ft_bias = nn.Parameter(torch.full((FT_OUT,), 0.5))
-        # 利きの特徴は玉位置に依らないので、factorizerは掛けない（ADR-0237）。
+        # 利きの特徴は玉位置に依らないので、factorizerは掛けない。
         # 1局面で81行が立ち、表の大半の行が毎バッチ触られるので密の勾配にする
         self.eff = (
             nn.EmbeddingBag(
@@ -98,7 +99,7 @@ class NnueModel(nn.Module):
             nn.Parameter(torch.full((EFF_OUT,), 0.5)) if EFF_OUT else None
         )
         self.l2 = nn.Linear(CONCAT, L1_OUT)
-        # 隠れ層は書いたぶんだけ持つ（ADR-0127）。L2_OUT=0 なら隠れ層1つ
+        # 隠れ層は書いたぶんだけ持つ。L2_OUT=0 なら隠れ層1つ
         self.l3 = nn.Linear(L1_OUT, L2_OUT) if L2_OUT else None
         self.out = nn.Linear(LAST_HIDDEN, 1)
         self._init_weights()
@@ -109,7 +110,7 @@ class NnueModel(nn.Module):
             nn.init.zeros_(self.ft_p.weight)
         if self.eff is not None:
             # 統制群も乱数を引いてから捨てる。引かないと以降の層の初期値が
-            # 処置群とずれる（ADR-0237の統制、ADR-0158の教訓）
+            # 処置群とずれる
             nn.init.uniform_(self.eff.weight, -0.05, 0.05)
             if EFF_GENERIC:
                 # 詰め物の行は0に保つ（padding_idxは勾配を止めるだけで、初期値は引いた乱数のまま）
@@ -149,7 +150,7 @@ class NnueModel(nn.Module):
 
     @staticmethod
     def pair_activation(z):
-        """FT出力の前半と後半を要素ごとに掛ける（ADR-0171）。
+        """FT出力の前半と後半を要素ごとに掛ける。
 
         駒対の相互作用を低ランクで持つための積で、展開すると
         `Σ_{i,m} W_ji W'_jm x_i x_m` になる。入力の直積を作らずに済む。
@@ -158,7 +159,7 @@ class NnueModel(nn.Module):
         return a * b * PAIR_SCALE
 
     def effect_activation(self, idx, n):
-        """利きのaccumulatorを0〜1へクリップして返す（ADR-0237）。対の積は掛けない。
+        """利きのaccumulatorを0〜1へクリップして返す。対の積は掛けない。
 
         `idx` は1局面81個ずつ並んだ特徴。統制群は特徴を立てず、バイアスだけの
         定数になる。推論側の `effect_transform` と同じ形である。
@@ -178,7 +179,7 @@ class NnueModel(nn.Module):
         """FT出力を2視点ぶん連結して返す。
 
         利きのaccumulatorを持つ構成では、HalfKPの活性の後ろに利きの活性を
-        手番視点・非手番視点の順に連結する（ADR-0237）。
+        手番視点・非手番視点の順に連結する。
         """
         z_stm = self.transform(stm_idx, stm_off)
         z_opp = self.transform(opp_idx, opp_off)
@@ -202,14 +203,14 @@ class NnueModel(nn.Module):
         )
 
     def clip_ft_weights(self, limit=1.0):
-        """畳み込み後のFT重みを±limitへ収める（ADR-0138）。
+        """畳み込み後のFT重みを±limitへ収める。
 
         書き出しに使うのは `folded_ft_weight()` の値なので、制約は畳み込み後に
         掛ける必要がある。超過分は実特徴側（`ft`）から引く。仮想特徴（`ft_p`）は
         81の玉位置で共有されるため、そちらを動かすと無関係な升へ波及する。
 
         i8で格納すると量子化値が±127に収まらない重みは飽和する。飽和は
-        0.055%（1800個に1個）でも-59.3 Eloになる（ADR-0138のリーグ戦）。
+        0.055%（1800個に1個）でも-59.3 Eloになる。
         一方、飽和がなければ刻みを5倍粗くしても差が出ない。**効くのは
         飽和の有無であって刻みの細かさではない。**
         """
@@ -218,7 +219,7 @@ class NnueModel(nn.Module):
             self.ft.weight.sub_(folded - folded.clamp(-limit, limit))
 
     def clip_eff_weights(self, limit):
-        """側の表の重み（畳み込み後）とバイアスを±limitへ収める（ADR-0261）。
+        """側の表の重み（畳み込み後）とバイアスを±limitへ収める。
 
         差分で持つ側のaccをi16にするための制約である。F2と最小の攻め駒の組では1視点に
         162行が立つので、重みとバイアスが±limitに収まれば、accの絶対値は量子化の127倍で

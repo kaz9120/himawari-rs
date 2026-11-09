@@ -19,11 +19,11 @@ SPRT = REPO / "data" / "sprt"
 SPSA = REPO / "data" / "spsa"
 BOOK = REPO / "data" / "book"
 TRAIN = REPO / "data" / "train"
-STATUS = REPO / "data" / "status"  # 状態ファイル（ADR-0220）
+STATUS = REPO / "data" / "status"  # 状態ファイル
 PROFILE = REPO / "data" / "profile"
-LEDGER = REPO / "data" / "ledger"  # 点数を付けた局面の台帳（ADR-0228）
+LEDGER = REPO / "data" / "ledger"  # 点数を付けた局面の台帳
 RAW = REPO / "data" / "raw"
-# DL系モデル（ADR-0215）。配布元から手で置くもので、hmwrは読むだけ
+# DL系モデル。配布元から手で置くもので、hmwrは読むだけ
 MODELS = REPO / "data" / "models"
 
 SCRIPTS = REPO / "scripts"
@@ -47,8 +47,8 @@ WORK = REPO
 NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
 
 # ネットワークの構成。<FT>x<L1>[x<L2>][e<E>[-f2_minatt]] の形だけを通す（512x16x64など）。
-# 末尾の e<E> は幅Eの利きのaccumulatorを足す（ADR-0237、例 1024x16x32e64）。その後ろの
-# -f2_minatt は側の入力をF2と最小の攻め駒の組にする（ADR-0248、例 256x16x32e64-f2_minatt）
+# 末尾の e<E> は幅Eの利きのaccumulatorを足す（例 1024x16x32e64）。その後ろの
+# -f2_minatt は側の入力をF2と最小の攻め駒の組にする（例 256x16x32e64-f2_minatt）
 ARCH_RE = re.compile(r"^\d+x\d+(x\d+)?(e\d+(-f2_minatt)?)?$")
 
 
@@ -97,7 +97,7 @@ def registry() -> Path:
 
 
 def dl_model() -> Path:
-    """DL系モデルによる付け直し（ADR-0215）の既定のモデル。"""
+    """DL系モデルによる付け直しの既定のモデル。"""
     return MODELS / "dlshogi" / "model-dr2_exhi.onnx"
 
 

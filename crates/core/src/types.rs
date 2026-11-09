@@ -1,4 +1,4 @@
-//! 基本型: Color / File / Rank / Square（ADR-0008）。
+//! 基本型: Color / File / Rank / Square。
 //!
 //! 座標は筋優先で `sq = file * 9 + rank`。SQ_11 = 0（盤の右上）、
 //! SQ_99 = 80（左下）。方向デルタは先手視点で 下=+1、上=−1、左=+9、右=−9。

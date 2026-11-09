@@ -1,10 +1,10 @@
-"""対局ゲート（SPRT）の入口。`match` の別名として残している（ADR-0208）。
+"""対局ゲート（SPRT）の入口。`match` の別名として残している。
 
 対局の実体は `match.py` にある。ここが持つのは3つの段取りだけである。
 `sprt run` はペアの作成・機能検証・起動を順に行い、`sprt net` はビルドを
 固定して評価関数だけを差し替える。どちらも `match run` の対局者の
 組み立て方の違いで、移行が済んだら消す。`sprt extend` は上限で見送りに
-なった実行を、控えた条件のまま延ばす（ADR-0217の追記）。
+なった実行を、控えた条件のまま延ばす。
 """
 
 from __future__ import annotations
@@ -16,7 +16,7 @@ from .. import conditions, config, paths, proc
 from . import build, match
 from .match import Player, Spec, files, settings
 
-# 延長の刻みと、オーナーに諮る線（ADR-0217の追記）
+# 延長の刻みと、オーナーに諮る線
 EXTEND_STEP = int(config.SPRT_MAX_PAIRS)
 OWNER_LINE = 30_000
 
@@ -141,7 +141,7 @@ def run(args: argparse.Namespace) -> int:
     """ビルド・機能検証・起動を順に行う。
 
     3つを別々に叩けると順番を飛ばせてしまう。機能検証を飛ばすと、探索に
-    影響のない変更へ対局リソースを払うことになる（ADR-0074）。ここで
+    影響のない変更へ対局リソースを払うことになる。ここで
     順番を固定し、飛ばすには明示を求める。
     """
     f = files(args.name)
@@ -203,7 +203,7 @@ def run_net(args: argparse.Namespace) -> int:
 
 
 def extend(args: argparse.Namespace) -> int:
-    """見送りの実行を延ばす（ADR-0217の追記）。
+    """見送りの実行を延ばす。
 
     退避と再開を1コマンドにする。手で改名すると退避の名前が揺れ、改名を
     忘れると `sprt run` が判定済みとして即座に返る（issue #782）。
@@ -225,7 +225,7 @@ def extend(args: argparse.Namespace) -> int:
     mid = (float(result["elo0"]) + float(result["elo1"])) / 2
     print(f"見送り: {pairs}ペア、Elo {result['elo']}（中点 {mid:+.1f}）、LLR {result.get('llr', '?')}")
     if elo <= mid:
-        print("点推定が中点以下なので延ばさない。見送りで確定し、ADRへ記録する（ADR-0217の追記）")
+        print("点推定が中点以下なので延ばさない。見送りで確定し、PRに記録する")
         return proc.JUDGE
 
     cap = args.max_pairs or pairs + EXTEND_STEP
@@ -233,7 +233,7 @@ def extend(args: argparse.Namespace) -> int:
         raise proc.Fail(f"--max-pairs は今のペア数（{pairs}）より大きくする: {cap}", proc.USAGE)
     if cap > OWNER_LINE and not args.owner_approved:
         raise proc.Fail(
-            f"{OWNER_LINE}ペアを超えて延ばすときはオーナーに諮る（ADR-0217の追記）。"
+            f"{OWNER_LINE}ペアを超えて延ばすときはオーナーに諮る。"
             "承認を得たら --owner-approved を付ける",
             proc.USAGE,
         )

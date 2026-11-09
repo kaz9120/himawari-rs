@@ -1,4 +1,4 @@
-"""PRの作成とマージを検証する（ADR-0070）。GitHubには触らない。"""
+"""PRの作成とマージを検証する。GitHubには触らない。"""
 
 import json
 
@@ -84,7 +84,7 @@ def test_nested_parens_in_the_body_stop_the_merge():
 
 
 def test_full_width_and_single_parens_pass():
-    assert pr.problems("chore", "chore: x（ADR-0001） (#9)", "`f(x)` を（全角で）呼ぶ", None) == []
+    assert pr.problems("chore", "chore: x (#9)", "`f(x)` を（全角で）呼ぶ", None) == []
 
 
 def test_chore_must_not_be_feat():

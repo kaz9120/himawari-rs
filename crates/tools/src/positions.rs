@@ -1,4 +1,4 @@
-//! 計測に使う固定局面（ADR-0074・ADR-0122）。
+//! 計測に使う固定局面。
 //!
 //! かつて `verify-feature.sh`・`bench-nps.sh`・`profile.sh` の3本が同じ
 //! 4局面を各自に持っていた。片方だけ足すと条件がずれるため1か所に置く。
@@ -29,7 +29,7 @@ pub fn depth_at(base: u32, index: usize) -> u32 {
     adjusted.max(1) as u32
 }
 
-/// 局面リストをファイルから読む（ADR-0186）。1行が `position` に続けて
+/// 局面リストをファイルから読む。1行が `position` に続けて
 /// 渡せる形の文字列で、`#` で始まる行と空行は読み飛ばす。
 ///
 /// 組み込みの4局面はすべてSFENで、履歴を持たない。履歴に依存する処理
@@ -84,7 +84,7 @@ pub fn parse_position(line: &str) -> Result<Position> {
 mod tests {
     use super::*;
 
-    /// ADR-0074の「3局面以上」を満たし、補正が局面と1対1で対応する。
+    /// 機能検証に要る3局面以上がそろい、補正が局面と1対1で対応する。
     #[test]
     fn positions_and_adjustments_line_up() {
         assert_eq!(POSITIONS.len(), 4);

@@ -1,4 +1,4 @@
-"""`hmwr data` の操作を、`psv` のサブコマンドへの対応表から作る（ADR-0208）。
+"""`hmwr data` の操作を、`psv` のサブコマンドへの対応表から作る。
 
 **1操作は表の1行である。** 名前からのパス解決・既定値・ログ・完了マーカーは
 ここの共通の実装が足す。部品を足すコストを1行にすることが、`psv` を
@@ -22,14 +22,14 @@ from pathlib import Path
 from . import config, heartbeat, paths, proc
 
 # 静止化の並列数。**並列の出力はjobs固定で決定論になる**（逐次とは一致しない）
-# ので、既定を1か所で持つ。ADR-0200〜0206のチェーン11回はすべて8だった
+# ので、既定を1か所で持つ。以前の実験のチェーン11回はすべて8だった
 QUIET_JOBS = 8
 SHUFFLE_SEED = 1
 
 # 既定値の印。評価関数は実行時に config から引く
 EVAL = object()
 
-# DL系モデルによる付け直し（ADR-0215）。モデルは配布元のライセンスに従って
+# DL系モデルによる付け直し。モデルは配布元のライセンスに従って
 # 手元に置く。パスワードつきの配布なので、取得の手順はIssue #556にある。
 # 既定のモデルの場所は paths.dl_model() が持つ
 DL_SCALE = 600.0
@@ -806,7 +806,7 @@ def _run_python(args, kind: str, record: list[str], sources: list[Path], body) -
 
 
 
-# --- 点数を付けた局面の台帳（ADR-0228） ---------------------------------
+# --- 点数を付けた局面の台帳 ---------------------------------
 
 
 def ledger_add(args: argparse.Namespace) -> int:
@@ -858,7 +858,7 @@ def ledger_show(args: argparse.Namespace) -> int:
 
 
 def merge_op(args: argparse.Namespace) -> int:
-    """シャッフル済みの教師を織り交ぜて1本にする（ADR-0228）。"""
+    """シャッフル済みの教師を織り交ぜて1本にする。"""
     from .tools import merge
 
     if len(args.inputs) < 2:
@@ -880,7 +880,7 @@ def merge_op(args: argparse.Namespace) -> int:
 
 
 def floodgate_op(args: argparse.Namespace) -> int:
-    """floodgateの全対局から局面を取り出す（ADR-0228）。"""
+    """floodgateの全対局から局面を取り出す。"""
     from .tools import floodgate_psv
 
     lo, _, hi = args.years.partition("-")

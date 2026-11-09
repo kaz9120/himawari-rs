@@ -1,4 +1,4 @@
-//! 時間管理（ADR-0021、ADR-0109のG7）。参照実装 `source/timeman.cpp` の移植。
+//! 時間管理。参照実装 `source/timeman.cpp` の移植。
 //!
 //! 上限を超えてもその場では止めない。秒単位で切り上げた終了時刻を
 //! `search_end` に予約し、最小思考時間がその下支えをする。
@@ -17,8 +17,8 @@ const MOVE_HORIZON: i64 = 160;
 /// 本エンジンはそのオプションを持たないので常に無効として扱う
 const PONDER_OPTIMUM_DIV: i64 = 4;
 
-/// 思考時間の伸縮（ADR-0109のG9。yaneuraou-search.cpp:1958-1996）。
-/// optimumを5係数の積で伸ばし縮めする。ADR-0059の3係数（falling /
+/// 思考時間の伸縮（yaneuraou-search.cpp:1958-1996）。
+/// optimumを5係数の積で伸ばし縮めする。以前の3係数（falling /
 /// stability / effort）はこのうち3つに対応するので、置き換えである。
 ///
 /// fallingEval（S:1972-1976）は評価の下落で時間を伸ばす。入力は2本で、
@@ -54,7 +54,7 @@ const SINGLE_MOVE_CAP_MS: f64 = 502.0;
 /// increaseDepthの判定比（S:2050-2051）。totalTimeのこの割合を超えて
 /// いれば、次の反復では実効深さを削って掘り直す
 const INCREASE_DEPTH_RATIO: f64 = 0.503;
-/// 持ち時間に合わせて定数を縮める（ADR-0253）。1手の配分がこれ未満なら、
+/// 持ち時間に合わせて定数を縮める。1手の配分がこれ未満なら、
 /// 秒単位の切り上げをやめる。秒単位の時計を前提にした仕組みだからである
 const ROUND_UP_MIN_AVAIL: i64 = 5000;
 /// 最小思考時間は配分のこの分の1までに抑える
@@ -66,7 +66,7 @@ const RESERVE_TIME_DIV: i64 = 8;
 /// NetworkDelay2を縮めるときの下限[ms]。指し手の返答の遅れを受け止める
 const RESERVE_MIN_MS: i64 = 50;
 
-/// 反復の終わりに時間管理へ渡す探索の統計（ADR-0125。S:1961-2053の入力）。
+/// 反復の終わりに時間管理へ渡す探索の統計（S:1961-2053の入力）。
 /// 5係数はすべてここから決まる。
 pub struct IterationStats {
     /// 最善手にノードがどれだけ集中しているか（10万分率）。
@@ -93,7 +93,7 @@ pub struct IterationStats {
     pub single_move: bool,
 }
 
-/// 反復の終わりに決まる時間の判断（ADR-0125。S:1961-2053）。
+/// 反復の終わりに決まる時間の判断（S:1961-2053）。
 pub struct IterationPlan {
     /// 予算を使い切ったか。真なら探索を終える
     pub budget_spent: bool,
@@ -189,7 +189,7 @@ pub struct TimeManager {
     round_up_to_full_second: bool,
 }
 
-/// 持ち時間に合わせて縮めたあとの定数（ADR-0253）。
+/// 持ち時間に合わせて縮めたあとの定数。
 struct ScaledFloors {
     minimum_thinking_time: i64,
     network_delay: i64,
@@ -197,7 +197,7 @@ struct ScaledFloors {
     round_up_to_full_second: bool,
 }
 
-/// 実戦の持ち時間を前提にした定数を、短い持ち時間へ合わせて縮める（ADR-0253）。
+/// 実戦の持ち時間を前提にした定数を、短い持ち時間へ合わせて縮める。
 ///
 /// 定数のままだと10+0.1では最初の5手で持ち時間の9割を使い、残り約1.2秒を
 /// 使わないまま以後の全手が100msになる。秒読みは秒単位の時計を前提に毎手
@@ -258,18 +258,18 @@ impl TimeManager {
         let inc = inc as i64;
         let byoyomi = limits.byoyomi as i64;
 
-        // 配分の分母は現行（ADR-0021）のまま据え置く。G7の切り分けである。
+        // 配分の分母は現行のまま据え置く。G7の切り分けである。
         //
         // 参照実装の分母（move horizon方式のMTG）を入れた版は、支えを揃えた
         // うえでも730局で-15.7だった。分母だけをmove horizon方式にした
-        // [ADR-0102](../../docs/adr/0102-move-horizon.md)は-107.2で、支えを
+        // 版は-107.2で、支えを
         // 足しても中立までしか戻らない。分母は本エンジンの現行式が釣り合って
         // いるという判断で、支え（最小思考時間・秒単位切り上げ・停止の予約）
         // だけを参照実装から採る
         let rem_moves = (48i64 - i64::from(game_ply) / 2).max(16);
         let avail = my_time / rem_moves + byoyomi + inc;
 
-        // 定数を持ち時間へ合わせて縮める（ADR-0253）。movetimeは残り時間を
+        // 定数を持ち時間へ合わせて縮める。movetimeは残り時間を
         // 読まないので、ここで縮めても結果は変わらない
         let floors = scale_floors(opts, my_time, byoyomi, avail);
         self.minimum_thinking_time = floors.minimum_thinking_time;
@@ -344,7 +344,7 @@ impl TimeManager {
         // optimumの候補。最小思考時間の床は参照実装から採る（timeman.cpp:257）
         let t1 = self.minimum_time + avail;
 
-        // maximumの候補。倍率は現行の3倍を据え置く（ADR-0021）。
+        // maximumの候補。倍率は現行の3倍を据え置く。
         // 切れ負けでは5分を切ったら比率を抑える（timeman.cpp:270-276）。
         // これは分母に依らない安全弁なので採る
         let mut max_ratio = 3.0f64;
@@ -360,7 +360,7 @@ impl TimeManager {
         // optimumへ加算されるため、その中に遅延の保護が含まれている。床を下げると
         // 保護まで消える。10+0.1で `MinimumThinkingTime=1` にして測ったところ、
         // optimumが常に121ms大きくなり、availが42〜600msしかない条件では1.6〜2.8倍の
-        // 下駄になった。終盤の到達深さが8ply落ちる（ADR-0116）
+        // 下駄になった。終盤の到達深さが8ply落ちる
         self.optimum_time =
             (t1.min(self.optimum_time) * opts.slow_mover / 100 - self.network_delay).max(1);
         self.maximum_time = t2.min(self.maximum_time);
@@ -369,7 +369,7 @@ impl TimeManager {
         // ponderhitすると、その手の思考の一部が相手の時計で進むぶん、
         // 自分の持ち時間は予測より余っていく。maximumは触らない。
         // 参照実装は倍率をNetworkDelayを引く前に掛けるが、本エンジンは
-        // optimumからもNetworkDelayを引くので（ADR-0116）引いたあとに掛ける
+        // optimumからもNetworkDelayを引くので引いたあとに掛ける
         if opts.ponder {
             self.optimum_time += self.optimum_time / PONDER_OPTIMUM_DIV;
         }
@@ -394,7 +394,7 @@ impl TimeManager {
             .max(0);
         self.optimum_time = self.optimum_time.min(self.remain_time);
         self.maximum_time = self.round_up(self.maximum_time).min(self.remain_time);
-        // maximumがoptimumを下回らないようにする（ADR-0021から引き継ぐ安全弁）。
+        // maximumがoptimumを下回らないようにする（初期の時間管理から引き継ぐ安全弁）。
         // 参照実装はこの保証を持たないが、床を下げると32%の手でmaximumのほうが
         // 小さくなり、optimumが目標として働かなくなる
         self.maximum_time = self.maximum_time.max(self.optimum_time);
@@ -549,7 +549,7 @@ mod tests {
 
     #[test]
     fn fischer_adds_minimum_to_current_formula() {
-        // 300+10。配分の分母は現行式（ADR-0021）を据え置き、最小思考時間の
+        // 300+10。配分の分母は現行式を据え置き、最小思考時間の
         // 床だけを参照実装から採る（G7の切り分け）
         let limits = Limits {
             btime: 300_000,
@@ -609,7 +609,7 @@ mod tests {
             ..Limits::default()
         };
         let tm = TimeManager::new(&limits, Color::Black, 1, &TimeOptions::default());
-        // avail = 120000/48 = 2500で5秒未満なので定数が縮む（ADR-0253）。
+        // avail = 120000/48 = 2500で5秒未満なので定数が縮む。
         // 最小思考時間500、NetworkDelay120で、minimumTime = 380
         // optimum = 380 + 2500 - 120
         assert_eq!(tm.optimum(), 380 + 2500 - 120);
@@ -620,7 +620,7 @@ mod tests {
     #[test]
     fn floodgate_floors_stay_constant() {
         // 300+10の最も切迫した場面（持ち時間0で10秒の加算だけ）でも、
-        // 定数はどれも縮まない（ADR-0253）
+        // 定数はどれも縮まない
         let limits = Limits {
             btime: 10_000,
             binc: 10_000,
@@ -635,7 +635,7 @@ mod tests {
 
     #[test]
     fn short_clock_scales_floors() {
-        // 10+0.1の開始局面。定数のままなら最小思考時間だけで1.88秒になる（ADR-0253）
+        // 10+0.1の開始局面。定数のままなら最小思考時間だけで1.88秒になる
         let limits = Limits {
             btime: 10_000,
             binc: 100,
@@ -674,7 +674,7 @@ mod tests {
 
     #[test]
     fn byoyomi_keeps_floors() {
-        // 秒読みは秒単位の時計を前提にするので、定数を縮めない（ADR-0253）
+        // 秒読みは秒単位の時計を前提にするので、定数を縮めない
         let limits = Limits {
             byoyomi: 1000,
             ..Limits::default()

@@ -1,4 +1,4 @@
-//! ロックレス置換表（ADR-0022）。
+//! ロックレス置換表。
 //!
 //! エントリはAtomicU64×2のHyatt式XOR自己検証。word1にデータ、
 //! word0に `key ^ word1` を置き、読み出し時の照合でtornエントリを弾く。
@@ -11,17 +11,17 @@ use himawari_core::Move16;
 use crate::value::Value;
 
 /// eval hashのエントリ数（既定2^23 = 約840万、AtomicU64で64MB）。
-/// USIオプションは設けない（ADR-0049）。小メモリの的に向けては
+/// USIオプションは設けない。小メモリの的に向けては
 /// ビルド時に `HIMAWARI_EVAL_HASH_BITS` で絞る（issue #429）。
 const EVAL_HASH_BITS: usize = crate::nnue::EVAL_HASH_BITS;
 const EVAL_HASH_SIZE: usize = 1 << EVAL_HASH_BITS;
 
-/// 評価値キャッシュ（ADR-0049）。局面キー→生評価のロックレス共有表。
+/// 評価値キャッシュ。局面キー→生評価のロックレス共有表。
 ///
 /// エントリは `(key上位32bit << 32) | (eval as u32)`。probeは上位32bit
 /// 一致で採用する。偽ヒット確率はprobeあたり2^-32で、NNUE評価の±1違い
 /// と同水準として無視する（やねうら王系と同じ割り切り）。
-/// 生値のみを持ち、correction history補正（ADR-0046）はキャッシュの外側。
+/// 生値のみを持ち、correction history補正はキャッシュの外側。
 pub struct EvalHash {
     table: Vec<AtomicU64>,
 }
@@ -34,7 +34,7 @@ impl EvalHash {
         }
     }
 
-    /// 検証用の無効化インスタンス（ADR-0049の機能検証）。probeは常にミス、
+    /// 検証用の無効化インスタンス。probeは常にミス、
     /// storeは無視する。eval hash有無で探索が変わらないことの対照に使う。
     #[cfg(test)]
     pub fn disabled() -> EvalHash {
@@ -57,7 +57,7 @@ impl EvalHash {
         }
     }
 
-    /// `probe(key)` が読むスロットを先読みさせる（ADR-0250）。
+    /// `probe(key)` が読むスロットを先読みさせる。
     #[inline(always)]
     pub fn prefetch(&self, key: u64) {
         let slot = key as usize & (EVAL_HASH_SIZE - 1);
@@ -219,7 +219,7 @@ impl Tt {
         ((u128::from(key) * self.clusters.len() as u128) >> 64) as usize
     }
 
-    /// `probe(key)` が読むクラスタを先読みさせる（ADR-0250）。
+    /// `probe(key)` が読むクラスタを先読みさせる。
     /// クラスタは1キャッシュラインなので1回で足りる。
     #[inline(always)]
     pub fn prefetch(&self, key: u64) {
@@ -254,7 +254,7 @@ impl Tt {
         let generation = self.generation();
         let cluster = &self.clusters[self.cluster_index(key)];
         // 空きがあればそこへ、なければ「depth − 世代差ペナルティ」最小を置換。
-        // 同一キーはSF流の上書き判定を通す（ADR-0054）
+        // 同一キーはSF流の上書き判定を通す
         let mut mv = mv;
         let mut victim = 0;
         let mut victim_score = i32::MAX;
@@ -267,7 +267,7 @@ impl Tt {
             }
             let (data, entry_gen) = unpack(w1);
             if w0 ^ w1 == key {
-                // 同一キー。浅いエントリで深いエントリを潰さない（ADR-0054）。
+                // 同一キー。浅いエントリで深いエントリを潰さない。
                 // Exact・深さ僅差（新+4≧既存）・世代違いのいずれかでのみ上書きする。
                 // qsearchのdepth 0 storeがmain searchの深いエントリを消すのを防ぐ
                 let overwrite = bound == Bound::Exact
@@ -378,7 +378,7 @@ mod tests {
 
     #[test]
     fn shallow_exact_store_overwrites_deep_entry() {
-        // Exactは深さに関わらず上書きする（ADR-0054の条件a）
+        // Exactは深さに関わらず上書きする
         let tt = Tt::new(1);
         let key = 8u64;
         tt.store(key, Move16(0x11), 100, 0, 10, Bound::Lower, false);

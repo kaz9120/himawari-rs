@@ -1,4 +1,4 @@
-"""シャッフル済みの教師の織り交ぜ（ADR-0228）を検証する。"""
+"""シャッフル済みの教師の織り交ぜを検証する。"""
 
 import numpy as np
 
@@ -68,7 +68,7 @@ def test_merge_past_the_hypergeometric_limit_is_still_a_permutation(tmp_path, mo
 
 
 def test_draw_handles_the_real_population_size():
-    # ADR-0228の実物の件数。numpyの多変量超幾何分布は合計10億以上で例外を出す
+    # 実際に混ぜたデータの件数。numpyの多変量超幾何分布は合計10億以上で例外を出す
     left = np.array([1_709_817_583, 23_969_580, 419_160_047], dtype=np.int64)
     k = merge.BLOCK
     take = merge._draw(np.random.default_rng(1), left, k)
