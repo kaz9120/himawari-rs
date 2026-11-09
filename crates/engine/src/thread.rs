@@ -150,7 +150,7 @@ struct PonderCtl {
     cv: Condvar,
 }
 
-/// 各スレッドの結論を集める場所（G10）。best thread votingが読む。
+/// 各スレッドの結論を集める場所。best thread votingが読む。
 /// メインは全スレッドが書き終わるのを待ってから投票する
 /// （S:1195-1197の `wait_for_search_finished`）。
 struct Results {
@@ -167,7 +167,7 @@ pub struct ThreadPool {
     workers: Vec<WorkerThread>,
     shared: Arc<Shared>,
     ponder: Arc<PonderCtl>,
-    /// 各スレッドの結論（G10）。goのたびに空へ戻す
+    /// 各スレッドの結論。goのたびに空へ戻す
     results: Arc<Results>,
     /// 今回のgoの受領時刻。ponderhitの時刻をここからの経過へ換算する。
     start: Mutex<Instant>,
@@ -347,7 +347,7 @@ fn spawn_worker(
         // スレッドローカル状態（対局を通じて保持）。
         // 約100MiBあるので、goごとに作り直さずWorkerへ渡して回収する
         let mut hist = Histories::new(Arc::clone(&shared.hists));
-        // goをまたぐ記憶（G9）。参照実装がSearchManagerに置く値で、
+        // goをまたぐ記憶。参照実装がSearchManagerに置く値で、
         // 対局開始時にだけクリアする
         let mut memory = MainMemory::default();
         loop {
@@ -439,7 +439,7 @@ fn spawn_worker(
                     // history類とgoをまたぐ記憶を回収して次のgoへ持ち越す
                     hist = worker.hist;
                     memory = worker.memory;
-                    // 自分の結論を投票用に置く（G10）
+                    // 自分の結論を投票用に置く
                     {
                         let mut g = results.slots.lock().expect("results lock");
                         g[thread_idx] = Some(result);
@@ -731,7 +731,7 @@ impl ThreadPool {
         };
         // 計時の起点をponderhitの換算用に控える
         *self.start.lock().expect("start lock") = limits.start.unwrap_or_else(Instant::now);
-        // 前回の結論を捨てる（G10）。wait_idle済みなので書き手はいない
+        // 前回の結論を捨てる。wait_idle済みなので書き手はいない
         for slot in self.results.slots.lock().expect("results lock").iter_mut() {
             *slot = None;
         }

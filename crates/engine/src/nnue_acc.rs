@@ -6,7 +6,7 @@
 //! 正しさの基準はnnue::evaluate_scalarとの完全一致。
 //!
 //! 利きの特徴を持つ構成では、利きのaccumulatorを別のスタックで
-//! 持つ（D2）。評価のときに利き数の段階を集合で作り直し、計算済みの祖先と
+//! 持つ。評価のときに利き数の段階を集合で作り直し、計算済みの祖先と
 //! 比べて、中身か段階が変わった升の行だけを足し引きする。
 
 use himawari_core::{Bitboard, Color, DirtyPiece, Piece, PieceType, Position, Square, bonapiece};
@@ -139,7 +139,7 @@ impl AccEntry {
 /// 祖先と比べるために、段階の集合と升ごとの語（`effect_code`）を持つ。
 /// accの要素はi16で、巡回加算で足す。読み込み時に、取りうる値がi16に収まることを
 /// 確かめてある（F2だけの構成は `effect_acc_bound`、F2と最小の攻め駒の組は
-/// `side_minatt_acc_bound`）ので、i32で足す全計算（D3）と一致する。
+/// `side_minatt_acc_bound`）ので、i32で足す全計算と一致する。
 #[derive(Clone)]
 struct EffEntry {
     /// 絶対色ごとの利きのaccumulator。
@@ -379,7 +379,7 @@ impl NnueState {
         e.coherent = true;
     }
 
-    /// 最上段の利きの段を、全計算（D3）と突き合わせる。テストとデバッグビルド
+    /// 最上段の利きの段を、全計算と突き合わせる。テストとデバッグビルド
     /// だけで、評価のたびに呼ぶ。accの値・升ごとの語・段階の集合を見る。
     fn check_effect(&self, net: &NnueNetwork, pos: &Position) {
         let e = &self.eff[self.top];
@@ -942,7 +942,7 @@ mod tests {
         }
     }
 
-    /// 差分計算 = 全計算の完全一致（P4出口条件）。
+    /// 差分計算 = 全計算の完全一致。
     /// 実際の探索と同型の再帰do/undoウォーク（null move含む）で照合する。
     fn walk(
         net: &NnueNetwork,

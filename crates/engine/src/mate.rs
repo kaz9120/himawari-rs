@@ -6,7 +6,7 @@
 //!
 //! 検証を通った手しか返さないため誤検出はない。合駒可能な遠距離の
 //! 王手は安全側に倒すので見逃しはあり得る（健全・不完全）。
-//! 案A（全合法手からの王手列挙・検証）はテスト用オラクル。
+//! 全合法手から王手を列挙して検証する版（`mate_1ply_oracle`）はテスト用オラクル。
 //! 歩打ちは打ち歩詰めで常に非合法なので候補にしない。
 
 use himawari_core::{
@@ -463,7 +463,7 @@ fn mate_1ply_impl<const MAP: bool>(pos: &Position) -> Option<Move> {
     drop_mates::<MAP>(pos, us, ksq, &mm)
 }
 
-/// テスト用オラクル（案A）: 全合法手から王手を選び、回避不能なら詰み。
+/// テスト用オラクル: 全合法手から王手を選び、回避不能なら詰み。
 /// 遅いが完全。mate_1plyの照合にのみ使う。
 pub fn mate_1ply_oracle(pos: &mut Position) -> Option<Move> {
     let mut list = MoveList::default();

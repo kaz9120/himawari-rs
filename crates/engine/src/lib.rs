@@ -1,4 +1,4 @@
-//! 探索・置換表・評価・時間管理（P2のADR群に基づく）。
+//! 探索・置換表・評価・時間管理。
 #![feature(portable_simd)]
 
 #[cfg(feature = "actdump")]

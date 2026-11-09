@@ -6,7 +6,7 @@
 //! - ランダムな対局の全手で同じ検査をする（終盤・駒打ち・王手の多い局面まで届かせる）
 //! - 全ノードでZobristのキー5本・hand_key・駒割り・王手駒・連続王手の数がcoreと一致し、
 //!   進めた直後のDirtyPieceがcoreと同じ中身になる
-//! - 全ノードで、段階5の関数（is_legal・pseudo_legal・gives_check・see_ge・mate_1ply）の
+//! - 全ノードで、探索が使う判定の関数（is_legal・pseudo_legal・gives_check・see_ge・mate_1ply）の
 //!   返す値がcoreと一致する
 //! - perftの数がcoreと一致する（深い方は `--ignored` で走らせる）
 
@@ -162,7 +162,7 @@ thread_local! {
 /// 並列に走るテストの間で共有するので、数を読むときは `--test-threads 1` で走らせる
 static MATE_MOVES: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
 
-/// 段階5の関数の返す値をcoreと比べる。
+/// 探索が使う判定の関数の返す値をcoreと比べる。
 fn check_stage5(core: &CorePos, mb: &mut Position) {
     let sfen = core.to_sfen();
     let mut legal = CoreList::default();
@@ -241,7 +241,7 @@ fn check_stage5(core: &CorePos, mb: &mut Position) {
             );
         }
     }
-    // 1手詰めの候補の判定: 合法手の全部で、盤を動かさない判定と手を進める判定（第6回の実装）を比べる
+    // 1手詰めの候補の判定: 合法手の全部で、盤を動かさない判定と手を進める判定を比べる
     for &m in &legal {
         let mm = to_mb(m);
         let fast = mb.is_mate_move_for_test(mm);
@@ -261,7 +261,7 @@ fn check_stage5(core: &CorePos, mb: &mut Position) {
     }
 }
 
-/// 段階6（探索への接続）で使う値をcoreと比べる。
+/// 探索へ接続するときに使う値をcoreと比べる。
 ///
 /// - 置換表の `Move16`: 合法手の詰め方と、復元（`to_move`）の往復。よその局面の手と乱数のビット列も復元させる
 /// - 利き数の段階の集合: engineの `EffectLevels::build` と升ごとに同じ段階
@@ -342,7 +342,7 @@ fn bits(b: himawari_core::Bitboard) -> u128 {
     x
 }
 
-/// 第13回の規則の関数をcoreと比べる。千日手・入玉宣言・`check_squares`・駒種ごとの升の集合。
+/// 規則の関数をcoreと比べる。千日手・入玉宣言・`check_squares`・駒種ごとの升の集合。
 ///
 /// 千日手は、配列盤とcoreが同じ手順で進んでいれば同じ過去の局面を持つので、そのまま比べられる。
 fn check_stage6_rules(core: &CorePos, mb: &Position) {
@@ -592,7 +592,7 @@ fn history_of(core: &CorePos) -> Vec<himawari_mailbox::HistoryKey> {
         .collect()
 }
 
-/// 千日手の判定をcoreと比べる（第13回）。
+/// 千日手の判定をcoreと比べる。
 ///
 /// ランダムな対局では同じ局面がほとんど現れないので、2手前の自分の手を戻す手を4回に3回選び、
 /// 同じ局面を繰り返させる。手順を共有する配列盤のほか、SFENから作って過去の局面のキーを
@@ -867,7 +867,7 @@ fn random_position(rng: &mut Rng) -> Option<CorePos> {
     Some(pos)
 }
 
-/// 疎な乱数局面で、全部の検査（段階5の関数と1手詰めを含む）をcoreと突き合わせる。
+/// 疎な乱数局面で、全部の検査（判定の関数と1手詰めを含む）をcoreと突き合わせる。
 #[test]
 fn sparse_positions_match_core() {
     let mut rng = Rng(0x1234_5678_9ABC_DEF0);

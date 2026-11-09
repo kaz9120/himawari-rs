@@ -3,7 +3,7 @@
 //! `tune` featureなしでは各項目が定数を返す `#[inline(always)]` の関数で、
 //! 呼び出しは定数へ畳み込まれる。featureありでは同じ関数がatomicを読み、
 //! USIの `setoption` で走行中に書き換えられる。対象外の兄弟定数が
-//! `search.rs` に残る群は、式の説明もそちらにある。群ごと移したものは
+//! `search/params.rs` に残る群は、式の説明もそちらにある。群ごと移したものは
 //! ここのコメントが説明を持つ。
 //!
 //! 可動域はSPSAの探索範囲であると同時に、USIオプションのmin/maxになる。
@@ -81,17 +81,17 @@ pub fn set(name: &str, value: i64) -> bool {
 }
 
 tunables! {
-    // NMP（式と出典はsearch.rsのNMP_EVAL_DEPTH群のコメント）
+    // NMP（式と出典はsearch/params.rsのNMP_EVAL_DEPTH群のコメント）
     NMP_EVAL_IMPROVING: crate::value::Value = 42, [0, 200];
     NMP_EVAL_BASE: crate::value::Value = 425, [50, 1000];
     NMP_BASE_REDUCTION: u32 = 7, [3, 12];
     NMP_DEPTH_DIVISOR: u32 = 4, [1, 8];
-    // 子ノードのfutility（RFP。式と出典はsearch.rsのRFP_MAX_DEPTH群のコメント）
+    // 子ノードのfutility（RFP。式と出典はsearch/params.rsのRFP_MAX_DEPTH群のコメント）
     RFP_MULT: i32 = 100, [20, 200];
     RFP_NO_TT_HIT: i32 = 17, [0, 80];
     RFP_IMPROVING: i32 = 1090, [500, 8000];
     RFP_OPP_WORSENING: i32 = 180, [0, 2000];
-    // 親ノードのfutility（式と出典はsearch.rsのFUTILITY_MAX_DEPTHのコメント）
+    // 親ノードのfutility（式と出典はsearch/params.rsのFUTILITY_MAX_DEPTHのコメント）
     FUTILITY_BASE: crate::value::Value = 45, [0, 300];
     FUTILITY_NO_BEST: crate::value::Value = 147, [0, 500];
     FUTILITY_MARGIN: crate::value::Value = 125, [30, 400];
@@ -111,7 +111,7 @@ tunables! {
     SEE_QUIET_COEF: i32 = 26, [5, 100];
     SEE_CAPTURE_COEF: i32 = 134, [40, 500];
     SEE_CAPT_HIST: i32 = 30, [0, 150];
-    // 取る手のfutility（式と出典はsearch.rsのCAPT_FUTILITY_MAX_DEPTH群のコメント）
+    // 取る手のfutility（式と出典はsearch/params.rsのCAPT_FUTILITY_MAX_DEPTH群のコメント）
     CAPT_FUTILITY_BASE: crate::value::Value = 230, [0, 800];
     CAPT_FUTILITY_DEPTH: crate::value::Value = 225, [50, 800];
     // 静止探索のfutility。stand patにQS_FUTILITY_MARGINを
@@ -129,7 +129,7 @@ tunables! {
     ASPIRATION_MSS_DIV: crate::value::Value = 7859, [2000, 30000];
     ASPIRATION_GROWTH_DIV: crate::value::Value = 2, [2, 8];
     // LMR。LMR_COEFはリダクション表の係数（1024倍固定小数の分子。
-    // search.rsのbuild_reductionsが使う）。
+    // search/params.rsのbuild_reductionsが使う）。
     // LMR_DEPTH_HIST_DIVISORはhistoryによるlmrDepth補正の除数
     // （yaneuraou-search.cpp:3661。continuation+pawn historyの
     // 和にmain historyの `71/32` を足した値をこれで割り、lmrDepthへ加える）

@@ -252,7 +252,7 @@ impl TimeManager {
         let inc = inc as i64;
         let byoyomi = limits.byoyomi as i64;
 
-        // 配分の分母は現行のまま据え置く。G7の切り分けである。
+        // 配分の分母は現行のまま据え置く。
         //
         // 参照実装の分母（move horizon方式のMTG）を入れた版は、支えを揃えた
         // うえでも730局で-15.7だった。分母だけをmove horizon方式にした
@@ -439,7 +439,7 @@ impl TimeManager {
         self.search_end = self.round_up(t1.max(t2)) + ponderhit_offset;
     }
 
-    /// 次の反復を回す時間があるか（G9。yaneuraou-search.cpp:1961-2053）。
+    /// 次の反復を回す時間があるか（yaneuraou-search.cpp:1961-2053）。
     /// optimumを5係数の積で伸ばし縮めし、経過時間と比べる。
     ///
     /// 停止条件を満たしてもここでは止めない。呼び出し側がponderの有無を
@@ -544,7 +544,7 @@ mod tests {
     #[test]
     fn fischer_adds_minimum_to_current_formula() {
         // 300+10。配分の分母は現行式を据え置き、最小思考時間の
-        // 床だけを参照実装から採る（G7の切り分け）
+        // 床だけを参照実装から採る
         let limits = Limits {
             btime: 300_000,
             binc: 10_000,
