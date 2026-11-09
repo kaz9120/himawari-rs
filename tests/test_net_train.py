@@ -5,6 +5,7 @@
 
 from pathlib import Path
 
+import json
 import pytest
 
 from hmwr import cli, paths, proc
@@ -153,10 +154,14 @@ def test_default_arch_fails_when_build_rs_changes_shape(tmp_path, monkeypatch):
 
 
 @pytest.fixture
-def extension(monkeypatch):
+def extension(monkeypatch, tmp_path):
     """入っている拡張の構成を差し替え、ビルドと入れ直しの呼び出しを控える。"""
-    state = {"installed": "", "builds": [], "installs": []}
+    state = {"installed": "", "builds": [], "installs": [], "source": "tree1"}
     monkeypatch.setattr(net, "default_arch", lambda: "1024x16x32")
+    monkeypatch.setattr(net, "_source_fingerprint", lambda: state["source"])
+    stamp = tmp_path / "installed.json"
+    monkeypatch.setattr(net, "EXTENSION_STAMP", stamp)
+    state["stamp"] = stamp
     monkeypatch.setattr(proc, "capture", lambda argv, **_: state["installed"] + "\n")
 
     def fake_run(argv, **kw):
@@ -171,10 +176,32 @@ def extension(monkeypatch):
     return state
 
 
+def _stamp(extension, arch="1024x16x32", source="tree1"):
+    extension["stamp"].write_text(json.dumps({"arch": arch, "source": source}), encoding="utf-8")
+
+
 def test_extension_of_the_default_arch_is_kept(extension):
     extension["installed"] = "1024x16x32"
+    _stamp(extension)
     net._ensure_extension(dry_run=False)
     assert extension["builds"] == [] and extension["installs"] == []
+
+
+def test_extension_is_rebuilt_when_the_crates_changed(extension, capsys):
+    """構成が同じでも、拡張を入れた後に crates/ が変わったら古い拡張で学習しない。"""
+    extension["installed"] = "1024x16x32"
+    _stamp(extension, source="tree0")
+    net._ensure_extension(dry_run=False)
+    assert extension["installs"] == ["1024x16x32"]
+    assert "crates/ が変わった" in capsys.readouterr().out
+    assert json.loads(extension["stamp"].read_text(encoding="utf-8"))["source"] == "tree1"
+
+
+def test_extension_without_a_stamp_is_rebuilt(extension):
+    """控えの無い拡張は、いつのコードで作ったか分からないので作り直す。"""
+    extension["installed"] = "1024x16x32"
+    net._ensure_extension(dry_run=False)
+    assert extension["installs"] == ["1024x16x32"]
 
 
 def test_extension_of_another_arch_is_rebuilt_with_the_default(extension, capsys):
@@ -207,6 +234,7 @@ def test_arch_rebuilds_the_extension_with_that_arch(extension):
 
 def test_extension_of_the_asked_arch_is_kept(extension):
     extension["installed"] = "512x16x64"
+    _stamp(extension, arch="512x16x64")
     net._ensure_extension("512x16x64", dry_run=False)
     assert extension["builds"] == [] and extension["installs"] == []
 
