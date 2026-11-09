@@ -36,7 +36,7 @@ case $mode in
 parens)
 	body=$(commits %B) || exit 0
 	if printf '%s\n' "$body" | grep -qE '\([^()]*\('; then
-		echo 'このブランチのコミット本文に入れ子の半角括弧がある。release-pleaseのパーサが失敗し、その回のリリースが黙って止まる。git commit --amend で直す（CLAUDE.md「コミット規律」）' >&2
+		echo 'このブランチのコミット本文に入れ子の半角括弧がある。release-pleaseのパーサが失敗し、その回のリリースが黙って止まる。git commit --amend で直す（CLAUDE.md「開発フロー」）' >&2
 		exit 2
 	fi
 	;;
@@ -50,7 +50,7 @@ subject)
 	0) ;;
 	1)
 		printf '%s\n' "$out" >&2
-		echo 'コミット件名がyomiyasuに引っかかっている。件名はrelease-please経由でCHANGELOGへ載り、後から直せない。git commit --amend で直す（CLAUDE.md「コミット規律」）' >&2
+		echo 'コミット件名がyomiyasuに引っかかっている。件名はrelease-please経由でCHANGELOGへ載り、後から直せない。git commit --amend で直す（CLAUDE.md「開発フロー」）' >&2
 		exit 2
 		;;
 	*) warn "yomiyasuが終了コード $code で落ちた: $out" ;;

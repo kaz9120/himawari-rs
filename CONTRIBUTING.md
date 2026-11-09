@@ -17,11 +17,10 @@ himawari-rsはRustで書いた将棋エンジンである。報告と提案を�
 
 変更はすべてPull Request経由で入る。PRテンプレートで種別を選ぶ。
 
-- 棋力に関わる変更（探索・評価関数・時間管理）は、[ADR](docs/adr/README.md)を
-  起こしてSPRT（自己対局の逐次検定）でH1採択されたものだけを取り込む。
-  基準は[ADR-0028](docs/adr/0028-pruning-extensions.md)にある
+- 棋力に関わる変更（探索・評価関数・時間管理）は、SPRT（自己対局の逐次検定）で
+  H1採択されたものだけを取り込む
 - それ以外（文書、ツール、CI）はCIが緑なら取り込む
 
-開発の流儀は[CLAUDE.md](CLAUDE.md)と[docs/adr](docs/adr/README.md)にある。
+開発の流儀は[CLAUDE.md](CLAUDE.md)にある。
 コミットの件名はConventional Commits（`feat:` `fix:` `docs:` `chore:`）で、
 本文は日本語でよい。

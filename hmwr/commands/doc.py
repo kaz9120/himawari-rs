@@ -22,13 +22,8 @@ def add_parser(sub: argparse._SubParsersAction) -> None:
 
     t = ss.add_parser(
         "check",
-        help="文書どうしの整合を検査する",
-        description="設計記録（docs/adr）のStatusと索引の一致、ファイルと索引の過不足、"
-        "相対リンクの行き先を見る。--stale-days を渡すと、proposedのまま動いていない"
-        "設計記録も挙げる。",
-    )
-    t.add_argument(
-        "--stale-days", type=int, default=0, metavar="N", help="proposedのままN日動いていない設計記録を挙げる"
+        help="文書の相対リンクの行き先を検査する",
+        description="Markdownの相対リンクが、リポジトリの中の実在するファイルを指しているかを見る。",
     )
     t.set_defaults(func=check)
 
@@ -41,7 +36,7 @@ def lint(args: argparse.Namespace) -> int:
 
 
 def check(args: argparse.Namespace) -> int:
-    found = doccheck.run_all(stale_days=args.stale_days)
+    found = doccheck.run_all()
     for finding in found:
         print(finding)
     if found:

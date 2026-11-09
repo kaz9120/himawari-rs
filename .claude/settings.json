@@ -75,7 +75,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "cd \"$CLAUDE_PROJECT_DIR\" || { echo \"rustfmtを検査できなかった（$CLAUDE_PROJECT_DIR へ移れない）\" >&2; exit 0; }; cargo fmt --check || { echo 'cargo fmt が通っていない。cargo fmt を実行してからコミットする（CLAUDE.md「コミット規律」）' >&2; exit 2; }",
+            "command": "cd \"$CLAUDE_PROJECT_DIR\" || { echo \"rustfmtを検査できなかった（$CLAUDE_PROJECT_DIR へ移れない）\" >&2; exit 0; }; cargo fmt --check || { echo 'cargo fmt が通っていない。cargo fmt を実行してからコミットする（CLAUDE.md「開発フロー」）' >&2; exit 2; }",
             "statusMessage": "rustfmtを検査中",
             "timeout": 60
           },

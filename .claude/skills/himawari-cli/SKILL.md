@@ -5,7 +5,7 @@ description: himawari-rsの開発コマンドhmwrを使う。ビルド・機能�
 
 # hmwr: 開発コマンド
 
-`hmwr` が開発操作の入口である（[ADR-0180](../../../docs/adr/0180-hmwr-cli-in-python.md)）。
+`hmwr` が開発操作の入口である（ADR-0180）。
 ビルドも測定も学習もここから行う。**個別のスクリプトを直接叩く前に
 `hmwr --help` を見る。**
 

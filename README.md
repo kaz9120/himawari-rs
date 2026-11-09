@@ -1,8 +1,7 @@
 <!--
-この文書の読み手と範囲はADR-0182で決めた。読み手は2人いる。エンジンを対局に
-使う人と、このリポジトリで開発する人である。棋力・ネットの世代・Elo・既定の
-構成値のように変わり続ける事実はここへ書かず、一次情報の置き場（Releases・
-docs/ROADMAP.md・docs/adr/・コード）を指す。
+読み手は2人いる。エンジンを対局に使う人と、このリポジトリで開発する人である。
+棋力・ネットの世代・Elo・既定の構成値のように変わり続ける事実はここへ書かず、
+一次情報の置き場（Releases・コード）を指す。
 -->
 
 # himawari-rs
@@ -12,8 +11,7 @@ Rustで書くコンピュータ将棋エンジン。USIプロトコルに対応�
 依存はなく、エンジン本体と評価関数ファイルの2つで動く。
 
 2027年5月の世界コンピュータ将棋選手権への参加を目標にしている。floodgateで
-継続して対局しており、現在の棋力と開発の現在地は
-[docs/ROADMAP.md](docs/ROADMAP.md)の「現在地」から辿れる。
+継続して対局している。レートの推移は下のグラフにある。
 
 ![floodgateのレートの推移](https://raw.githubusercontent.com/kaz9120/himawari-rs/rate-graph/rate.svg)
 
@@ -256,19 +254,17 @@ PyTorchで学習する。教師データはPackedSfenValue形式で、`crates/py
 
 ### 進め方
 
-状況・設計・手順はリポジトリ内の文書で管理する。GitHub Issuesは細かい改善（`micro` ラベル）に使う。
+開発はエージェントが実験を回して進める。実験の仮説と結果はPRに書き、
+GitHub Issuesは細かい改善（`micro` ラベル）に使う。
 
 | 文書 | 読むとき |
 |---|---|
-| [docs/ROADMAP.md](docs/ROADMAP.md) | 次に何をするか知りたいとき |
-| [docs/adr/README.md](docs/adr/README.md) | なぜそうしたか知りたいとき |
+| [CLAUDE.md](CLAUDE.md) | 作業の規約と、実験で得たノウハウを知りたいとき |
 | [docs/DATASETS.md](docs/DATASETS.md) | 教師データを扱うとき |
 | [CHANGELOG.md](CHANGELOG.md) | 何が入ったか見るとき |
-| [CLAUDE.md](CLAUDE.md) | 作業の規約を確認するとき |
 
-設計判断はすべてADRに記録し、実装より先に書く。棋力が変わる変更は、SPRTで
-H1採択したものだけをmainへ入れる。変更はPR経由で入れ、バージョンとCHANGELOGは
-release-pleaseがコミットの型から作る。
+棋力が変わる変更は、SPRTでH1採択したものだけをmainへ入れる。変更はPR経由で入れ、
+バージョンとCHANGELOGはrelease-pleaseがコミットの型から作る。
 
 ## workspace構成
 
