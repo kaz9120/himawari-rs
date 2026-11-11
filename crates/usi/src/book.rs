@@ -17,7 +17,7 @@
 
 use std::collections::HashMap;
 
-use himawari_core::{Color, Move, Position};
+use himawari_core::{Color, Move, Position, Repetition};
 
 /// 定跡の1手（book.h:52-70）。db形式の1行に対応する。
 #[derive(Clone)]
@@ -66,6 +66,8 @@ pub struct BookParams {
     /// 参照実装は常にランダムに選ぶ（book.cpp:1764）。本エンジンは
     /// SPRTの再現性を保つため既定を決定的にし、切り替えを選べるようにした
     pub randomize: bool,
+    /// 対局中に出た局面へ戻る定跡の手を引かず、探索に任せる（本エンジン独自）
+    pub avoid_repetition: bool,
 }
 
 /// 定跡のUSIオプションの既定値を持つ唯一の場所。`main.rs` のoption宣言は
@@ -82,6 +84,7 @@ impl Default for BookParams {
             depth_limit: 16,
             flipped: true,
             randomize: false,
+            avoid_repetition: true,
         }
     }
 }
@@ -431,6 +434,20 @@ impl Book {
             0
         };
         let (entry, mv) = &moves[idx];
+        // 対局中に出た局面へ戻る手は引かない。定跡は手数を除いた局面で引くので、
+        // 循環する手順を持つと、両者が定跡のまま千日手まで進む。
+        // 引き分けの評価値を知る探索に任せる
+        if p.avoid_repetition {
+            let mut next = pos.clone();
+            next.do_move(*mv);
+            if next.repetition_state_all() != Repetition::None {
+                notes.push(format!(
+                    "book move {} repeats a position; search instead.",
+                    entry.mv
+                ));
+                return None;
+            }
+        }
         let mut ponder = Move::NONE;
         let mut child = pos.clone();
         child.do_move(*mv);
@@ -515,6 +532,34 @@ mod tests {
         assert_eq!(hit.ponder.to_usi(), "8c8d");
         assert_eq!(hit.value, 55);
         assert_eq!(hit.depth, 24);
+    }
+
+    #[test]
+    fn probe_skips_move_back_to_a_seen_position() {
+        // 玉が往復して初期配置へ戻った局面。定跡の5i5hは、対局中に出た局面へ戻る
+        let mut pos = Position::from_sfen(SFEN_STARTPOS).expect("startpos");
+        for u in ["5i5h", "5a5b", "5h5i", "5b5a"] {
+            let m = pos.move_from_usi(u).expect("legal");
+            pos.do_move(m);
+        }
+        let body = format!(
+            "#YANEURAOU-DB2016 1.00\nsfen {}\n5i5h 5a5b 10 24 1\n",
+            book_key(&pos)
+        );
+        let path = write_tmp("himawari_book_test_rep.db", &body);
+        let book = Book::load(&path).expect("load");
+        assert!(
+            probe(&book, &pos, &BookParams::default()).is_none(),
+            "既定では探索に任せる"
+        );
+        let off = BookParams {
+            avoid_repetition: false,
+            ..BookParams::default()
+        };
+        assert_eq!(probe(&book, &pos, &off).expect("hit").mv.to_usi(), "5i5h");
+        // 初めての局面では引く
+        let fresh = Position::from_sfen(SFEN_STARTPOS).expect("startpos");
+        assert!(probe(&book, &fresh, &BookParams::default()).is_some());
     }
 
     #[test]

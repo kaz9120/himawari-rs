@@ -255,6 +255,7 @@ fn print_options() {
     spin("BookDepthLimit", i64::from(b.depth_limit), 0, 99999);
     check("FlippedBook", b.flipped);
     check("BookRandomize", b.randomize);
+    check("BookAvoidRepetition", b.avoid_repetition);
     string("DebugLogFile", "");
     // SPSAのチューニング項目。tuneビルドだけが宣言する
     #[cfg(feature = "tune")]
@@ -463,6 +464,7 @@ fn set_option(opts: &mut EngineOptions, bopts: &mut BookOptions, tokens: &[&str]
         }
         "FlippedBook" => bopts.params.flipped = value == "true",
         "BookRandomize" => bopts.params.randomize = value == "true",
+        "BookAvoidRepetition" => bopts.params.avoid_repetition = value == "true",
         // SPSAのチューニング項目。tuneビルドだけが受ける
         #[cfg(feature = "tune")]
         name if himawari_engine::tunables::ENTRIES
