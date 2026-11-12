@@ -276,9 +276,7 @@ impl Worker {
                 let gives_check = self.pos.gives_check(m);
 
                 // 延長（yaneuraou-search.cpp:3543, 3872）。singularの判定に入った
-                // TT手はその結果を使う。王手延長は参照実装が持たない
-                // 本エンジンの機能なので残すが、singularの判定が付いた手では
-                // singular側を採る（多段化した延長量を王手延長で潰さない）。
+                // TT手だけがその結果で延長する。参照実装と同じく王手延長は持たない。
                 // 参照実装は延長をムーブループの枝刈りの後で加えるので、枝刈りの
                 // 尺度（lmr_depth）はこの値でなく `depth - 1` を基準にする
                 let (extension, base_depth) = match singular_ext {
@@ -287,12 +285,7 @@ impl Worker {
                     // 増えた1手はTT手自身には乗らない
                     // （yaneuraou-search.cpp:3556, 3788）
                     Some(e) if m == tt.mv => (e, depth_pre_singular),
-                    // 王手の延長は根の深さの2倍の手数までにする。上限が
-                    // ないと王手と応手の連鎖で深さが減らず、MAX_PLY付近でノードが膨らむ
-                    _ => (
-                        i32::from(gives_check && (ply as u32) < 2 * self.root_depth),
-                        depth as i32,
-                    ),
+                    _ => (0, depth as i32),
                 };
                 let mut new_depth = base_depth - 1 + extension;
 
