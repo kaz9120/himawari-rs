@@ -111,6 +111,29 @@ impl Worker {
             return self.qsearch::<PV>(alpha, beta, ply);
         }
 
+        // 1手詰め判定（yaneuraou-search.cpp:2895-2958）。置換表にヒットした
+        // ノードは判定済みとみなして呼ばない。除外手つきの検証探索と王手中も
+        // 呼ばない。評価関数より手前に置くので、詰みがあれば評価を省ける
+        if tt.hit.is_none()
+            && excluded == Move::NONE
+            && !in_check
+            && let Some(m) = self.pos.mate_1ply()
+        {
+            let mate = mate_in(ply + 1);
+            // 静止探索と同じく、mate_in()の値をvalue_to_tt()に通さずに書く。
+            // 深さは参照実装と同じdepth + 6にする。大きすぎると置換されにくい
+            self.shared.tt.store(
+                key,
+                m.to_move16(),
+                mate as i16,
+                VALUE_NONE as i16,
+                ((depth as i32 + 6).min(MAX_PLY as i32 - 1) + TT_DEPTH_OFFSET).min(255) as u8,
+                Bound::Exact,
+                self.stack[ply + STACK_OFFSET].tt_pv,
+            );
+            return mate;
+        }
+
         // 静的評価。TTのevalを再利用する。
         // rawは補正前（TT保存用）、static_evalはcorrection history補正後。
         let raw_eval = if in_check {
