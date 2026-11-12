@@ -245,6 +245,16 @@ impl SearchBoard {
         self.mb.enemy_king_escapes()
     }
 
+    /// 手番を相手へ渡したとき、相手に1手詰めがあるか（詰めろの判定）。
+    /// 王手されていない局面で呼ぶ。盤を一時的にnull moveで進めて戻す
+    #[inline]
+    pub fn opponent_has_mate_1ply(&mut self) -> bool {
+        self.mb.do_null_move();
+        let r = self.mb.mate_1ply().is_some();
+        self.mb.undo_null_move();
+        r
+    }
+
     /// 置換表の `Move16` を完全な手へ戻す。
     #[inline(always)]
     pub fn to_move(&self, m16: Move16) -> Option<Move> {

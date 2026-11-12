@@ -433,6 +433,9 @@ impl Worker {
             && (tt.mv == Move::NONE || tt_capture)
             && beta > VALUE_MATED_IN_MAX_PLY
             && eval < VALUE_MATE_IN_MAX_PLY
+            // 相手に1手詰めの詰めろがあれば、静的評価は局面の値を表さない。
+            // 刈らずに読む。判定は刈る条件が揃ったノードでだけ払う
+            && !self.pos.opponent_has_mate_1ply()
         {
             // 静的評価そのものではなく、βへ寄せた値を返す
             return Some((2 * beta + eval) / 3);
