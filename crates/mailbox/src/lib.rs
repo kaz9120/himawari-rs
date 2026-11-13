@@ -14,6 +14,7 @@ pub const ORDER_MATCHES_CORE: bool = !cfg!(mb_order_type);
 pub mod board;
 pub mod check;
 pub mod mate;
+pub mod mate3;
 pub mod movegen;
 pub mod moves;
 pub mod position;

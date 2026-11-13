@@ -548,6 +548,12 @@ impl Position {
         self.mate_drops::<COUNT>(ks, escapes, ksq, near, empty, occ_all, cnt)
     }
 
+    /// 相手玉の逃げ場の数。3手詰めを調べるかの足切りに使う。
+    pub fn enemy_king_escapes(&self) -> u32 {
+        self.mate_escapes(self.side, self.king[self.side.flip().index()])
+            .count_ones()
+    }
+
     /// 相手玉の逃げ場（81升の集合）。1手詰めの列挙の1段目。
     #[inline(always)]
     fn mate_escapes(&self, us: Color, ksq: u8) -> u128 {

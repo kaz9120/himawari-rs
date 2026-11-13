@@ -6,7 +6,27 @@
 #[allow(clippy::wildcard_imports)]
 use super::*;
 
+/// 3手詰めを調べる残り深さの上限。これより深いノードは探索そのものが3手詰めを読む。
+const MATE3_MAX_DEPTH: u32 = 4;
+/// 3手詰めを調べる、相手玉の逃げ場の数の上限。利きの配列から数えるので安い。
+const MATE3_MAX_ESCAPES: u32 = 1;
+
 impl Worker {
+    /// 短い詰みを探し、初手と詰みの値を返す。1手詰めは常に、3手詰めは浅いノードで
+    /// 相手玉の逃げ場が少ないときだけ調べる。
+    pub(super) fn find_short_mate(&mut self, depth: u32, ply: usize) -> Option<(Move, Value)> {
+        if let Some(m) = self.pos.mate_1ply() {
+            return Some((m, mate_in(ply + 1)));
+        }
+        if depth <= MATE3_MAX_DEPTH
+            && self.pos.enemy_king_escapes() <= MATE3_MAX_ESCAPES
+            && let Some(m) = self.pos.mate_3ply()
+        {
+            return Some((m, mate_in(ply + 3)));
+        }
+        None
+    }
+
     /// LMRのリダクション量の加減算（yaneuraou-search.cpp:3879-3941）。
     /// 参照実装はdo_moveの後に置くが、読む材料は進める前の局面で決まるので
     /// ここでまとめる。項1（ttPv）は枝刈りの尺度にも入るため呼び出し側にある。

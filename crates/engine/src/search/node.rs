@@ -117,9 +117,8 @@ impl Worker {
         if tt.hit.is_none()
             && excluded == Move::NONE
             && !in_check
-            && let Some(m) = self.pos.mate_1ply()
+            && let Some((m, mate)) = self.find_short_mate(depth, ply)
         {
-            let mate = mate_in(ply + 1);
             // 静止探索と同じく、mate_in()の値をvalue_to_tt()に通さずに書く。
             // 深さは参照実装と同じdepth + 6にする。大きすぎると置換されにくい
             self.shared.tt.store(

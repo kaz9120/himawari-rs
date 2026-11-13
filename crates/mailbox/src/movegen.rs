@@ -798,6 +798,61 @@ fn push_variants<L: MoveSink>(us: Color, pt: u8, from81: u8, to81: u8, all: bool
     }
 }
 
+/// 王手になる手だけを通す受け手。
+struct CheckFilter<'a, L> {
+    pos: &'a Position,
+    inner: &'a mut L,
+}
+
+impl<L: MoveSink> MoveSink for CheckFilter<'_, L> {
+    #[inline(always)]
+    fn push_normal(&mut self, from81: u8, to81: u8, promote: bool, piece_after: u8) {
+        if self.pos.gives_check81(to81, from81, false, piece_after) {
+            self.inner.push_normal(from81, to81, promote, piece_after);
+        }
+    }
+
+    #[inline(always)]
+    fn push_drop(&mut self, pt: u8, to81: u8, piece: u8) {
+        if self.pos.gives_check81(to81, 0, true, piece) {
+            self.inner.push_drop(pt, to81, piece);
+        }
+    }
+}
+
+impl Position {
+    /// 王手になる合法手だけを生成する（王手されていない局面で呼ぶ）。`all` が偽なら、
+    /// `generate` と同じく損な不成を省く。駒打ちは、持ち駒のどれかで王手になる空き升だけを回す。
+    pub fn generate_checks<L: MoveSink>(&self, all: bool, list: &mut L) {
+        let us = self.side;
+        let ui = us.index();
+        debug_assert!(!self.in_check());
+        let mut ctx = Ctx {
+            us,
+            evasion: ALL81,
+            k81: SQ81[self.king[ui] as usize],
+            pinned: 0,
+        };
+        self.collect_pins(&mut ctx);
+        let own = self.occ[ui];
+        let empty = ALL81 & !(own | self.occ[us.flip().index()]);
+        let mut sink = CheckFilter {
+            pos: self,
+            inner: list,
+        };
+        self.gen_board(&ctx, ALL81 & !own, all, false, &mut sink);
+        self.gen_king(&ctx, ALL81 & !own, &mut sink);
+        let cs = self.check_squares_all();
+        let mut drop_to = 0u128;
+        for pt in DROP_KINDS {
+            if self.has_hand(ui, pt) {
+                drop_to |= cs[pt as usize];
+            }
+        }
+        self.gen_drops(&ctx, drop_to & empty, &mut sink);
+    }
+}
+
 /// perft。深さ1は合法手の数を数えるだけにする。
 pub fn perft(pos: &mut Position, depth: u32) -> u64 {
     let mut list = MoveList::default();

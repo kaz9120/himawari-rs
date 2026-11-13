@@ -233,6 +233,18 @@ impl SearchBoard {
         r
     }
 
+    /// 3手以内の詰みの初手（王手されていない局面で呼ぶ）。見落としはあるが誤りは返さない。
+    #[inline]
+    pub fn mate_3ply(&mut self) -> Option<Move> {
+        self.mb.mate_3ply().map(mbconv::to_core)
+    }
+
+    /// 相手玉の逃げ場の数（玉の隣で、相手の駒がなく手番側の利きもない升）。
+    #[inline]
+    pub fn enemy_king_escapes(&self) -> u32 {
+        self.mb.enemy_king_escapes()
+    }
+
     /// 置換表の `Move16` を完全な手へ戻す。
     #[inline(always)]
     pub fn to_move(&self, m16: Move16) -> Option<Move> {
