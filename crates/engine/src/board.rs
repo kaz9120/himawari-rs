@@ -217,6 +217,59 @@ impl SearchBoard {
         r
     }
 
+    /// 手がβカットを起こす見込みの、利きから読む対数オッズ（1024倍）。指す前の盤で読む。
+    ///
+    /// 係数は探索木の統計（200局面×30万ノード、読んだ手1,600万件のうち200万件）に、
+    /// 深さとLMRのリダクション量を統制してロジスティック回帰で当てはめた値である。
+    /// リダクション量では説明できない分だけを持つ。
+    #[inline]
+    pub fn effect_cut_logit(&self, m: Move, gives_check: bool, is_capture: bool) -> i32 {
+        let us = self.mb.side_to_move();
+        let them = us.flip();
+        let to = mbconv::idx(m.to());
+        let us_to = self.mb.effect_count(us, to);
+        let them_to = self.mb.effect_count(them, to);
+        let mut z = 0;
+        // 行き先に相手の利きがあり自分の利きがない（取られに行く手）
+        if them_to > 0 && us_to == 0 {
+            z -= 1887;
+        }
+        if us_to >= 2 {
+            z += 830;
+        }
+        if them_to >= 2 {
+            z -= 1012;
+        }
+        if m.is_drop() {
+            z -= 404;
+            if gives_check {
+                z += 1733;
+            }
+        } else {
+            let from = mbconv::idx(m.from_sq());
+            // 移動元の駒が浮いている（逃げる手）
+            if self.mb.effect_count(them, from) > 0 && self.mb.effect_count(us, from) == 0 {
+                z += 58;
+            }
+        }
+        if gives_check {
+            z += 431;
+        }
+        if is_capture {
+            z += 20;
+        }
+        let ek = mbconv::sq(self.mb.king_square(them)).index() as i32;
+        let t = m.to().index() as i32;
+        let dist = (ek / 9 - t / 9).abs().max((ek % 9 - t % 9).abs());
+        z += match dist {
+            1 => 730,
+            2 => -53,
+            3 => -255,
+            _ => 0,
+        };
+        z
+    }
+
     /// 静的交換評価が閾値以上か。
     #[inline(always)]
     pub fn see_ge(&self, m: Move, threshold: i32) -> bool {

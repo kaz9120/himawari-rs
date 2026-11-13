@@ -6,6 +6,9 @@
 #[allow(clippy::wildcard_imports)]
 use super::*;
 
+/// 利きの対数オッズ（`effect_cut_logit`）の、読んだ手の上での平均（1024倍）。
+const EFFECT_LOGIT_MEAN: i32 = 224;
+
 impl Worker {
     /// 通常探索。参照実装が `search<PV>` と `search<NonPV>` をテンプレートで
     /// 分けるのに合わせ、ノード種別をconst genericの `PV` で受ける。
@@ -326,6 +329,11 @@ impl Worker {
 
                 // リダクションの加減算（yaneuraou-search.cpp:3879-3941）
                 let mut r = self.reduction_amount::<PV>(&node, m, &cont, r, alpha, depth, count);
+                // 利きの項。βカットの見込みが平均より高い手ほど削る量を減らす。
+                // 対数オッズ1を1手に換算し、平均（224）を引いて削る量の総和を保つ
+                if count > 1 && m != tt.mv {
+                    r -= self.pos.effect_cut_logit(m, gives_check, is_capture) - EFFECT_LOGIT_MEAN;
+                }
 
                 self.set_current_move(ply, m, is_capture);
                 self.make_move_prefetched(m);
