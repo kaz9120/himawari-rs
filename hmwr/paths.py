@@ -46,10 +46,10 @@ WORK = REPO
 # アンダースコアを含むため（pairprod_2990M_q1）、そこは許す
 NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
 
-# ネットワークの構成。<FT>x<L1>[x<L2>][e<E>[-f2_minatt]] の形だけを通す（512x16x64など）。
+# ネットワークの構成。<FT>x<L1>[x<L2>][s<N>][e<E>[p][-f2_minatt]] の形だけを通す（512x16x64など）。
 # 末尾の e<E> は幅Eの利きのaccumulatorを足す（例 1024x16x32e64）。その後ろの
 # -f2_minatt は側の入力をF2と最小の攻め駒の組にする（例 256x16x32e64-f2_minatt）
-ARCH_RE = re.compile(r"^\d+x\d+(x\d+)?(e\d+(-f2_minatt)?)?$")
+ARCH_RE = re.compile(r"^\d+x\d+(x\d+)?(s\d+)?(e\d+p?(-f2_minatt)?)?$")
 
 
 class BadName(ValueError):
@@ -77,7 +77,7 @@ def check_name(name: str) -> str:
 def check_arch(spec: str) -> str:
     """ネットワークの構成を検証する。ビルドと学習で同じ書式を使う。"""
     if not ARCH_RE.match(spec):
-        raise BadArch(f"構成の書き方が違う: {spec}（<FT>x<L1>[x<L2>][e<E>[-f2_minatt]]）")
+        raise BadArch(f"構成の書き方が違う: {spec}（<FT>x<L1>[x<L2>][s<N>][e<E>[p][-f2_minatt]]）")
     return spec
 
 
