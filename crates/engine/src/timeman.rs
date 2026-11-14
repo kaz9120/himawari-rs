@@ -57,6 +57,30 @@ const INCREASE_DEPTH_RATIO: f64 = 0.503;
 /// 持ち時間に合わせて定数を縮める。1手の配分がこれ未満なら、
 /// 秒単位の切り上げをやめる。秒単位の時計を前提にした仕組みだからである
 const ROUND_UP_MIN_AVAIL: i64 = 5000;
+/// 止めどきのモデルの入力の平均・標準偏差と重み（末尾は切片）。
+/// 自己対局の2,000局面を800万ノードまで読んだ記録から、「この反復の最善手が最後の
+/// 反復の最善手と違う」をロジスティック回帰で学習した値である。入力の順は
+/// ln(ノード数)、最善手の入れ替わり、ノードの集中度、最善手が変わっていない反復数、
+/// その8止め、|評価値|/1000、(4反復前-今)/100、その絶対値、今回最善手が変わったか
+const TM_MU: [f64; 9] = [
+    10.6914, 0.7465, 0.5137, 5.2479, 3.7689, 0.3611, -0.0094, 2.3012, 0.2156,
+];
+const TM_SD: [f64; 9] = [
+    3.0566, 1.1083, 0.3373, 5.8665, 3.1728, 0.5002, 3.9105, 3.1617, 0.4112,
+];
+const TM_W: [f64; 10] = [
+    -0.0485, 0.0121, -0.7474, -0.7178, 0.1258, 0.0022, 0.0879, -0.015, -0.0013, -0.7712,
+];
+/// 現行の式のoptimumと、それで使っていた平均の思考時間の比。模擬では0.50〜0.69だったが、
+/// 持ち時間つきで平均の思考時間がmainと揃うように合わせた
+const TM_TARGET_RATIO: f64 = 0.44;
+/// 止める閾値の係数c。予算5万ノードで0.476、2倍ごとに0.049下げる（模擬で合わせた値）
+const TM_C_BASE: f64 = 0.476;
+const TM_C_PER_DOUBLING: f64 = 0.049;
+const TM_C_REF_NODES: f64 = 50_000.0;
+const TM_C_MIN: f64 = 0.15;
+const TM_C_MAX: f64 = 0.6;
+
 /// 最小思考時間は配分のこの分の1までに抑える
 const MIN_THINK_AVAIL_DIV: i64 = 5;
 /// NetworkDelayは配分のこの分の1までに抑える
@@ -91,6 +115,8 @@ pub struct IterationStats {
     pub thread_count: usize,
     /// root手が1手しかないか（S:1995-1996）
     pub single_move: bool,
+    /// このスレッドがgoで読んだノード数。止めどきのモデルの入力
+    pub nodes: u64,
 }
 
 /// 反復の終わりに決まる時間の判断（S:1961-2053）。
@@ -470,13 +496,13 @@ impl TimeManager {
             } else {
                 1.0
             };
-        let mut total_time =
-            self.optimum() as f64 * falling * reduction * instability * high_effort;
+        let _ = (falling, reduction, instability, high_effort);
+        let elapsed = self.elapsed_ms();
+        let mut total_time = self.model_total_time(s, elapsed);
         // 合法手が1手ならこれ以上考えても仕方がない（S:1995-1996）
         if s.single_move {
             total_time = total_time.min(SINGLE_MOVE_CAP_MS);
         }
-        let elapsed = self.elapsed_ms();
         IterationPlan {
             budget_spent: (elapsed as f64) > total_time.min(self.maximum() as f64),
             // 深さを1段上げる余裕はないが、まだ時間はある状態（S:2049-2051）
@@ -484,6 +510,40 @@ impl TimeManager {
             time_reduction,
             elapsed,
         }
+    }
+
+    /// 止めどきのモデルが決める、この手の総思考時間[ms]（PR本文に導出がある）。
+    ///
+    /// 反復の終わりに「この先読んでも最善手が変わる確率p」をロジスティック回帰で見積もり、
+    /// `p < c × 経過時間 / 目安` になったら止める。総時間に直すと `p × 目安 / c` になる。
+    /// 目安は、現行の式で使っていた平均の思考時間に合わせて `optimum / TM_TARGET_RATIO` とする。
+    /// cは予算（1手のノード数の見込み）が2倍になるごとに下げる。予算が大きいほど、残りの
+    /// 反復で最善手が変わる確率が同じでも、止めたときに失うものが小さいからである
+    fn model_total_time(&self, s: &IterationStats, elapsed: i64) -> f64 {
+        let target = self.optimum() as f64 / TM_TARGET_RATIO;
+        let depth = s.completed_depth as f64;
+        let stab = depth - s.last_best_move_depth as f64;
+        let x = [
+            (s.nodes.max(1) as f64).ln(),
+            s.tot_best_move_changes / s.thread_count.max(1) as f64,
+            s.nodes_effort as f64 / 1e5,
+            stab,
+            stab.min(8.0),
+            f64::from(s.best_value.abs().min(3000)) / 1000.0,
+            f64::from(s.iter_value - s.best_value) / 100.0,
+            f64::from((s.iter_value - s.best_value).abs()) / 100.0,
+            f64::from(u8::from(stab == 0.0)),
+        ];
+        let mut z = TM_W[TM_MU.len()];
+        for i in 0..TM_MU.len() {
+            z += TM_W[i] * (x[i] - TM_MU[i]) / TM_SD[i];
+        }
+        let p = 1.0 / (1.0 + (-z.clamp(-30.0, 30.0)).exp());
+        // 予算 = 目安の時間に読めるノード数の見込み
+        let budget = s.nodes.max(1) as f64 * target / elapsed.max(1) as f64;
+        let c = (TM_C_BASE - TM_C_PER_DOUBLING * (budget / TM_C_REF_NODES).log2())
+            .clamp(TM_C_MIN, TM_C_MAX);
+        p * target / c
     }
 
     #[inline]

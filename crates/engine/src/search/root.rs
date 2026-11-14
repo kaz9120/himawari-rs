@@ -391,6 +391,7 @@ impl Worker {
                     tot_best_move_changes,
                     thread_count: self.thread_count,
                     single_move: self.root_moves.len() == 1,
+                    nodes: self.nodes,
                 };
                 let plan = self.tm.plan_next_iteration(&stats);
                 time_reduction = plan.time_reduction;
