@@ -129,17 +129,55 @@ pub fn stack_bucket_from_hand(total: u32) -> usize {
     if STACKS == 1 {
         return 0;
     }
-    let edges: &[u32] = match STACKS {
+    hand_level(total, STACKS)
+}
+
+/// 持ち駒の総数をn段階に分ける。
+#[inline]
+fn hand_level(total: u32, n: usize) -> usize {
+    let edges: &[u32] = match n {
+        1 => &[],
         2 => &STACK_EDGES_2,
         4 => &STACK_EDGES_4,
         8 => &STACK_EDGES_8,
         _ => &STACK_EDGES_16,
     };
-    edges
-        .iter()
-        .take(STACKS - 1)
-        .filter(|&&e| total >= e)
-        .count()
+    edges.iter().take(n - 1).filter(|&&e| total >= e).count()
+}
+
+/// 玉の危険度がこの値以上なら「危険」の組へ入れる。検証集合の10万局面で、両玉の
+/// 危険度は0が49%、1が16%、2以上が35%だった。
+pub const KING_DANGER_EDGE: u32 = 2;
+
+/// 玉の周り（玉の升と8近傍）への、相手の利きの数（升ごとに3で打ち切り）の和。
+/// `codes` は `side_feat::f2_minatt_codes` の語で、下位4ビットが先手・後手の利き数を持つ。
+#[inline]
+pub fn king_danger(codes: &[u16; 81], ksq: usize, c: Color) -> u32 {
+    let (kf, kr) = ((ksq / 9) as i32, (ksq % 9) as i32);
+    let mut d = 0;
+    for df in -1..=1 {
+        for dr in -1..=1 {
+            let (f, r) = (kf + df, kr + dr);
+            if (0..9).contains(&f) && (0..9).contains(&r) {
+                let code = codes[(f * 9 + r) as usize];
+                // 先手の利き数はビット2〜3、後手はビット0〜1。cの相手の利きを数える
+                d += u32::from(match c {
+                    Color::Black => code & 3,
+                    Color::White => (code >> 2) & 3,
+                });
+            }
+        }
+    }
+    d
+}
+
+/// 後段の組（`STACK_KING` の構成）。持ち駒の総数を `STACKS / 4` 段階に分け、手番側と相手側の
+/// 玉の危険度をそれぞれ2段階に分けた組み合わせで選ぶ。
+#[inline]
+pub fn stack_bucket_king(total: u32, danger_stm: u32, danger_opp: u32) -> usize {
+    hand_level(total, STACKS / 4) * 4
+        + usize::from(danger_stm >= KING_DANGER_EDGE) * 2
+        + usize::from(danger_opp >= KING_DANGER_EDGE)
 }
 
 /// 組の境界（持ち駒の総数がこの値以上なら次の組）。`sel_dedup_100M` の10万局面で

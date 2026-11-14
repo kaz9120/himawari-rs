@@ -75,6 +75,8 @@ struct Arch {
     stacks: usize,
     /// 側のaccの前半と後半を対にして掛けるか（`e<E>p`）。
     eff_pair: bool,
+    /// 後段の組を、持ち駒の総数に加えて両玉の周りへの相手の利きでも分けるか（`s<N>k`）。
+    stack_king: bool,
 }
 
 fn parse(spec: &str) -> Result<Arch, String> {
@@ -109,13 +111,20 @@ fn parse(spec: &str) -> Result<Arch, String> {
         None => (spec, 0, Vec::new(), false),
     };
     // 後段の組の数は本体の末尾の s<N> で書く（例 256x16x32s8e64）
-    let (body, stacks) = match body.split_once('s') {
-        Some((b, n)) => (
-            b,
-            n.parse::<usize>()
-                .map_err(|_| format!("後段の組の数が整数でない: {n}"))?,
-        ),
-        None => (body, 1),
+    let (body, stacks, stack_king) = match body.split_once('s') {
+        Some((b, n)) => {
+            let (n, king) = match n.strip_suffix('k') {
+                Some(n) => (n, true),
+                None => (n, false),
+            };
+            (
+                b,
+                n.parse::<usize>()
+                    .map_err(|_| format!("後段の組の数が整数でない: {n}"))?,
+                king,
+            )
+        }
+        None => (body, 1, false),
     };
     let parts: Vec<&str> = body.split('x').collect();
     let num = |name: &str, s: &str| -> Result<usize, String> {
@@ -140,6 +149,7 @@ fn parse(spec: &str) -> Result<Arch, String> {
         eff_kinds,
         stacks,
         eff_pair,
+        stack_king,
     })
 }
 
@@ -168,6 +178,9 @@ fn validate(a: &Arch) -> Result<(), String> {
             2 * EFF_MULTIPLE,
             a.eff
         ));
+    }
+    if a.stack_king && (a.stacks < 4 || a.eff_kinds.is_empty()) {
+        return Err("`s<N>k` は4組以上で、側の入力が `-f2_minatt` の構成にだけ書ける".to_string());
     }
     if !a.stacks.is_power_of_two() || a.stacks > STACKS_MAX {
         return Err(format!(
@@ -291,6 +304,12 @@ fn main() {
     )
     .unwrap();
     writeln!(src, "pub const EFF_PAIR: bool = {};", arch.eff_pair).unwrap();
+    writeln!(
+        src,
+        "/// 後段の組を、持ち駒の総数に加えて両玉の周りへの相手の利きでも分けるか。"
+    )
+    .unwrap();
+    writeln!(src, "pub const STACK_KING: bool = {};", arch.stack_king).unwrap();
     writeln!(src, "/// 構成名。評価ファイルの来歴とログに載せる。").unwrap();
     writeln!(src, "pub const ARCH: &str = {spec:?};").unwrap();
 

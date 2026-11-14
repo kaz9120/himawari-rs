@@ -53,13 +53,35 @@ pub fn stack_bucket<B: EvalBoard + ?Sized>(pos: &B) -> usize {
     if crate::nnue::STACKS == 1 {
         return 0;
     }
+    if crate::nnue::STACK_KING {
+        let mut codes = [0u16; 81];
+        crate::side_feat::f2_minatt_codes(pos, &mut codes);
+        return stack_bucket_codes(pos, &codes);
+    }
+    crate::nnue::stack_bucket_from_hand(hand_total(pos))
+}
+
+/// 両者の持ち駒の総数。
+#[inline]
+fn hand_total<B: EvalBoard + ?Sized>(pos: &B) -> u32 {
     let mut total = 0;
     for c in [Color::Black, Color::White] {
         for pt in PieceType::HAND_KINDS {
             total += pos.hand_count(c, pt);
         }
     }
-    crate::nnue::stack_bucket_from_hand(total)
+    total
+}
+
+/// 81升の語が手元にあるときの後段の組。`STACK_KING` の構成で、語から玉の危険度を数える。
+#[inline]
+pub fn stack_bucket_codes<B: EvalBoard + ?Sized>(pos: &B, codes: &[u16; 81]) -> usize {
+    if !crate::nnue::STACK_KING {
+        return stack_bucket(pos);
+    }
+    let stm = pos.side_to_move();
+    let d = |c: Color| crate::nnue::king_danger(codes, pos.king(c).index(), c);
+    crate::nnue::stack_bucket_king(hand_total(pos), d(stm), d(stm.flip()))
 }
 
 impl EvalBoard for Position {
@@ -362,7 +384,12 @@ impl NnueState {
         let concat = &mut *self.concat;
         #[cfg(feature = "actdump")]
         crate::actdump::record(concat);
-        nnue_simd::forward_hidden_at(net, concat, stack_bucket(pos))
+        let bucket = if crate::nnue::STACK_KING {
+            stack_bucket_codes(pos, &self.eff[self.top].codes)
+        } else {
+            stack_bucket(pos)
+        };
+        nnue_simd::forward_hidden_at(net, concat, bucket)
     }
 
     /// 利きのaccumulatorを最上段に用意する。

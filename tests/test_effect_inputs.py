@@ -186,7 +186,9 @@ def test_quantized_net_matches_the_model(mode, tmp_path):
     # 側の対の積の統制群は、全局面で側の活性が同じ値になり、積の丸め（各列±0.5）が
     # 局面ごとに打ち消し合わず平均に残る。経路の取り違えなら平均70点前後開くので、
     # 3倍に緩めても区別できる
-    limit = 6.0 if EFF_ACT != himawari.EFF_OUT else 2.0
+    # 後段を16組持つ構成では、乱数の後段ごとに丸めが乗り、平均2.2点前後になる
+    # （2026-11-15の実測）。組の取り違えなら数十点開く
+    limit = 6.0 if EFF_ACT != himawari.EFF_OUT else 2.5 if getattr(himawari, "STACKS", 1) > 1 else 2.0
     assert err.mean() < limit, f"平均誤差 {err.mean():.2f} 最大 {err.max():.2f}"
     assert err.max() < 8.0, f"最大誤差 {err.max():.2f}"
     assert effect.mean() > 10 * err.mean(), (

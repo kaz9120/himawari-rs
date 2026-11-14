@@ -422,6 +422,7 @@ fn himawari(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add("L2_OUT", L2_OUT)?;
     m.add("ARCH", ARCH)?;
     m.add("STACKS", STACKS)?;
+    m.add("STACK_KING", himawari_engine::nnue::STACK_KING)?;
     m.add("EFF_PAIR", himawari_engine::nnue::EFF_PAIR)?;
     m.add("EFF_IN", EFF_IN)?;
     m.add("EFF_OUT", EFF_OUT)?;
