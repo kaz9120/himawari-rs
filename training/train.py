@@ -41,7 +41,9 @@ def validate(model, valid_loader, device):
             # 利きの入力特徴。抽出させていなければ空で来る。
             # 古い拡張のPsvDatasetは5本しか返さないので、そのときは渡さない
             eff = [x.to(device) for x in batch[7:9]]
-            out = model(stm_i, stm_o, opp_i, opp_o, *eff)
+            # 10本目は後段の組の番号
+            bucket = batch[9].to(device) if len(batch) > 9 else None
+            out = model(stm_i, stm_o, opp_i, opp_o, *eff, bucket=bucket)
             loss = loss_fn(out, targets)
             total_loss += loss.item() * targets.size(0)
             total_n += targets.size(0)
@@ -435,13 +437,15 @@ def main():
             tensors = [x.to(device) for x in batch]
             stm_i, stm_o, opp_i, opp_o, targets = tensors[:5]
             eff_stm, eff_opp = tensors[7:9]
+            # 10本目は後段の組の番号（1組の構成では全部0）
+            bucket = tensors[9] if len(tensors) > 9 else None
             n = targets.size(0)
 
             optimizer_dense.zero_grad()
             if optimizer_ft is not None:
                 optimizer_ft.zero_grad()
             x = model.transform_both(stm_i, stm_o, opp_i, opp_o, eff_stm, eff_opp)
-            out = model.value(x)
+            out = model.value(x, bucket)
             # ログとvalidに載せるのは評価値の損失だけにする。合計を載せると
             # λを変えるたびに指標が動き、過去の学習と比べられなくなる
             loss = loss_fn(out, targets)
@@ -449,10 +453,10 @@ def main():
             if rank_loader is not None:
                 # 兄弟局面のランキング損失。正例の葉が負例の葉
                 # より親視点で良い、をシグモイド空間のヒンジで課す
-                r_si, r_so, r_oi, r_oo, r_par, r_es, r_eo = [
+                r_si, r_so, r_oi, r_oo, r_par, r_es, r_eo, r_b = [
                     x.to(device) for x in rank_loader.sample()
                 ]
-                u = model(r_si, r_so, r_oi, r_oo, r_es, r_eo)
+                u = model(r_si, r_so, r_oi, r_oo, r_es, r_eo, bucket=r_b)
                 sign = 1.0 - 2.0 * r_par
                 upv = torch.sigmoid(u * sign).view(-1, 3)
                 hinge = F.relu(args.rank_margin + upv[:, 1:3] - upv[:, 0:1])

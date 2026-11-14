@@ -249,7 +249,7 @@ class RankLoader:
             recs.tobytes(), 0.0, 0, 0, True, effect_inputs=self.effect_inputs,
         ))
         stm_i, stm_o, opp_i, opp_o = arrays[:4]
-        return stm_i, stm_o, opp_i, opp_o, parity, arrays[7], arrays[8]
+        return stm_i, stm_o, opp_i, opp_o, parity, arrays[7], arrays[8], arrays[9]
 
     def _produce(self):
         while True:

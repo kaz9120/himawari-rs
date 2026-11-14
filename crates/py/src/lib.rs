@@ -7,8 +7,8 @@ use himawari_core::packed_sfen::{PSV_BYTES, PackedSfenValue, unpack};
 
 use himawari_engine::nnue::{
     ARCH, CONCAT, EFF_GENERIC, EFF_IN, EFF_MAX_ACTIVE, EFF_OUT, FT_IN, FT_OUT, L1_OUT, L1_PAD,
-    L2_OUT, LAST_HIDDEN, NnueNetwork, effect_active, effect_counts, evaluate_scalar, halfkp_active,
-    move_labels,
+    L2_OUT, LAST_HIDDEN, NnueNetwork, STACKS, effect_active, effect_counts, evaluate_scalar,
+    halfkp_active, move_labels,
 };
 use himawari_engine::nnue_io;
 
@@ -30,6 +30,8 @@ struct Sample {
     /// 側の入力特徴。手番視点・非手番視点の順に `EFF_ACTIVE` 個ずつ。F2は81個で、
     /// F2と最小の攻め駒の組は上限の個数まで詰め物（`EFF_IN`）で埋める。
     eff_inputs: Option<(Vec<u32>, Vec<u32>)>,
+    /// 後段の組の番号（`stack_bucket`）。1組の構成では0。
+    bucket: i64,
 }
 
 /// 1レコードを特徴・教師信号・指し手ラベルに変換する。
@@ -77,6 +79,7 @@ fn extract_one(
         move_from,
         move_to,
         eff_inputs,
+        bucket: himawari_engine::nnue_acc::stack_bucket(&pos) as i64,
     })
 }
 
@@ -125,10 +128,10 @@ fn extract_features(
 /// バッチ分のレコードをまとめてEmbeddingBag形式へ変換する。
 ///
 /// 戻り値は `(stm_idx, stm_off, opp_idx, opp_off, targets, move_from, move_to,
-/// eff_stm, eff_opp)` の9本。`move_from`・`move_to` は補助ヘッド用の指し手
+/// eff_stm, eff_opp, bucket)` の10本。`move_from`・`move_to` は補助ヘッド用の指し手
 /// ラベルで、取れなかった局面は-1になる。最後の2本は利きの入力特徴
 /// で、1局面あたり `EFF_ACTIVE` 個ずつ並ぶ（F2は81）。
-/// `effect_inputs` が偽なら長さ0で返る。
+/// `effect_inputs` が偽なら長さ0で返る。`bucket` は後段の組の番号（1組の構成では0）。
 /// 抽出はrayonで並列に行い、その間GILを解放する。
 type BatchArrays<'py> = (
     Bound<'py, PyArray1<i64>>,
@@ -136,6 +139,7 @@ type BatchArrays<'py> = (
     Bound<'py, PyArray1<i64>>,
     Bound<'py, PyArray1<i64>>,
     Bound<'py, PyArray1<f32>>,
+    Bound<'py, PyArray1<i64>>,
     Bound<'py, PyArray1<i64>>,
     Bound<'py, PyArray1<i64>>,
     Bound<'py, PyArray1<i64>>,
@@ -160,47 +164,60 @@ fn extract_batch<'py>(
         )));
     }
 
-    let (dropped, stm_idx, stm_off, opp_idx, opp_off, targets, mv_from, mv_to, eff_stm, eff_opp) =
-        py.allow_threads(|| {
-            let per: Vec<Option<Sample>> = records
-                .par_chunks_exact(PSV_BYTES)
-                .map(|chunk| {
-                    let raw: &[u8; PSV_BYTES] = chunk.try_into().unwrap();
-                    extract_one(raw, lambda_, score_limit, score_clamp, effect_inputs)
-                })
-                .collect();
+    let (
+        dropped,
+        stm_idx,
+        stm_off,
+        opp_idx,
+        opp_off,
+        targets,
+        mv_from,
+        mv_to,
+        eff_stm,
+        eff_opp,
+        buckets,
+    ) = py.allow_threads(|| {
+        let per: Vec<Option<Sample>> = records
+            .par_chunks_exact(PSV_BYTES)
+            .map(|chunk| {
+                let raw: &[u8; PSV_BYTES] = chunk.try_into().unwrap();
+                extract_one(raw, lambda_, score_limit, score_clamp, effect_inputs)
+            })
+            .collect();
 
-            let n = per.len();
-            let dropped = per.iter().filter(|s| s.is_none()).count();
-            let mut stm_idx: Vec<i64> = Vec::with_capacity(n * 40);
-            let mut opp_idx: Vec<i64> = Vec::with_capacity(n * 40);
-            let mut stm_off: Vec<i64> = Vec::with_capacity(n);
-            let mut opp_off: Vec<i64> = Vec::with_capacity(n);
-            let mut targets: Vec<f32> = Vec::with_capacity(n);
-            let mut mv_from: Vec<i64> = Vec::with_capacity(n);
-            let mut mv_to: Vec<i64> = Vec::with_capacity(n);
-            let in_cap = if effect_inputs { n * EFF_ACTIVE } else { 0 };
-            let mut eff_stm: Vec<i64> = Vec::with_capacity(in_cap);
-            let mut eff_opp: Vec<i64> = Vec::with_capacity(in_cap);
+        let n = per.len();
+        let dropped = per.iter().filter(|s| s.is_none()).count();
+        let mut stm_idx: Vec<i64> = Vec::with_capacity(n * 40);
+        let mut opp_idx: Vec<i64> = Vec::with_capacity(n * 40);
+        let mut stm_off: Vec<i64> = Vec::with_capacity(n);
+        let mut opp_off: Vec<i64> = Vec::with_capacity(n);
+        let mut targets: Vec<f32> = Vec::with_capacity(n);
+        let mut mv_from: Vec<i64> = Vec::with_capacity(n);
+        let mut mv_to: Vec<i64> = Vec::with_capacity(n);
+        let in_cap = if effect_inputs { n * EFF_ACTIVE } else { 0 };
+        let mut eff_stm: Vec<i64> = Vec::with_capacity(in_cap);
+        let mut eff_opp: Vec<i64> = Vec::with_capacity(in_cap);
+        let mut buckets: Vec<i64> = Vec::with_capacity(n);
 
-            for s in per.into_iter().flatten() {
-                stm_off.push(stm_idx.len() as i64);
-                opp_off.push(opp_idx.len() as i64);
-                stm_idx.extend(s.stm.iter().map(|&x| i64::from(x)));
-                opp_idx.extend(s.opp.iter().map(|&x| i64::from(x)));
-                targets.push(s.target);
-                mv_from.push(s.move_from);
-                mv_to.push(s.move_to);
-                if let Some((a, b)) = s.eff_inputs {
-                    eff_stm.extend(a.iter().map(|&x| i64::from(x)));
-                    eff_opp.extend(b.iter().map(|&x| i64::from(x)));
-                }
+        for s in per.into_iter().flatten() {
+            stm_off.push(stm_idx.len() as i64);
+            opp_off.push(opp_idx.len() as i64);
+            stm_idx.extend(s.stm.iter().map(|&x| i64::from(x)));
+            opp_idx.extend(s.opp.iter().map(|&x| i64::from(x)));
+            targets.push(s.target);
+            mv_from.push(s.move_from);
+            mv_to.push(s.move_to);
+            buckets.push(s.bucket);
+            if let Some((a, b)) = s.eff_inputs {
+                eff_stm.extend(a.iter().map(|&x| i64::from(x)));
+                eff_opp.extend(b.iter().map(|&x| i64::from(x)));
             }
-            (
-                dropped, stm_idx, stm_off, opp_idx, opp_off, targets, mv_from, mv_to, eff_stm,
-                eff_opp,
-            )
-        });
+        }
+        (
+            dropped, stm_idx, stm_off, opp_idx, opp_off, targets, mv_from, mv_to, eff_stm, eff_opp,
+            buckets,
+        )
+    });
 
     // レコードの並びが意味を持つ用途（兄弟局面のランキング群）では、
     // 黙って落とすと整列が壊れる。strictでは落とした時点で失敗させる
@@ -220,6 +237,7 @@ fn extract_batch<'py>(
         mv_to.into_pyarray(py),
         eff_stm.into_pyarray(py),
         eff_opp.into_pyarray(py),
+        buckets.into_pyarray(py),
     ))
 }
 
@@ -235,7 +253,7 @@ fn check_len(name: &str, got: usize, want: usize) -> PyResult<()> {
 }
 
 #[pyfunction]
-#[pyo3(signature = (path, lineage, ft_w, ft_b, w2, b2, w3, b3, w_out, b_out, eff_w=None, eff_b=None))]
+#[pyo3(signature = (path, lineage, ft_w, ft_b, w2, b2, w3, b3, w_out, b_out, eff_w=None, eff_b=None, b_out_rest=None))]
 // 引数の並びがそのままPython側の呼び出し規約になる（上のsignature）。層ごとの
 // 重みとバイアスを構造体へまとめるには、受け渡す型をpyclassにしてquantize.pyの
 // 呼び出しも書き換えることになるので、平らな引数で受ける
@@ -254,6 +272,8 @@ fn save_hmwr(
     // 利きのaccumulatorを持つ構成でだけ渡す
     eff_w: Option<Vec<i16>>,
     eff_b: Option<Vec<i16>>,
+    // 後段を複数組持つ構成でだけ渡す。2組目以降の出力バイアス
+    b_out_rest: Option<Vec<i32>>,
 ) -> PyResult<()> {
     check_len("ft_w", ft_w.len(), FT_IN * FT_OUT)?;
     // 学習側は常にi16で渡す。i8ビルドでは範囲検査を通してから格納する。
@@ -261,11 +281,13 @@ fn save_hmwr(
     let ft_w = himawari_engine::nnue::ft_w_from_i16(ft_w)
         .map_err(pyo3::exceptions::PyValueError::new_err)?;
     check_len("ft_b", ft_b.len(), FT_OUT)?;
-    check_len("w2", w2.len(), L1_OUT * CONCAT)?;
-    check_len("b2", b2.len(), L1_OUT)?;
-    check_len("w3", w3.len(), L2_OUT * L1_OUT)?;
-    check_len("b3", b3.len(), L2_OUT)?;
-    check_len("w_out", w_out.len(), LAST_HIDDEN)?;
+    check_len("w2", w2.len(), STACKS * L1_OUT * CONCAT)?;
+    check_len("b2", b2.len(), STACKS * L1_OUT)?;
+    check_len("w3", w3.len(), STACKS * L2_OUT * L1_OUT)?;
+    check_len("b3", b3.len(), STACKS * L2_OUT)?;
+    check_len("w_out", w_out.len(), STACKS * LAST_HIDDEN)?;
+    let b_out_rest = b_out_rest.unwrap_or_default();
+    check_len("b_out_rest", b_out_rest.len(), STACKS - 1)?;
     let eff_w = eff_w.unwrap_or_default();
     let eff_b = eff_b.unwrap_or_default();
     check_len("eff_w", eff_w.len(), EFF_IN * EFF_OUT)?;
@@ -281,6 +303,7 @@ fn save_hmwr(
         b3,
         w_out,
         b_out,
+        b_out_rest,
         eff_w,
         eff_b,
     }
@@ -398,6 +421,8 @@ fn himawari(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add("L1_OUT", L1_OUT)?;
     m.add("L2_OUT", L2_OUT)?;
     m.add("ARCH", ARCH)?;
+    m.add("STACKS", STACKS)?;
+    m.add("EFF_PAIR", himawari_engine::nnue::EFF_PAIR)?;
     m.add("EFF_IN", EFF_IN)?;
     m.add("EFF_OUT", EFF_OUT)?;
     // F2と最小の攻め駒の組。学習側は詰め物の行 `EFF_IN` を足して持つ

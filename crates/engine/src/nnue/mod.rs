@@ -36,7 +36,10 @@ include!(concat!(env!("OUT_DIR"), "/arch.rs"));
 /// 出す活性は `FT_OUT / 2` 次元になる。両視点でその2倍。
 /// 利きのaccumulatorを持つ構成では、その後ろへ `EFF_OUT` 次元を
 /// 2視点ぶん連結する。`EFF_OUT` が0の構成では `FT_OUT` のままである。
-pub const CONCAT: usize = FT_OUT + 2 * EFF_OUT;
+pub const CONCAT: usize = FT_OUT + 2 * EFF_ACT;
+/// 側の活性の片視点の幅。対の積を掛ける構成（`EFF_PAIR`）では、accの前半と後半を
+/// 掛けるので半分になる。
+pub const EFF_ACT: usize = if EFF_PAIR { EFF_OUT / 2 } else { EFF_OUT };
 /// 連結ベクトルのうち、HalfKPの片視点ぶんの幅。
 pub const HALF: usize = FT_OUT / 2;
 /// 連結ベクトルのうち、利きの活性が始まる位置。
@@ -91,6 +94,10 @@ pub struct NnueNetwork {
     /// 出力層。入力は最後の隠れ層（隠れ層2つなら`L2_OUT`、1つなら`L1_OUT`）。
     pub w_out: Vec<i8>,
     pub b_out: i32,
+    /// 後段を複数組持つ構成（`STACKS` > 1）での、2組目以降の出力バイアス。
+    /// 後段の他の重み（`w2`・`b2`・`w3`・`b3`・`w_out`・`w2_sparse`）は組の順に
+    /// 連結して持つ。1組の構成では空。
+    pub b_out_rest: Vec<i32>,
     /// 利きの特徴の重み。列優先: `eff_w[feature * EFF_OUT + o]`。
     /// `EFF_OUT` が0の構成では空。
     pub eff_w: Vec<i16>,
@@ -99,6 +106,47 @@ pub struct NnueNetwork {
 
 /// 出力層の入力次元。隠れ層2を挟むかで変わる。
 pub const LAST_HIDDEN: usize = if L2_OUT != 0 { L2_OUT } else { L1_OUT };
+
+/// 後段の1組ぶんの重みへの参照。
+#[derive(Clone, Copy)]
+pub struct HeadView<'a> {
+    pub w2: &'a [i8],
+    pub w2_sparse: &'a [i8],
+    pub b2: &'a [i32],
+    pub w3: &'a [i8],
+    pub b3: &'a [i32],
+    pub w_out: &'a [i8],
+    pub b_out: i32,
+}
+
+/// 後段の組を選ぶ局面の指標。両者の持ち駒の総数で分ける。
+///
+/// 盤上の駒は取られると持ち駒になるので、持ち駒の総数は駒の交換の進み具合を表す。
+/// 先後で対称な量なので、手番によらず同じ組を選ぶ。境界は学習データの分布の
+/// 分位点から決めた（`STACK_EDGES`）。
+#[inline]
+pub fn stack_bucket_from_hand(total: u32) -> usize {
+    if STACKS == 1 {
+        return 0;
+    }
+    let edges: &[u32] = match STACKS {
+        2 => &STACK_EDGES_2,
+        4 => &STACK_EDGES_4,
+        _ => &STACK_EDGES_8,
+    };
+    edges
+        .iter()
+        .take(STACKS - 1)
+        .filter(|&&e| total >= e)
+        .count()
+}
+
+/// 組の境界（持ち駒の総数がこの値以上なら次の組）。`sel_dedup_100M` の10万局面で
+/// 測った分布の分位点に近い値で、組ごとの局面の割合は2組で51・49%、4組で24・17・29・30%、
+/// 8組で11・13・8・9・10・19・15・15%になる。
+const STACK_EDGES_2: [u32; 1] = [8];
+const STACK_EDGES_4: [u32; 3] = [5, 7, 10];
+const STACK_EDGES_8: [u32; 7] = [3, 5, 6, 7, 8, 10, 12];
 
 /// 隠れ層1の重みを4列チャンク単位で並べ替える。
 ///
@@ -125,8 +173,34 @@ impl NnueNetwork {
     /// 密の経路へ落ちるだけ）が、速度は戻る。
     #[must_use]
     pub fn finish(mut self) -> NnueNetwork {
-        self.w2_sparse = interleave_w2(&self.w2);
+        self.w2_sparse = self
+            .w2
+            .as_chunks::<{ L1_OUT * CONCAT }>()
+            .0
+            .iter()
+            .flat_map(|w| interleave_w2(w))
+            .collect();
         self
+    }
+
+    /// 組bの後段の重み。
+    #[inline(always)]
+    pub fn head(&self, b: usize) -> HeadView<'_> {
+        let w2n = L1_OUT * CONCAT;
+        let w3n = L2_OUT * L1_PAD;
+        HeadView {
+            w2: &self.w2[b * w2n..(b + 1) * w2n],
+            w2_sparse: self.w2_sparse.get(b * w2n..(b + 1) * w2n).unwrap_or(&[]),
+            b2: &self.b2[b * L1_OUT..(b + 1) * L1_OUT],
+            w3: &self.w3[b * w3n..(b + 1) * w3n],
+            b3: &self.b3[b * L2_OUT..(b + 1) * L2_OUT],
+            w_out: &self.w_out[b * LAST_HIDDEN..(b + 1) * LAST_HIDDEN],
+            b_out: if b == 0 {
+                self.b_out
+            } else {
+                self.b_out_rest[b - 1]
+            },
+        }
     }
 
     /// テスト・開発用の乱数重み（xorshiftで再現可能）。
@@ -169,13 +243,14 @@ impl NnueNetwork {
                 .map(|v| v as FtWeight)
                 .collect(),
             ft_b: r.i16v(FT_OUT, 128),
-            w2: r.i8v(L1_OUT * CONCAT),
+            w2: r.i8v(STACKS * L1_OUT * CONCAT),
             w2_sparse: Vec::new(),
-            b2: r.i32v(L1_OUT),
-            w3: r.i8_rows(L2_OUT, L1_OUT, L1_PAD),
-            b3: r.i32v(L2_OUT),
-            w_out: r.i8v(LAST_HIDDEN),
+            b2: r.i32v(STACKS * L1_OUT),
+            w3: r.i8_rows(STACKS * L2_OUT, L1_OUT, L1_PAD),
+            b3: r.i32v(STACKS * L2_OUT),
+            w_out: r.i8v(STACKS * LAST_HIDDEN),
             b_out: 0,
+            b_out_rest: vec![0; STACKS - 1],
             eff_w: Vec::new(),
             eff_b: Vec::new(),
         };
@@ -620,9 +695,9 @@ mod tests {
         net.eff_b.fill(20000);
         fill_effect(&net, &pos, &mut concat);
         assert!(
-            concat[EFF_BASE..EFF_BASE + 2 * EFF_OUT]
+            concat[EFF_BASE..EFF_BASE + 2 * EFF_ACT]
                 .iter()
-                .all(|&x| x == 127),
+                .all(|&x| x == if EFF_PAIR { 126 } else { 127 }),
             "バイアスで飽和する"
         );
         // 第1層の利きの列だけを動かすと評価値が変わる。HalfKPの列は触らない
@@ -630,7 +705,7 @@ mod tests {
         let mut moved = false;
         for scale in [1i8, -1, 3, -3] {
             for (i, w) in net.w2.iter_mut().enumerate() {
-                if (EFF_BASE..EFF_BASE + 2 * EFF_OUT).contains(&(i % CONCAT)) {
+                if (EFF_BASE..EFF_BASE + 2 * EFF_ACT).contains(&(i % CONCAT)) {
                     *w = scale;
                 }
             }

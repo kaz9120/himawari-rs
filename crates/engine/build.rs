@@ -20,6 +20,14 @@
 //! 256x16x32e64-f2_minatt      F2に最小の攻め駒を足す（主256で既定）
 //! ```
 //!
+//! `e<E>p` と書くと、側のaccの前半と後半を対にして掛ける（側の活性は幅E/2）。
+//! 本体の末尾に `s<N>` を書くと、後段（L1から出力まで）をN組持ち、局面の持ち駒の総数で1組を選ぶ。
+//!
+//! ```text
+//! 256x16x32e128p-f2_minatt    側の幅128を対の積で64の活性にする
+//! 256x16x32s8e64-f2_minatt    後段を8組持つ（LayerStack）
+//! ```
+//!
 //! featureで持つと構成の数だけfeatureが要り、組み合わせが積で増える。
 //! 1つの文字列で受ければ構成を足すのにコード変更が要らない。
 
@@ -48,6 +56,9 @@ const EFF_MULTIPLE: usize = 16;
 const SIDE_KINDS: &[(&str, usize, usize)] =
     &[("f2", 81 * 29 * 16, 81), ("minatt", 81 * 29 * 11 * 11, 81)];
 
+/// 後段の組の数の上限。局面の指標の表（`nnue::stack_bucket`）が持つ数に合わせる。
+const STACKS_MAX: usize = 8;
+
 /// 次元の上限。桁違いの値を書き間違えたときに、確保量で気づく前に止める。
 const MAX_DIM: usize = 4096;
 
@@ -60,15 +71,23 @@ struct Arch {
     eff: usize,
     /// 側の入力の種類（`SIDE_KINDS` の番号）。空ならF2の従来の経路。
     eff_kinds: Vec<usize>,
+    /// 後段（L1から出力まで）の組の数。局面の指標で1組を選ぶ。1なら従来の1組。
+    stacks: usize,
+    /// 側のaccの前半と後半を対にして掛けるか（`e<E>p`）。
+    eff_pair: bool,
 }
 
 fn parse(spec: &str) -> Result<Arch, String> {
     // 末尾の e<E>[-<種類>[_<種類>…]] を先に切り離す。残りは従来の書式のまま読む
-    let (body, eff, eff_kinds) = match spec.split_once('e') {
+    let (body, eff, eff_kinds, eff_pair) = match spec.split_once('e') {
         Some((body, e)) => {
             let (e, kinds) = match e.split_once('-') {
                 Some((e, k)) => (e, Some(k)),
                 None => (e, None),
+            };
+            let (e, eff_pair) = match e.strip_suffix('p') {
+                Some(e) => (e, true),
+                None => (e, false),
             };
             let eff = e
                 .parse::<usize>()
@@ -85,9 +104,18 @@ fn parse(spec: &str) -> Result<Arch, String> {
                     })
                     .collect::<Result<Vec<_>, _>>()?,
             };
-            (body, eff, kinds)
+            (body, eff, kinds, eff_pair)
         }
-        None => (spec, 0, Vec::new()),
+        None => (spec, 0, Vec::new(), false),
+    };
+    // 後段の組の数は本体の末尾の s<N> で書く（例 256x16x32s8e64）
+    let (body, stacks) = match body.split_once('s') {
+        Some((b, n)) => (
+            b,
+            n.parse::<usize>()
+                .map_err(|_| format!("後段の組の数が整数でない: {n}"))?,
+        ),
+        None => (body, 1),
     };
     let parts: Vec<&str> = body.split('x').collect();
     let num = |name: &str, s: &str| -> Result<usize, String> {
@@ -110,6 +138,8 @@ fn parse(spec: &str) -> Result<Arch, String> {
         l2: num("L2", l2)?,
         eff,
         eff_kinds,
+        stacks,
+        eff_pair,
     })
 }
 
@@ -131,6 +161,19 @@ fn validate(a: &Arch) -> Result<(), String> {
     }
     if a.eff != 0 {
         check("利きの幅", a.eff, EFF_MULTIPLE)?;
+    }
+    if a.eff_pair && !a.eff.is_multiple_of(2 * EFF_MULTIPLE) {
+        return Err(format!(
+            "側の対の積は幅を{}の倍数にする（{}が渡された）",
+            2 * EFF_MULTIPLE,
+            a.eff
+        ));
+    }
+    if !(1..=STACKS_MAX).contains(&a.stacks) {
+        return Err(format!(
+            "後段の組の数は1〜{STACKS_MAX}にする（{}が渡された）",
+            a.stacks
+        ));
     }
     if !a.eff_kinds.is_empty() && a.eff_kinds != [0, 1] {
         return Err("側の入力の種類は `-f2_minatt` だけを書ける".to_string());
@@ -236,6 +279,18 @@ fn main() {
     )
     .unwrap();
     writeln!(src, "pub const EFF_MAX_ACTIVE: usize = {eff_max};").unwrap();
+    writeln!(
+        src,
+        "/// 後段（L1から出力まで）の組の数。局面の指標で1組を選ぶ。1なら従来の1組。"
+    )
+    .unwrap();
+    writeln!(src, "pub const STACKS: usize = {};", arch.stacks).unwrap();
+    writeln!(
+        src,
+        "/// 側のaccの前半と後半を対にして掛けるか。真なら側の活性の幅は `EFF_OUT / 2`。"
+    )
+    .unwrap();
+    writeln!(src, "pub const EFF_PAIR: bool = {};", arch.eff_pair).unwrap();
     writeln!(src, "/// 構成名。評価ファイルの来歴とログに載せる。").unwrap();
     writeln!(src, "pub const ARCH: &str = {spec:?};").unwrap();
 

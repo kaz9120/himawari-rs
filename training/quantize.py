@@ -19,8 +19,9 @@ def quantize(model: NnueModel) -> dict:
         b2 = model.l2.bias.detach().float()
         w3 = model.l3.weight.detach().float() if model.l3 is not None else None
         b3 = model.l3.bias.detach().float() if model.l3 is not None else None
-        w_out = model.out.weight.detach().float().squeeze(0)
-        b_out = model.out.bias.detach().float().item()
+        # 組の順に連結して書く（1組なら従来と同じ形）
+        w_out = model.out.weight.detach().float().flatten()
+        b_out = model.out.bias.detach().float().tolist()
         # 利きのaccumulator。FTと同じ127倍で、i16のまま持つ
         # F2と最小の攻め駒の組は末尾に詰め物の行を持つので、EFF_IN行で切る
         eff_w = model.folded_eff_weight() if model.eff is not None else None
@@ -45,7 +46,7 @@ def quantize(model: NnueModel) -> dict:
         "w3": None if w3 is None else hidden_w(w3),
         "b3": None if b3 is None else hidden_b(b3),
         "w_out": (w_out * out_w_scale).round().clamp(-128, 127).to(torch.int8),
-        "b_out": round(b_out * SIGMOID_SCALE * FV_SCALE),
+        "b_out": [round(b * SIGMOID_SCALE * FV_SCALE) for b in b_out],
         "eff_w": None if eff_w is None else ft_q(eff_w),
         "eff_b": None if eff_b is None else ft_q(eff_b),
     }
@@ -115,7 +116,8 @@ def save_hmwr(model: NnueModel, lineage: str, path: str):
         [] if q["w3"] is None else q["w3"].flatten().tolist(),
         [] if q["b3"] is None else q["b3"].tolist(),
         q["w_out"].tolist(),
-        q["b_out"],
+        q["b_out"][0],
+        **({} if len(q["b_out"]) == 1 else {"b_out_rest": q["b_out"][1:]}),
         **(
             {}
             if q["eff_w"] is None

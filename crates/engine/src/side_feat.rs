@@ -12,7 +12,7 @@ use himawari_core::attacks::attacks;
 use himawari_core::{Bitboard, Color, Piece, PieceType, Square};
 
 use crate::nnue::{
-    CONCAT, EFF_BASE, EFF_IN, EFF_KINDS, EFF_MAX_ACTIVE, EFF_OUT, EFF_PIECES, NnueNetwork,
+    CONCAT, EFF_ACT, EFF_BASE, EFF_IN, EFF_KINDS, EFF_MAX_ACTIVE, EFF_OUT, EFF_PIECES, NnueNetwork,
     effect_index,
 };
 use crate::nnue_acc::EvalBoard;
@@ -196,10 +196,8 @@ pub fn fill<B: EvalBoard + ?Sized>(net: &NnueNetwork, b: &B, concat: &mut [u8; C
         feats.clear();
         sb.active(c, &mut feats);
         let acc = accumulate(net, &feats);
-        let out = &mut concat[EFF_BASE + k * EFF_OUT..EFF_BASE + (k + 1) * EFF_OUT];
-        for (x, &a) in out.iter_mut().zip(&acc) {
-            *x = a.clamp(0, 127) as u8;
-        }
+        let out = &mut concat[EFF_BASE + k * EFF_ACT..EFF_BASE + (k + 1) * EFF_ACT];
+        crate::nnue::effect_clip(&acc, out);
     }
 }
 
@@ -380,8 +378,14 @@ pub(crate) mod tests {
                         *a += i32::from(w);
                     }
                 }
-                for (o, &a) in acc.iter().enumerate() {
-                    assert_eq!(concat[EFF_BASE + k * EFF_OUT + o], a.clamp(0, 127) as u8);
+                for o in 0..EFF_ACT {
+                    let want = if crate::nnue::EFF_PAIR {
+                        let (a, b) = (acc[o].clamp(0, 127), acc[o + EFF_ACT].clamp(0, 127));
+                        ((a * b + 64) >> 7) as u8
+                    } else {
+                        acc[o].clamp(0, 127) as u8
+                    };
+                    assert_eq!(concat[EFF_BASE + k * EFF_ACT + o], want);
                 }
             }
         }
