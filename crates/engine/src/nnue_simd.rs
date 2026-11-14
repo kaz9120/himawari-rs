@@ -127,6 +127,19 @@ pub fn ft_apply_out<const NS: usize, const NA: usize>(
     }
 }
 
+/// 側の表の行fを、i16のベクトルの並びで読む。`EFF_I8` の構成ではi8の表から広げる。
+#[inline(always)]
+fn eff_row(net: &NnueNetwork, f: u32) -> [Simd<i16, I16_LANES>; EFF_OUT / I16_LANES] {
+    let at = f as usize * EFF_OUT;
+    if crate::nnue::EFF_I8 {
+        let r = &net.eff_w8[at..at + EFF_OUT];
+        std::array::from_fn(|i| Simd::<i8, I16_LANES>::from_slice(&r[i * I16_LANES..]).cast())
+    } else {
+        let r = &net.eff_w[at..at + EFF_OUT];
+        std::array::from_fn(|i| Simd::from_slice(&r[i * I16_LANES..]))
+    }
+}
+
 /// 利きのaccの両視点を、レジスタに置いたまま更新する。
 ///
 /// `each` は1升ごとに `(引く行, 足す行)` の添字を視点の組で返す。引く行が無い升は
@@ -140,11 +153,7 @@ pub fn effect_rows_update(
     mut each: impl FnMut() -> Option<(Option<[u32; 2]>, [u32; 2])>,
 ) {
     const CHUNKS: usize = EFF_OUT / I16_LANES;
-    let row = |f: u32| {
-        let at = f as usize * EFF_OUT;
-        &net.eff_w[at..at + EFF_OUT].as_chunks::<I16_LANES>().0[..CHUNKS]
-    };
-    let wide = |w: &[i16; I16_LANES]| Simd::from_array(*w);
+    let row = |f: u32| eff_row(net, f);
     let mut a: [[Simd<i16, I16_LANES>; CHUNKS]; 2] = std::array::from_fn(|c| {
         let src = &acc[c].as_chunks::<I16_LANES>().0[..CHUNKS];
         std::array::from_fn(|i| Simd::from_array(src[i]))
@@ -156,12 +165,12 @@ pub fn effect_rows_update(
                 Some(sub) => {
                     let o = row(sub[c]);
                     for ((v, w), x) in a.iter_mut().zip(n).zip(o) {
-                        *v += wide(w) - wide(x);
+                        *v += w - x;
                     }
                 }
                 None => {
                     for (v, w) in a.iter_mut().zip(n) {
-                        *v += wide(w);
+                        *v += w;
                     }
                 }
             }
@@ -185,11 +194,7 @@ pub fn effect_rows_swap(
     pairs: &[([u32; 2], [u32; 2])],
 ) {
     const CHUNKS: usize = EFF_OUT / I16_LANES;
-    let row = |f: u32| {
-        let at = f as usize * EFF_OUT;
-        &net.eff_w[at..at + EFF_OUT].as_chunks::<I16_LANES>().0[..CHUNKS]
-    };
-    let wide = |w: &[i16; I16_LANES]| Simd::from_array(*w);
+    let row = |f: u32| eff_row(net, f);
     let mut a: [[Simd<i16, I16_LANES>; CHUNKS]; 2] = std::array::from_fn(|c| {
         let src = &acc[c].as_chunks::<I16_LANES>().0[..CHUNKS];
         std::array::from_fn(|i| Simd::from_array(src[i]))
@@ -198,7 +203,7 @@ pub fn effect_rows_swap(
         for (c, a) in a.iter_mut().enumerate() {
             let (n, o) = (row(add[c]), row(sub[c]));
             for ((v, w), x) in a.iter_mut().zip(n).zip(o) {
-                *v += wide(w) - wide(x);
+                *v += w - x;
             }
         }
     }

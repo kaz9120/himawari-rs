@@ -12,7 +12,7 @@
 use std::io::{Read, Write};
 
 use crate::nnue::{
-    ARCH, CONCAT, EFF_IN, EFF_OUT, FT_IN, FT_OUT, FtWeight, HALF, L1_OUT, L1_PAD, L2_OUT,
+    ARCH, CONCAT, EFF_I8, EFF_IN, EFF_OUT, FT_IN, FT_OUT, FtWeight, HALF, L1_OUT, L1_PAD, L2_OUT,
     LAST_HIDDEN, NnueNetwork, STACKS, ft_w_from_i16, pad_rows,
 };
 
@@ -490,8 +490,14 @@ pub fn load(r: &mut impl Read) -> Result<(NnueNetwork, String), String> {
         b_out_rest,
         eff_w,
         eff_b,
+        eff_w8: Vec::new(),
     }
     .finish();
+    if EFF_I8 && let Some(&bad) = net.eff_w.iter().find(|&&x| !(-128..=127).contains(&x)) {
+        return Err(format!(
+            "側の重み {bad} がi8に収まらない。学習で側の上限を1.0にかける（--side-clip 1.0）"
+        ));
+    }
     // 利きのaccumulatorは差分の経路でi16に持つ。取りうる値が
     // i16に収まらないネットでは全計算と食い違うので、読み込みで弾く。
     // F2と最小の攻め駒の組も差分の経路をi16で持つので、同じ検査をする
@@ -651,6 +657,7 @@ pub fn load_resized_with_dims(
             b_out_rest: Vec::new(),
             eff_w: Vec::new(),
             eff_b: Vec::new(),
+            eff_w8: Vec::new(),
         }
         .finish(),
         format!("{lineage} / resized to {ARCH}"),
@@ -795,7 +802,9 @@ mod tests {
         let mut buf = Vec::new();
         save(&net, "", &mut buf).unwrap();
         let err = load(&mut buf.as_slice()).err().expect("収まらなければ弾く");
-        assert!(err.contains("i16"), "原因の読める文言にする: {err}");
+        // 重みをi8で持つ構成では、先にi8の範囲の検査で弾く
+        let want = if crate::nnue::EFF_I8 { "i8" } else { "i16" };
+        assert!(err.contains(want), "原因の読める文言にする: {err}");
     }
 
     /// ヘッダ・重みの破損を検出してエラーになる。

@@ -850,8 +850,11 @@ type EffPair = ([u32; 2], [u32; 2]);
 /// 先頭のキャッシュラインだけを読ませる。2本目まで先読みすると命令が増え、速くならなかった。
 #[inline(always)]
 fn prefetch_eff_row(net: &NnueNetwork, f: u32) {
-    let p = net.eff_w.as_ptr().wrapping_add(f as usize * EFF_OUT);
-    crate::prefetch::line(p);
+    if crate::nnue::EFF_I8 {
+        crate::prefetch::line(net.eff_w8.as_ptr().wrapping_add(f as usize * EFF_OUT));
+    } else {
+        crate::prefetch::line(net.eff_w.as_ptr().wrapping_add(f as usize * EFF_OUT));
+    }
 }
 
 /// 両視点の特徴の添字。`[Color; 2]::map` の閉包はインライン化されずに残ったので、

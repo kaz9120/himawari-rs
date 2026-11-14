@@ -102,6 +102,9 @@ pub struct NnueNetwork {
     /// `EFF_OUT` が0の構成では空。
     pub eff_w: Vec<i16>,
     pub eff_b: Vec<i16>,
+    /// `eff_w` をi8へ移した派生表。`EFF_I8` の構成で差分の経路だけが読む。
+    /// **`eff_w` を差し替えたら `finish` を呼び直す。**
+    pub eff_w8: Vec<i8>,
 }
 
 /// 出力層の入力次元。隠れ層2を挟むかで変わる。
@@ -214,6 +217,13 @@ impl NnueNetwork {
     /// 密の経路へ落ちるだけ）が、速度は戻る。
     #[must_use]
     pub fn finish(mut self) -> NnueNetwork {
+        if EFF_I8 {
+            self.eff_w8 = self
+                .eff_w
+                .iter()
+                .map(|&x| x.clamp(-128, 127) as i8)
+                .collect();
+        }
         self.w2_sparse = self
             .w2
             .as_chunks::<{ L1_OUT * CONCAT }>()
@@ -294,6 +304,7 @@ impl NnueNetwork {
             b_out_rest: vec![0; STACKS - 1],
             eff_w: Vec::new(),
             eff_b: Vec::new(),
+            eff_w8: Vec::new(),
         };
         // 利きの重みは最後に引く。既定構成（EFF_OUT=0）の乱数列を変えない
         net.eff_w = r.i16v(EFF_IN * EFF_OUT, 16);
