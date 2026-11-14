@@ -72,8 +72,8 @@ const TM_W: [f64; 10] = [
     -0.0485, 0.0121, -0.7474, -0.7178, 0.1258, 0.0022, 0.0879, -0.015, -0.0013, -0.7712,
 ];
 /// 現行の式のoptimumと、それで使っていた平均の思考時間の比。模擬では0.50〜0.69だったが、
-/// 持ち時間つきで平均の思考時間がmainと揃うように合わせた
-const TM_TARGET_RATIO: f64 = 0.44;
+/// 棋譜を持ち時間10+0.33で頭から指し直し、1手あたりの思考時間がmainと揃うように合わせた
+const TM_TARGET_RATIO: f64 = 0.47;
 /// 止める閾値の係数c。予算5万ノードで0.476、2倍ごとに0.049下げる（模擬で合わせた値）
 const TM_C_BASE: f64 = 0.476;
 const TM_C_PER_DOUBLING: f64 = 0.049;
@@ -497,8 +497,15 @@ impl TimeManager {
                 1.0
             };
         let _ = (falling, reduction, instability, high_effort);
+        // 前のgoから評価値が落ちたら長く考える項は、現行の式から引き継ぐ。モデルの学習は
+        // 1局面ずつの探索で、手をまたぐ情報を入力に持たないからである。落ちていなければ1になる
+        let falling_prev = ((FALLING_BASE
+            + FALLING_PREV_GO * f64::from(s.prev_go_average - s.best_value))
+            / 100.0)
+            .clamp(FALLING_MIN, FALLING_MAX)
+            / FALLING_MIN;
         let elapsed = self.elapsed_ms();
-        let mut total_time = self.model_total_time(s, elapsed);
+        let mut total_time = self.model_total_time(s, elapsed) * falling_prev;
         // 合法手が1手ならこれ以上考えても仕方がない（S:1995-1996）
         if s.single_move {
             total_time = total_time.min(SINGLE_MOVE_CAP_MS);
