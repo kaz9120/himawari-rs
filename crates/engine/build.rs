@@ -57,7 +57,7 @@ const SIDE_KINDS: &[(&str, usize, usize)] =
     &[("f2", 81 * 29 * 16, 81), ("minatt", 81 * 29 * 11 * 11, 81)];
 
 /// 後段の組の数の上限。局面の指標の表（`nnue::stack_bucket`）が持つ数に合わせる。
-const STACKS_MAX: usize = 8;
+const STACKS_MAX: usize = 16;
 
 /// 次元の上限。桁違いの値を書き間違えたときに、確保量で気づく前に止める。
 const MAX_DIM: usize = 4096;
@@ -169,9 +169,9 @@ fn validate(a: &Arch) -> Result<(), String> {
             a.eff
         ));
     }
-    if !(1..=STACKS_MAX).contains(&a.stacks) {
+    if !a.stacks.is_power_of_two() || a.stacks > STACKS_MAX {
         return Err(format!(
-            "後段の組の数は1〜{STACKS_MAX}にする（{}が渡された）",
+            "後段の組の数は{STACKS_MAX}以下の2の累乗にする（{}が渡された）",
             a.stacks
         ));
     }

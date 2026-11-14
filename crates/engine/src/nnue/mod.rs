@@ -132,7 +132,8 @@ pub fn stack_bucket_from_hand(total: u32) -> usize {
     let edges: &[u32] = match STACKS {
         2 => &STACK_EDGES_2,
         4 => &STACK_EDGES_4,
-        _ => &STACK_EDGES_8,
+        8 => &STACK_EDGES_8,
+        _ => &STACK_EDGES_16,
     };
     edges
         .iter()
@@ -147,6 +148,8 @@ pub fn stack_bucket_from_hand(total: u32) -> usize {
 const STACK_EDGES_2: [u32; 1] = [8];
 const STACK_EDGES_4: [u32; 3] = [5, 7, 10];
 const STACK_EDGES_8: [u32; 7] = [3, 5, 6, 7, 8, 10, 12];
+/// 16組は持ち駒の総数ごとに1組（2以下と17以上はまとめる）。
+const STACK_EDGES_16: [u32; 15] = [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17];
 
 /// 隠れ層1の重みを4列チャンク単位で並べ替える。
 ///
