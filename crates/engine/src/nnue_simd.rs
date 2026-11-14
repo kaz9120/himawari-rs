@@ -10,7 +10,7 @@ use std::simd::Simd;
 use std::simd::cmp::SimdOrd;
 use std::simd::num::SimdInt;
 
-use crate::nnue::{CONCAT, EFF_OUT, FT_OUT, HALF, L1_OUT, L1_PAD, L2_OUT, NnueNetwork};
+use crate::nnue::{CONCAT, EFF_OUT, FT_OUT, HALF, HeadView, L1_OUT, L1_PAD, L2_OUT, NnueNetwork};
 use crate::value::Value;
 
 const I16_LANES: usize = 16;
@@ -867,23 +867,23 @@ fn affine_relu16(w: &[i8], b: &[i32], x: &[u8], stride: usize, out: &mut [u8]) {
 /// どちらの経路も同じ値を返すので、落ちても速度が戻るだけである。
 #[cfg(all(target_arch = "aarch64", target_feature = "dotprod"))]
 #[inline]
-fn l1(net: &NnueNetwork, x: &[u8; CONCAT], out: &mut [u8]) {
+fn l1(net: &HeadView<'_>, x: &[u8; CONCAT], out: &mut [u8]) {
     let wt = if L1_ACCS <= L1_ACCS_MAX {
         net.w2_sparse.get(..L1_OUT * CONCAT)
     } else {
         None
     };
     match wt {
-        Some(wt) => affine_relu_l1_sparse(wt, &net.b2, x, out),
-        None => affine_relu(&net.w2, &net.b2, x, out),
+        Some(wt) => affine_relu_l1_sparse(wt, net.b2, x, out),
+        None => affine_relu(net.w2, net.b2, x, out),
     }
 }
 
 /// 同上（SDOT以外の経路。密のまま計算する）。
 #[cfg(not(all(target_arch = "aarch64", target_feature = "dotprod")))]
 #[inline]
-fn l1(net: &NnueNetwork, x: &[u8; CONCAT], out: &mut [u8]) {
-    affine_relu(&net.w2, &net.b2, x, out);
+fn l1(net: &HeadView<'_>, x: &[u8; CONCAT], out: &mut [u8]) {
+    affine_relu(net.w2, net.b2, x, out);
 }
 
 /// 第2層。SDOT経路では、パディングした列を読まない。
@@ -892,25 +892,32 @@ fn l1(net: &NnueNetwork, x: &[u8; CONCAT], out: &mut [u8]) {
 /// ずつ積和するので、`L1_OUT` を16へ切り上げた列までで足りる。
 #[cfg(all(target_arch = "aarch64", target_feature = "dotprod"))]
 #[inline]
-fn l2(net: &NnueNetwork, h2: &[u8; L1_PAD], out: &mut [u8]) {
+fn l2(net: &HeadView<'_>, h2: &[u8; L1_PAD], out: &mut [u8]) {
     const COLS: usize = L1_OUT.next_multiple_of(16);
     const _: () = assert!(COLS <= L1_PAD);
     if L2_OUT.is_multiple_of(16) {
-        affine_relu16(&net.w3, &net.b3, &h2[..COLS], L1_PAD, out);
+        affine_relu16(net.w3, net.b3, &h2[..COLS], L1_PAD, out);
     } else {
-        affine_relu_strided(&net.w3, &net.b3, &h2[..COLS], L1_PAD, out);
+        affine_relu_strided(net.w3, net.b3, &h2[..COLS], L1_PAD, out);
     }
 }
 
 /// 同上（SDOT以外の経路。パディングまで積和する）。
 #[cfg(not(all(target_arch = "aarch64", target_feature = "dotprod")))]
 #[inline]
-fn l2(net: &NnueNetwork, h2: &[u8; L1_PAD], out: &mut [u8]) {
-    affine_relu(&net.w3, &net.b3, h2, out);
+fn l2(net: &HeadView<'_>, h2: &[u8; L1_PAD], out: &mut [u8]) {
+    affine_relu(net.w3, net.b3, h2, out);
 }
 
 /// 連結ベクトルから評価値まで（SIMD版）。
 pub fn forward_hidden(net: &NnueNetwork, concat: &[u8; CONCAT]) -> Value {
+    forward_hidden_at(net, concat, 0)
+}
+
+/// 連結ベクトルから評価値まで（SIMD版）。組bの後段を使う。
+#[inline]
+pub fn forward_hidden_at(net: &NnueNetwork, concat: &[u8; CONCAT], b: usize) -> Value {
+    let net = &net.head(b);
     // 次の層の入力はパディングした幅で渡す。実次元より後ろはゼロのままで、
     // 重みの対応する列もゼロなので積和に効かない
     let mut h2 = [0u8; L1_PAD];
@@ -924,7 +931,7 @@ pub fn forward_hidden(net: &NnueNetwork, concat: &[u8; CONCAT]) -> Value {
         &h3
     };
     // 出力層は1行なので行束ねの対象にならない。専用命令版のdotで畳む
-    let out = net.b_out + dot(&net.w_out, last);
+    let out = net.b_out + dot(net.w_out, last);
     out / crate::nnue::FV_SCALE
 }
 
@@ -1243,7 +1250,7 @@ mod tests {
         for zero_permille in [0u64, 500, 731, 990] {
             for _ in 0..16 {
                 fill_activations(&mut concat, zero_permille, &mut state);
-                l1(&net, &concat, &mut out);
+                l1(&net.head(0), &concat, &mut out);
                 for (o, &h) in out.iter().enumerate() {
                     let sum: i32 = (0..CONCAT)
                         .map(|i| i32::from(net.w2[o * CONCAT + i]) * i32::from(concat[i]))
@@ -1266,8 +1273,8 @@ mod tests {
         let (mut a, mut b) = (vec![0u8; L1_OUT], vec![0u8; L1_OUT]);
         for _ in 0..16 {
             fill_activations(&mut concat, 731, &mut state);
-            l1(&full, &concat, &mut a);
-            l1(&bare, &concat, &mut b);
+            l1(&full.head(0), &concat, &mut a);
+            l1(&bare.head(0), &concat, &mut b);
             assert_eq!(a, b);
         }
     }

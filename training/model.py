@@ -21,6 +21,8 @@ L2_OUT = himawari.L2_OUT
 # 0なら隠れ層1つ
 LAST_HIDDEN = L2_OUT or L1_OUT
 ARCH = himawari.ARCH
+# 後段（L1から出力まで）の組の数。局面ごとに1組を選ぶ（LayerStack）。古い拡張は1組
+STACKS = getattr(himawari, "STACKS", 1)
 FE_END = FT_IN // 81
 # 第1層の入力幅。片視点のFT出力を2つに割って掛けるので、視点あたり
 # FT_OUT//2 になる。Rust側の定数をそのまま使う
@@ -37,6 +39,8 @@ EFF_OUT = getattr(himawari, "EFF_OUT", 0)
 EFF_GENERIC = getattr(himawari, "EFF_GENERIC", False)
 # 1局面1視点で並ぶ利きの特徴の数。F2は升ごとに1つで81、F2と最小の攻め駒の組は上限の数
 EFF_ACTIVE = getattr(himawari, "EFF_ACTIVE", 81)
+# 側のaccの前半と後半を対にして掛けるか（構成名の e<E>p）。真なら側の活性の幅は EFF_OUT//2
+EFF_PAIR = getattr(himawari, "EFF_PAIR", False)
 # 利きの特徴の使い方。f2は特徴を立てる処置群、noneは立てない統制群。
 # F2と最小の攻め駒の組でも、f2は「構成の表し方で立てる」の意味になる
 EFFECT_INPUTS = ("f2", "none")
@@ -98,10 +102,12 @@ class NnueModel(nn.Module):
         self.eff_bias = (
             nn.Parameter(torch.full((EFF_OUT,), 0.5)) if EFF_OUT else None
         )
-        self.l2 = nn.Linear(CONCAT, L1_OUT)
+        # 後段は組の数だけ出力を並べて持ち、局面の組の番号で取り出す。
+        # 重みの行は組の順に並ぶので、書き出しはそのまま連結になる
+        self.l2 = nn.Linear(CONCAT, L1_OUT * STACKS)
         # 隠れ層は書いたぶんだけ持つ。L2_OUT=0 なら隠れ層1つ
-        self.l3 = nn.Linear(L1_OUT, L2_OUT) if L2_OUT else None
-        self.out = nn.Linear(LAST_HIDDEN, 1)
+        self.l3 = nn.Linear(L1_OUT, L2_OUT * STACKS) if L2_OUT else None
+        self.out = nn.Linear(LAST_HIDDEN, STACKS)
         self._init_weights()
 
     def _init_weights(self):
@@ -172,6 +178,9 @@ class NnueModel(nn.Module):
             z = self.eff(idx.view(n, EFF_ACTIVE)) + self.eff_bias
         else:
             z = self.eff_bias.expand(n, -1)
+        if EFF_PAIR:
+            h = EFF_OUT // 2
+            return z[:, :h].clamp(0.0, 1.0) * z[:, h:].clamp(0.0, 1.0) * PAIR_SCALE
         return z.clamp(0.0, 1.0)
 
     def transform_both(self, stm_idx, stm_off, opp_idx, opp_off,
@@ -190,16 +199,28 @@ class NnueModel(nn.Module):
                       self.effect_activation(eff_opp, n)]
         return torch.cat(parts, dim=1)
 
-    def value(self, x):
-        """FT出力の連結から評価値を出す（推論と同じ経路）。"""
-        h = self.l2(x).clamp(0.0, 1.0)
-        if self.l3 is not None:
-            h = self.l3(h).clamp(0.0, 1.0)
-        return self.out(h).squeeze(1)
+    @staticmethod
+    def _pick(y, bucket, width):
+        """組の数×幅の出力から、局面の組の幅だけを取り出す。"""
+        if STACKS == 1:
+            return y
+        n = y.size(0)
+        if bucket is None:
+            raise ValueError("後段を複数組持つ構成では、局面の組の番号を渡す")
+        return y.view(n, STACKS, width)[torch.arange(n, device=y.device), bucket]
 
-    def forward(self, stm_idx, stm_off, opp_idx, opp_off, eff_stm=None, eff_opp=None):
+    def value(self, x, bucket=None):
+        """FT出力の連結から評価値を出す（推論と同じ経路）。"""
+        h = self._pick(self.l2(x), bucket, L1_OUT).clamp(0.0, 1.0)
+        if self.l3 is not None:
+            h = self._pick(self.l3(h), bucket, L2_OUT).clamp(0.0, 1.0)
+        return self._pick(self.out(h), bucket, 1).squeeze(1)
+
+    def forward(self, stm_idx, stm_off, opp_idx, opp_off, eff_stm=None, eff_opp=None,
+                bucket=None):
         return self.value(
-            self.transform_both(stm_idx, stm_off, opp_idx, opp_off, eff_stm, eff_opp)
+            self.transform_both(stm_idx, stm_off, opp_idx, opp_off, eff_stm, eff_opp),
+            bucket,
         )
 
     def clip_ft_weights(self, limit=1.0):

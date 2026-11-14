@@ -13,7 +13,7 @@ use std::io::{Read, Write};
 
 use crate::nnue::{
     ARCH, CONCAT, EFF_IN, EFF_OUT, FT_IN, FT_OUT, FtWeight, HALF, L1_OUT, L1_PAD, L2_OUT,
-    LAST_HIDDEN, NnueNetwork, ft_w_from_i16, pad_rows,
+    LAST_HIDDEN, NnueNetwork, STACKS, ft_w_from_i16, pad_rows,
 };
 
 const MAGIC: &[u8; 8] = b"HMWRNNUE";
@@ -160,6 +160,10 @@ fn weight_bytes(net: &NnueNetwork) -> Vec<u8> {
         v.push(x as u8);
     }
     v.extend_from_slice(&net.b_out.to_le_bytes());
+    // 後段を複数組持つ構成では、2組目以降の出力バイアスが続く。1組なら空
+    for &x in &net.b_out_rest {
+        v.extend_from_slice(&x.to_le_bytes());
+    }
     v
 }
 
@@ -458,17 +462,19 @@ pub fn load(r: &mut impl Read) -> Result<(NnueNetwork, String), String> {
     };
     let eff_b = cur.i16v(EFF_OUT)?;
     let eff_w = cur.i16v(EFF_IN * EFF_OUT)?;
-    let b2 = cur.i32v(L1_OUT)?;
-    let w2 = cur.i8v(L1_OUT * CONCAT)?;
+    // 後段は組の順に連結して持つ（`STACKS` が1なら従来と同じ並び）
+    let b2 = cur.i32v(STACKS * L1_OUT)?;
+    let w2 = cur.i8v(STACKS * L1_OUT * CONCAT)?;
     let (b3, w3) = if L2_OUT != 0 {
-        let b = cur.i32v(L2_OUT)?;
-        let w = pad_rows(&cur.i8v(L2_OUT * L1_OUT)?, L1_OUT, L1_PAD);
+        let b = cur.i32v(STACKS * L2_OUT)?;
+        let w = pad_rows(&cur.i8v(STACKS * L2_OUT * L1_OUT)?, L1_OUT, L1_PAD);
         (b, w)
     } else {
         (Vec::new(), Vec::new())
     };
-    let w_out = cur.i8v(LAST_HIDDEN)?;
+    let w_out = cur.i8v(STACKS * LAST_HIDDEN)?;
     let b_out = cur.i32v(1)?[0];
+    let b_out_rest = cur.i32v(STACKS - 1)?;
     cur.finish(expect_hash)?;
 
     let net = NnueNetwork {
@@ -481,6 +487,7 @@ pub fn load(r: &mut impl Read) -> Result<(NnueNetwork, String), String> {
         b3,
         w_out,
         b_out,
+        b_out_rest,
         eff_w,
         eff_b,
     }
@@ -641,6 +648,7 @@ pub fn load_resized_with_dims(
             b3,
             w_out,
             b_out,
+            b_out_rest: Vec::new(),
             eff_w: Vec::new(),
             eff_b: Vec::new(),
         }
@@ -671,7 +679,8 @@ mod tests {
         assert_eq!(net.eff_b, loaded.eff_b);
         // 隠れ層2はL1_PAD幅のまま往復する（ゼロ埋め列も含めて一致）
         assert_eq!(net.w3, loaded.w3);
-        assert_eq!(net.w3.len(), crate::nnue::L2_OUT * L1_PAD);
+        assert_eq!(net.w3.len(), STACKS * crate::nnue::L2_OUT * L1_PAD);
+        assert_eq!(net.b_out_rest, loaded.b_out_rest);
     }
 
     /// resizeは元ファイルの構成を返す。学習側が「後段を初期値に使ってよいか」を

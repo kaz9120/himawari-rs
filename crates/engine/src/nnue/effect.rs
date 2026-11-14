@@ -111,7 +111,13 @@ pub fn effect_row_add(acc: &mut [i32; EFF_OUT], row: &[i16]) {
 /// 利きのaccumulatorを0〜127へクリップして書く。
 #[inline]
 pub fn effect_clip(acc: &[i32; EFF_OUT], out: &mut [u8]) {
-    debug_assert_eq!(out.len(), EFF_OUT);
+    debug_assert_eq!(out.len(), EFF_ACT);
+    if EFF_PAIR {
+        for (o, x) in out.iter_mut().enumerate() {
+            *x = pair_activation(acc[o], acc[o + EFF_ACT]);
+        }
+        return;
+    }
     for (o, &a) in out.iter_mut().zip(acc) {
         *o = clip(a);
     }
@@ -120,7 +126,13 @@ pub fn effect_clip(acc: &[i32; EFF_OUT], out: &mut [u8]) {
 /// 差分で持つ側のaccを0〜127へクリップして書く。
 #[inline]
 pub fn effect_clip_acc(acc: &[i16; EFF_OUT], out: &mut [u8]) {
-    debug_assert_eq!(out.len(), EFF_OUT);
+    debug_assert_eq!(out.len(), EFF_ACT);
+    if EFF_PAIR {
+        for (o, x) in out.iter_mut().enumerate() {
+            *x = pair_activation(i32::from(acc[o]), i32::from(acc[o + EFF_ACT]));
+        }
+        return;
+    }
     for (o, &a) in out.iter_mut().zip(acc) {
         *o = a.clamp(0, 127) as u8;
     }
@@ -155,7 +167,7 @@ pub fn fill_effect(net: &NnueNetwork, pos: &Position, concat: &mut [u8; CONCAT])
     let mut feats = [0u32; 81];
     for (k, c) in [(0usize, stm), (1, stm.flip())] {
         effect_active(pos, c, &counts, &mut feats);
-        let at = EFF_BASE + k * EFF_OUT;
-        effect_transform(net, &feats, &mut concat[at..at + EFF_OUT]);
+        let at = EFF_BASE + k * EFF_ACT;
+        effect_transform(net, &feats, &mut concat[at..at + EFF_ACT]);
     }
 }

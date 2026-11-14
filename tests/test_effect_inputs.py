@@ -30,7 +30,9 @@ from hmwr.tools import shadow_flips as sf  # noqa: E402
 
 # F2と最小の攻め駒の組。利きの列は連結ベクトルの末尾に2視点ぶん並ぶ
 GENERIC = getattr(himawari, "EFF_GENERIC", False)
-EFF_COLS = slice(himawari.CONCAT - 2 * himawari.EFF_OUT, himawari.CONCAT)
+# 側の対の積（e<E>p）では、側の活性の幅はaccの半分になる
+EFF_ACT = himawari.EFF_OUT // 2 if getattr(himawari, "EFF_PAIR", False) else himawari.EFF_OUT
+EFF_COLS = slice(himawari.CONCAT - 2 * EFF_ACT, himawari.CONCAT)
 
 TRAINING = Path(__file__).resolve().parent.parent / "training"
 
@@ -119,7 +121,8 @@ def test_rust_features_match_python():
 def test_features_are_off_unless_asked():
     records, _ = positions(count=4)
     arrays = himawari.extract_batch(records, 0.7, 0, 0, True)
-    assert len(arrays) == 9
+    # 10本目は後段の組の番号
+    assert len(arrays) == 10
     assert len(arrays[7]) == 0 and len(arrays[8]) == 0
 
 
@@ -161,12 +164,15 @@ def test_quantized_net_matches_the_model(mode, tmp_path):
         himawari.extract_batch(records, 0.7, 0, 0, True, effect_inputs=True)
     )
     stm_i, stm_o, opp_i, opp_o = arrays[:4]
+    # 後段の組の番号（後段を複数組持つ構成で使う。古い拡張は返さない）
+    bucket = arrays[9] if len(arrays) > 9 else None
     with torch.no_grad():
-        want = model(stm_i, stm_o, opp_i, opp_o, arrays[7], arrays[8]) * SIGMOID_SCALE
+        want = model(stm_i, stm_o, opp_i, opp_o, arrays[7], arrays[8], bucket=bucket)
+        want = want * SIGMOID_SCALE
         # 利きの活性を0にした出力。経路が効いていることの対照にする
         x = model.transform_both(stm_i, stm_o, opp_i, opp_o, arrays[7], arrays[8])
         x[:, EFF_COLS] = 0
-        blind = model.value(x) * SIGMOID_SCALE
+        blind = model.value(x, bucket) * SIGMOID_SCALE
 
     path = tmp_path / "eff.hmwr"
     save_hmwr(model, f"test {mode}", str(path))
@@ -177,7 +183,11 @@ def test_quantized_net_matches_the_model(mode, tmp_path):
     # 重みを格子へ寄せたので、残る差は活性の丸めだけで平均1点前後（歩=90、
     # 2026-10-18の実測で平均0.9〜1.0、最大3〜4）。利きの経路の寄与は平均70点
     # 前後あるので、経路が切れていれば平均誤差がそこまで開く
-    assert err.mean() < 2.0, f"平均誤差 {err.mean():.2f} 最大 {err.max():.2f}"
+    # 側の対の積の統制群は、全局面で側の活性が同じ値になり、積の丸め（各列±0.5）が
+    # 局面ごとに打ち消し合わず平均に残る。経路の取り違えなら平均70点前後開くので、
+    # 3倍に緩めても区別できる
+    limit = 6.0 if EFF_ACT != himawari.EFF_OUT else 2.0
+    assert err.mean() < limit, f"平均誤差 {err.mean():.2f} 最大 {err.max():.2f}"
     assert err.max() < 8.0, f"最大誤差 {err.max():.2f}"
     assert effect.mean() > 10 * err.mean(), (
         f"利きの寄与 {effect.mean():.2f} が量子化の誤差 {err.mean():.2f} に埋もれている"

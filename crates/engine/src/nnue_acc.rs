@@ -47,6 +47,21 @@ pub trait EvalBoard {
     fn core_position(&self) -> Option<&Position>;
 }
 
+/// 局面の後段の組。両者の持ち駒の総数を `nnue::stack_bucket_from_hand` で引く。
+#[inline]
+pub fn stack_bucket<B: EvalBoard + ?Sized>(pos: &B) -> usize {
+    if crate::nnue::STACKS == 1 {
+        return 0;
+    }
+    let mut total = 0;
+    for c in [Color::Black, Color::White] {
+        for pt in PieceType::HAND_KINDS {
+            total += pos.hand_count(c, pt);
+        }
+    }
+    crate::nnue::stack_bucket_from_hand(total)
+}
+
 impl EvalBoard for Position {
     #[inline(always)]
     fn side_to_move(&self) -> Color {
@@ -332,8 +347,11 @@ impl NnueState {
             let concat = &mut *self.concat;
             let e = &self.eff[self.top];
             for (k, c) in [(0usize, stm), (1, stm.flip())] {
-                let at = EFF_BASE + k * EFF_OUT;
-                crate::nnue::effect_clip_acc(&e.acc[c.index()], &mut concat[at..at + EFF_OUT]);
+                let at = EFF_BASE + k * crate::nnue::EFF_ACT;
+                crate::nnue::effect_clip_acc(
+                    &e.acc[c.index()],
+                    &mut concat[at..at + crate::nnue::EFF_ACT],
+                );
             }
             if cfg!(any(test, debug_assertions))
                 && let Some(p) = pos.core_position()
@@ -344,7 +362,7 @@ impl NnueState {
         let concat = &mut *self.concat;
         #[cfg(feature = "actdump")]
         crate::actdump::record(concat);
-        nnue_simd::forward_hidden(net, concat)
+        nnue_simd::forward_hidden_at(net, concat, stack_bucket(pos))
     }
 
     /// 利きのaccumulatorを最上段に用意する。

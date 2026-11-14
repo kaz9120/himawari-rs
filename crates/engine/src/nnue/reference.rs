@@ -44,17 +44,24 @@ pub fn evaluate_scalar(net: &NnueNetwork, pos: &Position) -> Value {
     }
     fill_effect(net, pos, &mut concat);
 
-    forward_hidden(net, &concat)
+    forward_hidden_at(net, &concat, crate::nnue_acc::stack_bucket(pos))
 }
 
-/// 連結ベクトルから評価値まで（隠れ層はi8×u8の積和）。
+/// 連結ベクトルから評価値まで（1組目の後段）。
+#[cfg(test)]
 pub(crate) fn forward_hidden(net: &NnueNetwork, concat: &[u8; CONCAT]) -> Value {
+    forward_hidden_at(net, concat, 0)
+}
+
+/// 連結ベクトルから評価値まで（隠れ層はi8×u8の積和）。組bの後段を使う。
+pub(crate) fn forward_hidden_at(net: &NnueNetwork, concat: &[u8; CONCAT], b: usize) -> Value {
+    let hd = net.head(b);
     // 隠れ層2の入力はL1_PAD幅で、L1_OUT以降はゼロのまま渡す
     let mut h2 = [0u8; L1_PAD];
     for (o, h) in h2[..L1_OUT].iter_mut().enumerate() {
-        let mut sum = net.b2[o];
+        let mut sum = hd.b2[o];
         for (i, &x) in concat.iter().enumerate() {
-            sum += i32::from(net.w2[o * CONCAT + i]) * i32::from(x);
+            sum += i32::from(hd.w2[o * CONCAT + i]) * i32::from(x);
         }
         // 学習時のスケール（2^6）で割るのが標準
         *h = clip(sum >> 6);
@@ -62,17 +69,17 @@ pub(crate) fn forward_hidden(net: &NnueNetwork, concat: &[u8; CONCAT]) -> Value 
     // 隠れ層は書いたぶんだけ挟む。次元は定数なので使わない分岐は消える
     let mut h3 = [0u8; L2_OUT];
     for (o, h) in h3.iter_mut().enumerate() {
-        let mut sum = net.b3[o];
+        let mut sum = hd.b3[o];
         for (i, &x) in h2.iter().enumerate() {
-            sum += i32::from(net.w3[o * L1_PAD + i]) * i32::from(x);
+            sum += i32::from(hd.w3[o * L1_PAD + i]) * i32::from(x);
         }
         *h = clip(sum >> 6);
     }
     let last: &[u8] = if L2_OUT != 0 { &h3 } else { &h2[..L1_OUT] };
 
-    let mut out = net.b_out;
+    let mut out = hd.b_out;
     for (i, &x) in last.iter().enumerate() {
-        out += i32::from(net.w_out[i]) * i32::from(x);
+        out += i32::from(hd.w_out[i]) * i32::from(x);
     }
     out / FV_SCALE
 }
