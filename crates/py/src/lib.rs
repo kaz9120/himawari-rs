@@ -307,6 +307,8 @@ fn save_hmwr(
         eff_w,
         eff_b,
         eff_w8: Vec::new(),
+        eff_w_orig: Vec::new(),
+        eff_b_orig: Vec::new(),
     }
     .finish();
     let mut f = std::fs::File::create(path)

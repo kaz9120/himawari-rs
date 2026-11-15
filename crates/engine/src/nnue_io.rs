@@ -138,7 +138,13 @@ fn weight_bytes(net: &NnueNetwork) -> Vec<u8> {
         v.extend_from_slice(&x.to_le_bytes());
     }
     // 利きのaccumulator。持たない構成では空なので何も書かない
-    for &x in net.eff_b.iter().chain(&net.eff_w) {
+    // 2/3に縮めた構成では、縮める前の値を書く
+    let (eff_b, eff_w) = if net.eff_w_orig.is_empty() {
+        (&net.eff_b, &net.eff_w)
+    } else {
+        (&net.eff_b_orig, &net.eff_w_orig)
+    };
+    for &x in eff_b.iter().chain(eff_w) {
         v.extend_from_slice(&x.to_le_bytes());
     }
 
@@ -491,6 +497,8 @@ pub fn load(r: &mut impl Read) -> Result<(NnueNetwork, String), String> {
         eff_w,
         eff_b,
         eff_w8: Vec::new(),
+        eff_w_orig: Vec::new(),
+        eff_b_orig: Vec::new(),
     }
     .finish();
     if EFF_I8 && let Some(&bad) = net.eff_w.iter().find(|&&x| !(-128..=127).contains(&x)) {
@@ -658,6 +666,8 @@ pub fn load_resized_with_dims(
             eff_w: Vec::new(),
             eff_b: Vec::new(),
             eff_w8: Vec::new(),
+            eff_w_orig: Vec::new(),
+            eff_b_orig: Vec::new(),
         }
         .finish(),
         format!("{lineage} / resized to {ARCH}"),
@@ -798,6 +808,8 @@ mod tests {
         save(&net, "", &mut buf).unwrap();
         assert!(load(&mut buf.as_slice()).is_ok());
         net.eff_w.fill(405);
+        // 2/3に縮める構成は縮める前の値を書くので、そちらも同じ大きさにする
+        net.eff_w_orig.fill(608);
         assert!(crate::nnue::side_minatt_acc_bound(&net) > i64::from(i16::MAX));
         let mut buf = Vec::new();
         save(&net, "", &mut buf).unwrap();

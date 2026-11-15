@@ -105,6 +105,10 @@ pub struct NnueNetwork {
     /// `eff_w` をi8へ移した派生表。`EFF_I8` の構成で差分の経路だけが読む。
     /// **`eff_w` を差し替えたら `finish` を呼び直す。**
     pub eff_w8: Vec<i8>,
+    /// `EFF_RESCALE` の構成で、2/3に縮める前の側の重みとバイアス。書き出しはこちらを使う。
+    /// 縮める前なら空。
+    pub eff_w_orig: Vec<i16>,
+    pub eff_b_orig: Vec<i16>,
 }
 
 /// 出力層の入力次元。隠れ層2を挟むかで変わる。
@@ -217,6 +221,20 @@ impl NnueNetwork {
     /// 密の経路へ落ちるだけ）が、速度は戻る。
     #[must_use]
     pub fn finish(mut self) -> NnueNetwork {
+        // 縮めるのは1回だけ。読み込み後にもう一度呼ばれても、元の値から作り直す
+        if EFF_RESCALE {
+            if self.eff_w_orig.is_empty() {
+                self.eff_w_orig = std::mem::take(&mut self.eff_w);
+                self.eff_b_orig = std::mem::take(&mut self.eff_b);
+            }
+            let shrink = |v: &[i16]| -> Vec<i16> {
+                v.iter()
+                    .map(|&x| (f32::from(x) * 2.0 / 3.0).round() as i16)
+                    .collect()
+            };
+            self.eff_w = shrink(&self.eff_w_orig);
+            self.eff_b = shrink(&self.eff_b_orig);
+        }
         if EFF_I8 {
             self.eff_w8 = self
                 .eff_w
@@ -305,6 +323,8 @@ impl NnueNetwork {
             eff_w: Vec::new(),
             eff_b: Vec::new(),
             eff_w8: Vec::new(),
+            eff_w_orig: Vec::new(),
+            eff_b_orig: Vec::new(),
         };
         // 利きの重みは最後に引く。既定構成（EFF_OUT=0）の乱数列を変えない
         net.eff_w = r.i16v(EFF_IN * EFF_OUT, 16);

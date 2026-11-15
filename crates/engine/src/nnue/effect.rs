@@ -119,8 +119,14 @@ pub fn effect_clip(acc: &[i32; EFF_OUT], out: &mut [u8]) {
         return;
     }
     for (o, &a) in out.iter_mut().zip(acc) {
-        *o = clip(a);
+        *o = clip(rescale_back(a));
     }
+}
+
+/// `EFF_RESCALE` の構成で、2/3に縮めた値を3/2に戻す（四捨五入）。それ以外は素通し。
+#[inline(always)]
+fn rescale_back(a: i32) -> i32 {
+    if EFF_RESCALE { (3 * a + 1) >> 1 } else { a }
 }
 
 /// 差分で持つ側のaccを0〜127へクリップして書く。
@@ -134,7 +140,7 @@ pub fn effect_clip_acc(acc: &[i16; EFF_OUT], out: &mut [u8]) {
         return;
     }
     for (o, &a) in out.iter_mut().zip(acc) {
-        *o = a.clamp(0, 127) as u8;
+        *o = rescale_back(i32::from(a)).clamp(0, 127) as u8;
     }
 }
 

@@ -77,17 +77,23 @@ struct Arch {
     eff_pair: bool,
     /// 側の重みを差分の経路でi8に持つか（`e<E>q`）。学習で側の上限を1.0にかける。
     eff_i8: bool,
+    /// 側の重みと値を2/3に縮めてi8に持つか（`e<E>r`）。上限1.5で学習したネットをそのまま読む。
+    eff_rescale: bool,
     /// 後段の組を、持ち駒の総数に加えて両玉の周りへの相手の利きでも分けるか（`s<N>k`）。
     stack_king: bool,
 }
 
 fn parse(spec: &str) -> Result<Arch, String> {
     // 末尾の e<E>[-<種類>[_<種類>…]] を先に切り離す。残りは従来の書式のまま読む
-    let (body, eff, eff_kinds, eff_pair, eff_i8) = match spec.split_once('e') {
+    let (body, eff, eff_kinds, eff_pair, eff_i8, eff_rescale) = match spec.split_once('e') {
         Some((body, e)) => {
             let (e, kinds) = match e.split_once('-') {
                 Some((e, k)) => (e, Some(k)),
                 None => (e, None),
+            };
+            let (e, eff_rescale) = match e.strip_suffix('r') {
+                Some(e) => (e, true),
+                None => (e, false),
             };
             let (e, eff_i8) = match e.strip_suffix('q') {
                 Some(e) => (e, true),
@@ -112,9 +118,9 @@ fn parse(spec: &str) -> Result<Arch, String> {
                     })
                     .collect::<Result<Vec<_>, _>>()?,
             };
-            (body, eff, kinds, eff_pair, eff_i8)
+            (body, eff, kinds, eff_pair, eff_i8, eff_rescale)
         }
-        None => (spec, 0, Vec::new(), false, false),
+        None => (spec, 0, Vec::new(), false, false, false),
     };
     // 後段の組の数は本体の末尾の s<N> で書く（例 256x16x32s8e64）
     let (body, stacks, stack_king) = match body.split_once('s') {
@@ -157,6 +163,7 @@ fn parse(spec: &str) -> Result<Arch, String> {
         eff_pair,
         stack_king,
         eff_i8,
+        eff_rescale,
     })
 }
 
@@ -322,7 +329,18 @@ fn main() {
         "/// 側の重みを差分の経路でi8に持つか。読み込みでi8に収まることを検査する。"
     )
     .unwrap();
-    writeln!(src, "pub const EFF_I8: bool = {};", arch.eff_i8).unwrap();
+    writeln!(
+        src,
+        "pub const EFF_I8: bool = {};",
+        arch.eff_i8 || arch.eff_rescale
+    )
+    .unwrap();
+    writeln!(
+        src,
+        "/// 側の重みとバイアスを読み込みで2/3に縮め、活性で3/2に戻すか。上限1.5の重みがi8に収まる。"
+    )
+    .unwrap();
+    writeln!(src, "pub const EFF_RESCALE: bool = {};", arch.eff_rescale).unwrap();
     writeln!(src, "/// 構成名。評価ファイルの来歴とログに載せる。").unwrap();
     writeln!(src, "pub const ARCH: &str = {spec:?};").unwrap();
 
