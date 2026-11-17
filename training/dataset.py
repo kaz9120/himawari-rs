@@ -13,12 +13,12 @@ import himawari
 
 #: psvの1レコード
 PSV_BYTES = 40
-#: `extract_batch` が返す配列の本数。末尾2本が利きの入力特徴
-BATCH_ARRAYS = 9
+#: `extract_batch` が返す配列の本数。8・9本目が利きの入力特徴、10本目が駒種ごとの枚数の差
+BATCH_ARRAYS = 10
 
 
 def to_tensors(arrays):
-    """抽出結果をテンソルの組にし、9本へ揃える。
+    """抽出結果をテンソルの組にし、10本へ揃える。
 
     足りない分は長さ0で埋め、受け取り側の分解を1通りに保つ。
     """
@@ -249,7 +249,7 @@ class RankLoader:
             recs.tobytes(), 0.0, 0, 0, True, effect_inputs=self.effect_inputs,
         ))
         stm_i, stm_o, opp_i, opp_o = arrays[:4]
-        return stm_i, stm_o, opp_i, opp_o, parity, arrays[7], arrays[8]
+        return stm_i, stm_o, opp_i, opp_o, parity, arrays[7], arrays[8], arrays[9]
 
     def _produce(self):
         while True:

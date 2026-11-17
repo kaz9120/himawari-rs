@@ -7,8 +7,8 @@ use himawari_core::packed_sfen::{PSV_BYTES, PackedSfenValue, unpack};
 
 use himawari_engine::nnue::{
     ARCH, CONCAT, EFF_GENERIC, EFF_IN, EFF_MAX_ACTIVE, EFF_OUT, FT_IN, FT_OUT, L1_OUT, L1_PAD,
-    L2_OUT, LAST_HIDDEN, NnueNetwork, effect_active, effect_counts, evaluate_scalar, halfkp_active,
-    move_labels,
+    L2_OUT, LAST_HIDDEN, MATERIAL_N, NnueNetwork, effect_active, effect_counts, evaluate_scalar,
+    halfkp_active, material_counts, move_labels,
 };
 use himawari_engine::nnue_io;
 
@@ -30,6 +30,8 @@ struct Sample {
     /// 側の入力特徴。手番視点・非手番視点の順に `EFF_ACTIVE` 個ずつ。F2は81個で、
     /// F2と最小の攻め駒の組は上限の個数まで詰め物（`EFF_IN`）で埋める。
     eff_inputs: Option<(Vec<u32>, Vec<u32>)>,
+    /// 手番側から見た駒種ごとの枚数の差（学習する駒割りの入力）。
+    mat: [i8; MATERIAL_N],
 }
 
 /// 1レコードを特徴・教師信号・指し手ラベルに変換する。
@@ -69,6 +71,7 @@ fn extract_one(
     let (move_from, move_to) = move_labels(rec.move16, stm);
     // posが生きているあいだに計算する。展開し直すと局面を2度作ることになる
     let eff_inputs = eff_inputs.then(|| effect_inputs(&pos));
+    let mat = material_counts(&pos);
 
     Some(Sample {
         stm: stm_feats,
@@ -77,6 +80,7 @@ fn extract_one(
         move_from,
         move_to,
         eff_inputs,
+        mat,
     })
 }
 
@@ -125,7 +129,8 @@ fn extract_features(
 /// バッチ分のレコードをまとめてEmbeddingBag形式へ変換する。
 ///
 /// 戻り値は `(stm_idx, stm_off, opp_idx, opp_off, targets, move_from, move_to,
-/// eff_stm, eff_opp)` の9本。`move_from`・`move_to` は補助ヘッド用の指し手
+/// eff_stm, eff_opp, mat)` の10本。最後の `mat` は駒種ごとの枚数の差で、
+/// 1局面あたり `MATERIAL_N` 個ずつ並ぶ。`move_from`・`move_to` は補助ヘッド用の指し手
 /// ラベルで、取れなかった局面は-1になる。最後の2本は利きの入力特徴
 /// で、1局面あたり `EFF_ACTIVE` 個ずつ並ぶ（F2は81）。
 /// `effect_inputs` が偽なら長さ0で返る。
@@ -140,6 +145,7 @@ type BatchArrays<'py> = (
     Bound<'py, PyArray1<i64>>,
     Bound<'py, PyArray1<i64>>,
     Bound<'py, PyArray1<i64>>,
+    Bound<'py, PyArray1<i8>>,
 );
 
 #[pyfunction]
@@ -160,47 +166,60 @@ fn extract_batch<'py>(
         )));
     }
 
-    let (dropped, stm_idx, stm_off, opp_idx, opp_off, targets, mv_from, mv_to, eff_stm, eff_opp) =
-        py.allow_threads(|| {
-            let per: Vec<Option<Sample>> = records
-                .par_chunks_exact(PSV_BYTES)
-                .map(|chunk| {
-                    let raw: &[u8; PSV_BYTES] = chunk.try_into().unwrap();
-                    extract_one(raw, lambda_, score_limit, score_clamp, effect_inputs)
-                })
-                .collect();
+    let (
+        dropped,
+        stm_idx,
+        stm_off,
+        opp_idx,
+        opp_off,
+        targets,
+        mv_from,
+        mv_to,
+        eff_stm,
+        eff_opp,
+        mats,
+    ) = py.allow_threads(|| {
+        let per: Vec<Option<Sample>> = records
+            .par_chunks_exact(PSV_BYTES)
+            .map(|chunk| {
+                let raw: &[u8; PSV_BYTES] = chunk.try_into().unwrap();
+                extract_one(raw, lambda_, score_limit, score_clamp, effect_inputs)
+            })
+            .collect();
 
-            let n = per.len();
-            let dropped = per.iter().filter(|s| s.is_none()).count();
-            let mut stm_idx: Vec<i64> = Vec::with_capacity(n * 40);
-            let mut opp_idx: Vec<i64> = Vec::with_capacity(n * 40);
-            let mut stm_off: Vec<i64> = Vec::with_capacity(n);
-            let mut opp_off: Vec<i64> = Vec::with_capacity(n);
-            let mut targets: Vec<f32> = Vec::with_capacity(n);
-            let mut mv_from: Vec<i64> = Vec::with_capacity(n);
-            let mut mv_to: Vec<i64> = Vec::with_capacity(n);
-            let in_cap = if effect_inputs { n * EFF_ACTIVE } else { 0 };
-            let mut eff_stm: Vec<i64> = Vec::with_capacity(in_cap);
-            let mut eff_opp: Vec<i64> = Vec::with_capacity(in_cap);
+        let n = per.len();
+        let dropped = per.iter().filter(|s| s.is_none()).count();
+        let mut stm_idx: Vec<i64> = Vec::with_capacity(n * 40);
+        let mut opp_idx: Vec<i64> = Vec::with_capacity(n * 40);
+        let mut stm_off: Vec<i64> = Vec::with_capacity(n);
+        let mut opp_off: Vec<i64> = Vec::with_capacity(n);
+        let mut targets: Vec<f32> = Vec::with_capacity(n);
+        let mut mv_from: Vec<i64> = Vec::with_capacity(n);
+        let mut mv_to: Vec<i64> = Vec::with_capacity(n);
+        let in_cap = if effect_inputs { n * EFF_ACTIVE } else { 0 };
+        let mut eff_stm: Vec<i64> = Vec::with_capacity(in_cap);
+        let mut eff_opp: Vec<i64> = Vec::with_capacity(in_cap);
+        let mut mats: Vec<i8> = Vec::with_capacity(n * MATERIAL_N);
 
-            for s in per.into_iter().flatten() {
-                stm_off.push(stm_idx.len() as i64);
-                opp_off.push(opp_idx.len() as i64);
-                stm_idx.extend(s.stm.iter().map(|&x| i64::from(x)));
-                opp_idx.extend(s.opp.iter().map(|&x| i64::from(x)));
-                targets.push(s.target);
-                mv_from.push(s.move_from);
-                mv_to.push(s.move_to);
-                if let Some((a, b)) = s.eff_inputs {
-                    eff_stm.extend(a.iter().map(|&x| i64::from(x)));
-                    eff_opp.extend(b.iter().map(|&x| i64::from(x)));
-                }
+        for s in per.into_iter().flatten() {
+            stm_off.push(stm_idx.len() as i64);
+            opp_off.push(opp_idx.len() as i64);
+            stm_idx.extend(s.stm.iter().map(|&x| i64::from(x)));
+            opp_idx.extend(s.opp.iter().map(|&x| i64::from(x)));
+            targets.push(s.target);
+            mv_from.push(s.move_from);
+            mv_to.push(s.move_to);
+            mats.extend_from_slice(&s.mat);
+            if let Some((a, b)) = s.eff_inputs {
+                eff_stm.extend(a.iter().map(|&x| i64::from(x)));
+                eff_opp.extend(b.iter().map(|&x| i64::from(x)));
             }
-            (
-                dropped, stm_idx, stm_off, opp_idx, opp_off, targets, mv_from, mv_to, eff_stm,
-                eff_opp,
-            )
-        });
+        }
+        (
+            dropped, stm_idx, stm_off, opp_idx, opp_off, targets, mv_from, mv_to, eff_stm, eff_opp,
+            mats,
+        )
+    });
 
     // レコードの並びが意味を持つ用途（兄弟局面のランキング群）では、
     // 黙って落とすと整列が壊れる。strictでは落とした時点で失敗させる
@@ -220,6 +239,7 @@ fn extract_batch<'py>(
         mv_to.into_pyarray(py),
         eff_stm.into_pyarray(py),
         eff_opp.into_pyarray(py),
+        mats.into_pyarray(py),
     ))
 }
 
@@ -235,7 +255,7 @@ fn check_len(name: &str, got: usize, want: usize) -> PyResult<()> {
 }
 
 #[pyfunction]
-#[pyo3(signature = (path, lineage, ft_w, ft_b, w2, b2, w3, b3, w_out, b_out, eff_w=None, eff_b=None))]
+#[pyo3(signature = (path, lineage, ft_w, ft_b, w2, b2, w3, b3, w_out, b_out, eff_w=None, eff_b=None, mat_w=None))]
 // 引数の並びがそのままPython側の呼び出し規約になる（上のsignature）。層ごとの
 // 重みとバイアスを構造体へまとめるには、受け渡す型をpyclassにしてquantize.pyの
 // 呼び出しも書き換えることになるので、平らな引数で受ける
@@ -254,6 +274,8 @@ fn save_hmwr(
     // 利きのaccumulatorを持つ構成でだけ渡す
     eff_w: Option<Vec<i16>>,
     eff_b: Option<Vec<i16>>,
+    // 学習した駒の価値（評価値の単位）。持つネットでだけ渡す
+    mat_w: Option<Vec<i32>>,
 ) -> PyResult<()> {
     check_len("ft_w", ft_w.len(), FT_IN * FT_OUT)?;
     // 学習側は常にi16で渡す。i8ビルドでは範囲検査を通してから格納する。
@@ -270,6 +292,10 @@ fn save_hmwr(
     let eff_b = eff_b.unwrap_or_default();
     check_len("eff_w", eff_w.len(), EFF_IN * EFF_OUT)?;
     check_len("eff_b", eff_b.len(), EFF_OUT)?;
+    let mat_w = mat_w.unwrap_or_default();
+    if !mat_w.is_empty() {
+        check_len("mat_w", mat_w.len(), MATERIAL_N)?;
+    }
     let net = NnueNetwork {
         ft_w,
         ft_b,
@@ -283,6 +309,7 @@ fn save_hmwr(
         b_out,
         eff_w,
         eff_b,
+        mat_w,
     }
     .finish();
     let mut f = std::fs::File::create(path)
@@ -343,6 +370,13 @@ fn load_hmwr<'py>(py: Python<'py>, path: &str) -> PyResult<Bound<'py, PyDict>> {
         let scaled: Vec<f32> = v.iter().map(|&x| f32::from(x) / 127.0).collect();
         d.set_item(key, scaled.into_pyarray(py))?;
     }
+    // 評価値の単位から学習側の単位（評価値/600）へ戻す。持たないネットでは空
+    let mat: Vec<f32> = net
+        .mat_w
+        .iter()
+        .map(|&x| x as f32 / SIGMOID_SCALE)
+        .collect();
+    d.set_item("mat_w", mat.into_pyarray(py))?;
     d.set_item("lineage", lineage)?;
     d.set_item("src_arch", format!("{}x{}x{}", src[1], src[2], src[3]))?;
     Ok(d)
@@ -378,6 +412,32 @@ fn evaluate_records(path: &str, records: &[u8]) -> PyResult<Vec<i32>> {
         .collect()
 }
 
+/// psvのレコード列を、手番側から見た駒種ごとの枚数の差（1局面 `MATERIAL_N` 個）へ変換する。
+/// 復元できないレコードはエラーにする。黙って落とすと整列が壊れる。
+#[pyfunction]
+fn material_records<'py>(py: Python<'py>, records: &[u8]) -> PyResult<Bound<'py, PyArray1<i8>>> {
+    if records.len() % PSV_BYTES != 0 {
+        return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(format!(
+            "バイト数が{PSV_BYTES}の倍数でない: {}",
+            records.len()
+        )));
+    }
+    let rows: Result<Vec<[i8; MATERIAL_N]>, String> = py.allow_threads(|| {
+        records
+            .par_chunks_exact(PSV_BYTES)
+            .map(|chunk| {
+                let raw: &[u8; PSV_BYTES] = chunk.try_into().unwrap();
+                let rec = PackedSfenValue::from_bytes(raw);
+                let pos =
+                    unpack(&rec.sfen, rec.game_ply).map_err(|e| format!("復元できない: {e:?}"))?;
+                Ok(material_counts(&pos))
+            })
+            .collect()
+    });
+    let rows = rows.map_err(PyErr::new::<pyo3::exceptions::PyValueError, _>)?;
+    Ok(rows.concat().into_pyarray(py))
+}
+
 /// ゼロ埋め列を落としてf32へ戻す。学習側はパディングを持たない。
 fn unpad(rows: &[i8], used: usize, stride: usize, scale: f32) -> Vec<f32> {
     rows.chunks_exact(stride.max(1))
@@ -392,6 +452,8 @@ fn himawari(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(save_hmwr, m)?)?;
     m.add_function(wrap_pyfunction!(load_hmwr, m)?)?;
     m.add_function(wrap_pyfunction!(evaluate_records, m)?)?;
+    m.add_function(wrap_pyfunction!(material_records, m)?)?;
+    m.add("MATERIAL_N", MATERIAL_N)?;
     m.add("FT_IN", FT_IN)?;
     m.add("FT_OUT", FT_OUT)?;
     m.add("CONCAT", CONCAT)?;

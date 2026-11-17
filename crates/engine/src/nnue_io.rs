@@ -13,7 +13,7 @@ use std::io::{Read, Write};
 
 use crate::nnue::{
     ARCH, CONCAT, EFF_IN, EFF_OUT, FT_IN, FT_OUT, FtWeight, HALF, L1_OUT, L1_PAD, L2_OUT,
-    LAST_HIDDEN, NnueNetwork, ft_w_from_i16, pad_rows,
+    LAST_HIDDEN, MATERIAL_N, NnueNetwork, ft_w_from_i16, pad_rows,
 };
 
 const MAGIC: &[u8; 8] = b"HMWRNNUE";
@@ -35,6 +35,9 @@ const FORMAT_VERSION_TWO_HIDDEN_PAIR: u32 = 9;
 /// 置く。研究ブランチだけの最小の拡張で、自己記述の形式（Issue #768）が
 /// 入ったらそちらへ移す。
 const FORMAT_VERSION_TWO_HIDDEN_I8_PAIR_EFF: u32 = 11;
+/// 版11の末尾に、学習した駒の価値（`MATERIAL_N` 個のi32、評価値の単位）を足した版。
+/// 駒の価値を持つネットだけがこの版で書かれ、持たないネットは版11のまま書く。
+const FORMAT_VERSION_TWO_HIDDEN_I8_PAIR_EFF_MAT: u32 = 15;
 // 版4・6・8・10・12・14は隠れ層3つの構成、版13・14は玉の近傍の部分モデルを持つ構成の版である。
 // どちらの構成も消したので読まない。番号は再利用しない。
 
@@ -49,7 +52,15 @@ const FORMAT_VERSION: u32 = if EFF_OUT != 0 {
 
 /// その版が利きのaccumulatorを持つか。
 const fn version_is_effect(v: u32) -> bool {
-    v == FORMAT_VERSION_TWO_HIDDEN_I8_PAIR_EFF
+    matches!(
+        v,
+        FORMAT_VERSION_TWO_HIDDEN_I8_PAIR_EFF | FORMAT_VERSION_TWO_HIDDEN_I8_PAIR_EFF_MAT
+    )
+}
+
+/// その版が学習した駒の価値を持つか。
+const fn version_is_material(v: u32) -> bool {
+    v == FORMAT_VERSION_TWO_HIDDEN_I8_PAIR_EFF_MAT
 }
 
 /// FT重み列をi16として読む。ファイルの版で1要素のバイト数が変わる。
@@ -69,6 +80,7 @@ const fn version_is_ft_i8(v: u32) -> bool {
         FORMAT_VERSION_TWO_HIDDEN_I8
             | FORMAT_VERSION_TWO_HIDDEN_I8_PAIR
             | FORMAT_VERSION_TWO_HIDDEN_I8_PAIR_EFF
+            | FORMAT_VERSION_TWO_HIDDEN_I8_PAIR_EFF_MAT
     )
 }
 
@@ -80,6 +92,7 @@ const fn version_is_pair(v: u32) -> bool {
         FORMAT_VERSION_TWO_HIDDEN_I8_PAIR
             | FORMAT_VERSION_TWO_HIDDEN_PAIR
             | FORMAT_VERSION_TWO_HIDDEN_I8_PAIR_EFF
+            | FORMAT_VERSION_TWO_HIDDEN_I8_PAIR_EFF_MAT
     )
 }
 
@@ -160,6 +173,10 @@ fn weight_bytes(net: &NnueNetwork) -> Vec<u8> {
         v.push(x as u8);
     }
     v.extend_from_slice(&net.b_out.to_le_bytes());
+    // 学習した駒の価値。持たないネットでは空なので、版11と同じ並びになる
+    for &x in &net.mat_w {
+        v.extend_from_slice(&x.to_le_bytes());
+    }
     v
 }
 
@@ -175,8 +192,18 @@ fn push_rows(v: &mut Vec<u8>, rows: &[i8], used: usize, stride: usize) {
 /// 学習来歴つきで書き出す。
 pub fn save(net: &NnueNetwork, lineage: &str, w: &mut impl Write) -> std::io::Result<()> {
     let body = weight_bytes(net);
+    let version = if net.mat_w.is_empty() {
+        FORMAT_VERSION
+    } else {
+        #[allow(clippy::assertions_on_constants)]
+        {
+            assert!(EFF_OUT != 0, "駒の価値は側のaccを持つ構成でだけ書ける");
+        }
+        assert_eq!(net.mat_w.len(), MATERIAL_N);
+        FORMAT_VERSION_TWO_HIDDEN_I8_PAIR_EFF_MAT
+    };
     w.write_all(MAGIC)?;
-    w.write_all(&FORMAT_VERSION.to_le_bytes())?;
+    w.write_all(&version.to_le_bytes())?;
     for dim in [FT_IN, FT_OUT, L1_OUT, L2_OUT] {
         w.write_all(&(dim as u32).to_le_bytes())?;
     }
@@ -376,7 +403,8 @@ fn read_meta(r: &mut impl Read) -> Result<Meta, String> {
         | FORMAT_VERSION_TWO_HIDDEN_I8
         | FORMAT_VERSION_TWO_HIDDEN_I8_PAIR
         | FORMAT_VERSION_TWO_HIDDEN_PAIR
-        | FORMAT_VERSION_TWO_HIDDEN_I8_PAIR_EFF => [u()?, u()?, u()?, u()?],
+        | FORMAT_VERSION_TWO_HIDDEN_I8_PAIR_EFF
+        | FORMAT_VERSION_TWO_HIDDEN_I8_PAIR_EFF_MAT => [u()?, u()?, u()?, u()?],
         FORMAT_VERSION_UNIFORM_HIDDEN => {
             let d = [u()?, u()?, u()?];
             [d[0], d[1], d[2], d[2]]
@@ -469,6 +497,11 @@ pub fn load(r: &mut impl Read) -> Result<(NnueNetwork, String), String> {
     };
     let w_out = cur.i8v(LAST_HIDDEN)?;
     let b_out = cur.i32v(1)?[0];
+    let mat_w = if version_is_material(version) {
+        cur.i32v(MATERIAL_N)?
+    } else {
+        Vec::new()
+    };
     cur.finish(expect_hash)?;
 
     let net = NnueNetwork {
@@ -483,6 +516,7 @@ pub fn load(r: &mut impl Read) -> Result<(NnueNetwork, String), String> {
         b_out,
         eff_w,
         eff_b,
+        mat_w,
     }
     .finish();
     // 利きのaccumulatorは差分の経路でi16に持つ。取りうる値が
@@ -643,6 +677,7 @@ pub fn load_resized_with_dims(
             b_out,
             eff_w: Vec::new(),
             eff_b: Vec::new(),
+            mat_w: Vec::new(),
         }
         .finish(),
         format!("{lineage} / resized to {ARCH}"),

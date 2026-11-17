@@ -13,7 +13,7 @@ import torch.nn.functional as F
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 
-from model import ARCH, EFF_OUT, EFFECT_INPUTS, NnueModel, loss_fn
+from model import ARCH, EFF_OUT, EFFECT_INPUTS, SIGMOID_SCALE, NnueModel, loss_fn
 from optim import MaskedAdam
 from dataset import PsvBatchLoader, PsvDataset, RankLoader, collate_psv
 from quantize import save_hmwr
@@ -41,7 +41,8 @@ def validate(model, valid_loader, device):
             # 利きの入力特徴。抽出させていなければ空で来る。
             # 古い拡張のPsvDatasetは5本しか返さないので、そのときは渡さない
             eff = [x.to(device) for x in batch[7:9]]
-            out = model(stm_i, stm_o, opp_i, opp_o, *eff)
+            mat = batch[9].to(device) if len(batch) > 9 else None
+            out = model(stm_i, stm_o, opp_i, opp_o, *eff, mat=mat)
             loss = loss_fn(out, targets)
             total_loss += loss.item() * targets.size(0)
             total_n += targets.size(0)
@@ -65,6 +66,10 @@ def main():
     p.add_argument("--min-lr", type=float, default=1e-6)
     p.add_argument("--warmup-steps", type=int, default=100)
     p.add_argument("--lambda", type=float, default=0.7, dest="lambda_")
+    p.add_argument(
+        "--material", action="store_true",
+        help="駒種ごとの価値をネットと一緒に学習し、枚数の差に掛けて出力へ足す",
+    )
     p.add_argument(
         "--rank-data",
         help="兄弟局面のランキング群（psv rankの出力）",
@@ -181,6 +186,8 @@ def main():
         help="FT勾配をdenseにする（SparseAdamを外し、MPSで学習できる）",
     )
     args = p.parse_args()
+    if args.material and not args.batch_loader:
+        p.error("--material は --batch-loader が要る（逐次のローダは駒種の枚数を作らない）")
 
     # 利きのaccumulatorは構成で決まる。利きの構成で省いたら、
     # 現行の評価関数と同じF2の特徴を立てる。どちらの群かは来歴に残る（下の eff_tag）
@@ -197,6 +204,8 @@ def main():
         p.error("利きの構成は --batch-loader が要る（逐次のローダは特徴を作らない）")
     # 来歴に群を残す。統制と処置は同じ構成で、ファイルの寸法では見分けられない
     eff_tag = f" effect_inputs={args.effect_inputs}" if args.effect_inputs else ""
+    if args.material:
+        eff_tag += " material=learned"
 
     if args.eval_only:
         # 測るだけなので教師データは要らない。読むネットと指標が要る
@@ -273,6 +282,7 @@ def main():
         sparse_ft=not args.dense_ft,
         factorized=args.factorized,
         effect_inputs=args.effect_inputs,
+        material=args.material,
     ).to(device)
     if args.effect_inputs is not None:
         print(
@@ -434,14 +444,14 @@ def main():
             # 利きの入力特徴。抽出させていなければ空で来る
             tensors = [x.to(device) for x in batch]
             stm_i, stm_o, opp_i, opp_o, targets = tensors[:5]
-            eff_stm, eff_opp = tensors[7:9]
+            eff_stm, eff_opp, mat = tensors[7:10]
             n = targets.size(0)
 
             optimizer_dense.zero_grad()
             if optimizer_ft is not None:
                 optimizer_ft.zero_grad()
             x = model.transform_both(stm_i, stm_o, opp_i, opp_o, eff_stm, eff_opp)
-            out = model.value(x)
+            out = model.value(x, mat)
             # ログとvalidに載せるのは評価値の損失だけにする。合計を載せると
             # λを変えるたびに指標が動き、過去の学習と比べられなくなる
             loss = loss_fn(out, targets)
@@ -449,10 +459,10 @@ def main():
             if rank_loader is not None:
                 # 兄弟局面のランキング損失。正例の葉が負例の葉
                 # より親視点で良い、をシグモイド空間のヒンジで課す
-                r_si, r_so, r_oi, r_oo, r_par, r_es, r_eo = [
+                r_si, r_so, r_oi, r_oo, r_par, r_es, r_eo, r_mat = [
                     x.to(device) for x in rank_loader.sample()
                 ]
-                u = model(r_si, r_so, r_oi, r_oo, r_es, r_eo)
+                u = model(r_si, r_so, r_oi, r_oo, r_es, r_eo, mat=r_mat)
                 sign = 1.0 - 2.0 * r_par
                 upv = torch.sigmoid(u * sign).view(-1, 3)
                 hinge = F.relu(args.rank_margin + upv[:, 1:3] - upv[:, 0:1])
@@ -616,6 +626,9 @@ def main():
     if args.side_clip > 0:
         model.clip_eff_weights(args.side_clip)
     save_hmwr(model, lineage, args.out)
+    if model.mat_w is not None:
+        vals = (model.mat_w.detach().float().cpu() * SIGMOID_SCALE).round().int().tolist()
+        print(f"駒の価値（評価値の単位）: {vals}", file=sys.stderr)
     print(f"{args.out} を書き出しました", file=sys.stderr)
 
     if args.registry:

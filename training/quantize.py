@@ -48,6 +48,9 @@ def quantize(model: NnueModel) -> dict:
         "b_out": round(b_out * SIGMOID_SCALE * FV_SCALE),
         "eff_w": None if eff_w is None else ft_q(eff_w),
         "eff_b": None if eff_b is None else ft_q(eff_b),
+        # 学習した駒の価値。評価値の単位の整数で持つ
+        "mat_w": None if model.mat_w is None
+        else (model.mat_w.detach().float() * SIGMOID_SCALE).round().to(torch.int32),
     }
 
 
@@ -89,6 +92,8 @@ def load_into(model: NnueModel, path: str, freeze_ft: bool = False) -> str:
                 model.l3.bias.copy_(as_tensor("b3", L2_OUT))
             model.out.weight.copy_(as_tensor("w_out", 1, LAST_HIDDEN))
             model.out.bias.fill_(w["b_out"])
+        if model.mat_w is not None and len(w.get("mat_w", [])):
+            model.mat_w.copy_(torch.from_numpy(w["mat_w"]).float())
 
     if freeze_ft:
         model.ft.weight.requires_grad_(False)
@@ -124,4 +129,5 @@ def save_hmwr(model: NnueModel, lineage: str, path: str):
                 "eff_b": q["eff_b"].tolist(),
             }
         ),
+        **({} if q["mat_w"] is None else {"mat_w": q["mat_w"].tolist()}),
     )

@@ -44,7 +44,7 @@ pub fn evaluate_scalar(net: &NnueNetwork, pos: &Position) -> Value {
     }
     fill_effect(net, pos, &mut concat);
 
-    forward_hidden(net, &concat)
+    forward_hidden(net, &concat) + material_term(net, pos)
 }
 
 /// 連結ベクトルから評価値まで（隠れ層はi8×u8の積和）。

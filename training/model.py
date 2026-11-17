@@ -45,6 +45,16 @@ EFFECT_INPUTS = ("f2", "none")
 # 活性127・隠れ層64という量子化の係数を1つも変えずに済む
 PAIR_SCALE = 127.0 / 128.0
 
+# 学習する駒割り。駒種ごとの枚数の差（盤上13種と持ち駒7種）に掛ける駒の価値を持つ。
+# 古い拡張は定数を持たないので0として扱う
+MATERIAL_N = getattr(himawari, "MATERIAL_N", 0)
+# 駒の価値の初期値（評価値の単位）。現行ネットの評価値を駒種ごとの枚数の差で回帰した係数で、
+# 並びは盤上の歩・香・桂・銀・金・角・飛・と・成香・成桂・成銀・馬・龍、持ち駒の金・歩・香・桂・銀・角・飛
+MATERIAL_INIT = [
+    59, 128, 206, 341, 408, 459, 542, 285, 269, 290, 323, 699, 852,
+    449, 57, 203, 193, 341, 498, 573,
+]
+
 # Evaluation scale
 SIGMOID_SCALE = 600.0
 FV_SCALE = 16
@@ -65,7 +75,7 @@ class NnueModel(nn.Module):
     推論側の構造は変わらない。重みは書き出し時に畳み込む。
     """
 
-    def __init__(self, sparse_ft=True, factorized=False, effect_inputs=None):
+    def __init__(self, sparse_ft=True, factorized=False, effect_inputs=None, material=False):
         super().__init__()
         # 利きのaccumulatorは構成で決まる。持つ構成では、統制群も
         # 処置群も同じ層を作る。**構造が同じなので、初期化で乱数を消費する
@@ -103,6 +113,14 @@ class NnueModel(nn.Module):
         self.l3 = nn.Linear(L1_OUT, L2_OUT) if L2_OUT else None
         self.out = nn.Linear(LAST_HIDDEN, 1)
         self._init_weights()
+        # 駒の価値は乱数を引かずに作る。持たない構成と初期値の乱数列が揃う
+        self.mat_w = None
+        if material:
+            if MATERIAL_N != len(MATERIAL_INIT):
+                raise ValueError(f"拡張の駒割りの入力が{MATERIAL_N}個で、初期値の数と合わない")
+            self.mat_w = nn.Parameter(
+                torch.tensor(MATERIAL_INIT, dtype=torch.float32) / SIGMOID_SCALE
+            )
 
     def _init_weights(self):
         nn.init.uniform_(self.ft.weight, -0.05, 0.05)
@@ -190,16 +208,27 @@ class NnueModel(nn.Module):
                       self.effect_activation(eff_opp, n)]
         return torch.cat(parts, dim=1)
 
-    def value(self, x):
-        """FT出力の連結から評価値を出す（推論と同じ経路）。"""
+    def value(self, x, mat=None):
+        """FT出力の連結から評価値を出す（推論と同じ経路）。
+
+        駒の価値を持つモデルでは、駒種ごとの枚数の差 `mat` に駒の価値を掛けて足す。
+        """
         h = self.l2(x).clamp(0.0, 1.0)
         if self.l3 is not None:
             h = self.l3(h).clamp(0.0, 1.0)
-        return self.out(h).squeeze(1)
+        v = self.out(h).squeeze(1)
+        if self.mat_w is not None:
+            n = x.size(0)
+            if mat is None or mat.numel() != n * MATERIAL_N:
+                raise ValueError("駒種ごとの枚数の差がバッチに入っていない")
+            v = v + mat.view(n, MATERIAL_N).float() @ self.mat_w
+        return v
 
-    def forward(self, stm_idx, stm_off, opp_idx, opp_off, eff_stm=None, eff_opp=None):
+    def forward(self, stm_idx, stm_off, opp_idx, opp_off, eff_stm=None, eff_opp=None,
+                mat=None):
         return self.value(
-            self.transform_both(stm_idx, stm_off, opp_idx, opp_off, eff_stm, eff_opp)
+            self.transform_both(stm_idx, stm_off, opp_idx, opp_off, eff_stm, eff_opp),
+            mat,
         )
 
     def clip_ft_weights(self, limit=1.0):

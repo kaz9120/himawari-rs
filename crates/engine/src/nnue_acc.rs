@@ -344,7 +344,7 @@ impl NnueState {
         let concat = &mut *self.concat;
         #[cfg(feature = "actdump")]
         crate::actdump::record(concat);
-        nnue_simd::forward_hidden(net, concat)
+        nnue_simd::forward_hidden(net, concat) + crate::nnue::material_term(net, pos)
     }
 
     /// 利きのaccumulatorを最上段に用意する。

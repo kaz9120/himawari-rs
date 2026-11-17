@@ -119,13 +119,18 @@ def test_rust_features_match_python():
 def test_features_are_off_unless_asked():
     records, _ = positions(count=4)
     arrays = himawari.extract_batch(records, 0.7, 0, 0, True)
-    assert len(arrays) == 9
+    assert len(arrays) == 10
     assert len(arrays[7]) == 0 and len(arrays[8]) == 0
+    # 駒種ごとの枚数の差は、利きの特徴と違っていつも返る
+    assert len(arrays[9]) == 4 * himawari.MATERIAL_N
 
 
-@pytest.mark.parametrize("mode", ["f2", "none"])
-def test_quantized_net_matches_the_model(mode, tmp_path):
-    """模型の出力と、書き出したネットの推論側の評価値が一致する。"""
+@pytest.mark.parametrize(("mode", "material"), [("f2", False), ("none", False), ("f2", True)])
+def test_quantized_net_matches_the_model(mode, material, tmp_path):
+    """模型の出力と、書き出したネットの推論側の評価値が一致する。
+
+    駒の価値を持つ模型では、学習した駒割りの項も推論側で同じ値になることを見る。
+    """
     torch = pytest.importorskip("torch")
     if himawari.EFF_OUT == 0:
         pytest.skip("利きの構成（e<E>）の拡張でだけ測れる")
@@ -135,7 +140,7 @@ def test_quantized_net_matches_the_model(mode, tmp_path):
     from quantize import save_hmwr
 
     torch.manual_seed(3)
-    model = NnueModel(sparse_ft=False, effect_inputs=mode)
+    model = NnueModel(sparse_ft=False, effect_inputs=mode, material=material)
     with torch.no_grad():
         # 利きの経路が評価値に効く大きさにする。既定の初期値のままでは
         # 量子化の誤差に埋もれ、経路が切れていても一致してしまう
@@ -152,6 +157,8 @@ def test_quantized_net_matches_the_model(mode, tmp_path):
                 (model.eff_bias, 127), (model.l2.weight, 64), (model.l3.weight, 64),
                 (model.l2.bias, 64 * 127), (model.l3.bias, 64 * 127),
                 (model.out.weight, out_scale), (model.out.bias, SIGMOID_SCALE * FV_SCALE)]
+        if material:
+            snap.append((model.mat_w, SIGMOID_SCALE))
         for t, scale in snap:
             t.copy_((t * scale).round() / scale)
     model.eval()
@@ -162,11 +169,11 @@ def test_quantized_net_matches_the_model(mode, tmp_path):
     )
     stm_i, stm_o, opp_i, opp_o = arrays[:4]
     with torch.no_grad():
-        want = model(stm_i, stm_o, opp_i, opp_o, arrays[7], arrays[8]) * SIGMOID_SCALE
+        want = model(stm_i, stm_o, opp_i, opp_o, arrays[7], arrays[8], mat=arrays[9]) * SIGMOID_SCALE
         # 利きの活性を0にした出力。経路が効いていることの対照にする
         x = model.transform_both(stm_i, stm_o, opp_i, opp_o, arrays[7], arrays[8])
         x[:, EFF_COLS] = 0
-        blind = model.value(x) * SIGMOID_SCALE
+        blind = model.value(x, arrays[9]) * SIGMOID_SCALE
 
     path = tmp_path / "eff.hmwr"
     save_hmwr(model, f"test {mode}", str(path))
@@ -182,6 +189,11 @@ def test_quantized_net_matches_the_model(mode, tmp_path):
     assert effect.mean() > 10 * err.mean(), (
         f"利きの寄与 {effect.mean():.2f} が量子化の誤差 {err.mean():.2f} に埋もれている"
     )
+    if material:
+        # 駒割りの項の寄与も、量子化の誤差より十分大きいことを見る。小さければ
+        # 推論側で項が抜けていても一致してしまう
+        mat = arrays[9].view(len(want), -1).float() @ model.mat_w.detach()
+        assert (mat * SIGMOID_SCALE).abs().mean() > 10 * err.mean()
 
 
 def test_groups_start_from_the_same_weights():

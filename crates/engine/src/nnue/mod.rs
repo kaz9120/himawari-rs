@@ -19,12 +19,14 @@ mod effect;
 mod effect_code;
 mod halfkp;
 mod labels;
+mod material;
 mod reference;
 
 pub use effect::*;
 pub use effect_code::*;
 pub use halfkp::*;
 pub use labels::*;
+pub use material::*;
 pub use reference::*;
 
 // FT_OUT・L1_OUT・L2_OUT・L1_PAD・ARCH を定義する。
@@ -95,6 +97,9 @@ pub struct NnueNetwork {
     /// `EFF_OUT` が0の構成では空。
     pub eff_w: Vec<i16>,
     pub eff_b: Vec<i16>,
+    /// 学習した駒の価値（評価値の単位）。`material_counts` の並びで `MATERIAL_N` 個。
+    /// 持たないネットでは空で、評価値に何も足さない。
+    pub mat_w: Vec<i32>,
 }
 
 /// 出力層の入力次元。隠れ層2を挟むかで変わる。
@@ -178,6 +183,7 @@ impl NnueNetwork {
             b_out: 0,
             eff_w: Vec::new(),
             eff_b: Vec::new(),
+            mat_w: Vec::new(),
         };
         // 利きの重みは最後に引く。既定構成（EFF_OUT=0）の乱数列を変えない
         net.eff_w = r.i16v(EFF_IN * EFF_OUT, 16);
