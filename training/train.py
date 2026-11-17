@@ -331,6 +331,9 @@ def main():
     # 利きのaccumulator。統制群の表は凍結してあり、下で外れる
     if model.eff is not None:
         dense_params.extend([model.eff.weight, model.eff_bias])
+    # 学習する駒の価値。並べ忘れると初期値のまま学習が終わる
+    if model.mat_w is not None:
+        dense_params.append(model.mat_w)
     ft_params = [model.ft.weight]
     if model.ft_p is not None:
         ft_params.append(model.ft_p.weight)
